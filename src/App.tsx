@@ -1412,6 +1412,26 @@ export default function App() {
     document.documentElement.lang = 'ko';
   }, []);
 
+  // 🛡️ iOS Safari BFCache 문제 해결
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // BFCache에서 복원된 경우 (persisted = true)
+      if (event.persisted) {
+        console.log('🔄 [BFCache] iOS Safari에서 캐시 복원 감지');
+
+        // 현재 URL 경로 확인
+        const currentPath = window.location.pathname;
+        console.log('📍 [BFCache] 현재 경로:', currentPath);
+
+        // 페이지 강제 새로고침으로 React 상태 재동기화
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   return (
     <Router>
       <HistoryDebug />

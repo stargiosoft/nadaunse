@@ -501,60 +501,56 @@ export default function HomePage() {
   const [showNavigation, setShowNavigation] = useState(true);
   const lastScrollY = useRef(0);
 
-  // 🛡️ iOS Safari 히스토리 버그 해결: 홈 진입 시 가짜 히스토리 추가
+  // 🛡️ iOS Safari 히스토리 버그 해결: 개선된 버전
   useEffect(() => {
     const initHistory = () => {
       const currentLength = window.history.length;
       console.log('🔧 [히스토리 초기화] 현재 길이:', currentLength);
-      
-      // 🔑 SessionStorage에서 히스토리 상태 확인
+
+      // SessionStorage에서 히스토리 상태 확인
       const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
       console.log('🔍 [히스토리] SessionStorage 상태:', hasNavigatedFromHome);
-      
-      // 히스토리가 너무 짧으면 가짜 엔트리 추가 (뒤로가기 버퍼)
-      if (currentLength <= 2 && !hasNavigatedFromHome) {
-        window.history.pushState({ page: 'home-buffer' }, '', window.location.href);
-        console.log('✅ [히스토리 초기화] 버퍼 추가 완료 → 새 길이:', window.history.length);
+
+      // 🆕 홈 진입 시 항상 히스토리 상태 정리
+      if (hasNavigatedFromHome === 'true') {
+        // 뒤로가기로 홈에 왔으므로 플래그 제거
+        sessionStorage.removeItem('navigatedFromHome');
+        console.log('🧹 [히스토리] SessionStorage 플래그 제거');
+
+        // 🆕 현재 히스토리 상태를 홈으로 교체 (스택 정리)
+        window.history.replaceState({ page: 'home' }, '', '/');
+        console.log('✅ [히스토리] 홈 상태로 replaceState 완료');
       }
-      
-      // 🔄 홈으로 돌아왔으면 플래그 제거
-      sessionStorage.removeItem('navigatedFromHome');
-      console.log('🧹 [히스토리] SessionStorage 플래그 제거');
     };
-    
+
     initHistory();
   }, []);
 
-  // 🛡️ popstate 이벤트 가로채기 (사이트 닫힘 방지)
+  // 🛡️ popstate 이벤트 처리 개선
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      console.log('⬅️ [popstate] 뒤로가기 감지:', e.state);
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('⬅️ [popstate] 뒤로가기 감지:', event.state);
       console.log('📍 [popstate] 현재 경로:', window.location.pathname);
-      
-      // 🔑 SessionStorage 확인
-      const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
-      console.log('🔍 [popstate] SessionStorage 상태:', hasNavigatedFromHome);
-      
-      // 홈이 아닌 곳에서 뒤로가기 → 무조건 홈으로
-      if (hasNavigatedFromHome === 'true' && window.location.pathname !== '/') {
-        console.log('🛡️ [popstate] 홈으로 강제 이동 (사이트 닫힘 방지)');
-        e.preventDefault();
-        sessionStorage.removeItem('navigatedFromHome');
-        navigate('/');
-        return;
-      }
-      
-      // 버퍼 페이지로 돌아온 경우 → 사이트 닫힘 방지
-      if (e.state && e.state.page === 'home-buffer') {
-        console.log('🛡️ [popstate] 버퍼 페이지 감지 → 사이트 닫힘 방지');
-        // 다시 버퍼 추가 (무한 뒤로가기 방지)
-        window.history.pushState({ page: 'home-buffer' }, '', window.location.href);
+
+      // 홈이 아닌 곳에서 popstate 발생 시
+      if (window.location.pathname !== '/') {
+        const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
+
+        if (hasNavigatedFromHome === 'true') {
+          console.log('🛡️ [popstate] 홈으로 강제 이동');
+          sessionStorage.removeItem('navigatedFromHome');
+
+          // 🆕 navigate 대신 replaceState + reload 사용 (더 안정적)
+          window.history.replaceState({ page: 'home' }, '', '/');
+          window.location.replace('/');
+          return;
+        }
       }
     };
-    
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [navigate]);
+  }, []);
   
   useEffect(() => {
     const controlNavbar = () => {
@@ -1139,7 +1135,7 @@ export default function HomePage() {
   };
 
   const handleContentClick = async (contentId: string) => {
-    // 조회수 증가
+    // 조회수 증가 (기존 코드 유지)
     const { data: currentData } = await supabase
       .from('master_contents')
       .select('view_count, weekly_clicks')
@@ -1149,19 +1145,27 @@ export default function HomePage() {
     if (currentData) {
       await supabase
         .from('master_contents')
-        .update({ 
+        .update({
           view_count: currentData.view_count + 1,
           weekly_clicks: currentData.weekly_clicks + 1
         })
         .eq('id', contentId);
     }
 
-    // 🔑 SessionStorage에 플래그 설정 (홈에서 콘텐츠로 이동했음을 표시)
+    // 🆕 개선된 히스토리 관리
     sessionStorage.setItem('navigatedFromHome', 'true');
-    console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정');
+    sessionStorage.setItem('lastContentId', contentId); // 🆕 마지막 콘텐츠 ID 저장
+    console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정, contentId:', contentId);
 
-    // 콘텐츠 상세로 이동
-    navigate(`/master/content/detail/${contentId}`);
+    // 🆕 명확한 히스토리 상태와 함께 이동
+    window.history.pushState(
+      { page: 'content-detail', contentId, from: 'home' },
+      '',
+      `/master/content/detail/${contentId}`
+    );
+
+    // React Router로 페이지 렌더링
+    navigate(`/master/content/detail/${contentId}`, { replace: true });
   };
 
   const handleCategoryChange = (category: TabCategory) => {
