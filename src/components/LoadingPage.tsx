@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import svgPaths from "../imports/svg-ezi6geedzp";
-import imgLoadingImage from "figma:asset/e2c5a8ca34b2f8422ee7e5c07afc7fb43951737f.png";
+import imgLoadingImage from "figma:asset/35682d96407edc7fb5921d3d1b58f0b20b40da6e.png";
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { preloadTarotImages } from '../lib/tarotImageCache';
 import { motion } from "motion/react";
