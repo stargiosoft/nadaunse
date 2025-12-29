@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import svgPaths from "../imports/svg-ezi6geedzp";
-import imgLoadingImage from "figma:asset/35682d96407edc7fb5921d3d1b58f0b20b40da6e.png";
+import imgLoadingImage from "figma:asset/e2c5a8ca34b2f8422ee7e5c07afc7fb43951737f.png";
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { preloadTarotImages } from '../lib/tarotImageCache';
+import { motion } from "motion/react";
 
 // ⭐ 무료 콘텐츠 인터페이스
 interface FreeContent {
@@ -50,20 +51,14 @@ function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
           style={{ width: `${progress}%` }}
         />
       </div>
-      <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[23.5px] tracking-[-0.3px] text-[#6d6d6d] text-nowrap">
+      <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[23.5px] tracking-[-0.3px] text-[#6d6d6d] text-nowrap pt-[2px]">
         {Math.round(progress)}%
       </p>
     </div>
   );
 }
 
-function HomeIndicatorLight() {
-  return (
-    <div className="bg-white h-[28px] relative shrink-0 w-full">
-      <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
-    </div>
-  );
-}
+
 
 export default function LoadingPage() {
   const navigate = useNavigate();
@@ -129,7 +124,7 @@ export default function LoadingPage() {
           return;
         }
 
-        console.log('✅ [무료콘텐츠] master_contents 조회:', contents.length, '개');
+        console.log('✅ [��료콘텐츠] master_contents 조회:', contents.length, '개');
 
         // 2. 각 콘텐츠의 주간 클릭수 계산
         const contentsWithClicks = await Promise.all(
@@ -361,7 +356,7 @@ export default function LoadingPage() {
 
   return (
     <div 
-      className="bg-white flex flex-col w-full max-w-[390px] mx-auto relative overflow-hidden"
+      className="bg-white flex flex-col w-full max-w-[440px] mx-auto relative overflow-hidden"
       style={{ height: '100dvh' }}
     >
       {/* Top Navigation - Fixed */}
@@ -373,9 +368,9 @@ export default function LoadingPage() {
           </h1>
           <button
             onClick={handleClose}
-            className="flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer"
+            className="group flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
           >
-            <X className="w-[24px] h-[24px] text-[#868686]" strokeWidth={1.8} />
+            <X className="w-[24px] h-[24px] text-[#848484] transition-transform duration-200 group-active:scale-90" strokeWidth={1.8} />
           </button>
         </div>
       </div>
@@ -389,19 +384,19 @@ export default function LoadingPage() {
         }}
       >
         {/* Loading Image */}
-        <div className="w-full aspect-[390/324] relative overflow-hidden select-none">
+        <div className="w-full max-w-[440px] h-auto mx-auto relative overflow-hidden p-0 select-none">
           <img
+            alt=""
+            className="w-full h-auto object-cover pointer-events-none block"
             src={imgLoadingImage}
-            alt="Loading"
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           />
         </div>
 
         {/* Progress Section */}
         <div className="bg-[#f9f9f9] border-t border-[#f3f3f3] px-[20px] py-[32px] select-none">
-          <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col gap-[12px]">
             {/* Text */}
-            <div className="flex flex-col gap-[4px]">
+            <div className="flex flex-col gap-[6px]">
               <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] leading-[24.5px] tracking-[-0.32px] text-[#151515]">
                 정확한 해석을 위해 시간이 필요해요
               </p>
@@ -417,7 +412,7 @@ export default function LoadingPage() {
 
         {/* ⭐ 무료 콘텐츠 섹션 */}
         {freeContents.length > 0 && (
-          <div className="bg-white px-[20px] py-[32px]">
+          <div className="bg-white px-[20px] py-[48px] pt-[32px] pr-[20px] pb-[80px] pl-[20px]">
             {/* Section Title */}
             <div className="mb-[12px]">
               <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[17px] leading-[24px] tracking-[-0.34px] text-black">
@@ -426,7 +421,7 @@ export default function LoadingPage() {
             </div>
 
             {/* Content Cards - Horizontal Scroll */}
-            <div className="flex gap-[12px] overflow-x-auto pb-[4px] -mx-[20px] px-[20px]" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex gap-[12px] overflow-x-auto pb-[4px] -mx-[20px] px-[20px] items-stretch" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {freeContents.slice(0, displayCount).map((content) => (
                 <button
                   key={content.id}
@@ -453,7 +448,7 @@ export default function LoadingPage() {
                     </div>
 
                     {/* Info */}
-                    <div className="flex flex-col gap-[4px] items-start w-full">
+                    <div className="flex flex-col gap-[6px] items-start w-full">
                       {/* Tag */}
                       <div className="bg-[#f9f9f9] px-[6px] py-[2px] rounded-[4px]">
                         <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[12px] leading-[16px] tracking-[-0.24px] text-[#848484]">
@@ -462,7 +457,7 @@ export default function LoadingPage() {
                       </div>
 
                       {/* Title */}
-                      <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[22.5px] tracking-[-0.3px] text-black text-left w-full line-clamp-2">
+                      <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[22.5px] tracking-[-0.3px] text-black text-left w-full line-clamp-2 pl-[3px]">
                         {content.title}
                       </p>
                     </div>
@@ -474,11 +469,33 @@ export default function LoadingPage() {
               {freeContents.length > displayCount && (
                 <button
                   onClick={() => setDisplayCount(prev => prev + 6)}
-                  className="flex-none w-[200px] h-[120px] rounded-[12px] border-2 border-dashed border-[#d4d4d4] flex items-center justify-center cursor-pointer hover:bg-[#f9f9f9] transition-colors"
+                  className="flex-none content-stretch flex items-center pl-0 pr-[20px] py-0 relative group cursor-pointer"
                 >
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[23.5px] tracking-[-0.3px] text-[#6d6d6d]">
-                    더 볼래요!
-                  </p>
+                  <div className="content-stretch flex h-full items-center justify-center mr-[-20px] p-[12px] pt-[13px] relative rounded-[12px] shrink-0 w-[200px]">
+                    <div aria-hidden="true" className="absolute border border-[#d4d4d4] border-dashed inset-[0px] pointer-events-none rounded-[12.5px] transition-colors" />
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative shrink-0 text-[#6d6d6d] text-[16px] text-nowrap tracking-[-0.3px]">
+                      더 볼래요!
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center mr-[-20px] relative shrink-0">
+                    <div className="flex-none rotate-[180deg] scale-y-[-100%]">
+                      <div className="relative size-[44px]">
+                        <div className="absolute inset-0">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
+                            <g>
+                              <rect fill="white" height="44" width="44" />
+                              <motion.path 
+                                d="M18.7044 33.6472L7.41884 22.9923C7.28676 22.8658 7.18137 22.7123 7.10929 22.5415C7.03721 22.3708 7 22.1864 7 22C7 21.8136 7.03721 21.6292 7.10929 21.4585C7.18137 21.2877 7.28676 21.1342 7.41884 21.0077L18.7044 10.3528C19.5328 9.56462 20.8773 10.1839 20.8773 11.3522V16.4614C20.8773 16.9541 21.2711 17.3622 21.7464 17.3622H35.3839C36.2802 17.3622 37 18.1082 37 19.0372V24.9628C37 25.8918 36.2802 26.6378 35.3839 26.6378H21.7464C21.2711 26.6378 20.8773 27.0459 20.8773 27.5386V32.6478C20.8773 33.8161 19.5328 34.4354 18.7044 33.6472Z" 
+                                fill="#D4D4D4"
+                                animate={{ x: [0, 4, 0] }}
+                                transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+                              />
+                            </g>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </button>
               )}
             </div>
@@ -487,7 +504,7 @@ export default function LoadingPage() {
       </div>
 
       {/* Bottom Buttons - Fixed */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] z-10">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] z-10">
         <div className="bg-white px-[20px] py-[12px]">
           {/* ⭐ [개발 모드] 다음으로 이동 버튼 */}
           {from === 'dev' && devNextUrl && (
@@ -495,7 +512,7 @@ export default function LoadingPage() {
               <button
                 onClick={() => {
                   // ⭐ [DEV] 타로 카드 뽑기 화면으로 이동 (전체 플로우 확인용)
-                  // 기존에는 devNextUrl로 바로 이동했으나, 타로 셔플부터 시작하도록 변경
+                  // ���존에는 devNextUrl로 바로 이동했으나, 타로 셔플부터 시작하도록 변경
                   navigate(`/tarot/shuffle?orderId=${orderId}&contentId=${contentId}&from=dev`);
                 }}
                 className="ml-auto w-fit px-[12px] py-[8px] flex items-center gap-[4px] cursor-pointer select-none"
@@ -526,7 +543,7 @@ export default function LoadingPage() {
             </button>
           </div>
         </div>
-        <HomeIndicatorLight />
+
       </div>
     </div>
   );

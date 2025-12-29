@@ -8,10 +8,12 @@
 import { MasterContent, Question } from '../lib/freeContentService';
 import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
+import { ChevronRight } from 'lucide-react';
 import svgPathsBanner from "../imports/svg-1j0aq37vhy";
 import svgPathsSlider from "../imports/svg-4heccierrk";
 import svgPathsBack from "../imports/svg-geohasap3g";
 import svgPathsHome from "../imports/svg-pz84vpwvud";
+import svgPathsMore from "../imports/svg-yzh80oj47m";
 import bannerImg from "figma:asset/b236509a5f2172bc63b883ba8abf132659ed54d9.png";
 
 /**
@@ -491,35 +493,32 @@ interface ShowMoreButtonProps {
 
 export function ShowMoreButton({ onClick }: ShowMoreButtonProps) {
   return (
-    <div className="box-border content-stretch flex items-center pl-0 pr-[20px] py-0 relative self-stretch shrink-0">
-      <div 
-        onClick={onClick}
-        className="box-border content-stretch flex h-full items-center justify-center mr-[-20px] py-[1px] shrink-0 w-[200px] cursor-pointer select-none [-webkit-touch-callout:none]"
-      >
-        <div className="flex gap-[10px] items-center justify-center p-[12px] relative rounded-[12px] size-full">
-          <div aria-hidden="true" className="absolute border border-dashed border-neutral-300 inset-[-0.5px] pointer-events-none rounded-[12.5px]" />
-          <p className="font-medium leading-[23.5px] not-italic relative shrink-0 text-[#6d6d6d] text-[16px] text-nowrap tracking-[-0.3px] whitespace-pre select-none [-webkit-touch-callout:none]">
-            더 볼래요!
-          </p>
+    <div 
+      onClick={onClick}
+      className="relative shrink-0 w-[200px] cursor-pointer select-none group py-[1px]"
+    >
+      <div className="content-stretch flex items-center pl-0 pr-[20px] py-0 relative size-full" data-name="Button / More view Button">
+        <div className="content-stretch flex h-full items-center justify-center mr-[-20px] p-[12px] relative rounded-[12px] shrink-0 w-[200px]">
+          <div aria-hidden="true" className="absolute border border-[#d4d4d4] border-dashed inset-[-0.5px] pointer-events-none rounded-[12.5px]" />
+          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative shrink-0 text-[#6d6d6d] text-[16px] text-nowrap tracking-[-0.3px]">더 볼래요!</p>
         </div>
-      </div>
-      <div className="flex items-center justify-center mr-[-20px] relative shrink-0">
-        <div className="flex-none rotate-[180deg] scale-y-[-100%]">
-          <div className="bg-white overflow-clip relative size-[44px]">
-            <div className="absolute h-[24px] left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-[30px]">
-              <motion.div 
-                className="absolute inset-0"
-                animate={{ x: [0, -5, 0] }}
-                transition={{
-                  duration: 0.8,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 30 24">
-                  <path d={svgPathsSlider.p25f6fa00} fill="#D4D4D4" />
+        <div className="flex items-center justify-center mr-[-20px] relative shrink-0">
+          <div className="flex-none rotate-[180deg] scale-y-[-100%]">
+            <div className="relative size-[44px]" data-name="Icons">
+              <div className="absolute inset-0" style={{ "--fill-0": "#D4D4D4" } as React.CSSProperties}>
+                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
+                  <g id="Icons">
+                    <rect fill="white" height="44" width="44" />
+                    <motion.path 
+                      d={svgPathsMore.p3bb19300} 
+                      fill="var(--fill-0, #D4D4D4)" 
+                      id="Vector"
+                      animate={{ x: [0, 3.3, 0] }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  </g>
                 </svg>
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>

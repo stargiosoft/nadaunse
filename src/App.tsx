@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
-import * as Sentry from "@sentry/react";
 import ProductDetail from './components/ProductDetail';
 import FreeProductDetail from './components/FreeProductDetail';
 import PaymentNew from './components/PaymentNew';
@@ -1381,74 +1380,6 @@ function MasterContentCreateFlowWrapper() {
   );
 }
 
-// Sentry 테스트 버튼 (개발/스테이징 환경에서만 표시)
-function SentryTestButton() {
-  const [isVisible, setIsVisible] = useState(false);
-
-  // production 환경에서는 표시하지 않음
-  if (import.meta.env.PROD && !window.location.hostname.includes('staging')) {
-    return null;
-  }
-
-  const handleTestError = () => {
-    throw new Error("Sentry 테스트 에러! - " + new Date().toISOString());
-  };
-
-  const handleCaptureError = () => {
-    Sentry.captureException(new Error("Sentry captureException 테스트 - " + new Date().toISOString()));
-    alert("에러가 Sentry로 전송되었습니다!");
-  };
-
-  return (
-    <>
-      <button
-        onClick={() => setIsVisible(!isVisible)}
-        className="fixed bottom-4 left-4 z-50 bg-red-500 text-white w-10 h-10 rounded-full shadow-lg flex items-center justify-center text-lg font-bold"
-        title="Sentry 테스트"
-      >
-        🐛
-      </button>
-      {isVisible && (
-        <div className="fixed bottom-16 left-4 z-50 bg-white rounded-lg shadow-xl p-4 border">
-          <p className="text-sm font-medium mb-2">Sentry 테스트</p>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleCaptureError}
-              className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
-            >
-              captureException 테스트
-            </button>
-            <button
-              onClick={handleTestError}
-              className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-            >
-              throw Error 테스트
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-// Sentry 에러 폴백 컴포넌트
-function SentryErrorFallback() {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-[#f9f9f9]">
-      <div className="text-center p-6">
-        <p className="text-[#1b1b1b] text-lg font-medium mb-2">문제가 발생했어요</p>
-        <p className="text-[#999999] text-sm mb-4">잠시 후 다시 시도해주세요.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
-        >
-          새로고침
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // 포트원 초기화 컴포넌트
 function PortOneInit() {
   useEffect(() => {
@@ -1481,33 +1412,12 @@ export default function App() {
     document.documentElement.lang = 'ko';
   }, []);
 
-  // 🛡️ iOS Safari BFCache 문제 해결
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      // BFCache에서 복원된 경우 (persisted = true)
-      if (event.persisted) {
-        console.log('🔄 [BFCache] iOS Safari에서 캐시 복원 감지');
-
-        // 현재 URL 경로 확인
-        const currentPath = window.location.pathname;
-        console.log('📍 [BFCache] 현재 경로:', currentPath);
-
-        // 페이지 강제 새로고침으로 React 상태 재동기화
-        window.location.reload();
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, []);
-
   return (
-    <Sentry.ErrorBoundary fallback={<SentryErrorFallback />}>
-      <Router>
-        <HistoryDebug />
-        <GAInit />
-        <PortOneInit />
-        <Routes>
+    <Router>
+      <HistoryDebug />
+      <GAInit />
+      <PortOneInit />
+      <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPageNewWrapper />} />
         <Route path="/login/new" element={<LoginPageNewWrapper />} />
@@ -1574,8 +1484,6 @@ export default function App() {
         }}
       />
       <GlobalAIMonitor />
-      <SentryTestButton />
     </Router>
-    </Sentry.ErrorBoundary>
   );
 }

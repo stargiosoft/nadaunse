@@ -903,7 +903,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           <div className="size-full">
                             <div className="box-border content-stretch flex flex-col gap-0 items-start px-[2px] py-0 relative w-full">
                                 {/* 할인율 + 할인가격 + 정상가격(취소선) */}
-                                <div className="content-stretch flex gap-[6px] items-center relative shrink-0">
+                                <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                   <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#ff6b6b] text-[20px] text-nowrap tracking-[-0.4px]">
                                     {content.discount_rate || 0}%
                                   </p>
@@ -940,7 +940,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                   // Case 2: 그 외 모든 경우 (비로그인, 웰컴쿠폰, 쿠폰없음) - 첫 구매 혜택가 노출 (기본값)
                                   const finalPrice = (content.price_discount || 0) - 5000;
                                   return (
-                                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
+                                    <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
                                       <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
                                         {finalPrice.toLocaleString()}원
                                       </p>

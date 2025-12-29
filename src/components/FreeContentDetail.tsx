@@ -529,35 +529,37 @@ export default function FreeContentDetail({
                 </div>
 
                 {/* ⭐ 가로 스크롤 슬라이더 */}
-                <div 
-                  ref={sliderRef}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseLeave}
-                  onClickCapture={handleClickCapture}
-                  className={`content-stretch flex gap-[12px] items-start relative shrink-0 w-full overflow-x-auto overflow-y-hidden scrollbar-hide px-[20px] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-                  style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
-                >
-                  {displayedPaidContents.map((paidContent) => (
-                    <PaidContentCard
-                      key={paidContent.id}
-                      content={paidContent}
-                      onClick={() => {
-                        console.log('🚀 onContentClick 호출:', paidContent.id, paidContent.title);
-                        onContentClick?.(paidContent.id);
-                      }}
-                      couponDiscount={3000} // TODO: 실제 쿠폰 로직으로 교체
-                    />
-                  ))}
-                  
-                  {/* 더 볼래요 버튼 */}
-                  {hasMorePaidContents && (
-                    <ShowMoreButton onClick={loadMorePaidContents} />
-                  )}
+                <div className="w-[calc(100%_+_40px)] max-w-[440px] mx-[-20px] relative overflow-hidden select-none">
+                  <div 
+                    ref={sliderRef}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onClickCapture={handleClickCapture}
+                    className={`content-stretch flex gap-[12px] items-stretch relative shrink-0 w-full overflow-x-auto overflow-y-hidden scrollbar-hide px-[20px] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
+                  >
+                    {displayedPaidContents.map((paidContent) => (
+                      <PaidContentCard
+                        key={paidContent.id}
+                        content={paidContent}
+                        onClick={() => {
+                          console.log('🚀 onContentClick 호출:', paidContent.id, paidContent.title);
+                          onContentClick?.(paidContent.id);
+                        }}
+                        couponDiscount={3000} // TODO: 실제 쿠폰 로직으로 교체
+                      />
+                    ))}
+                    
+                    {/* 더 볼래요 버튼 */}
+                    {hasMorePaidContents && (
+                      <ShowMoreButton onClick={loadMorePaidContents} />
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

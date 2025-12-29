@@ -490,10 +490,10 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                   }`}
                 />
               </div>
+              {errors.name && (
+                <p className="absolute top-full left-0 mt-[4px] text-[12px] text-[#FF0000] px-[4px]">{errors.name}</p>
+              )}
             </div>
-            {errors.name && (
-              <p className="text-[12px] text-[#FF0000] px-[4px]">{errors.name}</p>
-            )}
           </motion.div>
 
           {/* 성별 선택 */}
@@ -609,10 +609,10 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                   </div>
                 )}
               </div>
+              {errors.birthDate && (
+                <p className="absolute top-full left-0 mt-[4px] text-[12px] text-[#FF0000] px-[4px]">{errors.birthDate}</p>
+              )}
             </div>
-            {errors.birthDate && (
-              <p className="text-[12px] text-[#FF0000] px-[4px]">{errors.birthDate}</p>
-            )}
           </motion.div>
 
           {/* 태어난 시간 입력 */}
@@ -659,10 +659,10 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                     }`}
                   />
                 </div>
+                {errors.birthTime && (
+                  <p className="absolute top-full left-0 mt-[4px] text-[12px] text-[#FF0000] px-[4px]">{errors.birthTime}</p>
+                )}
               </div>
-              {errors.birthTime && (
-                <p className="text-[12px] text-[#FF0000] px-[4px]">{errors.birthTime}</p>
-              )}
             </div>
 
             {/* 모르겠어요 체크박스 */}
@@ -698,7 +698,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
 
         {/* Bottom Button */}
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] pb-[env(safe-area-inset-bottom)] z-10">
-          <div className="px-[20px] pt-[12px]">
+          <div className="px-[20px] pt-[12px] pb-[12px]">
             <motion.button
               onClick={handleSubmit}
               disabled={!isFormValid() || isSubmitting}

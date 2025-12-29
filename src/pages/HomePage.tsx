@@ -501,56 +501,60 @@ export default function HomePage() {
   const [showNavigation, setShowNavigation] = useState(true);
   const lastScrollY = useRef(0);
 
-  // 🛡️ iOS Safari 히스토리 버그 해결: 최초 진입 시에만 버퍼 추가
+  // 🛡️ iOS Safari 히스토리 버그 해결: 홈 진입 시 가짜 히스토리 추가
   useEffect(() => {
     const initHistory = () => {
       const currentLength = window.history.length;
       console.log('🔧 [히스토리 초기화] 현재 길이:', currentLength);
-
-      // 🆕 최초 앱 진입인지 확인 (세션 내에서 한 번만 버퍼 추가)
-      const isAppInitialized = sessionStorage.getItem('appInitialized');
+      
+      // 🔑 SessionStorage에서 히스토리 상태 확인
       const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
-
-      console.log('🔍 [히스토리] appInitialized:', isAppInitialized, ', navigatedFromHome:', hasNavigatedFromHome);
-
-      // 뒤로가기로 홈에 왔으면 플래그 제거 (버퍼 추가 안 함)
-      if (hasNavigatedFromHome === 'true') {
-        sessionStorage.removeItem('navigatedFromHome');
-        console.log('🏠 [히스토리] 콘텐츠에서 홈 복귀 - 버퍼 추가 스킵');
-        return;
+      console.log('🔍 [히스토리] SessionStorage 상태:', hasNavigatedFromHome);
+      
+      // 히스토리가 너무 짧으면 가짜 엔트리 추가 (뒤로가기 버퍼)
+      if (currentLength <= 2 && !hasNavigatedFromHome) {
+        window.history.pushState({ page: 'home-buffer' }, '', window.location.href);
+        console.log('✅ [히스토리 초기화] 버퍼 추가 완료 → 새 길이:', window.history.length);
       }
-
-      // 🆕 최초 앱 진입 시에만 버퍼 추가
-      if (!isAppInitialized) {
-        sessionStorage.setItem('appInitialized', 'true');
-        window.history.pushState({ page: 'home-buffer' }, '', '/');
-        console.log('✅ [히스토리] 최초 진입 - 버퍼 추가 완료, 새 길이:', window.history.length);
-      } else {
-        console.log('ℹ️ [히스토리] 이미 초기화됨 - 버퍼 추가 스킵');
-      }
+      
+      // 🔄 홈으로 돌아왔으면 플래그 제거
+      sessionStorage.removeItem('navigatedFromHome');
+      console.log('🧹 [히스토리] SessionStorage 플래그 제거');
     };
-
+    
     initHistory();
   }, []);
 
-  // 🛡️ popstate 이벤트 처리: 버퍼 감지 시 앞으로 이동
+  // 🛡️ popstate 이벤트 가로채기 (사이트 닫힘 방지)
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      console.log('⬅️ [popstate] 뒤로가기 감지:', event.state);
+    const handlePopState = (e: PopStateEvent) => {
+      console.log('⬅️ [popstate] 뒤로가기 감지:', e.state);
       console.log('📍 [popstate] 현재 경로:', window.location.pathname);
-
-      // 버퍼 페이지에 도달한 경우 (홈에서 뒤로가기 시도)
-      if (event.state && event.state.page === 'home-buffer') {
-        console.log('🛡️ [popstate] 버퍼 감지 → 앞으로 이동하여 홈 유지');
-        // 앞으로 이동하여 홈 화면 유지 (pushState 대신 go(1) 사용)
-        window.history.go(1);
+      
+      // 🔑 SessionStorage 확인
+      const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
+      console.log('🔍 [popstate] SessionStorage 상태:', hasNavigatedFromHome);
+      
+      // 홈이 아닌 곳에서 뒤로가기 → 무조건 홈으로
+      if (hasNavigatedFromHome === 'true' && window.location.pathname !== '/') {
+        console.log('🛡️ [popstate] 홈으로 강제 이동 (사이트 닫힘 방지)');
+        e.preventDefault();
+        sessionStorage.removeItem('navigatedFromHome');
+        navigate('/');
         return;
       }
+      
+      // 버퍼 페이지로 돌아온 경우 → 사이트 닫힘 방지
+      if (e.state && e.state.page === 'home-buffer') {
+        console.log('🛡️ [popstate] 버퍼 페이지 감지 → 사이트 닫힘 방지');
+        // 다시 버퍼 추가 (무한 뒤로가기 방지)
+        window.history.pushState({ page: 'home-buffer' }, '', window.location.href);
+      }
     };
-
+    
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [navigate]);
   
   useEffect(() => {
     const controlNavbar = () => {
@@ -585,24 +589,24 @@ export default function HomePage() {
   const loadFromCache = useCallback(() => {
     try {
       // 🗑️ 이전 버전 캐시 삭제
-      const oldKeys = Object.keys(localStorage).filter(key =>
+      const oldKeys = Object.keys(localStorage).filter(key => 
         key.startsWith(CACHE_KEY) && key !== VERSIONED_CACHE_KEY
       );
       oldKeys.forEach(key => localStorage.removeItem(key));
-
+      
       const cached = localStorage.getItem(VERSIONED_CACHE_KEY);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         const now = Date.now();
-
+        
         // 캐시가 유효한 경우 (5분 이내)
         if (now - timestamp < CACHE_EXPIRY) {
           console.log('✅ 캐시에서 데이터 로드');
           const contents = data as MasterContent[];
-
+          
           // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
           const hasClicks = contents.some((c: MasterContent) => c.weekly_clicks > 0);
-
+          
           if (hasClicks) {
             const maxClicks = Math.max(...contents.map((c: MasterContent) => c.weekly_clicks));
             const featuredIndex = contents.findIndex((c: MasterContent) => c.weekly_clicks === maxClicks);
@@ -610,15 +614,8 @@ export default function HomePage() {
           } else {
             setFeaturedContent(contents[0]);
           }
-
+          
           setAllContents(contents);
-
-          // 🆕 캐시 데이터 크기에 맞춰 currentPage 복원
-          const cachedPage = Math.max(0, Math.floor((contents.length - 1) / 10));
-          setCurrentPage(cachedPage);
-          setHasMore(false); // 캐시에 모든 데이터가 있으므로 더 로드 불필요
-          console.log(`📦 캐시에서 ${contents.length}개 로드, currentPage: ${cachedPage}`);
-
           return true;
         } else {
           console.log('⏰ 캐시 만료됨');
@@ -717,14 +714,7 @@ export default function HomePage() {
       // 🚀 필터가 '전체/all'일 때만 캐시에서 로드
       const shouldUseCache = selectedCategory === '전체' && selectedType === 'all';
       const hasCache = shouldUseCache ? loadFromCache() : false;
-
-      // 🆕 캐시에서 전체 데이터를 로드했으면 서버 쿼리 스킵
-      if (hasCache) {
-        console.log('🚀 캐시에서 전체 데이터 로드 완료 - 서버 쿼리 스킵');
-        setIsInitialLoading(false);
-        return;
-      }
-
+      
       try {
         console.log('🔍 [HomePage] deployed 콘텐츠 조회 시작...');
         
@@ -1149,7 +1139,7 @@ export default function HomePage() {
   };
 
   const handleContentClick = async (contentId: string) => {
-    // 조회수 증가 (기존 코드 유지)
+    // 조회수 증가
     const { data: currentData } = await supabase
       .from('master_contents')
       .select('view_count, weekly_clicks')
@@ -1159,19 +1149,18 @@ export default function HomePage() {
     if (currentData) {
       await supabase
         .from('master_contents')
-        .update({
+        .update({ 
           view_count: currentData.view_count + 1,
           weekly_clicks: currentData.weekly_clicks + 1
         })
         .eq('id', contentId);
     }
 
-    // 🛡️ SessionStorage에 플래그 설정
+    // 🔑 SessionStorage에 플래그 설정 (홈에서 콘텐츠로 이동했음을 표시)
     sessionStorage.setItem('navigatedFromHome', 'true');
-    console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정, contentId:', contentId);
-    console.log('📊 [콘텐츠 클릭] 이동 전 history.length:', window.history.length);
+    console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정');
 
-    // 🆕 단순히 navigate만 사용 (히스토리에 자연스럽게 추가됨)
+    // 콘텐츠 상세로 이동
     navigate(`/master/content/detail/${contentId}`);
   };
 

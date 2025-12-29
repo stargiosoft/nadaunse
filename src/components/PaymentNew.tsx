@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { motion } from "motion/react";
 import svgPaths from "../imports/svg-hpsexwso62";
 import { saveOrder } from "../lib/supabase";
 import { supabase } from "../lib/supabase";
@@ -458,7 +459,7 @@ export default function PaymentNew({
               response.merchant_uid,
             );
 
-            // ⭐️ 쿠폰 사용 처리 (유료 결제)
+            // ⭐️ ��폰 사용 처리 (유료 결제)
             if (selectedCouponId && savedOrder?.id) {
               console.log(
                 "🎟️ [유료결제] 쿠폰 사용 처리 시작:",
@@ -542,6 +543,15 @@ export default function PaymentNew({
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
+      <style>{`
+        body::-webkit-scrollbar {
+          display: none;
+        }
+        body {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       {/* 결제 처리 중 오버레이 */}
       {isProcessingPayment && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -554,7 +564,7 @@ export default function PaymentNew({
         </div>
       )}
 
-      <div className="w-full max-w-[440px] relative pb-[140px]">
+      <div className="w-full max-w-[440px] relative pb-[100px]">
         {/* Top Navigation */}
         <div className="bg-white h-[52px] sticky top-0 z-20 w-full">
           <div className="flex flex-col justify-center size-full">
@@ -592,10 +602,19 @@ export default function PaymentNew({
         </div>
 
         {/* Main Content */}
-        <div className="content-stretch flex flex-col gap-[32px] items-center w-full min-w-[320px] max-w-[440px] mt-[26px] mx-auto">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+            hidden: { opacity: 0 }
+          }}
+          className="content-stretch flex flex-col gap-[32px] items-center w-full  max-w-[440px] mt-[14px] mx-auto">
           {/* 운세 구성 섹션 */}
-          <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full max-w-[440px] px-[20px]">
-            <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full max-w-[440px] px-[20px]">
+            <div className="content-stretch flex flex-col gap-[8px] items-center relative shrink-0 w-full">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
                   <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
@@ -606,9 +625,9 @@ export default function PaymentNew({
                   onClick={() => setIsCouponSheetOpen(true)}
                   // ⚠️ [DEV] UI 확인용 강제 활성화 (실제 쿠폰 없어도 클릭 가능)
                   disabled={false}
-                  className="content-stretch flex h-[32px] items-center justify-center px-[12px] py-0 relative rounded-[8px] shrink-0 border border-[#e7e7e7] bg-white cursor-pointer"
+                  className="group content-stretch flex h-[32px] items-center justify-center px-[12px] py-0 relative rounded-[8px] shrink-0 border border-[#e7e7e7] bg-transparent cursor-pointer transition-colors duration-200 ease-out active:bg-gray-100"
                 >
-                  <div className="content-stretch flex font-['Pretendard_Variable:Medium',sans-serif] font-medium gap-[8px] items-center leading-[22px] relative shrink-0 text-[#525252] text-[13px] text-nowrap">
+                  <div className="content-stretch flex font-['Pretendard_Variable:Medium',sans-serif] font-medium gap-[8px] items-center leading-[22px] relative shrink-0 text-[#848484] text-[13px] text-nowrap transition-transform duration-200 ease-out group-active:scale-95">
                     <p className="relative shrink-0">쿠폰</p>
                     {/* ⚠️ [DEV] UI 확인용 더미 숫자 (실제 개수 없으면 3 표시) */}
                     <p className="relative shrink-0">
@@ -625,51 +644,15 @@ export default function PaymentNew({
                     className="block size-full"
                     fill="none"
                     preserveAspectRatio="none"
-                    viewBox="0 0 350 1"
                   >
-                    <path d="M0 0.5H350" stroke="#F3F3F3" />
+                    <line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="#F3F3F3" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            {/* 쿠폰 사용 안내 - 할인 적용 시에만 표시 */}
-            {selectedCoupon && (
-              <div className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full">
-                <div
-                  aria-hidden="true"
-                  className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]"
-                />
-                <div className="flex flex-col items-center justify-center size-full">
-                  <div className="content-stretch flex flex-col items-center justify-center px-[16px] py-[12px] relative w-full">
-                    <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
-                      <div className="relative shrink-0 size-[20px]">
-                        <svg
-                          className="block size-full"
-                          fill="none"
-                          preserveAspectRatio="none"
-                          viewBox="0 0 20 20"
-                        >
-                          <g id="flash">
-                            <path
-                              d={svgPaths.p12d62f00}
-                              fill="#48B2AF"
-                            />
-                          </g>
-                        </svg>
-                      </div>
-                      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[22px] relative shrink-0 text-[#48b2af] text-[14px] text-nowrap tracking-[-0.42px]">
-                        특별 할인 + 쿠폰 사용으로 이번 결제는{" "}
-                        {totalPrice.toLocaleString()}원이에요
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* 상품 카드 */}
-            <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full">
+            <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full mb-[-6px]">
               <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px] overflow-hidden">
                 {currentProduct?.image ? (
                   <img
@@ -698,7 +681,7 @@ export default function PaymentNew({
               </div>
               <div className="basis-0 content-stretch flex flex-col gap-[12px] grow items-end min-h-px min-w-px relative shrink-0">
                 <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                  <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] py-[2px] relative rounded-[4px] shrink-0">
+                  <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] py-[2px] relative rounded-[4px] shrink-0 pt-[4px] pr-[6px] pb-[2px] pl-[6px]">
                     <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[#41a09e] text-[12px] text-nowrap tracking-[-0.24px]">
                       심화 해석판
                     </p>
@@ -707,7 +690,7 @@ export default function PaymentNew({
                     <div className="relative shrink-0 w-full">
                       <div className="size-full">
                         <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-                          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative shrink-0 text-[15px] text-black tracking-[-0.3px] w-full">
+                          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative shrink-0 text-[15px] text-black tracking-[-0.3px] w-full mb-[-6px]">
                             {currentProduct
                               ? currentProduct.title
                               : "운세 구성"}
@@ -728,7 +711,7 @@ export default function PaymentNew({
                             </div>
                           </div>
                         </div>
-                        <div className="content-stretch flex gap-[2px] items-center relative shrink-0 text-[#48b2af] text-nowrap w-full">
+                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0 text-[#48b2af] text-nowrap w-full mt-[-3px]">
                           <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[25px] relative shrink-0 text-[16px] tracking-[-0.32px]">
                             {(
                               basePrice -
@@ -737,7 +720,7 @@ export default function PaymentNew({
                             ).toLocaleString()}
                             원
                           </p>
-                          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[11px]">
+                          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[11px] pt-[1px]">
                             특별할인
                             {selectedCoupon
                               ? " + 쿠폰 적용가"
@@ -750,18 +733,61 @@ export default function PaymentNew({
                 </div>
               </div>
             </div>
-          </div>
+
+            {/* 쿠폰 사용 안내 - 할인 적용 시에만 표시 */}
+            {/* ⚠️ [DEV] 강제로 표시 (실제 로직: selectedCoupon &&) */}
+            {true && (
+              <div className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full">
+                <div
+                  aria-hidden="true"
+                  className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]"
+                />
+                <div className="flex flex-col items-center justify-center size-full">
+                  <div className="content-stretch flex flex-col items-center justify-center px-[16px] py-[8px] relative w-full">
+                    <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
+                      <div className="relative shrink-0 size-[20px]">
+                        <svg
+                          className="block size-full"
+                          fill="none"
+                          preserveAspectRatio="none"
+                          viewBox="0 0 20 20"
+                        >
+                          <g id="flash">
+                            <path
+                              d={svgPaths.p12d62f00}
+                              fill="#48B2AF"
+                            />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="font-['Pretendard_Variable:Medium',sans-serif] font-semibold leading-[22px] relative text-[#48b2af] text-[13px] whitespace-normal break-words tracking-[-0.42px]">
+                        특별 할인 + 쿠폰 사용으로 이번 결제는{" "}
+                        {/* ⚠️ [DEV] 더미 가격 표시 (실제 로직: {totalPrice.toLocaleString()}) */}
+                        3,000원이에요
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
 
           {/* 회색 구분선 */}
-          <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="bg-[#f9f9f9] h-[12px] shrink-0 w-full mt-[-16px]"
+          />
 
           {/* 결제 금액 섹션 */}
-          <div className="content-stretch flex flex-col gap-[44px] items-start relative shrink-0 w-full">
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="content-stretch flex flex-col gap-[44px] items-start relative shrink-0 w-full"
+          >
             <div className="content-stretch flex flex-col gap-[20px] items-center relative shrink-0 w-full">
               <div className="relative shrink-0 w-full">
                 <div className="size-full">
                   <div className="content-stretch flex flex-col gap-[16px] items-start px-[20px] py-0 relative w-full">
-                    <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
+                    <div className="content-stretch flex flex-col gap-[8px] items-center relative shrink-0 w-full">
                       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                         <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
                           <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
@@ -769,24 +795,20 @@ export default function PaymentNew({
                           </p>
                         </div>
                       </div>
-                      <div className="h-0 relative shrink-0 w-[350px]">
+                      <div className="h-0 relative shrink-0 w-full">
                         <div className="absolute inset-[-0.5px_0]">
                           <svg
                             className="block size-full"
                             fill="none"
                             preserveAspectRatio="none"
-                            viewBox="0 0 350 1"
                           >
-                            <path
-                              d="M0 0.5H350"
-                              stroke="#F3F3F3"
-                            />
+                            <line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="#F3F3F3" />
                           </svg>
                         </div>
                       </div>
                     </div>
 
-                    <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                    <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
                       <div className="relative shrink-0 w-full">
                         <div className="flex flex-row items-center size-full">
                           <div className="content-stretch flex items-center justify-between px-[2px] py-0 relative text-nowrap w-full">
@@ -838,7 +860,7 @@ export default function PaymentNew({
                       <p className="relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
                         총 결제 금액
                       </p>
-                      <p className="relative shrink-0 text-[#48b2af] text-[18px] tracking-[-0.36px]">
+                      <p className="font-bold relative shrink-0 text-[#48b2af] text-[18px] tracking-[-0.36px]">
                         {totalPrice.toLocaleString()}원
                       </p>
                     </div>
@@ -848,11 +870,11 @@ export default function PaymentNew({
             </div>
 
             {/* 결제 수단 섹션 */}
-            <div className="content-stretch flex flex-col items-center relative shrink-0 w-[390px]">
+            <div className="content-stretch flex flex-col items-center relative shrink-0 w-full">
               <div className="relative shrink-0 w-full">
                 <div className="size-full">
-                  <div className="content-stretch flex flex-col gap-[16px] items-start px-[20px] py-0 relative w-full">
-                    <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
+                  <div className="content-stretch flex flex-col gap-[16px] items-start px-[20px] py-0 relative w-full mt-[-8px]">
+                    <div className="content-stretch flex flex-col gap-[8px] items-center relative shrink-0 w-full">
                       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                         <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
                           <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
@@ -860,18 +882,14 @@ export default function PaymentNew({
                           </p>
                         </div>
                       </div>
-                      <div className="h-0 relative shrink-0 w-[350px]">
+                      <div className="h-0 relative shrink-0 w-full">
                         <div className="absolute inset-[-0.5px_0]">
                           <svg
                             className="block size-full"
                             fill="none"
                             preserveAspectRatio="none"
-                            viewBox="0 0 350 1"
                           >
-                            <path
-                              d="M0 0.5H350"
-                              stroke="#F3F3F3"
-                            />
+                            <line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="#F3F3F3" />
                           </svg>
                         </div>
                       </div>
@@ -1003,13 +1021,19 @@ export default function PaymentNew({
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* 회색 구분선 */}
-          <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="bg-[#f9f9f9] h-[12px] shrink-0 w-full"
+          />
 
           {/* 약관 동의 섹션 */}
-          <div className="content-stretch flex flex-col gap-[16px] items-start px-[20px] py-0 relative shrink-0 w-full">
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="content-stretch flex flex-col gap-[16px] items-start px-[20px] py-0 relative shrink-0 w-full"
+          >
             <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
               <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
                 <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[#525252] text-[14px] tracking-[-0.42px] w-full">
@@ -1022,9 +1046,8 @@ export default function PaymentNew({
                     className="block size-full"
                     fill="none"
                     preserveAspectRatio="none"
-                    viewBox="0 0 350 1"
                   >
-                    <path d="M0 0.5H350" stroke="#F3F3F3" />
+                    <line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="#F3F3F3" />
                   </svg>
                 </div>
               </div>
@@ -1082,10 +1105,13 @@ export default function PaymentNew({
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* ⚠️ [개발 전용] 결제 패스 버튼 */}
-          <div className="w-full px-[20px] mb-[20px] mt-[10px]">
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="w-full px-[20px] mb-[20px] mt-[10px]"
+          >
             <div className="bg-red-50 border border-red-200 rounded-xl p-[16px]">
               <p className="text-red-500 text-[12px] text-center mb-[8px] font-bold">
                 ⚠️ 개발 전용 (실제 결제 건너뛰기)
@@ -1102,14 +1128,19 @@ export default function PaymentNew({
                 [DEV] 결제 완료
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* Footer */}
-          <Footer
-            onNavigateToTerms={onNavigateToTermsOfService}
-            onNavigateToPrivacy={onNavigateToPrivacyPolicy}
-          />
-        </div>
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+            className="w-full max-w-[440px] mx-auto"
+          >
+            <Footer
+              onNavigateToTerms={onNavigateToTermsOfService}
+              onNavigateToPrivacy={onNavigateToPrivacyPolicy}
+            />
+          </motion.div>
+        </motion.div>
 
         {/* Bottom Button */}
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 box-border content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full max-w-[440px] z-10">
@@ -1120,7 +1151,7 @@ export default function PaymentNew({
                   <div className="w-full max-w-[440px] mx-auto px-[20px] pb-[12px] pt-[12px] bg-white">
                     <button
                       onClick={handlePurchaseClick}
-                      className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full border-none cursor-pointer"
+                      className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full border-none cursor-pointer transition-all duration-200 ease-out active:scale-96 active:bg-[#41a09e]"
                     >
                       <div className="flex flex-row items-center justify-center size-full">
                         <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
