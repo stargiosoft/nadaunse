@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
+import * as Sentry from "@sentry/react";
 import ProductDetail from './components/ProductDetail';
 import FreeProductDetail from './components/FreeProductDetail';
 import PaymentNew from './components/PaymentNew';
@@ -1380,6 +1381,24 @@ function MasterContentCreateFlowWrapper() {
   );
 }
 
+// Sentry 에러 폴백 컴포넌트
+function SentryErrorFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-[#f9f9f9]">
+      <div className="text-center p-6">
+        <p className="text-[#1b1b1b] text-lg font-medium mb-2">문제가 발생했어요</p>
+        <p className="text-[#999999] text-sm mb-4">잠시 후 다시 시도해주세요.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
+        >
+          새로고침
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // 포트원 초기화 컴포넌트
 function PortOneInit() {
   useEffect(() => {
@@ -1433,11 +1452,12 @@ export default function App() {
   }, []);
 
   return (
-    <Router>
-      <HistoryDebug />
-      <GAInit />
-      <PortOneInit />
-      <Routes>
+    <Sentry.ErrorBoundary fallback={<SentryErrorFallback />}>
+      <Router>
+        <HistoryDebug />
+        <GAInit />
+        <PortOneInit />
+        <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPageNewWrapper />} />
         <Route path="/login/new" element={<LoginPageNewWrapper />} />
@@ -1505,5 +1525,6 @@ export default function App() {
       />
       <GlobalAIMonitor />
     </Router>
+    </Sentry.ErrorBoundary>
   );
 }
