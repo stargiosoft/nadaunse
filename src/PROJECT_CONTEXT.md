@@ -1,7 +1,8 @@
 # PROJECT_CONTEXT.md
 
-> **AI 디버깅 전용 컨텍스트 파일**  
-> 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)  
+> **AI 디버깅 전용 컨텍스트 파일**
+> 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
+> **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-01-06
 
 ---

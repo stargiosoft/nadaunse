@@ -1,7 +1,8 @@
 # DECISIONS.md
 
-> **아키텍처 결정 기록 (Architecture Decision Records)**  
-> "왜 이렇게 만들었어?"에 대한 대답  
+> **아키텍처 결정 기록 (Architecture Decision Records)**
+> "왜 이렇게 만들었어?"에 대한 대답
+> **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-01-06
 
 ---
