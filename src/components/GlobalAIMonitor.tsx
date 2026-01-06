@@ -121,7 +121,7 @@ export function GlobalAIMonitor() {
     try {
       // 질문별 답변 생성 상태 확인
       const { data: questions, error: questionsError } = await supabase
-        .from('content_questions')
+        .from('master_content_questions')
         .select('id')
         .eq('content_id', contentId)
         .order('question_order');

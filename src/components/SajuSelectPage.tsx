@@ -303,7 +303,7 @@ export default function SajuSelectPage() {
         .single();
       
       const { data: questionsData } = await supabase
-        .from('content_questions')
+        .from('master_content_questions')
         .select('question_type')
         .eq('content_id', existingOrder.content_id)
         .eq('question_type', 'tarot');
