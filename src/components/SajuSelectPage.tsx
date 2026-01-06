@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import svgPaths from "../imports/svg-tta3ixz6w2";
 import emptyStateSvgPaths from "../imports/svg-hw6oxtisye";
 import { supabase } from '../lib/supabase';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import Loading from './Loading';
 import { getTarotCardsForQuestions } from '../lib/tarotCards';
 import { getZodiacImageUrl, getConstellation, getRelationshipText } from '../lib/zodiacUtils';
@@ -58,6 +58,37 @@ export default function SajuSelectPage() {
 
   const loadSajuList = async () => {
     try {
+      // ⭐ DEV 모드: localStorage에서 데이터 로드 (프론트 UI 테스트용)
+      if (import.meta.env.DEV) {
+        console.log('🔧 [DEV MODE] localStorage에서 사주 목록 로드');
+        
+        const existingData = localStorage.getItem('dev_saju_records');
+        const sajuData = existingData ? JSON.parse(existingData) : [];
+        
+        console.log('✅ [DEV MODE] 로드된 사주 목록:', sajuData);
+        
+        setSajuList(sajuData || []);
+        
+        // ⭐ 대표 사주 자동 선택 (is_primary=true → 본인 사주 → 첫 번째 사주 순)
+        const primarySaju = (sajuData || []).find((s: any) => s.is_primary);
+        const mySaju = (sajuData || []).find((s: any) => s.notes === '본인');
+        
+        if (primarySaju) {
+          setSelectedSajuId(primarySaju.id);
+          console.log('✅ [DEV MODE] 대표 사주 자동 선택:', primarySaju.id, primarySaju.full_name);
+        } else if (mySaju) {
+          setSelectedSajuId(mySaju.id);
+          console.log('✅ [DEV MODE] 본인 사주 자동 선택:', mySaju.id);
+        } else if (sajuData && sajuData.length > 0) {
+          setSelectedSajuId(sajuData[0].id);
+          console.log('✅ [DEV MODE] 첫 번째 사주 자동 선택:', sajuData[0].id);
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+
+      // ⭐ PRODUCTION 모드: 기존 Supabase 로직
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -152,7 +183,7 @@ export default function SajuSelectPage() {
 
       if (ordersError) {
         console.error('❌ [사주선택] 주문 조회 실패:', ordersError);
-        toast.error('주문 정보를 불러올 수 없습니다. 다시 시도해주세요.');
+        toast.error('주문 정보를 불러올 수 없습���다. 다시 시도해주세요.');
         setIsGenerating(false);
         return;
       }
@@ -238,7 +269,7 @@ export default function SajuSelectPage() {
         console.log('✅ [백그라운드] 모든 업데이트 완료');
       });
 
-      // ⭐️ 백그라운드에서 AI 답변 생성 시작 (비동기, 결과 대기 안 함)
+      // ⭐️ 백그라운드에서 AI ���변 생성 시작 (비동기, 결과 대기 안 함)
       // 이미 AI 생성이 완료되었거나 진행 중인지 확인
       if (existingOrder.ai_generation_completed === true) {
         console.log('✅ [사주선택] AI 생성 이미 완료됨');
@@ -346,8 +377,8 @@ export default function SajuSelectPage() {
     const rect = button.getBoundingClientRect();
     
     setKebabMenuPosition({
-      top: rect.top + rect.height / 2,
-      left: rect.left,
+      top: rect.bottom,
+      left: rect.right,
     });
     setSelectedSajuForKebab(saju);
     setKebabMenuOpen(true);

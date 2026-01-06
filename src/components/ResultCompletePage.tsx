@@ -1,8 +1,10 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, X, Download, Check } from 'lucide-react';
-import svgPaths from "../imports/svg-42ye804t8c";
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Check, ChevronLeft, ChevronRight, X, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import svgPaths from "../imports/svg-7sko9n1pie";
+import { motion } from "motion/react";
+import ArrowLeft from './ArrowLeft';
 
 interface ResultCompletePageProps {
   onBack?: () => void;
@@ -22,9 +24,7 @@ interface RecommendedContent {
 
 function HomeIndicatorLight() {
   return (
-    <div className="bg-white h-[28px] relative shrink-0 w-full">
-      <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
-    </div>
+    <div className="hidden" />
   );
 }
 
@@ -83,7 +83,7 @@ function CouponCard({ isIssued, isLoading, onClick }: CouponCardProps) {
       <div className="basis-0 bg-[#f9f9f9] grow min-h-px min-w-px relative shrink-0">
         <div className="flex flex-col justify-center size-full">
           <div className="content-stretch flex flex-col items-start justify-center px-[24px] py-[20px] relative w-full">
-            <div className="content-stretch flex gap-[20px] items-center relative shrink-0">
+            <div className="content-stretch flex gap-[12px] items-center relative shrink-0">
               <div className="relative shrink-0 size-[40px]">
                 <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 40 40">
                   <g id="twemoji:wrapped-gift" opacity={isIssued ? "0.8" : "1"}>
@@ -95,10 +95,10 @@ function CouponCard({ isIssued, isLoading, onClick }: CouponCardProps) {
                   </g>
                 </svg>
               </div>
-              <div className={`content-stretch flex flex-col gap-[4px] items-start justify-center relative shrink-0 text-nowrap ${
+              <div className={`content-stretch flex flex-col gap-[2px] items-start justify-center relative shrink min-w-0 ${
                 isIssued ? 'text-[#848484]' : 'text-[#151515]'
               }`}>
-                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[19px] relative shrink-0 text-[13px] tracking-[-0.26px]">
+                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[19px] relative text-[13px] tracking-[-0.26px] whitespace-normal text-left">
                   운세 구매 고객 전용 쿠폰
                 </p>
                 <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[24px] relative shrink-0 text-[18px] tracking-[-0.36px]">
@@ -120,7 +120,12 @@ function CouponCard({ isIssued, isLoading, onClick }: CouponCardProps) {
             발급<br />완료
           </p>
         ) : (
-          <Download className="w-5 h-5 text-[#848484]" />
+          <motion.div
+            animate={{ y: [0, -3, 0] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Download className="w-5 h-5 text-[#848484]" />
+          </motion.div>
         )}
       </div>
     </button>
@@ -161,44 +166,54 @@ function ContentCard({ content, onClick }: ContentCardProps) {
       </div>
 
       {/* Content Info */}
-      <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-        {/* Label */}
-        <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] py-[2px] relative rounded-[4px] shrink-0">
+      <div className="content-stretch flex flex-col gap-[1px] items-start relative shrink-0 w-full">
+        {/* 심화 해석판 뱃지 */}
+        <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] pt-[3px] pb-[1px] relative rounded-[4px] shrink-0 mb-[3px]">
           <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[#41a09e] text-[12px] text-nowrap tracking-[-0.24px]">
             심화 해석판
           </p>
         </div>
 
-        {/* Title */}
+        {/* 제목 */}
         <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative shrink-0 text-[15px] text-black tracking-[-0.3px] w-full text-left line-clamp-2">
-            {content.title}
-          </p>
+          <div className="relative shrink-0 w-full">
+            <div className="size-full">
+              <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
+                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[23.5px] relative shrink-0 text-[15px] text-black tracking-[-0.3px] pb-[1px] w-full text-left">
+                  {content.title}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Price Info */}
-        <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full">
-          {/* Original Price */}
-          <div className="content-stretch flex items-center relative shrink-0">
-            <p className="[text-decoration-skip-ink:none] [text-underline-position:from-font] decoration-solid font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] line-through relative shrink-0 text-[#999] text-[13px] text-nowrap">
-              {content.price_original.toLocaleString()}원
-            </p>
-          </div>
+        {/* 가격 정보 */}
+        <div className="relative shrink-0 w-full">
+          <div className="size-full">
+            <div className="content-stretch flex flex-col gap-[0px] items-start px-[2px] py-0 relative w-full">
+              {/* 할인율 + 할인가 + 원가(취소선) */}
+              <div className="content-stretch flex items-baseline gap-[5px] relative shrink-0 w-full">
+                <div className="content-stretch flex font-['Pretendard_Variable:Bold',sans-serif] font-bold gap-[3px] items-center leading-[20px] relative shrink-0 text-[15px] text-nowrap tracking-[-0.45px]">
+                  <p className="relative shrink-0 text-[#ff6678]">{content.discount_rate}%</p>
+                  <p className="relative shrink-0 text-black">{content.price_discount.toLocaleString()}원</p>
+                </div>
+                <p className="[text-decoration-skip-ink:none] [text-underline-position:from-font] decoration-solid font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] line-through relative shrink-0 text-[#999] text-[13px]  pb-[1px] text-nowrap">
+                  {content.price_original.toLocaleString()}원
+                </p>
+              </div>
 
-          {/* Discount Price */}
-          <div className="content-stretch flex font-['Pretendard_Variable:Bold',sans-serif] font-bold gap-[2px] items-center leading-[20px] relative shrink-0 text-[15px] text-nowrap tracking-[-0.45px]">
-            <p className="relative shrink-0 text-[#ff6678]">{content.discount_rate}%</p>
-            <p className="relative shrink-0 text-black">{content.price_discount.toLocaleString()}원</p>
-          </div>
-
-          {/* Coupon Applied Price */}
-          <div className="content-stretch flex gap-[2px] items-center relative shrink-0 text-[#48b2af] text-nowrap w-full">
-            <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[25px] relative shrink-0 text-[16px] tracking-[-0.32px]">
-              {finalPrice.toLocaleString()}원
-            </p>
-            <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[11px]">
-              쿠폰 적용가
-            </p>
+              {/* 쿠폰 적용가 (쿠폰이 있을 때만) */}
+              {COUPON_DISCOUNT > 0 && (
+                <div className="content-stretch flex gap-[4px] items-center relative shrink-0 text-[#48b2af] text-nowrap w-full">
+                  <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[25px] relative shrink-0 text-[16px] tracking-[-0.32px]">
+                    {finalPrice.toLocaleString()}원
+                  </p>
+                  <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[11px]">
+                    쿠폰 적용가
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -236,6 +251,14 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
   const [isLoadingContents, setIsLoadingContents] = useState(false);
   const [displayCount, setDisplayCount] = useState(6);
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(true); // ⭐ 쿠폰 체크 중 상태
+
+  // ⭐ 페이지 진입 시 오버스크롤(바운스) 방지
+  useEffect(() => {
+    document.body.style.overscrollBehaviorY = 'none';
+    return () => {
+      document.body.style.overscrollBehaviorY = 'auto';
+    };
+  }, []);
 
   // ⭐ 페이지 로드 시 쿠폰 발급 여부 체크 + 추천 콘텐츠 조회
   useEffect(() => {
@@ -439,24 +462,19 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative">
+      <div className="w-full max-w-[440px] relative">
         {/* Top Navigation */}
         <div className="bg-white h-[52px] sticky top-0 z-20 w-full">
           <div className="flex flex-col justify-center size-full">
             <div className="content-stretch flex flex-col items-start justify-center px-[12px] py-[4px] relative size-full">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                <button
-                  onClick={handleBack}
-                  className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] bg-transparent border-none cursor-pointer"
-                >
-                  <ArrowLeft className="w-6 h-6 text-[#848484]" />
-                </button>
+                <ArrowLeft onClick={handleBack} />
                 <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
                   풀이는 여기까지예요
                 </p>
                 <button
                   onClick={handleClose}
-                  className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] bg-transparent border-none cursor-pointer"
+                  className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] bg-transparent border-none cursor-pointer transition-all duration-200 ease-in-out active:bg-gray-100 active:scale-95 transform-gpu"
                 >
                   <X className="w-6 h-6 text-[#848484]" />
                 </button>
@@ -469,30 +487,64 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
         <div className="h-[16px] shrink-0 w-full" />
 
         {/* Main Content */}
-        <div className="content-stretch flex flex-col gap-[32px] items-center w-full px-[20px] pb-[140px]">
+        <motion.div 
+          className="flex flex-col gap-[32px] items-center w-full max-w-[440px] mx-auto pb-[140px]"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.1 } }
+          }}
+        >
           {/* Character & Buttons Section */}
-          <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full max-w-[350px]">
+          <motion.div 
+            className="flex flex-col gap-[12px] items-center relative shrink-0 w-full px-[20px]"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.1 } }
+            }}
+          >
             {/* Character Illustration */}
-            <div className="content-stretch flex items-center pl-0 pr-[12px] py-[40px] relative shrink-0">
+            <motion.div 
+              className="flex items-center justify-center py-[40px] relative shrink-0 w-full"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+              }}
+            >
               <CharacterIllustration />
-            </div>
+            </motion.div>
 
             {/* Coupon Card */}
-            <CouponCard 
-              isIssued={isCouponIssued}
-              isLoading={isIssuingCoupon}
-              onClick={handleIssueCoupon}
-            />
+            <motion.div
+              className="w-full flex justify-center"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+              }}
+            >
+              <CouponCard 
+                isIssued={isCouponIssued}
+                isLoading={isIssuingCoupon}
+                onClick={handleIssueCoupon}
+              />
+            </motion.div>
 
             {/* Action Buttons */}
-            <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full">
+            <motion.div 
+              className="flex gap-[12px] items-start relative shrink-0 w-full"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+              }}
+            >
               {/* 홈으로 가기 */}
               <button
                 onClick={handleGoHome}
-                className="basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 bg-[#f0f8f8] border-none cursor-pointer"
+                className="basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 bg-[#f0f8f8] border-none cursor-pointer transition-transform transform-gpu active:scale-96 active:bg-[#E4F7F7]"
               >
                 <div className="flex flex-row items-center justify-center size-full">
-                  <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
+                  <div className="flex items-center justify-center px-[12px] py-0 relative size-full">
                     <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[#48b2af] text-[15px] text-nowrap tracking-[-0.45px]">
                       홈으로 가기
                     </p>
@@ -503,26 +555,38 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
               {/* 다른 운세 보기 */}
               <button
                 onClick={handleViewOtherContents}
-                className="basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 bg-[#48b2af] border-none cursor-pointer"
+                className="basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 bg-[#48b2af] border-none cursor-pointer transition-transform transform-gpu active:scale-96 active:bg-[#389e9b]"
               >
                 <div className="flex flex-row items-center justify-center size-full">
-                  <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
+                  <div className="flex items-center justify-center px-[12px] py-0 relative size-full">
                     <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[15px] text-nowrap text-white tracking-[-0.45px]">
                       다른 운세 보기
                     </p>
                   </div>
                 </div>
               </button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Divider */}
-          <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
+          <motion.div 
+            className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" 
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          />
 
           {/* Recommended Contents Section */}
-          <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full max-w-[350px]">
+          <motion.div 
+            className="flex flex-col gap-[12px] items-start relative shrink-0 w-full"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             {/* Section Title */}
-            <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+            <div className="flex items-center justify-between relative shrink-0 w-full px-[20px]">
               <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
                 이런 운세는 어때요?
               </p>
@@ -530,7 +594,7 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
 
             {/* Horizontal Scroll Container */}
             <div className="relative w-full overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ touchAction: 'pan-x' }}>
-              <div className="flex gap-[12px] items-start pb-[8px]">
+              <div className="flex gap-[12px] items-stretch pb-[8px] px-[20px]">
                 {isLoadingContents ? (
                   <div className="flex-shrink-0 w-[200px] h-[200px] flex items-center justify-center">
                     <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
@@ -547,31 +611,44 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
 
                     {/* More View Button */}
                     {hasMore && (
-                      <button
+                      <div
                         onClick={handleMoreView}
-                        className="flex-shrink-0 content-stretch flex items-center justify-center relative rounded-[12px] border border-[#d4d4d4] border-dashed bg-white cursor-pointer h-[200px] w-[200px]"
+                        className="relative shrink-0 w-[200px] cursor-pointer select-none group py-[1px]"
                       >
-                        <div className="content-stretch flex flex-col items-center justify-center gap-[8px]">
-                          <div className="relative size-[44px]">
-                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
-                              <g id="Icons">
-                                <rect fill="white" height="44" width="44" />
-                                <path d={svgPaths.p3bb19300} fill="#D4D4D4" id="Vector" />
-                              </g>
-                            </svg>
+                        <div className="content-stretch flex items-center pl-0 pr-[20px] py-0 relative size-full">
+                          <div className="content-stretch flex h-full items-center justify-center mr-[-20px] p-[12px] relative rounded-[12px] shrink-0 w-[200px]">
+                            <div aria-hidden="true" className="absolute border border-[#d4d4d4] border-dashed inset-[-0.5px] pointer-events-none rounded-[12.5px]" />
+                            <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative shrink-0 text-[#6d6d6d] text-[16px] text-nowrap tracking-[-0.3px]">더 볼래요!</p>
                           </div>
-                          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25.5px] relative text-[#6d6d6d] text-[15px] text-nowrap tracking-[-0.3px]">
-                            더 볼래요!
-                          </p>
+                          <div className="flex items-center justify-center mr-[-20px] relative shrink-0">
+                            <div className="flex-none rotate-[180deg] scale-y-[-100%]">
+                              <div className="relative size-[44px]" data-name="Icons">
+                                <div className="absolute inset-0" style={{ "--fill-0": "#D4D4D4" } as React.CSSProperties}>
+                                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
+                                    <g id="Icons">
+                                      <rect fill="white" height="44" width="44" />
+                                      <motion.path 
+                                        d={svgPaths.p3bb19300} 
+                                        fill="var(--fill-0, #D4D4D4)" 
+                                        id="Vector"
+                                        animate={{ x: [0, 3.3, 0] }}
+                                        transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                                      />
+                                    </g>
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </button>
+                      </div>
                     )}
                   </>
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Bottom Home Indicator */}
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px]">

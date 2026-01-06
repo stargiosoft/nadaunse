@@ -137,6 +137,14 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   }, [contentId, onBack]);
 
   /**
+   * 🔝 페이지 진입 시 스크롤을 최상단으로 이동
+   */
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    console.log('🔝 [FreeContentDetail] 스크롤 최상단으로 이동');
+  }, [contentId]); // contentId가 바뀔 때마다 최상단으로
+
+  /**
    * ⭐ 백그라운드 프리페칭: 사용자가 콘텐츠를 보는 동안 10개 미리 로드
    */
   useEffect(() => {
@@ -468,7 +476,7 @@ export default function FreeContentDetail({
 
         {/* Content */}
         <motion.div 
-          className="pb-[120px]"
+          className="pb-[120px] overflow-x-hidden"
           initial="hidden"
           animate="visible"
           variants={{
@@ -540,7 +548,7 @@ export default function FreeContentDetail({
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
                     onClickCapture={handleClickCapture}
-                    className={`content-stretch flex gap-[12px] items-stretch relative shrink-0 w-full overflow-x-auto overflow-y-hidden scrollbar-hide px-[20px] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    className={`content-stretch flex gap-[12px] items-stretch relative shrink-0 w-full overflow-x-auto overflow-y-hidden scrollbar-hide px-[40px] overscroll-x-contain touch-pan-x ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                     style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
                   >
                     {displayedPaidContents.map((paidContent) => (

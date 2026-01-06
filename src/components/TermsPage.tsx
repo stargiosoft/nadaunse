@@ -23,7 +23,7 @@ function TermsIcon({ className }: { className?: string }) {
 
 function CheckboxIcon({ checked }: { checked: boolean }) {
   return (
-    <div className={`relative rounded-[8px] shrink-0 size-[28px] ${checked ? 'bg-[#48b2af] border-none' : 'bg-white border-2 border-[#e7e7e7] border-solid'}`}>
+    <div className={`relative rounded-[8px] shrink-0 size-[28px] ${checked ? 'bg-[#48b2af] border-none' : 'bg-white border-1 border-[#e7e7e7] border-solid'}`}>
       {checked && (
         <svg className="absolute inset-0 m-auto w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -264,7 +264,7 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
             className="w-full flex flex-row items-center justify-between min-h-[44px]"
           >
               <div className="flex gap-[12px] items-center text-[16px] tracking-[-0.32px] whitespace-pre">
-                  <p className="font-['Pretendard_Variable'] font-semibold text-[#48b2af]">필수</p>
+                  <p className="font-['Pretendard_Variable'] font-medium text-[#48b2af] pl-[8px]">필수</p>
                   <p className="font-['Pretendard_Variable'] text-black">만 14세 이상입니다</p>
               </div>
               <div onClick={() => toggleAgreement('age14')} className="cursor-pointer">
@@ -282,7 +282,7 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
               <div className="flex flex-row items-center justify-between min-h-[44px]">
                   <div onClick={() => toggleExpanded('terms')} className="flex gap-[8px] grow items-center cursor-pointer">
                       <div className="flex gap-[12px] items-center text-[16px] tracking-[-0.32px] whitespace-pre">
-                          <p className="font-['Pretendard_Variable'] font-semibold text-[#48b2af]">필수</p>
+                          <p className="font-['Pretendard_Variable'] font-medium text-[#48b2af] pl-[8px]">필수</p>
                           <p className="font-['Pretendard_Variable'] text-black">이용약관 동의</p>
                       </div>
                       <TermsIcon className={`transition-transform duration-300 ${expanded.terms ? 'rotate-180' : ''}`} />
@@ -304,15 +304,47 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
                       transition={{ duration: 0.3, ease: "easeInOut" }}
                       className="w-full overflow-hidden"
                   >
-                      <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[150px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
-                      <div className="font-['Pretendard_Variable'] text-[14px] leading-[22px] text-[#525252] tracking-[-0.42px] space-y-4">
-                          <p>본 약관은 주식회사 스타지오소프트(이하 "회사")가 제공하는 운세 서비스 '나다운'의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항 등을 규정합니다.</p>
+                      <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
+                      <div className="font-['Pretendard_Variable'] text-[13px] leading-[20px] text-[#525252] tracking-[-0.39px] space-y-3">
+                          <p className="font-medium">본 약관은 주식회사 스타지오소프트(이하 "회사")가 제공하는 운세 서비스 '나다운'(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항 등을 규정합니다. 서비스를 이용하기 전 반드시 본 약관을 숙지하여 주시기 바랍니다.</p>
+                          
                           <div>
-                              <p className="font-bold mb-1">제1조 [목적]</p>
-                              <p>이 약관은 회사가 제공하는 서비스의 이용조건 및 절차, 회사와 회원 간의 권리, 의무 및 책임사항 등을 규정함을 목적으로 합니다.</p>
+                            <p className="font-bold mb-1">제1조 [목적]</p>
+                            <p>이 약관은 회사가 제공하는 '나다운' 서비스의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다. 본 약관은 서비스 이용과 관련된 모든 사항에 대해 적용됩니다.</p>
                           </div>
-                          {/* ... (생략된 약관 내용 일부만 예시로 포함, 실제로는 전체 내용이 들어감) */}
-                          <p>상세 약관 내용은 생략합니다. (실제 서비스에서는 전체 내용 포함 필요)</p>
+
+                          <div>
+                            <p className="font-bold mb-1">제2조 [정의]</p>
+                            <p>1. "서비스"란 회사가 제공하는 생년월일 및 태어난 시간 입력을 통해 사주, 타로 등의 운세 콘텐츠를 제공하는 웹 기반 서비스를 의미합니다.</p>
+                            <p>2. "이용자"란 본 약관에 따라 회사가 제공하는 서비스를 이용하는 자를 말합니다.</p>
+                            <p>3. "회원"이란 카카오 로그인을 통해 유료 서비스를 이용하는 자를 의미합니다.</p>
+                            <p>4. "비회원"이란 회원 가입 없이 무료 서비스를 이용하는 자를 의미합니다.</p>
+                            <p>5. "유료 서비스"란 로그인 후 결제하여 이용 가능한 프리미엄 콘텐츠를 포함한 모든 서비스입니다.</p>
+                            <p>6. "컨텐츠"란 사주, 타로, 운세 관련 정보, 글, 이미지, 동영상 등 회사가 제공하는 모든 자료를 의미합니다.</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제3조 [약관의 효력 및 변경]</p>
+                            <p>1. 이 약관은 회사가 웹사이트에 게시하거나 기타의 방법으로 이용자에게 공지함으로써 효력이 발생합니다.</p>
+                            <p>2. 회사는 관련 법령의 개정, 서비스 운영상의 필요 또는 정책 변화에 따라 약관을 변경할 수 있습니다. 변경된 약관은 제1항과 같은 방법으로 공지됩니다.</p>
+                            <p>3. 이용자가 약관 변경을 수락하지 않을 경우, 서비스 이용을 중단하고 회원 탈퇴를 요청할 수 있습니다. 변경된 약관의 효력 발생일 이후에도 서비스를 계속 이용하는 경우 약관 변경에 동의한 것으로 간주됩니다.</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제8조 [청약 철회 및 환불]</p>
+                            <p>1. 유료 콘텐츠의 경우, 콘텐츠 특성상 "이용 즉시 제공"되는 디지털 상품으로 콘텐츠 조회 이력이 있는 경우 환불이 불가능합니다.</p>
+                            <p>2. 기술적 오류로 콘텐츠를 제공받지 못한 경우, 정보 오류로 정상적인 결제가 나오지 않은 경우, 기타 오류로 정상적인 서비스를 받지 못한 경우에는 환불이 가능합니다.</p>
+                            <p>3. 환불을 원하는 경우, 고객센터(이메일: stargiosoft@gmail.com)를 통해 요청할 수 있습니다.</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제12조 [운세 서비스의 한계 및 신뢰성]</p>
+                            <p>1. 회사가 제공하는 운세 콘텐츠는 엔터테인먼트적 목적으로 제공됩니다.</p>
+                            <p>2. 사주팔자, 명리학, 타로, 점술 등은 과학적으로 효과가 입증되지 않았으므로, 이용자는 이를 통해 인생의 중대사를 결정해서는 안됩니다.</p>
+                            <p>3. 회사는 운세 결과로 인해 발생하는 행위나 판단에 대해 일절 책임을 지지 않습니다.</p>
+                          </div>
+
+                          <p className="text-[12px] text-[#999999] mt-4">고객센터: stargiosoft@gmail.com<br/>시행일: 2026년 1월 12일</p>
                       </div>
                   </div>
                   </motion.div>
@@ -330,7 +362,7 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
               <div className="flex flex-row items-center justify-between min-h-[44px]">
                   <div onClick={() => toggleExpanded('privacy')} className="flex gap-[8px] grow items-center cursor-pointer">
                       <div className="flex gap-[12px] items-center text-[16px] tracking-[-0.32px] whitespace-pre">
-                          <p className="font-['Pretendard_Variable'] font-semibold text-[#48b2af]">필수</p>
+                          <p className="font-['Pretendard_Variable'] font-medium text-[#48b2af] pl-[8px]">필수</p>
                           <p className="font-['Pretendard_Variable'] text-black">개인정보 처리방침 동의</p>
                       </div>
                       <TermsIcon className={`transition-transform duration-300 ${expanded.privacy ? 'rotate-180' : ''}`} />
@@ -353,13 +385,72 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
                       className="w-full overflow-hidden"
                   >
                       <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
-                      <div className="font-['Pretendard_Variable'] text-[14px] leading-[22px] text-[#525252] tracking-[-0.42px] space-y-4">
-                          <p>스타지오소프트는 개인정보보호법 등 관련 법령을 준수하며, 이용자의 개인정보를 중요하게 생각합니다.</p>
+                      <div className="font-['Pretendard_Variable'] text-[13px] leading-[20px] text-[#525252] tracking-[-0.39px] space-y-3">
+                          <p className="font-medium">스타지오소프트(이하 "회사"라 함)의 스타지오(이하 "서비스"라 함)는 개인정보보호법 등 정보통신 서비스 제공자가 준수하여야 할 관련 법규상의 개인정보보호 규정을 준수하며, 관련 법령에 의거한 개인정보처리방침을 정하여 이용자 권익 보호에 최선을 다하고 있습니다.</p>
+
                           <div>
-                              <p className="font-bold mb-1">제1조 (수집하는 개인정보 항목)</p>
-                              <p>회사는 최소한의 개인정보만을 수집합니다. (이름, 이메일, 생년월일 등)</p>
+                            <p className="font-bold mb-1">제1조 (수집하는 개인정보 항목)</p>
+                            <p>① 회사는 고객의 개인정보를 수집하는 경우 서비스의 제을 위하여 필요한 최소한의 범위로 한정하고 있으며, 고객의 동의를 얻거나 법률에 의해 허용된 경우 이외에는 개인 권리, 이익이나 사생활을 침해할 우려가 있는 개인정보를 수집하지 않습니다.</p>
+                            <p>② 주요 수집 항목:</p>
+                            <p>- (필수) 회원가입: 이름, 이메일, 전화번호</p>
+                            <p>- (필수) SNS 계정: 구글(이름, 이메일), 카카오(닉네임, 이메일)</p>
+                            <p>- (필수) 서비스 이용: IP주소, 쿠키, 서비스 이용 기록</p>
+                            <p>- (필수) 유료 서비스: 주문자 정보, 사주 정보(이름, 성별, 생년월일, 태어난 시각)</p>
+                            <p>- (필수) 결제: 카드사명/승인번호 또는 입금은행</p>
+                            <p>- (선택) 마케팅: 이름, 이메일, 휴대폰번호</p>
                           </div>
-                          {/* ... */}
+
+                          <div>
+                            <p className="font-bold mb-1">제2조 (개인정보의 수집 및 이용목적)</p>
+                            <p>회사는 다음 목적으로 개인정보를 수집합니다:</p>
+                            <p>1. 회원 관리: 회원가입 및 관리, 본인 식별, 서비스 부정이용 방지</p>
+                            <p>2. 서��스 제공: 대금 결제, 콘텐츠 제공, 맞춤 서비스 제공</p>
+                            <p>3. 고객 응대: 문의 처리, 신원확인, 처리결과 통보</p>
+                            <p>4. 마케팅: 신규 서비스 개발, 이벤트 정보 제공</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제3조 (개인정보의 보유 및 이용기간)</p>
+                            <p>고객의 개인정보는 원칙적으로 수집 및 이용목적이 달성되면 5일 이내 지체 없이 파기합니다.</p>
+                            <p>단, 다음의 경우 명시한 기간 동안 보존합니다:</p>
+                            <p>- 회원 정보: 회원 탈퇴 시까지</p>
+                            <p>- 중복가입확인정보(DI): 탈퇴일로부터 6개월</p>
+                            <p>- 거래 기록: 법령에 따라 5년 보관</p>
+                            <p>- 소비자 불만/분쟁 기록: 3년 보관</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제4조 (개인정보의 제3자 제공)</p>
+                            <p>회사는 원칙적으로 고객의 동의 없이 개인정보를 외부에 공개하지 않습니다. 단, 법률에 특별한 규정이 있거나 법령상 의무를 준수하기 위하여 불가피한 경우는 예외로 합니다.</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제5조 (개인정보의 처리 위탁)</p>
+                            <p>회사는 서비스 향상을 위해 다음과 같이 개인정보를 위탁하고 있습니다:</p>
+                            <p>- 결제처리: ㈜포트원</p>
+                            <p>- 서버 및 데이터 보관: Naver Cloud Platform</p>
+                            <p>- 문자/이메일 발송: ㈜카카오</p>
+                            <p>- 본인인증: ㈜KG이니시스</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제7조 (정보주체의 권리)</p>
+                            <p>고객은 언제든지 개인정보 열람·정정·삭제·처리정지 요구 등의 권리를 행사할 수 있습니다. '마이페이지' 메뉴 또는 문의하기 페이지를 통해 요청할 수 있습니다.</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제8조 (쿠키 사용)</p>
+                            <p>회사는 개별적인 맞춤서비스 제공을 위해 쿠키를 사용합니다. 고객은 웹브라우저 설정을 통해 쿠키 저장을 거부할 수 있으나, 이 경우 맞춤형 서비스 이용에 어려움이 있을 수 있습니다.</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">제10조 (개인정보보호책임자)</p>
+                            <p>성명: 김호동 / 직위: 팀장</p>
+                            <p>연락처: 010-3702-0428</p>
+                            <p>이메일: fship1124@stargio.co.kr</p>
+                          </div>
+
+                          <p className="text-[12px] text-[#999999] mt-4">변경사항은 시행 7일 전 고지됩니다.</p>
                       </div>
                   </div>
                   </motion.div>
@@ -377,7 +468,7 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
               <div className="flex flex-row items-center justify-between min-h-[44px]">
                   <div onClick={() => toggleExpanded('marketing')} className="flex gap-[8px] grow items-center cursor-pointer">
                       <div className="flex gap-[12px] items-center text-[16px] tracking-[-0.32px] whitespace-pre">
-                          <p className="font-['Pretendard_Variable'] font-semibold text-[#999999]">선택</p>
+                          <p className="font-['Pretendard_Variable'] font-medium text-[#999999] pl-[8px]">선택</p>
                           <p className="font-['Pretendard_Variable'] text-black">마케팅 정보 수신 동의</p>
                       </div>
                       <TermsIcon className={`transition-transform duration-300 ${expanded.marketing ? 'rotate-180' : ''}`} />
@@ -399,9 +490,18 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
                       transition={{ duration: 0.3, ease: "easeInOut" }}
                       className="w-full overflow-hidden"
                   >
-                      <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[150px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
-                      <div className="font-['Pretendard_Variable'] text-[14px] leading-[22px] text-[#525252] tracking-[-0.42px] space-y-4">
-                          <p>이벤트 및 혜택 정보를 수신합니다.</p>
+                      <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[200px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
+                      <div className="font-['Pretendard_Variable'] text-[13px] leading-[20px] text-[#525252] tracking-[-0.39px] space-y-3">
+                          <p className="font-medium">「개인정보보호법」 및 「정보통신망법」 규정에 따라, '스타지오소프트'가 제공하는 이벤트, 혜택 등 다양한 광고성 정보를 아래의 방법으로 수신하는 것에 동의합니다.</p>
+                          
+                          <div>
+                            <p className="font-bold mb-1">전송 방법</p>
+                            <p>이메일, 문자 메시지(SMS/LMS/MMS), 카카오톡 광고 메시지, 앱 푸시(App Push) 알림</p>
+                          </div>
+
+                          <p className="text-[12px] text-[#999999]">※ 귀하는 위와 같은 광고성 정보 수신에 동의하지 않으실 수 있습니다. 동의를 거부하시더라도 '스타지오'의 기본 서비스 이용에는 제한이 없으나, 할인, 이벤트 등 유용한 정보를 제공받지 못할 수 있습니다.</p>
+                          
+                          <p className="text-[12px] text-[#999999]">※ 본 동의는 언제든지 '마이페이지' 또는 고객센터를 통해 철회할 수 있습니다.</p>
                       </div>
                   </div>
                   </motion.div>
@@ -419,7 +519,7 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
               <div className="flex flex-row items-center justify-between min-h-[44px]">
                   <div onClick={() => toggleExpanded('ads')} className="flex gap-[8px] grow items-center cursor-pointer">
                       <div className="flex gap-[12px] items-center text-[16px] tracking-[-0.32px] whitespace-pre">
-                          <p className="font-['Pretendard_Variable'] font-semibold text-[#999999]">선택</p>
+                          <p className="font-['Pretendard_Variable'] font-medium text-[#999999] pl-[8px]">선택</p>
                           <p className="font-['Pretendard_Variable'] text-black">광고성 정보 수신 동의</p>
                       </div>
                       <TermsIcon className={`transition-transform duration-300 ${expanded.ads ? 'rotate-180' : ''}`} />
@@ -441,9 +541,29 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
                       transition={{ duration: 0.3, ease: "easeInOut" }}
                       className="w-full overflow-hidden"
                   >
-                      <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[150px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
-                      <div className="font-['Pretendard_Variable'] text-[14px] leading-[22px] text-[#525252] tracking-[-0.42px] space-y-4">
-                          <p>귀하는 위와 같은 광고성 정보 수신에 동의하지 않으실 수 있습니다.</p>
+                      <div className="bg-[#f7f8f9] px-[20px] py-[16px] mt-1 mb-3 rounded-[12px] max-h-[200px] overflow-y-auto [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-[#d1d5db] [&::-webkit-scrollbar-thumb]:rounded-[4px] [&::-webkit-scrollbar-track]:bg-transparent">
+                      <div className="font-['Pretendard_Variable'] text-[13px] leading-[20px] text-[#525252] tracking-[-0.39px] space-y-3">
+                          <p className="font-medium">회사는 정보주체의 동의 하에 다음과 같이 마케팅 및 광고를 위한 개인정보를 수집·이용합니다.</p>
+
+                          <div>
+                            <p className="font-bold mb-1">1. 수집·이용 목적</p>
+                            <p>- 신규 서비스, 기능, 이벤트, 프로모션 정보 안내</p>
+                            <p>- 맞춤형 서비스 추천, 광고성 정보 제공</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">2. 수집하는 개인정보 항목</p>
+                            <p>이름, 이메일, 휴대폰번호</p>
+                          </div>
+
+                          <div>
+                            <p className="font-bold mb-1">3. 보유 및 이용 기간</p>
+                            <p>회원 탈퇴 시 또는 동의 철회 시까지</p>
+                          </div>
+
+                          <p className="text-[12px] text-[#999999]">※ 귀하는 위와 같은 개인정보의 선택적 수집·이용에 동의하지 않으실 수 있습니다. 동의를 거부하시더라도 기본 서비스 이용에는 제한이 없으나, 다양한 혜택 및 이벤트 정보를 제공받지 못할 수 있습니다.</p>
+                          
+                          <p className="text-[12px] text-[#999999]">※ 본 동의는 언제든지 '마이페이지' 또는 고객센터를 통해 철회할 수 있습니다.</p>
                       </div>
                   </div>
                   </motion.div>

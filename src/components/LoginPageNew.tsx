@@ -405,14 +405,16 @@ function Frame3({
       </motion.div>
 
       {/* 개발용 테스트 버튼 */}
-      <div className="flex gap-4">
-        <button onClick={() => onNavigateToExistingAccount?.('kakao')} className="text-xs text-gray-400 underline">
-          [개발용] 기가입자(카카오)
-        </button>
-        <button onClick={() => onNavigateToExistingAccount?.('google')} className="text-xs text-gray-400 underline">
-          [개발용] 기가입자(구글)
-        </button>
-      </div>
+      {import.meta.env.DEV && (
+        <div className="flex gap-4">
+          <button onClick={() => onNavigateToExistingAccount?.('kakao')} className="text-xs text-gray-400 underline">
+            [개발용] 기가입자(카카오)
+          </button>
+          <button onClick={() => onNavigateToExistingAccount?.('google')} className="text-xs text-gray-400 underline">
+            [개발용] 기가입자(구글)
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -570,7 +572,7 @@ export default function LoginPageNew({
     
     // SDK 체크
     if (!window.Kakao?.isInitialized()) {
-      alert('카카오 SDK가 아직 초기화되지 않았습니다.\\n페이지를 새로고침 후 다시 시도해주세요.');
+      alert('카카오 SDK�� 아직 초기화되지 않았습니다.\\n페이지를 새로고침 후 다시 시도해주세요.');
       return;
     }
 
@@ -710,45 +712,47 @@ export default function LoginPageNew({
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >
       {/* 개발용 임시 버튼 그룹 */}
-      <div className="fixed top-24 right-4 z-[9999] flex flex-col gap-2 items-end">
-        <button
-          onClick={() => {
-            const tempUserData = {
-              id: 'temp_debug_user',
-              email: 'debug@temp.fortune.app',
-              name: '디버그유저',
-              avatar_url: '',
-              provider: 'debug',
-              provider_id: 'debug_123',
-            };
-            localStorage.setItem('tempUser', JSON.stringify(tempUserData));
-            onNavigateToTerms();
-          }}
-          className="bg-red-500 text-white px-3 py-1 rounded-full text-xs shadow-lg opacity-70 hover:opacity-100 transition-opacity"
-        >
-          약관 화면 이동
-        </button>
-        <button
-          onClick={() => {
-             const mockUser = {
-               id: '00000000-0000-0000-0000-000000000000',
-               email: 'dev@test.com',
-               nickname: '개발자',
-               provider: 'dev',
-               profile_image: ''
-             };
-             localStorage.setItem('user', JSON.stringify(mockUser));
-             document.cookie = `last_login_provider=dev; max-age=${60 * 60 * 24 * 365}; path=/`;
-             
-             // 마이페이지로 이동하도록 설정
-             localStorage.setItem('redirectAfterLogin', '/profile');
-             onLoginSuccess(mockUser);
-          }}
-          className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs shadow-lg opacity-70 hover:opacity-100 transition-opacity"
-        >
-          마이페이지 이동
-        </button>
-      </div>
+      {import.meta.env.DEV && (
+        <div className="fixed top-24 right-4 z-[9999] flex flex-col gap-2 items-end">
+          <button
+            onClick={() => {
+              const tempUserData = {
+                id: 'temp_debug_user',
+                email: 'debug@temp.fortune.app',
+                name: '디버그유저',
+                avatar_url: '',
+                provider: 'debug',
+                provider_id: 'debug_123',
+              };
+              localStorage.setItem('tempUser', JSON.stringify(tempUserData));
+              onNavigateToTerms();
+            }}
+            className="bg-red-500 text-white px-3 py-1 rounded-full text-xs shadow-lg opacity-70 hover:opacity-100 transition-opacity"
+          >
+            약관 화면 이동
+          </button>
+          <button
+            onClick={() => {
+               const mockUser = {
+                 id: '00000000-0000-0000-0000-000000000000',
+                 email: 'dev@test.com',
+                 nickname: '개발자',
+                 provider: 'dev',
+                 profile_image: ''
+               };
+               localStorage.setItem('user', JSON.stringify(mockUser));
+               document.cookie = `last_login_provider=dev; max-age=${60 * 60 * 24 * 365}; path=/`;
+               
+               // 마이페이지로 이동하도록 설정
+               localStorage.setItem('redirectAfterLogin', '/profile');
+               onLoginSuccess(mockUser);
+            }}
+            className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs shadow-lg opacity-70 hover:opacity-100 transition-opacity"
+          >
+            마이페이지 이동
+          </button>
+        </div>
+      )}
 
       <div className="relative w-full max-w-[440px] min-h-[690px] flex flex-col bg-white">
         <Frame onBack={onBack} isScrolled={scrollTop > 10} />

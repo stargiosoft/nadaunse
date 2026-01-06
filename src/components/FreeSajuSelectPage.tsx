@@ -59,6 +59,43 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
       console.log('📋 [FreeSajuSelectPage] 사주 정보 로드 시작');
       
       try {
+        // ⭐ DEV 모드: localStorage에서 데이터 로드 (프론트 UI 테스트용)
+        if (import.meta.env.DEV) {
+          console.log('🔧 [DEV MODE] localStorage에서 사주 목록 로드');
+          
+          const existingData = localStorage.getItem('dev_saju_records');
+          const records = existingData ? JSON.parse(existingData) : [];
+          
+          console.log('✅ [DEV MODE] 로드된 사주 목록:', records);
+          
+          if (!records || records.length === 0) {
+            console.log('⚠️ [DEV MODE] 사주 정보 없음 → 입력 페이지로 이동');
+            navigate(`/product/${productId}/birthinfo`);
+            return;
+          }
+          
+          setSajuRecords(records);
+          
+          // ⭐ 대표 사주 자동 선택 (is_primary=true → 본인 사주 → 첫 번째 사주 순)
+          const primarySaju = records.find((r: any) => r.is_primary);
+          const mySaju = records.find((r: any) => r.notes === '본인');
+          
+          if (primarySaju) {
+            setSelectedSajuId(primarySaju.id);
+            console.log('✅ [DEV MODE] 대표 사주 자동 선택:', primarySaju.id, primarySaju.full_name);
+          } else if (mySaju) {
+            setSelectedSajuId(mySaju.id);
+            console.log('✅ [DEV MODE] 본인 사주 자동 선택:', mySaju.id);
+          } else {
+            setSelectedSajuId(records[0].id);
+            console.log('✅ [DEV MODE] 첫 번째 사주 자동 선택:', records[0].id);
+          }
+          
+          setIsLoading(false);
+          return;
+        }
+
+        // ⭐ PRODUCTION 모드: 기존 Supabase 로직
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError || !user) {
@@ -98,7 +135,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
         
         if (primarySaju) {
           setSelectedSajuId(primarySaju.id);
-          console.log('✅ [FreeSajuSelectPage] 대표 사주 자동 선택:', primarySaju.id, primarySaju.full_name);
+          console.log('✅ [FreeSajuSelectPage] ��표 사주 자동 선택:', primarySaju.id, primarySaju.full_name);
         } else if (mySaju) {
           setSelectedSajuId(mySaju.id);
           console.log('✅ [FreeSajuSelectPage] 본인 사주 자동 선택:', mySaju.id);
@@ -213,8 +250,8 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
     const rect = button.getBoundingClientRect();
     
     setKebabMenuPosition({
-      top: rect.top + rect.height / 2,
-      left: rect.left,
+      top: rect.bottom,
+      left: rect.right,
     });
     setSelectedSajuForKebab(saju);
     setKebabMenuOpen(true);

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
-import Toast from './Toast';
+import { toast } from '../lib/toast';
 
 interface FileUploadDialogProps {
   isOpen: boolean;
@@ -14,7 +14,6 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [contentType, setContentType] = useState<'paid' | 'free'>('paid');
   const [isLoading, setIsLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: '', show: false });
   const [userId, setUserId] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
@@ -45,15 +44,13 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
     const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     
     if (!validExtensions.includes(fileExtension)) {
-      setToast({ message: '파일 업로드에 실패했어요', show: true });
-      setTimeout(() => setToast({ message: '', show: false }), 2200);
+      toast.error('파일 업로드에 실패했어요');
       return;
     }
 
     // 파일 크기 검증 (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setToast({ message: '파일 업로드에 실패했어요', show: true });
-      setTimeout(() => setToast({ message: '', show: false }), 2200);
+      toast.error('파일 업로드에 실패했어요');
       return;
     }
 
@@ -100,15 +97,13 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
     const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     
     if (!validExtensions.includes(fileExtension)) {
-      setToast({ message: '파일 업로드에 실패했어요', show: true });
-      setTimeout(() => setToast({ message: '', show: false }), 2200);
+      toast.error('파일 업로드에 실패했어요');
       return;
     }
 
     // 파일 크기 검증 (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setToast({ message: '파일 업로드에 실패했어요', show: true });
-      setTimeout(() => setToast({ message: '', show: false }), 2200);
+      toast.error('파일 업로드에 실패했어요');
       return;
     }
 
@@ -270,7 +265,7 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
     console.log('📦 콘텐츠 타입:', contentType);
 
     try {
-      // 1. 엑셀 파싱
+      // 1. 엑셀 파���
       console.log('📊 1단계: 엑셀 파일 파싱 중...');
       const rawData = await parseExcelData(uploadedFile);
       console.log('✅ 엑셀 파싱 완료:', rawData.length, '행');
@@ -494,9 +489,8 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
 
       // 5. 즉시 성공 처리 (AI 생성 대기 없음)
       setIsLoading(false);
-      setToast({ message: '등록에 성공했어요', show: true });
+      toast.success('등록에 성공했어요');
       setTimeout(() => {
-        setToast({ message: '', show: false });
         onSuccess();
         onClose();
         setUploadedFile(null);
@@ -506,10 +500,7 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
     } catch (error: any) {
       console.error('Upload error:', error);
       setIsLoading(false);
-      setToast({ message: error.message || '등록에 실패했어요', show: true });
-      setTimeout(() => {
-        setToast({ message: '', show: false });
-      }, 2200);
+      toast.error(error.message || '등록에 실패했어요');
     }
   };
 
@@ -601,7 +592,7 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
                   />
                 </div>
 
-                {/* 콘텐츠 유형 선택 */}
+                {/* 콘텐츠 ���형 선택 */}
                 <div className="mb-[24px]">
                   <p className="font-['Pretendard_Variable:SemiBold',sans-serif] text-[14px] text-[#1b1b1b] mb-[12px]">
                     콘텐츠 유형
@@ -657,9 +648,6 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
           </div>
         </div>
       </div>
-
-      {/* Toast */}
-      {toast.show && <Toast message={toast.message} onClose={() => setToast({ message: '', show: false })} />}
     </>
   );
 }

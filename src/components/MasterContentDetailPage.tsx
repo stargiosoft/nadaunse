@@ -16,6 +16,27 @@ import FreeContentDetail from './FreeContentDetail';
 import { TarotCardSelection } from './TarotCardSelection';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
 
+// Animation Variants
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  }
+};
+
 
 // 포트원 타입 선언
 declare global {
@@ -112,7 +133,7 @@ interface MasterContentDetailPageProps {
 }
 
 // ⚠️ 개발 전용 플래그 - 배포 시 false로 변경하거나 이 섹션 전체 삭제
-const IS_DEV_MODE = true;
+const IS_DEV_MODE = import.meta.env.DEV;
 
 export default function MasterContentDetailPage({ contentId }: MasterContentDetailPageProps) {
   const navigate = useNavigate();
@@ -139,12 +160,49 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
 
   const usageGuideRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 탭 순서 및 인덱스 구하기
   const tabOrder: TabType[] = ['description', 'principle', 'preview'];
   const activeTabIndex = tabOrder.indexOf(activeTab);
 
-  // Removed swipe logic
+  // ⭐️ 스와이프 애니메이션 로직
+  const [direction, setDirection] = useState(0);
+
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
+
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? '100%' : '-100%',
+      position: 'absolute' as const, // 겹치지 않게 절대 위치
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1,
+      position: 'relative' as const,
+    },
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? '100%' : '-100%',
+      position: 'absolute' as const,
+    })
+  };
+
+  const handleTabChange = (newIndex: number) => {
+    if (newIndex < 0 || newIndex >= tabOrder.length) return;
+    
+    // 방향 설정
+    setDirection(newIndex > activeTabIndex ? 1 : -1);
+    setActiveTab(tabOrder[newIndex]);
+    
+    // 스크롤 초기화
+    const scrollContainer = document.querySelector('.flex-1.overflow-y-auto.scrollbar-hide');
+    if (scrollContainer) scrollContainer.scrollTop = 0;
+  };
 
 
 
@@ -320,7 +378,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         isLoggedIn: !!userJson
       });
       
-      // 🎫 로그인 유저인 경우 쿠폰 조회
+      // 🎫 로그인 유저��� 경우 쿠폰 조회
       if (userJson) {
         try {
           const user = JSON.parse(userJson);
@@ -410,7 +468,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
           setIsCheckingAnswers(false);
         }
       } else {
-        // 로그아웃 상태면 답변 체크 불필요
+        // 로그아웃 상태면 답변 체�� 불필요
         setIsCheckingAnswers(false);
       }
       
@@ -463,7 +521,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     incrementViewCount();
   }, [contentId]);
 
-  // ⭐ 로딩 중이고 content_type을 아직 모를 때 (캐시 없음) → 스켈레톤 표시
+  // ⭐ 로딩 중이고 content_type을 아직 모를 �� (캐시 없음) → 스켈레톤 표시
   if (isLoading && !content) {
     // 🔥 무료 콘텐츠로 판별되었으면 FreeContentDetail에게 스켈레톤 처리 위임
     if (isFreeContent === true) {
@@ -489,7 +547,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return <PaidContentDetailSkeleton />;
   }
 
-  // ⭐ 무료 콘텐츠는 바로 FreeContentDetail로 렌더링 (FreeContentDetail이 로딩/스켈레톤 처리)
+  // ⭐ 무�� 콘텐츠는 바로 FreeContentDetail로 렌더링 (FreeContentDetail이 로딩/스켈레톤 처리)
   if (isFreeContent === true) {
     const handleFreePurchase = async () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -634,7 +692,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('✅ [MasterContentDetailPage] 로그인 상태 → DB에서 사주 정보 조회 시작...');
         console.log('📌 [MasterContentDetailPage] user.id:', user.id);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━���');
         
         // ⭐️ 무료 콘텐츠는 본인 사주만 조회
         const { data: sajuRecords, error: sajuError } = await supabase
@@ -657,7 +715,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
         if (sajuRecords && sajuRecords.length > 0) {
           // 사주 정보 없음 → 사주 선택 페이지
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('━━━━━━━━━━���━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           console.log('✅ [MasterContentDetailPage] 사주 정보 있음 (' + sajuRecords.length + '개)');
           console.log('🔀 [MasterContentDetailPage] FreeSajuSelectPage로 이동');
           console.log('📍 [MasterContentDetailPage] navigate to:', `/product/${contentId}/free-saju-select`);
@@ -727,7 +785,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   };
 
   return (
-    <div className="flex justify-center h-[100dvh] w-full overflow-hidden">
+    <div className="flex justify-center h-[100dvh] w-full overflow-hidden touch-pan-y overscroll-none">
       <div className="w-full max-w-[440px] h-full flex flex-col relative bg-white overflow-hidden">
         {/* Top Navigation */}
         <div className="shrink-0 z-20 bg-white relative">
@@ -775,11 +833,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   <div className="content-stretch flex items-center overflow-clip relative shrink-0 w-full">
                     {/* 상품 설명 탭 */}
                     <div 
-                      onClick={() => {
-                        setActiveTab('description');
-                        const scrollContainer = document.querySelector('.flex-1.overflow-y-auto.scrollbar-hide');
-                        if (scrollContainer) scrollContainer.scrollTop = 0;
-                      }}
+                      onClick={() => handleTabChange(0)}
                       className="basis-0 grow min-h-px min-w-px relative rounded-[12px] shrink-0 cursor-pointer"
                     >
                       {activeTab === 'description' && (
@@ -797,11 +851,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     </div>
                     {/* 풀이 원리 탭 */}
                     <div 
-                      onClick={() => {
-                        setActiveTab('principle');
-                        const scrollContainer = document.querySelector('.flex-1.overflow-y-auto.scrollbar-hide');
-                        if (scrollContainer) scrollContainer.scrollTop = 0;
-                      }}
+                      onClick={() => handleTabChange(1)}
                       className="basis-0 grow min-h-px min-w-px relative rounded-[12px] shrink-0 cursor-pointer"
                     >
                       {activeTab === 'principle' && (
@@ -819,11 +869,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     </div>
                     {/* 맛보기 탭 */}
                     <div 
-                      onClick={() => {
-                        setActiveTab('preview');
-                        const scrollContainer = document.querySelector('.flex-1.overflow-y-auto.scrollbar-hide');
-                        if (scrollContainer) scrollContainer.scrollTop = 0;
-                      }}
+                      onClick={() => handleTabChange(2)}
                       className="basis-0 grow min-h-px min-w-px relative rounded-[12px] shrink-0 cursor-pointer"
                     >
                       {activeTab === 'preview' && (
@@ -847,27 +893,36 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto relative w-full z-0 scrollbar-hide">
-          <div className="pb-[120px] overflow-hidden relative w-full">
-            {activeTab === 'description' && (
-            <motion.div 
-              className="min-w-full w-full shrink-0"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                hidden: { opacity: 0 },
-                visible: {
-                  opacity: 1,
-                  transition: {
-                    staggerChildren: 0.1,
-                    delayChildren: 0.1
-                  }
+        <div className="flex-1 overflow-y-auto overflow-x-hidden relative w-full z-0 scrollbar-hide">
+          <div ref={containerRef} className="pb-[120px] overflow-hidden relative w-full">
+            <motion.div
+              className={`flex ${isFreeContent ? "w-[300%]" : "w-full"}`}
+              animate={{ x: isFreeContent ? `-${tabOrder.indexOf(activeTab) * (100 / tabOrder.length)}%` : 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              drag={isFreeContent ? "x" : false}
+              dragConstraints={containerRef}
+              dragElastic={1}
+              onDragEnd={(e, { offset, velocity }) => {
+                const swipe = swipePower(offset.x, velocity.x);
+                const currentIndex = tabOrder.indexOf(activeTab);
+
+                if (swipe < -swipeConfidenceThreshold) {
+                  if (currentIndex < tabOrder.length - 1) handleTabChange(currentIndex + 1);
+                } else if (swipe > swipeConfidenceThreshold) {
+                  if (currentIndex > 0) handleTabChange(currentIndex - 1);
                 }
               }}
             >
-            <>
+            { (isFreeContent || activeTab === 'description') && (
+            <div className={`${isFreeContent ? "w-1/3" : "w-full"} shrink-0 bg-white`}>
+            <motion.div
+              key={!isFreeContent ? "desc-paid" : undefined}
+              initial={!isFreeContent ? "hidden" : undefined}
+              animate={!isFreeContent ? "visible" : undefined}
+              variants={staggerContainer}
+            >
               {/* Product Image & Price */}
-              <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
+              <motion.div variants={fadeInUp}>
               <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full mt-0 pt-0">
                 <div className="aspect-[391/270] relative shrink-0 w-full bg-[#f0f0f0]">
                   {content.thumbnail_url ? (
@@ -903,8 +958,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           <div className="size-full">
                             <div className="box-border content-stretch flex flex-col gap-0 items-start px-[2px] py-0 relative w-full">
                                 {/* 할인율 + 할인가격 + 정상가격(취소선) */}
-                                <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                  <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#ff6b6b] text-[20px] text-nowrap tracking-[-0.4px]">
+                                <div className="content-stretch flex gap-[6px] items-center relative shrink-0">
+                                  <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#ff6b6b] text-[20px] text-nowrap tracking-[-0.4px] mr-[-2px]">
                                     {content.discount_rate || 0}%
                                   </p>
                                   <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#151515] text-[22px] text-nowrap tracking-[-0.22px]">
@@ -919,6 +974,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                 {(() => {
                                   // ⭐ coupon_type으로 정확히 구분 (name 대신 type 사용)
                                   const hasRevisitCoupon = userCoupons.some(c => c.coupons.coupon_type === 'revisit' && !c.is_used);
+                                  const hasWelcomeCoupon = userCoupons.some(c => c.coupons.coupon_type === 'welcome' && !c.is_used);
+                                  const hasAnyCoupon = userCoupons.length > 0;
+                                
+                                  // ⭐ 쿠폰이 없으면 혜택가 영역 전체를 숨김
+                                  if (!hasAnyCoupon) {
+                                    return null;
+                                  }
                                 
                                   // Case 1: 재방문쿠폰 보유 (우선순위 1)
                                   if (hasRevisitCoupon) {
@@ -937,20 +999,25 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     );
                                   }
                                 
-                                  // Case 2: 그 외 모든 경우 (비로그인, 웰컴쿠폰, 쿠폰없음) - 첫 구매 혜택가 노출 (기본값)
-                                  const finalPrice = (content.price_discount || 0) - 5000;
-                                  return (
-                                    <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
-                                      <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
-                                        {finalPrice.toLocaleString()}원
-                                      </p>
-                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
-                                          첫 구매 혜택가
+                                  // Case 2: 웰컴쿠폰 보유 (우선순위 2)
+                                  if (hasWelcomeCoupon) {
+                                    const finalPrice = (content.price_discount || 0) - 5000;
+                                    return (
+                                      <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
+                                        <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
+                                          {finalPrice.toLocaleString()}원
                                         </p>
+                                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                                          <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
+                                            첫 구매 혜택가
+                                          </p>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
+                                    );
+                                  }
+                                  
+                                  // Case 3: 그 외 쿠폰 (기타 쿠폰)
+                                  return null;
                                 })()}
                               </div>
                             </div>
@@ -961,6 +1028,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       {(() => {
                         // ⭐ coupon_type으로 정확히 구분
                         const hasRevisitCoupon = userCoupons.some(c => c.coupons.coupon_type === 'revisit' && !c.is_used);
+                        const hasWelcomeCoupon = userCoupons.some(c => c.coupons.coupon_type === 'welcome' && !c.is_used);
+                        const hasAnyCoupon = userCoupons.length > 0;
+                        
+                        // ⭐ 쿠폰이 없으면 버튼 전체를 숨김
+                        if (!hasAnyCoupon) {
+                          return null;
+                        }
                         
                         // Case 1: 재방문쿠폰 보유 (우선순위 1)
                         if (hasRevisitCoupon) {
@@ -1014,55 +1088,60 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           );
                         }
                         
-                        // Case 2: 그 외 모든 경우 (비로그인, 웰컴쿠폰, 쿠폰없음) - 첫 구매 쿠폰 버튼 노출 (기본값)
-                        const finalPrice = (content.price_discount || 0) - 5000;
-                        return (
-                          <button 
-                            onClick={onPurchase}
-                            onTouchStart={() => {}} // 모바일 active 상태 활성화
-                            className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
-                          >
-                            <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
-                            <motion.div 
-                              whileTap={{ scale: 0.96 }}
-                              transition={{ duration: 0.1 }}
-                              className="flex flex-col items-center justify-center size-full transform-gpu"
+                        // Case 2: 웰컴쿠폰 보유 (우선순위 2)
+                        if (hasWelcomeCoupon) {
+                          const finalPrice = (content.price_discount || 0) - 5000;
+                          return (
+                            <button 
+                              onClick={onPurchase}
+                              onTouchStart={() => {}} // 모바일 active 상태 활성화
+                              className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
                             >
-                              <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
-                                <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
-                                  <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                                    <div className="relative shrink-0 size-[20px] flex items-center justify-center pt-[1px]">
-                                      <svg className="block w-[20px] h-[17px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 17">
-                                        <g id="Group">
-                                          <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
-                                          <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
-                                        </g>
-                                      </svg>
-                                    </div>
-                                    <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                      <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
-                                        첫 구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                        <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
-                                        <span>{` 풀이 보기`}</span>
-                                      </p>
-                                      <motion.div 
-                                        className="relative shrink-0 size-[12px]"
-                                        animate={{ x: [0, 3, 0] }}
-                                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                      >
-                                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-                                          <g id="arrow-right">
-                                            <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+                              <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
+                              <motion.div 
+                                whileTap={{ scale: 0.96 }}
+                                transition={{ duration: 0.1 }}
+                                className="flex flex-col items-center justify-center size-full transform-gpu"
+                              >
+                                <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
+                                  <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
+                                    <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
+                                      <div className="relative shrink-0 size-[20px] flex items-center justify-center pt-[1px]">
+                                        <svg className="block w-[20px] h-[17px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 17">
+                                          <g id="Group">
+                                            <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
+                                            <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
                                           </g>
                                         </svg>
-                                      </motion.div>
+                                      </div>
+                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
+                                          첫 구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
+                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
+                                          <span>{` 풀이 보기`}</span>
+                                        </p>
+                                        <motion.div 
+                                          className="relative shrink-0 size-[12px]"
+                                          animate={{ x: [0, 3, 0] }}
+                                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                        >
+                                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
+                                            <g id="arrow-right">
+                                              <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+                                            </g>
+                                          </svg>
+                                        </motion.div>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </motion.div>
-                          </button>
-                        );
+                              </motion.div>
+                            </button>
+                          );
+                        }
+                        
+                        // Case 3: 그 외 쿠폰 (기타 쿠폰)
+                        return null;
                       })()}
                     </div>
                   </div>
@@ -1433,55 +1512,69 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     <p className="font-semibold text-[14px] text-red-600 mb-[8px] text-center">
                       ⚠️ 개발 전용 (배포 시 삭제)
                     </p>
-                    <motion.button
-                      onClick={() => {
-                        // ⭐ [DEV 모드] 풀이 플로우 시작
-                        // 1. 실제 결제 없이 화면 전환만 수행
-                        // 2. 로그인 + 결제 완료 상태를 가정하고 다음 단계로 이동
-                        const devOrderId = `dev_order_${Date.now()}`;
-                        console.log('🔧 [개발용] 풀이 플로우 시작:', {
-                          orderId: devOrderId,
-                          contentId: contentId
-                        });
-                        
-                        // PaymentNew를 거치지 않고 바로 구매 완료 후 단계로 진입
-                        // productId 경로 패턴이 /product/:id 이므로 이에 맞게 라우팅
-                        navigate(`/product/${contentId}/payment/new`);
-                      }}
-                      whileTap={{ scale: 0.96 }}
-                      className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold h-[52px] rounded-[12px] w-full cursor-pointer border-none transition-colors"
-                    >
-                      <span className="select-none" style={{ WebkitTouchCallout: 'none' }}>
-                        [DEV] 풀이 플로우 확인하기
-                      </span>
-                    </motion.button>
+                    <div className="flex flex-col gap-[8px]">
+                      <motion.button
+                        onClick={() => {
+                          // ⭐ [DEV 모드] 풀이 플로우 시작
+                          const devOrderId = `dev_order_${Date.now()}`;
+                          console.log('🔧 [개발용] 풀이 플로우 확인하기:', {
+                            orderId: devOrderId,
+                            contentId: contentId
+                          });
+                          navigate(`/product/${contentId}/payment/new`);
+                        }}
+                        whileTap={{ scale: 0.96 }}
+                        className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold h-[48px] rounded-[12px] w-full cursor-pointer border-none transition-colors text-[14px]"
+                      >
+                        [DEV] 전체 플로우 (결제~입력)
+                      </motion.button>
+
+                      <div className="flex gap-[8px]">
+                        <motion.button
+                          onClick={() => {
+                            // ⭐ [DEV 모드] 타로 셔플 화면 바로가기
+                            const devOrderId = `dev_shuffle_${Date.now()}`;
+                            console.log('🔧 [개발용] 타로 셔플 화면 이동');
+                            navigate(`/tarot/shuffle?orderId=${devOrderId}&questionOrder=1&contentId=${contentId}&from=dev`);
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          className="flex-1 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-semibold h-[48px] rounded-[12px] cursor-pointer border-none transition-colors text-[14px]"
+                        >
+                          [DEV] 셔플/선택
+                        </motion.button>
+
+                        <motion.button
+                          onClick={() => {
+                            // ⭐ [DEV 모드] 타로 결과 화면 바로가기
+                            const devOrderId = `dev_result_${Date.now()}`;
+                            console.log('🔧 [개발용] 타로 결과 화면 이동');
+                            navigate(`/result/tarot?orderId=${devOrderId}&questionOrder=1&contentId=${contentId}&from=dev`);
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          className="flex-1 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold h-[48px] rounded-[12px] cursor-pointer border-none transition-colors text-[14px]"
+                        >
+                          [DEV] 결과 화면
+                        </motion.button>
+                      </div>
+                    </div>
                     <p className="font-normal text-[12px] text-red-500 mt-[8px] text-center leading-[18px]">
                       로그인 + 구매 완료 상태를 가정하고<br />
-                      사주 입력부터 끝까지 전체 플로우를 확인합니다
+                      각 단계별 UI를 확인합니다
                     </p>
                   </div>
                 </motion.div>
               )}
-            </>
             </motion.div>
+            </div>
             )}
 
-            {activeTab === 'principle' && (
-            <div className="min-w-full w-full shrink-0">
+            { (isFreeContent || activeTab === 'principle') && (
+            <div className={`${isFreeContent ? "w-1/3" : "w-full"} shrink-0 bg-white`}>
             <motion.div 
               className="content-stretch flex flex-col gap-[10px] items-start w-full"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                hidden: { opacity: 0 },
-                visible: {
-                  opacity: 1,
-                  transition: {
-                    staggerChildren: 0.1,
-                    delayChildren: 0.1
-                  }
-                }
-              }}
+              initial={!isFreeContent ? "hidden" : undefined}
+              animate={!isFreeContent ? "visible" : undefined}
+              variants={staggerContainer}
             >
               {/* 우리 운세는 왜 다를까요 */}
               <motion.div 
@@ -1602,7 +1695,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     <br aria-hidden="true" />
                                     {`저희는 억부, 전왕, 통관, 병약, 조후 등 다양한 용신법을 명리학자의 검증을 거친 자체 개발 AI로 분석합니다. `}
                                   </span>
-                                  <span className="font-semibold">사람마다 달라질 수 있는 주관적 해석 대신, 가장 객관적이고 균형 잡힌 ���을 제시합니다.</span>
+                                  <span className="font-semibold">사람마다 달라질 수 있는 주관적 해석 대신, 가장 객관적이고 균형 잡힌 답을 제시합니다.</span>
                                 </p>
                               </div>
                             </div>
@@ -1637,7 +1730,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
                                 <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[16px] tracking-[-0.32px]">
-                                  <span>{`세종대왕부터 현대의 유명 인물까지, 전 세계 ��물들의 사주를 분석해왔습니다. 25년 상담 노하우와 10만 건 이상의 실제 사례를 바탕으로, 전문가는 물론 AI와 함께 완성도를 높였습니다. `}</span>
+                                  <span>{`세종대왕부터 현대의 유명 인물까지, 전 세계 인물들의 사주를 분석해왔습니다. 25년 상담 노하우와 10만 건 이상의 실제 사례를 바탕으로, 전문가는 물론 AI와 함께 완성도를 높였습니다. `}</span>
                                   <span className="font-semibold">단순한 이론이 아니라, 실제 검증된 데이터를 기반으로 신뢰할 수 있는 해석을 제공합니다.</span>
                                 </p>
                               </div>
@@ -1653,22 +1746,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             </div>
             )}
 
-            {activeTab === 'preview' && (
-            <div className="min-w-full w-full shrink-0">
+            { (isFreeContent || activeTab === 'preview') && (
+            <div className={`${isFreeContent ? "w-1/3" : "w-full"} shrink-0 bg-white`}>
             <motion.div 
               className="content-stretch flex flex-col gap-[40px] items-center relative shrink-0 w-full"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                hidden: { opacity: 0 },
-                visible: {
-                  opacity: 1,
-                  transition: {
-                    staggerChildren: 0.1,
-                    delayChildren: 0.1
-                  }
-                }
-              }}
+              initial={!isFreeContent ? "hidden" : undefined}
+              animate={!isFreeContent ? "visible" : undefined}
+              variants={staggerContainer}
             >
               {/* Header */}
               <motion.div 
@@ -1703,7 +1787,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                 </p>
                               </div>
                             </div>
-                            <div className="bg-[#f9f9f9] h-[252px] relative rounded-[16px] shrink-0 w-full overflow-hidden">
+                            <div className="bg-[#f9f9f9] h-[252px] relative rounded-[16px] shrink-0 w-full overflow-hidden transform-gpu">
                               <div className="size-full">
                                 <div className="content-stretch flex h-[252px] items-start px-[20px] py-[16px] relative w-full overflow-hidden">
                                   <div className="basis-0 content-stretch flex flex-col gap-[8px] grow items-start min-h-px min-w-px relative shrink-0">
@@ -1721,7 +1805,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             </div>
                           </div>
                         </div>
-                        <div className="absolute bg-[#f9f9f9] bottom-0 content-stretch flex flex-col items-center justify-center left-0 p-[16px] pt-[16px] right-0 rounded-b-[16px] w-full z-10" style={{ borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+                        <div className="absolute bg-[#f9f9f9] bottom-0 content-stretch flex flex-col items-center justify-center left-0 p-[16px] pt-[16px] right-0 rounded-b-[16px] w-full z-10 transform-gpu" style={{ borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
                           <div className="absolute left-0 right-0 -top-[56px] h-[56px] bg-gradient-to-b from-transparent to-[#f9f9f9] pointer-events-none" />
                           <div aria-hidden="true" className="absolute border-[#f3f3f3] border-[1px_0px_0px] border-solid inset-0 pointer-events-none rounded-b-[16px] shadow-[0px_-26px_26px_0px_#f9f9f9]" style={{ borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }} />
                           <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0">
@@ -1837,6 +1921,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             </motion.div>
             </div>
             )}
+            </motion.div>
           </div>
         </div>
 

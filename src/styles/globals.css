@@ -223,6 +223,60 @@ html {
   animation: fade-in 0.3s ease-out;
 }
 
+/* ⭐ Sonner Toast 컨테이너 스타일 오버라이드 (흔들림 방지) */
+/* Sonner의 기본 컨테이너를 flex 레이아웃으로 중앙 정렬 */
+[data-sonner-toaster] {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 96px !important;
+  transform: none !important; /* ⭐ translateX 제거 */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  pointer-events: none !important;
+  z-index: 9999 !important;
+}
+
+/* ⭐ Toast 아이템 개별 스타일 */
+[data-sonner-toast] {
+  position: relative !important;
+  transform: none !important; /* ⭐ translateX 제거 */
+  max-width: calc(100vw - 40px) !important;
+  width: auto !important;
+  pointer-events: auto !important;
+}
+
+/* ⭐ Toast viewport 중앙 정렬 (fallback) */
+.toast-viewport-center {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 96px !important;
+  transform: none !important; /* ⭐ translateX 제거 */
+  width: 100% !important;
+  max-width: none !important;
+  display: flex !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+}
+
+/* ⭐ Toast 등장 애니메이션 (opacity + translateY만 사용, 수평 위치 영향 없음) */
+@keyframes toast-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-animate-enter {
+  animation: toast-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Skeleton shimmer animation */
 @keyframes shimmer {
   0% {

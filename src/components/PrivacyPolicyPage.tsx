@@ -21,11 +21,11 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div className="bg-white relative w-full min-h-screen flex justify-center">
-      <div className="relative w-full max-w-[390px] min-h-screen flex flex-col bg-white">
+      <div className="relative w-full max-w-[440px] min-h-screen flex flex-col bg-white mx-auto">
         {/* Top Navigation */}
         <div className="bg-white h-[52px] relative shrink-0 w-full">
           <div className="flex flex-col justify-center size-full">
-            <div className="fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white content-stretch flex flex-col h-[52px] items-start justify-center px-[12px] py-[4px] w-full max-w-[390px]">
+            <div className="fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white content-stretch flex flex-col h-[52px] items-start justify-center px-[12px] py-[4px] w-full max-w-[440px]">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <div
                   onClick={() => navigate(-1)}
@@ -298,7 +298,7 @@ export default function PrivacyPolicyPage() {
               <div className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
                 <p className="mb-[8px]">① 회사는 이용자에게 개별적인 맞춤서비스를 제공하기 위해 고객에 대한 정보를 저장하고 수시로 불러오는 '쿠키(cookie)'를 사용합니다.</p>
                 <p className="mb-[8px]">② 쿠키는 웹사이트가 고객의 컴퓨터 브라우저(크롬, 인터넷 익스플로러 등)로 전송하는 소량의 정보입니다. 고객이 웹사이트에 접속을 하면 웹사이트를 운영하는데 이용되는 서버가 고객의 브라우저에 있는 쿠키의 내용을 읽고, 고객의 추가정보를 고객의 컴퓨터에서 찾아 접속에 따른 성명 등의 추가 입력 없이 서비스를 제공할 수 있습니다.</p>
-                <p className="mb-[8px]">③ 쿠키에 의해 수집되는 정보 및 이용 목적은 다음 각 호와 같습니다.</p>
+                <p className="mb-[8px]">③ 쿠키에 의해 수집되는 정보 및 ���용 목적은 다음 각 호와 같습니다.</p>
                 <ol className="list-decimal ml-[22.5px] mb-[8px]">
                   <li className="mb-0">수집 정보 : 접속IP, 브라우저 정보, 접속로그, 이용 콘텐츠 등 서비스 이용정보</li>
                   <li>이용 목적 : 고객의 접속 편의성 제공, 서비스 이용 형태 분석 및 통계 파악 등</li>

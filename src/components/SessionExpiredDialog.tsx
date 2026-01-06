@@ -13,6 +13,7 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
   const navigate = useNavigate();
 
   if (!isOpen) return null;
+  return null; // 작업 편의를 위해 강제 비활성화
 
   const handleLogin = () => {
     navigate('/login');
@@ -22,6 +23,23 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* 배경 dim 처리 */}
       <div className="absolute inset-0 bg-black/50" />
+      
+      {/* ⭐️ [DEV] 개발 모드: Dev User일 경우 세션 만료 모달을 강제로 숨김 */}
+      {/* 이를 통해 로그인 없이 UI 테스트가 가능하도록 함 */}
+      {localStorage.getItem('user')?.includes('"provider":"dev"') && (
+        <span 
+          ref={(node) => {
+            // 부모 요소(모달 전체 컨테이너)를 숨김 처리
+            if (node && node.parentElement) {
+              node.parentElement.style.display = 'none';
+              // 배경 스크롤 잠금 해제 (혹시 걸려있다면)
+              document.body.style.overflow = '';
+              console.log('⚡ [DEV] 세션 만료 모달 강제 숨김 처리 (Dev User)');
+            }
+          }}
+          style={{ display: 'none' }}
+        />
+      )}
 
       {/* 다이얼로그 */}
       <div className="relative w-[320px] bg-white rounded-[20px] overflow-hidden border border-[#f3f3f3]">

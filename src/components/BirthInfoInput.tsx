@@ -433,7 +433,7 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
       navigate(`/loading?contentId=${existingOrder.content_id}&orderId=${pendingOrderId}`);
       console.log('⏰ [사주입력] navigate 호출 완료!');
 
-      // ⭐️ 백그라운드에서 AI 답변 생성 시작 (비동기, 결과 대기 안 함)
+      // ⭐️ 백그라운드에서 AI 답변 생성 시작 (비동기, 결과 대기 안 )
       console.log('🚀 AI 답변 생성 시작 (백그라운드)');
       console.log('📌 sajuRecordId:', sajuData.id);
       
@@ -531,7 +531,7 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                       </div>
                     </motion.div>
                   </motion.button>
-                  <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">사주 정보 입력</p>
+                  <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">사주 정보 입력</p>
                   <div className="box-border content-stretch flex gap-[10px] items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
                 </div>
               </div>
@@ -541,9 +541,26 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
         </div>
 
         {/* Form Content */}
-        <div className="px-[20px]">
+        <motion.div 
+          className="px-[20px]"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: {
+              transition: {
+                staggerChildren: 0.1
+              }
+            }
+          }}
+        >
           {/* Name Input */}
-          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]">
+          <motion.div 
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <div className="relative shrink-0 w-full">
               <div className="flex flex-row items-center size-full">
                 <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
@@ -551,8 +568,13 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                 </div>
               </div>
             </div>
-            <div className="bg-white h-[56px] relative rounded-[16px] shrink-0 w-full">
-              <div aria-hidden="true" className={`absolute ${errors.name ? 'border-[#fa5b4a]' : 'border-[#e7e7e7]'} border border-solid inset-0 pointer-events-none rounded-[16px]`} />
+            <div className={`h-[56px] relative rounded-[16px] border transition-colors shrink-0 w-full ${
+              errors.name 
+                ? 'bg-white border-[#FF0000]' 
+                : name.length > 0 
+                  ? 'bg-white border-[#48b2af]' 
+                  : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]'
+            }`}>
               <div className="flex flex-row items-center size-full">
                 <div className="content-stretch flex items-center px-[12px] py-0 relative size-full">
                   <input
@@ -568,30 +590,32 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                     placeholder="예: 홍길동"
                     inputMode="text"
                     autoComplete="off"
-                    className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent border-none outline-none placeholder:text-[#b7b7b7] text-black"
+                    className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] text-black"
                     ref={nameInputRef}
                   />
                 </div>
               </div>
-            </div>
-            {errors.name && (
-              <div className="absolute top-full left-0 w-full mt-[4px] z-10">
-                <div className="flex flex-row items-center size-full">
-                  <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
-                    <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                      <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
-                        <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
-                      </svg>
-                      <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[22px] min-h-px min-w-px relative shrink-0 text-[#fa5b4a] text-[13px]">{errors.name}</p>
-                    </div>
+              {errors.name && (
+                <div className="absolute top-full left-0 mt-[4px] w-full px-[4px]">
+                  <div className="flex gap-[4px] items-center">
+                    <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
+                      <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
+                    </svg>
+                    <p className="text-[#fa5b4a] text-[13px] leading-[22px]">{errors.name}</p>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </motion.div>
 
           {/* Gender Selection */}
-          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]">
+          <motion.div 
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <div className="relative shrink-0 w-full">
               <div className="flex flex-row items-center size-full">
                 <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
@@ -670,10 +694,16 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Birth Date Input */}
-          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]">
+          <motion.div 
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <div className="relative shrink-0 w-full">
               <div className="flex flex-row items-center size-full">
                 <div className="flex items-center px-[4px] py-0 relative w-full">
@@ -681,56 +711,66 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                 </div>
               </div>
             </div>
-            <div className={`${birthDate.trim() !== '' ? 'bg-[#f8f8f8]' : 'bg-white'} h-[56px] relative rounded-[16px] shrink-0 w-full`}>
-              <div aria-hidden="true" className={`absolute ${errors.birthDate ? 'border-[#fa5b4a]' : birthDate.trim() === '' ? 'border-[#e7e7e7]' : 'border-transparent'} border border-solid inset-0 pointer-events-none rounded-[16px]`} />
-              <div className="flex flex-row items-center size-full">
-                <div className="content-stretch flex items-center px-[12px] py-0 relative size-full">
-                  <input
-                    type="text"
-                    value={birthDate}
-                    onChange={(e) => handleBirthDateChange(e.target.value)}
-                    onFocus={() => setIsBirthDateFocused(true)}
-                    onBlur={() => setIsBirthDateFocused(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        birthTimeInputRef.current?.focus();
-                      }
-                    }}
-                    placeholder="19920715"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    className={`w-full font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[20px] text-[16px] tracking-[-0.45px] bg-transparent border-none outline-none placeholder:text-[#b7b7b7] text-black text-left ${isValidDate(birthDate) && !isBirthDateFocused ? 'text-transparent z-10 selection:bg-transparent' : ''}`}
-                    ref={birthDateInputRef}
-                  />
-                  {isValidDate(birthDate) && !isBirthDateFocused && (
-                    <div className="absolute inset-0 flex items-center px-[12px] pointer-events-none w-full h-full">
-                      <span className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[20px] text-[16px] tracking-[-0.45px] text-black text-left">
-                        {birthDate} <span className="text-[#848484] ml-[4px]">(양력)</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
+            <div className={`h-[56px] relative rounded-[16px] border transition-colors shrink-0 w-full ${
+              errors.birthDate 
+                ? 'bg-white border-[#FF0000]' 
+                : birthDate.length > 0
+                  ? 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+                  : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+            }`}>
+              <div className="flex items-center h-full px-[12px] relative">
+                <input
+                  type="text"
+                  value={birthDate}
+                  onChange={(e) => handleBirthDateChange(e.target.value)}
+                  onFocus={() => setIsBirthDateFocused(true)}
+                  onBlur={() => setIsBirthDateFocused(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      birthTimeInputRef.current?.focus();
+                    }
+                  }}
+                  placeholder="예: 1992-07-15 (양력)"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] w-full ${
+                    isValidDate(birthDate) && !isBirthDateFocused ? 'text-transparent' : 'text-black'
+                  }`}
+                  ref={birthDateInputRef}
+                />
+                {isValidDate(birthDate) && !isBirthDateFocused && (
+                  <div className="absolute left-[12px] h-full flex items-center pointer-events-none peer-focus:hidden">
+                    <span className="text-[16px] leading-[20px] tracking-[-0.45px] text-black">
+                      {birthDate}
+                    </span>
+                    <span className="text-[16px] leading-[20px] tracking-[-0.45px] text-[#848484] ml-[4px]">
+                      (양력)
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-            {errors.birthDate && (
-              <div className="absolute top-full left-0 w-full mt-[4px] z-10">
-                <div className="flex flex-row items-center size-full">
-                  <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
-                    <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                      <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
-                        <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
-                      </svg>
-                      <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[22px] min-h-px min-w-px relative shrink-0 text-[#fa5b4a] text-[13px]">{errors.birthDate}</p>
-                    </div>
+              {errors.birthDate && (
+                <div className="absolute top-full left-0 mt-[4px] w-full px-[4px]">
+                  <div className="flex gap-[4px] items-center">
+                    <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
+                      <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
+                    </svg>
+                    <p className="text-[#fa5b4a] text-[13px] leading-[22px]">{errors.birthDate}</p>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </motion.div>
 
           {/* Birth Time Input (Optional) */}
-          <div className="content-stretch flex gap-[24px] items-start justify-end relative shrink-0 w-full mb-[28px]">
+          <motion.div 
+            className="content-stretch flex gap-[24px] items-start relative shrink-0 w-full mb-[28px]"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <div className="basis-0 content-stretch flex flex-col gap-[4px] grow items-start min-h-px min-w-px relative shrink-0">
               <div className="relative shrink-0 w-full">
                 <div className="flex flex-row items-center size-full">
@@ -739,7 +779,15 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                   </div>
                 </div>
               </div>
-              <div className={`${unknownTime ? 'bg-[#f8f8f8]' : birthTime.trim() !== '' && (birthTime.includes('오전') || birthTime.includes('오후')) ? 'bg-[#f8f8f8]' : 'bg-white'} h-[48px] relative rounded-[12px] shrink-0 w-full ${errors.birthTime ? 'border border-[#fa5b4a]' : !unknownTime && birthTime.trim() === '' ? 'border border-[#e7e7e7]' : unknownTime || (birthTime.includes('오전') || birthTime.includes('오후')) ? '' : 'border border-[#e7e7e7]'}`}>
+              <div className={`h-[48px] relative rounded-[12px] border transition-colors shrink-0 w-full ${
+                unknownTime
+                  ? 'bg-[#f5f5f5] border-[#e7e7e7]' 
+                  : errors.birthTime
+                    ? 'bg-white border-[#FF0000]' 
+                    : birthTime.length > 0 && (birthTime.includes('오전') || birthTime.includes('오후'))
+                      ? 'bg-white border-[#48b2af]' 
+                      : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+              }`}>
                 <div className="flex flex-row items-center size-full">
                   <div className="content-stretch flex items-center px-[12px] py-0 relative size-full">
                     <input
@@ -758,92 +806,89 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                       disabled={unknownTime}
                       inputMode="numeric"
                       autoComplete="off"
-                      className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent border-none outline-none placeholder:text-[#d4d4d4] text-black disabled:text-[#d4d4d4]"
+                      className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] disabled:text-[#b7b7b7]"
                       ref={birthTimeInputRef}
                     />
                   </div>
                 </div>
-              </div>
-              {errors.birthTime && (
-                <div className="absolute top-full left-0 w-full mt-[4px] z-10">
-                  <div className="flex flex-row items-center size-full">
-                    <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
-                      <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                        <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
-                          <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
-                        </svg>
-                        <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[22px] min-h-px min-w-px relative shrink-0 text-[#fa5b4a] text-[13px]">{errors.birthTime}</p>
-                      </div>
+                {errors.birthTime && (
+                  <div className="absolute top-full left-0 mt-[4px] w-full px-[4px]">
+                    <div className="flex gap-[4px] items-center">
+                      <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
+                        <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
+                      </svg>
+                      <p className="text-[#fa5b4a] text-[13px] leading-[22px]">{errors.birthTime}</p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-            <button
+            <div
               onClick={handleUnknownTimeToggle}
-              className="content-stretch flex gap-[4px] items-center pb-0 pt-[24px] px-0 relative shrink-0 bg-transparent border-none cursor-pointer"
+              className="content-stretch flex gap-[4px] items-center pb-0 pt-[24px] px-0 relative shrink-0 cursor-pointer"
             >
               <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[#525252] text-[15px] text-nowrap tracking-[-0.45px]">모르겠어요</p>
               <div className="content-stretch flex items-center justify-center relative shrink-0 size-[44px]">
-                <div className={`${unknownTime ? 'bg-[#48b2af]' : 'bg-white border-2 border-[#e7e7e7]'} content-stretch flex items-center justify-center relative rounded-[8px] shrink-0 size-[28px]`}>
+                <div className={`${unknownTime ? 'bg-[#48b2af]' : 'bg-white border border-[#e7e7e7]'} content-stretch flex items-center justify-center relative rounded-[8px] shrink-0 size-[28px]`}>
                   {unknownTime && (
-                    <div className="relative shrink-0 size-[24px]">
-                      <div className="absolute contents inset-0">
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                          <g id="tick-circle">
-                            <path d="M7 11.625L10.3294 16L17 9" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
-                          </g>
-                        </svg>
-                      </div>
-                    </div>
+                    <svg className="size-[24px]" fill="none" viewBox="0 0 24 24">
+                      <path d="M7 11.625L10.3294 16L17 9" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+                    </svg>
                   )}
                 </div>
               </div>
-            </button>
-          </div>
+            </div>
+          </motion.div>
 
           {/* Phone Number Input (Optional) */}
-          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+          <motion.div 
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mb-[28px]"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <div className="relative shrink-0 w-full">
               <div className="flex flex-row items-center size-full">
                 <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
-                  <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[16px] min-h-px min-w-px relative shrink-0 text-[#848484] text-[12px] tracking-[-0.24px]">휴대폰 번호(풀이 완료 후 알림톡 발송에만 사용돼요)</p>
+                  <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[16px] min-h-px min-w-px relative shrink-0 text-[#848484] text-[12px] tracking-[-0.24px]">휴대폰 번호 (선택)</p>
                 </div>
               </div>
             </div>
-            <div className="bg-white h-[56px] relative rounded-[16px] shrink-0 w-full">
-              <div aria-hidden="true" className={`absolute ${errors.phoneNumber ? 'border-[#fa5b4a]' : 'border-[#e7e7e7]'} border border-solid inset-0 pointer-events-none rounded-[16px]`} />
+            <div className={`h-[56px] relative rounded-[16px] border transition-colors shrink-0 w-full ${
+              errors.phoneNumber 
+                ? 'bg-white border-[#FF0000]' 
+                : phoneNumber.length > 0
+                  ? 'bg-white border-[#48b2af]' 
+                  : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]'
+            }`}>
               <div className="flex flex-row items-center size-full">
                 <div className="content-stretch flex items-center px-[12px] py-0 relative size-full">
                   <input
                     type="text"
                     value={phoneNumber}
                     onChange={(e) => handlePhoneNumberChange(e.target.value)}
-                    placeholder="'-'하이픈 없이 숫자만 입력해 주세요"
+                    placeholder="'-' 하이픈 없이 숫자만 입력해 주세요"
                     inputMode="numeric"
                     autoComplete="off"
-                    className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent border-none outline-none placeholder:text-[#b7b7b7] text-black"
+                    className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] text-black"
                     ref={phoneNumberInputRef}
                   />
                 </div>
               </div>
-            </div>
-            {errors.phoneNumber && (
-              <div className="absolute top-full left-0 w-full mt-[4px] z-10">
-                <div className="flex flex-row items-center size-full">
-                  <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
-                    <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                      <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
-                        <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
-                      </svg>
-                      <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[22px] min-h-px min-w-px relative shrink-0 text-[#fa5b4a] text-[13px]">{errors.phoneNumber}</p>
-                    </div>
+              {errors.phoneNumber && (
+                <div className="absolute top-full left-0 mt-[4px] w-full px-[4px]">
+                  <div className="flex gap-[4px] items-center">
+                    <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
+                      <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
+                    </svg>
+                    <p className="text-[#fa5b4a] text-[13px] leading-[22px]">{errors.phoneNumber}</p>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
 
         {/* Bottom Button */}
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] z-10">
@@ -873,12 +918,14 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
             <div className="bg-white relative shrink-0 w-full">
               <div className="flex flex-col items-center justify-center size-full">
                 <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
-                  <button
+                  <motion.button
                     onClick={handleSubmit}
                     disabled={!isFormValid() || isSubmitting}
+                    whileTap={isFormValid() && !isSubmitting ? { scale: 0.96 } : {}}
+                    transition={{ duration: 0.1 }}
                     className={`${
                       isFormValid() && !isSubmitting
-                        ? 'bg-[#48b2af]'
+                        ? 'bg-[#48b2af] active:bg-[#3a9693]'
                         : 'bg-[#f8f8f8]'
                     } content-stretch flex h-[56px] items-center justify-center px-[12px] py-0 relative rounded-[16px] shrink-0 w-full cursor-pointer border-none transition-colors`}
                   >
@@ -889,7 +936,7 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
                         {isSubmitting ? '처리 중...' : '다음'}
                       </p>
                     </div>
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </div>

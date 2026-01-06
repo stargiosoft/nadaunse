@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import svgPaths from "../imports/svg-ir0ch2bhrx";
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { getTarotCardImageUrl } from '../lib/tarotCards';
 import { getCachedTarotImage, cacheTarotImage } from '../lib/tarotImageCache';
 import TableOfContentsBottomSheet from './TableOfContentsBottomSheet';
+import { BottomNavigation } from './BottomNavigation';
 
 interface TarotResult {
   question_order: number;
@@ -16,22 +18,14 @@ interface TarotResult {
   tarot_card_image_url: string | null;
 }
 
-function HomeIndicatorLight() {
-  return (
-    <div className="bg-white h-[28px] relative shrink-0 w-full">
-      <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
-    </div>
-  );
-}
-
 export default function TarotResultPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const orderId = searchParams.get('orderId');
   const questionOrder = parseInt(searchParams.get('questionOrder') || '1');
-  const contentId = searchParams.get('contentId'); // ⭐ contentId 파라미터 추가
-  const from = searchParams.get('from'); // ⭐ 출처 파라미터 추가 (purchase, 등)
+  const contentId = searchParams.get('contentId');
+  const from = searchParams.get('from');
 
   const [result, setResult] = useState<TarotResult | null>(null);
   const [allResults, setAllResults] = useState<any[]>([]);
@@ -39,14 +33,29 @@ export default function TarotResultPage() {
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [imageError, setImageError] = useState(false);
   const [showTableOfContents, setShowTableOfContents] = useState(false);
-  const [contentIdState, setContentIdState] = useState<string | null>(contentId); // ⭐ contentId state (URL 파라미터 우선)
-  const [cardImageUrl, setCardImageUrl] = useState<string>(''); // ⭐ 이미지 URL state 추가
-  const [imageLoading, setImageLoading] = useState(true); // ⭐ 이미지 로딩 state
+  const [contentIdState, setContentIdState] = useState<string | null>(contentId);
+  const [cardImageUrl, setCardImageUrl] = useState<string>('');
+  const [imageLoading, setImageLoading] = useState(true);
+
+  // ⭐ 애니메이션 방향 상태 관리
+  const prevOrderRef = useRef<number>(questionOrder);
+  const [direction, setDirection] = useState(0);
+
+  useEffect(() => {
+    if (questionOrder > prevOrderRef.current) {
+      setDirection(1); // 다음 페이지 (오른쪽에서 왼쪽으로)
+    } else if (questionOrder < prevOrderRef.current) {
+      setDirection(-1); // 이전 페이지 (왼쪽에서 오른쪽으로)
+    } else {
+        setDirection(0);
+    }
+    prevOrderRef.current = questionOrder;
+  }, [questionOrder]);
 
   // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [orderId, questionOrder]); // orderId나 questionOrder가 바뀔 때마다 최상단으로
+  }, [orderId, questionOrder]);
 
   // 타로 결과 로드
   useEffect(() => {
@@ -56,11 +65,9 @@ export default function TarotResultPage() {
       try {
         console.log('📥 [타로결과] 데이터 로드 시작:', { orderId, questionOrder });
 
-        // ⚠️ [개발 모드] from=dev 파라미터가 있으면 mock 데이터 사용
         if (from === 'dev') {
           console.log('🔧 [개발 모드] 타로 결과 페이지 - mock 데이터 사용');
           
-          // Mock 타로 데이터
           const mockResult: TarotResult = {
             question_order: questionOrder,
             question_text: "그와 나의 인연은 어떻게 발전할까요?",
@@ -83,7 +90,6 @@ export default function TarotResultPage() {
             tarot_card_image_url: "https://via.placeholder.com/150x260?text=The+Lovers"
           };
           
-          // Mock 전체 결과 (다음 질문 확인용)
           const mockAllResults = [
             mockResult,
             {
@@ -110,7 +116,6 @@ export default function TarotResultPage() {
           return;
         }
 
-        // 전체 결과 조회 (다음 질문 확인용)
         const { data: allData, error: allError } = await supabase
           .from('order_results')
           .select('question_order, question_text, gpt_response, question_type, tarot_card_id, tarot_card_name, tarot_card_image_url')
@@ -121,12 +126,9 @@ export default function TarotResultPage() {
         if (allData) {
           setAllResults(allData);
           setTotalQuestions(allData.length);
-          
-          // ⭐ 현재 질문 + 다음 타로 질문의 이미지를 백그라운드에서 프리로드
           preloadNextTarotImages(allData, questionOrder);
         }
 
-        // 현재 질문 결과 조회
         const { data, error } = await supabase
           .from('order_results')
           .select('question_order, question_text, gpt_response, tarot_card_id, tarot_card_name, tarot_card_image_url')
@@ -140,7 +142,6 @@ export default function TarotResultPage() {
           setResult(data as TarotResult);
         }
 
-        // ⭐ contentId 조회 (order 테이블에서)
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select('content_id')
@@ -162,21 +163,15 @@ export default function TarotResultPage() {
     loadResult();
   }, [orderId, questionOrder]);
 
-  // ⭐ 현재 + 다음 타로 질문들의 이미지를 미리 로드 (백그라운드)
   const preloadNextTarotImages = (allData: any[], currentOrder: number) => {
-    // ⭐ 현재 질문 포함하여 다음 3개 타로 질문 찾기 (총 최대 4개)
     const tarotQuestions = allData
       .filter(q => q.question_order >= currentOrder && q.question_type === 'tarot')
-      .slice(0, 4); // 현재 + 다음 3개
+      .slice(0, 4);
     
-    if (tarotQuestions.length === 0) {
-      console.log('ℹ️ [타로프리로드] 타로 질문 없음');
-      return;
-    }
+    if (tarotQuestions.length === 0) return;
 
-    console.log(`🎴 [타로프리로드] ${tarotQuestions.length}장 프리로드 시작 (현재 포함)`);
+    console.log(`🎴 [타로프리로드] ${tarotQuestions.length}장 프리로드 시작`);
     
-    // 백그라운드에서 비동기로 프리로드 (블로킹하지 않음)
     tarotQuestions.forEach((q: any) => {
       if (q.tarot_card_name && q.tarot_card_image_url) {
         cacheTarotImage(q.tarot_card_name, q.tarot_card_image_url).catch(err => {
@@ -186,7 +181,6 @@ export default function TarotResultPage() {
     });
   };
 
-  // ⭐ 타로 카드 이미지 URL 로드 (Cache API 비동기)
   useEffect(() => {
     const loadCardImage = async () => {
       if (!result || !result.tarot_card_name) {
@@ -195,22 +189,18 @@ export default function TarotResultPage() {
         return;
       }
 
-      // 1. Cache API에서 캐시 확인 (먼저 체크)
       const cachedImage = await getCachedTarotImage(result.tarot_card_name);
       
       if (cachedImage) {
-        console.log('⚡ [타로결과] 캐시 히트 - 즉시 표시:', result.tarot_card_name);
-        setCardImageUrl(cachedImage); // Blob URL
-        setImageLoading(false); // ⭐ 캐시 히트 시 로딩 상태를 false로 (스켈레톤 스킵)
+        console.log('⚡ [타로결과] 캐시 히트:', result.tarot_card_name);
+        setCardImageUrl(cachedImage);
+        setImageLoading(false);
       } else {
-        // 2. 캐시 없으면 Supabase Storage URL + 로딩 표시
         console.log('🌐 [타로결과] 네트워크 로드:', result.tarot_card_name);
-        setImageLoading(true); // ⭐ 네트워크 로드는 로딩 표시
+        setImageLoading(true);
         const storageUrl = getTarotCardImageUrl(result.tarot_card_name, supabaseUrl);
         setCardImageUrl(storageUrl);
-        // ⭐ 네트워크 로드는 onLoad 이벤트로 로딩 종료
         
-        // 3. 백그라운드에서 캐싱 (다음 번에는 빠르게)
         if (result.tarot_card_image_url) {
           cacheTarotImage(result.tarot_card_name, result.tarot_card_image_url).catch(err => {
             console.warn('⚠️ [타로결과] 백그라운드 캐싱 실패:', err);
@@ -223,104 +213,59 @@ export default function TarotResultPage() {
   }, [result]);
 
   const handlePrevious = () => {
-    console.log('🔵 [타로결과] 이전 버튼 클릭');
-    
-    // 🔝 즉시 최상단으로 스크롤
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
-    // ⭐ 이전 질문 찾기
     const prevResult = allResults.find(r => r.question_order === questionOrder - 1);
     
-    if (!prevResult) {
-      console.log('⚠️ [타로결과] 첫 번째 질문입니다');
-      return;
-    }
+    if (!prevResult) return;
     
-    console.log('📌 [타로결과] 이전 질문:', prevResult);
-    
-    // ⭐ 이전 질문이 타로면 → 타로 결과 페이지
     if (prevResult.question_type === 'tarot') {
-      console.log('🎴 [타로결과] 이전 질문이 타로 → 타로 결과 페이지로 이동');
       navigate(`/result/tarot?orderId=${orderId}&questionOrder=${prevResult.question_order}`);
       return;
     }
     
-    // ⭐ 이전 질문이 사주면 → 사주 결과 페이지
-    console.log('🔮 [타로결과] 이전 질문이 사주 → 사주 결과 페이지로 이동');
     navigate(`/result/saju?orderId=${orderId}&startPage=${prevResult.question_order}`);
   };
 
   const handleNext = () => {
-    console.log('🔵 [타로결과] 다음 버튼 클릭');
-    
-    // 🔝 즉시 최상단으로 스크롤
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
-    // ⭐ 다음 질문 찾기
     const nextResult = allResults.find(r => r.question_order === questionOrder + 1);
     
-    console.log('📌 [타로결과] 현재 질문:', questionOrder);
-    console.log('📌 [타로결과] 다음 질문:', nextResult);
-    
-    // ⭐ 다음 질문이 없으면 → 마지막 질문 완료
     if (!nextResult) {
-      console.log('✅ [타로결과] 마지막 질문 도달');
-      
-      // ⚠️ [개발 모드] from=dev이면 로딩 페이지로 이동
       if (from === 'dev') {
-        console.log('🔧 [개발 모드] 로딩 페이지로 이동');
         const contentIdParam = contentIdState || contentId || 'mock_content_id';
         navigate(`/loading?orderId=${orderId}&contentId=${contentIdParam}&from=dev`);
         return;
       }
-      
-      // 일반 사용자는 풀이 완료 페이지로
-      console.log('✅ [타로결과] /result/complete로 이동');
-      navigate('/result/complete', { 
-        state: { 
-          orderId
-        } 
-      });
+      navigate('/result/complete', { state: { orderId } });
       return;
     }
     
-    // ⭐ 다음 질문이 타로면 → 타로 셔플 페이지
     if (nextResult.question_type === 'tarot') {
-      console.log('🎴 [타로결과] 다음 질문이 타로 → 타로 셔플 페이지로 이동');
       const fromParam = from ? `&from=${from}` : '';
       const contentIdParam = contentIdState || contentId ? `&contentId=${contentIdState || contentId}` : '';
       navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${nextResult.question_order}${contentIdParam}${fromParam}`);
       return;
     }
     
-    // ⭐ 다음 질문이 사주면 → 사주 결과 페이지
-    console.log('🔮 [타로결과] 다음 질문이 사주 → 사주 결과 페이지로 이동');
     const fromParam = from ? `&from=${from}` : '';
     navigate(`/result/saju?orderId=${orderId}&startPage=${nextResult.question_order}${fromParam}`);
   };
 
   const handleClose = () => {
-    // ⭐ 출처에 따라 분기 처리
     if (from === 'purchase') {
-      // 구매내역에서 접근한 경우 → 구매내역으로 이동 (히스토리 대체)
-      console.log('✅ [타로결과] 구매내역에서 접근 → 구매내역으로 이동 (replace)');
-      navigate('/purchase-history', { replace: true }); // ⭐ replace로 히스토리 스택 정리
+      navigate('/purchase-history', { replace: true });
     } else {
-      // 결제 후 바로 접근한 경우 → 홈으로 이동
-      console.log('✅ [타로결과] 결제 후 접근 → 홈으로 이동');
       navigate('/');
     }
   };
 
   const handleToggleList = () => {
-    // TODO: 목록 토글 구현
-    console.log('목록 토글');
     setShowTableOfContents(!showTableOfContents);
   };
 
   if (loading) {
     return (
-      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[390px] mx-auto">
+      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[440px] mx-auto">
         <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
@@ -328,17 +273,32 @@ export default function TarotResultPage() {
 
   if (!result) {
     return (
-      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[390px] mx-auto">
+      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[440px] mx-auto">
         <p className="text-[#999999]">풀이 결과를 불러올 수 없습니다.</p>
       </div>
     );
   }
 
-  // ⭐ 타로 카드 이미지 URL (캐시 우선, 없으면 Supabase Storage)
   const cardName = result.tarot_card_name || '카드 정보 없음';
 
+  // ⭐ 슬라이드 애니메이션 Variants
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 50 : direction < 0 ? -50 : 0,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -50 : direction < 0 ? 50 : 0,
+      opacity: 0,
+    }),
+  };
+
   return (
-    <div className="bg-white relative min-h-screen w-full max-w-[390px] mx-auto">
+    <div className="bg-white relative min-h-screen w-full max-w-[440px] mx-auto">
       {/* Top Navigation */}
       <div className="bg-white h-[52px] relative shrink-0 w-full sticky top-0 z-20">
         <div className="flex items-center justify-between px-[12px] h-full">
@@ -348,145 +308,110 @@ export default function TarotResultPage() {
           </h1>
           <button
             onClick={handleClose}
-            className="flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer"
+            className="group flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
           >
-            <X className="w-[24px] h-[24px] text-[#848484]" strokeWidth={1.8} />
+            <X className="w-[24px] h-[24px] text-[#848484] transition-transform duration-200 group-active:scale-90" strokeWidth={1.8} />
           </button>
         </div>
       </div>
 
-      <div className="h-[16px] shrink-0 w-full" />
+      <div className="h-[8px] shrink-0 w-full" />
 
-      {/* Content Card */}
-      <div className="px-[20px] pb-[120px]">
-        <div className="bg-[#f9f9f9] rounded-[16px] p-[20px]">
-          {/* Header with Number and Divider */}
-          <div className="flex gap-[12px] items-center mb-[40px]">
-            <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af]">
-              {String(result.question_order).padStart(2, '0')}
-            </p>
-            <div className="flex-1 h-0 border-t border-[#e7e7e7]" />
-          </div>
-
-          {/* Content Container */}
-          <div className="flex flex-col gap-[24px] items-center">
-            {/* Tarot Card Image */}
-            <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0]">
-              <img
-                src={cardImageUrl}
-                alt={cardName}
-                fetchPriority="high"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error('❌ [타로결과] 이미지 로드 실패:', cardImageUrl);
-                  setImageError(true);
-                }}
-                onLoad={() => setImageLoading(false)}
-              />
-              {imageError && (
-                <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
-                  <p className="text-gray-500 text-center px-2">이미지<br/>로드 실패</p>
-                </div>
-              )}
-              {imageLoading && (
-                <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
-                </div>
-              )}
+      {/* Content Card - Slide Animation Area */}
+      <div className="px-[20px] pb-[200px] w-full overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={questionOrder}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ 
+                duration: 0.3,
+                ease: "easeInOut" 
+            }}
+            className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full"
+          >
+            {/* Header with Number and Divider */}
+            <div className="flex gap-[12px] items-center mb-[40px] w-full">
+              <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af] shrink-0">
+                {String(result.question_order).padStart(2, '0')}
+              </p>
+              <div className="flex-1 h-0 border-t border-[#e7e7e7]" />
             </div>
 
-            {/* Card Name and Response */}
-            <div className="flex flex-col gap-[24px] w-full">
-              {/* Card Name */}
-              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515]">
-                {cardName}
-              </p>
+            {/* Content Container */}
+            <div className="flex flex-col gap-[24px] items-center w-full">
+              {/* Tarot Card Image */}
+              <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0] shrink-0">
+                <img
+                  src={cardImageUrl}
+                  alt={cardName}
+                  fetchPriority="high"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('❌ [타로결과] 이미지 로드 실패:', cardImageUrl);
+                    setImageError(true);
+                  }}
+                  onLoad={() => setImageLoading(false)}
+                />
+                {imageError && (
+                  <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
+                    <p className="text-gray-500 text-center px-2">이미지<br/>로드 실패</p>
+                  </div>
+                )}
+                {imageLoading && (
+                  <div className="absolute top-0 left-0 w-full h-full bg-gray-100 overflow-hidden">
+                    <style>{`
+                      @keyframes shimmer {
+                        0% { transform: translateX(-100%) skewX(-12deg); }
+                        100% { transform: translateX(200%) skewX(-12deg); }
+                      }
+                    `}</style>
+                    <div 
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                      style={{ animation: 'shimmer 1.5s infinite linear' }}
+                    />
+                  </div>
+                )}
+              </div>
 
-              {/* Response Text */}
-              <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap">
-                {result.gpt_response}
-              </p>
+              {/* Card Name and Response */}
+              <div className="flex flex-col gap-[24px] w-full">
+                {/* Card Name */}
+                <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] text-center w-full break-keep">
+                  {cardName}
+                </p>
+
+                {/* Response Text */}
+                <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap break-words w-full">
+                  {result.gpt_response.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                      return (
+                        <span key={index} className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[17px]">
+                          {part.slice(2, -2)}
+                        </span>
+                      );
+                    }
+                    return part;
+                  })}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Bottom Navigation - Fixed */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] z-10">
-        <div className="bg-white border-t border-[#f3f3f3] shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)]">
-          <div className="h-[60px] px-[28px] py-[12px]">
-            {/* Navigation Bar */}
-            <div className="flex items-center justify-between w-full">
-              {/* Left: Page Indicator */}
-              <div className="flex gap-[8px] items-center">
-                <button
-                  onClick={handleToggleList}
-                  className="flex items-center justify-center p-[4px] rounded-[8px] w-[36px] h-[36px]"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 13" fill="none">
-                    <path d={svgPaths.p14150900} fill="#848484" />
-                    <path clipRule="evenodd" d={svgPaths.p5097a80} fill="#848484" fillRule="evenodd" />
-                  </svg>
-                </button>
-                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[23.5px] tracking-[-0.3px]">
-                  <span className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[#151515]">
-                    {String(result.question_order).padStart(2, '0')}/
-                  </span>
-                  <span className="text-[#b7b7b7]"> {String(totalQuestions).padStart(2, '0')}</span>
-                </p>
-              </div>
-
-              {/* Right: Navigation Buttons */}
-              <div className="flex gap-[16px] items-center">
-                {/* Previous Button */}
-                <button
-                  onClick={handlePrevious}
-                  disabled={questionOrder === 1}
-                  className="flex gap-[4px] items-center h-[34px] px-[8px] rounded-[12px] disabled:opacity-30 hover:bg-gray-100 transition-colors"
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path
-                      d={svgPaths.p2679d700}
-                      stroke="black"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeMiterlimit="10"
-                      strokeWidth="1.7"
-                    />
-                  </svg>
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[14px] leading-[22px] tracking-[-0.42px] text-black">
-                    이전
-                  </p>
-                </button>
-
-                {/* Divider */}
-                <div className="h-[12px] w-0 border-l border-[#e7e7e7]" />
-
-                {/* Next Button */}
-                <button
-                  onClick={handleNext}
-                  className="flex gap-[4px] items-center h-[34px] px-[8px] rounded-[12px] hover:bg-gray-100 transition-colors"
-                >
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[14px] leading-[22px] tracking-[-0.42px] text-black">
-                    다음
-                  </p>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path
-                      d={svgPaths.p3117bd00}
-                      stroke="black"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeMiterlimit="10"
-                      strokeWidth="1.7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-          <HomeIndicatorLight />
-        </div>
-      </div>
+      <BottomNavigation
+        currentStep={questionOrder}
+        totalSteps={totalQuestions}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        onToggleList={handleToggleList}
+        disablePrevious={questionOrder === 1}
+      />
 
       {/* Table of Contents Bottom Sheet */}
       {showTableOfContents && orderId && (contentIdState || contentId) && (

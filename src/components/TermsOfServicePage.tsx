@@ -20,11 +20,11 @@ export default function TermsOfServicePage() {
 
   return (
     <div className="bg-white relative w-full min-h-screen flex justify-center">
-      <div className="relative w-full max-w-[390px] min-h-screen flex flex-col bg-white">
+      <div className="relative w-full max-w-[440px] min-h-screen flex flex-col bg-white mx-auto">
         {/* Top Navigation */}
         <div className="bg-white h-[52px] relative shrink-0 w-full">
           <div className="flex flex-col justify-center size-full">
-            <div className="fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white content-stretch flex flex-col h-[52px] items-start justify-center px-[12px] py-[4px] w-full max-w-[390px]">
+            <div className="fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white content-stretch flex flex-col h-[52px] items-start justify-center px-[12px] py-[4px] w-full max-w-[440px]">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <div
                   onClick={() => navigate(-1)}

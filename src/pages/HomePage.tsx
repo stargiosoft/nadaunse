@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { MasterContent } from '../types/masterContent';
 import { supabase } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
+import { preloadImages } from '../lib/imagePreloader';
 import HomeSkeleton from '../components/skeletons/HomeSkeleton';
 import svgPaths from "../imports/svg-94402brxf8";
 import svgPathsLogo from "../imports/svg-7fu3k5931y";
@@ -347,7 +348,7 @@ function TopNavigationContainer({
       
       <div className="content-stretch flex flex-col items-start relative shrink-0 w-full max-w-[440px] mx-auto" data-name="Navigation / Top Navigation (Widget)">
         <div className="z-20 bg-white box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center relative shrink-0 w-full" data-name="Navigation / Navigation">
-          <div className="max-w-[440px] mx-auto w-full pl-[20px] pr-[16px] py-[4px]">
+          <div className="max-w-[440px] mx-auto w-full pl-[20px] pr-[12px] py-[4px]">
             <Icon1 onUserIconClick={onUserIconClick} />
           </div>
         </div>
@@ -394,6 +395,11 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
             loading="lazy"
             className="absolute inset-0 object-cover rounded-[16px] size-full"
             src={content.thumbnail_url}
+            onError={(e) => {
+              // 이미지 로드 실패 시 조용히 처리
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -404,13 +410,13 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
       </div>
 
       <div className="relative shrink-0 w-full overflow-hidden">
-        <div className="box-border flex flex-col gap-[4px] items-start px-[4px]">
-          <p className="text-[15px] font-medium line-clamp-2">
+        <div className="box-border flex flex-col gap-[5px] items-start px-[4px]">
+          <p className="text-[15px] font-medium line-clamp-2 pl-[2px]">
             {content.title}
           </p>
 
-          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} px-[8px] py-[4px] rounded-[8px]`}>
-            <p className={`${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[12px]`}>
+          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} px-[6px] py-[2px] rounded-[6px]`}>
+            <p className={`${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[11px]`}>
               {isPaid ? '심화 해석판' : '무료 체험판'}
             </p>
           </div>
@@ -434,7 +440,12 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
               alt={content.title} 
               loading="lazy"
               className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full" 
-              src={content.thumbnail_url} 
+              src={content.thumbnail_url}
+              onError={(e) => {
+                // 이미지 로드 실패 시 조용히 처리
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -443,7 +454,7 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
           )}
           <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
         </div>
-        <div className="basis-0 content-stretch flex flex-col gap-[6px] grow items-start min-h-px min-w-px relative shrink-0 overflow-hidden" data-name="Card / PriceBlock">
+        <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px relative shrink-0 overflow-hidden" data-name="Card / PriceBlock">
           <div className="relative shrink-0 w-full" data-name="Container">
             <div className="flex flex-row items-center justify-center size-full">
               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full overflow-hidden">
@@ -453,8 +464,8 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
               </div>
             </div>
           </div>
-          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] pb-[2px] pt-[3px] relative rounded-[4px] shrink-0`} data-name="Label Box">
-            <p className={`font-['Pretendard_Variable:Medium',sans-serif] leading-[16px] not-italic relative shrink-0 ${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[12px] text-nowrap tracking-[-0.24px] whitespace-pre`}>
+          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] pb-[1px] pt-[3px] relative rounded-[4px] shrink-0`} data-name="Label Box">
+            <p className={`font-['Pretendard_Variable:Medium',sans-serif] leading-[16px] not-italic relative shrink-0 ${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[11px] text-nowrap tracking-[-0.24px] whitespace-pre`}>
               {isPaid ? '심화 해석판' : '무료 체험판'}
             </p>
           </div>
@@ -511,50 +522,23 @@ export default function HomePage() {
       const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
       console.log('🔍 [히스토리] SessionStorage 상태:', hasNavigatedFromHome);
       
-      // 히스토리가 너무 짧으면 가짜 엔트리 추가 (뒤로가기 버퍼)
-      if (currentLength <= 2 && !hasNavigatedFromHome) {
-        window.history.pushState({ page: 'home-buffer' }, '', window.location.href);
-        console.log('✅ [히스토리 초기화] 버퍼 추가 완료 → 새 길이:', window.history.length);
+      // 🔄 홈으로 돌아왔으면 플래그 제거
+      if (hasNavigatedFromHome) {
+        sessionStorage.removeItem('navigatedFromHome');
+        console.log('🧹 [히스토리] SessionStorage 플래그 제거');
       }
       
-      // 🔄 홈으로 돌아왔으면 플래그 제거
-      sessionStorage.removeItem('navigatedFromHome');
-      console.log('🧹 [히스토리] SessionStorage 플래그 제거');
+      // 🛡️ 히스토리가 부족하면 버퍼 추가 (앱이 닫히지 않도록)
+      if (currentLength <= 2) {
+        window.history.pushState({ page: 'home' }, '', window.location.href);
+        console.log('✅ [히스토리] 버퍼 추가 완료 → 새 길이:', window.history.length);
+      }
     };
     
     initHistory();
   }, []);
 
-  // 🛡️ popstate 이벤트 가로채기 (사이트 닫힘 방지)
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      console.log('⬅️ [popstate] 뒤로가기 감지:', e.state);
-      console.log('📍 [popstate] 현재 경로:', window.location.pathname);
-      
-      // 🔑 SessionStorage 확인
-      const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
-      console.log('🔍 [popstate] SessionStorage 상태:', hasNavigatedFromHome);
-      
-      // 홈이 아닌 곳에서 뒤로가기 → 무조건 홈으로
-      if (hasNavigatedFromHome === 'true' && window.location.pathname !== '/') {
-        console.log('🛡️ [popstate] 홈으로 강제 이동 (사이트 닫힘 방지)');
-        e.preventDefault();
-        sessionStorage.removeItem('navigatedFromHome');
-        navigate('/');
-        return;
-      }
-      
-      // 버퍼 페이지로 돌아온 경우 → 사이트 닫힘 방지
-      if (e.state && e.state.page === 'home-buffer') {
-        console.log('🛡️ [popstate] 버퍼 페이지 감지 → 사이트 닫힘 방지');
-        // 다시 버퍼 추가 (무한 뒤로가기 방지)
-        window.history.pushState({ page: 'home-buffer' }, '', window.location.href);
-      }
-    };
-    
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [navigate]);
+  // ❌ popstate 핸들러 제거 - React Router가 자연스럽게 뒤로가기 처리하도록 함
   
   useEffect(() => {
     const controlNavbar = () => {
@@ -581,7 +565,7 @@ export default function HomePage() {
   const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
   
   // 🔧 캐시 버전 관리 (정렬 로직 변경 시 캐시 무효화)
-  const CACHE_VERSION = 'v2'; // 정렬 로직 변경 시 버전 업
+  const CACHE_VERSION = 'v5'; // 이미지 URL 쿼리 파라미터 완전 제거 (원본 URL만 사용)
   const VERSIONED_CACHE_KEY = `${CACHE_KEY}_${CACHE_VERSION}`;
   const CATEGORIES_CACHE_KEY = 'homepage_categories_cache';
   
@@ -690,6 +674,17 @@ export default function HomePage() {
             
             saveToCache(uniqueData);
             console.log(`✅ [Prefetch] ${newContents.length}개 추가됨 (누적: ${uniqueData.length}개)`);
+            
+            // 🖼️ 이미지 프리로드 (백그라운드)
+            const imageUrls = newContents
+              .map(c => c.thumbnail_url)
+              .filter(Boolean) as string[];
+            
+            if (imageUrls.length > 0) {
+              console.log(`🖼️ [Prefetch] ${imageUrls.length}개 이미지 프리로드 시작...`);
+              await preloadImages(imageUrls, 'low');
+              console.log(`✅ [Prefetch] ${imageUrls.length}개 이미지 프리로드 완료`);
+            }
           }
           
           loadedCount += data.length;
@@ -711,7 +706,7 @@ export default function HomePage() {
   // Load published contents from Supabase
   useEffect(() => {
     const fetchPublishedContents = async () => {
-      // 🚀 필터가 '전체/all'일 때만 캐시에서 로드
+      //  필터가 '전체/all'일 때만 캐시에서 로드
       const shouldUseCache = selectedCategory === '전체' && selectedType === 'all';
       const hasCache = shouldUseCache ? loadFromCache() : false;
       
@@ -747,7 +742,7 @@ export default function HomePage() {
           query = query.eq('category_main', selectedCategory);
         }
         
-        // 🔍 타입 필터 적��
+        // 🔍 타입 필터 적용
         if (selectedType === 'paid') {
           query = query.eq('content_type', 'paid');
         } else if (selectedType === 'free') {
@@ -933,6 +928,26 @@ export default function HomePage() {
     checkAuth();
   }, []);
   
+  // 🚀 Phase 3: Featured 이미지 우선 프리로드
+  useEffect(() => {
+    if (featuredContent?.thumbnail_url) {
+      console.log('🎯 [Featured Preload] Featured 이미지 우선 프리로드:', featuredContent.thumbnail_url);
+      preloadImages([featuredContent.thumbnail_url], 'high');
+      
+      // 추가로 다음 5개 콘텐츠의 썸네일도 미리 로드
+      const nextImages = allContents
+        .filter(c => c.id !== featuredContent.id)
+        .slice(0, 5)
+        .map(c => c.thumbnail_url)
+        .filter(Boolean);
+      
+      if (nextImages.length > 0) {
+        console.log(`🖼️ [Next Images Preload] 다음 ${nextImages.length}개 이미지 프리로드`);
+        preloadImages(nextImages as string[], 'low');
+      }
+    }
+  }, [featuredContent, allContents]);
+  
   // 🚫 클라이언트 사이드 필터링 제거 (서버에서 이미 필터링됨)
   // allContents가 이미 필터링된 데이터이므로 그대로 사용
   
@@ -985,7 +1000,40 @@ export default function HomePage() {
       const startIndex = (currentPage + 1) * 10;
       const endIndex = startIndex + 9;
       
-      // 🎯 쿼리 빌더 시작 (필터 적용)
+      // 🚀 전체/all 필터일 때는 먼저 캐시 확인
+      if (selectedCategory === '전체' && selectedType === 'all') {
+        const cached = localStorage.getItem(VERSIONED_CACHE_KEY);
+        if (cached) {
+          const { data: cachedData } = JSON.parse(cached);
+          
+          // 캐시에 요청한 범위의 데이터가 있는지 확인
+          if (cachedData.length > endIndex) {
+            const newContents = cachedData.slice(startIndex, endIndex + 1) as MasterContent[];
+            
+            if (newContents.length > 0) {
+              console.log(`✅ [Cache Hit] 캐시에서 ${newContents.length}개 로드 (${startIndex} ~ ${endIndex})`);
+              
+              // 전체 콘텐츠에 추가
+              setAllContents(prev => {
+                const existingIds = new Set(prev.map(c => c.id));
+                const uniqueNewContents = newContents.filter(c => !existingIds.has(c.id));
+                return [...prev, ...uniqueNewContents];
+              });
+              
+              setCurrentPage(prev => prev + 1);
+              setHasMore(endIndex < cachedData.length - 1);
+              setIsLoading(false);
+              
+              console.log(`✅ [Cache] ${newContents.length}개 콘텐츠 캐시에서 로드 완료`);
+              return; // 캐시에서 로드했으므로 DB 쿼리 스킵
+            }
+          }
+          
+          console.log(`📭 [Cache Miss] 캐시에 데이터 부족 (요청: ${endIndex}, 캐시: ${cachedData.length})`);
+        }
+      }
+      
+      // 🎯 캐시에 없으면 DB에서 쿼리
       let query = supabase
         .from('master_contents')
         .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
@@ -1091,7 +1139,7 @@ export default function HomePage() {
   useEffect(() => {
     // 초기 로딩 중이면 observer 설정하지 않음
     if (isInitialLoading) {
-      console.log('⏳ [IntersectionObserver] 초기 로딩 중... observer 스킵');
+      console.log('⏳ [IntersectionObserver] 초기 로 중... observer 스킵');
       return;
     }
     
@@ -1112,7 +1160,10 @@ export default function HomePage() {
           loadMoreContents();
         }
       },
-      { threshold: 0.1 }
+      { 
+        threshold: 0.1,
+        rootMargin: '200px 0px'  // 🚀 뷰포트 200px 전에 이미지 로드 시작
+      }
     );
     
     const currentTarget = observerTarget.current;
@@ -1142,7 +1193,7 @@ export default function HomePage() {
     // 조회수 증가
     const { data: currentData } = await supabase
       .from('master_contents')
-      .select('view_count, weekly_clicks')
+      .select('view_count, weekly_clicks, content_type')
       .eq('id', contentId)
       .single();
 
@@ -1160,8 +1211,14 @@ export default function HomePage() {
     sessionStorage.setItem('navigatedFromHome', 'true');
     console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정');
 
-    // 콘텐츠 상세로 이동
-    navigate(`/master/content/detail/${contentId}`);
+    // 🎯 무료/유료 구분하여 적절한 경로로 이동
+    if (currentData?.content_type === 'free') {
+      console.log('🆓 [홈] 무료 콘텐츠 → /free/content/:id로 이동');
+      navigate(`/free/content/${contentId}`);
+    } else {
+      console.log('💰 [홈] 유료 콘텐츠 → /master/content/detail/:id로 이동');
+      navigate(`/master/content/detail/${contentId}`);
+    }
   };
 
   const handleCategoryChange = (category: TabCategory) => {

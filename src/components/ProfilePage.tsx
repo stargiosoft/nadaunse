@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import svgPaths from "../imports/svg-iwpvhe731i";
+import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
+import svgPathsArrows from "../imports/svg-iwpvhe731i";
+import svgPathsProfile from "../imports/svg-33ktykwr5e";
 import { supabase } from '../lib/supabase';
 import { signOut } from '../lib/auth';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
@@ -38,7 +40,7 @@ function ArrowRightIcon() {
   return (
     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
       <g id="arrow-right">
-        <path d={svgPaths.p232a3c80} stroke="var(--stroke-0, #B7B7B7)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+        <path d={svgPathsArrows.p232a3c80} stroke="var(--stroke-0, #B7B7B7)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
       </g>
     </svg>
   );
@@ -49,7 +51,7 @@ function ArrowLeftIcon() {
   return (
     <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
       <g id="arrow-left">
-        <path d={svgPaths.p2a5cd480} stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+        <path d={svgPathsArrows.p2a5cd480} stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
       </g>
     </svg>
   );
@@ -61,18 +63,18 @@ function ProfileIcon() {
     <div className="relative shrink-0 size-[62px]">
       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 62 62">
         <g id="Group">
-          <path d={svgPaths.p961370} fill="var(--fill-0, #E4F7F7)" id="Vector" />
+          <path d={svgPathsProfile.p961370} fill="var(--fill-0, #E4F7F7)" id="Vector" />
         </g>
       </svg>
       <div className="absolute inset-[20.11%_23.69%_18.25%_23.68%]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 33 39">
           <g id="Profile Icon">
-            <path d={svgPaths.pa9095f0} fill="var(--fill-0, #557170)" id="Vector" />
-            <path d={svgPaths.p1139d800} fill="var(--fill-0, #3FB5B3)" id="Vector_2" />
-            <path d={svgPaths.p4bd4980} fill="var(--fill-0, #8BE1DF)" id="Vector_3" />
-            <path d={svgPaths.p36a0700} fill="var(--fill-0, #3FB5B3)" id="Vector_4" />
-            <path d={svgPaths.p786fd00} fill="var(--fill-0, #3FB5B3)" id="Vector_5" />
-            <path d={svgPaths.p1a321300} fill="var(--fill-0, #C8FFFD)" id="Vector_6" />
+            <path d={svgPathsProfile.pa9095f0} fill="var(--fill-0, #557170)" id="Vector" />
+            <path d={svgPathsProfile.p1139d800} fill="var(--fill-0, #3FB5B3)" id="Vector_2" />
+            <path d={svgPathsProfile.p4bd4980} fill="var(--fill-0, #8BE1DF)" id="Vector_3" />
+            <path d={svgPathsProfile.p36a0700} fill="var(--fill-0, #3FB5B3)" id="Vector_4" />
+            <path d={svgPathsProfile.p786fd00} fill="var(--fill-0, #3FB5B3)" id="Vector_5" />
+            <path d={svgPathsProfile.p1a321300} fill="var(--fill-0, #C8FFFD)" id="Vector_6" />
           </g>
         </svg>
       </div>
@@ -130,9 +132,7 @@ export default function ProfilePage({
   const [isLoadingSaju, setIsLoadingSaju] = useState(true);
   const [showEmptyState, setShowEmptyState] = useState(false);
 
-
-  // ⚠️ 제거: pushState는 히스토리 스택을 오염시켜 뒤로가기 문제를 일으킴
-  // 대신 React Router의 기본 동작만 사용
+  const navigate = useNavigate(); // ⭐ useNavigate 사용
 
   useEffect(() => {
     const loadUser = async () => {
@@ -306,7 +306,7 @@ export default function ProfilePage({
         {/* Main Content */}
         <div className="flex-1 flex flex-col px-[20px] pb-0 font-['Pretendard_Variable',sans-serif]">
           
-          {/* Profile Section - 조건부 렌더링 */}
+          {/* Profile Section - 조건부 렌��링 */}
           {isLoadingSaju ? (
             // 로딩 중 - 스켈레톤 표시
             <ProfileSkeletonWithSaju />
@@ -316,22 +316,48 @@ export default function ProfilePage({
               initial="hidden" 
               animate="visible" 
               variants={{
-                hidden: { opacity: 0 },
-                visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+                hidden: { opacity: 1 },
+                visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
               }}
             >
               {!showEmptyState && primarySaju ? (
                 // 사주 정보 있음
-                <motion.div 
-                  variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                  className="content-stretch flex flex-col gap-[16px] w-full pb-[24px]"
-                >
-                  {/* 프로필 이미지 + 닉네임/관계 */}
-                  <div className="content-stretch flex gap-[12px] items-center w-full -mb-[6px]">
-                    <ProfileImage 
-                      alt={primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date)}
-                      src={getZodiacImageUrl(primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date))}
-                    />
+                <>
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="content-stretch flex gap-[12px] items-center w-full pb-[12px]"
+                  >
+                    {/* Profile Image with Shimmer Skeleton (YouTube Style) */}
+                    <div className="profile-group relative rounded-[12px] shrink-0 size-[72px] overflow-hidden bg-[#e5e5e5]">
+                      <style>{`
+                        @keyframes shimmer-diagonal {
+                          0% { transform: translateX(-150%) skewX(-20deg); }
+                          100% { transform: translateX(150%) skewX(-20deg); }
+                        }
+                        /* 이미지가 로드되면(.profile-group 내의 img[data-loaded="true"]) 스켈레톤 숨김 */
+                        .profile-group:has(img[data-loaded="true"]) .profile-skeleton {
+                          opacity: 0;
+                        }
+                      `}</style>
+                      
+                      {/* Skeleton Overlay (Default Visible) */}
+                      <div className="profile-skeleton absolute inset-0 z-10 size-full pointer-events-none transition-opacity duration-500 bg-[#e5e5e5]">
+                        <div 
+                          className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                          style={{ animation: 'shimmer-diagonal 1.5s infinite linear' }}
+                        />
+                      </div>
+
+                      <img 
+                        alt={primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date)}
+                        src={getZodiacImageUrl(primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date))}
+                        className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full z-0"
+                        loading="lazy"
+                        onLoad={(e) => e.currentTarget.setAttribute('data-loaded', 'true')}
+                      />
+                      <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[12px] z-20 pointer-events-none" />
+                    </div>
+
                     <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px text-nowrap">
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] h-[16px] leading-[16px] overflow-ellipsis overflow-hidden text-[#848484] text-[12px] tracking-[-0.24px] w-full">
                         {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date)}
@@ -340,10 +366,13 @@ export default function ProfilePage({
                         {primarySaju.full_name} ({primarySaju.notes})
                       </p>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* 생년월일시 / 띠 / 별자리 / 성별 */}
-                  <div className="bg-[#f9f9f9] relative rounded-[12px] w-full">
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="bg-[#f9f9f9] relative rounded-[12px] w-full mb-[24px]"
+                  >
                     <div className="flex flex-col items-center justify-center size-full">
                       <div className="content-stretch flex flex-col items-center justify-center p-[12px] w-full">
                         <div className="flex items-center justify-center gap-[6px] rounded-[12px]">
@@ -369,35 +398,42 @@ export default function ProfilePage({
                         </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </>
               ) : (
-                // 사주 정보 없음
-                <motion.div 
-                  variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                  className="content-stretch flex flex-col gap-[32px] py-[32px] w-full"
-                >
-                  {/* Profile Icon - 중앙 정렬 */}
-                  <div className="flex items-center justify-center relative shrink-0 w-full">
+                // 사주 정보 없음 - Fragment 제거하고 바로 motion 요소들 렌더링
+                [
+                  // Profile Icon - 중앙 정렬
+                  <motion.div 
+                    key="profile-icon"
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="flex items-center justify-center relative shrink-0 w-full pt-[28px]"
+                  >
                     <ProfileIcon />
-                  </div>
+                  </motion.div>,
 
-                  {/* Text Lines */}
-                  <div className="content-stretch flex flex-col gap-[4px] items-center relative shrink-0 w-full">
-                    <p className="font-['Pretendard_Variable:Bold',sans-serif] leading-[25px] text-[17px] text-black text-center tracking-[-0.34px]">
+                  // Text Lines
+                  <motion.div 
+                    key="text-lines"
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full pt-[32px]"
+                  >
+                    <p className="font-semibold leading-[25px] text-[20px] text-black text-center tracking-[-0.34px]">
                       사주 정보가 아직 없어요
                     </p>
-                    <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[25.5px] text-[15px] text-[#6d6d6d] text-center tracking-[-0.3px]">
+                    <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[25.5px] pt-[2px] text-[15px] text-[#848484] text-center tracking-[-0.3px]">
                       사주를 등록하면 운세 풀이가 시작돼요
                     </p>
-                  </div>
+                  </motion.div>,
 
-                  {/* Button */}
+                  // Button
                   <motion.button
+                    key="register-button"
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
                     onClick={handleSajuMenuClick}
                     disabled={isCheckingSaju}
                     whileTap={{ scale: 0.96 }}
-                    className="bg-[#48b2af] h-[48px] rounded-[12px] shrink-0 w-full cursor-pointer border-none transition-colors disabled:opacity-50 active:bg-[#389998]"
+                    className="bg-[#48b2af] h-[48px] rounded-[12px] shrink-0 w-full cursor-pointer border-none transition-colors disabled:opacity-50 active:bg-[#389998] mt-[40px] mb-[32px]"
                   >
                     <div className="flex flex-row items-center justify-center size-full">
                       <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
@@ -407,80 +443,358 @@ export default function ProfilePage({
                       </div>
                     </div>
                   </motion.button>
-                </motion.div>
+                ]
               )}
 
               {/* Divider */}
               <motion.div 
-                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
                 className="h-[8px] -mx-[20px] bg-[#f9f9f9] my-[0px]" 
               />
 
-              {/* Menu List */}
+              {/* Menu List Container */}
               <motion.div 
-                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                className="content-stretch flex flex-col gap-[0px] items-start w-full mb-[120px] pt-[24px]"
+                variants={{ hidden: {}, visible: {} }}
+                className="content-stretch flex flex-col flex-1 gap-[0px] items-start w-full mb-[120px] pt-[24px]"
               >
-                {isMaster && (
-                  <div className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" onClick={onNavigateToMasterContent}>
-                    <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">콘텐츠 만들기</p>
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 1 },
+                    visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0 } }
+                  }}
+                  className="w-full flex flex-col flex-1"
+                >
+                  {isMaster && (
+                    <motion.div 
+                      variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                      className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" 
+                      onClick={onNavigateToMasterContent}
+                    >
+                      <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">콘텐츠 만들기</p>
+                      <div className="relative shrink-0 size-[16px]">
+                        <ArrowRightIcon />
+                      </div>
+                    </motion.div>
+                  )}
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" 
+                    onClick={handleSajuMenuClick}
+                  >
+                    <div className="flex items-center gap-[8px]">
+                      <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">사주 정보 관리</p>
+                      {/* DEV: UI 테스팅용 직접 이동 버튼 */}
+                      {import.meta.env.DEV && (
+                        <button
+                          onClick={(e) => {
+                            // ⭐️ 이벤트 전파를 완벽하게 차단하여 부모의 로그인 체크 로직(handleSajuMenuClick)이 실행되지 않도록 함
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // ⭐️ 개발용: 로그인된 유저 상태 강제 주입 (localStorage)
+                            const devUser = {
+                              id: 'dev_user_1',
+                              email: 'dev@test.com',
+                              nickname: '개발자',
+                              role: 'user',
+                              provider: 'dev'
+                            };
+                            localStorage.setItem('user', JSON.stringify(devUser));
+
+                            console.log('⚡ [DEV] 개발 유저 모드 활성화 -> 사주 관리 페이지 즉시 진입');
+                            
+                            // localStorage 저장이 확실히 반영된 후 이동
+                            setTimeout(() => {
+                              onNavigateToSajuManagement?.();
+                            }, 10);
+                          }}
+                          className="px-[6px] py-[2px] rounded-[4px] bg-red-100 border border-red-200 text-red-600 text-[10px] font-bold hover:bg-red-200 transition-colors cursor-pointer relative z-10"
+                        >
+                          UI TEST
+                        </button>
+                      )}
+                    </div>
                     <div className="relative shrink-0 size-[16px]">
                       <ArrowRightIcon />
                     </div>
-                  </div>
-                )}
-                <div className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" onClick={handleSajuMenuClick}>
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">사주 정보 관리</p>
-                  <div className="relative shrink-0 size-[16px]">
-                    <ArrowRightIcon />
-                  </div>
-                </div>
-                <div onClick={onNavigateToPurchaseHistory} className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors">
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">구매 내역</p>
-                  <div className="relative shrink-0 size-[16px]">
-                    <ArrowRightIcon />
-                  </div>
-                </div>
-                <div onClick={handleLogout} className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors">
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">로그아웃</p>
-                  <div className="relative shrink-0 size-[16px]">
-                    <ArrowRightIcon />
-                  </div>
-                </div>
-                <div 
-                  onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
-                  className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                >
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">의견 전달하기</p>
-                  <div className="relative shrink-0 size-[16px]">
-                    <ArrowRightIcon />
-                  </div>
-                </div>
+                  </motion.div>
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" 
+                    onClick={onNavigateToPurchaseHistory}
+                  >
+                    <div className="flex items-center gap-[8px]">
+                      <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">구매 내역</p>
+                      {/* DEV: UI 테스팅용 직접 이동 버튼 */}
+                      {import.meta.env.DEV && (
+                        <button
+                          onClick={(e) => {
+                            // ⭐️ 이벤트 전파를 완벽하게 차단하여 부모의 로그인 체크 우회
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // ⭐️ 개발용: 더미 구매내역 데이터 생성
+                            const devPurchases = [
+                              // 2025-01-03 (오늘)
+                              {
+                                id: 'dev_order_1',
+                                content_id: 'dev_content_1',
+                                saju_record_id: 'dev_saju_1',
+                                paid_amount: 5900,
+                                created_at: '2025-01-03T15:20:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '2025년 신년 프리미엄 운세',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '홍길동',
+                                  birth_date: '1990-05-15'
+                                }
+                              },
+                              {
+                                id: 'dev_order_2',
+                                content_id: 'dev_content_2',
+                                saju_record_id: 'dev_saju_2',
+                                paid_amount: 3900,
+                                created_at: '2025-01-03T10:30:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '나의 사랑 타로 운세',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '김영희',
+                                  birth_date: '1992-03-22'
+                                }
+                              },
+                              // 2025-01-02 (어제)
+                              {
+                                id: 'dev_order_3',
+                                content_id: 'dev_content_3',
+                                saju_record_id: 'dev_saju_3',
+                                paid_amount: 4900,
+                                created_at: '2025-01-02T14:30:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '1월 월간 운세 풀이',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '이철수',
+                                  birth_date: '1985-08-20'
+                                }
+                              },
+                              {
+                                id: 'dev_order_4',
+                                content_id: 'dev_content_4',
+                                saju_record_id: null,
+                                paid_amount: 2900,
+                                created_at: '2025-01-02T09:15:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '오늘의 운세 풀이',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: null
+                              },
+                              // 2024-12-30
+                              {
+                                id: 'dev_order_5',
+                                content_id: 'dev_content_5',
+                                saju_record_id: 'dev_saju_4',
+                                paid_amount: 4500,
+                                created_at: '2024-12-30T18:45:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '금전 운세 타로 카드',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '박지민',
+                                  birth_date: '1995-11-30'
+                                }
+                              },
+                              {
+                                id: 'dev_order_6',
+                                content_id: 'dev_content_6',
+                                saju_record_id: 'dev_saju_5',
+                                paid_amount: 3900,
+                                created_at: '2024-12-30T11:20:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '건강 운세 풀이',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '최민수',
+                                  birth_date: '1988-07-12'
+                                }
+                              },
+                              // 2024-12-25
+                              {
+                                id: 'dev_order_7',
+                                content_id: 'dev_content_7',
+                                saju_record_id: null,
+                                paid_amount: 2500,
+                                created_at: '2024-12-25T16:00:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '주간 운세',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: null
+                              },
+                              // 2024-12-20
+                              {
+                                id: 'dev_order_8',
+                                content_id: 'dev_content_8',
+                                saju_record_id: 'dev_saju_6',
+                                paid_amount: 6900,
+                                created_at: '2024-12-20T13:30:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '2025년 연간 프리미엄 사주 풀이',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '정수연',
+                                  birth_date: '1993-02-14'
+                                }
+                              },
+                              // 2024-12-15
+                              {
+                                id: 'dev_order_9',
+                                content_id: 'dev_content_9',
+                                saju_record_id: 'dev_saju_7',
+                                paid_amount: 3500,
+                                created_at: '2024-12-15T10:45:00',
+                                pstatus: 'completed',
+                                master_contents: {
+                                  title: '12월 타로 운세',
+                                  thumbnail_url: null,
+                                  content_type: 'paid'
+                                },
+                                saju_records: {
+                                  full_name: '강민지',
+                                  birth_date: '1997-09-05'
+                                }
+                              }
+                            ];
+                            
+                            // ⭐️ UI TEST 모드 플래그 설정 (구매내역 페이지에서만 사용)
+                            localStorage.setItem('ui_test_mode', 'true');
+                            
+                            // localStorage에 더미 데이터 저장
+                            localStorage.setItem('dev_purchase_records', JSON.stringify(devPurchases));
+                            
+                            console.log('⚡ [DEV] UI TEST 모드 활성화 → 더미 구매내역 페이지로 이동');
+                            
+                            // localStorage 저장이 확실히 반영된 후 이동
+                            setTimeout(() => {
+                              onNavigateToPurchaseHistory?.();
+                            }, 10);
+                          }}
+                          className="px-[6px] py-[2px] rounded-[4px] bg-red-100 border border-red-200 text-red-600 text-[10px] font-bold hover:bg-red-200 transition-colors cursor-pointer relative z-10"
+                        >
+                          UI TEST
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative shrink-0 size-[16px]">
+                      <ArrowRightIcon />
+                    </div>
+                  </motion.div>
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    onClick={handleLogout} 
+                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                  >
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">로그아웃</p>
+                    <div className="relative shrink-0 size-[16px]">
+                      <ArrowRightIcon />
+                    </div>
+                  </motion.div>
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
+                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                  >
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">의견 전달하기</p>
+                    <div className="relative shrink-0 size-[16px]">
+                      <ArrowRightIcon />
+                    </div>
+                  </motion.div>
 
-                {/* 디버그용 버튼: 사주 미등록 화면 토글 */}
-                <div 
-                  onClick={() => setShowEmptyState(!showEmptyState)}
-                  className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors bg-red-50"
-                >
-                  <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-red-500 tracking-[-0.32px]">
-                    [디버그] {showEmptyState ? '등록된 상태 보기' : '미등록 화면 보기'}
-                  </p>
-                </div>
+                  {/* 디버그용 버튼: 사주 미등록 화면 토글 */}
+                  {import.meta.env.DEV && (
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    onClick={() => setShowEmptyState(!showEmptyState)}
+                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors bg-red-50"
+                  >
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-red-500 tracking-[-0.32px]">
+                      [디버그] {showEmptyState ? '등록된 상태 보기' : '미등록 화면 보기'}
+                    </p>
+                  </motion.div>
+                  )}
 
-
-
-
-              </motion.div>
-
-              {/* Footer */}
-              <motion.div 
-                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                className="-mx-[20px] mt-auto"
-              >
-                <Footer 
-                  onNavigateToTerms={onNavigateToTermsOfService}
-                  onNavigateToPrivacy={onNavigateToPrivacyPolicy}
-                />
+                  {/* ⭐ DEV 전용: 에러 페이지 확인 버튼들 */}
+                  {import.meta.env.DEV && (
+                    <motion.div 
+                      variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                      className="content-stretch flex flex-col gap-[8px] mt-[16px] px-[16px]"
+                    >
+                      <p className="text-[12px] text-[#848484] font-medium mb-[4px]">
+                        [DEV] 에러 페이지 확인
+                      </p>
+                      <div className="grid grid-cols-2 gap-[8px]">
+                        <button
+                          onClick={() => navigate('/error/404')}
+                          className="px-[12px] py-[8px] rounded-[8px] bg-gray-100 text-gray-700 text-[13px] font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                        >
+                          404 페이지 보기
+                        </button>
+                        <button
+                          onClick={() => navigate('/error/500')}
+                          className="px-[12px] py-[8px] rounded-[8px] bg-gray-100 text-gray-700 text-[13px] font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                        >
+                          500 페이지 보기
+                        </button>
+                        <button
+                          onClick={() => navigate('/error/503')}
+                          className="px-[12px] py-[8px] rounded-[8px] bg-gray-100 text-gray-700 text-[13px] font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                        >
+                          503 페이지 보기
+                        </button>
+                        <button
+                          onClick={() => navigate('/error/network')}
+                          className="px-[12px] py-[8px] rounded-[8px] bg-gray-100 text-gray-700 text-[13px] font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                        >
+                          인터넷 연결 끊김 보기
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                  {/* Footer */}
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    className="-mx-[20px] mt-auto"
+                  >
+                    <Footer 
+                      onNavigateToTerms={onNavigateToTermsOfService}
+                      onNavigateToPrivacy={onNavigateToPrivacyPolicy}
+                    />
+                  </motion.div>
+                </motion.div>
               </motion.div>
             </motion.div>
           )}

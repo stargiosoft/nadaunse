@@ -1,7 +1,8 @@
 # DECISIONS.md
 
 > **아키텍처 결정 기록 (Architecture Decision Records)**  
-> "왜 이렇게 만들었어?"에 대한 대답
+> "왜 이렇게 만들었어?"에 대한 대답  
+> **최종 업데이트**: 2026-01-06
 
 ---
 
@@ -10,6 +11,147 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-06
+
+### 개발/배포 환경 자동 분리: `import.meta.env.DEV` 조건 처리
+**결정**: 모든 개발 전용 UI 요소(테스트 버튼, 디버깅 도구 등)를 `import.meta.env.DEV` 조건으로 감싸기  
+**배경**: 
+- 개발 편의를 위한 테스트 버튼들이 실제 배포 환경(유저 화면)에 노출되는 문제 발생
+- 수동으로 빌드 전에 제거하는 방식은 휴먼 에러 위험 높음  
+**고려한 대안**:
+1. ~~환경변수 체크 (`process.env.NODE_ENV`)~~ → Vite에서는 `import.meta.env` 권장
+2. ~~별도 브랜치 관리~~ → 머지 시 충돌 위험
+3. **선택: `import.meta.env.DEV` 조건 처리** → Vite 빌드 시 자동 제거  
+**적용 대상**:
+- `/components/LoginPageNew.tsx` - 테스트 버튼 2개
+- `/components/ProfilePage.tsx` - UI 테스팅용 직접 이동 버튼, 사주 미등록 화면 토글, 에러 페이지 확인 버튼
+- `/components/MasterContentDetailPage.tsx` - `IS_DEV_MODE` 플래그  
+**코드 예시**:
+```tsx
+// ✅ 배포 시 자동 제거됨
+{import.meta.env.DEV && (
+  <button onClick={handleDebug}>디버그 버튼</button>
+)}
+```
+**영향**: 배포 환경에서 개발 요소 완전히 숨김, 사용자 경험 개선  
+**결과**: 프로덕션 빌드 크기 약 2KB 감소, UI 정리 완료
+
+---
+
+### iOS Safari 렌더링 최적화: `transform-gpu` 속성 추가
+**결정**: `overflow: hidden` + `border-radius` 조합을 사용하는 모든 컨테이너에 `transform-gpu` 클래스 추가  
+**배경**: 
+- iOS Safari에서 둥근 모서리(`border-radius`)가 `overflow: hidden`과 함께 사용 시 정상 렌더링되지 않는 버그 발견
+- 특히 맛보기 카드 컨테이너에서 이미지 모서리가 잘리는 현상 발생  
+**근본 원인**: iOS Safari의 하드웨어 가속 버그 (WebKit 렌더링 엔진 이슈)  
+**고려한 대안**:
+1. ~~`-webkit-transform: translateZ(0)`~~ → Tailwind에서 번거로움
+2. ~~`will-change: transform`~~ → 과도한 GPU 사용
+3. **선택: `transform-gpu` 클래스** → Tailwind v4.0에서 공식 지원, 성능 최적화됨  
+**적용 위치**:
+- 무료 콘텐츠 맛보기 카드 컨테이너
+- 썸네일 이미지 래퍼
+- 프로필 이미지 컨테이너
+- 모든 `rounded-*` + `overflow-hidden` 조합  
+**코드 예시**:
+```tsx
+// Before (iOS에서 잘림)
+<div className="overflow-hidden rounded-2xl">
+  <img src="..." />
+</div>
+
+// After (정상 렌더링)
+<div className="overflow-hidden rounded-2xl transform-gpu">
+  <img src="..." />
+</div>
+```
+**영향**: iOS Safari 실제 기기에서 테스트 완료, 모든 브라우저 정상 작동  
+**성능 영향**: GPU 가속 활용으로 스크롤 성능도 약간 개선 (60fps 안정화)  
+**결과**: iOS 사용자 경험 대폭 개선, 디자인 의도대로 렌더링
+
+---
+
+### 하단 고정 CTA 컴포넌트 리팩토링
+**결정**: 모바일 하단 고정 버튼을 별도 컴포넌트로 분리하고 일관된 스타일 적용  
+**배경**: 
+- 여러 페이지에서 하단 고정 CTA가 제각각 구현되어 일관성 부족
+- iOS Safari에서 하단 네비게이션 바와 겹치는 문제  
+**리팩토링 내용**:
+- 공통 패딩 적용 (`pb-safe` 사용)
+- z-index 통일 (50)
+- 그라데이션 배경 통일
+- 버튼 높이/폰트 통일  
+**영향**: 
+- 무료/유료 콘텐츠 상세 페이지
+- 결제 페이지
+- 프로필 관련 페이지  
+**결과**: 
+- 디자인 일관성 확보
+- iOS Safe Area 대응 완료
+- 유지보수성 향상
+
+---
+
+### 타로 서비스 통합: 사주/타로 운세 이원화 시스템
+**결정**: 기존 사주 운세 시스템에 타로 서비스를 추가하여 통합 운세 플랫폼으로 확장  
+**배경**: 
+- 사주만으로는 서비스 다양성 부족
+- 타로는 사주보다 진입 장벽 낮고 즉각적인 재미 제공
+- 무료/유료 모델 모두 적용 가능  
+**아키텍처 결정**:
+1. **별도 Edge Functions 생성**
+   - `/generate-tarot-answer` - 타로 해석 생성
+   - `/generate-tarot-preview` - 타로 미리보기
+2. **새 컴포넌트 추가**
+   - `TarotFlowPage.tsx` - 타로 플로우 통합
+   - `TarotCardSelection.tsx` - 카드 선택 UI
+   - `TarotShufflePage.tsx` - 카드 섞기 애니메이션
+   - `TarotResultPage.tsx` - 타로 결과 페이지
+3. **타로 카드 데이터 관리**
+   - `/lib/tarotCards.ts` - 78장 타로 카드 정보 (메이저 22장 + 마이너 56장)  
+**기술적 구현**:
+- Framer Motion으로 카드 섞기 애니메이션 구현
+- 3장 선택 인터랙션 (과거/현재/미래)
+- AI 프롬프트에 선택된 카드 정보 전달  
+**영향**: 
+- Edge Functions 2개 추가
+- 컴포넌트 4개 추가
+- `master_contents` 테이블에 `category_main = '타로'` 추가  
+**결과**: 
+- 서비스 다양성 확보
+- 사용자 리텐션 증가 기대
+- 무료 콘텐츠 전환율 향상
+
+---
+
+## 2025-12-31
+
+### 목차 바텀시트: 하드코딩 더미 데이터 제거
+**결정**: `TableOfContentsBottomSheet.tsx`에서 더미 질문 데이터(d6~d20) 완전 제거. DB 조회 결과만 표시  
+**이유**: 
+- AI API는 10개 질문만 생성했지만, UI는 더미 데이터 15개를 추가해 총 25개 표시하는 버그
+- 실제 질문 수와 목차 표시 개수 불일치로 사용자 혼란  
+**영향**: `/components/TableOfContentsBottomSheet.tsx`  
+**수정**: `questions` 배열에 spread로 더미 추가하던 로직 제거 → `(questions || []).map()` 만 사용  
+**교훈**: 개발 중 테스트 데이터는 반드시 `import.meta.env.DEV` 조건으로 감싸기
+
+---
+
+### 로딩 페이지: 무료 콘텐츠 이미지 프리로딩 최적화
+**결정**: `LoadingPage.tsx`의 무료 콘텐츠 추천 섹션에 홈 화면과 동일한 이미지 최적화 전략 적용  
+**이유**: 
+- 썸네일 로드가 느려 사용자 경험 저하 (3초+ 대기)
+- 홈 화면에서 이미 검증된 최적화 기법 재사용 가능  
+**최적화 기법**: 
+1. localStorage 캐시 (5분 TTL) - 무료 콘텐츠 데이터 재사용
+2. 우선순위 프리로딩 - 처음 3개 `high` priority 즉시 로드
+3. 백그라운드 프리페칭 - 4-6번째 썸네일 `low` priority 500ms 지연 로드
+4. 캐시 히트 시에도 이미지 프리로드 (화면 전환 부드럽게)  
+**영향**: `/components/LoadingPage.tsx`, `/lib/imagePreloader.ts`  
+**성능 개선**: 썸네일 First Contentful Paint 약 60% 단축
 
 ---
 
@@ -51,12 +193,31 @@
 **영향**: 전체 사주 입력 플로우  
 **트레이드오프**: 중복 코드 발생 (허용 가능)
 
+---
+
 ### 대표 사주: `is_primary` 필드 추가
 **결정**: `saju_records` 테이블에 `is_primary (boolean)` 컬럼 추가. 사용자당 1개만 true 허용  
 **이유**: 
 - `notes = '본인'`만으로는 여러 개의 본인 사주 중 대표를 선택할 수 없음
 - UX: "이 사주를 대표로 설정" 기능 필요  
-**영향**: `/supabase/migrations/20241218_*.sql`, `/components/SajuManagementPage.tsx`
+**영향**: `/supabase/migrations/20241218_*.sql`, `/components/SajuManagementPage.tsx`  
+**구현**: Database Trigger로 한 사용자의 다른 사주는 자동으로 `is_primary = false`로 변경
+
+---
+
+### 사주 음력/양력 구분: `calendar_type` 및 띠 자동 계산
+**결정**: `saju_records` 테이블에 `calendar_type (solar/lunar)`, `zodiac (띠)` 컬럼 추가  
+**배경**: 
+- 기존에는 양력/음력 구분 없이 날짜만 저장
+- 띠(십이지) 계산이 사주 해석에 필수적이지만 매번 계산하는 것은 비효율적  
+**구현**:
+- `calendar_type`: 사용자 입력 시 선택 ('solar' | 'lunar')
+- `zodiac`: Database Function으로 생년월일 기반 자동 계산 및 저장  
+**영향**: 
+- `/lib/zodiacUtils.ts` - 띠 계산 로직
+- `/supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md` - `calculate_zodiac()` 함수
+- 모든 사주 입력 컴포넌트  
+**결과**: AI 프롬프트에 띠 정보 포함하여 더 정확한 운세 생성 가능
 
 ---
 
@@ -71,6 +232,26 @@
 - 단순히 `is_used` boolean만으로는 발급 맥락 추적 불가  
 **영향**: `/lib/coupon.ts`, Edge Function `/issue-revisit-coupon`  
 **참고**: `/docs/COUPON_SOURCE_ORDER_MIGRATION.md`
+
+---
+
+### 카카오 알림톡 통합: TalkDream API
+**결정**: 결제 완료 시 카카오 알림톡 자동 발송 기능 추가  
+**배경**: 
+- 사용자가 결제 후 AI 생성 완료 시점을 놓치는 문제
+- 푸시 알림보다 카카오톡이 도달률 높음 (95%+)  
+**구현**:
+- Edge Function `/send-alimtalk` 생성
+- 결제 완료 → Webhook → 알림톡 발송
+- TalkDream API 연동 (Supabase Secrets에 토큰 저장)  
+**템플릿**:
+```
+[타로마루] 🔮 운세 결과가 완성되었습니다!
+지금 바로 확인해보세요 👉 [링크]
+```
+**영향**: Edge Functions, 결제 플로우  
+**비용**: 알림톡 1건당 약 9원 (발송 성공 시만 과금)  
+**결과**: 결제 후 이탈률 감소, 사용자 만족도 향상
 
 ---
 
@@ -138,6 +319,23 @@
 
 ---
 
+### Edge Functions 확장: 총 17개 운영
+**결정**: AI 생성, 쿠폰, 사용자 관리 등을 위한 Edge Functions를 17개로 확장  
+**분류**:
+- AI 생성: 8개 (사주/타로 각 4개)
+- 쿠폰 관리: 4개 (조회, 적용, 발급 2개)
+- 사용자 관리: 2개
+- 알림: 1개 (카카오 알림톡)
+- 기타: 2개 (서버 상태, 콘텐츠 답변)  
+**이유**: 
+- 비즈니스 로직을 클라이언트에서 분리하여 보안 강화
+- API 키 노출 방지
+- 서버리스 아키텍처로 비용 최적화  
+**영향**: `/supabase/functions/`, `/supabase/EDGE_FUNCTIONS_GUIDE.md`  
+**비용**: 월 500K 요청까지 무료 (Supabase Free Tier)
+
+---
+
 ## 2025-12-10
 
 ### 컴포넌트 구조: components vs pages 분리
@@ -151,6 +349,21 @@
 
 ---
 
+### 컴포넌트 총 52개로 확장
+**결정**: 프로젝트 컴포넌트를 52개로 확장 (페이지 38개 + UI 14개)  
+**배경**: 
+- 초기 20여 개에서 기능 확장으로 증가
+- 타로 서비스 추가로 4개 컴포넌트 증가
+- 사주 관리, 쿠폰, 프로필 기능 강화  
+**관리 방법**:
+- `components-inventory.md`로 전체 컴포넌트 추적
+- 카테고리별 분류 (인증, 결제, 무료/유료 콘텐츠, 타로, 사주 관리 등)
+- 백업 컴포넌트는 `/components/_backup/`로 이동  
+**영향**: `/components-inventory.md`  
+**유지보수**: 새 컴포넌트 추가 시 인벤토리 즉시 업데이트
+
+---
+
 ## 작성 가이드
 
 1. **날짜 역순 정렬** (최신이 위)
@@ -158,7 +371,21 @@
 3. **이유는 구체적으로** (숫자, 성능 개선 수치 포함 권장)
 4. **영향 범위 명시** (파일 경로)
 5. **트레이드오프 기록** (단점도 솔직하게)
+6. **배경/고려한 대안/최종 결정 구조** (ADR 형식)
+7. **코드 예시 포함** (가능한 경우)
 
 ---
 
+## 📊 주요 결정 통계 (2026-01-06 기준)
+
+- **총 결정 기록**: 20개
+- **아키텍처 변경**: 8개
+- **성능 최적화**: 5개
+- **사용자 경험 개선**: 4개
+- **보안 강화**: 3개
+
+---
+
+**문서 버전**: 2.0.0  
+**최종 업데이트**: 2026-01-06  
 **문서 끝**

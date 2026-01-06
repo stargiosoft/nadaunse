@@ -75,8 +75,14 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
           
           // birth_time은 "HH:MM" 형식
           if (primarySaju.birth_time) {
-            setBirthTime(primarySaju.birth_time);
-            setUnknownTime(primarySaju.birth_time === '시간 미상');
+            if (primarySaju.birth_time === '시간 미상') {
+              // ⭐️ '시간 미상'일 경우: unknownTime = true, birthTime = ""
+              setBirthTime('');
+              setUnknownTime(true);
+            } else {
+              setBirthTime(primarySaju.birth_time);
+              setUnknownTime(false);
+            }
           }
           
           console.log('✅ [FreeBirthInfoInput] DB 사주 데이터 자동 입력 완료');
@@ -105,8 +111,14 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
             setBirthDate(cachedSaju.birthDate);
           }
           if (cachedSaju.birthTime) {
-            setBirthTime(cachedSaju.birthTime);
-            setUnknownTime(cachedSaju.birthTime === '시간 미상');
+            if (cachedSaju.birthTime === '시간 미상') {
+              // ⭐️ '시간 미상'일 경우: unknownTime = true, birthTime = ""
+              setBirthTime('');
+              setUnknownTime(true);
+            } else {
+              setBirthTime(cachedSaju.birthTime);
+              setUnknownTime(false);
+            }
           }
           
           console.log('✅ [FreeBirthInfoInput] 캐시 데이터 자동 입력 완료');
@@ -277,8 +289,8 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
     setUnknownTime(newValue);
     
     if (newValue) {
-      // 체크 시 "12:00"으로 자동 설정
-      setBirthTime('12:00');
+      // 체크 시 빈 값으로 설정 (placeholder 노출용)
+      setBirthTime('');
       setErrors(prev => ({ ...prev, birthTime: undefined }));
     } else {
       // 체크 해제 시 초기화
@@ -363,7 +375,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
         console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
 
         // 로딩 페이지로 이동 (사주 데이터 직접 전달)
-        const loadingUrl = `/free-loading?contentId=${productId}&userName=${name}&guestMode=true`;
+        const loadingUrl = `/free-loading?contentId=${productId}&userName=${encodeURIComponent(name)}&guestMode=true`;
         console.log('🔀 [FreeBirthInfoInput] 로딩 페이지로 이동 (게스트):', loadingUrl);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         navigate(loadingUrl);
@@ -390,7 +402,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
 
       // ⭐️ 로딩 페이지로 이동 (sajuRecordId 전달)
-      const loadingUrl = `/free-loading?contentId=${productId}&sajuRecordId=${sajuData.id}&userName=${name}`;
+      const loadingUrl = `/free-loading?contentId=${productId}&sajuRecordId=${sajuData.id}&userName=${encodeURIComponent(name)}`;
       console.log('🔀 [FreeBirthInfoInput] 로딩 페이지로 이동:', loadingUrl);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       navigate(loadingUrl);
@@ -404,14 +416,14 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative pb-[120px]">
+      <div className="w-full max-w-[440px] relative pb-[120px]">
         {/* Top Navigation */}
         <div className="content-stretch flex flex-col items-start w-full">
           
           {/* Top Bar */}
           <div className="bg-white h-[52px] relative shrink-0 w-full">
             <div className="flex flex-col justify-center size-full">
-              <div className="fixed top-0 left-0 right-0 z-10 bg-white box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] w-full max-w-[390px] mx-auto">
+              <div className="fixed top-0 left-0 right-0 z-10 bg-white box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] w-full max-w-[440px] mx-auto">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                   <button
                     onClick={onBack}
@@ -437,7 +449,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
 
         {/* Form Content */}
         <motion.div 
-          className="px-[20px] pt-[32px]"
+          className="px-[20px] pt-[12px] pr-[20px] pb-[0px] pl-[20px]"
           initial="hidden"
           animate="visible"
           variants={{
@@ -507,7 +519,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               성별
             </label>
-            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px]">
+            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px] overflow-hidden isolate">
               <div className="flex gap-[8px]">
                 <button
                   onClick={() => setGender('female')}
@@ -520,10 +532,10 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
-                  <span className={`text-[15px] font-medium leading-[20px] tracking-[-0.45px] relative z-10 transition-colors duration-200 ${gender === 'female' ? 'text-white' : 'text-[#b7b7b7]'}`}>
+                  <span className={`text-[15px] font-medium leading-[20px] tracking-[-0.45px] relative z-[1] transition-colors duration-200 ${gender === 'female' ? 'text-white' : 'text-[#b7b7b7]'}`}>
                     여성
                   </span>
-                  <svg className="size-[24px] relative z-10" fill="none" viewBox="0 0 24 24">
+                  <svg className="size-[24px] relative z-[1]" fill="none" viewBox="0 0 24 24">
                     <path
                       d="M7 11.625L10.3294 16L17 9"
                       stroke={gender === 'female' ? 'white' : '#E7E7E7'}
@@ -545,10 +557,10 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
-                  <span className={`text-[15px] font-medium leading-[20px] tracking-[-0.45px] relative z-10 transition-colors duration-200 ${gender === 'male' ? 'text-white' : 'text-[#b7b7b7]'}`}>
+                  <span className={`text-[15px] font-medium leading-[20px] tracking-[-0.45px] relative z-[1] transition-colors duration-200 ${gender === 'male' ? 'text-white' : 'text-[#b7b7b7]'}`}>
                     남성
                   </span>
-                  <svg className="size-[24px] relative z-10" fill="none" viewBox="0 0 24 24">
+                  <svg className="size-[24px] relative z-[1]" fill="none" viewBox="0 0 24 24">
                     <path
                       d="M7 11.625L10.3294 16L17 9"
                       stroke={gender === 'male' ? 'white' : '#E7E7E7'}
@@ -593,7 +605,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                       birthTimeInputRef.current?.focus();
                     }
                   }}
-                  placeholder="19920715"
+                  placeholder="예: 1992-07-15 (양력)"
                   className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] ${
                     isValidDate(birthDate) ? 'text-transparent focus:text-[#151515]' : 'text-[#151515]'
                   }`}
@@ -617,7 +629,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
 
           {/* 태어난 시간 입력 */}
           <motion.div 
-            className="flex gap-[12px] items-start"
+            className="flex gap-[24px] items-start"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -650,7 +662,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                         }
                       }
                     }}
-                    placeholder="예: 21:00"
+                    placeholder={unknownTime ? "오후 12:00" : "예: 21:00"}
                     disabled={unknownTime}
                     className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent min-w-0 ${
                       unknownTime 
@@ -675,7 +687,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                   모르겠어요
                 </span>
                 <div className="flex items-center justify-center size-[44px]">
-                  <div className={`size-[28px] rounded-[8px] border-2 flex items-center justify-center transition-colors ${
+                  <div className={`size-[28px] rounded-[8px] border-1 flex items-center justify-center transition-colors ${
                     unknownTime ? 'border-[#48b2af] bg-[#48b2af]' : 'border-[#e7e7e7] bg-white'
                   }`}>
                     {unknownTime && (
@@ -685,7 +697,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
                           stroke="white"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth="2"
+                          strokeWidth="3"
                         />
                       </svg>
                     )}
@@ -697,7 +709,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
         </motion.div>
 
         {/* Bottom Button */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] pb-[env(safe-area-inset-bottom)] z-10">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] pb-[env(safe-area-inset-bottom)] z-10">
           <div className="px-[20px] pt-[12px] pb-[12px]">
             <motion.button
               onClick={handleSubmit}

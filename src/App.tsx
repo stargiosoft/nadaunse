@@ -34,6 +34,8 @@ import TarotResultPage from './components/TarotResultPage';
 import TarotShufflePage from './components/TarotShufflePage'; // ⭐ 타로 셔플 페이지
 import WelcomeCouponPage from './components/WelcomeCouponPage'; // ⭐ 추가
 import ResultCompletePage from './components/ResultCompletePage'; // ⭐ 추가
+import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
+import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
 import { GlobalAIMonitor } from './components/GlobalAIMonitor'; // ⭐ AI 모니터
 import HomePage from './pages/HomePage';
 import AuthCallback from './pages/AuthCallback';
@@ -44,7 +46,7 @@ import { supabase } from './lib/supabase';
 import { Toaster } from 'sonner';
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
 
-// ⚡ Build Cache Buster v1.4.2 - Fix iOS Safari auto-zoom on input fields
+// ⚡ Build Cache Buster v1.4.3 - Fix dynamic import module fetch error
 
 // ⭐ 히스토리 디버깅용 컴포넌트 (스크롤 이동 제거)
 function HistoryDebug() {
@@ -65,7 +67,7 @@ function GAInit() {
 
   useEffect(() => {
     // ⚡ 빌드 버전 체크 및 캐시 무효화
-    const BUILD_VERSION = '1.4.2'; // Fix iOS Safari auto-zoom on input fields
+    const BUILD_VERSION = '1.4.3'; // Fix dynamic import module fetch error
     const storedVersion = localStorage.getItem('app_build_version');
     
     if (storedVersion !== BUILD_VERSION) {
@@ -120,7 +122,7 @@ function GAInit() {
   }, []);
 
   useEffect(() => {
-    // 라우트 변경 시 페이지뷰 트래킹
+    // 우트 변경 시 페이지뷰 트래킹
     trackPageView(location.pathname + location.search, document.title);
   }, [location]);
 
@@ -258,7 +260,7 @@ function ProductDetailPage() {
       
       if (user) {
         // 로그인 상태: 사주 정보 DB에서 조회
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━��━━━━━━━');
         console.log('✅ [ProductDetailPage] 로그인 상태 → DB에서 사주 정보 조회 시작...');
         console.log('📌 [ProductDetailPage] user.id:', user.id);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -743,7 +745,7 @@ function FreeResultPage() {
     const matchingKeys = keys.filter(key => key.startsWith(`free_content_${id}_`));
     
     if (matchingKeys.length > 0) {
-      // 가장 최근 결과 사용
+      // 가장 최근 결 사용
       recordId = matchingKeys[matchingKeys.length - 1];
       console.log('✅ [FreeResultPage] localStorage에서 발견:', recordId);
     }
@@ -861,10 +863,33 @@ function FreeResultPage() {
     );
   }
   
-  if (!recordId || !product) {
-    console.error('❌ [FreeResultPage] recordId 또는 product 없음');
+  // ⭐️ product만 체크 (recordId는 localStorage key이므로 반드시 있음)
+  if (!product) {
+    console.error('❌ [FreeResultPage] product 없음');
+    console.error('  - id:', id);
     console.error('  - recordId:', recordId);
     console.error('  - product:', product);
+    
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-[#999999] mb-4">콘텐츠를 찾을 수 없습니다</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // ⭐️ recordId 없으면 에러 (localStorage key가 필요함)
+  if (!recordId) {
+    console.error('❌ [FreeResultPage] recordId (resultKey) 없음');
+    console.error('  - id:', id);
+    console.error('  - recordId:', recordId);
     
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1114,9 +1139,7 @@ function FreeContentDetailWrapper() {
         // 배너 클릭 시 특정 콘텐츠로 이동 (예: 재물운)
         navigate('/');
       }}
-      onPurchase={async () => {
-        // 무료 콘텐츠는 onPurchase 사용 안함 (FreeContentDetail 내부 처리)
-      }}
+      onPurchase={undefined} // ⭐ handlePurchase fallback 사용
     />
   );
 }
@@ -1200,7 +1223,7 @@ function MasterContentPaymentPageWrapper() {
 
   const handlePurchaseSuccess = async () => {
     try {
-      // 본인 사주 정보 ��재 여부 확인
+      // 본인 사주 정보 재 여부 확인
       const userJson = localStorage.getItem('user');
       const user = userJson ? JSON.parse(userJson) : null;
       
@@ -1245,7 +1268,7 @@ function MasterContentPaymentPageWrapper() {
         console.log('✅ [결제완료] 본인 사주 있음 → 사주 선택 페이지로 이동');
         navigate(`/product/${id}/saju-select`);
       } else {
-        // 본인 사주 없음 → 사주 정보 입력 페이지 (결제용)
+        // 본인 사주 ��음 → 사주 정보 입력 페이지 (결제용)
         console.log('📝 [결제완료] 본인 사주 없음 → 사주 입력 페이지로 이동');
         navigate(`/product/${id}/birthinfo`);
       }
@@ -1414,76 +1437,72 @@ export default function App() {
 
   return (
     <Router>
-      <HistoryDebug />
-      <GAInit />
-      <PortOneInit />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPageNewWrapper />} />
-        <Route path="/login/new" element={<LoginPageNewWrapper />} />
-        <Route path="/login/existing/new" element={<ExistingAccountPageNewWrapper />} />
-        <Route path="/terms" element={<TermsPageWrapper />} />
-        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/product/:id/payment" element={<PaymentNewPage />} />
-        <Route path="/product/:id/payment/new" element={<PaymentNewPage />} />
-        <Route path="/product/:id/birthinfo" element={<BirthInfoPage />} />
-        <Route path="/product/:id/saju-select" element={<SajuSelectPage />} />
-        <Route path="/product/:id/free-saju-select" element={<FreeSajuSelectPageWrapper />} />
-        <Route path="/product/:id/free-saju-add" element={<FreeSajuAddPageWrapper />} />
-        <Route path="/product/:id/result" element={<ResultPage />} />
-        <Route path="/product/:id/result/free" element={<FreeResultPage />} />
-        <Route path="/payment/complete" element={<PaymentComplete />} />
-        <Route path="/profile" element={<ProfilePageWrapper />} />
-        <Route path="/purchase-history" element={<PurchaseHistoryPage />} />
-        <Route path="/master/content" element={<MasterContentListWrapper />} />
-        <Route path="/master/content/create" element={<MasterContentCreateFlowWrapper />} />
-        <Route path="/master/content/create/questions" element={<MasterContentCreateFlowWrapper />} />
-        <Route path="/master/content/detail/:id/payment" element={<MasterContentPaymentPageWrapper />} />
-        <Route path="/master/content/detail/:id" element={<MasterContentDetailPageWrapper />} />
-        <Route path="/master/content/:id/birthinfo" element={<BirthInfoPage />} />
-        <Route path="/master/content/:id" element={<MasterContentDetailWrapper />} />
-        <Route path="/free/content/:id" element={<FreeContentDetailWrapper />} />
-        <Route path="/saju/input" element={<SajuInputPageWrapper />} />
-        <Route path="/saju/management" element={<SajuManagementPageWrapper />} />
-        <Route path="/saju/add" element={<SajuAddPageWrapper />} />
-        <Route path="/loading" element={<LoadingPage />} />
-        <Route path="/free-loading" element={<FreeContentLoading />} />
-        <Route path="/result/saju" element={<SajuResultPage />} />
-        <Route path="/result/tarot" element={<TarotResultPage />} />
-        <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
-        <Route path="/signup/terms" element={<TermsPageWrapper />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-        <Route path="/result/complete" element={<ResultCompletePage />} />
-        <Route path="/tarot-demo" element={<TarotDemo />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <Toaster 
-        position="bottom-center"
-        toastOptions={{
-          unstyled: true,
-          classNames: {
-            toast: 'flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 backdrop-blur-[15px] shadow-lg',
-            title: 'text-white text-[13px] font-normal leading-[22px]',
-          },
-          style: {
-            marginBottom: '116px',
-          },
-          success: {
-            icon: (
-              <svg className="size-6 shrink-0" fill="none" viewBox="0 0 24 24">
-                <path 
-                  d="M12 2C6.49 2 2 6.49 2 12C2 17.51 6.49 22 12 22C17.51 22 22 17.51 22 12C22 6.49 17.51 2 12 2ZM16.78 9.7L11.11 15.37C10.97 15.51 10.78 15.59 10.58 15.59C10.38 15.59 10.19 15.51 10.05 15.37L7.22 12.54C6.93 12.25 6.93 11.77 7.22 11.48C7.51 11.19 7.99 11.19 8.28 11.48L10.58 13.78L15.72 8.64C16.01 8.35 16.49 8.35 16.78 8.64C17.07 8.93 17.07 9.4 16.78 9.7Z"
-                  fill="#46BB6F"
-                />
-              </svg>
-            ),
-          },
-        }}
-      />
-      <GlobalAIMonitor />
+      <ErrorBoundary>
+        <HistoryDebug />
+        <GAInit />
+        <PortOneInit />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPageNewWrapper />} />
+          <Route path="/login/new" element={<LoginPageNewWrapper />} />
+          <Route path="/login/existing/new" element={<ExistingAccountPageNewWrapper />} />
+          <Route path="/terms" element={<TermsPageWrapper />} />
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/product/:id/payment" element={<PaymentNewPage />} />
+          <Route path="/product/:id/payment/new" element={<PaymentNewPage />} />
+          <Route path="/product/:id/birthinfo" element={<BirthInfoPage />} />
+          <Route path="/product/:id/saju-select" element={<SajuSelectPage />} />
+          <Route path="/product/:id/free-saju-select" element={<FreeSajuSelectPageWrapper />} />
+          <Route path="/product/:id/free-saju-add" element={<FreeSajuAddPageWrapper />} />
+          <Route path="/product/:id/result" element={<ResultPage />} />
+          <Route path="/product/:id/result/free" element={<FreeResultPage />} />
+          <Route path="/payment/complete" element={<PaymentComplete />} />
+          <Route path="/profile" element={<ProfilePageWrapper />} />
+          <Route path="/purchase-history" element={<PurchaseHistoryPage />} />
+          <Route path="/master/content" element={<MasterContentListWrapper />} />
+          <Route path="/master/content/create" element={<MasterContentCreateFlowWrapper />} />
+          <Route path="/master/content/create/questions" element={<MasterContentCreateFlowWrapper />} />
+          <Route path="/master/content/detail/:id/payment" element={<MasterContentPaymentPageWrapper />} />
+          <Route path="/master/content/detail/:id" element={<MasterContentDetailPageWrapper />} />
+          <Route path="/master/content/:id/birthinfo" element={<BirthInfoPage />} />
+          <Route path="/master/content/:id" element={<MasterContentDetailWrapper />} />
+          <Route path="/free/content/:id" element={<FreeContentDetailWrapper />} />
+          <Route path="/saju/input" element={<SajuInputPageWrapper />} />
+          <Route path="/saju/management" element={<SajuManagementPageWrapper />} />
+          <Route path="/saju/add" element={<SajuAddPageWrapper />} />
+          <Route path="/loading" element={<LoadingPage />} />
+          <Route path="/free-loading" element={<FreeContentLoading />} />
+          <Route path="/result/saju" element={<SajuResultPage />} />
+          <Route path="/result/tarot" element={<TarotResultPage />} />
+          <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
+          <Route path="/signup/terms" element={<TermsPageWrapper />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
+          <Route path="/result/complete" element={<ResultCompletePage />} />
+          <Route path="/tarot-demo" element={<TarotDemo />} />
+          
+          {/* ⭐ 공통 에러 페이지 라우트 (DEV 확인용) */}
+          <Route path="/error/404" element={<ErrorPage type="404" />} />
+          <Route path="/error/500" element={<ErrorPage type="500" />} />
+          <Route path="/error/503" element={<ErrorPage type="503" />} />
+          <Route path="/error/network" element={<ErrorPage type="network" />} />
+          
+          {/* ⭐ 404 처리: 존재하지 않는 모든 라우트 */}
+          <Route path="*" element={<ErrorPage type="404" />} />
+        </Routes>
+        <Toaster 
+          position="bottom-center"
+          visibleToasts={1}
+          offset={0}
+          toastOptions={{
+            unstyled: true,
+            className: 'toast-viewport-center',
+          }}
+        />
+        <GlobalAIMonitor />
+      </ErrorBoundary>
     </Router>
   );
 }

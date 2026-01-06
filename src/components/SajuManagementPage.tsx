@@ -5,14 +5,39 @@
 
 import React, { useState, useEffect } from 'react';
 import svgPaths from "../imports/svg-b51v8udqqu";
-import emptyStateSvgPaths from "../imports/svg-hw6oxtisye"; // Empty State 아이콘
+import emptyStateSvgPaths from "../imports/svg-297vu4q7h0"; // Empty State 아이콘
 import { supabase } from '../lib/supabase';
-import { toast } from 'sonner@2.0.3';
+import { toast } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PrimarySajuChangeDialog } from './PrimarySajuChangeDialog';
 import { SajuKebabMenu } from './SajuKebabMenu';
 import { ConfirmDialog } from './ConfirmDialog';
 import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
+import { Radio } from './ui/Radio';
+import { motion } from "motion/react";
+
+const containerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut"
+    }
+  }
+};
 
 interface SajuInfo {
   id: string;
@@ -55,6 +80,15 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   // 세션 체크
   useEffect(() => {
     const checkSession = async () => {
+      // ⭐️ [DEV] 개발용 유저 감지 시 세션 체크 건너뛰기
+      const localUserJson = localStorage.getItem('user');
+      if (localUserJson) {
+        try {
+          const localUser = JSON.parse(localUserJson);
+          if (localUser.provider === 'dev') return;
+        } catch {}
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setIsSessionExpired(true);
@@ -66,6 +100,87 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   const loadSajuList = async () => {
     setIsLoading(true);
     try {
+      // ⭐️ [DEV] 개발용 유저 감지 시 localStorage에서 데이터 로드
+      const localUserJson = localStorage.getItem('user');
+      if (localUserJson) {
+        try {
+          const localUser = JSON.parse(localUserJson);
+          if (localUser.provider === 'dev') {
+            console.log('⚡ [SajuManagement] Dev User Detected - Loading from localStorage');
+            
+            // 1. 내 사주: localStorage의 'saju_info'에서 읽기
+            const mySajuJson = localStorage.getItem('saju_info');
+            let mySajuData: SajuInfo | null = null;
+            
+            if (mySajuJson) {
+              try {
+                const parsed = JSON.parse(mySajuJson);
+                mySajuData = {
+                  id: 'my_saju',
+                  full_name: parsed.full_name || parsed.name || '',
+                  gender: parsed.gender || 'female',
+                  birth_date: parsed.birth_date || '',
+                  birth_time: parsed.birth_time || '',
+                  notes: '본인',
+                  is_primary: true,
+                  calendar_type: parsed.calendar_type || 'solar',
+                  zodiac: parsed.zodiac || ''
+                };
+                console.log('✅ [DEV] 내 사주 로드 완료:', mySajuData.full_name);
+              } catch (e) {
+                console.error('❌ [DEV] saju_info 파싱 실패:', e);
+              }
+            }
+            
+            // ⭐ [DEV] saju_info가 없으면 테스트용 임시 데이터 생성
+            if (!mySajuData) {
+              mySajuData = {
+                id: 'my_saju_dev_temp',
+                full_name: '별빛 속에 피어난 작은 꿈',
+                gender: 'female',
+                birth_date: '1994-07-23T14:00:00+09:00',
+                birth_time: '14:00',
+                notes: '본인',
+                is_primary: true,
+                calendar_type: 'solar',
+                zodiac: '개띠'
+              };
+              console.log('⚡ [DEV] saju_info 없음 → 테스트용 임시 데이터 생성');
+            }
+            
+            // 2. 함께 보는 사주: localStorage의 'dev_saju_records'에서 읽기
+            const devRecordsJson = localStorage.getItem('dev_saju_records');
+            let otherSajuData: SajuInfo[] = [];
+            
+            if (devRecordsJson) {
+              try {
+                otherSajuData = JSON.parse(devRecordsJson);
+                console.log('✅ [DEV] 함께 보는 사주 로드 완료:', otherSajuData.length, '건');
+              } catch (e) {
+                console.error('❌ [DEV] dev_saju_records 파싱 실패:', e);
+              }
+            }
+            
+            // 3. UI 업데이트
+            setMySaju(mySajuData);
+            setOtherSajuList(otherSajuData);
+            
+            // 4. 대표 사주 선택
+            if (mySajuData) {
+              setSelectedSajuId(mySajuData.id);
+            } else if (otherSajuData.length > 0) {
+              const primarySaju = otherSajuData.find(s => s.is_primary);
+              setSelectedSajuId(primarySaju?.id || otherSajuData[0].id);
+            }
+            
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('JSON parse error', e);
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -92,6 +207,16 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
 
   useEffect(() => {
     loadSajuList();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        loadSajuList();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const setSajuList = (data: SajuInfo[]) => {
@@ -165,8 +290,8 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
     const rect = button.getBoundingClientRect();
     
     setKebabMenuPosition({
-      top: rect.top + rect.height / 2,
-      left: rect.left,
+      top: rect.bottom,
+      left: rect.right,
     });
     setSelectedSajuForKebab(saju);
     setKebabMenuOpen(true);
@@ -360,7 +485,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast.error('로그인이 필요합니다');
+        toast.error('로그인이 필요합다');
         return;
       }
 
@@ -378,7 +503,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         throw resetError;
       }
 
-      // 2단계: 새로운 대표 사주의 is_primary를 true로 변경
+      // 2단계: 새로운 대표 주의 is_primary를 true로 변경
       const { error: updateError } = await supabase
         .from('saju_records')
         .update({ is_primary: true })
@@ -396,7 +521,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
       setIsPrimarySajuChangeDialogOpen(false);
       setPendingPrimarySajuId(null);
 
-      // 4단계: 목록 ��로고침 (프로필 페이지에도 반영되도록)
+      // 4단계: 목록 로고침 (프로필 페이지에도 반영되도록)
       await loadSajuList();
 
       // 5단계: 토스트 메시지 표시 (2.2초 후 자동 사라짐)
@@ -429,22 +554,22 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative">
+      <div className="w-full max-w-[440px] relative mx-auto">
         {/* Top Navigation */}
-        <div className="fixed content-stretch flex flex-col items-start left-1/2 -translate-x-1/2 top-0 w-full max-w-[390px] z-10 bg-white">
+        <div className="fixed content-stretch flex flex-col items-start left-1/2 -translate-x-1/2 top-0 w-full max-w-[440px] z-10 bg-white">
           {/* Navigation Bar */}
           <div className="bg-white h-[52px] relative shrink-0 w-full">
             <div className="flex flex-col justify-center size-full">
               <div className="content-stretch flex flex-col items-start justify-center px-[12px] py-[4px] relative size-full">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                  <div onClick={onBack} className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer">
-                    <div className="relative shrink-0 size-[24px]">
+                  <div onClick={onBack} className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer transition-colors duration-200 active:bg-gray-100">
+                    <div className="relative shrink-0 size-[24px] transition-transform duration-200 group-active:scale-90">
                       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                         <path d={svgPaths.p2a5cd480} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
                       </svg>
                     </div>
                   </div>
-                  <p className="basis-0 grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
+                  <p className="basis-0 grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px] font-semibold">
                     사주 정보 관리
                   </p>
                   <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
@@ -457,15 +582,15 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         </div>
 
         {/* Content */}
-        <div className="pt-[115px] pb-[120px] px-[20px]">
+        <motion.div className="pt-[68px] pb-[120px] px-[20px]" variants={containerVariants} initial="hidden" animate="visible">
           {/* 내 사주 섹션 */}
           {mySaju && (
             <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
               {/* Section Title */}
-              <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
+              <motion.div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full" variants={itemVariants}>
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                   <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
+                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">
                       내 사주
                     </p>
                   </div>
@@ -477,24 +602,20 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     </svg>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Profile Card */}
-              <div className="content-stretch flex gap-[11px] items-center px-[8px] py-[12px] relative rounded-[12px] shrink-0 w-full">
+              <motion.div className="content-stretch flex gap-[12px] items-center px-[px] py-[4px] relative rounded-[12px] shrink-0 w-full" variants={itemVariants}>
                 {/* Radio Button */}
                 <div className="content-stretch flex items-center justify-center relative shrink-0 size-[44px]">
-                  <div 
+                  <Radio 
+                    checked={selectedSajuId === mySaju.id}
                     onClick={() => handleRadioClick(mySaju.id)}
-                    className={`content-stretch flex items-center justify-center relative rounded-full shrink-0 size-[24px] border-2 ${selectedSajuId === mySaju.id ? 'border-[#48b2af]' : 'border-[#e7e7e7]'} cursor-pointer`}
-                  >
-                    {selectedSajuId === mySaju.id && (
-                      <div className="bg-[#48b2af] rounded-full size-[12px]" />
-                    )}
-                  </div>
+                  />
                 </div>
 
                 {/* Profile Image */}
-                <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
+                <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
                   <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
                     <img 
                       alt={mySaju.zodiac || getChineseZodiac(mySaju.birth_date)}
@@ -508,17 +629,17 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
 
                 {/* Info Container */}
                 <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                  <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                    <p className="overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
+                  <div className="content-stretch flex items-center justify-between relative shrink-0 w-full -mb-[3px]">
+                    <p className="overflow-hidden relative text-[15px] text-black tracking-[-0.45px] font-medium line-clamp-2">
                       {mySaju.full_name} {mySaju.notes && `(${mySaju.notes})`}
                     </p>
                     <div 
                       onClick={(event) => handleKebabClick(event, mySaju)}
-                      className="content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer hover:bg-gray-100"
+                      className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
                     >
-                      <div className="relative shrink-0 size-[16px]">
+                      <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                          <path d={svgPaths.pdd51400} fill="#848484" stroke="#848484" />
+                          <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
                         </svg>
                       </div>
                     </div>
@@ -529,14 +650,16 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         {formatBirthDate(mySaju.birth_date, mySaju.calendar_type)}
                       </p>
                     </div>
-                    <div className="content-stretch flex gap-[8px] items-center relative rounded-[12px] shrink-0 w-full">
+                    <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {mySaju.zodiac || getChineseZodiac(mySaju.birth_date)}
                       </p>
-                      <div className="h-[6px] relative shrink-0 w-0">
-                        <svg className="block size-full" fill="none" viewBox="0 0 1 7">
-                          <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                        </svg>
+                      <div className="h-[6px] relative shrink-0 w-[1px]">
+                        <div className="absolute inset-[-8.33%_-0.4px]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
+                            <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
+                          </svg>
+                        </div>
                       </div>
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {(() => {
@@ -545,10 +668,12 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                           return getConstellation(parseInt(month), parseInt(day));
                         })()}
                       </p>
-                      <div className="h-[6px] relative shrink-0 w-0">
-                        <svg className="block size-full" fill="none" viewBox="0 0 1 7">
-                          <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                        </svg>
+                      <div className="h-[6px] relative shrink-0 w-[1px]">
+                        <div className="absolute inset-[-8.33%_-0.4px]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
+                            <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
+                          </svg>
+                        </div>
                       </div>
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {mySaju.gender === 'female' ? '여성' : '남성'}
@@ -556,18 +681,18 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           )}
 
           {/* 함께 보는 사주 섹션 */}
-          <div className="content-stretch flex flex-col gap-[88px] items-start relative shrink-0 w-full mt-[44px]">
+          <div className="content-stretch flex flex-col gap-[120px] items-start relative shrink-0 w-full mt-[32px]">
             <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
               {/* Section Title */}
-              <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
+              <motion.div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full mb-[-4px]" variants={itemVariants}>
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                   <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
+                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">
                       함께 보는 사주
                     </p>
                   </div>
@@ -579,46 +704,50 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     </svg>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Empty State or List */}
             {!hasOtherSaju ? (
-              <div className="content-stretch flex flex-col items-start relative shrink-0 w-full -mt-[44px]">
-                <div className="content-stretch flex flex-col gap-[28px] items-center justify-center relative shrink-0 w-full">
-                  <div className="relative shrink-0 size-[62px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 62 62">
-                      <path d={emptyStateSvgPaths.p30e68780} fill="#E7E7E7" />
-                      <path d={emptyStateSvgPaths.p14ef2c00} fill="#E7E7E7" />
+              <motion.div className="content-stretch flex flex-col items-start relative shrink-0 w-full -mt-[44px]" variants={itemVariants}>
+                <div className="content-stretch flex flex-col gap-[16px] items-center justify-center relative shrink-0 w-full">
+                  <div className="relative shrink-0 size-[64px]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 48 48">
+                      <g id="Icons">
+                        <path d={emptyStateSvgPaths.p3a144140} fill="var(--fill-0, #E7E7E7)" id="Vector" />
+                        <path d={emptyStateSvgPaths.p15b23580} fill="var(--fill-0, #D4D4D4)" id="Vector_2" />
+                        <path d={emptyStateSvgPaths.p3b09d000} fill="var(--fill-0, #D4D4D4)" id="Vector_3" />
+                        <path d={emptyStateSvgPaths.p1c433500} fill="var(--fill-0, #E7E7E7)" id="Vector_4" />
+                        <path d={emptyStateSvgPaths.p136e2000} fill="var(--fill-0, #F3F3F3)" id="Vector_5" />
+                        <path d={emptyStateSvgPaths.p15328600} fill="var(--fill-0, #D4D4D4)" id="Vector_6" />
+                        <path d={emptyStateSvgPaths.p1d148980} fill="var(--fill-0, #E7E7E7)" id="Vector_7" />
+                        <path d={emptyStateSvgPaths.p2d904400} fill="var(--fill-0, #F3F3F3)" id="Vector_8" />
+                      </g>
                     </svg>
                   </div>
                   <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
-                    <p className="font-normal leading-[25.5px] relative shrink-0 text-[#848484] text-[15px] text-center tracking-[-0.3px] w-full">
+                    <p className="font-normal leading-[26.5px] relative shrink-0 text-[#B7B7B7] text-[15px] text-center tracking-[-0.3px] w-full">
                       함께 보는 사주를 등록해 보세요.
                       <br />
                       소중한 인연의 운세를 함께 확인할 수 있어요.
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ) : (
-              <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full -mt-[80px]">
+              <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full -mt-[108px]">
                 {otherSajuList.map((saju) => (
-                  <div key={saju.id} className="content-stretch flex gap-[11px] items-center px-[8px] py-[12px] relative rounded-[12px] shrink-0 w-full">
+                  <motion.div key={saju.id} className="content-stretch flex gap-[12px] items-center px-[px] py-[4px] relative rounded-[12px] shrink-0 w-full" variants={itemVariants}>
                     {/* Radio Button */}
                     <div className="content-stretch flex items-center justify-center relative shrink-0 size-[44px]">
-                      <div 
+                      <Radio 
+                        checked={selectedSajuId === saju.id}
                         onClick={() => handleRadioClick(saju.id)}
-                        className={`content-stretch flex items-center justify-center relative rounded-full shrink-0 size-[24px] border-2 ${selectedSajuId === saju.id ? 'border-[#48b2af]' : 'border-[#e7e7e7]'} cursor-pointer`}
-                      >
-                        {selectedSajuId === saju.id && (
-                          <div className="bg-[#48b2af] rounded-full size-[12px]" />
-                        )}
-                      </div>
+                      />
                     </div>
 
                     {/* Profile Image */}
-                    <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
+                    <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
                       <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
                         <img 
                           alt={saju.zodiac || getChineseZodiac(saju.birth_date)}
@@ -630,19 +759,19 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                       </div>
                     </div>
 
-                    {/* Info Container - 나머지는 동일 */}
+                    {/* Info Container */}
                     <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                      <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                        <p className="overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
+                      <div className="content-stretch flex items-center justify-between relative shrink-0 w-full -mb-[3px]">
+                        <p className="overflow-hidden relative text-[15px] text-black tracking-[-0.45px] font-medium line-clamp-2">
                           {saju.full_name} {saju.notes && `(${saju.notes})`}
                         </p>
                         <div 
                           onClick={(event) => handleKebabClick(event, saju)}
-                          className="content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer hover:bg-gray-100"
+                          className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
                         >
-                          <div className="relative shrink-0 size-[16px]">
+                          <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
                             <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                              <path d={svgPaths.pdd51400} fill="#848484" stroke="#848484" />
+                              <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
                             </svg>
                           </div>
                         </div>
@@ -653,14 +782,16 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                             {formatBirthDate(saju.birth_date, saju.calendar_type)}
                           </p>
                         </div>
-                        <div className="content-stretch flex gap-[8px] items-center relative rounded-[12px] shrink-0 w-full">
+                        <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {saju.zodiac || getChineseZodiac(saju.birth_date)}
                           </p>
-                          <div className="h-[6px] relative shrink-0 w-0">
-                            <svg className="block size-full" fill="none" viewBox="0 0 1 7">
-                              <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                            </svg>
+                          <div className="h-[6px] relative shrink-0 w-[1px]">
+                            <div className="absolute inset-[-8.33%_-0.4px]">
+                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
+                                <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
+                              </svg>
+                            </div>
                           </div>
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {(() => {
@@ -669,10 +800,12 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                               return getConstellation(parseInt(month), parseInt(day));
                             })()}
                           </p>
-                          <div className="h-[6px] relative shrink-0 w-0">
-                            <svg className="block size-full" fill="none" viewBox="0 0 1 7">
-                              <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                            </svg>
+                          <div className="h-[6px] relative shrink-0 w-[1px]">
+                            <div className="absolute inset-[-8.33%_-0.4px]">
+                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
+                                <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
+                              </svg>
+                            </div>
                           </div>
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {saju.gender === 'female' ? '여성' : '남성'}
@@ -680,32 +813,34 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Bottom Button */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full max-w-[390px] z-10">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full max-w-[440px] z-10">
           <div className="bg-white relative shrink-0 w-full">
             <div className="flex flex-col items-center justify-center size-full">
-              <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
-                <div
-                  onClick={onNavigateToAdd}
-                  className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer hover:bg-[#3a9794] transition-colors"
-                >
-                  <div className="flex flex-row items-center justify-center size-full">
-                    <div className="content-stretch flex h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
-                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                        <p className="leading-[25px] relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px]">
-                          사주 정보 추가
-                        </p>
-                        <div className="relative shrink-0 size-[16px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                            <path d={svgPaths.p46c90f0} fill="white" />
-                          </svg>
+              <div className="w-full flex justify-center relative">
+                <div className="w-full max-w-[440px] px-[20px] py-[12px]">
+                  <div
+                    onClick={onNavigateToAdd}
+                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer hover:bg-[#3a9794] active:bg-[#2d7a78] active:scale-96 transition-all duration-150 ease-in-out"
+                  >
+                    <div className="flex flex-row items-center justify-center size-full">
+                      <div className="content-stretch flex h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
+                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                          <p className="leading-[25px] relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px]">
+                            사주 정보 추가
+                          </p>
+                          <div className="relative shrink-0 size-[16px]">
+                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                              <path d={svgPaths.p46c90f0} fill="white" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -714,9 +849,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
               </div>
             </div>
           </div>
-          <div className="bg-white h-[28px] relative shrink-0 w-full">
-            <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
-          </div>
+
         </div>
 
         {/* 케밥 메뉴 */}

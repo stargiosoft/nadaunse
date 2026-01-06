@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import ArrowLeft from './ArrowLeft';
 import { generateImagePrompt, generateThumbnail } from '../lib/masterContentAI';
 import FreeContentDetail from './FreeContentDetail';
+import { toast } from '../lib/toast';
 
 // 🔧 Build v1.2.6 - Router alias fix
 
@@ -52,7 +53,7 @@ const MAIN_CATEGORIES = [
   '시험/학업', 
   '건강', 
   '인간관계', 
-  '자녀', 
+  '자��', 
   '이사/매매', 
   '기타'
 ];
@@ -236,24 +237,6 @@ function ConfirmDialog({
   );
 }
 
-// 토스트 메시지
-function Toast({ message, onClose }: { message: string; onClose: () => void }) {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className="fixed top-[80px] left-1/2 transform -translate-x-1/2 bg-[#1b1b1b] text-white px-[24px] py-[12px] rounded-[8px] z-50 shadow-lg">
-      <p className="font-['Pretendard_Variable:Medium',sans-serif] text-[14px]">
-        {message}
-      </p>
-    </div>
-  );
-}
-
 // 이미지 모달
 function ImageModal({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) {
   return (
@@ -294,10 +277,6 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   const [subCategory, setSubCategory] = useState('');
   
   // UI states
-  const [toastMessage, setToastMessage] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeploying, setIsDeploying] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
@@ -430,17 +409,13 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
           // 이미지 재생성 완료 감지
           if (newData.thumbnail_url && newData.status === 'ready') {
             setIsRegeneratingImage(false);
-            setToastMessage('이미지가 생성되었습니다.');
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 2200);
+            toast('이미지가 생성되었습니다.');
           }
           
           // 이미지 재생성 실패 감지
           if (newData.status === 'failed') {
             setIsRegeneratingImage(false);
-            setToastMessage('이미지 만들기에 실패했어요.');
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 2200);
+            toast('이미지 만들기에 실패했어요.');
           }
         }
       )
@@ -482,9 +457,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
                 newSet.delete(index);
                 return newSet;
               });
-              setToastMessage('예시가 생성되었습니다.');
-              setShowToast(true);
-              setTimeout(() => setShowToast(false), 2200);
+              toast('예시가 생성되었습니다.');
             }
             
             return updated;
@@ -641,8 +614,6 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       return;
     }
 
-    setIsSaving(true);
-
     try {
       // 카테고리별 자동 가격 설정
       const getPriceByCategory = (categoryMain: string, categorySub: string) => {
@@ -694,7 +665,6 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       if (updateError) {
         console.error('Update error:', updateError);
         alert('수정에 실패했습니다.');
-        setIsSaving(false);
         return;
       }
 
@@ -707,7 +677,6 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       if (deleteError) {
         console.error('Delete questions error:', deleteError);
         alert('질문 수정에 실패했습니다.');
-        setIsSaving(false);
         return;
       }
 
@@ -726,17 +695,14 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       if (insertError) {
         console.error('Insert questions error:', insertError);
         alert('질문 저장에 실패했습니다.');
-        setIsSaving(false);
         return;
       }
 
       console.log('Update successful');
-      setToastMessage('수정되었어요.');
-      setIsSaving(false);
+      toast('수정되었어요.');
     } catch (error) {
       console.error('Save error:', error);
       alert('저장 중 오류가 발생했습니다.');
-      setIsSaving(false);
     }
   };
 
@@ -783,7 +749,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
     // 파일 형식 체크 (png, jpeg, jpg만 허용)
     const validFormats = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!validFormats.includes(file.type)) {
-      setToastMessage('파일 업로드에 실패했어요.');
+      toast('파일 업로드에 실패했어요.');
       return;
     }
 
@@ -801,18 +767,18 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
 
         if (error) {
           console.error('Thumbnail upload error:', error);
-          setToastMessage('파일 업로드에 실패했어요.');
+          toast('파일 업로드에 실패했어요.');
           return;
         }
 
         // 화면 업데이트
         setContentData(prev => prev ? { ...prev, thumbnail_url: base64Image } : null);
-        setToastMessage('교체되었습니다.');
+        toast('교체되었습니다.');
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Thumbnail upload error:', error);
-      setToastMessage('파일 업로드에 실패했어요.');
+      toast('파일 업로드에 실패했어요.');
     }
 
     // input 초기화 (같은 파일 재업로드 가능하게)
@@ -822,7 +788,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   // 이미지 다시 생성
   const handleRegenerateImage = async () => {
     if (!title.trim()) {
-      setToastMessage('콘텐츠 제목을 먼저 입력해주세요.');
+      toast('콘텐츠 제목을 먼저 입력해주세요.');
       setIsRegeneratingImage(false);
       return;
     }
@@ -877,16 +843,16 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       console.log('✅ 썸네일 재생성 요청 완료 (백그라운드 실행 중)');
 
       // 즉시 토스트 메시지 표시
-      setToastMessage('이미지를 생성하고 있어요. 잠시만 기다려주세요.');
+      toast('이미지를 생성하고 있어요. 잠시만 기다려주세요.');
       
       // isRegeneratingImage는 Realtime으로 상태 변경 감지 시 false로 변경됨
 
     } catch (error) {
       console.error('이미지 재생성 오류:', error);
-      setToastMessage('이미지 만들기에 실패했어요.');
+      toast('이미지 만들기에 실패했어요.');
       setIsRegeneratingImage(false);
       
-      // 실패 시 상태를 'ready'로 복원
+      // 실�� 시 상태를 'ready'로 복원
       await supabase
         .from('master_contents')
         .update({ status: 'ready' })
@@ -906,13 +872,13 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
     const question = questions[index];
     
     if (!question.question_text.trim()) {
-      setToastMessage('질문을 먼저 입력해주세요.');
+      toast('질문을 먼저 입력해주세요.');
       return;
     }
 
     // temp- ID인 경우 먼저 저장 필요
     if (question.id.startsWith('temp-')) {
-      setToastMessage('질문을 먼저 저장해주세요.');
+      toast('질문을 먼저 저장해주세요.');
       return;
     }
 
@@ -972,14 +938,14 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       console.log('✅ 미리보기 재생성 요청 완료 (백그라운드 실행 중)');
 
       // 즉시 토스트 메시지 표시
-      setToastMessage('예시를 생성하고 있어요. 잠시만 기다려주세요.');
+      toast('예시��� 생성하고 있어요. 잠시만 기다려주세요.');
       
       // regeneratingPreviewIndexes는 Realtime으로 데이터 업데이트 감지 시 제거됨
 
     } catch (error) {
       console.error('예시 재생성 오류:', error);
       const errorMessage = error instanceof Error ? error.message : '예시 만들기에 실패했어요.';
-      setToastMessage(errorMessage);
+      toast(errorMessage);
 
       setRegeneratingPreviewIndexes(prev => {
         const newSet = new Set(prev);
@@ -1064,9 +1030,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
                           alert('상태 변경 실패: ' + error.message);
                         } else {
                           setContentData(prev => prev ? { ...prev, status: 'ready' } : null);
-                          setShowToast(true);
-                          setToastMessage('상태가 "배포전"으로 변경되었습니다.');
-                          setTimeout(() => setShowToast(false), 2000);
+                          toast('상태가 "배포전"으로 변경되었습니다.');
                         }
                       } catch (error) {
                         console.error('상태 변경 에러:', error);
@@ -1390,11 +1354,10 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 h-[52px] rounded-[8px] bg-[#48b2af] flex items-center justify-center hover:bg-[#3fa3a0] transition-colors disabled:opacity-50"
+              className="flex-1 h-[52px] rounded-[8px] bg-[#48b2af] flex items-center justify-center hover:bg-[#3fa3a0] transition-colors"
             >
               <p className="font-['Pretendard_Variable:Bold',sans-serif] text-[16px] text-white">
-                {isSaving ? '저장 중...' : '수정하기'}
+                수정하기
               </p>
             </button>
           </div>
@@ -1409,14 +1372,6 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
               handleDelete();
             }}
             onCancel={() => setShowDeleteConfirm(false)}
-          />
-        )}
-
-        {/* 토스트 메시지 */}
-        {toastMessage && (
-          <Toast
-            message={toastMessage}
-            onClose={() => setToastMessage('')}
           />
         )}
 

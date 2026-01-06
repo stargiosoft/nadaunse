@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import PurchaseFailure from './PurchaseFailure';
 
 export default function PaymentComplete() {
   const navigate = useNavigate();
@@ -160,18 +161,7 @@ export default function PaymentComplete() {
   };
 
   if (status === 'fail') {
-    return (
-      <div className="bg-white flex flex-col items-center justify-center min-h-screen gap-4 px-5">
-        <p className="font-['Pretendard_Variable:SemiBold',sans-serif] text-[20px] text-black">결제 실패</p>
-        <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[15px] text-[#848484]">{errorMsg}</p>
-        <button 
-          onClick={handleGoBack}
-          className="bg-[#48b2af] text-white px-6 py-3 rounded-[16px] font-['Pretendard_Variable:Medium',sans-serif] text-[16px] cursor-pointer border-none"
-        >
-          돌아가기
-        </button>
-      </div>
-    );
+    return <PurchaseFailure onRetry={handleGoBack} onBack={handleGoBack} />;
   }
 
   // 로딩 중 (결제 성공 시 바로 이동하므로 이 화면만 보임)

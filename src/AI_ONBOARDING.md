@@ -1,7 +1,8 @@
 # 🤖 AI 작업 인수인계 가이드
 
 > **대상**: 이 프로젝트를 처음 맡는 AI 어시스턴트  
-> **목적**: 5분 안에 프로젝트 컨텍스트를 파악하고 즉시 작업 시작
+> **목적**: 5분 안에 프로젝트 컨텍스트를 파악하고 즉시 작업 시작  
+> **최종 업데이트**: 2026-01-06
 
 ---
 
@@ -19,14 +20,30 @@ cat PROJECT_CONTEXT.md
 
 **결과**: 
 - ✅ Tech Stack 파악 (React + Supabase + AI)
-- ✅ 프로젝트 구조 이해 (무료/유료 이원화)
+- ✅ 프로젝트 구조 이해 (타로/사주 운세, 무료/유료 이원화)
 - ✅ 절대 규칙 숙지 (Tailwind만, TypeScript 필수 등)
+- ✅ 모바일 웹 최적화 규칙 이해
 
 ---
 
-### 2단계: 작업 유형 분류 (1분)
+## 🎯 프로젝트 핵심 정보
 
-사용자 요청을 다음 5가지 중 하나로 분류:
+### 프로젝트 성격
+- **타로/사주 운세 모바일 웹 서비스**
+- iOS Safari 최적화 완료
+- 개발/배포 환경 자동 분리
+
+### 주요 통계
+- **컴포넌트**: 52개 (활성화)
+- **Edge Functions**: 17개
+- **페이지**: 38개
+- **UI 컴포넌트**: 14개
+
+---
+
+## 📋 작업 유형 분류 (1분)
+
+사용자 요청을 다음 6가지 중 하나로 분류:
 
 | 작업 유형 | 설명 | 예시 |
 |----------|------|------|
@@ -35,14 +52,13 @@ cat PROJECT_CONTEXT.md
 | **🎨 UI 수정** | 디자인 변경 | "버튼 색상 변경" |
 | **📊 데이터 작업** | DB 스키마, API 수정 | "테이블 컬럼 추가" |
 | **🔧 리팩토링** | 코드 개선 (기능 동일) | "중복 코드 제거" |
+| **📱 모바일 최적화** | iOS/Android 렌더링 이슈 | "둥근 모서리 안 보여요" |
 
 ---
 
-### 3단계: 필수 문서 읽기 (2분)
+## 📖 작업별 필수 문서
 
-작업 유형에 따라 **반드시 읽어야 할 문서**:
-
-#### 🐛 버그 수정
+### 🐛 버그 수정
 ```bash
 # 필수 (순서대로)
 1. PROJECT_CONTEXT.md  # 전체 읽기 (시스템 이해)
@@ -54,14 +70,15 @@ cat PROJECT_CONTEXT.md
 - [ ] Critical Rules 위반 여부 확인
 - [ ] 버그 체크리스트 섹션 확인 (PROJECT_CONTEXT.md)
 - [ ] 관련 Edge Function 로그 확인
+- [ ] 개발 환경에서만 발생하는지 확인 (`import.meta.env.DEV`)
 
 ---
 
-#### ✨ 새 기능 추가
+### ✨ 새 기능 추가
 ```bash
 # 필수 (순서대로)
 1. PROJECT_CONTEXT.md    # Critical Rules, 파일 구조
-2. components-inventory.md  # 재사용 가능한 컴포넌트 확인
+2. components-inventory.md  # 재사용 가능한 컴포넌트 확인 (52개)
 3. DATABASE_SCHEMA.md    # DB 스키마 (테이블 추가 필요 시)
 4. DECISIONS.md          # 기존 설계 패턴 확인
 ```
@@ -69,12 +86,13 @@ cat PROJECT_CONTEXT.md
 **체크리스트**:
 - [ ] 기존 컴포넌트 재사용 가능한지 확인
 - [ ] DB 스키마 변경 필요한지 확인
-- [ ] Edge Function 추가 필요한지 확인
+- [ ] Edge Function 추가 필요한지 확인 (현재 17개)
 - [ ] 무료/유료 분기 필요한지 확인
+- [ ] 개발 전용 기능인지 확인 (배포 시 제외 필요)
 
 ---
 
-#### 🎨 UI 수정
+### 🎨 UI 수정
 ```bash
 # 필수
 1. PROJECT_CONTEXT.md     # Critical Rules (스타일링 규칙)
@@ -87,24 +105,31 @@ cat PROJECT_CONTEXT.md
 - ❌ `styled-components`, `inline style` 사용
 - ❌ Tailwind 외 CSS 라이브러리 사용
 
+**iOS Safari 체크리스트**:
+- [ ] `overflow: hidden` + `border-radius` 조합 사용 시 `transform-gpu` 추가
+- [ ] 둥근 모서리가 잘리는지 실제 iOS Safari에서 확인
+- [ ] 하단 고정 CTA는 `BottomCTA` 컴포넌트 재사용
+
 ---
 
-#### 📊 데이터 작업
+### 📊 데이터 작업
 ```bash
 # 필수
 1. DATABASE_SCHEMA.md     # 전체 DB 구조 파악
 2. PROJECT_CONTEXT.md     # RLS 정책, Edge Functions
 3. /lib/supabase.ts       # Supabase 클라이언트 설정
+4. supabase/EDGE_FUNCTIONS_GUIDE.md  # Edge Functions 17개 목록
 ```
 
 **체크리스트**:
 - [ ] RLS 정책 추가 필요한지 확인
 - [ ] 마이그레이션 SQL 파일 작성
 - [ ] Edge Function에서 접근 가능한지 확인
+- [ ] Service Role Key 필요한지 확인
 
 ---
 
-#### 🔧 리팩토링
+### 🔧 리팩토링
 ```bash
 # 필수
 1. DECISIONS.md           # 기존 설계 의도 이해
@@ -116,12 +141,298 @@ cat PROJECT_CONTEXT.md
 - [ ] 기능 변경 없이 코드만 개선하는지 확인
 - [ ] 기존 설계 패턴 유지 (싱글톤 서비스 클래스 등)
 - [ ] TypeScript 타입 정확히 정의
+- [ ] 개발 전용 코드는 `import.meta.env.DEV`로 분리 유지
+
+---
+
+### 📱 모바일 최적화
+```bash
+# 필수
+1. PROJECT_CONTEXT.md     # 모바일 최적화 규칙
+2. /styles/globals.css    # 반응형 토큰
+3. 해당 컴포넌트 파일      # 실제 렌더링 확인
+```
+
+**iOS Safari 렌더링 이슈 해결법**:
+```tsx
+// ✅ 올바른 예시 - transform-gpu 추가
+<div className="overflow-hidden rounded-2xl transform-gpu">
+  {/* 둥근 모서리가 정상적으로 보임 */}
+</div>
+
+// ❌ 잘못된 예시 - iOS에서 잘림
+<div className="overflow-hidden rounded-2xl">
+  {/* iOS Safari에서 둥근 모서리가 잘릴 수 있음 */}
+</div>
+```
+
+---
+
+## 🚨 Critical Rules (암기 필수)
+
+### ✅ 반드시 해야 할 것
+
+#### 1. TypeScript 타입 정의
+```typescript
+// ✅ 올바름
+interface User {
+  id: string;
+  name: string;
+}
+
+// ❌ 금지
+const user: any = {...};
+```
+
+#### 2. Tailwind CSS만 사용
+```tsx
+// ✅ 올바름
+<div className="flex items-center gap-2">
+
+// ❌ 금지
+<div style={{ display: 'flex' }}>
+```
+
+#### 3. 개발/배포 환경 분리
+```tsx
+// ✅ 개발 전용 UI 요소 (배포 시 자동 제외)
+{import.meta.env.DEV && (
+  <button onClick={handleDebug}>디버그 버튼</button>
+)}
+
+// ❌ 개발 전용 버튼이 프로덕션에 노출됨
+<button onClick={handleDebug}>디버그 버튼</button>
+```
+
+**적용 대상**:
+- 테스트 버튼
+- 디버깅 도구
+- UI 테스팅용 직접 이동 버튼
+- 개발자 전용 로그 출력
+- 에러 페이지 테스트 버튼
+
+#### 4. iOS Safari 최적화
+```tsx
+// ✅ 둥근 모서리 렌더링 이슈 해결
+<div className="overflow-hidden rounded-2xl transform-gpu">
+  <img src="..." alt="..." />
+</div>
+
+// ❌ iOS에서 둥근 모서리가 잘릴 수 있음
+<div className="overflow-hidden rounded-2xl">
+  <img src="..." alt="..." />
+</div>
+```
+
+#### 5. JSDoc 주석 (public 메서드)
+```typescript
+/**
+ * 무료 콘텐츠 AI 생성 요청
+ * @param params - 생성 파라미터
+ * @throws {Error} Edge Function 호출 실패 시
+ */
+async requestGeneration(params: RequestGenerationParams): Promise<void>
+```
+
+#### 6. 구조화된 로깅
+```typescript
+// ✅ 올바름
+scrollRestoreLogger.save({ scrollY: 500, contentCount: 12 });
+
+// ❌ 금지
+console.log('스크롤:', 500);
+```
+
+---
+
+### ❌ 절대 하지 말아야 할 것
+
+#### 1. 폰트 관련 Tailwind 클래스 사용
+- ❌ `text-2xl`, `font-bold`, `leading-tight` 등
+- ✅ `globals.css`에 정의된 토큰만 사용
+
+#### 2. Styled-components 또는 inline style
+- ❌ `styled.div`, `<div style={{...}}>`
+- ✅ Tailwind 클래스만 사용
+
+#### 3. any 타입 사용
+- ❌ `const data: any = ...`
+- ✅ 명확한 interface 정의
+
+#### 4. 보호된 파일 수정
+- ❌ `/components/figma/ImageWithFallback.tsx`
+- ✅ 다른 파일에서 import해서 사용
+
+#### 5. 개발 전용 코드를 프로덕션에 노출
+- ❌ 테스트 버튼이 배포 환경에 보임
+- ✅ `import.meta.env.DEV` 조건으로 분리
+
+#### 6. iOS Safari 최적화 무시
+- ❌ `overflow: hidden` + `border-radius`만 사용
+- ✅ `transform-gpu` 클래스 추가
+
+---
+
+## 🔍 파일 찾기 치트시트
+
+### 기능별 파일 위치 (빠른 참조)
+
+#### 무료 콘텐츠 (사주)
+```
+/components/FreeProductDetail.tsx       # 무료 상세
+/components/FreeBirthInfoInput.tsx      # 사주 입력
+/components/FreeSajuSelectPage.tsx      # 사주 선택
+/components/FreeContentLoading.tsx      # 로딩
+/components/FreeSajuDetail.tsx          # 결과
+/components/FreeContentDetail.tsx       # 메인 로직
+/lib/freeContentService.ts              # 비즈니스 로직
+```
+
+#### 유료 콘텐츠 (심화 해석판)
+```
+/components/ProductDetail.tsx           # 유료 상세
+/components/PaymentNew.tsx              # 결제
+/components/BirthInfoInput.tsx          # 사주 입력
+/components/SajuSelectPage.tsx          # 사주 선택
+/components/LoadingPage.tsx             # 로딩
+/components/SajuResultPage.tsx          # 결과
+/components/CouponBottomSheetNew.tsx    # 쿠폰 선택
+```
+
+#### 타로 콘텐츠
+```
+/components/TarotFlowPage.tsx           # 타로 플로우 통합
+/components/TarotCardSelection.tsx      # 카드 선택
+/components/TarotShufflePage.tsx        # 카드 섞기
+/components/TarotResultPage.tsx         # 타로 결과
+/pages/TarotDemo.tsx                    # 타로 데모
+/lib/tarotCards.ts                      # 타로 카드 데이터
+```
+
+#### 사주 정보 관리
+```
+/components/SajuManagementPage.tsx      # 사주 관리 메인
+/components/SajuInputPage.tsx           # 내 사주 입력
+/components/SajuAddPage.tsx             # 관계 사주 추가
+/components/SajuDetail.tsx              # 사주 상세
+/components/SajuKebabMenu.tsx           # 케밥 메뉴
+/components/PrimarySajuChangeDialog.tsx # 대표 사주 변경
+```
+
+#### 프로필 & 구매
+```
+/components/ProfilePage.tsx             # 프로필 메인
+/components/PurchaseHistoryPage.tsx     # 구매 내역
+/components/WelcomeCouponPage.tsx       # 웰컴 쿠폰
+```
+
+#### 인증
+```
+/components/LoginPageNew.tsx            # 로그인
+/components/ExistingAccountPageNew.tsx  # 기존 계정 연동
+/components/SessionExpiredDialog.tsx    # 세션 만료
+/lib/auth.ts                            # 인증 헬퍼
+/pages/AuthCallback.tsx                 # OAuth 콜백
+```
+
+#### 공통 UI
+```
+/components/ui/*                        # shadcn/ui 재사용 컴포넌트 (26개)
+/components/skeletons/*                 # 로딩 스켈레톤 (5개)
+/components/NavigationHeader.tsx        # 헤더
+/components/Footer.tsx                  # 푸터
+/components/BottomNavigation.tsx        # 하단 네비게이션
+/components/ErrorPage.tsx               # 공통 에러 페이지
+/components/ErrorBoundary.tsx           # 에러 바운더리
+```
+
+#### 비즈니스 로직
+```
+/lib/supabase.ts                        # Supabase 클라이언트
+/lib/freeContentService.ts              # 무료 콘텐츠 서비스
+/lib/masterContentAI.ts                 # 유료 AI 생성
+/lib/coupon.ts                          # 쿠폰 관리
+/lib/auth.ts                            # 인증 헬퍼
+/lib/zodiacUtils.ts                     # 띠 계산
+/lib/tarotCards.ts                      # 타로 카드 데이터
+```
+
+#### Edge Functions (17개)
+```
+/supabase/functions/generate-free-preview/      # 무료 맛보기
+/supabase/functions/generate-master-content/    # 유료 생성
+/supabase/functions/generate-saju-answer/       # 사주 운세
+/supabase/functions/generate-tarot-answer/      # 타로 운세
+/supabase/functions/get-available-coupons/      # 쿠폰 조회
+/supabase/functions/issue-welcome-coupon/       # 웰컴 쿠폰
+/supabase/functions/issue-revisit-coupon/       # 재방문 쿠폰
+/supabase/functions/apply-coupon-to-order/      # 쿠폰 적용
+/supabase/functions/send-alimtalk/              # 알림톡
+/supabase/functions/users/                      # 사용자 관리
+... (17개 전체 목록: /supabase/EDGE_FUNCTIONS_GUIDE.md)
+```
 
 ---
 
 ## 📋 시나리오별 작업 흐름
 
-### 시나리오 1: "스크롤 복원이 안 돼요" (버그 수정)
+### 시나리오 1: "iOS에서 둥근 모서리가 안 보여요" (모바일 최적화)
+
+#### Step 1: 문제 파악
+```markdown
+증상: iOS Safari에서 overflow: hidden + border-radius 조합이 작동 안 함
+원인: iOS Safari 렌더링 버그
+```
+
+#### Step 2: 해결 방법 적용
+```tsx
+// Before
+<div className="overflow-hidden rounded-2xl">
+  <img src="..." alt="..." />
+</div>
+
+// After - transform-gpu 추가
+<div className="overflow-hidden rounded-2xl transform-gpu">
+  <img src="..." alt="..." />
+</div>
+```
+
+#### Step 3: 검증
+- [ ] iOS Safari 실제 기기에서 확인
+- [ ] Android Chrome에서도 정상 작동 확인
+- [ ] 다른 브라우저에서도 테스트
+
+---
+
+### 시나리오 2: "개발용 버튼이 프로덕션에 보여요" (환경 분리)
+
+#### Step 1: 문제 파악
+```bash
+file_search:
+- content_pattern: "버튼|button"
+- name_pattern: "**/*.tsx"
+```
+
+#### Step 2: 개발 전용 코드 분리
+```tsx
+// Before - 프로덕션에도 노출됨
+<button onClick={handleTest}>테스트 버튼</button>
+
+// After - 개발 환경에서만 보임
+{import.meta.env.DEV && (
+  <button onClick={handleTest}>테스트 버튼</button>
+)}
+```
+
+#### Step 3: 적용 대상 확인
+- [ ] 디버깅 버튼
+- [ ] UI 테스팅용 직접 이동 버튼
+- [ ] 개발자 전용 로그
+- [ ] 에러 페이지 테스트 버튼
+
+---
+
+### 시나리오 3: "스크롤 복원이 안 돼요" (버그 수정)
 
 #### Step 1: 컨텍스트 로드
 ```markdown
@@ -158,11 +469,11 @@ file_search:
 
 ---
 
-### 시나리오 2: "프로필 페이지에 별점 평가 추가해주세요" (새 기능)
+### 시나리오 4: "프로필 페이지에 별점 평가 추가해주세요" (새 기능)
 
 #### Step 1: 기존 구조 파악
 ```bash
-# 1. 컴포넌트 인벤토리 확인
+# 1. 컴포넌트 인벤토리 확인 (52개 중)
 cat components-inventory.md | grep "프로필"
 
 # 2. DB 스키마 확인
@@ -175,11 +486,12 @@ cat DATABASE_SCHEMA.md | grep "users\|ratings"
 - [ ] 별점 데이터를 어디에 저장? (새 테이블 vs 기존 테이블)
 - [ ] 로그인 필수? (유료 vs 무료)
 - [ ] UI 컴포넌트 재사용 가능? (components/ui/*)
+- [ ] 개발 환경에서 먼저 테스트?
 ```
 
 #### Step 3: DECISIONS.md 업데이트
 ```markdown
-## [2025-12-21] 별점 평가 시스템 추가
+## [2026-01-06] 별점 평가 시스템 추가
 
 ### 결정 사항
 - 새 테이블 `content_ratings` 생성
@@ -201,7 +513,7 @@ cat DATABASE_SCHEMA.md | grep "users\|ratings"
 
 ---
 
-### 시나리오 3: "로딩 페이지 디자인 변경" (UI 수정)
+### 시나리오 5: "로딩 페이지 디자인 변경" (UI 수정)
 
 #### Step 1: Critical Rules 확인
 ```bash
@@ -211,6 +523,7 @@ cat PROJECT_CONTEXT.md | grep -A 10 "Critical Rules"
 **확인 사항**:
 - ❌ `text-2xl`, `font-bold` 같은 폰트 클래스 사용 금지
 - ✅ `globals.css`의 토큰만 사용
+- ✅ iOS Safari 렌더링 이슈 확인
 
 #### Step 2: 기존 파일 찾기
 ```bash
@@ -241,142 +554,30 @@ cat /styles/globals.css | grep "@theme"
 
 ---
 
-## 🔍 파일 찾기 치트시트
-
-### 기능별 파일 위치 (빠른 참조)
-
-#### 무료 콘텐츠
-```
-/components/FreeProductDetail.tsx       # 무료 상세
-/components/FreeBirthInfoInput.tsx      # 사주 입력
-/components/FreeSajuSelectPage.tsx      # 사주 선택
-/components/FreeContentLoading.tsx      # 로딩
-/components/FreeSajuDetail.tsx          # 결과
-/lib/freeContentService.ts              # 비즈니스 로직
-```
-
-#### 유료 콘텐츠
-```
-/components/ProductDetail.tsx           # 유료 상세
-/components/PaymentNew.tsx              # 결제
-/components/BirthInfoInput.tsx          # 사주 입력
-/components/LoadingPage.tsx             # 로딩
-/components/SajuResultPage.tsx          # 결과
-```
-
-#### 공통 UI
-```
-/components/ui/*                        # shadcn/ui 재사용 컴포넌트
-/components/skeletons/*                 # 로딩 스켈레톤
-/components/NavigationHeader.tsx        # 헤더
-/components/Footer.tsx                  # 푸터
-```
-
-#### 비즈니스 로직
-```
-/lib/supabase.ts                        # Supabase 클라이언트
-/lib/freeContentService.ts              # 무료 콘텐츠 서비스
-/lib/masterContentAI.ts                 # 유료 AI 생성
-/lib/coupon.ts                          # 쿠폰 관리
-/lib/auth.ts                            # 인증 헬퍼
-```
-
-#### Edge Functions
-```
-/supabase/functions/generate-free-preview/      # 무료 생성
-/supabase/functions/generate-master-content/    # 유료 생성
-/supabase/functions/get-available-coupons/      # 쿠폰 조회
-/supabase/functions/send-alimtalk/              # 알림톡
-
-→ 📖 전체 목록 (17개): /supabase/EDGE_FUNCTIONS_GUIDE.md
-```
-
----
-
-## 🚨 Critical Rules (암기 필수)
-
-### ✅ 반드시 해야 할 것
-
-1. **TypeScript 타입 정의**
-   ```typescript
-   // ✅ 올바름
-   interface User {
-     id: string;
-     name: string;
-   }
-   
-   // ❌ 금지
-   const user: any = {...};
-   ```
-
-2. **Tailwind CSS만 사용**
-   ```tsx
-   // ✅ 올바름
-   <div className="flex items-center gap-2">
-   
-   // ❌ 금지
-   <div style={{ display: 'flex' }}>
-   ```
-
-3. **JSDoc 주석 (public 메서드)**
-   ```typescript
-   /**
-    * 무료 콘텐츠 AI 생성 요청
-    * @param params - 생성 파라미터
-    * @throws {Error} Edge Function 호출 실패 시
-    */
-   async requestGeneration(params: RequestGenerationParams): Promise<void>
-   ```
-
-4. **구조화된 로깅**
-   ```typescript
-   // ✅ 올바름
-   scrollRestoreLogger.save({ scrollY: 500, contentCount: 12 });
-   
-   // ❌ 금지
-   console.log('스크롤:', 500);
-   ```
-
----
-
-### ❌ 절대 하지 말아야 할 것
-
-1. **폰트 관련 Tailwind 클래스 사용**
-   - ❌ `text-2xl`, `font-bold`, `leading-tight` 등
-   - ✅ `globals.css`에 정의된 토큰만 사용
-
-2. **Styled-components 또는 inline style**
-   - ❌ `styled.div`, `<div style={{...}}>`
-   - ✅ Tailwind 클래스만 사용
-
-3. **any 타입 사용**
-   - ❌ `const data: any = ...`
-   - ✅ 명확한 interface 정의
-
-4. **보호된 파일 수정**
-   - ❌ `/components/figma/ImageWithFallback.tsx`
-   - ✅ 다른 파일에서 import해서 사용
-
----
-
 ## 📖 문서 간 관계도
 
 ```
 README.md (시작점)
     │
+    ├─→ AI_ONBOARDING.md (AI 필독, 5분)
+    │
     ├─→ PROJECT_CONTEXT.md (핵심, 모든 작업 전 필독)
     │       │
     │       ├─→ DECISIONS.md (설계 의도)
     │       ├─→ DATABASE_SCHEMA.md (DB 구조)
-    │       └─→ components-inventory.md (파일 위치)
+    │       └─→ components-inventory.md (파일 위치, 52개)
+    │
+    ├─→ supabase/EDGE_FUNCTIONS_GUIDE.md (Edge Functions 17개)
+    ├─→ supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md (트리거/함수)
     │
     └─→ Attributions.md (라이선스)
 ```
 
 **읽는 순서** (작업 시작 전):
 1. **README.md** (1분) - 프로젝트 개요
-2. **PROJECT_CONTEXT.md** (3분) - 시스템 전체 이해
-3. **작업별 추가 문서** (2분) - DECISIONS.md, DATABASE_SCHEMA.md 등
+2. **AI_ONBOARDING.md** (1분) - 이 문서
+3. **PROJECT_CONTEXT.md** (3분) - 시스템 전체 이해
+4. **작업별 추가 문서** (2분) - DECISIONS.md, DATABASE_SCHEMA.md 등
 
 ---
 
@@ -398,6 +599,7 @@ README.md (시작점)
 │ C. 🎨 UI 수정                       │
 │ D. 📊 데이터 작업                   │
 │ E. 🔧 리팩토링                      │
+│ F. 📱 모바일 최적화 (NEW!)          │
 └────────┬───────────────────────────┘
          ↓
 ┌─────────────────────────────────────┐
@@ -408,6 +610,7 @@ README.md (시작점)
 │ UI 수정  → globals.css              │
 │ 데이터   → DATABASE_SCHEMA.md       │
 │ 리팩토링 → DECISIONS.md              │
+│ 모바일   → 모바일 최적화 가이드      │
 └─────────┬───────────────────────────┘
          ↓
 ┌──────────────────┐
@@ -415,12 +618,14 @@ README.md (시작점)
 │ 관련 파일 찾기    │
 └────────┬─────────┘
          ↓
-┌──────────────────┐
+┌──────────────────────────┐
 │ 5. Critical Rules 체크   │
 │ - TypeScript?           │
 │ - Tailwind only?        │
 │ - JSDoc?                │
-└────────┬────────────────┘
+│ - import.meta.env.DEV? │
+│ - transform-gpu?        │
+└────────┬─────────────────┘
          ↓
 ┌──────────────┐
 │ 6. 코드 작성  │
@@ -438,13 +643,16 @@ README.md (시작점)
 
 ```markdown
 [ ] README.md 읽음
+[ ] AI_ONBOARDING.md 읽음 (이 문서)
 [ ] PROJECT_CONTEXT.md 전체 읽음
 [ ] Critical Rules 숙지
 [ ] 작업 유형 분류 완료
 [ ] 필요한 추가 문서 확인
-[ ] 관련 파일 경로 파악
+[ ] 관련 파일 경로 파악 (52개 컴포넌트 중)
 [ ] 기존 설계 패턴 이해 (DECISIONS.md)
 [ ] 보호된 파일 확인 (수정 금지)
+[ ] 개발/배포 환경 분리 확인
+[ ] iOS Safari 최적화 확인
 ```
 
 **모두 체크했다면** → 즉시 작업 시작 가능! 🚀
@@ -480,6 +688,18 @@ AI: "DECISIONS.md를 확인하겠습니다."
 1. 코드 작성
 2. DECISIONS.md에 결정 사항 기록
 3. PROJECT_CONTEXT.md 업데이트 (필요 시)
+4. components-inventory.md 업데이트 (컴포넌트 추가 시)
+```
+
+### 4. 개발 전용 기능은 즉시 분리
+```tsx
+// 새 기능 추가 시 바로 확인
+// "이 기능이 프로덕션에 노출되어야 하나?"
+// → 아니면 import.meta.env.DEV로 감싸기
+
+{import.meta.env.DEV && (
+  <NewFeature />
+)}
 ```
 
 ---
@@ -492,15 +712,17 @@ AI: "DECISIONS.md를 확인하겠습니다."
 1. cat PROJECT_CONTEXT.md | head -100  # 상단 100줄만
 2. 버그 증상 듣기
 3. file_search로 관련 파일 찾기
-4. 즉시 수정 제안
+4. Critical Rules 체크 (TypeScript, Tailwind, 환경 분리)
+5. 즉시 수정 제안
 ```
 
 ### 상황 2: "문서가 너무 많아요, 뭐부터 봐야 해요?"
 ```bash
 # 우선순위 (강제)
 1순위: PROJECT_CONTEXT.md (필수, 3분)
-2순위: 작업별 추가 문서 (선택, 2분)
-3순위: 나머지 (나중에)
+2순위: AI_ONBOARDING.md (이 문서, 2분)
+3순위: 작업별 추가 문서 (선택, 2분)
+4순위: 나머지 (나중에)
 ```
 
 ### 상황 3: "이 코드 왜 이렇게 짰어요?"
@@ -509,6 +731,16 @@ AI: "DECISIONS.md를 확인하겠습니다."
 1. DECISIONS.md 검색
 2. 관련 파일의 JSDoc 주석 확인
 3. PROJECT_CONTEXT.md의 Critical Rules 확인
+4. components-inventory.md에서 컴포넌트 역할 확인
+```
+
+### 상황 4: "iOS에서만 버그가 발생해요"
+```bash
+# 모바일 최적화 체크
+1. transform-gpu 클래스 추가했는지 확인
+2. overflow: hidden + border-radius 조합 확인
+3. iOS Safari 실제 기기에서 테스트
+4. PROJECT_CONTEXT.md의 모바일 최적화 섹션 확인
 ```
 
 ---
@@ -520,9 +752,11 @@ AI: "DECISIONS.md를 확인하겠습니다."
 | "전체 시스템 구조는?" | PROJECT_CONTEXT.md |
 | "왜 이렇게 설계했어?" | DECISIONS.md |
 | "DB 테이블 구조는?" | DATABASE_SCHEMA.md |
-| "이 컴포넌트 어디 있어?" | components-inventory.md |
+| "이 컴포넌트 어디 있어?" | components-inventory.md (52개) |
+| "Edge Functions 목록은?" | supabase/EDGE_FUNCTIONS_GUIDE.md (17개) |
 | "빠르게 시작하려면?" | README.md |
 | "라이선스 확인" | Attributions.md |
+| "모바일 최적화는?" | AI_ONBOARDING.md (이 문서) |
 
 ---
 
@@ -532,19 +766,54 @@ AI: "DECISIONS.md를 확인하겠습니다."
 
 ```markdown
 [ ] 무료/유료 콘텐츠 플로우 다이어그램 그릴 수 있다
+[ ] 타로/사주 운세 서비스 차이를 설명할 수 있다
 [ ] FreeContentService 클래스 역할 설명할 수 있다
-[ ] Critical Rules 5가지 암기했다
-[ ] Edge Functions 목록 외웠다
+[ ] Critical Rules 6가지 암기했다
+[ ] Edge Functions 17개 목록 외웠다
 [ ] Tailwind 폰트 클래스 사용 금지 이유 안다
 [ ] RLS 정책이 뭔지 안다
 [ ] localStorage vs DB 저장 분기 조건 안다
 [ ] 스크롤 복원 로직 설명할 수 있다
+[ ] import.meta.env.DEV 사용 목적 안다 (NEW!)
+[ ] iOS Safari transform-gpu 이슈 해결법 안다 (NEW!)
+[ ] 52개 컴포넌트 위치를 빠르게 찾을 수 있다
+[ ] 개발/배포 환경 차이를 설명할 수 있다
 ```
 
 **80% 이상 체크** → 프로젝트 마스터! 자유롭게 작업 가능 🎉
 
 ---
 
-**문서 버전**: 1.0.0  
-**최종 업데이트**: 2025-12-21  
-**다음 AI에게**: 이 문서 읽는 데 5분 투자하면, 수십 시간의 삽질을 막을 수 있어요. 화이팅! 🚀
+## 🔄 업데이트 이력
+
+| 버전 | 날짜 | 변경 내용 | 작성자 |
+|------|------|-----------|--------|
+| 1.0.0 | 2025-12-21 | 초기 문서 작성 | AI Assistant |
+| 1.1.0 | 2025-12-31 | LoadingPage 이미지 최적화, 목차 더미 데이터 제거 반영 | AI Assistant |
+| 1.2.0 | 2026-01-06 | 개발/배포 환경 분리, iOS Safari 최적화, 타로 서비스 추가, 컴포넌트 52개/Edge Functions 17개 반영 | AI Assistant |
+
+---
+
+## 🎯 최근 주요 개선사항 (2026-01-06)
+
+### ✅ 개발/배포 환경 분리
+- `import.meta.env.DEV` 조건으로 개발 전용 UI 요소 자동 제외
+- 테스트 버튼, 디버깅 도구가 프로덕션에 노출되지 않음
+
+### ✅ iOS Safari 최적화
+- `transform-gpu` 클래스로 `border-radius` 렌더링 이슈 해결
+- 맛보기 카드, 이미지 컨테이너 등에 적용 완료
+
+### ✅ 타로 서비스 통합
+- 타로 카드 섞기, 선택, 결과 페이지 추가
+- 사주/타로 통합 운세 서비스로 확장
+
+### ✅ 하단 고정 CTA 리팩토링
+- 모바일 최적화된 하단 CTA 컴포넌트 개선 완료
+- 일관된 사용자 경험 제공
+
+---
+
+**문서 버전**: 1.2.0  
+**최종 업데이트**: 2026-01-06  
+**다음 AI에게**: 이 문서 읽는 데 5분 투자하면, 수십 시간의 삽질을 막을 수 있어요. 개발/배포 환경 분리와 iOS Safari 최적화를 꼭 기억하세요! 화이팅! 🚀

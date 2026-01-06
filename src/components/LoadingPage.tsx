@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import svgPaths from "../imports/svg-ezi6geedzp";
-import imgLoadingImage from "figma:asset/35682d96407edc7fb5921d3d1b58f0b20b40da6e.png";
+import imgLoadingImage from "figma:asset/e2c5a8ca34b2f8422ee7e5c07afc7fb43951737f.png";
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { preloadTarotImages } from '../lib/tarotImageCache';
+import { preloadImages } from '../lib/imagePreloader';
 import { motion } from "motion/react";
 
 // ⭐ 무료 콘텐츠 인터페이스
@@ -14,6 +15,10 @@ interface FreeContent {
   thumbnail_url: string | null;
   weekly_clicks: number;
 }
+
+// ⭐ 무료 콘텐츠 캐시 키 (5분 만료)
+const FREE_CONTENTS_CACHE_KEY = 'free_contents_cache_v1';
+const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
 
 // ⭐ Progress Bar 컴포넌트 분리 (100ms 리렌더링 격리)
 function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
@@ -107,6 +112,28 @@ export default function LoadingPage() {
       try {
         console.log('🔍 [무료콘텐츠] 로드 시작');
         
+        // 캐시 확인
+        const cachedData = localStorage.getItem(FREE_CONTENTS_CACHE_KEY);
+        if (cachedData) {
+          const { contents, timestamp } = JSON.parse(cachedData);
+          const now = Date.now();
+          if (now - timestamp < CACHE_EXPIRY) {
+            console.log('✅ [무료콘텐츠] 캐시 사용:', contents.length, '개');
+            setFreeContents(contents);
+            
+            // 🚀 캐시 데이터 사용 시에도 이미지 프리로드
+            const thumbnails = contents
+              .slice(0, 3)
+              .map((c: FreeContent) => c.thumbnail_url)
+              .filter(Boolean) as string[];
+            if (thumbnails.length > 0) {
+              console.log('🖼️ [무료콘텐츠] 캐시 이미지 프리로드:', thumbnails.length, '개');
+              preloadImages(thumbnails, 'high');
+            }
+            return;
+          }
+        }
+
         // 일주일 전 날짜 계산
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -124,7 +151,7 @@ export default function LoadingPage() {
           return;
         }
 
-        console.log('✅ [��료콘텐츠] master_contents 조회:', contents.length, '개');
+        console.log('✅ [무료콘텐츠] master_contents 조회:', contents.length, '개');
 
         // 2. 각 콘텐츠의 주간 클릭수 계산
         const contentsWithClicks = await Promise.all(
@@ -151,6 +178,34 @@ export default function LoadingPage() {
         console.log('✅ [무료콘텐츠] 정렬 완료:', sorted.map(c => `${c.title}(${c.weekly_clicks})`));
         
         setFreeContents(sorted);
+
+        // 캐시 저장
+        localStorage.setItem(FREE_CONTENTS_CACHE_KEY, JSON.stringify({
+          contents: sorted,
+          timestamp: Date.now()
+        }));
+
+        // 🚀 처음 3개 썸네일 우선 프리로드
+        const thumbnails = sorted
+          .slice(0, 3)
+          .map(c => c.thumbnail_url)
+          .filter(Boolean) as string[];
+        if (thumbnails.length > 0) {
+          console.log('🖼️ [무료콘텐츠] 썸네일 우선 프리로드:', thumbnails.length, '개');
+          preloadImages(thumbnails, 'high');
+        }
+
+        // 🚀 4-6번째 썸네일 백그라운드 프리페칭 (low priority)
+        const remainingThumbnails = sorted
+          .slice(3, 6)
+          .map(c => c.thumbnail_url)
+          .filter(Boolean) as string[];
+        if (remainingThumbnails.length > 0) {
+          setTimeout(() => {
+            console.log('🖼️ [무료콘텐츠] 백그라운드 프리페칭:', remainingThumbnails.length, '개');
+            preloadImages(remainingThumbnails, 'low');
+          }, 500);
+        }
       } catch (error) {
         console.error('❌ [무료콘텐츠] 로드 실패:', error);
       }
@@ -512,7 +567,7 @@ export default function LoadingPage() {
               <button
                 onClick={() => {
                   // ⭐ [DEV] 타로 카드 뽑기 화면으로 이동 (전체 플로우 확인용)
-                  // ���존에는 devNextUrl로 바로 이동했으나, 타로 셔플부터 시작하도록 변경
+                  // 존에는 devNextUrl로 바로 이동했으나, 타로 셔플부터 시작하도록 변경
                   navigate(`/tarot/shuffle?orderId=${orderId}&contentId=${contentId}&from=dev`);
                 }}
                 className="ml-auto w-fit px-[12px] py-[8px] flex items-center gap-[4px] cursor-pointer select-none"

@@ -8,10 +8,12 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence, useDragControls } from "motion/react";
 import svgPaths from "../imports/svg-br5ag5z658";
 import { supabase } from '../lib/supabase';
-import { toast } from 'sonner@2.0.3';
+import { toast } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { NavigationHeader } from './NavigationHeader';
 
@@ -31,6 +33,7 @@ interface ValidationErrors {
 export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const dragControls = useDragControls();
   const editMode = location.state?.editMode || false;
   const sajuData = location.state?.sajuData || null;
   const sajuInfo = location.state?.sajuInfo || null; // ⭐ 케밥 메뉴에서 전달받은 사주 정보
@@ -46,6 +49,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
   const [birthTime, setBirthTime] = useState('');
   const [unknownTime, setUnknownTime] = useState(false);
   const [relationship, setRelationship] = useState('');
+  const [tempRelationship, setTempRelationship] = useState('');
   const [showRelationshipPicker, setShowRelationshipPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -66,6 +70,22 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     };
     checkSession();
   }, []);
+
+  // 바텀 시트 오픈 시 바디 스크롤 잠금 및 상태바 딤 처리
+  useEffect(() => {
+    if (showRelationshipPicker) {
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      const originalThemeColor = metaThemeColor?.getAttribute('content');
+      
+      document.body.style.overflow = 'hidden';
+      metaThemeColor?.setAttribute('content', '#000000');
+
+      return () => {
+        document.body.style.overflow = '';
+        if (originalThemeColor) metaThemeColor?.setAttribute('content', originalThemeColor);
+      };
+    }
+  }, [showRelationshipPicker]);
 
   // ⭐ 편집 모드일 때 기존 데이터 로드
   useEffect(() => {
@@ -223,8 +243,8 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     setUnknownTime(newValue);
     
     if (newValue) {
-      // 체크 시 "12:00"으로 자동 설정
-      setBirthTime('12:00');
+      // 체크 시 빈 값으로 설정 (placeholder 노출용)
+      setBirthTime('');
       setErrors(prev => ({ ...prev, birthTime: undefined }));
     } else {
       // 체크 해제 시 초기화
@@ -275,6 +295,59 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     try {
       console.log('💾 [SajuAddPage] 사주 정보 저장 시작');
 
+      // ⭐ DEV 모드: localStorage에 임시 저장 (프론트 UI 테스트용)
+      if (import.meta.env.DEV) {
+        console.log('🔧 [DEV MODE] localStorage에 임시 저장');
+        
+        const finalRelationship = relationship.trim() || '지인';
+        
+        const newRecord = {
+          id: isEditMode && editingSaju?.id ? editingSaju.id : crypto.randomUUID(),
+          user_id: 'dev-user-mock',
+          full_name: name.trim(),
+          gender: gender,
+          birth_date: new Date(birthDate).toISOString(),
+          birth_time: unknownTime ? '시간 미상' : birthTime,
+          notes: finalRelationship,
+          is_primary: true,
+          created_at: new Date().toISOString(),
+        };
+
+        // localStorage에서 기존 데이터 불러오기
+        const existingData = localStorage.getItem('dev_saju_records');
+        let records = existingData ? JSON.parse(existingData) : [];
+
+        if (isEditMode && editingSaju?.id) {
+          // 수정 모드
+          records = records.map((r: any) => r.id === editingSaju.id ? newRecord : r);
+          console.log('✅ [DEV MODE] 사주 정보 수정 완료:', newRecord);
+          toast.success('수정되었습니다.', { duration: 2200 });
+        } else {
+          // 신규 등록 모드
+          // 기존 대표 사주 해제
+          records = records.map((r: any) => ({ ...r, is_primary: false }));
+          // 새 레코드 추가
+          records.unshift(newRecord);
+          console.log('✅ [DEV MODE] 사주 정보 저장 완료:', newRecord);
+          toast.success('저장되었습니다.', { duration: 2200 });
+        }
+
+        localStorage.setItem('dev_saju_records', JSON.stringify(records));
+
+        // 저장 완료 후 이동
+        setTimeout(() => {
+          if (returnTo) {
+            navigate(returnTo);
+          } else {
+            onSaved();
+          }
+        }, 300);
+
+        setIsSaving(false);
+        return;
+      }
+
+      // ⭐ PRODUCTION 모드: 기존 Supabase 로직
       // 로그인 확인
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
@@ -372,7 +445,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative">
+      <div className="w-full max-w-[440px] relative">
         {/* Top Navigation */}
         <NavigationHeader
           title={sajuInfo || editMode ? '사주 정보 수정' : '사주 정보 입력'}
@@ -386,13 +459,38 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         />
 
         {/* Main Content */}
-        <div className="pt-[68px] px-[20px] pb-[140px]">
+        <motion.div 
+          className="pt-[68px] pb-[140px] w-full max-w-[440px] px-[20px] mx-auto"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.1
+              }
+            }
+          }}
+        >
           {/* 이름 */}
-          <div className="flex flex-col gap-[4px] mb-[32px]">
+          <motion.div 
+            className="flex flex-col gap-[4px] mb-[32px] w-full"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               이름
             </label>
-            <div className="bg-white h-[56px] relative rounded-[16px] border border-[#e7e7e7]">
+            <div className={`h-[56px] relative rounded-[16px] border transition-colors w-full ${
+              errors.name 
+                ? 'bg-white border-[#FF0000]' 
+                : name.length > 0 
+                  ? 'bg-white border-[#48b2af]' 
+                  : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]'
+            }`}>
               <div className="flex items-center h-full px-[12px]">
                 <input
                   type="text"
@@ -405,73 +503,104 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     }
                   }}
                   placeholder="예: 홍길동"
-                  className="flex-1 text-[16px] text-black leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[#b7b7b7]"
+                  className="flex-1 text-[16px] text-[#151515] leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[#b7b7b7] w-full"
                   ref={nameInputRef}
                 />
               </div>
+              {errors.name && (
+                <p className="absolute top-full left-0 mt-[4px] text-[12px] text-[#FF0000] px-[4px]">{errors.name}</p>
+              )}
             </div>
-            {errors.name && (
-              <p className="text-[12px] text-red-500 px-[4px]">{errors.name}</p>
-            )}
-          </div>
+          </motion.div>
 
           {/* 성별 */}
-          <div className="flex flex-col gap-[4px] mb-[32px]">
+          <motion.div 
+            className="flex flex-col gap-[4px] mb-[32px] w-full"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               성별
             </label>
-            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px]">
-              <div className="flex gap-[8px]">
+            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px] w-full overflow-hidden isolate">
+              <div className="flex gap-[8px] w-full">
                 <button
                   onClick={() => setGender('female')}
-                  className={`flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] transition-all ${
-                    gender === 'female'
-                      ? 'bg-[#48b2af] text-white shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]'
-                      : 'bg-[#f9f9f9] text-[#b7b7b7]'
-                  }`}
+                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
-                  <span className="text-[15px] font-medium leading-[20px] tracking-[-0.45px]">여성</span>
-                  <svg className="size-[24px]" fill="none" viewBox="0 0 24 24">
+                  {gender === 'female' && (
+                    <motion.div
+                      layoutId="gender-selection-indicator"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className={`text-[15px] font-medium leading-[20px] tracking-[-0.45px] relative z-[1] transition-colors duration-200 ${gender === 'female' ? 'text-white' : 'text-[#b7b7b7]'}`}>
+                    여성
+                  </span>
+                  <svg className="size-[24px] relative z-[1]" fill="none" viewBox="0 0 24 24">
                     <path
                       d="M7 11.625L10.3294 16L17 9"
                       stroke={gender === 'female' ? 'white' : '#E7E7E7'}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="3"
+                      className="transition-colors duration-200"
                     />
                   </svg>
                 </button>
                 <button
                   onClick={() => setGender('male')}
-                  className={`flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] transition-all ${
-                    gender === 'male'
-                      ? 'bg-[#48b2af] text-white shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]'
-                      : 'bg-[#f9f9f9] text-[#b7b7b7]'
-                  }`}
+                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
-                  <span className="text-[15px] font-medium leading-[20px] tracking-[-0.45px]">남성</span>
-                  <svg className="size-[24px]" fill="none" viewBox="0 0 24 24">
+                  {gender === 'male' && (
+                    <motion.div
+                      layoutId="gender-selection-indicator"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className={`text-[15px] font-medium leading-[20px] tracking-[-0.45px] relative z-[1] transition-colors duration-200 ${gender === 'male' ? 'text-white' : 'text-[#b7b7b7]'}`}>
+                    남성
+                  </span>
+                  <svg className="size-[24px] relative z-[1]" fill="none" viewBox="0 0 24 24">
                     <path
                       d="M7 11.625L10.3294 16L17 9"
                       stroke={gender === 'male' ? 'white' : '#E7E7E7'}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="3"
+                      className="transition-colors duration-200"
                     />
                   </svg>
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* 생년월일 */}
-          <div className="flex flex-col gap-[4px] mb-[32px]">
+          <motion.div 
+            className="flex flex-col gap-[4px] mb-[32px] w-full"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               생년월일 (양력 기준으로 입력해 주세요)
             </label>
-            <div className="bg-white h-[56px] relative rounded-[16px] border border-[#e7e7e7]">
-              <div className="flex items-center h-full px-[12px]">
+            <div className={`h-[56px] relative rounded-[16px] border transition-colors w-full ${
+              errors.birthDate 
+                ? 'bg-white border-[#FF0000]' 
+                : birthDate.length > 0
+                  ? 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+                  : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+            }`}>
+              <div className="flex items-center h-full px-[12px] relative">
                 <input
+                  ref={birthDateInputRef}
                   type="text"
                   inputMode="numeric"
                   value={birthDate}
@@ -482,26 +611,59 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                       birthTimeInputRef.current?.focus();
                     }
                   }}
-                  placeholder="19920715"
-                  className="flex-1 text-[16px] text-black leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[#b7b7b7] text-left"
-                  ref={birthDateInputRef}
+                  placeholder="예: 1992-07-15 (양력)"
+                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] w-full ${
+                    isValidDate(birthDate) ? 'text-transparent focus:text-[#151515]' : 'text-[#151515]'
+                  }`}
                 />
+                {isValidDate(birthDate) && (
+                  <div className="absolute left-[12px] h-full flex items-center pointer-events-none peer-focus:hidden">
+                    <span className="text-[16px] leading-[20px] tracking-[-0.45px] text-[#151515]">
+                      {birthDate}
+                    </span>
+                    <span className="text-[16px] leading-[20px] tracking-[-0.45px] text-[#848484] ml-[4px]">
+                      (양력)
+                    </span>
+                  </div>
+                )}
               </div>
+              {errors.birthDate && (
+                <div className="absolute top-full left-0 mt-[4px] w-full px-[4px]">
+                  <div className="flex gap-[4px] items-center">
+                    <svg className="size-[16px]" fill="none" viewBox="0 0 16 16">
+                      <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 11C7.72 11 7.5 10.78 7.5 10.5V8C7.5 7.72 7.72 7.5 8 7.5C8.28 7.5 8.5 7.72 8.5 8V10.5C8.5 10.78 8.28 11 8 11ZM8.5 6.5H7.5V5.5H8.5V6.5Z" fill="#FA5B4A" />
+                    </svg>
+                    <p className="text-[#fa5b4a] text-[13px] leading-[22px]">{errors.birthDate}</p>
+                  </div>
+                </div>
+              )}
             </div>
-            {errors.birthDate && (
-              <p className="text-[12px] text-red-500 px-[4px]">{errors.birthDate}</p>
-            )}
-          </div>
+          </motion.div>
 
           {/* 태어난 시간 */}
-          <div className="flex gap-[24px] items-start mb-[32px]">
-            <div className="flex-1 flex flex-col gap-[4px]">
+          <motion.div 
+            className="flex gap-[24px] items-start mb-[32px] w-full"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
+            <div className="flex-1 flex flex-col gap-[4px] min-w-0">
               <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
                 태어난 시간
               </label>
-              <div className={`h-[48px] relative rounded-[12px] border ${unknownTime ? 'bg-[#f8f8f8] border-[#f8f8f8]' : 'bg-white border-[#e7e7e7]'}`}>
+              <div className={`h-[48px] relative rounded-[12px] border transition-colors w-full ${
+                unknownTime
+                  ? 'bg-[#f5f5f5] border-[#e7e7e7]' 
+                  : errors.birthTime
+                    ? 'bg-white border-[#FF0000]' 
+                    : birthTime.length > 0
+                      ? 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+                      : 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
+              }`}>
                 <div className="flex items-center h-full px-[12px]">
                   <input
+                    ref={birthTimeInputRef}
                     type="text"
                     inputMode="numeric"
                     value={birthTime}
@@ -514,29 +676,32 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                         }
                       }
                     }}
-                    placeholder="예: 2358"
+                    placeholder={unknownTime ? "오후 12:00" : "예: 21:00"}
                     disabled={unknownTime}
-                    className="flex-1 text-[16px] text-black leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[#b7b7b7] disabled:text-[#d4d4d4]"
-                    ref={birthTimeInputRef}
+                    className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent min-w-0 w-full ${
+                      unknownTime 
+                        ? 'text-[#b7b7b7] placeholder:text-[#b7b7b7]' 
+                        : 'text-[#151515] placeholder:text-[#b7b7b7]'
+                    }`}
                   />
                 </div>
+                {errors.birthTime && (
+                  <p className="absolute top-full left-0 mt-[4px] text-[12px] text-[#FF0000] px-[4px]">{errors.birthTime}</p>
+                )}
               </div>
-              {errors.birthTime && (
-                <p className="text-[12px] text-red-500 px-[4px]">{errors.birthTime}</p>
-              )}
             </div>
 
             {/* 모르겠어요 체크박스 */}
-            <div className="pt-[24px]">
+            <div className="pt-[24px] shrink-0">
               <button
                 onClick={handleUnknownTimeToggle}
                 className="flex items-center gap-[4px] cursor-pointer bg-transparent border-none p-0"
               >
-                <span className="text-[15px] font-medium text-[#525252] leading-[20px] tracking-[-0.45px]">
+                <span className="text-[15px] font-medium text-[#525252] leading-[20px] tracking-[-0.45px] whitespace-nowrap">
                   모르겠어요
                 </span>
                 <div className="flex items-center justify-center size-[44px]">
-                  <div className={`size-[28px] rounded-[8px] border-2 flex items-center justify-center ${
+                  <div className={`size-[28px] rounded-[8px] border flex items-center justify-center transition-colors ${
                     unknownTime ? 'border-[#48b2af] bg-[#48b2af]' : 'border-[#e7e7e7] bg-white'
                   }`}>
                     {unknownTime && (
@@ -546,7 +711,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                           stroke="white"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth="2"
+                          strokeWidth="3"
                         />
                       </svg>
                     )}
@@ -554,47 +719,89 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                 </div>
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* 관계 */}
-          <div className="flex flex-col gap-[4px]">
+          <motion.div 
+            className="flex flex-col gap-[0px] w-full"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               관계
             </label>
-            <div className="flex gap-[12px] items-center">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={relationship}
-                  readOnly
-                  placeholder="관계를 선택해 주세요"
-                  className="w-full h-[38px] px-[8px] text-[15px] text-[#b7b7b7] tracking-[-0.45px] bg-transparent border-none outline-none cursor-pointer"
-                  onClick={() => setShowRelationshipPicker(true)}
-                />
+            <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+              {/* Label Container */}
+              <div className="relative shrink-0 w-full">
+                <div className="flex flex-row items-center size-full">
+                  <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
+                    
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => setShowRelationshipPicker(true)}
-                className="bg-white h-[38px] px-[12px] rounded-[12px] border border-[#e7e7e7] cursor-pointer"
-              >
-                <span className="font-medium text-[14px] text-[#525252] leading-[20px] tracking-[-0.42px]">선택</span>
-              </button>
+
+              {/* Input Container */}
+              <div className="content-stretch flex flex-col gap-[8px] items-end relative shrink-0 w-full">
+                {/* Input Row */}
+                <div className="content-stretch flex gap-[12px] items-center relative shrink-0 w-full">
+                  {/* Input Field */}
+                  <div 
+                    className="basis-0 grow min-h-px min-w-px relative shrink-0 cursor-pointer"
+                    onClick={() => {
+                      setTempRelationship(relationship);
+                      setShowRelationshipPicker(true);
+                    }}
+                  >
+                    <div className="flex flex-row items-center justify-start size-full">
+                      <div className="content-stretch flex items-center justify-start px-[5px] py-0 relative w-full">
+                        <p className={`basis-0 font-['Pretendard_Variable:Regular',sans-serif] pt-[4px] font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[15px] tracking-[-0.45px] ${relationship ? 'text-[#151515]' : 'text-[#b7b7b7]'}`}>
+                          {relationship || '관계를 선택해 주세요'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Button */}
+                  <button
+                    onClick={() => {
+                      setTempRelationship(relationship);
+                      setShowRelationshipPicker(true);
+                    }}
+                    className="bg-transparent content-stretch flex h-[38px] items-center justify-center px-[12px] py-0 relative rounded-[12px] shrink-0 w-[80px] border border-[#e7e7e7] cursor-pointer group transition-colors active:bg-gray-100"
+                  >
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px] transition-transform group-active:scale-96">
+                      선택
+                    </p>
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="h-0 relative shrink-0 w-full">
+                  <div className="absolute inset-[-0.5px_0] h-[1px] bg-[#f3f3f3]" />
+                </div>
+
+                {/* Error Message */}
+                {errors.relationship && (
+                  <p className="w-full text-left mt-[-8px] text-[12px] text-[#FF0000] px-[4px]">
+                    {errors.relationship}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="h-[1px] bg-[#f3f3f3] w-full" />
-            {errors.relationship && (
-              <p className="text-[12px] text-red-500 px-[4px]">{errors.relationship}</p>
-            )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Bottom Button */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] pb-[28px] z-10">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] pb-[28px] z-10">
           <div className="px-[20px] pt-[12px]">
             <button
               onClick={handleSave}
               disabled={!isFormValid() || isSaving}
               className={`w-full h-[56px] rounded-[16px] flex items-center justify-center transition-all ${
                 isFormValid() && !isSaving
-                  ? 'bg-[#48b2af] text-white cursor-pointer hover:bg-[#3a9794]'
+                  ? 'bg-[#48b2af] text-white cursor-pointer hover:bg-[#3a9794] active:scale-96 active:bg-[#3a9794]'
                   : 'bg-[#f8f8f8] text-[#b7b7b7] cursor-not-allowed'
               }`}
             >
@@ -606,52 +813,115 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         </div>
 
         {/* 관계 선택 Bottom Sheet */}
-        {showRelationshipPicker && (
-          <>
-            {/* Backdrop */}
-            <div 
-              onClick={() => setShowRelationshipPicker(false)}
-              className="fixed inset-0 bg-black/50 z-40"
-            />
-            
-            {/* Bottom Sheet */}
-            <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-white rounded-t-[24px] z-50 pb-[28px]">
-              {/* Header with X button */}
-              <div className="relative px-[24px] py-[20px] border-b border-[#f3f3f3]">
-                <h3 className="text-[20px] font-semibold text-black leading-[28px] tracking-[-0.2px]">관계 선택</h3>
-                <button
+        {createPortal(
+          <AnimatePresence>
+            {showRelationshipPicker && (
+              <div className="fixed inset-0 z-[9999] flex items-end justify-center pointer-events-none" style={{ minHeight: '100vh', paddingTop: 'env(safe-area-inset-top)' }}>
+                {/* Backdrop */}
+                <motion.div 
+                  className="fixed inset-0 bg-black/50 touch-none pointer-events-auto" 
                   onClick={() => setShowRelationshipPicker(false)}
-                  className="absolute right-[20px] top-[20px] size-[24px] flex items-center justify-center text-[#848484] text-[20px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  style={{ position: 'fixed', height: '100vh', top: 0, left: 0, right: 0, bottom: 0 }}
+                />
+                
+                {/* Bottom Sheet */}
+                <motion.div 
+                  className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col max-h-[94vh] pointer-events-auto z-[10000]"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                  drag="y"
+                  dragControls={dragControls}
+                  dragListener={false}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={0.2}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.y > 80) {
+                      setShowRelationshipPicker(false);
+                    }
+                  }}
                 >
-                  ✕
-                </button>
-              </div>
+                  {/* Handle */}
+                  <div 
+                    className="flex items-center justify-center py-[12px] cursor-grab active:cursor-grabbing touch-none"
+                    onPointerDown={(e) => dragControls.start(e)}
+                  >
+                    <div className="w-[48px] h-[4px] bg-[#d4d4d4] rounded-full" />
+                  </div>
 
-              {/* Options List */}
-              <div className="px-[24px] py-[20px] max-h-[60vh] overflow-y-auto">
-                <div className="flex flex-col gap-[12px]">
-                  {relationshipOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setRelationship(option);
-                        setShowRelationshipPicker(false);
-                        setErrors(prev => ({ ...prev, relationship: undefined }));
-                      }}
-                      className="bg-[#f8f8f8] h-[48px] px-[16px] rounded-[12px] flex items-center justify-start transition-all hover:bg-[#f0f0f0]"
-                    >
-                      <span className="text-[15px] text-[#151515] leading-[20px] tracking-[-0.45px]">{option}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  {/* Header */}
+                  <div className="px-[24px] py-[16px]">
+                    <h3 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-black">
+                      관계 선택
+                    </h3>
+                  </div>
 
-              {/* Home Indicator */}
-              <div className="h-[28px] relative w-full">
-                <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
+                  {/* Options List */}
+                  <div className="flex-1 overflow-y-auto px-[24px] pb-[100px]">
+                    <div className="flex flex-col">
+                      {relationshipOptions.map((option, index) => (
+                        <div key={option}>
+                          {index > 0 && <div className="w-full h-[1px] bg-[#f8f8f8]" />}
+                          <button
+                            onClick={() => setTempRelationship(option)}
+                            className="w-full bg-transparent border-none p-0 cursor-pointer py-[12px]"
+                          >
+                            <div className="flex flex-row items-center justify-between w-full min-h-[36px]">
+                              <span className="text-[15px] text-[#151515] tracking-[-0.45px] leading-[20px] font-['Pretendard_Variable:Medium',sans-serif]">
+                                {option}
+                              </span>
+                              <div className="flex items-center justify-center size-[36px]">
+                                {tempRelationship === option ? (
+                                  <div className="size-[20px] rounded-full border-[6px] border-[#48b2af]" />
+                                ) : (
+                                  <div className="size-[20px] rounded-full border-2 border-[#e7e7e7] bg-white" />
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bottom Buttons */}
+                  <div className="sticky bottom-0 w-full z-20 bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] px-[20px] pt-[12px] pb-[calc(20px+env(safe-area-inset-bottom))]">
+                    <div className="flex gap-[12px] w-full">
+                      <motion.button
+                        onClick={() => setShowRelationshipPicker(false)}
+                        className="flex-1 h-[56px] rounded-[16px] bg-[#f0f8f8] flex items-center justify-center cursor-pointer"
+                        whileTap={{ scale: 0.96, backgroundColor: "#E4F7F7" }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                      >
+                        <span className="text-[#48b2af] text-[16px] font-medium leading-[25px] tracking-[-0.32px]">
+                          취소
+                        </span>
+                      </motion.button>
+                      <motion.button
+                        onClick={() => {
+                          setRelationship(tempRelationship);
+                          setShowRelationshipPicker(false);
+                          setErrors(prev => ({ ...prev, relationship: undefined }));
+                        }}
+                        className="flex-1 h-[56px] rounded-[16px] bg-[#48b2af] flex items-center justify-center cursor-pointer"
+                        whileTap={{ scale: 0.96, backgroundColor: "#368d8a" }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                      >
+                        <span className="text-white text-[16px] font-medium leading-[25px] tracking-[-0.32px]">
+                          선택 완료
+                        </span>
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
-            </div>
-          </>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
       </div>
       <SessionExpiredDialog isOpen={isSessionExpired} />

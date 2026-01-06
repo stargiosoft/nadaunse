@@ -459,7 +459,7 @@ export default function PaymentNew({
               response.merchant_uid,
             );
 
-            // ⭐️ ��폰 사용 처리 (유료 결제)
+            // ⭐️ 폰 사용 처리 (유료 결제)
             if (selectedCouponId && savedOrder?.id) {
               console.log(
                 "🎟️ [유료결제] 쿠폰 사용 처리 시작:",
@@ -623,17 +623,21 @@ export default function PaymentNew({
                 </div>
                 <button
                   onClick={() => setIsCouponSheetOpen(true)}
-                  // ⚠️ [DEV] UI 확인용 강제 활성화 (실제 쿠폰 없어도 클릭 가능)
-                  disabled={false}
-                  className="group content-stretch flex h-[32px] items-center justify-center px-[12px] py-0 relative rounded-[8px] shrink-0 border border-[#e7e7e7] bg-transparent cursor-pointer transition-colors duration-200 ease-out active:bg-gray-100"
+                  disabled={userCoupons.length === 0}
+                  className={`group content-stretch flex h-[32px] items-center justify-center px-[12px] py-0 relative rounded-[8px] shrink-0 transition-colors duration-200 ease-out ${
+                    userCoupons.length === 0 
+                      ? 'bg-[#f8f8f8] cursor-not-allowed border-0' 
+                      : 'bg-transparent border border-[#e7e7e7] cursor-pointer active:bg-gray-100'
+                  }`}
                 >
-                  <div className="content-stretch flex font-['Pretendard_Variable:Medium',sans-serif] font-medium gap-[8px] items-center leading-[22px] relative shrink-0 text-[#848484] text-[13px] text-nowrap transition-transform duration-200 ease-out group-active:scale-95">
+                  <div className={`content-stretch flex font-['Pretendard_Variable:Medium',sans-serif] font-medium gap-[8px] items-center leading-[22px] relative shrink-0 text-[13px] text-nowrap ${
+                    userCoupons.length === 0 
+                      ? 'text-[#b7b7b7]' 
+                      : 'text-[#848484] transition-transform duration-200 ease-out group-active:scale-95'
+                  }`}>
                     <p className="relative shrink-0">쿠폰</p>
-                    {/* ⚠️ [DEV] UI 확인용 더미 숫자 (실제 개수 없으면 3 표시) */}
                     <p className="relative shrink-0">
-                      {userCoupons.length > 0
-                        ? userCoupons.length
-                        : 3}
+                      {userCoupons.length}
                     </p>
                   </div>
                 </button>
@@ -711,22 +715,33 @@ export default function PaymentNew({
                             </div>
                           </div>
                         </div>
-                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0 text-[#48b2af] text-nowrap w-full mt-[-3px]">
-                          <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[25px] relative shrink-0 text-[16px] tracking-[-0.32px]">
-                            {(
-                              basePrice -
-                              specialDiscount -
-                              couponDiscount
-                            ).toLocaleString()}
-                            원
-                          </p>
-                          <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[11px] pt-[1px]">
-                            특별할인
-                            {selectedCoupon
-                              ? " + 쿠폰 적용가"
-                              : ""}
-                          </p>
-                        </div>
+                        {/* ⭐ 쿠폰 유무에 따라 가격 표시 방식 변경 */}
+                        {selectedCoupon ? (
+                          // 쿠폰 있을 때: 최종가격(청록색) + "특별할인 + 쿠폰 적용가" 텍스트
+                          <div className="content-stretch flex gap-[4px] items-center relative shrink-0 text-[#48b2af] text-nowrap w-full mt-[-3px]">
+                            <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[25px] relative shrink-0 text-[16px] tracking-[-0.32px]">
+                              {(
+                                basePrice -
+                                specialDiscount -
+                                couponDiscount
+                              ).toLocaleString()}
+                              원
+                            </p>
+                            <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[11px] pt-[1px]">
+                              특별할인 + 쿠폰 적용가
+                            </p>
+                          </div>
+                        ) : (
+                          // 쿠폰 없을 때: 할인율(빨간색) + 할인가(검정색)만 표시
+                          <div className="content-stretch flex font-['Pretendard_Variable:Bold',sans-serif] font-bold gap-[2px] items-center leading-[20px] relative shrink-0 text-[15px] text-nowrap tracking-[-0.45px]">
+                            <p className="relative shrink-0 text-[#ff6678]">
+                              {currentProduct?.discountPercent || 0}%
+                            </p>
+                            <p className="relative shrink-0 text-black">
+                              {(basePrice - specialDiscount).toLocaleString()}원
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -735,8 +750,7 @@ export default function PaymentNew({
             </div>
 
             {/* 쿠폰 사용 안내 - 할인 적용 시에만 표시 */}
-            {/* ⚠️ [DEV] 강제로 표시 (실제 로직: selectedCoupon &&) */}
-            {true && (
+            {selectedCoupon && (
               <div className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full">
                 <div
                   aria-hidden="true"
@@ -762,8 +776,7 @@ export default function PaymentNew({
                       </div>
                       <p className="font-['Pretendard_Variable:Medium',sans-serif] font-semibold leading-[22px] relative text-[#48b2af] text-[13px] whitespace-normal break-words tracking-[-0.42px]">
                         특별 할인 + 쿠폰 사용으로 이번 결제는{" "}
-                        {/* ⚠️ [DEV] 더미 가격 표시 (실제 로직: {totalPrice.toLocaleString()}) */}
-                        3,000원이에요
+                        {totalPrice.toLocaleString()}원이에요
                       </p>
                     </div>
                   </div>
@@ -1116,17 +1129,28 @@ export default function PaymentNew({
               <p className="text-red-500 text-[12px] text-center mb-[8px] font-bold">
                 ⚠️ 개발 전용 (실제 결제 건너뛰기)
               </p>
-              <button
-                onClick={() => {
-                  const finalContentId = contentId || productId;
-                  const devOrderId = `dev_order_${Date.now()}`;
-                  // navigate 훅을 사용할 수 없는 컨텍스트이므로 window.location 사용
-                  window.location.href = `/product/${finalContentId}/birthinfo?orderId=${devOrderId}&from=dev`;
-                }}
-                className="w-full h-[44px] bg-red-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-red-600 transition-colors cursor-pointer border-none"
-              >
-                [DEV] 결제 완료
-              </button>
+              <div className="flex flex-col gap-[8px]">
+                <button
+                  onClick={() => {
+                    const finalContentId = contentId || productId;
+                    const devOrderId = `dev_order_${Date.now()}`;
+                    // navigate 훅을 사용할 수 없는 컨텍스트이므로 window.location 사용
+                    window.location.href = `/product/${finalContentId}/birthinfo?orderId=${devOrderId}&from=dev`;
+                  }}
+                  className="w-full h-[44px] bg-red-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-red-600 transition-colors cursor-pointer border-none"
+                >
+                  [DEV] 결제 완료
+                </button>
+                <button
+                  onClick={() => {
+                    // 결제 실패 화면으로 이동 (imp_success=false)
+                    window.location.href = `/payment/complete?imp_success=false&error_msg=${encodeURIComponent('[DEV] 테스트용 결제 실패')}`;
+                  }}
+                  className="w-full h-[44px] bg-orange-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-orange-600 transition-colors cursor-pointer border-none"
+                >
+                  [DEV] 결제 실패
+                </button>
+              </div>
             </div>
           </motion.div>
 

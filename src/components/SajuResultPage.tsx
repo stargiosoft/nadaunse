@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import svgPaths from "../imports/svg-ir0ch2bhrx"; // ⭐ 타로와 동일한 SVG 사용
+import { BottomNavigation } from './BottomNavigation';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { getCachedTarotImage } from '../lib/tarotImageCache';
 import { getTarotCardImageUrl } from '../lib/tarotCards';
@@ -79,7 +80,7 @@ export default function SajuResultPage() {
 
 현재는 서로를 탐색하는 단계이지만, 시간이 지남에 따라 더욱 깊은 신뢰와 이해의 관계로 발전할 것으로 보입니다. 다만 성급하게 결과를 얻으려 하기보다는, 자연스러운 흐름 속에서 관계를 발전시켜 나가는 것이 중요합니다.
 
-올해 하반기부터는 두 사람 사이에 중요한 전환점이 찾아올 것으로 예상됩니다. 이 시기에 솔직한 대화를 나누고 서로의 진심을 확인한다면, 관계는 더욱 견고해질 것입니다.`,
+올해 하반기부터는 두 사�� 사이에 중요한 전환점이 찾아올 것으로 예상됩니다. 이 시기에 솔직한 대화를 나누고 서로의 진심을 확인한다면, 관계는 더욱 견고해질 것입니다.`,
               tarot_card_id: null,
               tarot_card_name: null,
               tarot_card_image_url: null
@@ -282,40 +283,40 @@ export default function SajuResultPage() {
 
   if (loading) {
     return (
-      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[390px] mx-auto">
+      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[440px] mx-auto">
         <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white relative min-h-screen w-full max-w-[390px] mx-auto">
+    <div className="bg-white relative min-h-screen w-full max-w-[440px] mx-auto">
       {/* Top Navigation */}
-      <div className="bg-white h-[52px] relative shrink-0 w-full">
-        <div className="flex items-center justify-between px-[12px] h-full">
+      <div className="bg-white h-[52px] relative shrink-0 w-full sticky top-0 z-20">
+        <div className="flex items-center justify-between px-[12px] h-full w-full">
           <div className="w-[44px] h-[44px] opacity-0" />
-          <h1 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[25.5px] tracking-[-0.36px] text-black">
+          <h1 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[25.5px] tracking-[-0.36px] text-black text-center flex-1">
             상세 풀이
           </h1>
           <button
             onClick={handleClose}
-            className="flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer"
+            className="group flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
           >
-            <X className="w-[24px] h-[24px] text-[#848484]" strokeWidth={1.8} />
+            <X className="w-[24px] h-[24px] text-[#848484] transition-transform duration-200 group-active:scale-90" strokeWidth={1.8} />
           </button>
         </div>
       </div>
 
       {/* Spacer */}
-      <div className="h-[16px] shrink-0 w-full" />
+      <div className="h-[8px] shrink-0 w-full" />
 
       {/* Content Area - Scrollable */}
-      <div className="px-[20px] pb-[120px]">
+      <div className="px-[20px] pb-[200px] w-full">
         {currentAnswer ? (
-          <div className="bg-[#f9f9f9] rounded-[16px] p-[20px]">
+          <div className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full">
             {/* Header */}
-            <div className="flex gap-[12px] items-center mb-[24px]">
-              <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af]">
+            <div className="flex gap-[12px] items-center mb-[24px] w-full">
+              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af] shrink-0">
                 {String(currentAnswer.question_order).padStart(2, '0')}
               </p>
               <div className="flex-1 h-0 border-t border-[#e7e7e7]" />
@@ -323,9 +324,9 @@ export default function SajuResultPage() {
 
             {/* ⭐ 타로 카드 이미지 + 카드명 (타로 질문인 경우만) */}
             {currentAnswer.question_type === 'tarot' && (
-              <div className="flex flex-col items-center gap-[24px] mb-[24px]">
+              <div className="flex flex-col items-center gap-[24px] mb-[24px] w-full">
                 {currentAnswer.tarot_card_image_url && (
-                  <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0]">
+                  <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0] shrink-0">
                     <img
                       src={tarotImageUrl || currentAnswer.tarot_card_image_url}
                       alt={currentAnswer.tarot_card_name || 'Tarot Card'}
@@ -342,7 +343,7 @@ export default function SajuResultPage() {
                 
                 {currentAnswer.tarot_card_name && (
                   <div className="w-full">
-                    <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515]">
+                    <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] text-center w-full break-keep">
                       {currentAnswer.tarot_card_name}
                     </p>
                   </div>
@@ -351,112 +352,57 @@ export default function SajuResultPage() {
             )}
 
             {/* Title */}
-            <div className="mb-[24px]">
-              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515]">
+            <div className="mb-[24px] w-full">
+              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] break-keep">
                 {currentAnswer.question_text}
               </p>
             </div>
 
             {/* Answer Text */}
-            <div className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap">
-              {currentAnswer.gpt_response}
+            <div className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap break-words w-full">
+              {currentAnswer.gpt_response.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return (
+                    <span key={index} className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[17px]">
+                      {part.slice(2, -2)}
+                    </span>
+                  );
+                }
+                return part;
+              })}
             </div>
           </div>
         ) : (
-          <div className="text-center py-[60px]">
+          <div className="text-center py-[60px] w-full">
             <p className="text-[#999999]">풀이 결과를 불러올 수 없습니다.</p>
           </div>
         )}
       </div>
 
       {/* Bottom Navigation - Fixed */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] z-10">
-        <div className="bg-white border-t border-[#f3f3f3]">
-          <div className="h-[60px] px-[28px] py-[12px] flex items-center justify-between">
-            {/* Left: Page Indicator */}
-            <div className="flex gap-[8px] items-center">
-              <button
-                onClick={handleToggleList}
-                className="flex items-center justify-center p-[4px] rounded-[8px] size-[36px] cursor-pointer"
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <g>
-                    <path d={svgPaths.p14150900} fill="#848484" />
-                    <path clipRule="evenodd" d={svgPaths.p5097a80} fill="#848484" fillRule="evenodd" />
-                  </g>
-                </svg>
-              </button>
-              <p className="font-['Pretendard_Variable:Medium',sans-serif] text-[15px] leading-[23.5px] tracking-[-0.3px]">
-                <span className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[#151515]">
-                  {String(currentPage).padStart(2, '0')}/
-                </span>
-                <span className="text-[#b7b7b7]"> {String(totalPages).padStart(2, '0')}</span>
-              </p>
-            </div>
-
-            {/* Right: Navigation Buttons */}
-            <div className="flex gap-[16px] items-center">
-              <button
-                onClick={() => {
-                  const currentQ = answers[currentPage - 1];
-                  // [DEV] 타로 질문인 경우, '이전' 클릭 시 타로 결과 화면으로 이동 (중간 단계 생략 방지)
-                  if (currentQ?.question_type === 'tarot') {
-                    const fromParam = from ? `&from=${from}` : '';
-                    const contentIdParam = contentId ? `&contentId=${contentId}` : '';
-                    // step=1: 타로 결과 화면으로 이동
-                    navigate(`/result/tarot?orderId=${orderId}&questionOrder=${currentQ.question_order}${contentIdParam}${fromParam}&step=1`);
-                    return;
-                  }
-                  // 사주 질문인 경우 기존 로직 (내부 페이지 이동)
-                  handlePrevious();
-                }}
-                // 타로 질문은 항상 활성화 (결과화면으로 이동), 사주 질문은 첫 페이지일 때만 비활성화
-                disabled={answers[currentPage - 1]?.question_type !== 'tarot' && currentPage === 1}
-                className={`flex gap-[4px] items-center h-[34px] px-[8px] rounded-[12px] cursor-pointer ${
-                  (answers[currentPage - 1]?.question_type !== 'tarot' && currentPage === 1) ? 'opacity-30' : ''
-                }`}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path
-                    d={svgPaths.p2679d700}
-                    stroke={(answers[currentPage - 1]?.question_type !== 'tarot' && currentPage === 1) ? '#b7b7b7' : 'black'}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeMiterlimit="10"
-                    strokeWidth="1.7"
-                  />
-                </svg>
-                <p className={`font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[14px] leading-[22px] tracking-[-0.42px] ${
-                  (answers[currentPage - 1]?.question_type !== 'tarot' && currentPage === 1) ? 'text-[#b7b7b7]' : 'text-black'
-                }`}>
-                  이전
-                </p>
-              </button>
-
-              <div className="h-[12px] w-0 border-r border-[#e7e7e7]" />
-
-              <button
-                onClick={handleNext}
-                className="flex gap-[4px] items-center h-[34px] px-[8px] rounded-[12px] cursor-pointer hover:bg-gray-100 transition-colors"
-              >
-                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[14px] leading-[22px] tracking-[-0.42px] text-black">
-                  다음
-                </p>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path
-                    d={svgPaths.p3117bd00}
-                    stroke="black"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeMiterlimit="10"
-                    strokeWidth="1.7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <BottomNavigation
+        currentStep={currentPage}
+        totalSteps={totalPages}
+        onPrevious={() => {
+          const currentQ = answers[currentPage - 1];
+          // [DEV] 타로 질문인 경우, '이전' 클릭 시 타로 결과 화면으로 이동 (중간 단계 생략 방지)
+          if (currentQ?.question_type === 'tarot') {
+            const fromParam = from ? `&from=${from}` : '';
+            const contentIdParam = contentId ? `&contentId=${contentId}` : '';
+            // step=1: 타로 결과 화면으로 이동
+            navigate(`/result/tarot?orderId=${orderId}&questionOrder=${currentQ.question_order}${contentIdParam}${fromParam}&step=1`);
+            return;
+          }
+          // 사주 질문인 경우 기존 로직 (내부 페이지 이동)
+          handlePrevious();
+        }}
+        onNext={handleNext}
+        onToggleList={() => {
+          if (!contentId) setContentId('mock_content_id');
+          handleToggleList();
+        }}
+        disablePrevious={answers[currentPage - 1]?.question_type !== 'tarot' && currentPage === 1}
+      />
 
       {/* Table of Contents Bottom Sheet */}
       {orderId && contentId && (

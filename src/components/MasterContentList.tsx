@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import FileUploadDialog from './FileUploadDialog';
 import ArrowLeft from './ArrowLeft';
 import CheckboxIcon from './CheckboxIcon';
-import Toast from './Toast';
+import { toast } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 
 // 🔧 Build v1.2.6 - Router alias fix
@@ -195,8 +195,6 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
   const [isDeployMode, setIsDeployMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
   const [showFileUploadDialog, setShowFileUploadDialog] = useState(false);
   const [userId, setUserId] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'paid' | 'free'>('all');
@@ -724,7 +722,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
         console.error('❌ 에러 코드:', error.code);
         console.error('❌ 에러 메시지:', error.message);
         console.error('❌ 에러 상세:', error.details);
-        setToastMessage(`배포 실패: ${error.message}`);
+        toast.error(`배포 실패: ${error.message}`);
       } else if (!updatedData || updatedData.length === 0) {
         // ⚠️ 에러는 없지만 업데이트된 행이 0개인 경우
         console.warn('⚠️ 업데이트된 행이 0개입니다. RLS 정책을 확인하세요.');
@@ -737,7 +735,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           .in('id', selectedIdsArray);
         console.log('🐛 [배포 후] 콘텐츠 상태:', afterData);
         
-        setToastMessage('배포 권한이 없거나 RLS 정책 문제가 있습니다.');
+        toast.error('배포 권한이 없거나 RLS 정책 문제가 있습니다.');
       } else {
         console.log('✅ DB 업데이트 성공!');
         console.log('✅ 업데이트된 콘텐츠:', updatedData);
@@ -757,17 +755,13 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           console.warn('⚠️ 캐시 무효화 실패 (무시):', err);
         }
         
-        setToastMessage('배포에 성공했어요.');
+        toast.success('배포에 성공했어요.');
       }
     } catch (error) {
       console.error('💥 배포 중 예외 발생:', error);
       console.error('💥 예외 상세:', error instanceof Error ? error.message : String(error));
-      setToastMessage('배포에 실패했어요.');
+      toast.error('배포에 실패했어요.');
     }
-    
-    // 토스트 표시
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2200);
     
     // 배포선택 모드 해제
     setIsDeployMode(false);
@@ -934,9 +928,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
                     
                     const { data: { session } } = await supabase.auth.getSession();
                     if (!session) {
-                      setToastMessage('로그인 세션이 만료되었습니다.');
-                      setShowToast(true);
-                      setTimeout(() => setShowToast(false), 2200);
+                      toast.error('로그인 세션이 만료되었습니다.');
                       return;
                     }
                     
@@ -956,9 +948,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
                       });
                     }
                     
-                    setToastMessage(`${loadingContents.length}개 콘텐츠 재시도 중입니다.`);
-                    setShowToast(true);
-                    setTimeout(() => setShowToast(false), 2200);
+                    toast.info(`${loadingContents.length}개 콘텐츠 재시도 중입니다.`);
                   }}
                   className="h-[42px] rounded-[8px] px-[16px] border border-[#ff9800] bg-[#fff3e0] flex items-center justify-center hover:bg-[#ffe0b2] transition-colors"
                 >
@@ -1097,11 +1087,6 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           onConfirm={handleConfirmDeploy}
           onCancel={() => setShowConfirmDialog(false)}
         />
-      )}
-
-      {/* 토스트 메시지 */}
-      {showToast && (
-        <Toast message={toastMessage} onClose={() => setShowToast(false)} />
       )}
 
       {/* 파일 업로드 다이얼로그 */}

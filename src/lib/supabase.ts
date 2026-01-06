@@ -6,44 +6,82 @@ const supabaseKey = publicAnonKey;
 
 export { supabaseUrl, supabaseKey };
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-  },
-  global: {
-    headers: {
-      'x-client-info': 'fortune-app',
+// ⭐ 싱글톤 패턴: window 객체에 저장하여 HMR에도 살아남도록 함
+declare global {
+  interface Window {
+    _supabaseClient?: ReturnType<typeof createClient>;
+  }
+}
+
+let clientInstance: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseClient() {
+  // 1순위: 모듈 스코프 변수 확인
+  if (clientInstance) {
+    return clientInstance;
+  }
+
+  // 2순위: window 객체 확인 (HMR 대응)
+  if (typeof window !== 'undefined' && window._supabaseClient) {
+    clientInstance = window._supabaseClient;
+    return clientInstance;
+  }
+
+  // 3순위: 새로 생성
+  const client = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      storageKey: 'sb-kcthtpmxffppfbkjjkub-auth-token',
     },
-    fetch: (url, options = {}) => {
-      // ⭐ 네트워크 요청에 타임아웃 추가 (60초로 증가)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60초
-      
-      return fetch(url, { 
-        ...options, 
-        signal: controller.signal 
-      })
-        .then(response => {
-          clearTimeout(timeoutId);
-          return response;
+    global: {
+      headers: {
+        'x-client-info': 'fortune-app',
+      },
+      fetch: (url, options = {}) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        
+        return fetch(url, { 
+          ...options, 
+          signal: controller.signal 
         })
-        .catch(error => {
-          clearTimeout(timeoutId);
-          if (error.name === 'AbortError') {
-            console.error('❌ [Supabase] 요청 타임아웃 (60초 초과):', url);
-            throw new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.');
-          }
-          throw error;
-        });
+          .then(response => {
+            clearTimeout(timeoutId);
+            return response;
+          })
+          .catch(error => {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+              console.error('❌ [Supabase] 요청 타임아웃 (60초 초과):', url);
+              throw new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.');
+            }
+            throw error;
+          });
+      },
     },
-  },
-  // 🔄 Realtime 설정 최적화
-  realtime: {
-    timeout: 30000, // 30초 타임아웃
-  },
+    realtime: {
+      timeout: 30000,
+    },
+  });
+
+  // 양쪽에 모두 저장
+  clientInstance = client;
+  if (typeof window !== 'undefined') {
+    window._supabaseClient = client;
+  }
+
+  return client;
+}
+
+// ⭐ Lazy getter를 사용하여 필요할 때만 생성
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(target, prop) {
+    const client = getSupabaseClient();
+    return (client as any)[prop];
+  }
 });
 
 // 🔍 DB 연결 테스트

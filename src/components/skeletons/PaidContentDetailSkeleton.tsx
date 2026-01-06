@@ -3,7 +3,7 @@
  * @description 유료 콘텐츠 상세 페이지 스켈레톤 (Figma 디자인 기반)
  * 
  * @features
- * - 모바일 최적화 (max-w-[390px])
+ * - 모바일 최적화 (max-w-[440px])
  * - Figma 디자인 시안과 일치하는 스켈레톤 레이아웃
  * - 부드러운 애니메이션
  * - 유료 콘텐츠 특화: 가격 블록, 쿠폰, 탭 메뉴, 질문 리스트 등
@@ -18,7 +18,7 @@ export default function PaidContentDetailSkeleton() {
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative">
+      <div className="w-full max-w-[440px] relative">
         {/* Top Navigation */}
         <div className="absolute top-0 left-0 right-0 bg-white z-10">
           {/* Status Bar (47px) */}
@@ -175,13 +175,9 @@ export default function PaidContentDetailSkeleton() {
         </div>
 
         {/* Bottom Purchase Button */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)]">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)]">
           <div className="px-[20px] py-[12px]">
             <div className="bg-gradient-to-l from-[rgba(239,239,239,0.05)] to-50% to-[#f0f0f0] h-[56px] rounded-[16px] animate-pulse" />
-          </div>
-          {/* Home Indicator */}
-          <div className="h-[28px] relative">
-            <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
           </div>
         </div>
       </div>

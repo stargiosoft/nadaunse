@@ -1,6 +1,7 @@
 import svgPaths from "../imports/svg-lofdjvm6te";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
+import { useEffect } from "react";
 
 interface Coupon {
   id: string;
@@ -47,24 +48,47 @@ export default function CouponBottomSheetNew({
   const couponDiscount = selectedCoupon ? selectedCoupon.discount : 0;
   const finalPrice = basePrice - specialDiscount - couponDiscount;
 
+  // ⭐ 상태바 딤 처리 및 스크롤 잠금
+  useEffect(() => {
+    if (isOpen) {
+      // 1. Body 스크롤 잠금
+      document.body.style.overflow = 'hidden';
+
+      // 2. 모바일 상태바 딤 처리 (meta theme-color 변경)
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement('meta');
+        metaThemeColor.setAttribute('name', 'theme-color');
+        document.head.appendChild(metaThemeColor);
+      }
+      const originalThemeColor = metaThemeColor.getAttribute('content');
+      metaThemeColor.setAttribute('content', '#808080'); // 딤 색상
+
+      return () => {
+        // 복구
+        document.body.style.overflow = '';
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', originalThemeColor || '#ffffff');
+        }
+      };
+    }
+  }, [isOpen]);
+
   if (typeof document === "undefined") return null;
 
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-end justify-center pointer-events-none" style={{ minHeight: '100vh', paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center pointer-events-none">
           {/* Background overlay */}
-          <>
-            <style>{`body { overflow: hidden; }`}</style>
-            <motion.div 
-              className="fixed inset-0 bg-black/50 touch-none pointer-events-auto" 
-              onClick={onClose}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ position: 'fixed', height: '100vh', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-          </>
+          <motion.div 
+            className="fixed inset-0 bg-black/50 touch-none pointer-events-auto" 
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ touchAction: 'none' }} // 모바일 스크롤 전파 방지
+          />
           
           {/* Bottom sheet */}
           <motion.div 
@@ -182,58 +206,24 @@ export default function CouponBottomSheetNew({
 
               {/* Coupon list - gray background area (Scrollable) */}
               <div className="mt-[16px] bg-[#f9f9f9] border-t border-b border-[#f3f3f3] px-[24px] py-[24px]">
-                {(() => {
-                  // [DEV] 더미 쿠폰 리스트 (실제 데이터 무시)
-                  const mockCouponList: Coupon[] = [
-                    { id: "mock_1", name: "가입축하쿠폰", discount: 5000 },
-                    { id: "mock_2", name: "재구매 쿠폰", discount: 3000 },
-                    // 스크롤 테스트를 위해 더미 데이터 추가
-                    { id: "mock_3", name: "주말 한정 쿠폰", discount: 1000 },
-                    { id: "mock_4", name: "깜짝 선물 쿠폰", discount: 2000 },
-                  ];
-                  const displayCoupons = mockCouponList;
-
-                  return (
-                    <div className="flex flex-col">
-                      {displayCoupons.map((coupon, index) => (
-                        <div key={coupon.id}>
-                          {index > 0 && <div className="w-full h-[1px] bg-[#e7e7e7]" />}
-                          <div 
-                            className="flex items-center justify-between cursor-pointer py-[4px] pl-[8px]"
-                            onClick={() => onSelectCoupon(coupon)}
-                          >
-                            <div className="flex-1 flex flex-col gap-[0px]">
-                              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[16px] leading-[25px] tracking-[-0.32px] text-[#151515]">
-                                -{coupon.discount.toLocaleString()}원
-                              </p>
-                              <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal text-[13px] leading-[22px] text-[#848484]">
-                                {coupon.name}
-                              </p>
-                            </div>
-                            <div className="w-[36px] h-[36px] flex items-center justify-center">
-                              {selectedCoupon?.id === coupon.id ? (
-                                <div className="w-[20px] h-[20px] rounded-full border-[6px] border-[#48b2af]" />
-                              ) : (
-                                <div className="w-[20px] h-[20px] rounded-full border-2 border-[#e7e7e7] bg-white" />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Divider before "적용 안 함" */}
-                      {displayCoupons.length > 0 && <div className="w-full h-[1px] bg-[#e7e7e7]" />}
-                      
-                      {/* 적용 안 함 option */}
+                <div className="flex flex-col">
+                  {coupons.map((coupon, index) => (
+                    <div key={coupon.id}>
+                      {index > 0 && <div className="w-full h-[1px] bg-[#e7e7e7]" />}
                       <div 
-                        className="flex items-center justify-between cursor-pointer py-[6px] pl-[8px]"
-                        onClick={() => onSelectCoupon(null)}
+                        className="flex items-center justify-between cursor-pointer py-[4px] pl-[8px]"
+                        onClick={() => onSelectCoupon(coupon)}
                       >
-                        <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[16px] leading-[25px] tracking-[-0.32px] text-[#151515]">
-                          적용 안 함
-                        </p>
+                        <div className="flex-1 flex flex-col gap-[0px]">
+                          <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[16px] leading-[25px] tracking-[-0.32px] text-[#151515]">
+                            -{coupon.discount.toLocaleString()}원
+                          </p>
+                          <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal text-[13px] leading-[22px] text-[#848484]">
+                            {coupon.name}
+                          </p>
+                        </div>
                         <div className="w-[36px] h-[36px] flex items-center justify-center">
-                          {!selectedCoupon ? (
+                          {selectedCoupon?.id === coupon.id ? (
                             <div className="w-[20px] h-[20px] rounded-full border-[6px] border-[#48b2af]" />
                           ) : (
                             <div className="w-[20px] h-[20px] rounded-full border-2 border-[#e7e7e7] bg-white" />
@@ -241,8 +231,28 @@ export default function CouponBottomSheetNew({
                         </div>
                       </div>
                     </div>
-                  );
-                })()}
+                  ))}
+                  
+                  {/* Divider before "적용 안 함" */}
+                  {coupons.length > 0 && <div className="w-full h-[1px] bg-[#e7e7e7]" />}
+                  
+                  {/* 적용 안 함 option */}
+                  <div 
+                    className="flex items-center justify-between cursor-pointer py-[6px] pl-[8px]"
+                    onClick={() => onSelectCoupon(null)}
+                  >
+                    <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[16px] leading-[25px] tracking-[-0.32px] text-[#151515]">
+                      적용 안 함
+                    </p>
+                    <div className="w-[36px] h-[36px] flex items-center justify-center">
+                      {!selectedCoupon ? (
+                        <div className="w-[20px] h-[20px] rounded-full border-[6px] border-[#48b2af]" />
+                      ) : (
+                        <div className="w-[20px] h-[20px] rounded-full border-2 border-[#e7e7e7] bg-white" />
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

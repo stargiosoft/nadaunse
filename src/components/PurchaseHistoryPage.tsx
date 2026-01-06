@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import ArrowLeft from './ArrowLeft';
 import svgPathsEmpty from '../imports/svg-q49yf219uv';
@@ -40,6 +41,31 @@ export default function PurchaseHistoryPage() {
   const loadPurchaseHistory = async () => {
     try {
       setLoading(true);
+
+      // ⭐️ UI TEST 모드 체크 (구매내역 페이지에서만 사용)
+      const isUITestMode = localStorage.getItem('ui_test_mode') === 'true';
+      
+      if (isUITestMode) {
+        console.log('⚡ [UI TEST] UI TEST 모드 감지 → 더미 구매내역 로드');
+        
+        // ⭐️ 플래그 즉시 제거 (일회성 동작)
+        localStorage.removeItem('ui_test_mode');
+        
+        // 더미 구매내역 로드
+        const devPurchases = localStorage.getItem('dev_purchase_records');
+        if (devPurchases) {
+          try {
+            const parsedData = JSON.parse(devPurchases);
+            console.log('✅ [UI TEST] 더미 구매내역 로드 완료:', parsedData.length, '건');
+            setPurchases(parsedData);
+            setLoading(false);
+            return; // ⭐ 실제 API 호출 방지
+          } catch (e) {
+            console.error('❌ [UI TEST] 더미 데이터 파싱 실패:', e);
+            // 파싱 실패 시 정상 플로우로 진행
+          }
+        }
+      }
 
       // 🔍 localStorage 캐시 체크 (5분 유효)
       const cacheKey = 'purchase_history_cache';
@@ -285,11 +311,11 @@ export default function PurchaseHistoryPage() {
   }
 
   return (
-    <div className="h-[100dvh] bg-white flex flex-col w-full max-w-[390px] mx-auto overflow-hidden">
+    <div className="h-[100dvh] bg-white flex flex-col w-full max-w-[440px] mx-auto overflow-hidden">
       {/* Top Navigation - 스테이터스바 제거 */}
-      <div className="bg-white h-[52px] relative shrink-0 w-full sticky top-0 z-10 border-b border-gray-100">
+      <div className="bg-white h-[52px] relative shrink-0 w-full sticky top-0 z-10">
         <div className="flex flex-col justify-center size-full">
-          <div className="content-stretch flex flex-col items-start justify-center px-[12px] py-[4px] relative size-full">
+          <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] h-[52px] z-50 bg-white flex flex-col items-start justify-center px-[12px] py-[4px]">
             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
               <ArrowLeft onClick={handleBackClick} />
               <p className="basis-0 font-semibold grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
@@ -305,9 +331,26 @@ export default function PurchaseHistoryPage() {
       <div className={`flex-1 w-full safe-area-bottom ${purchases.length === 0 ? 'overflow-hidden flex flex-col items-center justify-center' : 'overflow-y-auto pb-[60px]'}`}>
         {purchases.length === 0 ? (
           // Empty State - Figma 시안 적용
-          <div className="flex flex-col gap-[28px] items-center w-full px-[20px]">
+          <motion.div 
+            className="flex flex-col gap-[28px] items-center w-full px-[20px]"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: {
+                transition: {
+                  staggerChildren: 0.15
+                }
+              }
+            }}
+          >
             {/* Icon */}
-            <div className="relative shrink-0 size-[76px]">
+            <motion.div 
+              className="relative shrink-0 size-[76px]"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+              }}
+            >
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 76 76">
                 <g>
                   <path d={svgPathsEmpty.p17261880} fill="#E4F7F7" />
@@ -329,10 +372,16 @@ export default function PurchaseHistoryPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Text */}
-            <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+            <motion.div 
+              className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+              }}
+            >
               <div className="flex flex-col font-semibold justify-center leading-[0] relative shrink-0 text-[24px] text-black text-center tracking-[-0.48px] w-full">
                 <p className="leading-[35.5px]">아직 구매한 운세가 없어요</p>
               </div>
@@ -342,131 +391,172 @@ export default function PurchaseHistoryPage() {
                   <p>다시 확인할 수 있어요</p>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         ) : (
           // Purchase List - Figma 시안 적용
-          <div className="flex flex-col gap-[20px] px-[20px] pt-0">
-            {Object.entries(groupedPurchases).map(([date, items]) => (
-              <div key={date} className="flex flex-col gap-[12px]">
-                {/* Date Divider */}
-                <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
-                  <div className="content-stretch flex items-center justify-center relative shrink-0 w-full">
-                    <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
-                      {date}
-                    </p>
-                  </div>
-                  <div className="h-0 relative shrink-0 w-full">
-                    <div className="absolute inset-[-0.5px_0]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                        <path d="M0 0.5H350" stroke="#F3F3F3" />
-                      </svg>
+          <motion.div 
+            className="flex flex-col pt-[14px]"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: {
+                transition: {
+                  staggerChildren: 0.08
+                }
+              }
+            }}
+          >
+            {Object.entries(groupedPurchases).map(([date, items], index, arr) => (
+              <div key={date}>
+                {/* Date Group with Padding */}
+                <motion.div 
+                  className="px-[20px]"
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { 
+                      opacity: 1, 
+                      y: 0,
+                      transition: {
+                        duration: 0.5,
+                        ease: "easeOut"
+                      }
+                    }
+                  }}
+                >
+                  <div className="flex flex-col gap-[16px]">
+                    {/* Date Divider */}
+                    <div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full">
+                      <div className="content-stretch flex items-center justify-center relative shrink-0 w-full">
+                        <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[18px] text-black tracking-[-0.34px]">
+                          {date}
+                        </p>
+                      </div>
+                      <div className="h-0 relative shrink-0 w-full">
+                        <div className="absolute inset-[-0.5px_0]">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
+                            <path d="M0 0.5H350" stroke="#F3F3F3" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Purchase Cards */}
-                {items.map((item) => (
-                  <div key={item.id} className="bg-white relative shrink-0 w-full">
-                    <div className="flex flex-col items-end size-full">
-                      <div className="content-stretch flex flex-col items-end relative w-full">
-                        <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full">
-                          {/* Thumbnail */}
-                          <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px] bg-gray-100">
-                            {item.master_contents.thumbnail_url ? (
-                              <>
-                                <img
-                                  alt={item.master_contents.title}
-                                  className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full"
-                                  src={item.master_contents.thumbnail_url}
-                                />
-                                <div className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-                              </>
-                            ) : (
-                              <div className="absolute inset-0 flex items-center justify-center rounded-[12px]">
-                                <span className="text-[24px]">🔮</span>
+                    {/* Purchase Cards */}
+                    {items.map((item) => (
+                      <div key={item.id} className="bg-white relative shrink-0 w-full">
+                        <div className="flex flex-col items-end size-full">
+                          <div className="content-stretch flex flex-col items-end relative w-full">
+                            <div className="content-stretch flex gap-[14px] items-start relative shrink-0 w-full pb-[8px]">
+                              {/* Thumbnail */}
+                              <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px] bg-gray-100">
+                                {item.master_contents.thumbnail_url ? (
+                                  <>
+                                    <img
+                                      alt={item.master_contents.title}
+                                      className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full"
+                                      src={item.master_contents.thumbnail_url}
+                                    />
+                                    <div className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
+                                  </>
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center rounded-[12px]">
+                                    <span className="text-[24px]">🔮</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
 
-                          {/* Product Info */}
-                          <div className="basis-0 content-stretch flex flex-col gap-[12px] grow items-start min-h-px min-w-px relative shrink-0">
-                            <div className="relative shrink-0 w-full">
-                              <div className="size-full">
-                                <div className="content-stretch flex flex-col gap-[8px] items-start px-[2px] py-0 relative w-full">
-                                  {/* Title & Price */}
-                                  <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                                    <div className="content-stretch flex flex-col gap-[12px] items-end relative shrink-0 w-full">
+                              {/* Product Info */}
+                              <div className="basis-0 content-stretch flex flex-col gap-[12px] grow items-start min-h-px min-w-px relative shrink-0">
+                                <div className="relative shrink-0 w-full">
+                                  <div className="size-full">
+                                    <div className="content-stretch flex flex-col gap-[6px] items-start px-[2px] py-0 relative w-full">
+                                      {/* Title & Price */}
                                       <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+                                        <div className="content-stretch flex flex-col gap-[4px] items-end relative shrink-0 w-full">
+                                          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+                                            <div className="relative shrink-0 w-full">
+                                              <div className="size-full">
+                                                <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
+                                                  <p className="font-medium leading-[22px] relative shrink-0 text-[14px] text-black tracking-[-0.42px] w-full line-clamp-2">
+                                                    {item.master_contents.title}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <p className="-mt-[4px] pl-[1px] font-semibold leading-[20px] relative shrink-0 text-[15px] text-black tracking-[-0.42px] w-full">
+                                          {item.paid_amount.toLocaleString()}원
+                                        </p>
+                                      </div>
+
+                                      {/* Additional Info */}
+                                      <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+                                        {item.saju_records && (
+                                          <div className="relative shrink-0 w-full">
+                                            <div className="flex flex-row items-center size-full">
+                                              <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
+                                                <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] pl-[1px] text-nowrap tracking-[-0.24px]">
+                                                  풀이 대상 : {item.saju_records.full_name} ({item.saju_records.birth_date})
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                         <div className="relative shrink-0 w-full">
-                                          <div className="size-full">
-                                            <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-                                              <p className="font-medium leading-[22px] relative shrink-0 text-[14px] text-black tracking-[-0.42px] w-full line-clamp-2">
-                                                {item.master_contents.title}
+                                          <div className="flex flex-row items-center size-full">
+                                            <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
+                                              <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] pl-[1px] text-nowrap tracking-[-0.24px]">
+                                                구매 일시 : {formatDateTime(item.created_at)}
                                               </p>
                                             </div>
                                           </div>
                                         </div>
                                       </div>
                                     </div>
-                                    <p className="font-bold leading-[20px] relative shrink-0 text-[14px] text-black tracking-[-0.42px] w-full">
-                                      {item.paid_amount.toLocaleString()}원
-                                    </p>
                                   </div>
+                                </div>
 
-                                  {/* Additional Info */}
-                                  <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                                    {item.saju_records && (
-                                      <div className="relative shrink-0 w-full">
-                                        <div className="flex flex-row items-center size-full">
-                                          <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
-                                            <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                                              풀이 대상 : {item.saju_records.full_name} ({item.saju_records.birth_date})
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                    <div className="relative shrink-0 w-full">
-                                      <div className="flex flex-row items-center size-full">
-                                        <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
-                                          <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                                            구매 일시 : {formatDateTime(item.created_at)}
+                                {/* View Button */}
+                                <div className="content-stretch flex gap-[5px] items-start relative shrink-0 w-full">
+                                  <motion.button
+                                    onClick={() => handleViewPurchase(item)}
+                                    className="basis-0 grow h-[38px] min-h-px min-w-px relative rounded-[12px] shrink-0 border border-[#e7e7e7] border-solid hover:bg-gray-50 transition-colors"
+                                    animate={{ backgroundColor: '#ffffff' }}
+                                    whileTap={{ backgroundColor: '#f3f4f6' }}
+                                    transition={{ duration: 0.15 }}
+                                  >
+                                    <div className="flex flex-row items-center justify-center size-full">
+                                      <motion.div 
+                                        className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full"
+                                        whileTap={{ scale: 0.96 }}
+                                        transition={{ duration: 0.15 }}
+                                      >
+                                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                                          <p className="font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px]">
+                                            운세 보기
                                           </p>
                                         </div>
-                                      </div>
+                                      </motion.div>
                                     </div>
-                                  </div>
+                                  </motion.button>
                                 </div>
                               </div>
-                            </div>
-
-                            {/* View Button */}
-                            <div className="content-stretch flex gap-[5px] items-start relative shrink-0 w-full">
-                              <button
-                                onClick={() => handleViewPurchase(item)}
-                                className="basis-0 bg-white grow h-[38px] min-h-px min-w-px relative rounded-[12px] shrink-0 border border-[#e7e7e7] border-solid hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                              >
-                                <div className="flex flex-row items-center justify-center size-full">
-                                  <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
-                                    <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                      <p className="font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px]">
-                                        운세 보기
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </motion.div>
+                
+                {/* Full-width Divider between date groups (outside padding container) */}
+                {index < arr.length - 1 && (
+                  <div className="w-full h-[12px] bg-[#F9F9F9] mt-[36px] mb-[32px]" />
+                )}
               </div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 

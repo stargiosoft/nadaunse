@@ -90,6 +90,7 @@ export default function FreeSajuDetail({
       
       if (!dataStr) {
         console.error('❌ [FreeSajuDetail] localStorage에 데이터 없음');
+        console.error('📌 [FreeSajuDetail] localStorage 전체 keys:', Object.keys(localStorage));
         setDataLoadError(true);
         return;
       }
@@ -98,9 +99,16 @@ export default function FreeSajuDetail({
       console.log('✅ [FreeSajuDetail] 데이터 파싱 완료:', data);
       console.log('📌 [FreeSajuDetail] results 개수:', data.results?.length);
       
+      // ⭐️ results가 빈 배열이어도 허용 (에러로 처리하지 않음)
+      if (data.results && data.results.length === 0) {
+        console.warn('⚠️ [FreeSajuDetail] results 배열이 비어있지만 표시는 진행');
+      }
+      
       setCachedData(data);
     } catch (error) {
       console.error('❌ [FreeSajuDetail] 데이터 로드 중 에러:', error);
+      console.error('📌 [FreeSajuDetail] localStorage recordId:', recordId);
+      console.error('📌 [FreeSajuDetail] localStorage raw data:', localStorage.getItem(recordId));
       setDataLoadError(true);
     }
     
@@ -178,11 +186,11 @@ export default function FreeSajuDetail({
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative">
+      <div className="w-full max-w-[440px] relative">
         {/* Top Bar */}
         <div className="bg-white h-[52px] relative shrink-0 w-full">
           <div className="flex flex-col justify-center size-full">
-            <div className="box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white w-full max-w-[390px]">
+            <div className="box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white w-full max-w-[440px]">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <div className="box-border content-stretch flex gap-[10px] items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]">
                   <div className="relative shrink-0 size-[24px]"></div>
@@ -270,8 +278,8 @@ export default function FreeSajuDetail({
                     {/* 질문/답변 내용 */}
                     <div className="size-full">
                       <div className="content-stretch flex flex-col items-start px-[20px] py-0 relative w-full">
-                        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                          <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+                        <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
+                          <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                             <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] py-px relative rounded-[8px] shrink-0">
                               <p className="font-medium leading-[22px] relative shrink-0 text-[#41a09e] text-[13px] text-nowrap whitespace-pre">
                                 Q{result.questionOrder}
@@ -397,46 +405,46 @@ export default function FreeSajuDetail({
                           onClick={() => onProductClick?.(product.id)}
                           className="box-border content-stretch flex gap-[10px] items-start justify-start px-0 py-[10px] relative rounded-[16px] shrink-0 w-full cursor-pointer transition-all duration-150 ease-out origin-center active:scale-[0.96] active:bg-gray-50"
                         >
-                        {/* ⭐ 썸네일 이미지 - 직사각형 80x54 */}
-                        <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px]">
-                          {product.image ? (
-                            <img 
-                              alt={product.title} 
-                              loading="lazy"
-                              className="absolute inset-0 max-w-none object-center object-cover rounded-[12px] size-full" 
-                              src={product.image} 
-                            />
-                          ) : (
-                            <div className="absolute inset-0 bg-gray-200 rounded-[12px] flex items-center justify-center">
-                              <p className="text-gray-400 text-[12px]">이미지 없음</p>
-                            </div>
-                          )}
-                          <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-                        </div>
-
-                        {/* ⭐ 콘텐츠 정보 */}
-                        <div className="basis-0 content-stretch flex flex-col gap-[6px] grow items-start min-h-px min-w-px relative shrink-0">
-                          {/* 제목 */}
-                          <div className="relative shrink-0 w-full">
-                            <div className="flex flex-row items-center justify-center size-full">
-                              <div className="content-stretch flex items-center justify-center px-[2px] py-0 relative w-full">
-                                <p className="basis-0 font-['Pretendard_Variable:Medium',sans-serif] font-medium grow leading-[23.5px] min-h-px min-w-px relative shrink-0 text-[15px] text-black tracking-[-0.3px] overflow-ellipsis overflow-hidden line-clamp-2">
-                                  {product.title}
-                                </p>
+                          {/* ⭐ 썸네일 이미지 - 직사각형 80x54 */}
+                          <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px]">
+                            {product.image ? (
+                              <img 
+                                alt={product.title} 
+                                loading="lazy"
+                                className="absolute inset-0 max-w-none object-center object-cover rounded-[12px] size-full" 
+                                src={product.image} 
+                              />
+                            ) : (
+                              <div className="absolute inset-0 bg-gray-200 rounded-[12px] flex items-center justify-center">
+                                <p className="text-gray-400 text-[12px]">이미지 없음</p>
                               </div>
-                            </div>
+                            )}
+                            <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
                           </div>
 
-                          {/* 뱃지 - 심화 해석판(청록) vs 무료 체험판(회색) */}
-                          <div className={`${product.type === 'paid' ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} content-stretch flex items-center justify-center px-[6px] pt-[3px] pb-[1px] relative rounded-[4px] shrink-0`}>
-                            <p className={`font-medium leading-[16px] relative shrink-0 ${product.type === 'paid' ? 'text-[#41a09e]' : 'text-[#848484]'} text-[12px] text-nowrap tracking-[-0.24px]`}>
-                              {product.type === 'paid' ? '심화 해석판' : '무료 체험판'}
-                            </p>
+                          {/* ⭐ 콘텐츠 정보 */}
+                          <div className="basis-0 content-stretch flex flex-col gap-[6px] grow items-start min-h-px min-w-px relative shrink-0">
+                            {/* 제목 */}
+                            <div className="relative shrink-0 w-full">
+                              <div className="flex flex-row items-center justify-center size-full">
+                                <div className="content-stretch flex items-center justify-center px-[2px] py-0 relative w-full">
+                                  <p className="basis-0 font-['Pretendard_Variable:Medium',sans-serif] font-medium grow leading-[23.5px] min-h-px min-w-px relative shrink-0 text-[15px] text-black tracking-[-0.3px] overflow-ellipsis overflow-hidden line-clamp-2">
+                                    {product.title}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 뱃지 - 심화 해석판(청록) vs 무료 체험판(회색) */}
+                            <div className={`${product.type === 'paid' ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} content-stretch flex items-center justify-center px-[6px] pt-[3px] pb-[1px] relative rounded-[4px] shrink-0`}>
+                              <p className={`font-medium leading-[16px] relative shrink-0 ${product.type === 'paid' ? 'text-[#41a09e]' : 'text-[#848484]'} text-[12px] text-nowrap tracking-[-0.24px]`}>
+                                {product.type === 'paid' ? '심화 해석판' : '무료 체험판'}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
                   ))}
                   
                   {/* ⭐ 무한 스크롤 트리거 */}

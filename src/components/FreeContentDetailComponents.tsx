@@ -426,7 +426,7 @@ export function PaidContentCard({ content, onClick, couponDiscount = 0 }: PaidCo
         <div className="content-stretch flex flex-col gap-[12px] items-end relative shrink-0 w-[200px]">
           <div className="content-stretch flex flex-col gap-[1px] items-start relative shrink-0 w-full">
             {/* 심화 해석판 뱃지 */}
-            <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] pt-[2px] pb-[3px] relative rounded-[4px] shrink-0 mb-[3px]">
+            <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[6px] pt-[3px] pb-[1px] relative rounded-[4px] shrink-0 mb-[3px]">
               <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[16px] relative shrink-0 text-[#41a09e] text-[12px] text-nowrap tracking-[-0.24px]">
                 심화 해석판
               </p>

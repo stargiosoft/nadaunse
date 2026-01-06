@@ -66,7 +66,7 @@ serve(async (req) => {
     const { data: questions, error: questionsError } = await supabase
       .from('master_content_questions')
       .select('*')
-      .eq('master_content_id', contentId)
+      .eq('content_id', contentId)  // ⭐️ master_content_id → content_id 수정
       .order('question_order', { ascending: true })
 
     if (questionsError || !questions || questions.length === 0) {

@@ -118,10 +118,49 @@ function AccountCard({ provider, email, createdAt }: { provider: 'kakao' | 'goog
 
 function Frame5({ provider, email, createdAt }: { provider: 'kakao' | 'google'; email: string; createdAt: string }) {
   return (
-    <div className="content-stretch flex flex-col items-center relative shrink-0 w-full">
-      <TextLoginText />
-      <AccountCard provider={provider} email={email} createdAt={createdAt} />
-    </div>
+    <motion.div 
+      className="content-stretch flex flex-col items-center relative shrink-0 w-full"
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: {
+            staggerChildren: 0.2,
+            delayChildren: 0.1
+          }
+        }
+      }}
+    >
+      <motion.div 
+        className="w-full"
+        variants={{
+          hidden: { opacity: 0, y: 30 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } 
+          }
+        }}
+      >
+        <TextLoginText />
+      </motion.div>
+
+      <motion.div 
+        className="w-full flex justify-center"
+        variants={{
+          hidden: { opacity: 0, y: 30 },
+          visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } 
+          }
+        }}
+      >
+        <AccountCard provider={provider} email={email} createdAt={createdAt} />
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -213,7 +252,7 @@ function CommonBottomButton({ provider, onClick }: { provider: 'kakao' | 'google
 function Frame6({ provider, email, createdAt, onClick }: { provider: 'kakao' | 'google'; email: string; createdAt: string; onClick: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-between pt-[52px] pb-0 w-full">
-      <div className="flex-1 flex items-start justify-center w-full">
+      <div className="flex-1 flex items-start justify-center w-full overflow-hidden">
         <Frame5 provider={provider} email={email} createdAt={createdAt} />
       </div>
       <CommonBottomButton provider={provider} onClick={onClick} />
@@ -243,9 +282,24 @@ function Icons1() {
 
 function LeftAction({ onBack }: { onBack: () => void }) {
   return (
-    <div onClick={onBack} className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer" data-name="Left Action">
-      <Icons1 />
-    </div>
+    <motion.button 
+      onClick={onBack} 
+      className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer bg-transparent active:bg-gray-100 transition-colors duration-200"
+      data-name="Left Action"
+      whileTap="pressed"
+      initial="default"
+      animate="default"
+    >
+      <motion.div
+        variants={{
+          default: { scale: 1 },
+          pressed: { scale: 0.9 }
+        }}
+        transition={{ duration: 0.1 }}
+      >
+        <Icons1 />
+      </motion.div>
+    </motion.button>
   );
 }
 

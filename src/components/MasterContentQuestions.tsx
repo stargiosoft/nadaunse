@@ -3,7 +3,7 @@ import { Home, X } from 'lucide-react';
 import svgPaths from "../imports/svg-a0mkm9p61i";
 import { ContentFormData } from './MasterContentCreate';
 import { supabase } from '../lib/supabase';
-import Toast from './Toast';
+import { toast } from '../lib/toast';
 import ArrowLeft from './ArrowLeft';
 import { generateMasterContentAI } from '../lib/masterContentAI';
 
@@ -130,7 +130,6 @@ export default function MasterContentQuestions({
   const [questions, setQuestions] = useState<Question[]>(initialQuestions || [
     { id: '1', type: 'saju', content: '' },
   ]);
-  const [showToast, setShowToast] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -335,7 +334,7 @@ export default function MasterContentQuestions({
       });
 
       // 5. 즉시 성공 토스트 표시 (AI 완료 대기 없음)
-      setShowToast(true);
+      toast.success('저장되었습니다.');
       
       // 6. 0.8초 후 기본정보 입력 페이지로 이동 (입력값 초기화)
       setTimeout(() => {
@@ -355,14 +354,6 @@ export default function MasterContentQuestions({
 
   return (
     <div className="bg-[#f9f9f9] relative w-full min-h-screen flex justify-center">
-      {/* 토스트 메시지 */}
-      {showToast && (
-        <Toast
-          message="저장되었습니다."
-          onClose={() => setShowToast(false)}
-        />
-      )}
-
       <div className="relative w-full max-w-[430px] min-h-screen flex flex-col bg-[#f9f9f9]">
         {/* Top Navigation */}
         <div className="bg-white content-stretch flex flex-col items-start shrink-0 w-full">
