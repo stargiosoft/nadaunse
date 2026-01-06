@@ -36,7 +36,6 @@ import WelcomeCouponPage from './components/WelcomeCouponPage'; // ⭐ 추가
 import ResultCompletePage from './components/ResultCompletePage'; // ⭐ 추가
 import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
-import { GlobalAIMonitor } from './components/GlobalAIMonitor'; // ⭐ AI 모니터
 import HomePage from './pages/HomePage';
 import AuthCallback from './pages/AuthCallback';
 import TarotDemo from './pages/TarotDemo'; // ⭐ 타로 데모 페이지
@@ -1513,7 +1512,6 @@ export default function App() {
             className: 'toast-viewport-center',
           }}
         />
-        <GlobalAIMonitor />
       </ErrorBoundary>
     </Router>
   );
