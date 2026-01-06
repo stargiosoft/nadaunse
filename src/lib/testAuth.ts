@@ -108,9 +108,10 @@ export const initTestMode = async (): Promise<boolean> => {
 
     localStorage.setItem(TEST_SESSION_KEY, JSON.stringify(mockSession));
 
-    // Supabase auth 토큰도 설정 (hyltbeewxaqashyivilu = Staging Project ID)
-    const authKey = `sb-hyltbeewxaqashyivilu-auth-token`;
-    localStorage.setItem(authKey, JSON.stringify(mockSession));
+    // ⚠️ Supabase auth 토큰은 설정하지 않음
+    // Mock 토큰은 유효한 JWT가 아니라서 Supabase API에서 401 오류 발생
+    // 대신 컴포넌트에서 getAuthUser/getAuthSession 헬퍼를 사용하여 Mock 데이터 반환
+    // Supabase API 요청은 anon key로 진행됨 (RLS에 따라 공개 데이터 접근)
 
     console.log('✅ [TestSprite] 테스트 세션 생성 완료');
     console.log('👤 [TestSprite] 테스트 유저:', TEST_USER.user_metadata.name);
