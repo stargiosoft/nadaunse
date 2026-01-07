@@ -78,6 +78,13 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   // ⭐ 삭제 확인 다이얼로그 상태
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   // 세션 체크
   useEffect(() => {
     const checkSession = async () => {
