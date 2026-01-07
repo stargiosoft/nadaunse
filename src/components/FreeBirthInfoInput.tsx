@@ -187,6 +187,24 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
     return savedRecord;
   };
 
+  // ⭐️ 오전/오후 형식을 24시간 형식으로 변환 (DB 저장용)
+  const convertTo24Hour = (time: string): string => {
+    // "오전/오후 HH:MM" 형식 파싱
+    const match = time.match(/^(오전|오후)\s*(\d{1,2}):(\d{2})$/);
+    if (!match) return time; // 이미 24시간 형식이면 그대로 반환
+
+    const [, period, hourStr, minute] = match;
+    let hour = parseInt(hourStr);
+
+    if (period === '오전') {
+      if (hour === 12) hour = 0; // 오전 12시 = 자정 = 00:00
+    } else { // 오후
+      if (hour !== 12) hour += 12; // 오후 1시 = 13:00, 오후 12시는 그대로 12
+    }
+
+    return `${hour.toString().padStart(2, '0')}:${minute}`;
+  };
+
   // 날짜 유효성 검사
   const isValidDate = (dateString: string): boolean => {
     const numbers = dateString.replace(/[^0-9]/g, '');
@@ -336,7 +354,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
     console.log('📌 [FreeBirthInfoInput] birthDate:', birthDate);
     console.log('📌 [FreeBirthInfoInput] birthTime:', birthTime);
     console.log('📌 [FreeBirthInfoInput] unknownTime:', unknownTime);
-    
+
     if (!validateForm() || isSubmitting) {
       console.log('❌ [FreeBirthInfoInput] 유효성 검사 실패 또는 이미 제출 중');
       return;
@@ -345,32 +363,38 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
     console.log('✅ [FreeBirthInfoInput] 유효성 검사 통과');
     setIsSubmitting(true);
 
+    // ⭐️ 태어난 시간 결정: 입력 안 했거나 '모르겠어요' 체크 시 '12:00'으로 설정
+    const finalBirthTime = (!unknownTime && birthTime.trim() === '')
+      ? '12:00'
+      : (unknownTime ? '12:00' : convertTo24Hour(birthTime));
+    console.log('📌 [FreeBirthInfoInput] 태어난 시간:', finalBirthTime);
+
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
+
       console.log('👤 [FreeBirthInfoInput] 사용자 조회 결과:', user ? '로그인됨' : '로그아웃됨');
       console.log('📌 [FreeBirthInfoInput] user:', user);
       console.log('📌 [FreeBirthInfoInput] userError:', userError);
-      
+
       // ⭐️ 로그아웃 상태인 경우: localStorage에 캐시만 저장
       if (userError || !user) {
         console.log('🔓 [FreeBirthInfoInput] 로그아웃 상태 → localStorage에 캐시 저장');
-        
+
         const cachedSajuData = {
           name: name.trim(),
           gender: gender,
           birthDate: birthDate,
-          birthTime: unknownTime ? '시간 미상' : birthTime,
+          birthTime: finalBirthTime,
           timestamp: new Date().toISOString()
         };
-        
+
         localStorage.setItem('cached_saju_info', JSON.stringify(cachedSajuData));
         console.log('✅ [FreeBirthInfoInput] localStorage 캐시 저장 완료:', cachedSajuData);
-        
+
         // ⭐️ 로그아웃 상태에서는 임시 recordId 생성 (timestamp 기반)
         const tempRecordId = `temp_${Date.now()}`;
         console.log('📌 [FreeBirthInfoInput] 임시 recordId 생성:', tempRecordId);
-        
+
         // ⭐️ Edge Function 호출 제거 - FreeContentLoading에서 처리
         console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
 
@@ -385,13 +409,13 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       // ⭐️ 로그인 상태인 경우: DB에 저장
       console.log('✅ [FreeBirthInfoInput] 로그인 상태 → DB에 사주 정보 저장');
       console.log('💾 [FreeBirthInfoInput] 사주 정보 저장 시작...');
-      
+
       // 사주 정보 저장
       const sajuData = await saveSajuRecord({
         name: name.trim(),
         gender: gender,
         birthDate: birthDate,
-        birthTime: unknownTime ? '시간 미상' : birthTime,
+        birthTime: finalBirthTime,
         unknownTime: unknownTime,
       });
 

@@ -104,7 +104,8 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
       setBirthDate(birthDateOnly);
       
       // birth_time 처리
-      if (dataToLoad.birth_time === '시간 미상') {
+      // ⭐ '시간 미상' 또는 '12:00'이면 "모르겠어요" 체크 상태로 표시
+      if (dataToLoad.birth_time === '시간 미상' || dataToLoad.birth_time === '12:00') {
         setUnknownTime(true);
         setBirthTime('오후 12:00');
       } else {
@@ -128,6 +129,24 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     '직장동료',
     '기타'
   ];
+
+  // ⭐️ 오전/오후 형식을 24시간 형식으로 변환 (DB 저장용)
+  const convertTo24Hour = (time: string): string => {
+    // "오전/오후 HH:MM" 형식 파싱
+    const match = time.match(/^(오전|오후)\s*(\d{1,2}):(\d{2})$/);
+    if (!match) return time; // 이미 24시간 형식이면 그대로 반환
+
+    const [, period, hourStr, minute] = match;
+    let hour = parseInt(hourStr);
+
+    if (period === '오전') {
+      if (hour === 12) hour = 0; // 오전 12시 = 자정 = 00:00
+    } else { // 오후
+      if (hour !== 12) hour += 12; // 오후 1시 = 13:00, 오후 12시는 그대로 12
+    }
+
+    return `${hour.toString().padStart(2, '0')}:${minute}`;
+  };
 
   // 날짜 유효성 검사
   const isValidDate = (dateString: string): boolean => {
@@ -279,7 +298,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     }
 
     // ⭐️ 관계는 선택 사항 - 검증 제거
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -310,11 +329,17 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
       const finalRelationship = relationship.trim() || '지인';
       console.log('📌 [SajuAddPage] 관계:', finalRelationship);
 
+      // ⭐️ 태어난 시간 결정: 입력 안 했거나 '모르겠어요' 체크 시 '12:00'으로 설정
+      const finalBirthTime = (!unknownTime && birthTime.trim() === '')
+        ? '12:00'
+        : (unknownTime ? '12:00' : convertTo24Hour(birthTime));
+      console.log('📌 [SajuAddPage] 태어난 시간:', finalBirthTime);
+
       const sajuPayload = {
         full_name: name.trim(),
         gender: gender, // 'female' 또는 'male'로 그대로 저장
         birth_date: new Date(birthDate).toISOString(),
-        birth_time: unknownTime ? '시간 미상' : birthTime,
+        birth_time: finalBirthTime,
         notes: finalRelationship, // 관계를 notes 필드에 저장 (기본값: '지인')
       };
 

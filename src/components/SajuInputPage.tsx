@@ -80,7 +80,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
       setBirthDate(birthDateOnly);
       
       // birth_time 처리
-      if (dataToLoad.birth_time === '시간 미상') {
+      // ⭐ '시간 미상' 또는 '12:00'이면 "모르겠어요" 체크 상태로 표시
+      if (dataToLoad.birth_time === '시간 미상' || dataToLoad.birth_time === '12:00') {
         setUnknownTime(true);
         setBirthTime('오후 12:00');
       } else {
@@ -102,10 +103,28 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  // ⭐️ 오전/오후 형식을 24시간 형식으로 변환 (DB 저장용)
+  const convertTo24Hour = (time: string): string => {
+    // "오전/오후 HH:MM" 형식 파싱
+    const match = time.match(/^(오전|오후)\s*(\d{1,2}):(\d{2})$/);
+    if (!match) return time; // 이미 24시간 형식이면 그대로 반환
+
+    const [, period, hourStr, minute] = match;
+    let hour = parseInt(hourStr);
+
+    if (period === '오전') {
+      if (hour === 12) hour = 0; // 오전 12시 = 자정 = 00:00
+    } else { // 오후
+      if (hour !== 12) hour += 12; // 오후 1시 = 13:00, 오후 12시는 그대로 12
+    }
+
+    return `${hour.toString().padStart(2, '0')}:${minute}`;
+  };
+
   // 날짜 유효성 검사
   const isValidDate = (dateStr: string): boolean => {
     if (dateStr.length !== 10) return false; // YYYY-MM-DD
-    
+
     const [year, month, day] = dateStr.split('-').map(Number);
     
     if (!year || !month || !day) return false;
@@ -303,11 +322,9 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     }
     
     // 태어난 시간 검증
-    if (!unknownTime && birthTime.trim() === '') {
-      // 입력 안했으면 자동으로 "오후 12:00" 설정
-      setBirthTime('오후 12:00');
-      setUnknownTime(true);
-    } else if (!unknownTime && !isValidTime(birthTime)) {
+    // ⭐ 참고: 시간 입력 안했을 경우의 처리는 handleSave에서 finalBirthTime으로 처리
+    // validateForm에서는 setState 호출 제거 (비동기 문제 방지)
+    if (!unknownTime && birthTime.trim() !== '' && !isValidTime(birthTime)) {
       newErrors.birthTime = '태어난 시를 정확하게 입력해주세요.';
     }
     
@@ -338,11 +355,18 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         return;
       }
 
+      // ⭐️ 태어난 시간 결정: 입력 안 했거나 '모르겠어요' 체크 시 '12:00'으로 설정
+      const finalBirthTime = (!unknownTime && birthTime.trim() === '')
+        ? '12:00'
+        : (unknownTime ? '12:00' : convertTo24Hour(birthTime));
+
+      console.log('📌 [SajuInputPage] 태어난 시간:', finalBirthTime);
+
       const sajuPayload = {
         full_name: name.trim(),
         gender,
         birth_date: birthDate + 'T00:00:00Z', // timestamp 형식으로 변환
-        birth_time: unknownTime ? '시간 미상' : birthTime,
+        birth_time: finalBirthTime,
         phone_number: phoneNumber.trim() || null,
       };
 
@@ -453,7 +477,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                   full_name: order.full_name || '탈퇴한 사용자',
                   gender: order.gender || 'male',
                   birth_date: order.birth_date || '1990-01-01T00:00:00Z',
-                  birth_time: order.birth_time || '시간 미상',
+                  birth_time: order.birth_time || '12:00',
                   saju_record_id: null
                 })
                 .eq('id', order.id);

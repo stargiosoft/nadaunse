@@ -406,7 +406,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
                       </svg>
                     </div>
                   </div>
-                  <p className="basis-0 grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
+                  <p className="basis-0 grow leading-[25.5px] font-semibold min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
                     사주 정보 선택
                   </p>
                   <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
@@ -496,7 +496,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
                         {mySaju.zodiac || getChineseZodiac(mySaju.birth_date)}
                       </p>
                       <div className="h-[6px] relative shrink-0 w-0">
-                        <svg className="block size-full" fill="none" viewBox="0 0 1 7">
+                        <svg className="absolute inset-[-8.33%_-0.5px]" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
                           <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
                         </svg>
                       </div>
@@ -508,7 +508,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
                         })()}
                       </p>
                       <div className="h-[6px] relative shrink-0 w-0">
-                        <svg className="block size-full" fill="none" viewBox="0 0 1 7">
+                        <svg className="absolute inset-[-8.33%_-0.5px]" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
                           <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
                         </svg>
                       </div>
@@ -620,7 +620,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
                             {saju.zodiac || getChineseZodiac(saju.birth_date)}
                           </p>
                           <div className="h-[6px] relative shrink-0 w-0">
-                            <svg className="block size-full" fill="none" viewBox="0 0 1 7">
+                            <svg className="absolute inset-[-8.33%_-0.5px]" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
                               <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
                             </svg>
                           </div>
@@ -632,7 +632,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
                             })()}
                           </p>
                           <div className="h-[6px] relative shrink-0 w-0">
-                            <svg className="block size-full" fill="none" viewBox="0 0 1 7">
+                            <svg className="absolute inset-[-8.33%_-0.5px]" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
                               <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
                             </svg>
                           </div>

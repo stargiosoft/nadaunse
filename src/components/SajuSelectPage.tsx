@@ -46,11 +46,20 @@ export default function SajuSelectPage() {
     // ⭐ URL 쿼리 파라미터에서 orderId 가져오기 (구매내역에서 재접속한 경우)
     const searchParams = new URLSearchParams(location.search);
     const orderId = searchParams.get('orderId');
-    
+
     if (orderId) {
       console.log('📦 [SajuSelectPage] orderId 감지:', orderId);
       console.log('💾 [SajuSelectPage] localStorage에 pendingOrderId 저장');
       localStorage.setItem('pendingOrderId', orderId);
+    }
+
+    // ⭐ 뒤로가기를 위한 referrer 저장
+    // orderId가 있고 아직 referrer가 저장되지 않은 경우에만 저장
+    // (사주 추가 페이지에서 돌아온 경우 기존 referrer 유지)
+    const existingReferrer = sessionStorage.getItem('sajuSelectReferrer');
+    if (orderId && !existingReferrer) {
+      sessionStorage.setItem('sajuSelectReferrer', '/purchase-history');
+      console.log('💾 [SajuSelectPage] referrer 저장: /purchase-history');
     }
 
     loadSajuList();
@@ -71,7 +80,7 @@ export default function SajuSelectPage() {
         .from('saju_records')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('❌ 사주 목록 조회 실패:', error);
@@ -535,7 +544,18 @@ export default function SajuSelectPage() {
               <div className="content-stretch flex flex-col items-start justify-center px-[12px] py-[4px] relative size-full">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                   <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => {
+                      // ⭐ 저장된 referrer로 이동 (사주 추가 → 사주 선택 → 뒤로가기 시 루프 방지)
+                      const referrer = sessionStorage.getItem('sajuSelectReferrer');
+                      sessionStorage.removeItem('sajuSelectReferrer'); // 사용 후 삭제
+                      if (referrer) {
+                        console.log('🔙 [SajuSelectPage] referrer로 이동:', referrer);
+                        navigate(referrer);
+                      } else {
+                        console.log('🔙 [SajuSelectPage] referrer 없음 → /purchase-history로 이동');
+                        navigate('/purchase-history');
+                      }
+                    }}
                     className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] bg-transparent border-none cursor-pointer"
                   >
                     <div className="relative shrink-0 size-[24px]">
@@ -548,7 +568,7 @@ export default function SajuSelectPage() {
                       </div>
                     </div>
                   </button>
-                  <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">사주 정보 선택</p>
+                  <p className="basis-0 grow leading-[25.5px] font-semibold min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">사주 정보 선택</p>
                   <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
                 </div>
               </div>
@@ -566,7 +586,7 @@ export default function SajuSelectPage() {
               <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                   <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">내 사주</p>
+                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">내 사주</p>
                   </div>
                 </div>
                 <div className="h-0 relative shrink-0 w-full">
@@ -610,7 +630,7 @@ export default function SajuSelectPage() {
                       {/* Info */}
                       <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
                         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                          <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[20px] overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
+                          <p className="leading-[20px] overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
                             {saju.full_name} {saju.notes && `(${saju.notes})`}
                           </p>
                           <div 
@@ -626,7 +646,7 @@ export default function SajuSelectPage() {
                         </div>
                         <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full">
                           <p className="font-['Pretendard_Variable:Regular','Noto_Sans_JP:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            양력 {saju.birth_date.substring(0, 10).replace(/-/g, '.')} {saju.birth_time || '시간 미상'}
+                            양력 {saju.birth_date.substring(0, 10).replace(/-/g, '.')}
                           </p>
                           <div className="content-stretch flex gap-[8px] items-center relative rounded-[12px] shrink-0 w-full">
                             <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
@@ -664,7 +684,7 @@ export default function SajuSelectPage() {
             <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                  <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">함께 보는 사주</p>
+                  <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">함께 보는 사주</p>
                 </div>
               </div>
               <div className="h-0 relative shrink-0 w-full">
@@ -725,7 +745,7 @@ export default function SajuSelectPage() {
                       {/* Info */}
                       <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
                         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                          <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[20px] overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
+                          <p className="leading-[20px] overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
                             {saju.full_name} {saju.notes && `(${saju.notes})`}
                           </p>
                           <div 
@@ -741,7 +761,7 @@ export default function SajuSelectPage() {
                         </div>
                         <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full">
                           <p className="font-['Pretendard_Variable:Regular','Noto_Sans_JP:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            양력 {saju.birth_date.substring(0, 10).replace(/-/g, '.')} {saju.birth_time || '시간 미상'}
+                            양력 {saju.birth_date.substring(0, 10).replace(/-/g, '.')}
                           </p>
                           <div className="content-stretch flex gap-[8px] items-center relative rounded-[12px] shrink-0 w-full">
                             <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
