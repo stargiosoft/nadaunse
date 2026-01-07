@@ -50,7 +50,26 @@ export default function SajuSelectPage() {
     document.body.scrollTop = 0;
   }, []);
 
+  // ⭐ iOS Safari bfcache 복원 시 케밥 메뉴 닫기
   useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // bfcache에서 복원된 경우
+        console.log('🔄 [SajuSelectPage] bfcache 복원 감지 → 케밥 메뉴 닫기');
+        setKebabMenuOpen(false);
+        setSelectedSajuForKebab(null);
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
+  useEffect(() => {
+    // ⭐ 페이지 진입/복귀 시 케밥 메뉴 닫기 (iOS Safari 스와이프 뒤로가기 대응)
+    setKebabMenuOpen(false);
+    setSelectedSajuForKebab(null);
+
     // ⭐ URL 쿼리 파라미터에서 orderId 가져오기 (구매내역에서 재접속한 경우)
     const searchParams = new URLSearchParams(location.search);
     const orderId = searchParams.get('orderId');
