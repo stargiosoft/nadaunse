@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-06
+> **최종 업데이트**: 2026-01-07
 
 ---
 
@@ -793,8 +793,8 @@ NO  → 추가 로드 후 재시도
 
 ---
 
-### 8. 개발용 버튼이 프로덕션에 노출됨 (NEW!)
-**증상**: 배포 환경에서 테스트/디버그 버튼이 사용자에게 보임  
+### 8. 개발용 버튼이 프로덕션에 노출됨
+**증상**: 배포 환경에서 테스트/디버그 버튼이 사용자에게 보임
 **체크**:
 - [ ] `import.meta.env.DEV` 조건으로 감싸져 있는지 확인
 - [ ] 빌드 후 실제 프로덕션 환경에서 테스트
@@ -815,6 +815,36 @@ NO  → 추가 로드 후 재시도
 - `/components/LoginPageNew.tsx` - 테스트 버튼
 - `/components/ProfilePage.tsx` - UI 테스팅용 버튼, 에러 페이지 확인 버튼
 - `/components/MasterContentDetailPage.tsx` - 개발 플래그
+
+---
+
+### 9. iOS 스와이프 뒤로가기로 회원가입 페이지 재진입 (NEW!)
+**증상**: 회원가입 완료 후 여러 번 스와이프 뒤로가기 시 로그인/약관/환영쿠폰 페이지로 돌아감
+**체크**:
+- [ ] OAuth 플로우 관련 페이지인지 확인 (로그인, 약관, 환영쿠폰)
+- [ ] 페이지 마운트 시 상태 체크 로직이 있는지 확인
+- [ ] `navigate(..., { replace: true })` 사용했는지 확인
+- [ ] localStorage/sessionStorage 상태 플래그 확인
+
+**원인**:
+- OAuth 외부 리다이렉트 전 로그인 페이지가 히스토리에 남음
+- `replace: true`는 현재 네비게이션만 대체, 이전 항목은 그대로
+
+**해결 방법**:
+```tsx
+// 각 회원가입 플로우 페이지에서 마운트 시 상태 체크
+useEffect(() => {
+  const user = localStorage.getItem('user');
+  if (user) {
+    // 이미 로그인 완료 → 홈으로 리다이렉트
+    navigate('/', { replace: true });
+  }
+}, [navigate]);
+```
+
+**적용 파일들**:
+- `/App.tsx` - LoginPageNewWrapper, TermsPageWrapper, WelcomeCouponPageWrapper
+- **상세 문서**: `DECISIONS.md` → "2026-01-07 - iOS 스와이프 뒤로가기" 섹션
 
 ---
 
@@ -866,10 +896,17 @@ NO  → 추가 로드 후 재시도
 | 1.0.0 | 2025-12-20 | 초기 문서 작성 | AI Assistant |
 | 1.1.0 | 2025-12-20 | DEV_FLOW.md 통합 (무료/유료 플로우 추가) | AI Assistant |
 | 1.2.0 | 2026-01-06 | 타로 서비스 추가, 개발/배포 환경 분리, iOS Safari 최적화, 컴포넌트 51개/Edge Functions 17개 반영 | AI Assistant |
+| 1.3.0 | 2026-01-07 | iOS 스와이프 뒤로가기 히스토리 관리 버그 해결 추가 | AI Assistant |
 
 ---
 
-## 🎯 최근 주요 개선사항 (2026-01-06)
+## 🎯 최근 주요 개선사항 (2026-01-07)
+
+### ✅ iOS 스와이프 뒤로가기 히스토리 관리 (NEW!)
+- OAuth 회원가입 플로우에서 발생하는 히스토리 스택 문제 해결
+- 각 페이지에서 마운트 시 상태 체크 후 적절한 페이지로 리다이렉트
+- **핵심 파일**: `App.tsx` (LoginPageNewWrapper, TermsPageWrapper, WelcomeCouponPageWrapper)
+- **상세 문서**: `DECISIONS.md` → "2026-01-07 - iOS 스와이프 뒤로가기" 섹션
 
 ### ✅ 개발/배포 환경 자동 분리
 - **도메인 기반 환경 감지**: `/lib/env.ts` 파일을 통한 정확한 환경 판별
@@ -919,6 +956,6 @@ NO  → 추가 로드 후 재시도
 
 ---
 
-**문서 버전**: 1.2.0  
-**최종 업데이트**: 2026-01-06  
+**문서 버전**: 1.3.0
+**최종 업데이트**: 2026-01-07
 **문서 끝**

@@ -62,4 +62,8 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **Figma**: [운세 서비스 홈 화면](https://www.figma.com/design/bc3Qpt5d7QS33QrqQuevI2)
 - **GitHub**: https://github.com/stargiosoft/nadaunse
 - **Vercel**: https://vercel.com/stargiosofts-projects/nadaunse
+
+---
+
+**최종 업데이트**: 2026-01-07
   
