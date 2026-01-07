@@ -516,6 +516,12 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     window.scrollTo(0, 0);
   }, [contentId]); // contentId가 바뀔 때마다 최상단으로
 
+  // ⭐ 풀이원리 탭 오리 이미지 preload (탭 전환 시 즉시 표시)
+  useEffect(() => {
+    const img = new Image();
+    img.src = imgGeminiGeneratedImageEj66M7Ej66M7Ej661;
+  }, []);
+
   // Increment view count when page loads
   useEffect(() => {
     const incrementViewCount = async () => {
@@ -1678,7 +1684,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                         <div className="content-stretch flex flex-col gap-[30px] items-center justify-center relative shrink-0 w-full">
                           <div className="h-[152px] relative shrink-0 w-[146px]">
                             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                              <img alt="" className="absolute h-[125.71%] left-[-1.09%] max-w-none top-[-17.49%] w-[102.17%]" src={imgGeminiGeneratedImageEj66M7Ej66M7Ej661} />
+                              <img alt="오리 캐릭터" className="absolute h-[125.71%] left-[-1.09%] max-w-none top-[-17.49%] w-[102.17%]" src={imgGeminiGeneratedImageEj66M7Ej66M7Ej661} loading="eager" fetchPriority="high" />
                             </div>
                           </div>
                           <p className="font-bold leading-[24px] min-w-full not-italic relative shrink-0 text-[19px] text-black text-center tracking-[-0.36px] w-[min-content]">우리 운세는 왜 다를까요?</p>
