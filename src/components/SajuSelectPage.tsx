@@ -6,9 +6,9 @@ import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import Loading from './Loading';
 import { getTarotCardsForQuestions } from '../lib/tarotCards';
-import { getZodiacImageUrl, getConstellation, getRelationshipText } from '../lib/zodiacUtils';
 import { SajuKebabMenu } from './SajuKebabMenu';
 import { ConfirmDialog } from './ConfirmDialog';
+import SajuCard, { SajuCardData } from './SajuCard';
 
 interface SajuRecord {
   id: string;
@@ -647,88 +647,15 @@ export default function SajuSelectPage() {
                 </div>
               </div>
 
-              {/* 사주 카드 */}
-              {mySaju.map((saju, index) => (
-                <button
+              {/* 사주 카드 - 공통 컴포넌트 사용 */}
+              {mySaju.map((saju) => (
+                <SajuCard
                   key={saju.id}
-                  onClick={() => setSelectedSajuId(saju.id)}
-                  className="relative rounded-[12px] shrink-0 w-full bg-transparent border-none cursor-pointer p-0"
-                >
-                  <div className="flex flex-row items-center size-full">
-                    <div className="content-stretch flex gap-[11px] items-center px-[8px] py-[12px] relative w-full">
-                      {/* Radio Button */}
-                      <div className="content-stretch flex items-center justify-center relative shrink-0 size-[36px]">
-                        <div className={`relative rounded-[999px] shrink-0 size-[20px] ${
-                          selectedSajuId === saju.id 
-                            ? 'border-[#48b2af] border-[6px]' 
-                            : 'border-[#e7e7e7] border-2'
-                        }`} />
-                      </div>
-
-                      {/* Profile Image */}
-                      <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-                        <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-                          <img 
-                            alt={saju.zodiac || getChineseZodiac(saju.birth_date)}
-                            className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-                            src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date))}
-                            loading="lazy"
-                          />
-                          <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                          <p className="leading-[20px] overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
-                            {saju.full_name} {saju.notes && `(${saju.notes})`}
-                          </p>
-                          <div 
-                            onClick={(event) => handleKebabClick(event, saju)}
-                            className="content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer hover:bg-gray-100"
-                          >
-                            <div className="relative shrink-0 size-[16px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                                <path d={svgPaths.pdd51400} fill="#848484" stroke="#848484" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full">
-                          <p className="font-['Pretendard_Variable:Regular','Noto_Sans_JP:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            양력 {saju.birth_date.substring(0, 10).replace(/-/g, '.')}
-                          </p>
-                          <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
-                            <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                              {getChineseZodiac(saju.birth_date)}
-                            </p>
-                            <div className="h-[6px] relative shrink-0 w-[1px]">
-                              <div className="absolute inset-[-8.33%_-0.4px]">
-                                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                  <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                              {getConstellation(saju.birth_date)}
-                            </p>
-                            <div className="h-[6px] relative shrink-0 w-[1px]">
-                              <div className="absolute inset-[-8.33%_-0.4px]">
-                                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                  <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                              {saju.gender === 'female' ? '여성' : '남성'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </button>
+                  saju={saju as SajuCardData}
+                  isSelected={selectedSajuId === saju.id}
+                  onSelect={() => setSelectedSajuId(saju.id)}
+                  onKebabClick={(event) => handleKebabClick(event, saju)}
+                />
               ))}
             </div>
           )}
@@ -767,92 +694,17 @@ export default function SajuSelectPage() {
                 </div>
               </div>
             ) : (
-              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">{otherSaju.map((saju, index) => (
-                <button
-                  key={saju.id}
-                  onClick={() => setSelectedSajuId(saju.id)}
-                  className="relative rounded-[12px] shrink-0 w-full bg-transparent border-none cursor-pointer p-0"
-                >
-                  <div className="flex flex-row items-center size-full">
-                    <div className="content-stretch flex gap-[11px] items-center px-[8px] py-[12px] relative w-full">
-                      {/* Radio Button */}
-                      <div className="content-stretch flex items-center justify-center relative shrink-0 size-[36px]">
-                        <div className={`relative rounded-[999px] shrink-0 size-[20px] ${
-                          selectedSajuId === saju.id 
-                            ? 'border-[#48b2af] border-[6px]' 
-                            : 'border-[#e7e7e7] border-2'
-                        }`} />
-                      </div>
-
-                      {/* Profile Image */}
-                      <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-                        <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-                          <img 
-                            alt={saju.zodiac || getChineseZodiac(saju.birth_date)}
-                            className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-                            src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date))}
-                            loading="lazy"
-                          />
-                          <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-                        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                          <p className="leading-[20px] overflow-ellipsis overflow-hidden relative shrink-0 text-[15px] text-black text-nowrap tracking-[-0.45px]">
-                            {saju.full_name} {saju.notes && `(${saju.notes})`}
-                          </p>
-                          <div 
-                            onClick={(event) => handleKebabClick(event, saju)}
-                            className="content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer hover:bg-gray-100"
-                          >
-                            <div className="relative shrink-0 size-[16px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                                <path d={svgPaths.pdd51400} fill="#848484" stroke="#848484" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full">
-                          <p className="font-['Pretendard_Variable:Regular','Noto_Sans_JP:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            양력 {saju.birth_date.substring(0, 10).replace(/-/g, '.')}
-                          </p>
-                          <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
-                            <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                              {getChineseZodiac(saju.birth_date)}
-                            </p>
-                            <div className="h-[6px] relative shrink-0 w-[1px]">
-                              <div className="absolute inset-[-8.33%_-0.4px]">
-                                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                  <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                              {(() => {
-                                const dateOnly = saju.birth_date.split('T')[0];
-                                const [_, month, day] = dateOnly.split('-');
-                                return getConstellation(parseInt(month), parseInt(day));
-                              })()}
-                            </p>
-                            <div className="h-[6px] relative shrink-0 w-[1px]">
-                              <div className="absolute inset-[-8.33%_-0.4px]">
-                                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                  <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                                </svg>
-                              </div>
-                            </div>
-                            <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                              {saju.gender === 'female' ? '여성' : '남성'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}</div>
+              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
+                {otherSaju.map((saju) => (
+                  <SajuCard
+                    key={saju.id}
+                    saju={saju as SajuCardData}
+                    isSelected={selectedSajuId === saju.id}
+                    onSelect={() => setSelectedSajuId(saju.id)}
+                    onKebabClick={(event) => handleKebabClick(event, saju)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
