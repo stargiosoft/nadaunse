@@ -990,6 +990,15 @@ function ProfilePageWrapper() {
 function LoginPageNewWrapper() {
   const navigate = useNavigate();
 
+  // ⭐ 이미 로그인된 상태면 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      console.log('🔄 [LoginPage] 이미 로그인된 상태 → 홈으로 리다이렉트');
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
+
   const handleLoginSuccess = (user: any) => {
     console.log('🎉 로그인 성공! user:', user);
     // 리다이렉트 URL 확인
@@ -1046,6 +1055,20 @@ function ExistingAccountPageNewWrapper() {
 function TermsPageWrapper() {
   const navigate = useNavigate();
 
+  // ⭐ 이미 회원가입이 완료된 상태면 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    const tempUser = localStorage.getItem('tempUser');
+
+    if (user) {
+      console.log('🔄 [TermsPage] 이미 회원가입 완료 → 홈으로 리다이렉트');
+      navigate('/', { replace: true });
+    } else if (!tempUser) {
+      console.log('🔄 [TermsPage] 임시 사용자 정보 없음 → 로그인 페이지로 리다이렉트');
+      navigate('/login/new', { replace: true });
+    }
+  }, [navigate]);
+
   const handleComplete = () => {
     // ⭐️ 가입 축하 쿠폰 페이지로 이동
     console.log('✅ 회원가입 완료 → 가입 축하 쿠폰 페이지로 이동');
@@ -1054,7 +1077,7 @@ function TermsPageWrapper() {
 
   return (
     <TermsPage
-      onBack={() => navigate('/login/new')}
+      onBack={() => navigate('/login/new', { replace: true })}
       onComplete={handleComplete}
     />
   );
@@ -1064,7 +1087,19 @@ function TermsPageWrapper() {
 function WelcomeCouponPageWrapper() {
   const navigate = useNavigate();
 
+  // ⭐ 이미 환영 페이지를 본 경우 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
+  useEffect(() => {
+    const welcomed = sessionStorage.getItem('welcomePageViewed');
+    if (welcomed) {
+      console.log('🔄 [WelcomeCoupon] 이미 환영 페이지를 봄 → 홈으로 리다이렉트');
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
+
   const handleClose = () => {
+    // ⭐ 환영 페이지를 봤다는 플래그 설정
+    sessionStorage.setItem('welcomePageViewed', 'true');
+
     // redirectAfterLogin 확인
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
 
