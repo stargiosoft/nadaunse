@@ -314,12 +314,17 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
    */
   const handleEditSaju = () => {
     if (!selectedSajuForKebab) return;
-    
+
     console.log('✏️ [사주수정] 수정 시작:', selectedSajuForKebab);
-    
+
     // 케밥 메뉴 닫기
     setKebabMenuOpen(false);
-    
+
+    // 페이지 이동 전 스크롤 리셋
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     // 본인 사주인지 여부에 따라 다른 페이지로 이동
     if (selectedSajuForKebab.notes === '본인') {
       // 내 사주 → SajuInputPage
