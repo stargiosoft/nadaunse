@@ -60,18 +60,29 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
     document.body.scrollTop = 0;
   }, []);
 
-  // ⭐ iOS Safari bfcache 복원 시 케밥 메뉴 닫기
+  // ⭐ iOS Safari 스와이프 뒤로가기 대응 - 페이지가 다시 보일 때 케밥 메뉴 닫기
   useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        console.log('🔄 [FreeSajuSelectPage] bfcache 복원 감지 → 케밥 메뉴 닫기');
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 [FreeSajuSelectPage] 페이지 visible → 케밥 메뉴 닫기');
         setKebabMenuOpen(false);
         setSelectedSajuForKebab(null);
       }
     };
 
+    const handlePageShow = () => {
+      console.log('🔄 [FreeSajuSelectPage] pageshow → 케밥 메뉴 닫기');
+      setKebabMenuOpen(false);
+      setSelectedSajuForKebab(null);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
   }, []);
 
   // 사주 정보 로드

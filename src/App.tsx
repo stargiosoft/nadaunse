@@ -1067,14 +1067,16 @@ function WelcomeCouponPageWrapper() {
   const handleClose = () => {
     // redirectAfterLogin 확인
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
-    
+
     if (redirectUrl) {
       console.log('✅ [WelcomeCoupon] 리다이렉트 URL 존재 → 이동:', redirectUrl);
       localStorage.removeItem('redirectAfterLogin');
-      navigate(redirectUrl);
+      // replace: true로 welcome-coupon을 히스토리에서 제거
+      navigate(redirectUrl, { replace: true });
     } else {
       console.log('✅ [WelcomeCoupon] 리다이렉트 URL 없음 → 홈으로 이동');
-      navigate('/');
+      // replace: true로 welcome-coupon을 히스토리에서 제거
+      navigate('/', { replace: true });
     }
   };
 
