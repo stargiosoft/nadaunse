@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import svgPaths from "../imports/svg-h2fyyvfh8o";
+import svgPaths from "../imports/svg-iltjkti27j";
 import { imgGroup, imgGroup1, imgGroup2, imgGroup3 } from "../imports/svg-cp95o";
 import { supabase } from '../lib/supabase';
 import { signInWithKakao, signInWithGoogle } from '../lib/auth';
