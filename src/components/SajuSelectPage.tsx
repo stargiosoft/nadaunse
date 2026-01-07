@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import svgPaths from "../imports/svg-tta3ixz6w2";
 import emptyStateSvgPaths from "../imports/svg-hw6oxtisye";
@@ -43,7 +43,8 @@ export default function SajuSelectPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
-  useEffect(() => {
+  // useLayoutEffect 사용: 화면 렌더링 전에 동기적으로 실행
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;

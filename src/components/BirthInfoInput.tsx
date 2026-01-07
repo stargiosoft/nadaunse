@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgPaths from "../imports/svg-b5r0yb3uuf";
@@ -44,7 +44,8 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
   const phoneNumberInputRef = useRef<HTMLInputElement>(null);
 
   // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
-  useEffect(() => {
+  // useLayoutEffect 사용: 화면 렌더링 전에 동기적으로 실행
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;

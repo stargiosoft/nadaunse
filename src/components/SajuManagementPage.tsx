@@ -554,6 +554,17 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
     setPendingPrimarySajuId(null);
   };
 
+  /**
+   * 사주 정보 추가 핸들러 (스크롤 리셋 포함)
+   */
+  const handleNavigateToAdd = () => {
+    // 페이지 이동 전 스크롤 리셋
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    onNavigateToAdd();
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
@@ -839,7 +850,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
               <div className="w-full flex justify-center relative">
                 <div className="w-full max-w-[440px] px-[20px] py-[12px]">
                   <div
-                    onClick={onNavigateToAdd}
+                    onClick={handleNavigateToAdd}
                     className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer hover:bg-[#3a9794] active:bg-[#2d7a78] active:scale-96 transition-all duration-150 ease-in-out"
                   >
                     <div className="flex flex-row items-center justify-center size-full">

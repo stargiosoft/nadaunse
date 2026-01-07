@@ -3,7 +3,7 @@
  * Figma import: /imports/사주정보입력390-240-5924.tsx
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
@@ -62,7 +62,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
   const birthTimeInputRef = useRef<HTMLInputElement>(null);
 
   // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
-  useEffect(() => {
+  // useLayoutEffect 사용: 화면 렌더링 전에 동기적으로 실행
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
