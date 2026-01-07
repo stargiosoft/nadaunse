@@ -60,18 +60,38 @@ export default function SajuSelectPage() {
       }
     };
 
-    const handlePageShow = () => {
-      console.log('🔄 [SajuSelectPage] pageshow → 케밥 메뉴 닫기');
+    // ⭐ pageshow: bfcache 복원 시 (event.persisted=true) 바텀시트 닫기
+    const handlePageShow = (event: PageTransitionEvent) => {
+      console.log('🔄 [SajuSelectPage] pageshow → persisted:', event.persisted);
+      // bfcache에서 복원되었거나 일반 pageshow 모두 처리
+      setKebabMenuOpen(false);
+      setSelectedSajuForKebab(null);
+    };
+
+    // ⭐ popstate: 브라우저 뒤로가기/앞으로가기 시 바텀시트 닫기
+    const handlePopState = () => {
+      console.log('🔄 [SajuSelectPage] popstate → 케밥 메뉴 닫기');
+      setKebabMenuOpen(false);
+      setSelectedSajuForKebab(null);
+    };
+
+    // ⭐ focus: 윈도우가 포커스를 받을 때 바텀시트 닫기 (iOS Safari 추가 보호)
+    const handleFocus = () => {
+      console.log('🔄 [SajuSelectPage] focus → 케밥 메뉴 닫기');
       setKebabMenuOpen(false);
       setSelectedSajuForKebab(null);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
@@ -434,15 +454,15 @@ export default function SajuSelectPage() {
     setKebabMenuOpen(false);
     setSelectedSajuForKebab(null);
 
-    // ⭐ requestAnimationFrame으로 React 렌더링 완료 후 네비게이션
+    // ⭐ setTimeout 150ms: 바텀시트 닫힘 애니메이션 완료 + React 렌더링 대기
     // iOS Safari bfcache에 바텀시트가 닫힌 상태로 저장됨
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       if (sajuToEdit.notes === '본인') {
         navigate('/saju/input', { state: { sajuInfo: sajuToEdit, returnTo: currentPath } });
       } else {
         navigate('/saju/add', { state: { sajuInfo: sajuToEdit, returnTo: currentPath } });
       }
-    });
+    }, 150);
   };
 
   /**
