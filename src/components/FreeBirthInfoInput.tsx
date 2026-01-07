@@ -38,6 +38,13 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
   const birthDateInputRef = useRef<HTMLInputElement>(null);
   const birthTimeInputRef = useRef<HTMLInputElement>(null);
 
+  // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   // ⭐️ 컴포넌트 마운트 시 사주 정보 불러오기 (DB 우선 → 캐시 fallback)
   useEffect(() => {
     const loadSajuInfo = async () => {

@@ -61,6 +61,13 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
   const birthDateInputRef = useRef<HTMLInputElement>(null);
   const birthTimeInputRef = useRef<HTMLInputElement>(null);
 
+  // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   // 세션 체크
   useEffect(() => {
     const checkSession = async () => {
@@ -101,7 +108,10 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         setBirthTime('오후 12:00');
       } else {
         setUnknownTime(false);
-        setBirthTime(dataToLoad.birth_time || '');
+        // ⭐ DB에서 24시간 형식(예: "23:16")으로 저장되어 있으면 12시간 형식으로 변환
+        const displayTime = convertTo12Hour(dataToLoad.birth_time || '');
+        console.log('📌 [편집모드] birth_time 원본:', dataToLoad.birth_time, '→ 변환:', displayTime);
+        setBirthTime(displayTime);
       }
       
       // phone_number 로드 (선택 필드)
@@ -134,6 +144,29 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     }
 
     return `${hour.toString().padStart(2, '0')}:${minute}`;
+  };
+
+  // ⭐️ 24시간 형식을 오전/오후 형식으로 변환 (DB 로드 시 화면 표시용)
+  const convertTo12Hour = (time: string): string => {
+    // 이미 오전/오후 형식이면 그대로 반환
+    if (time.includes('오전') || time.includes('오후')) return time;
+
+    // "HH:MM" 형식 파싱
+    const match = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return time; // 파싱 실패 시 그대로 반환
+
+    const [, hourStr, minute] = match;
+    let hour = parseInt(hourStr);
+
+    if (hour >= 0 && hour < 12) {
+      // 오전 (00:00 ~ 11:59)
+      const displayHour = hour === 0 ? 12 : hour;
+      return `오전 ${String(displayHour).padStart(2, '0')}:${minute}`;
+    } else {
+      // 오후 (12:00 ~ 23:59)
+      const displayHour = hour === 12 ? 12 : hour - 12;
+      return `오후 ${String(displayHour).padStart(2, '0')}:${minute}`;
+    }
   };
 
   // 날짜 유효성 검사

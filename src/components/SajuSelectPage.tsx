@@ -42,6 +42,13 @@ export default function SajuSelectPage() {
   // ⭐ 삭제 확인 다이얼로그 상태
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   useEffect(() => {
     // ⭐ URL 쿼리 파라미터에서 orderId 가져오기 (구매내역에서 재접속한 경우)
     const searchParams = new URLSearchParams(location.search);

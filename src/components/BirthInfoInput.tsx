@@ -43,6 +43,13 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
   const birthTimeInputRef = useRef<HTMLInputElement>(null);
   const phoneNumberInputRef = useRef<HTMLInputElement>(null);
 
+  // 페이지 마운트 시 스크롤 최상단으로 리셋 (iOS Safari 호환)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   // 컴포넌트 마운트 시 이름 필드에 자동 포커스
   useEffect(() => {
     const timer = setTimeout(() => {
