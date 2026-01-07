@@ -117,10 +117,22 @@ export default function ProductDetail({ product, onBack, onPurchase }: ProductDe
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          // 로그아웃 상태: 가입축하쿠폰 혜택가 표시
+          // 로그아웃 상태: 가입축하쿠폰 혜택가 표시 (DB에서 쿠폰 금액 조회)
           console.log('👤 [ProductDetail] 로그아웃 상태 → 가입축하쿠폰 혜택가 표시');
           setIsLoggedIn(false);
-          const finalPrice = product.discountPrice - 5000;
+
+          // ✅ coupons 테이블에서 welcome 타입 쿠폰의 할인 금액 조회
+          const { data: welcomeCouponData } = await supabase
+            .from('coupons')
+            .select('discount_amount')
+            .eq('coupon_type', 'welcome')
+            .eq('is_active', true)
+            .single();
+
+          const welcomeDiscount = welcomeCouponData?.discount_amount || 5000; // fallback: 5000원
+          console.log('💰 [ProductDetail] 가입축하쿠폰 할인 금액:', welcomeDiscount);
+
+          const finalPrice = Math.max(0, product.discountPrice - welcomeDiscount);
           setCouponInfo({
             hasWelcomeCoupon: true,
             hasRevisitCoupon: false,
@@ -190,8 +202,10 @@ export default function ProductDetail({ product, onBack, onPurchase }: ProductDe
         });
 
         if (welcomeCoupon) {
-          console.log('🎉 [ProductDetail] 가입축하쿠폰 보유 → 첫 구매 혜택가 표시');
-          const finalPrice = product.discountPrice - 5000;
+          // ✅ 쿠폰의 실제 할인 금액 사용 (하드코딩 제거)
+          const welcomeDiscount = welcomeCoupon.coupons?.discount_amount || 5000;
+          console.log('🎉 [ProductDetail] 가입축하쿠폰 보유 → 첫 구매 혜택가 표시, 할인:', welcomeDiscount);
+          const finalPrice = Math.max(0, product.discountPrice - welcomeDiscount);
           setCouponInfo({
             hasWelcomeCoupon: true,
             hasRevisitCoupon: false,
@@ -200,8 +214,10 @@ export default function ProductDetail({ product, onBack, onPurchase }: ProductDe
             buttonText: `첫 구매 쿠폰 받고 ${finalPrice.toLocaleString()}원으로 풀이 보기`
           });
         } else if (revisitCoupon) {
-          console.log('🎁 [ProductDetail] 재방문 쿠폰 보유 → 재구매 혜택가 표시'); // ⭐ 로그 메시지 수정
-          const finalPrice = product.discountPrice - 3000;
+          // ✅ 쿠폰의 실제 할인 금액 사용 (하드코딩 제거)
+          const revisitDiscount = revisitCoupon.coupons?.discount_amount || 3000;
+          console.log('🎁 [ProductDetail] 재방문 쿠폰 보유 → 재구매 혜택가 표시, 할인:', revisitDiscount);
+          const finalPrice = Math.max(0, product.discountPrice - revisitDiscount);
           setCouponInfo({
             hasWelcomeCoupon: false,
             hasRevisitCoupon: true,
