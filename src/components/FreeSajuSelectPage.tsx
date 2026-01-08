@@ -178,7 +178,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
   }, [productId, navigate, onBack]);
 
   // "다음" 버튼 클릭
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!selectedSajuId) {
       alert('사주 정보를 선택해주세요.');
       return;
@@ -193,46 +193,39 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('✅ [FreeSajuSelectPage] 다음 버튼 클릭');
     console.log('📌 [FreeSajuSelectPage] 선택된 사주:', selectedSaju);
-
-    // ⭐ 로그인 사용자인 경우 대표 사주 업데이트
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      console.log('🔄 [FreeSajuSelectPage] 대표 사주 업데이트 시작');
-
-      // 1단계: 해당 사용자의 모든 사주 is_primary=false로 변경
-      const { error: resetPrimaryError } = await supabase
-        .from('saju_records')
-        .update({ is_primary: false })
-        .eq('user_id', user.id);
-
-      if (resetPrimaryError) {
-        console.error('❌ [FreeSajuSelectPage] 대표 사주 초기화 실패:', resetPrimaryError);
-      } else {
-        console.log('✅ [FreeSajuSelectPage] 모든 사주 is_primary=false 설정 완료');
-      }
-
-      // 2단계: 선택된 사주만 is_primary=true로 변경
-      const { error: setPrimaryError } = await supabase
-        .from('saju_records')
-        .update({ is_primary: true })
-        .eq('id', selectedSajuId)
-        .eq('user_id', user.id);
-
-      if (setPrimaryError) {
-        console.error('❌ [FreeSajuSelectPage] 대표 사주 설정 실패:', setPrimaryError);
-      } else {
-        console.log('✅ [FreeSajuSelectPage] 선택된 사주를 대표 사주로 설정 완료:', selectedSajuId);
-      }
-    } else {
-      console.log('ℹ️ [FreeSajuSelectPage] 로그아웃 사용자 - 대표 사주 업데이트 생략');
-    }
-
-    console.log('🔀 [FreeSajuSelectPage] 로딩 페이지로 이동');
+    console.log('🔀 [FreeSajuSelectPage] 로딩 페이지로 즉시 이동');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // 로딩 페이지로 이동
+    // 🚀 UX 개선: 먼저 로딩 페이지로 이동 (즉시 반응)
     navigate(`/free-loading?contentId=${productId}&sajuRecordId=${selectedSajuId}&userName=${selectedSaju.full_name}`);
+
+    // ⭐ 백그라운드에서 대표 사주 업데이트 (navigate 후 비동기 처리)
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          console.log('🔄 [FreeSajuSelectPage] 백그라운드: 대표 사주 업데이트 시작');
+
+          // 1단계: 해당 사용자의 모든 사주 is_primary=false로 변경
+          await supabase
+            .from('saju_records')
+            .update({ is_primary: false })
+            .eq('user_id', user.id);
+
+          // 2단계: 선택된 사주만 is_primary=true로 변경
+          await supabase
+            .from('saju_records')
+            .update({ is_primary: true })
+            .eq('id', selectedSajuId)
+            .eq('user_id', user.id);
+
+          console.log('✅ [FreeSajuSelectPage] 백그라운드: 대표 사주 업데이트 완료');
+        }
+      } catch (error) {
+        console.error('❌ [FreeSajuSelectPage] 백그라운드: 대표 사주 업데이트 실패:', error);
+      }
+    })();
   };
 
   // 사주 정보 추가 버튼 클릭
