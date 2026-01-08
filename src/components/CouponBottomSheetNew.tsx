@@ -92,7 +92,7 @@ export default function CouponBottomSheetNew({
           
           {/* Bottom sheet */}
           <motion.div 
-            className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col max-h-[94vh] pointer-events-auto z-[10000]"
+            className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col max-h-[75vh] pointer-events-auto z-[10000]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
