@@ -429,7 +429,7 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
     // - 카테고리 정보가 없으면 '전체'로 설정
     localStorage.setItem('homeFilter', JSON.stringify({
       category: contentCategory || '전체',
-      contentType: 'paid'
+      contentType: 'all'  // ⭐ '종합' 필터로 설정
     }));
     console.log('🏠 다른 운세 보기 클릭 - 홈 필터 설정:', { category: contentCategory || '전체' });
     navigate('/');
