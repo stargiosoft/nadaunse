@@ -338,18 +338,18 @@ export default function FreeProductDetail({ product, onBack, onProductClick, onB
               </div>
             </div>
             
-            <div className="relative w-full -mx-[20px] px-[20px]">
+            <div className="relative w-full">
               <div
                 ref={sliderRef}
                 id="slider-container"
-                className="flex gap-[12px] overflow-x-auto pb-[4px] items-stretch"
+                className="flex gap-[12px] overflow-x-auto pb-[4px] -mx-[20px] px-[20px] items-stretch"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {visibleRecommendedProducts.map((recProduct, index) => (
-                  <div 
+                  <button
                     key={recProduct.id}
                     onClick={() => onProductClick?.(recProduct.id)}
-                    className="flex-none w-[200px] cursor-pointer"
+                    className="flex-none w-[200px] cursor-pointer text-left"
                   >
                     <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                       <div className="h-[120px] pointer-events-none relative rounded-[12px] shrink-0 w-[200px]">
@@ -396,7 +396,7 @@ export default function FreeProductDetail({ product, onBack, onProductClick, onB
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
                 
                 {hasMoreCards && (
