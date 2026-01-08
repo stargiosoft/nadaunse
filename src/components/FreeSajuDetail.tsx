@@ -184,8 +184,8 @@ export default function FreeSajuDetail({
     };
   }, [visibleCount, recommendedProducts.length]);
 
-  // ⭐️ 로딩 중일 때 - 빈 화면 대신 로딩 스피너 표시 (깜빡임 방지)
-  if (isDataLoading) {
+  // ⭐️ 로딩 중이거나 데이터가 아직 없을 때 - 로딩 스피너 표시 (깜빡임 완전 방지)
+  if (isDataLoading || (!dataLoadError && !cachedData)) {
     return (
       <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
         <div className="flex flex-col items-center gap-[12px]">
@@ -195,8 +195,8 @@ export default function FreeSajuDetail({
     );
   }
 
-  // ⭐️ 데이터 로드 실패 시 에러 화면 (로딩 완료 후에만 표시)
-  if (dataLoadError || !cachedData) {
+  // ⭐️ 데이터 로드 실패 시 에러 화면 (로딩 완료 + 에러 확정 시에만)
+  if (dataLoadError) {
     return (
       <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
         <div className="text-center px-[20px]">
