@@ -1020,22 +1020,29 @@ export default function HomePage() {
     };
   }, []);
   
-  // 🚀 Phase 3: Featured 이미지 우선 프리로드
+  // 🚀 Phase 3: Featured 이미지 우선 프리로드 (중복 방지)
   useEffect(() => {
     if (featuredContent?.thumbnail_url) {
-      console.log('🎯 [Featured Preload] Featured 이미지 우선 프리로드:', featuredContent.thumbnail_url);
-      preloadImages([featuredContent.thumbnail_url], 'high');
-      
-      // 추가로 다음 5개 콘텐츠의 썸네일도 미리 로드
+      const featuredUrl = featuredContent.thumbnail_url;
+
+      // 🚀 중복 프리로드 방지
+      if (!preloadedUrlsRef.current.has(featuredUrl)) {
+        console.log('🎯 [Featured Preload] Featured 이미지 우선 프리로드:', featuredUrl);
+        preloadImages([featuredUrl], 'high');
+        preloadedUrlsRef.current.add(featuredUrl);
+      }
+
+      // 추가로 다음 5개 콘텐츠의 썸네일도 미리 로드 (중복 제외)
       const nextImages = allContents
         .filter(c => c.id !== featuredContent.id)
         .slice(0, 5)
         .map(c => c.thumbnail_url)
-        .filter(Boolean);
-      
+        .filter((url): url is string => Boolean(url) && !preloadedUrlsRef.current.has(url));
+
       if (nextImages.length > 0) {
         console.log(`🖼️ [Next Images Preload] 다음 ${nextImages.length}개 이미지 프리로드`);
-        preloadImages(nextImages as string[], 'low');
+        preloadImages(nextImages, 'low');
+        nextImages.forEach(url => preloadedUrlsRef.current.add(url));
       }
     }
   }, [featuredContent, allContents]);
@@ -1221,10 +1228,15 @@ export default function HomePage() {
     // 필터 변경 시 상태 리셋
     setCurrentPage(0);
     setHasMore(true);
-    
+
     // ⭐ 스크롤 이동 완전 제거 - 브라우저 기본 동작 사용
     // isFirstMount 체크도 제거 (더 이상 필요 없음)
   }, [selectedCategory, selectedType]);
+
+  // 🚀 Phase 2: loadMoreContents ref 동기화 (Observer 재생성 방지)
+  useEffect(() => {
+    loadMoreContentsRef.current = loadMoreContents;
+  }, [loadMoreContents]);
   
   // Infinite scroll observer
   useEffect(() => {
@@ -1248,15 +1260,15 @@ export default function HomePage() {
         
         if (isIntersecting && hasMore && !isLoading) {
           console.log('🚀 [IntersectionObserver] loadMoreContents() 호출!');
-          loadMoreContents();
+          loadMoreContentsRef.current?.();
         }
       },
-      { 
+      {
         threshold: 0.1,
         rootMargin: '200px 0px'  // 🚀 뷰포트 200px 전에 이미지 로드 시작
       }
     );
-    
+
     const currentTarget = observerTarget.current;
     if (currentTarget) {
       console.log('✅ [IntersectionObserver] Observer 등록 완료');
@@ -1264,13 +1276,13 @@ export default function HomePage() {
     } else {
       console.warn('⚠️ [IntersectionObserver] observerTarget이 없습니다');
     }
-    
+
     return () => {
       if (currentTarget) {
         observer.unobserve(currentTarget);
       }
     };
-  }, [hasMore, isLoading, loadMoreContents, isInitialLoading]);
+  }, [hasMore, isLoading, isInitialLoading]); // 🚀 loadMoreContents 의존성 제거
 
   const handleUserIconClick = () => {
     // localStorage 기준으로 즉시 체크 (비동기 세션 체크 지연 문제 해결)
