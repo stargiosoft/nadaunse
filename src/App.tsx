@@ -986,6 +986,7 @@ function ProfilePageWrapper() {
 // Login Page New Wrapper
 function LoginPageNewWrapper() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/'); // ⭐ 직전 페이지로 돌아가기 (fallback: 홈)
 
   // ⭐ 이미 로그인된 상태면 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
   useEffect(() => {
@@ -1001,7 +1002,7 @@ function LoginPageNewWrapper() {
     // 리다이렉트 URL 확인
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
     console.log('📍 리다이렉트 URL 확인:', redirectUrl);
-    
+
     if (redirectUrl) {
       console.log('✅ 리다이렉트 URL 존재 → 이동:', redirectUrl);
       localStorage.removeItem('redirectAfterLogin');
@@ -1014,7 +1015,7 @@ function LoginPageNewWrapper() {
 
   return (
     <LoginPageNew
-      onBack={() => navigate('/')}
+      onBack={goBack} // ⭐ 직전 페이지로 돌아가기
       onLoginSuccess={handleLoginSuccess}
       onNavigateToTerms={() => navigate('/terms')}
       onNavigateToExistingAccount={(provider) => {

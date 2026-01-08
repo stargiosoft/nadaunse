@@ -803,8 +803,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       const redirectUrl = `/product/${contentId}/payment/new`;
       console.log('🔐 로그아웃 상태 → 리다이렉트 URL 저장:', redirectUrl);
       localStorage.setItem('redirectAfterLogin', redirectUrl);
-      console.log('✅ localStorage 저장 확��:', localStorage.getItem('redirectAfterLogin'));
-      navigate('/login/new');
+      console.log('✅ localStorage 저장 확인:', localStorage.getItem('redirectAfterLogin'));
+      // ⭐ canGoBack 상태 추가 - 로그인 페이지에서 뒤로가기 시 직전 페이지로 이동 가능
+      navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${contentId}` } });
       return;
     }
     
@@ -1084,7 +1085,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                         const handleLoginRedirect = () => {
                           const paymentUrl = `/master/content/detail/${content.id}`;
                           localStorage.setItem('redirectAfterLogin', paymentUrl);
-                          navigate('/login/new');
+                          // ⭐ canGoBack 상태 추가 - 로그인 페이지에서 뒤로가기 시 직전 페이지로 이동 가능
+                          navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${content.id}` } });
                         };
 
                         // Case 1: 로그인 + 재방문쿠폰 보유 (우선순위 1)
