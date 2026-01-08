@@ -225,7 +225,7 @@ export default function SajuSelectPage() {
         console.log('🔍 [사주선택] pendingOrderId로 직접 조회:', pendingOrderId);
         const { data, error } = await supabase
           .from('orders')
-          .select('id, content_id, ai_generation_completed')
+          .select('id, content_id, ai_generation_completed, saju_record_id')
           .eq('id', pendingOrderId)
           .eq('user_id', user.id)
           .single();
@@ -239,7 +239,7 @@ export default function SajuSelectPage() {
 
         const { data, error } = await supabase
           .from('orders')
-          .select('id, content_id, ai_generation_completed')
+          .select('id, content_id, ai_generation_completed, saju_record_id')
           .eq('user_id', user.id)
           .eq('ai_generation_completed', false)
           .gte('created_at', tenMinutesAgo)
@@ -269,6 +269,43 @@ export default function SajuSelectPage() {
       const contentId = existingOrder.content_id;
 
       console.log('✅ [사주선택] 진행 중인 주문 발견:', orderId);
+
+      // ⭐ 사주 정보 없이 생성된 결과인지 확인 (구매 후 이탈 → 나중에 사주 선택한 케이스)
+      // 로딩 페이지 이동 전에 먼저 리셋해야 race condition 방지
+      let needsRegeneration = false;
+      if (existingOrder.ai_generation_completed === true && existingOrder.saju_record_id === null) {
+        console.log('⚠️ [사주선택] 사주 정보 없이 생성된 결과 발견 → 로딩 전 리셋 필요');
+        needsRegeneration = true;
+
+        // 기존 order_results 삭제
+        const { error: deleteError } = await supabase
+          .from('order_results')
+          .delete()
+          .eq('order_id', orderId);
+
+        if (deleteError) {
+          console.error('❌ [사주선택] 기존 결과 삭제 실패:', deleteError);
+        } else {
+          console.log('🗑️ [사주선택] 기존 결과 삭제 완료');
+        }
+
+        // ai_generation_completed를 false로 리셋
+        const { error: resetError } = await supabase
+          .from('orders')
+          .update({
+            ai_generation_completed: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId);
+
+        if (resetError) {
+          console.error('❌ [사주선택] ai_generation_completed 리셋 실패:', resetError);
+        } else {
+          console.log('🔄 [사주선택] ai_generation_completed 리셋 완료');
+          // existingOrder 객체도 업데이트 (후속 로직에서 사용)
+          existingOrder.ai_generation_completed = false;
+        }
+      }
 
       // 선택된 사주 정보 조회 (이름 표시용)
       const { data: sajuData } = await supabase
@@ -338,10 +375,11 @@ export default function SajuSelectPage() {
         console.log('✅ [백그라운드] 모든 업데이트 완료');
       });
 
-      // ⭐️ 백그라운드에서 AI ���변 생성 시작 (비동기, 결과 대기 안 함)
-      // 이미 AI 생성이 완료되었거나 진행 중인지 확인
+      // ⭐️ 백그라운드에서 AI 응답 생성 시작 (비동기, 결과 대기 안 함)
+      // 이미 AI 생성이 완료되었는지 확인
+      // (사주 정보 없이 생성된 케이스는 위에서 이미 리셋됨)
       if (existingOrder.ai_generation_completed === true) {
-        console.log('✅ [사주선택] AI 생성 이미 완료됨');
+        console.log('✅ [사주선택] AI 생성 이미 완료됨 (사주 정보 포함)');
         return;
       }
 
@@ -357,6 +395,7 @@ export default function SajuSelectPage() {
         console.warn('⚠️ [사주선택] order_results 체크 중 에러 (무시):', resultsError);
       }
 
+      // ⭐ 사주 정보 없이 생성된 결과가 삭제되었으므로, resultsCheck가 비어있어야 함
       if (resultsCheck && resultsCheck.length > 0) {
         console.log('⏳ [사주선택] AI 생성 이미 진행 중 → 새 호출 생략');
         return;
