@@ -9,6 +9,7 @@ import CouponBottomSheetNew from "./CouponBottomSheetNew";
 import Footer from "./Footer";
 import { SessionExpiredDialog } from "./SessionExpiredDialog";
 import PaymentSkeleton from "./skeletons/PaymentSkeleton";
+import { DEV } from "../lib/env";
 
 // 포트원 타입 선언
 declare global {
@@ -1120,39 +1121,41 @@ export default function PaymentNew({
             </div>
           </motion.div>
 
-          {/* ⚠️ [개발 전용] 결제 패스 버튼 */}
-          <motion.div
-            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
-            className="w-full px-[20px] mb-[20px] mt-[10px]"
-          >
-            <div className="bg-red-50 border border-red-200 rounded-xl p-[16px]">
-              <p className="text-red-500 text-[12px] text-center mb-[8px] font-bold">
-                ⚠️ 개발 전용 (실제 결제 건너뛰기)
-              </p>
-              <div className="flex flex-col gap-[8px]">
-                <button
-                  onClick={() => {
-                    const finalContentId = contentId || productId;
-                    const devOrderId = `dev_order_${Date.now()}`;
-                    // navigate 훅을 사용할 수 없는 컨텍스트이므로 window.location 사용
-                    window.location.href = `/product/${finalContentId}/birthinfo?orderId=${devOrderId}&from=dev`;
-                  }}
-                  className="w-full h-[44px] bg-red-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-red-600 transition-colors cursor-pointer border-none"
-                >
-                  [DEV] 결제 완료
-                </button>
-                <button
-                  onClick={() => {
-                    // 결제 실패 화면으로 이동 (imp_success=false)
-                    window.location.href = `/payment/complete?imp_success=false&error_msg=${encodeURIComponent('[DEV] 테스트용 결제 실패')}`;
-                  }}
-                  className="w-full h-[44px] bg-orange-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-orange-600 transition-colors cursor-pointer border-none"
-                >
-                  [DEV] 결제 실패
-                </button>
+          {/* ⚠️ [개발 전용] 결제 패스 버튼 - DEV 환경에서만 표시 */}
+          {DEV && (
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } }}
+              className="w-full px-[20px] mb-[20px] mt-[10px]"
+            >
+              <div className="bg-red-50 border border-red-200 rounded-xl p-[16px]">
+                <p className="text-red-500 text-[12px] text-center mb-[8px] font-bold">
+                  ⚠️ 개발 전용 (실제 결제 건너뛰기)
+                </p>
+                <div className="flex flex-col gap-[8px]">
+                  <button
+                    onClick={() => {
+                      const finalContentId = contentId || productId;
+                      const devOrderId = `dev_order_${Date.now()}`;
+                      // navigate 훅을 사용할 수 없는 컨텍스트이므로 window.location 사용
+                      window.location.href = `/product/${finalContentId}/birthinfo?orderId=${devOrderId}&from=dev`;
+                    }}
+                    className="w-full h-[44px] bg-red-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-red-600 transition-colors cursor-pointer border-none"
+                  >
+                    [DEV] 결제 완료
+                  </button>
+                  <button
+                    onClick={() => {
+                      // 결제 실패 화면으로 이동 (imp_success=false)
+                      window.location.href = `/payment/complete?imp_success=false&error_msg=${encodeURIComponent('[DEV] 테스트용 결제 실패')}`;
+                    }}
+                    className="w-full h-[44px] bg-orange-500 text-white rounded-[8px] font-bold text-[14px] hover:bg-orange-600 transition-colors cursor-pointer border-none"
+                  >
+                    [DEV] 결제 실패
+                  </button>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
           {/* Footer */}
           <motion.div
