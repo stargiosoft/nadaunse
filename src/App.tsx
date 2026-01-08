@@ -1032,6 +1032,10 @@ function LoginPageNewWrapper() {
 
   const handleLoginSuccess = (user: any) => {
     console.log('🎉 로그인 성공! user:', user);
+
+    // ⭐ 로그인 성공 토스트 표시 플래그 저장
+    sessionStorage.setItem('show_login_toast', 'true');
+
     // 리다이렉트 URL 확인
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
     console.log('📍 리다이렉트 URL 확인:', redirectUrl);
