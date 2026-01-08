@@ -588,6 +588,7 @@ function BirthInfoPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const goBack = useGoBack(`/product/${id}`); // ⭐ 직전 페이지로 (fallback: 콘텐츠 상세)
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasSajuInfo, setHasSajuInfo] = useState<boolean | null>(null); // ⭐ 사주 정보 존재 여부
@@ -729,7 +730,7 @@ function BirthInfoPage() {
     return (
       <FreeBirthInfoInput
         productId={id || ''}
-        onBack={() => navigate(`/product/${id}`)}
+        onBack={goBack} // ⭐ 직전 페이지로 (구매내역에서 진입 시 구매내역으로 복귀)
       />
     );
   }
@@ -739,10 +740,7 @@ function BirthInfoPage() {
   return (
     <BirthInfoInput
       productId={id || ''}
-      onBack={() => {
-        // ⭐️ 결제 완료 후에는 콘텐츠 상세 페이지로 이동
-        navigate(`/product/${id}`);
-      }}
+      onBack={goBack} // ⭐ 직전 페이지로 (구매내역에서 진입 시 구매내역으로 복귀)
       onComplete={(recordId: string, userName?: string) => {
         if (product.type === 'free') {
           navigate(`/product/${id}/result/free`, { state: { recordId, userName } });
