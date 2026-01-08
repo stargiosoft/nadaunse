@@ -614,34 +614,46 @@ export default function HomePage() {
   
   const CACHE_KEY = 'homepage_contents_cache';
   const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
-  
+
   // 🔧 캐시 버전 관리 (정렬 로직 변경 시 캐시 무효화)
-  const CACHE_VERSION = 'v5'; // 이미지 URL 쿼리 파라미터 완전 제거 (원본 URL만 사용)
-  const VERSIONED_CACHE_KEY = `${CACHE_KEY}_${CACHE_VERSION}`;
+  const CACHE_VERSION = 'v6'; // 필터별 캐시 분리 적용
   const CATEGORIES_CACHE_KEY = 'homepage_categories_cache';
+
+  // 🚀 Phase 1: 필터별 캐시 키 생성 함수
+  const getCacheKey = useCallback((category: TabCategory, type: 'all' | 'paid' | 'free') => {
+    return `${CACHE_KEY}_${category}_${type}_${CACHE_VERSION}`;
+  }, []);
+
+  // 🖼️ Phase 3: 이미지 프리로드 중복 방지용 Set
+  const preloadedUrlsRef = useRef<Set<string>>(new Set());
+
+  // 🔄 Phase 2: Observer 함수 참조 유지용 Ref
+  const loadMoreContentsRef = useRef<(() => Promise<void>) | null>(null);
   
-  // 캐시에서 데이터 로드
-  const loadFromCache = useCallback(() => {
+  // 캐시에서 데이터 로드 (필터별 캐시 키 사용)
+  const loadFromCache = useCallback((category: TabCategory, type: 'all' | 'paid' | 'free') => {
     try {
-      // 🗑️ 이전 버전 캐시 삭제
-      const oldKeys = Object.keys(localStorage).filter(key => 
-        key.startsWith(CACHE_KEY) && key !== VERSIONED_CACHE_KEY
+      const cacheKey = getCacheKey(category, type);
+
+      // 🗑️ 이전 버전 캐시 삭제 (v5 이하)
+      const oldKeys = Object.keys(localStorage).filter(key =>
+        key.startsWith(CACHE_KEY) && !key.includes('_v6')
       );
       oldKeys.forEach(key => localStorage.removeItem(key));
-      
-      const cached = localStorage.getItem(VERSIONED_CACHE_KEY);
+
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         const now = Date.now();
-        
+
         // 캐시가 유효한 경우 (5분 이내)
         if (now - timestamp < CACHE_EXPIRY) {
-          console.log('✅ 캐시에서 데이터 로드');
+          console.log(`✅ 캐시에서 데이터 로드 (${category}/${type})`);
           const contents = data as MasterContent[];
-          
+
           // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
           const hasClicks = contents.some((c: MasterContent) => c.weekly_clicks > 0);
-          
+
           if (hasClicks) {
             const maxClicks = Math.max(...contents.map((c: MasterContent) => c.weekly_clicks));
             const featuredIndex = contents.findIndex((c: MasterContent) => c.weekly_clicks === maxClicks);
@@ -649,97 +661,111 @@ export default function HomePage() {
           } else {
             setFeaturedContent(contents[0]);
           }
-          
+
           setAllContents(contents);
           return true;
         } else {
-          console.log('⏰ 캐시 만료됨');
-          localStorage.removeItem(VERSIONED_CACHE_KEY);
+          console.log(`⏰ 캐시 만료됨 (${category}/${type})`);
+          localStorage.removeItem(cacheKey);
         }
       }
     } catch (error) {
       console.error('캐시 로드 실패');
-      localStorage.removeItem(VERSIONED_CACHE_KEY);
     }
     return false;
-  }, []);
+  }, [getCacheKey]);
   
-  // 캐시에 데이터 저장
-  const saveToCache = useCallback((data: MasterContent[]) => {
+  // 캐시에 데이터 저장 (필터별 캐시 키 사용)
+  const saveToCache = useCallback((data: MasterContent[], category: TabCategory, type: 'all' | 'paid' | 'free') => {
     try {
-      localStorage.setItem(VERSIONED_CACHE_KEY, JSON.stringify({
+      const cacheKey = getCacheKey(category, type);
+      localStorage.setItem(cacheKey, JSON.stringify({
         data,
         timestamp: Date.now()
       }));
-      console.log('💾 캐시에 데이터 저장 (버전:', CACHE_VERSION, ')');
+      console.log(`💾 캐시에 데이터 저장 (${category}/${type})`);
     } catch (error) {
       console.error('캐시 저장 실패');
     }
-  }, [VERSIONED_CACHE_KEY]);
+  }, [getCacheKey]);
   
-  // 🚀 백그라운드에서 나머지 콘텐츠 프리페칭
-  const prefetchRemainingContents = useCallback(async (totalCount: number) => {
+  // 🚀 백그라운드에서 나머지 콘텐츠 프리페칭 (현재 필터 기준)
+  const prefetchRemainingContents = useCallback(async (totalCount: number, category: TabCategory, type: 'all' | 'paid' | 'free') => {
     try {
       const remainingCount = totalCount - 10;
       const batchSize = 20; // 한 번에 20개씩 로드
       let loadedCount = 0;
-      
-      console.log(`🔮 [Prefetch] 총 ${remainingCount}개 콘텐츠를 백그라운드에서 로드합니다...`);
-      
+      const cacheKey = getCacheKey(category, type);
+
+      console.log(`🔮 [Prefetch] 총 ${remainingCount}개 콘텐츠를 백그라운드에서 로드합니다... (${category}/${type})`);
+
       // 여러 배치로 나누어 로드
       while (loadedCount < remainingCount) {
         const startIndex = 10 + loadedCount;
         const endIndex = Math.min(startIndex + batchSize - 1, totalCount - 1);
-        
+
         console.log(`🔮 [Prefetch] 배치 로드 중... (${startIndex} ~ ${endIndex})`);
-        
-        const { data, error } = await supabase
+
+        let query = supabase
           .from('master_contents')
           .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate')
-          .eq('status', 'deployed')
+          .eq('status', 'deployed');
+
+        // 필터 적용
+        if (category !== '전체') {
+          query = query.eq('category_main', category);
+        }
+        if (type === 'paid') {
+          query = query.eq('content_type', 'paid');
+        } else if (type === 'free') {
+          query = query.eq('content_type', 'free');
+        }
+
+        const { data, error } = await query
           .order('weekly_clicks', { ascending: false })
           .order('created_at', { ascending: false })
           .range(startIndex, endIndex);
-        
+
         if (error) {
           console.error(`❌ [Prefetch] 배치 로드 실패 (${startIndex} ~ ${endIndex}):`, error);
           break;
         }
-        
+
         if (data && data.length > 0) {
           const newContents = data.map((item: any) => ({
             ...item,
             thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
           })) as MasterContent[];
-          
+
           // 기존 캐시 데이터에 추가
-          const cached = localStorage.getItem(VERSIONED_CACHE_KEY);
+          const cached = localStorage.getItem(cacheKey);
           if (cached) {
             const { data: cachedData } = JSON.parse(cached);
             const updatedData = [...cachedData, ...newContents];
-            
+
             // 중복 제거
             const uniqueData = Array.from(
               new Map(updatedData.map(item => [item.id, item])).values()
             );
-            
-            saveToCache(uniqueData);
+
+            saveToCache(uniqueData, category, type);
             console.log(`✅ [Prefetch] ${newContents.length}개 추가됨 (누적: ${uniqueData.length}개)`);
-            
-            // 🖼️ 이미지 프리로드 (백그라운드)
+
+            // 🖼️ 이미지 프리로드 (백그라운드) - 중복 체크
             const imageUrls = newContents
               .map(c => c.thumbnail_url)
-              .filter(Boolean) as string[];
-            
+              .filter(url => url && !preloadedUrlsRef.current.has(url)) as string[];
+
             if (imageUrls.length > 0) {
               console.log(`🖼️ [Prefetch] ${imageUrls.length}개 이미지 프리로드 시작...`);
               await preloadImages(imageUrls, 'low');
+              imageUrls.forEach(url => preloadedUrlsRef.current.add(url));
               console.log(`✅ [Prefetch] ${imageUrls.length}개 이미지 프리로드 완료`);
             }
           }
-          
+
           loadedCount += data.length;
-          
+
           // 다음 배치 전 짧은 딜레이 (서버 부하 방지)
           await new Promise(resolve => setTimeout(resolve, 500));
         } else {
@@ -747,23 +773,29 @@ export default function HomePage() {
           break;
         }
       }
-      
+
       console.log(`🎉 [Prefetch] 백그라운드 프리페칭 완료! (총 ${loadedCount}개 로드됨)`);
     } catch (error) {
       console.error('❌ [Prefetch] 프리페칭 중 오류:', error);
     }
-  }, [saveToCache, VERSIONED_CACHE_KEY]);
+  }, [saveToCache, getCacheKey]);
   
-  // Load published contents from Supabase
+  // Load published contents from Supabase (모든 필터에서 캐시 활용)
   useEffect(() => {
     const fetchPublishedContents = async () => {
-      //  필터가 '전체/all'일 때만 캐시에서 로드
-      const shouldUseCache = selectedCategory === '전체' && selectedType === 'all';
-      const hasCache = shouldUseCache ? loadFromCache() : false;
-      
+      // 🚀 Phase 1: 모든 필터에서 캐시 활용
+      const hasCache = loadFromCache(selectedCategory, selectedType);
+
+      // 캐시가 있으면 API 호출 스킵 (즉시 표시)
+      if (hasCache) {
+        console.log(`⚡ [Cache Hit] 캐시에서 즉시 로드 (${selectedCategory}/${selectedType})`);
+        setIsInitialLoading(false);
+        return;
+      }
+
       try {
-        console.log('🔍 [HomePage] deployed 콘텐츠 조회 시작...');
-        
+        console.log(`🔍 [HomePage] deployed 콘텐츠 조회 시작... (${selectedCategory}/${selectedType})`);
+
         // 🐛 디버깅: 전체 콘텐츠의 status 확인 (타임아웃 없이)
         try {
           const { data: allData } = await supabase
@@ -771,7 +803,7 @@ export default function HomePage() {
             .select('id, title, status')
             .limit(5);
           console.log('🐛 [DEBUG] 최근 5개 콘텐츠 status:', allData);
-          
+
           // deployed 콘텐츠 개수 확인
           const { count: deployedCount } = await supabase
             .from('master_contents')
@@ -781,33 +813,33 @@ export default function HomePage() {
         } catch (debugError) {
           console.warn('디버그 쿼리 실패 (무시):', debugError);
         }
-        
+
         // 🎯 쿼리 빌더 시작
         let query = supabase
           .from('master_contents')
           .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
           .eq('status', 'deployed');
-        
+
         // 🔍 카테고리 필터 적용
         if (selectedCategory !== '전체') {
           query = query.eq('category_main', selectedCategory);
         }
-        
+
         // 🔍 타입 필터 적용
         if (selectedType === 'paid') {
           query = query.eq('content_type', 'paid');
         } else if (selectedType === 'free') {
           query = query.eq('content_type', 'free');
         }
-        
+
         // 정렬 및 범위 설정 (타임아웃 없이 실행)
         const { data, error, count } = await query
           .order('weekly_clicks', { ascending: false })
           .order('created_at', { ascending: false })
           .range(0, 9); // 🎯 처음 10개만 로드
-        
+
         console.log('🔍 [HomePage] 쿼리 결과:', { data, error, count });
-        
+
         if (error) {
           throw error;
         }
@@ -818,15 +850,13 @@ export default function HomePage() {
             // 🎨 썸네일 최적화 (리스트용)
             thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
           })) as MasterContent[];
-          
-          // 💾 캐시에 저장 (필터별로 저장하지 않고 전체만 캐시)
-          if (selectedCategory === '전체' && selectedType === 'all') {
-            saveToCache(contents);
-          }
-          
+
+          // 💾 캐시에 저장 (모든 필터에서 캐시)
+          saveToCache(contents, selectedCategory, selectedType);
+
           // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
           const hasClicks = contents.some(c => c.weekly_clicks > 0);
-          
+
           if (hasClicks) {
             // 클릭수가 가장 높은 콘텐츠를 featured로
             const maxClicks = Math.max(...contents.map(c => c.weekly_clicks));
@@ -836,23 +866,21 @@ export default function HomePage() {
             // 클릭수가 모두 0이면 첫 번째 콘텐츠를 featured로
             setFeaturedContent(contents[0]);
           }
-          
+
           setAllContents(contents);
           setHasMore(count ? count > 10 : false); // 10개 이상이면 더 있음
           console.log(`✅ 홈 화면 콘텐츠 로드 성공 (${contents.length}개, 전체: ${count}개, 필터: ${selectedCategory}/${selectedType})`);
-          
-          // 🚀 백그라운드에서 나머지 콘텐츠 프리페칭 (전체/all 필터일 때만)
-          if (shouldUseCache && count && count > 10) {
+
+          // 🚀 백그라운드에서 나머지 콘텐츠 프리페칭 (모든 필터에서)
+          if (count && count > 10) {
             console.log('🔮 [Prefetch] 백그라운드 프리페칭 시작...', `남은 콘텐츠: ${count - 10}개`);
-            prefetchRemainingContents(count);
+            prefetchRemainingContents(count, selectedCategory, selectedType);
           }
         } else {
-          // 데이터가 없으면 캐시도 없으면 빈 배열
+          // 데이터가 없으면 빈 배열
           console.log('📭 [HomePage] deployed 콘텐츠가 없습니다');
-          if (!hasCache) {
-            setAllContents([]);
-            setFeaturedContent(null);
-          }
+          setAllContents([]);
+          setFeaturedContent(null);
           setHasMore(false);
         }
       } catch (error: any) {
@@ -866,12 +894,10 @@ export default function HomePage() {
           console.error('에러 메시지:', error.message);
           console.error('에러 스택:', error.stack);
         }
-        
-        // 캐시가 없으면 빈 배열로 초기화
-        if (!hasCache) {
-          setAllContents([]);
-          setFeaturedContent(null);
-        }
+
+        // 에러 시 빈 배열로 초기화
+        setAllContents([]);
+        setFeaturedContent(null);
         setHasMore(false);
       } finally {
         setIsInitialLoading(false); // ✅ 초기 로딩 완료 표시
@@ -879,7 +905,7 @@ export default function HomePage() {
     };
 
     fetchPublishedContents();
-  }, [loadFromCache, saveToCache, selectedCategory, selectedType]);
+  }, [loadFromCache, saveToCache, selectedCategory, selectedType, prefetchRemainingContents]);
   
   // 🆕 실제로 데이터가 있는 카테고리만 조회하여 탭에 표시
   useEffect(() => {
@@ -1051,52 +1077,51 @@ export default function HomePage() {
       });
   }, [allContents, featuredContentFiltered]);
   
-  // Load more contents
+  // Load more contents (모든 필터에서 캐시 활용)
   const loadMoreContents = useCallback(async () => {
     if (isLoading || !hasMore) {
       console.log('⏭️ 추가 로드 스킵 (로딩 중이거나 더 이상 없음)');
       return;
     }
-    
-    console.log(`🔄 추가 콘텐츠 로드 시작 (페이지: ${currentPage + 1})`);
-    
+
+    console.log(`🔄 추가 콘텐츠 로드 시작 (페이지: ${currentPage + 1}, ${selectedCategory}/${selectedType})`);
+
     setIsLoading(true);
-    
+
     try {
       const startIndex = (currentPage + 1) * 10;
       const endIndex = startIndex + 9;
-      
-      // 🚀 전체/all 필터일 때는 먼저 캐시 확인
-      if (selectedCategory === '전체' && selectedType === 'all') {
-        const cached = localStorage.getItem(VERSIONED_CACHE_KEY);
-        if (cached) {
-          const { data: cachedData } = JSON.parse(cached);
-          
-          // 캐시에 요청한 범위의 데이터가 있는지 확인
-          if (cachedData.length > endIndex) {
-            const newContents = cachedData.slice(startIndex, endIndex + 1) as MasterContent[];
-            
-            if (newContents.length > 0) {
-              console.log(`✅ [Cache Hit] 캐시에서 ${newContents.length}개 로드 (${startIndex} ~ ${endIndex})`);
-              
-              // 전체 콘텐츠에 추가
-              setAllContents(prev => {
-                const existingIds = new Set(prev.map(c => c.id));
-                const uniqueNewContents = newContents.filter(c => !existingIds.has(c.id));
-                return [...prev, ...uniqueNewContents];
-              });
-              
-              setCurrentPage(prev => prev + 1);
-              setHasMore(endIndex < cachedData.length - 1);
-              setIsLoading(false);
-              
-              console.log(`✅ [Cache] ${newContents.length}개 콘텐츠 캐시에서 로드 완료`);
-              return; // 캐시에서 로드했으므로 DB 쿼리 스킵
-            }
+      const cacheKey = getCacheKey(selectedCategory, selectedType);
+
+      // 🚀 모든 필터에서 캐시 확인
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data: cachedData } = JSON.parse(cached);
+
+        // 캐시에 요청한 범위의 데이터가 있는지 확인
+        if (cachedData.length > endIndex) {
+          const newContents = cachedData.slice(startIndex, endIndex + 1) as MasterContent[];
+
+          if (newContents.length > 0) {
+            console.log(`✅ [Cache Hit] 캐시에서 ${newContents.length}개 로드 (${startIndex} ~ ${endIndex})`);
+
+            // 전체 콘텐츠에 추가
+            setAllContents(prev => {
+              const existingIds = new Set(prev.map(c => c.id));
+              const uniqueNewContents = newContents.filter(c => !existingIds.has(c.id));
+              return [...prev, ...uniqueNewContents];
+            });
+
+            setCurrentPage(prev => prev + 1);
+            setHasMore(endIndex < cachedData.length - 1);
+            setIsLoading(false);
+
+            console.log(`✅ [Cache] ${newContents.length}개 콘텐츠 캐시에서 로드 완료`);
+            return; // 캐시에서 로드했으므로 DB 쿼리 스킵
           }
-          
-          console.log(`📭 [Cache Miss] 캐시에 데이터 부족 (요청: ${endIndex}, 캐시: ${cachedData.length})`);
         }
+
+        console.log(`📭 [Cache Miss] 캐시에 데이터 부족 (요청: ${endIndex}, 캐시: ${cachedData.length})`);
       }
       
       // 🎯 캐시에 없으면 DB에서 쿼리

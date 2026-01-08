@@ -88,6 +88,10 @@ serve(async (req) => {
     const logId = logData.id
 
     // 2. 메시지 본문 구성 (검수된 템플릿과 정확히 일치해야 함)
+    // ⚠️ 템플릿 ID: 10002 (구매 결과 안내)
+    // ⚠️ 승인일: 2026/01/08 - 이모지, 띄어쓰기, 줄바꿈 모두 정확히 일치해야 함
+    // ⚠️ 변수는 클라이언트에서 직접 치환해서 전송 (TalkDream API 문서 기준)
+    // ⚠️ 카카오는 템플릿과 비교 시 변수 위치만 다른 값 허용
     const message = `${customerName}님, 구매하신 운세가 준비됐어요 🌱
 
 오늘도 당신답게, 잘하고 있어요
@@ -115,6 +119,7 @@ serve(async (req) => {
         console.log(`📤 발송 시도 ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}`)
 
         // TalkDream API 호출
+        // ⚠️ 변수 치환: JavaScript 템플릿 리터럴로 직접 치환 (message, url 모두)
         const payload = {
           authToken: TALKDREAM_CONFIG.authToken,
           serverName: TALKDREAM_CONFIG.serverName,
@@ -124,6 +129,8 @@ serve(async (req) => {
           template: TALKDREAM_CONFIG.templateId,
           mobile: mobile,
           message: message,
+          // ⚠️ 변수는 message에 이미 치환되어 있음 (JavaScript 템플릿 리터럴 사용)
+          // ⚠️ TalkDream API에는 subs 파라미터가 없음 - 클라이언트에서 직접 치환 필요
           buttons: [
             {
               type: 'AC', // 채널추가
