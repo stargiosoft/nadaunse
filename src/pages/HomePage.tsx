@@ -957,16 +957,17 @@ export default function HomePage() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔐 [Auth] 세션 체크:', session ? '로그인됨' : '로그아웃');
       if (session?.user) {
         setIsLoggedIn(true);
-        
+
         // public.users에서 사용자 정보 가져오기
         const { data: userData, error } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single();
-        
+
         if (userData && !error) {
           // localStorage에 저장 (기존 코드 호환용)
           localStorage.setItem('user', JSON.stringify(userData));
@@ -975,8 +976,22 @@ export default function HomePage() {
         setIsLoggedIn(false);
       }
     };
-    
+
     checkAuth();
+
+    // 🔑 Auth 상태 변경 구독 - 로그인/로그아웃 시 즉시 반영
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 [Auth] 상태 변경:', event, session ? '세션있음' : '세션없음');
+      if (session?.user) {
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   
   // 🚀 Phase 3: Featured 이미지 우선 프리로드
