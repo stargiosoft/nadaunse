@@ -342,14 +342,14 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     }
   };
 
-  // 필수 필드 검증
+  // 필수 필드 검증 (이름, 생년월일만 필수)
   const isFormValid = () => {
     const nameValid = name.trim().length >= 1;
     const birthDateValid = birthDate.replace(/[^\d]/g, '').length === 8 && isValidDate(birthDate);
-    
-    // 태어난 시간: "모르겠어요" 체크되어 있거나, 정상 입력되어 있어야 함
-    const birthTimeValid = unknownTime || (birthTime.length > 0 && isValidTime(birthTime));
-    
+
+    // 태어난 시간: 선택사항 (비어있거나, "모르겠어요" 체크되어 있거나, 정상 입력되어 있으면 OK)
+    const birthTimeValid = birthTime.length === 0 || unknownTime || isValidTime(birthTime);
+
     return nameValid && birthDateValid && birthTimeValid;
   };
 
