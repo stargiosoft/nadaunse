@@ -619,6 +619,12 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
    * 사주 정보 추가 핸들러 (스크롤 리셋 포함)
    */
   const handleNavigateToAdd = () => {
+    // ⭐ 함께 보는 사주 20개 제한 체크
+    if (otherSajuList.length >= 20) {
+      toast.warning('사주 정보는 최대 20개까지 등록할 수 있습니다.', { duration: 2200 });
+      return;
+    }
+
     // 페이지 이동 전 스크롤 리셋
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
