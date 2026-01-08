@@ -15,7 +15,7 @@ interface TarotResult {
   question_text: string;
   card_image_url?: string;
   card_name?: string;
-  content_id?: number;
+  content_id?: string;
   question_type?: 'tarot' | 'saju';
 }
 
@@ -36,7 +36,7 @@ export default function TarotShufflePage() {
   const [fanCardPositions, setFanCardPositions] = useState<Array<{ inset: string; rotate: number; skewX: number }>>([]);
   const [questionText, setQuestionText] = useState<string>('');
   const [totalQuestions, setTotalQuestions] = useState<number>(1);
-  const [contentIdState, setContentIdState] = useState<number | null>(null);
+  const [contentIdState, setContentIdState] = useState<string | null>(null);
   const [showTableOfContents, setShowTableOfContents] = useState(false);
   const [allResults, setAllResults] = useState<TarotResult[]>([]);
 
@@ -47,15 +47,16 @@ export default function TarotShufflePage() {
 
       try {
         // 1. orders 테이블에서 content_id 가져오기 (없으면 URL 파라미터 사용)
-        let contentId = contentIdParam ? parseInt(contentIdParam) : null;
-        
+        // ⭐ UUID이므로 parseInt 사용하지 않음
+        let contentId: string | null = contentIdParam || null;
+
         if (!contentId) {
           const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .select('content_id')
             .eq('id', orderId)
             .single();
-          
+
           if (orderError) throw orderError;
           contentId = orderData.content_id;
         }
@@ -253,7 +254,7 @@ export default function TarotShufflePage() {
           isOpen={showTableOfContents}
           onClose={() => setShowTableOfContents(false)}
           orderId={orderId}
-          contentId={contentIdState.toString()}
+          contentId={contentIdState}
           currentQuestionOrder={questionOrder}
         />
       )}
