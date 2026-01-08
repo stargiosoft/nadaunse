@@ -9,6 +9,7 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
 import svgPaths from "../imports/svg-b51v8udqqu"; // ⭐️ SajuManagementPage와 동일한 SVG 사용
 import emptyStateSvgPaths from "../imports/svg-hw6oxtisye"; // Empty State 아이콘
 import { SajuKebabMenu } from './SajuKebabMenu';
@@ -230,6 +231,13 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
 
   // 사주 정보 추가 버튼 클릭
   const handleAddSaju = () => {
+    // ⭐ 함께 보는 사주 20개 제한 체크
+    const otherSajuCount = sajuRecords.filter(r => r.notes !== '본인').length;
+    if (otherSajuCount >= 20) {
+      toast.warning('사주 정보는 최대 20개까지 등록할 수 있습니다.', { duration: 2200 });
+      return;
+    }
+
     console.log('➕ [FreeSajuSelectPage] 사주 정보 추가 버튼 클릭');
     console.log('🔀 [FreeSajuSelectPage] 사주 입력 페이지로 이동:', `/product/${productId}/free-saju-add`);
     navigate(`/product/${productId}/free-saju-add`);

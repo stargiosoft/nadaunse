@@ -171,11 +171,18 @@ export default function SajuSelectPage() {
   };
 
   const handleAddSaju = () => {
+    // ⭐ 함께 보는 사주 20개 제한 체크
+    const otherSajuCount = sajuList.filter(s => s.notes !== '본인').length;
+    if (otherSajuCount >= 20) {
+      toast.warning('사주 정보는 최대 20개까지 등록할 수 있습니다.', { duration: 2200 });
+      return;
+    }
+
     // ⭐ 관계 사주 추가 페이지로 이동 (함께 보는 사주 추가)
-    navigate('/saju/add', { 
-      state: { 
-        returnTo: `/product/${productId}/saju-select` 
-      } 
+    navigate('/saju/add', {
+      state: {
+        returnTo: `/product/${productId}/saju-select`
+      }
     });
   };
 
