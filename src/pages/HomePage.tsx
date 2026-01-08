@@ -779,7 +779,80 @@ export default function HomePage() {
       console.error('❌ [Prefetch] 프리페칭 중 오류:', error);
     }
   }, [saveToCache, getCacheKey]);
-  
+
+  // 🚀 다른 카테고리들 백그라운드 프리페치 (카테고리 변경 속도 개선)
+  const prefetchOtherCategories = useCallback(async (
+    currentCategory: TabCategory,
+    currentType: 'all' | 'paid' | 'free',
+    categories: TabCategory[]
+  ) => {
+    // 현재 카테고리 제외한 나머지 카테고리들
+    const otherCategories = categories.filter(cat => cat !== currentCategory);
+
+    console.log(`🔮 [Category Prefetch] ${otherCategories.length}개 카테고리 프리페칭 시작...`);
+
+    for (const category of otherCategories) {
+      const cacheKey = getCacheKey(category, currentType);
+
+      // 이미 캐시가 있으면 스킵
+      const existingCache = localStorage.getItem(cacheKey);
+      if (existingCache) {
+        try {
+          const { timestamp } = JSON.parse(existingCache);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            console.log(`⏭️ [Category Prefetch] ${category}/${currentType} 캐시 있음, 스킵`);
+            continue;
+          }
+        } catch {
+          // 파싱 실패 시 계속 진행
+        }
+      }
+
+      try {
+        console.log(`📥 [Category Prefetch] ${category}/${currentType} 로드 중...`);
+
+        let query = supabase
+          .from('master_contents')
+          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+          .eq('status', 'deployed');
+
+        // 카테고리 필터
+        if (category !== '전체') {
+          query = query.eq('category_main', category);
+        }
+
+        // 타입 필터
+        if (currentType === 'paid') {
+          query = query.eq('content_type', 'paid');
+        } else if (currentType === 'free') {
+          query = query.eq('content_type', 'free');
+        }
+
+        const { data, error } = await query
+          .order('weekly_clicks', { ascending: false })
+          .order('created_at', { ascending: false })
+          .range(0, 9); // 첫 10개만 로드 (캐시용)
+
+        if (error) {
+          console.error(`❌ [Category Prefetch] ${category} 로드 실패:`, error);
+          continue;
+        }
+
+        if (data && data.length > 0) {
+          saveToCache(data, category, currentType);
+          console.log(`✅ [Category Prefetch] ${category}/${currentType} 캐시 저장 (${data.length}개)`);
+        }
+
+        // 서버 부하 방지를 위한 딜레이
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (error) {
+        console.error(`❌ [Category Prefetch] ${category} 에러:`, error);
+      }
+    }
+
+    console.log(`🎉 [Category Prefetch] 카테고리 프리페칭 완료!`);
+  }, [getCacheKey, saveToCache]);
+
   // Load published contents from Supabase (모든 필터에서 캐시 활용)
   useEffect(() => {
     const fetchPublishedContents = async () => {
@@ -906,7 +979,21 @@ export default function HomePage() {
 
     fetchPublishedContents();
   }, [loadFromCache, saveToCache, selectedCategory, selectedType, prefetchRemainingContents]);
-  
+
+  // 🚀 최초 로드 완료 후 다른 카테고리들 백그라운드 프리페치
+  const hasPrefetchedCategoriesRef = useRef(false);
+  useEffect(() => {
+    // 초기 로딩 완료 + 카테고리 2개 이상 + 아직 프리페치 안 함
+    if (!isInitialLoading && availableCategories.length > 1 && !hasPrefetchedCategoriesRef.current) {
+      hasPrefetchedCategoriesRef.current = true;
+
+      // 1초 후 백그라운드에서 프리페치 시작 (메인 로딩 방해 안 함)
+      setTimeout(() => {
+        prefetchOtherCategories(selectedCategory, selectedType, availableCategories);
+      }, 1000);
+    }
+  }, [isInitialLoading, availableCategories, selectedCategory, selectedType, prefetchOtherCategories]);
+
   // 🆕 실제로 데이터가 있는 카테고리만 조회하여 탭에 표시
   useEffect(() => {
     const fetchAvailableCategories = async () => {
