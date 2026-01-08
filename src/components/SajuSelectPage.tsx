@@ -608,13 +608,16 @@ export default function SajuSelectPage() {
   };
 
   const mySaju = sajuList.filter(s => s.notes === '본인');
-  // ⭐ 최신순 정렬 (created_at 기준 내림차순)
+  // ⭐ 최신순 정렬 (created_at 기준 내림차순, 같으면 id로 정렬)
   const otherSaju = sajuList
     .filter(s => s.notes !== '본인')
     .sort((a, b) => {
       const dateA = new Date(a.created_at || 0).getTime();
       const dateB = new Date(b.created_at || 0).getTime();
-      return dateB - dateA;
+      if (dateB !== dateA) {
+        return dateB - dateA;
+      }
+      return (b.id || '').localeCompare(a.id || '');
     });
 
   if (isLoading) {

@@ -285,16 +285,16 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
     const ownerSaju = data.find(s => s.notes === '본인');
     const others = data.filter(s => s.notes !== '본인');
 
-    console.log('🔍 [DEBUG] 정렬 전 others:', others.map(s => `${s.full_name}(${s.created_at})`).join(' → '));
-
-    // ⭐ 최신순 정렬 (created_at 기준 내림차순)
+    // ⭐ 최신순 정렬 (created_at 기준 내림차순, 같으면 id로 정렬)
     const sortedOthers = [...others].sort((a, b) => {
       const dateA = new Date(a.created_at || 0).getTime();
       const dateB = new Date(b.created_at || 0).getTime();
-      return dateB - dateA; // 최신순 (내림차순)
+      if (dateB !== dateA) {
+        return dateB - dateA; // 최신순 (내림차순)
+      }
+      // created_at이 같으면 id로 정렬 (일관성 유지)
+      return (b.id || '').localeCompare(a.id || '');
     });
-
-    console.log('🔍 [DEBUG] 정렬 후 sortedOthers:', sortedOthers.map(s => `${s.full_name}(${s.created_at})`).join(' → '));
 
     setMySaju(ownerSaju || null);
     setOtherSajuList(sortedOthers);
