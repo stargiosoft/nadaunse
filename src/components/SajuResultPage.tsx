@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import svgPaths from "../imports/svg-ir0ch2bhrx"; // ⭐ 타로와 동일한 SVG 사용
@@ -35,12 +35,13 @@ export default function SajuResultPage() {
   const [contentId, setContentId] = useState<string | null>(contentIdParam); // ⭐ contentId state 추가
   const [tarotImageUrl, setTarotImageUrl] = useState<string | null>(null); // ⭐ 타로 이미지 URL state
   const [imageLoading, setImageLoading] = useState(false); // ⭐ 이미지 로딩 state
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref
 
   console.log('🔍 [SajuResultPage] 초기화:', { orderId, contentId, startPage, currentPage });
 
   // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
   useEffect(() => {
-    window.scrollTo(0, 0);
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [orderId]); // orderId가 바뀔 때마다 최상단으로
 
   // ⭐ URL의 startPage가 변경되면 currentPage 업데이트
@@ -51,7 +52,7 @@ export default function SajuResultPage() {
   
   // 🔝 currentPage 변경 시 스크롤을 최상단으로 이동
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [currentPage]);
 
   // 답변 데이터 로드
@@ -220,7 +221,7 @@ export default function SajuResultPage() {
 
   const handlePrevious = () => {
     if (currentPage > 1) {
-      window.scrollTo({ top: 0, behavior: 'instant' }); // ⭐ 즉시 스크롤 최상단 이동
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' }); // ⭐ 즉시 스크롤 최상단 이동
       setCurrentPage(currentPage - 1);
     }
   };
@@ -260,7 +261,7 @@ export default function SajuResultPage() {
     
     // ⭐ 다음 질문이 사주면 → 다음 페이지로 이동
     console.log('➡️ [SajuResultPage] 다음 질문이 사주 → 다음 페이지로 이동:', currentPage + 1);
-    window.scrollTo({ top: 0, behavior: 'instant' }); // ⭐ 즉시 스크롤 최상단 이동
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' }); // ⭐ 즉시 스크롤 최상단 이동
     setCurrentPage(currentPage + 1);
   };
 
@@ -310,7 +311,7 @@ export default function SajuResultPage() {
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
         {/* Spacer */}
         <div className="h-[8px] shrink-0 w-full" />
 
