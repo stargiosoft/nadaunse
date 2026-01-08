@@ -186,7 +186,11 @@ export default function ProfilePage({
         
         await loadPrimarySaju(authUser.id);
       } else {
-        setIsSessionExpired(true);
+        // ⭐ 세션 만료 → 바로 로그인 페이지로 이동 (다이얼로그 없이)
+        console.log('🔐 [ProfilePage] 세션 만료 → 로그인 페이지로 이동');
+        localStorage.removeItem('user'); // 만료된 user 정보 삭제
+        navigate('/login/new', { replace: true });
+        return;
       }
     };
 
