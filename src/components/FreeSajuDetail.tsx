@@ -78,6 +78,7 @@ export default function FreeSajuDetail({
   // ⭐️ localStorage에서 결과 데이터 로드
   const [cachedData, setCachedData] = useState<CachedData | null>(null);
   const [dataLoadError, setDataLoadError] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true); // ⭐️ 초기 로딩 상태 추가
 
   // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
   useEffect(() => {
@@ -92,35 +93,42 @@ export default function FreeSajuDetail({
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📋 [FreeSajuDetail] localStorage에서 데이터 로드 시작');
     console.log('📌 [FreeSajuDetail] recordId (resultKey):', recordId);
-    
+
+    // ⭐️ 로딩 시작
+    setIsDataLoading(true);
+    setDataLoadError(false);
+
     try {
       const dataStr = localStorage.getItem(recordId);
       console.log('📌 [FreeSajuDetail] localStorage 데이터:', dataStr ? '있음' : '없음');
-      
+
       if (!dataStr) {
         console.error('❌ [FreeSajuDetail] localStorage에 데이터 없음');
         console.error('📌 [FreeSajuDetail] localStorage 전체 keys:', Object.keys(localStorage));
         setDataLoadError(true);
+        setIsDataLoading(false); // ⭐️ 로딩 완료
         return;
       }
 
       const data: CachedData = JSON.parse(dataStr);
       console.log('✅ [FreeSajuDetail] 데이터 파싱 완료:', data);
       console.log('📌 [FreeSajuDetail] results 개수:', data.results?.length);
-      
+
       // ⭐️ results가 빈 배열이어도 허용 (에러로 처리하지 않음)
       if (data.results && data.results.length === 0) {
         console.warn('⚠️ [FreeSajuDetail] results 배열이 비어있지만 표시는 진행');
       }
-      
+
       setCachedData(data);
     } catch (error) {
       console.error('❌ [FreeSajuDetail] 데이터 로드 중 에러:', error);
       console.error('📌 [FreeSajuDetail] localStorage recordId:', recordId);
       console.error('📌 [FreeSajuDetail] localStorage raw data:', localStorage.getItem(recordId));
       setDataLoadError(true);
+    } finally {
+      setIsDataLoading(false); // ⭐️ 로딩 완료
     }
-    
+
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }, [recordId]);
 
@@ -176,13 +184,24 @@ export default function FreeSajuDetail({
     };
   }, [visibleCount, recommendedProducts.length]);
 
-  // ⭐️ 데이터 로드 실패 시 에러 화면
+  // ⭐️ 로딩 중일 때 - 빈 화면 대신 로딩 스피너 표시 (깜빡임 방지)
+  if (isDataLoading) {
+    return (
+      <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
+        <div className="flex flex-col items-center gap-[12px]">
+          <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // ⭐️ 데이터 로드 실패 시 에러 화면 (로딩 완료 후에만 표시)
   if (dataLoadError || !cachedData) {
     return (
       <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
         <div className="text-center px-[20px]">
           <p className="text-[#999999] mb-4">결과를 찾을 수 없습니다</p>
-          <button 
+          <button
             onClick={onClose}
             className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
           >
