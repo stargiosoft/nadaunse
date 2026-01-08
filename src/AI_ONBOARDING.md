@@ -37,7 +37,7 @@ cat PROJECT_CONTEXT.md
 
 ### 주요 통계
 - **컴포넌트**: 51개 (활성화)
-- **Edge Functions**: 17개
+- **Edge Functions**: 20개
 - **페이지**: 38개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
@@ -92,7 +92,7 @@ cat PROJECT_CONTEXT.md
 **체크리스트**:
 - [ ] 기존 컴포넌트 재사용 가능한지 확인
 - [ ] DB 스키마 변경 필요한지 확인
-- [ ] Edge Function 추가 필요한지 확인 (현재 17개)
+- [ ] Edge Function 추가 필요한지 확인 (현재 20개)
 - [ ] 무료/유료 분기 필요한지 확인
 - [ ] 개발 전용 기능인지 확인 (배포 시 제외 필요)
 
@@ -124,7 +124,7 @@ cat PROJECT_CONTEXT.md
 1. DATABASE_SCHEMA.md     # 전체 DB 구조 파악
 2. PROJECT_CONTEXT.md     # RLS 정책, Edge Functions
 3. /lib/supabase.ts       # Supabase 클라이언트 설정
-4. supabase/EDGE_FUNCTIONS_GUIDE.md  # Edge Functions 17개 목록
+4. supabase/EDGE_FUNCTIONS_GUIDE.md  # Edge Functions 20개 목록
 ```
 
 **체크리스트**:
@@ -495,7 +495,7 @@ README.md (시작점)
     │       ├─→ DATABASE_SCHEMA.md (DB 구조)
     │       └─→ components-inventory.md (파일 위치, 51개)
     │
-    ├─→ supabase/EDGE_FUNCTIONS_GUIDE.md (Edge Functions 17개)
+    ├─→ supabase/EDGE_FUNCTIONS_GUIDE.md (Edge Functions 20개)
     ├─→ supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md (트리거/함수)
     │
     └─→ Attributions.md (라이선스)
@@ -701,7 +701,7 @@ useEffect(() => {
 | "왜 이렇게 설계했어?" | DECISIONS.md |
 | "DB 테이블 구조는?" | DATABASE_SCHEMA.md |
 | "이 컴포넌트 어디 있어?" | components-inventory.md (51개) |
-| "Edge Functions 목록은?" | supabase/EDGE_FUNCTIONS_GUIDE.md (17개) |
+| "Edge Functions 목록은?" | supabase/EDGE_FUNCTIONS_GUIDE.md (20개) |
 | "빠르게 시작하려면?" | README.md |
 | "라이선스 확인" | Attributions.md |
 | "모바일 최적화는?" | AI_ONBOARDING.md (이 문서) |
@@ -717,7 +717,7 @@ useEffect(() => {
 [ ] 타로/사주 운세 서비스 차이를 설명할 수 있다
 [ ] FreeContentService 클래스 역할 설명할 수 있다
 [ ] Critical Rules 6가지 암기했다
-[ ] Edge Functions 17개 목록 외웠다
+[ ] Edge Functions 20개 목록 외웠다
 [ ] Tailwind 폰트 클래스 사용 금지 이유 안다
 [ ] RLS 정책이 뭔지 안다
 [ ] localStorage vs DB 저장 분기 조건 안다
@@ -740,12 +740,22 @@ useEffect(() => {
 | 1.1.0 | 2025-12-31 | LoadingPage 이미지 최적화, 목차 더미 데이터 제거 반영 | AI Assistant |
 | 1.2.0 | 2026-01-06 | 개발/배포 환경 분리, iOS Safari 최적화, 타로 서비스 추가, 컴포넌트 51개/Edge Functions 17개 반영 | AI Assistant |
 | 1.3.0 | 2026-01-07 | iOS 스와이프 뒤로가기 히스토리 관리 해결법 추가 | AI Assistant |
+| 1.4.0 | 2026-01-07 | 개발 안정성 강화 (Sentry, Logger, 재시도 로직, 결제 웹훅, 환불 처리), Edge Functions 17개→20개 | AI Assistant |
 
 ---
 
 ## 🎯 최근 주요 개선사항 (2026-01-07)
 
-### ✅ iOS 스와이프 뒤로가기 히스토리 관리 (NEW!)
+### ✅ 개발 안정성 강화 (NEW!)
+- **Sentry 에러 모니터링 연동**: 실시간 에러 추적, 사용자 컨텍스트 설정 (`setUser`)
+- **구조화된 로거 도입**: `src/lib/logger.ts` - 환경별 로그 레벨, 민감정보 마스킹
+- **재시도 로직 추가**: `src/lib/fetchWithRetry.ts` - Exponential Backoff (1s, 2s, 4s)
+- **결제 웹훅 구현**: 포트원 서버 콜백으로 결제 검증 강화
+- **결제 트랜잭션 원자성**: PostgreSQL Function으로 주문+쿠폰 원자적 처리
+- **환불 처리 기능**: 포트원 환불 API 연동, 쿠폰 복원 로직
+- **환경변수 보안**: `VITE_KAKAO_AUTH_SECRET`, `VITE_SENTRY_DSN` 추가
+
+### ✅ iOS 스와이프 뒤로가기 히스토리 관리
 - OAuth 회원가입 플로우에서 발생하는 히스토리 스택 문제 해결
 - 각 페이지에서 마운트 시 상태 체크 후 적절한 페이지로 리다이렉트
 - **핵심 파일**: `App.tsx` (LoginPageNewWrapper, TermsPageWrapper, WelcomeCouponPageWrapper)
@@ -775,6 +785,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.3.0
+**문서 버전**: 1.4.0
 **최종 업데이트**: 2026-01-07
-**다음 AI에게**: 이 문서 읽는 데 5분 투자하면, 수십 시간의 삽질을 막을 수 있어요. iOS 스와이프 뒤로가기 히스토리 관리, 개발/배포 환경 분리, iOS Safari 최적화를 꼭 기억하세요! 화이팅! 🚀
+**다음 AI에게**: 이 문서 읽는 데 5분 투자하면, 수십 시간의 삽질을 막을 수 있어요. Sentry 에러 모니터링, 결제 웹훅/환불 처리, iOS 히스토리 관리, 환경 분리를 꼭 기억하세요! 화이팅! 🚀

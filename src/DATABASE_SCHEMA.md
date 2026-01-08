@@ -2,7 +2,7 @@
 
 > **작성일**: 2024-12-17
 > **버전**: 1.0.0
-> **최종 업데이트**: 2026-01-06
+> **최종 업데이트**: 2026-01-07
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -152,10 +152,14 @@
 | `pay_method` | text | - | - | 결제 수단 (card, trans, vbank 등) |
 | `pg_provider` | text | - | - | PG사 (tosspayments 등) |
 | `pg_type` | text | - | - | PG 타입 |
-| `pstatus` | text | - | `'pending'` | 결제 상태 (pending, paid, failed 등) |
+| `pstatus` | text | - | `'pending'` | 결제 상태 (pending, paid, failed, refunded) |
 | `success` | boolean | - | `false` | 결제 성공 여부 |
 | `ai_generation_completed` | boolean | - | `false` | AI 생성 완료 여부 |
 | `ai_generation_started_at` | timestamptz | - | - | AI 생성 시작 일시 |
+| `webhook_verified_at` | timestamptz | - | - | 결제 웹훅 검증 일시 (NEW) |
+| `refund_amount` | integer | - | - | 환불 금액 (NEW) |
+| `refund_reason` | text | - | - | 환불 사유 (NEW) |
+| `refunded_at` | timestamptz | - | - | 환불 처리 일시 (NEW) |
 | `created_at` | timestamptz | NOT NULL | `now()` | 주문 생성 일시 |
 | `updated_at` | timestamptz | NOT NULL | `now()` | 주문 수정 일시 |
 
@@ -339,6 +343,7 @@ coupons (쿠폰 마스터)
 | 1.0.0 | 2024-12-17 | 초기 문서 작성 | AI Assistant |
 | 1.1.0 | 2024-12-18 | saju_records 테이블에 calendar_type, zodiac 컬럼 추가 | AI Assistant |
 | 1.2.0 | 2024-12-18 | saju_records 테이블에 is_primary 컬럼 추가 (대표 사주 관리) | AI Assistant |
+| 1.3.0 | 2026-01-07 | orders 테이블에 webhook_verified_at, refund 관련 컬럼 추가 (결제 안정성 강화) | AI Assistant |
 
 ---
 

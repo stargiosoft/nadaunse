@@ -3,7 +3,7 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-06
+> **최종 업데이트**: 2026-01-07
 
 ---
 
@@ -85,6 +85,265 @@ const handleClose = () => {
 **영향**: `/App.tsx` (LoginPageNewWrapper, TermsPageWrapper, WelcomeCouponPageWrapper)
 **적용 범위**: 구글/카카오 OAuth 회원가입 플로우 전체
 **테스트**: iOS Safari, iOS Chrome에서 스와이프 뒤로가기 테스트 완료
+
+---
+
+### 개발 안정성 강화: Sentry 에러 모니터링 연동
+**결정**: Sentry를 연동하여 실시간 에러 추적 및 사용자 컨텍스트 설정
+**배경**:
+- 프로덕션 환경에서 발생하는 에러를 추적할 방법이 없음
+- 사용자 피드백 없이는 버그를 알 수 없는 상황
+- 에러 발생 시 빠른 대응이 필요
+
+**구현**:
+```typescript
+// src/lib/sentry.ts
+import * as Sentry from '@sentry/react';
+
+export function initSentry() {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: isProduction() ? 'production' : 'development',
+    tracesSampleRate: 0.1,
+  });
+}
+
+export function setSentryUser(userId: string | null, email?: string) {
+  if (userId) {
+    Sentry.setUser({ id: userId, email });
+  } else {
+    Sentry.setUser(null);
+  }
+}
+```
+
+**적용 파일**:
+- `src/lib/sentry.ts` - Sentry 초기화 및 유저 설정
+- `src/lib/auth.ts` - 로그인/로그아웃 시 `setSentryUser` 호출
+- `src/pages/AuthCallback.tsx` - OAuth 콜백에서 사용자 설정
+- `src/main.tsx` - Sentry 초기화
+- `src/components/ErrorBoundary.tsx` - `captureException` 호출
+
+**장점**:
+- ✅ 실시간 에러 알림 (Slack 연동 가능)
+- ✅ 에러 발생 시 사용자 ID로 추적 가능
+- ✅ 스택트레이스, 브라우저 정보 자동 수집
+**영향**: 전체 프로젝트
+**비용**: Sentry Free Tier (월 5K 에러)
+
+---
+
+### 개발 안정성 강화: 구조화된 로거 도입
+**결정**: `console.log` 대신 구조화된 로거(`src/lib/logger.ts`)를 사용하여 환경별 로깅 및 민감정보 마스킹
+**배경**:
+- `console.log`로 민감정보(이메일, user_id)가 프로덕션에서 노출될 위험
+- 환경별로 로그 레벨을 조절할 필요성
+- 로그 포맷 일관성 부족
+
+**구현**:
+```typescript
+// src/lib/logger.ts
+const LOG_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
+
+function maskSensitiveData(data: unknown): unknown {
+  // email, password, token 등 자동 마스킹
+}
+
+export const logger = {
+  debug: (message: string, data?: unknown) => {
+    if (isProduction()) return; // prod에서는 debug 로그 무시
+    console.log(`[DEBUG] ${message}`, maskSensitiveData(data));
+  },
+  info: (message: string, data?: unknown) => { ... },
+  warn: (message: string, data?: unknown) => { ... },
+  error: (message: string, data?: unknown) => { ... },
+};
+```
+
+**적용 파일**: `src/lib/logger.ts`
+**장점**:
+- ✅ 프로덕션에서 민감정보 자동 마스킹
+- ✅ 환경별 로그 레벨 조절
+- ✅ 일관된 로그 포맷
+**영향**: 전체 프로젝트 (console.log → logger 교체 권장)
+
+---
+
+### 개발 안정성 강화: 재시도 로직 추가 (Exponential Backoff)
+**결정**: 네트워크 요청 실패 시 자동 재시도 로직을 `fetchWithRetry` 함수로 구현
+**배경**:
+- 일시적인 네트워크 오류로 인한 요청 실패
+- 서버 일시 장애 시 사용자 경험 저하
+- 수동 재시도 부담
+
+**구현**:
+```typescript
+// src/lib/fetchWithRetry.ts
+export async function fetchWithRetry<T>(
+  fn: () => Promise<T>,
+  options: { maxRetries: 3, baseDelay: 1000 }
+): Promise<T> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
+      if (is4xxError(error)) throw error; // 4xx는 재시도 안함
+
+      const delay = baseDelay * Math.pow(2, attempt); // 1s, 2s, 4s
+      await sleep(delay);
+    }
+  }
+}
+```
+
+**적용 파일**: `src/lib/fetchWithRetry.ts`
+**장점**:
+- ✅ 일시적 오류 자동 복구
+- ✅ Exponential Backoff로 서버 부하 방지
+- ✅ 4xx 에러는 즉시 실패 (불필요한 재시도 방지)
+**영향**: 중요한 API 호출 (결제, AI 생성 등)
+
+---
+
+### 개발 안정성 강화: 결제 웹훅 구현 (PortOne 서버 콜백)
+**결정**: 클라이언트 리다이렉트 기반 결제 검증 대신, 서버 웹훅으로 결제 상태 확인
+**배경**:
+- 클라이언트에서만 결제 성공을 판단하면 조작 위험
+- 네트워크 문제로 결제 완료 콜백이 도달 못할 수 있음
+- 포트원 서버에서 직접 결제 검증 필요
+
+**구현**:
+```typescript
+// supabase/functions/payment-webhook/index.ts
+// 포트원 서버에서 결제 상태 변경 시 호출
+// imp_uid로 포트원 API 조회 → 결제 금액 검증 → orders 상태 업데이트
+```
+
+**Edge Function**: `/payment-webhook`
+**장점**:
+- ✅ 서버 간 통신으로 조작 불가
+- ✅ 결제 금액 일치 여부 검증
+- ✅ webhook_verified_at 컬럼으로 검증 시점 기록
+**영향**: 결제 플로우, orders 테이블
+
+---
+
+### 개발 안정성 강화: 결제 트랜잭션 원자성 보장
+**결정**: 주문 생성 + 쿠폰 사용을 PostgreSQL Function으로 단일 트랜잭션 처리
+**배경**:
+- 기존: 주문 생성 → 쿠폰 적용이 분리되어 중간에 실패 시 불일치 발생
+- 쿠폰은 사용됐는데 주문이 안 생기거나, 주문은 생겼는데 쿠폰이 안 차감되는 문제
+
+**구현**:
+```sql
+-- PostgreSQL Function: process_payment_complete
+CREATE OR REPLACE FUNCTION process_payment_complete(
+  p_order_id UUID,
+  p_coupon_id UUID DEFAULT NULL
+) RETURNS JSONB AS $$
+BEGIN
+  -- 트랜잭션 내에서 원자적 처리
+  UPDATE orders SET pstatus = 'paid' WHERE id = p_order_id;
+  IF p_coupon_id IS NOT NULL THEN
+    UPDATE user_coupons SET is_used = true, used_order_id = p_order_id WHERE id = p_coupon_id;
+  END IF;
+  RETURN '{"success": true}';
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE; -- 롤백
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Edge Function**: `/process-payment`
+**DB Function**: `process_payment_complete`
+**장점**:
+- ✅ 원자적 처리로 데이터 일관성 보장
+- ✅ 실패 시 자동 롤백
+- ✅ 중간 상태 불가능
+**영향**: 결제 플로우, orders 및 user_coupons 테이블
+
+---
+
+### 개발 안정성 강화: 환불 처리 기능 구현
+**결정**: 포트원 환불 API 연동 및 쿠폰 복원 로직 구현
+**배경**:
+- 환불 요청 시 수동으로 포트원 대시보드에서 처리 필요
+- 쿠폰 사용 후 환불 시 쿠폰 복원 누락 가능성
+- 환불 이력 추적 어려움
+
+**구현**:
+```sql
+-- PostgreSQL Function: process_refund
+CREATE OR REPLACE FUNCTION process_refund(
+  p_order_id UUID,
+  p_refund_amount INTEGER,
+  p_refund_reason TEXT
+) RETURNS JSONB AS $$
+BEGIN
+  -- 트랜잭션 내에서 원자적 처리
+  UPDATE orders SET
+    pstatus = 'refunded',
+    refund_amount = p_refund_amount,
+    refund_reason = p_refund_reason,
+    refunded_at = NOW()
+  WHERE id = p_order_id;
+
+  -- 쿠폰 복원
+  UPDATE user_coupons SET
+    is_used = false,
+    used_order_id = NULL
+  WHERE used_order_id = p_order_id;
+
+  RETURN '{"success": true}';
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Edge Function**: `/process-refund`
+**DB Function**: `process_refund`
+**장점**:
+- ✅ 환불 시 쿠폰 자동 복원
+- ✅ 환불 이력 추적 (refund_amount, refund_reason, refunded_at)
+- ✅ 포트원 환불 API 연동
+**영향**: orders 테이블 (refund 관련 컬럼 추가), user_coupons 테이블
+
+---
+
+### 개발 안정성 강화: Kakao OAuth 시크릿 환경변수화
+**결정**: 하드코딩된 Kakao OAuth 시크릿을 환경변수로 이동
+**배경**:
+- 기존: `kakao_${kakaoUser.id}_nadaunse_secret_2025` 형태로 코드에 하드코딩
+- 보안 취약점: 소스 코드 노출 시 인증 시크릿 노출
+- 환경별 다른 시크릿 사용 불가
+
+**수정 파일**: `src/lib/auth.ts:34`
+**환경변수**: `VITE_KAKAO_AUTH_SECRET`
+**장점**:
+- ✅ 소스 코드에 민감정보 제거
+- ✅ 환경별 다른 시크릿 사용 가능
+- ✅ 시크릿 변경 시 재배포 불필요 (Vercel 환경변수만 변경)
+**영향**: 인증 플로우
+
+---
+
+### Edge Functions 확장: 17개 → 20개
+**결정**: 결제/환불 처리를 위한 Edge Functions 3개 추가
+**추가된 Functions**:
+1. `/payment-webhook` - 포트원 결제 웹훅 검증
+2. `/process-payment` - 결제 트랜잭션 원자적 처리
+3. `/process-refund` - 환불 처리 (쿠폰 복원 포함)
+
+**현재 분류** (20개):
+- AI 생성: 8개
+- 쿠폰 관리: 4개
+- 사용자 관리: 2개
+- 알림: 1개 (카카오 알림톡)
+- 결제/환불: 3개 **(NEW)**
+- 기타: 2개
+
+**영향**: `/supabase/functions/`, `/supabase/EDGE_FUNCTIONS_GUIDE.md`
 
 ---
 
@@ -462,14 +721,15 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
-### Edge Functions 확장: 총 17개 운영
-**결정**: AI 생성, 쿠폰, 사용자 관리 등을 위한 Edge Functions를 17개로 확장  
+### Edge Functions 확장: 총 20개 운영
+**결정**: AI 생성, 쿠폰, 사용자 관리, 결제/환불 등을 위한 Edge Functions를 20개로 확장
 **분류**:
 - AI 생성: 8개 (사주/타로 각 4개)
 - 쿠폰 관리: 4개 (조회, 적용, 발급 2개)
 - 사용자 관리: 2개
 - 알림: 1개 (카카오 알림톡)
-- 기타: 2개 (서버 상태, 콘텐츠 답변)  
+- 결제/환불: 3개 (웹훅, 결제 처리, 환불 처리)
+- 기타: 2개 (서버 상태, 콘텐츠 답변)
 **이유**: 
 - 비즈니스 로직을 클라이언트에서 분리하여 보안 강화
 - API 키 노출 방지
@@ -519,16 +779,17 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
-## 📊 주요 결정 통계 (2026-01-06 기준)
+## 📊 주요 결정 통계 (2026-01-07 기준)
 
-- **총 결정 기록**: 20개
-- **아키텍처 변경**: 8개
+- **총 결정 기록**: 29개
+- **아키텍처 변경**: 10개
 - **성능 최적화**: 5개
-- **사용자 경험 개선**: 4개
-- **보안 강화**: 3개
+- **사용자 경험 개선**: 5개
+- **보안 강화**: 6개
+- **개발 안정성**: 3개
 
 ---
 
-**문서 버전**: 2.0.0  
-**최종 업데이트**: 2026-01-06  
+**문서 버전**: 2.1.0
+**최종 업데이트**: 2026-01-07
 **문서 끝**

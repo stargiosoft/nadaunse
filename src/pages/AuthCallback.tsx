@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { projectId } from '../utils/supabase/info';
+import { setUser as setSentryUser } from '../lib/sentry';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -128,6 +129,9 @@ export default function AuthCallback() {
 
         localStorage.setItem('user', JSON.stringify(userData));
         console.log('💾 localStorage에 저장 완료');
+
+        // Sentry 사용자 컨텍스트 설정
+        setSentryUser(userData.id, userData.email);
 
         // 쿠키에 로그인 정보 저장
         document.cookie = `last_login_provider=${userData.provider}; max-age=${60 * 60 * 24 * 365}; path=/`;

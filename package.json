@@ -55,8 +55,10 @@
             "xlsx": "*"
       },
       "devDependencies": {
+            "@playwright/test": "^1.57.0",
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "ts-node": "^10.9.2",
             "vite": "6.3.5"
       },
       "scripts": {

@@ -28,10 +28,14 @@ npm run dev
 # Production
 VITE_SUPABASE_PROJECT_ID=kcthtpmxffppfbkjjkub
 VITE_SUPABASE_ANON_KEY=<production-anon-key>
+VITE_KAKAO_AUTH_SECRET=<kakao-auth-secret>
+VITE_SENTRY_DSN=<sentry-dsn>
 
 # Preview/Staging
 VITE_SUPABASE_PROJECT_ID=hyltbeewxaqashyivilu
 VITE_SUPABASE_ANON_KEY=<staging-anon-key>
+VITE_KAKAO_AUTH_SECRET=<kakao-auth-secret>
+VITE_SENTRY_DSN=<sentry-dsn>
 ```
 
 ### 로컬 개발 (.env.local)
@@ -48,6 +52,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **Backend**: Supabase (PostgreSQL + Edge Functions)
 - **AI**: OpenAI GPT-4o, Anthropic Claude, Google Gemini
 - **Payment**: PortOne v2
+- **Error Monitoring**: Sentry
 - **Hosting**: Vercel
 
 ## 📚 문서

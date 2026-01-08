@@ -2,7 +2,7 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-01-06
+> **최종 업데이트**: 2026-01-07
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -216,6 +216,201 @@ $function$
 
 ---
 
+### 6. `process_payment_complete` (NEW - 2026-01-07)
+
+**목적**: 결제 완료 시 주문 생성과 쿠폰 사용을 단일 트랜잭션으로 원자적 처리
+
+```sql
+CREATE OR REPLACE FUNCTION public.process_payment_complete(
+  p_user_id uuid,
+  p_content_id uuid,
+  p_payment_key text,
+  p_amount integer,
+  p_coupon_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  v_order_id uuid;
+  v_discount_amount integer := 0;
+  v_final_amount integer;
+BEGIN
+  -- 1. 쿠폰 유효성 검증 및 할인금액 계산
+  IF p_coupon_id IS NOT NULL THEN
+    SELECT discount_amount INTO v_discount_amount
+    FROM user_coupons
+    WHERE id = p_coupon_id
+      AND user_id = p_user_id
+      AND used_at IS NULL
+      AND expires_at > NOW();
+
+    IF v_discount_amount IS NULL THEN
+      RAISE EXCEPTION 'Invalid or expired coupon';
+    END IF;
+  END IF;
+
+  -- 2. 최종 결제금액 계산
+  v_final_amount := GREATEST(p_amount - v_discount_amount, 0);
+
+  -- 3. 주문 생성
+  INSERT INTO orders (
+    user_id, content_id, payment_key, amount,
+    discount_amount, final_amount, status, webhook_verified_at
+  )
+  VALUES (
+    p_user_id, p_content_id, p_payment_key, p_amount,
+    v_discount_amount, v_final_amount, 'completed', NOW()
+  )
+  RETURNING id INTO v_order_id;
+
+  -- 4. 쿠폰 사용 처리 (원자적)
+  IF p_coupon_id IS NOT NULL THEN
+    UPDATE user_coupons
+    SET used_at = NOW(), used_order_id = v_order_id
+    WHERE id = p_coupon_id;
+  END IF;
+
+  -- 5. 결과 반환
+  RETURN jsonb_build_object(
+    'success', true,
+    'order_id', v_order_id,
+    'final_amount', v_final_amount
+  );
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM
+  );
+END;
+$function$
+```
+
+**파라미터**:
+- `p_user_id` (uuid): 사용자 ID
+- `p_content_id` (uuid): 콘텐츠 ID
+- `p_payment_key` (text): 포트원 결제 키
+- `p_amount` (integer): 원래 결제 금액
+- `p_coupon_id` (uuid, optional): 사용할 쿠폰 ID
+
+**반환값**: `jsonb` - 처리 결과 (`success`, `order_id`, `final_amount` 또는 `error`)
+
+**특징**:
+- `SECURITY DEFINER`: 함수 소유자 권한으로 실행 (RLS 우회)
+- 트랜잭션 원자성 보장: 주문 생성 + 쿠폰 사용이 함께 성공/실패
+- 예외 처리: 실패 시 롤백 및 에러 메시지 반환
+
+**사용 예시**:
+```sql
+SELECT process_payment_complete(
+  'user-uuid',
+  'content-uuid',
+  'payment_key_123',
+  15000,
+  'coupon-uuid'
+);
+-- 결과: {"success": true, "order_id": "...", "final_amount": 12000}
+```
+
+---
+
+### 7. `process_refund` (NEW - 2026-01-07)
+
+**목적**: 환불 처리 시 주문 상태 업데이트와 쿠폰 복원을 원자적으로 처리
+
+```sql
+CREATE OR REPLACE FUNCTION public.process_refund(
+  p_order_id uuid,
+  p_refund_amount integer,
+  p_refund_reason text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  v_order RECORD;
+  v_coupon_id uuid;
+BEGIN
+  -- 1. 주문 정보 조회 및 잠금
+  SELECT * INTO v_order
+  FROM orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+
+  IF v_order IS NULL THEN
+    RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF v_order.status = 'refunded' THEN
+    RAISE EXCEPTION 'Order already refunded';
+  END IF;
+
+  -- 2. 주문 상태 환불로 변경
+  UPDATE orders
+  SET
+    status = 'refunded',
+    refund_amount = p_refund_amount,
+    refund_reason = p_refund_reason,
+    refunded_at = NOW()
+  WHERE id = p_order_id;
+
+  -- 3. 사용된 쿠폰이 있으면 복원
+  SELECT id INTO v_coupon_id
+  FROM user_coupons
+  WHERE used_order_id = p_order_id;
+
+  IF v_coupon_id IS NOT NULL THEN
+    UPDATE user_coupons
+    SET
+      used_at = NULL,
+      used_order_id = NULL
+    WHERE id = v_coupon_id;
+  END IF;
+
+  -- 4. 결과 반환
+  RETURN jsonb_build_object(
+    'success', true,
+    'order_id', p_order_id,
+    'refund_amount', p_refund_amount,
+    'coupon_restored', v_coupon_id IS NOT NULL
+  );
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM
+  );
+END;
+$function$
+```
+
+**파라미터**:
+- `p_order_id` (uuid): 환불할 주문 ID
+- `p_refund_amount` (integer): 환불 금액
+- `p_refund_reason` (text, optional): 환불 사유
+
+**반환값**: `jsonb` - 처리 결과 (`success`, `order_id`, `refund_amount`, `coupon_restored` 또는 `error`)
+
+**특징**:
+- `FOR UPDATE`: 행 잠금으로 동시성 문제 방지
+- 쿠폰 자동 복원: 환불 시 사용된 쿠폰의 `used_at`, `used_order_id` NULL로 복원
+- 중복 환불 방지: 이미 환불된 주문은 예외 발생
+
+**사용 예시**:
+```sql
+SELECT process_refund(
+  'order-uuid',
+  15000,
+  '고객 요청으로 인한 환불'
+);
+-- 결과: {"success": true, "order_id": "...", "refund_amount": 15000, "coupon_restored": true}
+```
+
+---
+
 ## Trigger-Function 매핑
 
 트리거와 함수의 연결 관계를 정리한 표입니다.
@@ -232,17 +427,31 @@ $function$
 
 ## 참고사항
 
-### 1. `updated_at` 자동 갱신 패턴
+### 1. 결제/환불 PostgreSQL Functions (NEW - 2026-01-07)
+
+새로 추가된 `process_payment_complete`와 `process_refund` 함수는 **Edge Functions와 연동**하여 사용됩니다:
+
+| PostgreSQL Function | 연동 Edge Function | 용도 |
+|---------------------|-------------------|------|
+| `process_payment_complete` | `/process-payment` | 결제 트랜잭션 원자적 처리 |
+| `process_refund` | `/process-refund` | 환불 + 쿠폰 복원 |
+
+**설계 원칙**:
+- **SECURITY DEFINER**: RLS 정책 우회하여 신뢰된 서버 로직만 실행
+- **원자성 보장**: 여러 테이블 업데이트가 하나의 트랜잭션으로 처리
+- **에러 핸들링**: `EXCEPTION WHEN OTHERS` 블록으로 안전하게 실패 처리
+
+### 2. `updated_at` 자동 갱신 패턴
 
 현재 프로젝트에서는 **두 가지 유사한 함수**가 존재합니다:
 - `update_updated_at()` - 선언되었으나 실제 트리거에 연결되지 않음
 - `update_updated_at_column()` - 실제 사용 중
 
-**권장사항**: 
+**권장사항**:
 - `update_updated_at()` 함수는 사용하지 않으므로 삭제 고려
 - 또는 모든 트리거를 `update_updated_at()`로 통일
 
-### 2. `handle_new_user` 트리거 확인 필요
+### 3. `handle_new_user` 트리거 확인 필요
 
 본 문서에는 함수만 정의되어 있으며, `auth.users` 테이블에 대한 트리거 연결은 조회되지 않았습니다.
 
@@ -261,7 +470,7 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 ```
 
-### 3. Production vs Staging 환경 차이 확인
+### 4. Production vs Staging 환경 차이 확인
 
 본 문서는 단일 환경 기준으로 작성되었습니다. 
 

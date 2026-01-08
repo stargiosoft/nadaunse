@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 운세 서비스
-> **총 함수 수**: 17개
-> **최종 업데이트**: 2026-01-06
+> **총 함수 수**: 20개
+> **최종 업데이트**: 2026-01-07
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -16,8 +16,9 @@
 5. [쿠폰 관리 Functions](#-쿠폰-관리-functions-4개)
 6. [사용자 관리 Functions](#-사용자-관리-functions-2개)
 7. [알림 Functions](#-알림-functions-1개)
-8. [기타 Functions](#-기타-functions-2개)
-9. [호출 플로우](#-호출-플로우)
+8. [결제/환불 Functions](#-결제환불-functions-3개)
+9. [기타 Functions](#-기타-functions-2개)
+10. [호출 플로우](#-호출-플로우)
 
 ---
 
@@ -27,11 +28,12 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 8개 | 47% | OpenAI GPT, Gemini |
-| 🎟️ **쿠폰 관리** | 4개 | 24% | Supabase DB |
-| 👤 **사용자 관리** | 2개 | 12% | JWT 인증, RLS |
-| 📨 **알림** | 1개 | 6% | TalkDream API |
-| 🔧 **서버 인프라** | 2개 | 12% | Hono, KV Store |
+| 🤖 **AI 생성** | 8개 | 40% | OpenAI GPT, Gemini |
+| 🎟️ **쿠폰 관리** | 4개 | 20% | Supabase DB |
+| 👤 **사용자 관리** | 2개 | 10% | JWT 인증, RLS |
+| 📨 **알림** | 1개 | 5% | TalkDream API |
+| 💳 **결제/환불** | 3개 | 15% | PortOne API, PostgreSQL Function |
+| 🔧 **서버 인프라** | 2개 | 10% | Hono, KV Store |
 
 ---
 
@@ -87,9 +89,17 @@
 
 ---
 
-### 6️⃣ **서버 인프라** (2개)
+### 6️⃣ **결제/환불** (3개) - NEW!
 
-17. `server` - Hono 기반 서버 (헬스체크, KV Store)
+17. `payment-webhook` - 포트원 결제 웹훅 검증
+18. `process-payment` - 결제 트랜잭션 원자적 처리
+19. `process-refund` - 환불 처리 (쿠폰 복원 포함)
+
+---
+
+### 7️⃣ **서버 인프라** (2개)
+
+20. `server` - Hono 기반 서버 (헬스체크, KV Store)
 
 ---
 
@@ -136,6 +146,26 @@ issue-revisit-coupon (재방문 쿠폰 발급)
 get-available-coupons (쿠폰 조회)
     ↓
 apply-coupon-to-order (쿠폰 적용)
+```
+
+### 결제/환불 플로우 (NEW!)
+
+```
+PortOne 결제 완료
+    ↓
+payment-webhook (서버 간 검증)
+    ├─→ 결제 금액 검증
+    ├─→ orders.webhook_verified_at 기록
+    └─→ process-payment (트랜잭션 처리)
+            ├─→ orders.pstatus = 'paid'
+            └─→ user_coupons.is_used = true
+
+환불 요청
+    ↓
+process-refund (환불 처리)
+    ├─→ PortOne 환불 API 호출
+    ├─→ orders.pstatus = 'refunded'
+    └─→ user_coupons.is_used = false (쿠폰 복원)
 ```
 
 ---
@@ -697,6 +727,144 @@ AI 생성 완료 → send-alimtalk
 
 ---
 
+## 💳 결제/환불 Functions (3개)
+
+### 1. `payment-webhook`
+
+**역할**: 포트원 결제 웹훅 검증 (서버 간 통신)
+
+**호출 시점**:
+- 포트원 서버에서 결제 상태 변경 시 자동 호출
+- 클라이언트가 아닌 서버에서 직접 호출됨
+
+**메서드**: `POST`
+
+**입력**:
+```typescript
+{
+  imp_uid: string,           // 포트원 결제 고유번호
+  merchant_uid: string,      // 가맹점 주문번호
+  status: string             // 결제 상태 (paid, failed, cancelled)
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  verified: boolean,         // 금액 검증 결과
+  error?: string
+}
+```
+
+**로직**:
+1. imp_uid로 포트원 API에서 결제 정보 조회
+2. DB의 orders.paid_amount와 실제 결제 금액 비교
+3. 일치하면 `orders.webhook_verified_at` 기록
+4. 불일치하면 에러 반환 (결제 조작 방지)
+
+**보안**: 포트원 서버 IP 화이트리스트 또는 웹훅 서명 검증
+
+---
+
+### 2. `process-payment`
+
+**역할**: 결제 트랜잭션 원자적 처리 (주문 + 쿠폰)
+
+**호출 시점**:
+- 결제 완료 후 `payment-webhook`에서 호출
+- 또는 클라이언트 결제 완료 콜백에서 호출
+
+**메서드**: `POST`
+
+**입력**:
+```typescript
+{
+  order_id: string,          // 주문 ID
+  coupon_id?: string         // 사용한 쿠폰 ID (선택)
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  error?: string
+}
+```
+
+**로직**:
+PostgreSQL Function `process_payment_complete` 호출:
+```sql
+-- 트랜잭션 내에서 원자적 처리
+BEGIN;
+  UPDATE orders SET pstatus = 'paid' WHERE id = order_id;
+  UPDATE user_coupons SET is_used = true, used_order_id = order_id WHERE id = coupon_id;
+COMMIT;
+```
+
+**장점**:
+- ✅ 주문 + 쿠폰을 단일 트랜잭션으로 처리
+- ✅ 중간 상태 불가능 (원자성)
+- ✅ 실패 시 자동 롤백
+
+---
+
+### 3. `process-refund`
+
+**역할**: 환불 처리 (포트원 API + 쿠폰 복원)
+
+**호출 시점**:
+- 관리자 환불 요청 시
+- 자동 환불 로직 (24시간 내 취소 등)
+
+**메서드**: `POST`
+
+**입력**:
+```typescript
+{
+  order_id: string,          // 주문 ID
+  refund_amount: number,     // 환불 금액
+  refund_reason: string      // 환불 사유
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  refund_id?: string,        // 포트원 환불 ID
+  error?: string
+}
+```
+
+**로직**:
+1. imp_uid로 포트원 환불 API 호출
+2. PostgreSQL Function `process_refund` 호출:
+   ```sql
+   BEGIN;
+     UPDATE orders SET
+       pstatus = 'refunded',
+       refund_amount = amount,
+       refund_reason = reason,
+       refunded_at = NOW()
+     WHERE id = order_id;
+
+     -- 쿠폰 복원
+     UPDATE user_coupons SET
+       is_used = false,
+       used_order_id = NULL
+     WHERE used_order_id = order_id;
+   COMMIT;
+   ```
+
+**장점**:
+- ✅ 환불 시 쿠폰 자동 복원
+- ✅ 환불 이력 추적 (금액, 사유, 일시)
+- ✅ 포트원 환불 API 연동
+
+---
+
 ## 🔧 기타 Functions (2개)
 
 ### 1. `server`
@@ -859,6 +1027,9 @@ AI 생성 완료 → send-alimtalk
 | `users` | 👤 사용자 | POST | - | OAuth 콜백 |
 | `master-content` | 👤 관리 | POST | - | 콘텐츠 생성 |
 | `send-alimtalk` | 📨 알림 | POST | - | AI 생성 완료 후 |
+| `payment-webhook` | 💳 결제 | POST | - | 포트원 서버 콜백 |
+| `process-payment` | 💳 결제 | POST | - | 결제 완료 후 |
+| `process-refund` | 💳 환불 | POST | - | 환불 요청 시 |
 | `server` | 🔧 기타 | GET | - | 헬스 체크 |
 
 ---
@@ -907,6 +1078,6 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.0.0  
-**작성자**: AI Assistant  
-**최종 업데이트**: 2024-12-21
+**문서 버전**: 1.1.0
+**작성자**: AI Assistant
+**최종 업데이트**: 2026-01-07

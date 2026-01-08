@@ -585,11 +585,13 @@
 - **역할**: React 에러 바운더리
 - **사용처**: App.tsx 전역
 - **타입**: Error Boundary Component
-- **주요 기능**: 
+- **주요 기능**:
   - React 컴포넌트 에러 catch
   - 에러 발생 시 ErrorPage 표시
   - 에러 정보 로깅
+  - **Sentry 연동**: `captureException`으로 에러 자동 전송 (2026-01-07)
 - **파일 경로**: `/components/ErrorBoundary.tsx`
+- **최근 업데이트**: 2026-01-07 - Sentry 에러 모니터링 연동
 
 ---
 
@@ -704,6 +706,9 @@
   - 라디오 버튼 선택 UI, 케밥 메뉴 버튼 지원
 - **iOS 스와이프 뒤로가기 히스토리 관리 해결** (App.tsx)
   - LoginPageNewWrapper, TermsPageWrapper, WelcomeCouponPageWrapper 상태 체크 로직 추가
+- **개발 안정성 강화**
+  - ErrorBoundary.tsx: Sentry `captureException` 연동으로 에러 자동 전송
+  - 새 lib 파일 추가: `logger.ts` (구조화된 로거), `fetchWithRetry.ts` (재시도 로직), `sentry.ts` (에러 모니터링)
 
 ### 2026-01-06
 - **개발/배포 환경 분리 처리 완료**

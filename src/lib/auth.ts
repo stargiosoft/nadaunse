@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { logger } from './logger';
+import { setUser as setSentryUser } from './sentry';
 
 /**
  * 카카오 로그인 (Kakao SDK → Supabase Auth)
@@ -96,6 +97,10 @@ export const signInWithKakao = async () => {
                 logger.error('Supabase Auth 에러:', error.message);
                 reject(error);
               } else {
+                // Sentry 사용자 컨텍스트 설정
+                if (data?.user) {
+                  setSentryUser(data.user.id, data.user.email);
+                }
                 resolve(data);
               }
             },
@@ -157,6 +162,9 @@ export const signOut = async () => {
       logger.debug('카카오 로그아웃 완료');
     });
   }
+
+  // Sentry 사용자 컨텍스트 해제
+  setSentryUser(null);
 
   // 기존 localStorage 정리
   localStorage.removeItem('user');

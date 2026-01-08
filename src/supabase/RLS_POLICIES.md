@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-01-06
+> **최종 업데이트**: 2026-01-07
 
 ## 개요
 
@@ -202,3 +202,9 @@ ORDER BY tablename;
    - Edge Function에서 service_role 키로 접근 시 모든 데이터 접근 가능
 
 3. **정책 변경 시** 반드시 Staging에서 먼저 테스트 후 Production에 적용하세요.
+
+4. **SECURITY DEFINER 함수** (NEW - 2026-01-07)
+   - `process_payment_complete`, `process_refund` 함수는 SECURITY DEFINER로 실행
+   - 함수 소유자(postgres) 권한으로 실행되어 RLS 정책 우회
+   - Edge Functions에서만 호출되도록 설계 (클라이언트 직접 호출 금지)
+   - 관련 문서: [DATABASE_TRIGGERS_AND_FUNCTIONS.md](./DATABASE_TRIGGERS_AND_FUNCTIONS.md)

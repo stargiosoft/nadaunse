@@ -152,7 +152,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isFreeContent, setIsFreeContent] = useState<boolean | null>(null); // ⭐ 무료 콘텐츠 여부 (초기 판별용)
   const [welcomeCouponDiscount, setWelcomeCouponDiscount] = useState<number | null>(null); // ⭐ 로그아웃 유저용 welcome 쿠폰 할인 금액
-  
+  const [isCouponLoaded, setIsCouponLoaded] = useState(false); // ⭐ 로그아웃 시 쿠폰 로딩 완료 여부
+
   // ⭐ 타로 카드 선택 상태
   const [isTarotCardSelectionComplete, setIsTarotCardSelectionComplete] = useState(false);
   const [selectedTarotCardId, setSelectedTarotCardId] = useState<number | null>(null);
@@ -295,6 +296,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     setQuestions([]);
     setIsFreeContent(null);
     setIsLoading(true);
+    setIsCouponLoaded(false); // ⭐ 쿠폰 로딩 상태도 초기화 (다른 콘텐츠에서 true였으면 문제)
     
     const fetchContent = async () => {
       // 로그인 상태 확인
@@ -487,6 +489,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
           }
         } catch (couponError) {
           console.warn('⚠️ [로그아웃] welcome 쿠폰 조회 실패:', couponError);
+        } finally {
+          // ⭐ 쿠폰 로딩 완료 (가격 영역 동시 표시용)
+          setIsCouponLoaded(true);
         }
       }
       
@@ -977,8 +982,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             </div>
                           </div>
                         </div>
-                        {/* ���격 영역 */}
-                        <div className="relative shrink-0 w-full mt-[-8px] mb-[-4px]">
+                        {/* 가격 영역 - 로그아웃 시 쿠폰 로딩 완료까지 숨김 (동시 표시) */}
+                        <div className={`relative shrink-0 w-full mt-[-8px] mb-[-4px] ${(isLoggedIn || isCouponLoaded) ? '' : 'hidden'}`}>
                           <div className="size-full">
                             <div className="box-border content-stretch flex flex-col gap-0 items-start px-[2px] py-0 relative w-full">
                                 {/* 할인율 + 할인가격 + 정상가격(취소선) */}
@@ -1067,7 +1072,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           </div>
                         </div>
 
-                      {/* 쿠폰 안내 버튼 (조건부 렌더링) */}
+                      {/* 쿠폰 안내 버튼 (조건부 렌더링) - 로그아웃 시 쿠폰 로딩 완료까지 숨김 */}
+                      <div className={`w-full ${(isLoggedIn || isCouponLoaded) ? '' : 'hidden'}`}>
                       {(() => {
                         // ⭐ coupon_type으로 정확히 구분 + 실제 할인 금액 사용
                         const revisitCoupon = userCoupons.find(c => c.coupons.coupon_type === 'revisit' && !c.is_used);
@@ -1247,6 +1253,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                         // Case 4: 로그인 + 쿠폰 없음 → 버튼 미표시
                         return null;
                       })()}
+                      </div>
                     </div>
                   </div>
                 </div>

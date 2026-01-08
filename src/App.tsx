@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
+import { useGoBack } from './hooks/useIOSSafeNavigate';
 // ProductDetail은 MasterContentDetailPage로 대체됨 (2026-01-07 백업 처리)
 import FreeProductDetail from './components/FreeProductDetail';
 import PaymentNew from './components/PaymentNew';
@@ -1177,6 +1178,7 @@ function MasterContentDetailPageWrapper() {
 function FreeContentDetailWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const goBack = useGoBack('/'); // 🛡️ iOS 안전한 뒤로가기
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -1185,7 +1187,7 @@ function FreeContentDetailWrapper() {
   return (
     <FreeContentDetail
       contentId={id}
-      onBack={() => navigate('/')}
+      onBack={goBack} // 🛡️ useGoBack 사용
       onHome={() => navigate('/')}
       onContentClick={(contentId) => {
         console.log('🔥 App.tsx navigate 시도 (replace):', `/master/content/detail/${contentId}`);

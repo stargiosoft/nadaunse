@@ -15,10 +15,11 @@
 - **Backend**: Supabase
   - Auth: OAuth (Google, Kakao)
   - Database: PostgreSQL + RLS
-  - Edge Functions: Deno runtime (17개)
+  - Edge Functions: Deno runtime (20개)
 - **AI**: OpenAI GPT-4o, Anthropic Claude-3.5-Sonnet, Google Gemini
 - **Payment**: PortOne (구 아임포트) v2
 - **Notification**: TalkDream API (카카오 알림톡)
+- **Error Monitoring**: Sentry (사용자 컨텍스트, 에러 추적)
 - **Hosting**: Vercel (Production: nadaunse.com)
 - **Supabase 환경**:
   - Production: `kcthtpmxffppfbkjjkub`
@@ -38,7 +39,7 @@
 
 ### 주요 통계
 - **컴포넌트**: 51개 (활성화)
-- **Edge Functions**: 17개
+- **Edge Functions**: 20개
 - **페이지 컴포넌트**: 38개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
@@ -70,11 +71,12 @@
 └─────────────────────────────────┘
     ↓
 ┌─────────────────────────────────┐
-│  Edge Functions (Deno) - 17개   │
+│  Edge Functions (Deno) - 20개   │
 │  - AI 콘텐츠 생성 (8개)          │
 │  - 쿠폰 관리 (4개)               │
 │  - 사용자 관리 (2개)             │
 │  - 알림톡 발송 (1개)             │
+│  - 결제/환불 (3개)               │
 │  - 기타 (2개)                    │
 └─────────────────────────────────┘
     ↓
@@ -355,6 +357,9 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 /lib/zodiacUtils.ts             → 띠 계산 유틸
 /lib/tarotCards.ts              → 타로 카드 데이터
 /lib/image.ts                   → 이미지 최적화 헬퍼
+/lib/logger.ts                  → 구조화된 로거 (민감정보 마스킹)
+/lib/fetchWithRetry.ts          → 재시도 로직 (Exponential Backoff)
+/lib/sentry.ts                  → Sentry 에러 모니터링 초기화
 ```
 
 ### 🛠️ 유틸리티
@@ -363,7 +368,7 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 /utils/scrollRestoreLogger.ts   → 스크롤 복원 디버깅 로거
 ```
 
-### 🗄️ Supabase Edge Functions (17개)
+### 🗄️ Supabase Edge Functions (20개)
 ```
 # AI 생성 Functions (8개)
 /supabase/functions/generate-free-preview/        → 무료 맛보기 생성
@@ -387,6 +392,11 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 
 # 알림 Functions (1개)
 /supabase/functions/send-alimtalk/                → 카카오 알림톡 발송
+
+# 결제/환불 Functions (3개) - NEW!
+/supabase/functions/payment-webhook/              → 포트원 결제 웹훅 검증
+/supabase/functions/process-payment/              → 결제 트랜잭션 원자적 처리
+/supabase/functions/process-refund/               → 환불 처리 (쿠폰 복원 포함)
 
 # 기타 Functions (2개)
 /supabase/functions/server/                       → 서버 상태 확인
@@ -897,6 +907,7 @@ useEffect(() => {
 | 1.1.0 | 2025-12-20 | DEV_FLOW.md 통합 (무료/유료 플로우 추가) | AI Assistant |
 | 1.2.0 | 2026-01-06 | 타로 서비스 추가, 개발/배포 환경 분리, iOS Safari 최적화, 컴포넌트 51개/Edge Functions 17개 반영 | AI Assistant |
 | 1.3.0 | 2026-01-07 | iOS 스와이프 뒤로가기 히스토리 관리 버그 해결 추가 | AI Assistant |
+| 1.4.0 | 2026-01-07 | 개발 안정성 강화 - Sentry, 로거, 재시도 로직, 결제 웹훅/환불, Edge Functions 20개 | AI Assistant |
 
 ---
 
@@ -939,8 +950,23 @@ useEffect(() => {
 - 일관된 사용자 경험 제공
 
 ### ✅ Edge Functions 확장
-- 총 17개 Edge Functions 운영 중
-- AI 생성 8개, 쿠폰 관리 4개, 사용자 관리 2개, 알림 1개, 기타 2개
+- 총 20개 Edge Functions 운영 중
+- AI 생성 8개, 쿠폰 관리 4개, 사용자 관리 2개, 알림 1개, 결제/환불 3개, 기타 2개
+
+### ✅ 개발 안정성 강화 (NEW!)
+- **Sentry 에러 모니터링**: 실시간 에러 추적, 사용자 컨텍스트 자동 설정 (`setUser`)
+  - 핵심 파일: `src/lib/sentry.ts`, `src/lib/auth.ts`
+- **구조화된 로거**: 환경별 로그 레벨, 민감정보 자동 마스킹
+  - 핵심 파일: `src/lib/logger.ts`
+- **재시도 로직**: Exponential Backoff (1s, 2s, 4s), 최대 3회 재시도
+  - 핵심 파일: `src/lib/fetchWithRetry.ts`
+- **결제 웹훅 구현**: 포트원 서버 콜백으로 결제 검증 강화
+  - Edge Function: `payment-webhook`
+- **결제 트랜잭션 원자성**: PostgreSQL Function으로 주문+쿠폰 원자적 처리
+  - Edge Function: `process-payment`, DB Function: `process_payment_complete`
+- **환불 처리 기능**: 포트원 환불 API 연동, 쿠폰 복원 로직
+  - Edge Function: `process-refund`, DB Function: `process_refund`
+- **환경변수 보안**: `VITE_KAKAO_AUTH_SECRET`, `VITE_SENTRY_DSN` 추가
 
 ---
 
@@ -951,11 +977,11 @@ useEffect(() => {
 - **[DECISIONS.md](./DECISIONS.md)** - 아키텍처 결정 기록
 - **[DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)** - DB 스키마 상세
 - **[components-inventory.md](./components-inventory.md)** - 컴포넌트 목록 (51개)
-- **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** - Edge Functions 가이드 (17개)
+- **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** - Edge Functions 가이드 (20개)
 - **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** - Database Triggers & Functions
 
 ---
 
-**문서 버전**: 1.3.0
+**문서 버전**: 1.4.0
 **최종 업데이트**: 2026-01-07
 **문서 끝**

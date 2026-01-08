@@ -516,29 +516,80 @@ export default function HomePage() {
   useEffect(() => {
     const initHistory = () => {
       const currentLength = window.history.length;
-      console.log('🔧 [히스토리 초기화] 현재 길이:', currentLength);
-      
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      console.log('🔧 [히스토리 초기화] 현재 길이:', currentLength, 'iOS:', isIOS);
+
       // 🔑 SessionStorage에서 히스토리 상태 확인
       const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
       console.log('🔍 [히스토리] SessionStorage 상태:', hasNavigatedFromHome);
-      
+
       // 🔄 홈으로 돌아왔으면 플래그 제거
       if (hasNavigatedFromHome) {
         sessionStorage.removeItem('navigatedFromHome');
         console.log('🧹 [히스토리] SessionStorage 플래그 제거');
       }
-      
-      // 🛡️ 히스토리가 부족하면 버퍼 추가 (앱이 닫히지 않도록)
-      if (currentLength <= 2) {
-        window.history.pushState({ page: 'home' }, '', window.location.href);
-        console.log('✅ [히스토리] 버퍼 추가 완료 → 새 길이:', window.history.length);
+
+      // 🛡️ iOS에서는 무조건 버퍼 추가 (history.length 체크 제거)
+      // iOS Safari/Chrome에서 history.length가 실제 스택 상태를 반영하지 않는 버그 대응
+      const bufferCount = isIOS ? 5 : 2;
+      const shouldAddBuffer = isIOS || currentLength <= 2;
+
+      if (shouldAddBuffer) {
+        for (let i = 0; i < bufferCount; i++) {
+          window.history.pushState({
+            type: 'home_buffer',
+            index: i,
+            timestamp: Date.now()
+          }, '', window.location.href);
+        }
+        console.log(`✅ [히스토리] iOS 버퍼 ${bufferCount}개 추가 완료 → 새 길이:`, window.history.length);
       }
     };
-    
+
     initHistory();
   }, []);
 
-  // ❌ popstate 핸들러 제거 - React Router가 자연스럽게 뒤로가기 처리하도록 함
+  // 🛡️ iOS popstate 이벤트 핸들러 - 스와이프 뒤로가기 시 앱 종료 방지
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const currentPath = window.location.pathname;
+
+      console.log('📍 [popstate] 이벤트 발생', {
+        state: e.state,
+        currentPath,
+        isIOS,
+        historyLength: window.history.length
+      });
+
+      // 더미 버퍼 엔트리에 도달한 경우 - 다시 버퍼 추가
+      if (e.state?.type === 'home_buffer') {
+        console.log('🔄 [popstate] 버퍼 엔트리 감지 → 버퍼 재추가');
+        window.history.pushState({
+          type: 'home_buffer',
+          index: 0,
+          timestamp: Date.now()
+        }, '', window.location.href);
+        return;
+      }
+
+      // iOS에서 예상치 못한 상태로 뒤로가기 된 경우 - 홈으로 강제 이동
+      if (isIOS && currentPath === '/' && !e.state && window.history.length <= 2) {
+        console.warn('⚠️ [popstate] iOS 히스토리 버그 감지 → 버퍼 재추가');
+        // 앱이 닫히지 않도록 버퍼 다시 추가
+        for (let i = 0; i < 3; i++) {
+          window.history.pushState({
+            type: 'home_buffer',
+            index: i,
+            timestamp: Date.now()
+          }, '', window.location.href);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   
   useEffect(() => {
     const controlNavbar = () => {
