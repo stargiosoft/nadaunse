@@ -80,14 +80,19 @@ export default function FreeSajuDetail({
   const [dataLoadError, setDataLoadError] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true); // ⭐️ 초기 로딩 상태 추가
 
-  // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
+  // 🔝 데이터 로딩 완료 후 스크롤을 최상단으로 이동
   useEffect(() => {
-    // requestAnimationFrame을 사용하여 DOM 업데이트 후 스크롤 실행
-    // iOS Safari/Chrome에서 즉시 scrollTo가 무시되는 문제 해결
-    requestAnimationFrame(() => {
-      window.scrollTo(0, 0);
-    });
-  }, [recordId]); // recordId가 바뀔 때마다 최상단으로
+    // 로딩 완료 + 데이터가 있을 때만 스크롤 초기화
+    // (로딩 스피너 → 실제 콘텐츠 전환 시점에 실행)
+    if (!isDataLoading && cachedData) {
+      // setTimeout을 사용하여 DOM이 완전히 렌더링된 후 스크롤 실행
+      // iOS Safari/Chrome에서 requestAnimationFrame만으로는 부족할 수 있음
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isDataLoading, cachedData]); // 로딩 상태 및 데이터 변경 시 실행
 
   useEffect(() => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
