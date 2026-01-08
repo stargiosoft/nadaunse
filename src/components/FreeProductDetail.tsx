@@ -289,16 +289,10 @@ export default function FreeProductDetail({ product, onBack, onProductClick, onB
               </p>
             </div>
 
-            {/* Content Cards - Horizontal Scroll (LoadingPage 스타일) */}
+            {/* Content Cards - Horizontal Scroll (LoadingPage와 동일) */}
             <div
-              className="flex gap-[12px] overflow-x-auto pb-[4px] -mx-[20px] px-[20px] items-stretch"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch',  // iOS 관성 스크롤 (부드러운 스와이프)
-                touchAction: 'pan-x pan-y',         // 수직/수평 터치 모두 허용
-                overscrollBehaviorX: 'contain'      // 가로 스크롤만 포함, 수직은 부모로 전파
-              }}
+              className="flex gap-[12px] overflow-x-auto overflow-y-visible pb-[4px] -mx-[20px] px-[20px] items-stretch"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {visibleRecommendedProducts.map((recProduct) => (
                 <button
