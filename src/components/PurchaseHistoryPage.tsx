@@ -13,6 +13,8 @@ interface PurchaseItem {
   paid_amount: number;
   created_at: string;
   pstatus: string;
+  full_name: string | null;    // ⭐ orders 테이블의 직접 컬럼
+  birth_date: string | null;   // ⭐ orders 테이블의 직접 컬럼
   master_contents: {
     title: string;
     thumbnail_url: string | null;
@@ -22,6 +24,28 @@ interface PurchaseItem {
     full_name: string;
     birth_date: string;
   } | null;
+}
+
+/**
+ * ⭐ 생년월일 포맷팅 함수
+ * ISO 형식 또는 YYYY-MM-DD 형식을 YYYY.MM.DD 형식으로 변환
+ */
+function formatBirthDate(dateString: string | null | undefined): string {
+  if (!dateString) return '';
+
+  try {
+    // ISO 형식 또는 다양한 날짜 형식 파싱
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // 파싱 실패 시 원본 반환
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}.${month}.${day}`;
+  } catch {
+    return dateString; // 에러 시 원본 반환
+  }
 }
 
 interface GroupedPurchases {
@@ -104,6 +128,8 @@ export default function PurchaseHistoryPage() {
           paid_amount,
           created_at,
           pstatus,
+          full_name,
+          birth_date,
           master_contents (
             title,
             thumbnail_url,
@@ -498,12 +524,13 @@ export default function PurchaseHistoryPage() {
 
                                       {/* Additional Info */}
                                       <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                                        {item.saju_records && (
+                                        {/* ⭐ 풀이 대상: orders 테이블의 full_name 우선 사용, 없으면 saju_records 사용 */}
+                                        {(item.full_name || item.saju_records?.full_name) && (
                                           <div className="relative shrink-0 w-full">
                                             <div className="flex flex-row items-center size-full">
                                               <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
                                                 <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] pl-[1px] text-nowrap tracking-[-0.24px]">
-                                                  풀이 대상 : {item.saju_records.full_name} ({item.saju_records.birth_date})
+                                                  풀이 대상 : {item.full_name || item.saju_records?.full_name} ({formatBirthDate(item.birth_date || item.saju_records?.birth_date)})
                                                 </p>
                                               </div>
                                             </div>
