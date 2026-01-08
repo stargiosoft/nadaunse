@@ -79,6 +79,15 @@ export default function FreeSajuDetail({
   const [cachedData, setCachedData] = useState<CachedData | null>(null);
   const [dataLoadError, setDataLoadError] = useState(false);
 
+  // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
+  useEffect(() => {
+    // requestAnimationFrame을 사용하여 DOM 업데이트 후 스크롤 실행
+    // iOS Safari/Chrome에서 즉시 scrollTo가 무시되는 문제 해결
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+    });
+  }, [recordId]); // recordId가 바뀔 때마다 최상단으로
+
   useEffect(() => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📋 [FreeSajuDetail] localStorage에서 데이터 로드 시작');

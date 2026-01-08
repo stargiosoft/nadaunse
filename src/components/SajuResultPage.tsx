@@ -52,7 +52,13 @@ export default function SajuResultPage() {
   
   // 🔝 currentPage 변경 시 스크롤을 최상단으로 이동
   useEffect(() => {
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+    // requestAnimationFrame을 사용하여 DOM 업데이트 후 스크롤 실행
+    // iOS Safari에서 즉시 scrollTo가 무시되는 문제 해결
+    requestAnimationFrame(() => {
+      scrollContainerRef.current?.scrollTo(0, 0);
+      // window.scrollTo도 함께 호출하여 확실하게 처리
+      window.scrollTo(0, 0);
+    });
   }, [currentPage]);
 
   // 답변 데이터 로드
@@ -221,8 +227,8 @@ export default function SajuResultPage() {
 
   const handlePrevious = () => {
     if (currentPage > 1) {
-      scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' }); // ⭐ 즉시 스크롤 최상단 이동
       setCurrentPage(currentPage - 1);
+      // 스크롤은 useEffect에서 처리됨 (currentPage dependency)
     }
   };
 
@@ -261,8 +267,8 @@ export default function SajuResultPage() {
     
     // ⭐ 다음 질문이 사주면 → 다음 페이지로 이동
     console.log('➡️ [SajuResultPage] 다음 질문이 사주 → 다음 페이지로 이동:', currentPage + 1);
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' }); // ⭐ 즉시 스크롤 최상단 이동
     setCurrentPage(currentPage + 1);
+    // 스크롤은 useEffect에서 처리됨 (currentPage dependency)
   };
 
   const handleClose = () => {
