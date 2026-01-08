@@ -126,7 +126,7 @@ export default function FreeSajuSelectPage({ productId, onBack }: FreeSajuSelect
         .from('saju_records')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('❌ [FreeSajuSelectPage] 사주 정보 조회 실패:', error);

@@ -252,7 +252,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         .from('saju_records')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 

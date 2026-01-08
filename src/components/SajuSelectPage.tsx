@@ -138,7 +138,7 @@ export default function SajuSelectPage() {
         .from('saju_records')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('❌ 사주 목록 조회 실패:', error);
