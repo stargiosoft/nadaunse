@@ -388,13 +388,21 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
  
   <div className="box-border content-stretch w-full">
     <div className="flex flex-col gap-[12px] items-center justify-center w-full">
-      <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full bg-[#f0f0f0]">
+      <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full bg-gradient-to-r from-[#f0f0f0] via-[#e8e8e8] to-[#f0f0f0] bg-[length:200%_100%] animate-shimmer">
         {content.thumbnail_url ? (
           <img
             alt={content.title}
             loading="lazy"
             className="absolute inset-0 object-cover rounded-[16px] size-full"
             src={content.thumbnail_url}
+            onLoad={(e) => {
+              // 이미지 로드 완료 시 부모의 shimmer 제거
+              const parent = (e.target as HTMLElement).parentElement;
+              if (parent) {
+                parent.classList.remove('animate-shimmer', 'bg-gradient-to-r', 'from-[#f0f0f0]', 'via-[#e8e8e8]', 'to-[#f0f0f0]', 'bg-[length:200%_100%]');
+                parent.classList.add('bg-[#f0f0f0]');
+              }
+            }}
             onError={(e) => {
               // 이미지 로드 실패 시 조용히 처리
               const target = e.target as HTMLImageElement;
@@ -434,13 +442,21 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
   return (
     <div onClick={onClick} className="box-border content-stretch flex flex-col gap-[10px] h-auto items-start justify-start px-0 py-[10px] relative rounded-[16px] shrink-0 w-full cursor-pointer transition-all duration-150 ease-out active:scale-[0.96] active:bg-gray-50 active:px-[12px]" data-name="Card / Browse Card">
       <div className="content-stretch flex gap-[10px] items-start relative shrink-0 w-full overflow-hidden" data-name="Container">
-        <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px] bg-[#f0f0f0]" data-name="Thumbnail">
+        <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px] bg-gradient-to-r from-[#f0f0f0] via-[#e8e8e8] to-[#f0f0f0] bg-[length:200%_100%] animate-shimmer" data-name="Thumbnail">
           {content.thumbnail_url ? (
-            <img 
-              alt={content.title} 
+            <img
+              alt={content.title}
               loading="lazy"
-              className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full" 
+              className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full"
               src={content.thumbnail_url}
+              onLoad={(e) => {
+                // 이미지 로드 완료 시 부모의 shimmer 제거
+                const parent = (e.target as HTMLElement).parentElement;
+                if (parent) {
+                  parent.classList.remove('animate-shimmer', 'bg-gradient-to-r', 'from-[#f0f0f0]', 'via-[#e8e8e8]', 'to-[#f0f0f0]', 'bg-[length:200%_100%]');
+                  parent.classList.add('bg-[#f0f0f0]');
+                }
+              }}
               onError={(e) => {
                 // 이미지 로드 실패 시 조용히 처리
                 const target = e.target as HTMLImageElement;
@@ -617,7 +633,7 @@ export default function HomePage() {
 
   // 🔧 캐시 버전 관리 (정렬 로직 변경 시 캐시 무효화)
   const CACHE_VERSION = 'v6'; // 필터별 캐시 분리 적용
-  const CATEGORIES_CACHE_KEY = 'homepage_categories_cache';
+  const CATEGORIES_CACHE_KEY = 'homepage_categories_cache_v2'; // v2: 카테고리 순서 고정
 
   // 🚀 Phase 1: 필터별 캐시 키 생성 함수
   const getCacheKey = useCallback((category: TabCategory, type: 'all' | 'paid' | 'free') => {
@@ -859,10 +875,13 @@ export default function HomePage() {
       // 🚀 Phase 1: 모든 필터에서 캐시 활용
       const hasCache = loadFromCache(selectedCategory, selectedType);
 
-      // 캐시가 있으면 API 호출 스킵 (즉시 표시)
+      // 캐시가 있어도 이미지 로딩을 위해 약간의 딜레이 후 스켈레톤 해제
       if (hasCache) {
         console.log(`⚡ [Cache Hit] 캐시에서 즉시 로드 (${selectedCategory}/${selectedType})`);
-        setIsInitialLoading(false);
+        // 🔧 이미지 프리로드 시간 확보를 위해 최소 딜레이 적용
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 100);
         return;
       }
 
@@ -1022,13 +1041,19 @@ export default function HomePage() {
         if (error) throw error;
         
         if (data) {
-          // 중복 제거 및 "전체" 추가
-          const uniqueCategories = ['전체', ...new Set(data.map(item => item.category_main).filter(Boolean))];
-          
-          // TabCategory 타입으로 필터링 (타입 안전성)
-          const validCategories = uniqueCategories.filter(cat => 
-            ['전체', '개인운세', '연애', '이별', '궁합', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'].includes(cat)
-          ) as TabCategory[];
+          // 🎯 카테고리 표시 순서 정의 (이 순서대로 탭에 표시됨)
+          const CATEGORY_ORDER: TabCategory[] = [
+            '전체', '연애', '이별', '궁합', '개인운세', '재물', '직업',
+            '인간관계', '시험/학업', '건강', '자녀', '이사/매매', '기타'
+          ];
+
+          // 중복 제거
+          const uniqueCategories = new Set(data.map(item => item.category_main).filter(Boolean));
+
+          // 🔧 정의된 순서대로 정렬 (데이터가 있는 카테고리만 포함)
+          const validCategories = CATEGORY_ORDER.filter(cat =>
+            cat === '전체' || uniqueCategories.has(cat)
+          );
           
           setAvailableCategories(validCategories);
           
