@@ -116,6 +116,10 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   // ⭐ iOS Safari 스와이프 뒤로가기 대응 - 페이지가 다시 보일 때 케밥 메뉴 닫기
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // 🛡️ bfcache 대응: 현재 페이지가 /saju/management일 때만 처리
+      if (window.location.pathname !== '/saju/management') {
+        return;
+      }
       if (document.visibilityState === 'visible') {
         console.log('🔄 [SajuManagementPage] 페이지 visible → 케밥 메뉴 닫기');
         setKebabMenuOpen(false);
@@ -124,21 +128,35 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
     };
 
     // ⭐ pageshow: bfcache 복원 시 (event.persisted=true) 바텀시트 닫기
+    // 🛡️ bfcache 대응: 현재 페이지가 /saju/management일 때만 처리
     const handlePageShow = (event: PageTransitionEvent) => {
+      if (window.location.pathname !== '/saju/management') {
+        return;
+      }
       console.log('🔄 [SajuManagementPage] pageshow → persisted:', event.persisted);
       setKebabMenuOpen(false);
       setSelectedSajuForKebab(null);
     };
 
     // ⭐ popstate: 브라우저 뒤로가기/앞으로가기 시 바텀시트 닫기
+    // 🛡️ bfcache 대응: 현재 페이지가 /saju/management일 때만 처리 (iOS Chrome 버그 방지)
     const handlePopState = () => {
+      // 🛡️ bfcache에서 복원된 후 다른 페이지에 있을 때는 무시
+      if (window.location.pathname !== '/saju/management') {
+        console.log('🔄 [SajuManagementPage] popstate → 다른 페이지에서 발생, 무시');
+        return;
+      }
       console.log('🔄 [SajuManagementPage] popstate → 케밥 메뉴 닫기');
       setKebabMenuOpen(false);
       setSelectedSajuForKebab(null);
     };
 
     // ⭐ focus: 윈도우가 포커스를 받을 때 바텀시트 닫기 (iOS Safari 추가 보호)
+    // 🛡️ bfcache 대응: 현재 페이지가 /saju/management일 때만 처리
     const handleFocus = () => {
+      if (window.location.pathname !== '/saju/management') {
+        return;
+      }
       console.log('🔄 [SajuManagementPage] focus → 케밥 메뉴 닫기');
       setKebabMenuOpen(false);
       setSelectedSajuForKebab(null);
