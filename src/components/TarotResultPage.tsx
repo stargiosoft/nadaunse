@@ -395,7 +395,7 @@ export default function TarotResultPage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col w-full max-w-[440px] mx-auto left-1/2 -translate-x-1/2">
+    <div className="fixed top-0 bottom-0 left-1/2 -translate-x-1/2 bg-white flex flex-col w-full max-w-[440px]">
       {/* Top Navigation */}
       <div className="bg-white h-[52px] shrink-0 w-full z-20">
         <div className="flex items-center justify-between px-[12px] h-full">
