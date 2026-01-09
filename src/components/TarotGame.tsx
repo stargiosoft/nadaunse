@@ -337,6 +337,33 @@ export function TarotGame({ onConfirm }: TarotGameProps) {
   const targetBoxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // ⭐ 이미지 로딩 상태 - 카드/배경 이미지 로드 완료 후 렌더링
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  // ⭐ 이미지 프리로드 - 카드 뒷면 + 배경 이미지
+  useEffect(() => {
+    const imagesToLoad = [cardImage, tarotBackground];
+    let loadedCount = 0;
+
+    const checkAllLoaded = () => {
+      loadedCount++;
+      if (loadedCount >= imagesToLoad.length) {
+        setImagesLoaded(true);
+      }
+    };
+
+    imagesToLoad.forEach((src) => {
+      const img = new Image();
+      img.onload = checkAllLoaded;
+      img.onerror = checkAllLoaded; // 에러 시에도 진행
+      img.src = src;
+    });
+
+    // 3초 후에도 로드 안 되면 강제 표시 (fallback)
+    const timeout = setTimeout(() => setImagesLoaded(true), 3000);
+    return () => clearTimeout(timeout);
+  }, []);
+
   useEffect(() => {
     const handleResize = () => setScaleRatio(getScaleRatio(window.innerWidth));
     window.addEventListener('resize', handleResize);
@@ -383,6 +410,15 @@ export function TarotGame({ onConfirm }: TarotGameProps) {
       setSelectedCardData({ index, startX: cardRect.left - containerRect.left, startY: cardRect.top - containerRect.top, targetX: targetRect.left - containerRect.left, targetY: targetRect.top - containerRect.top, cardWidth: targetRect.width, cardHeight: targetRect.height, isReturning: false });
     }
   };
+
+  // ⭐ 이미지 로딩 중에는 로딩 스피너 표시
+  if (!imagesLoaded) {
+    return (
+      <div className="flex items-center justify-center w-full h-full bg-[#41a09e]">
+        <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-white"></div>
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden" data-name="카드 뽑기 섞기">
