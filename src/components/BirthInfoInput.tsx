@@ -903,7 +903,7 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
             <div className="relative shrink-0 w-full">
               <div className="flex flex-row items-center size-full">
                 <div className="content-stretch flex items-center px-[4px] py-0 relative w-full">
-                  <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[16px] min-h-px min-w-px relative shrink-0 text-[#848484] text-[12px] tracking-[-0.24px]">휴대폰 번호 (선택)</p>
+                  <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] font-normal grow leading-[16px] min-h-px min-w-px relative shrink-0 text-[#848484] text-[12px] tracking-[-0.24px]">휴대폰 번호(풀이 완료 후 알림톡 발송에만 사용돼요)</p>
                 </div>
               </div>
             </div>

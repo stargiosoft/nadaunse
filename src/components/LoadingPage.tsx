@@ -7,7 +7,7 @@ import { supabase, supabaseUrl } from '../lib/supabase';
 import { preloadTarotImages } from '../lib/tarotImageCache';
 import { preloadImages } from '../lib/imagePreloader';
 import { motion } from "motion/react";
-import { SessionExpiredDialog } from './SessionExpiredDialog';
+// 로딩 페이지에서는 세션 만료 시 바로 로그인 페이지로 리다이렉트하므로 SessionExpiredDialog 불필요
 
 // ⭐ 무료 콘텐츠 인터페이스
 interface FreeContent {
@@ -82,9 +82,10 @@ export default function LoadingPage() {
   // ⭐ 무료 콘텐츠 state
   const [freeContents, setFreeContents] = useState<FreeContent[]>([]);
   const [displayCount, setDisplayCount] = useState(6); // 초기 6개 표시
-  const [isSessionExpired, setIsSessionExpired] = useState(false);
+  // 로딩 페이지에서는 세션 만료 시 바로 리다이렉트하므로 상태 불필요
 
-  // ⭐ 세션 체크 - 로그아웃 상태면 다이얼로그 표시
+  // ⭐ 세션 체크 - 로그아웃 상태면 로그인 페이지로 즉시 리다이렉트
+  // (로딩 페이지가 작동 중이므로 다이얼로그 대신 바로 이동)
   useEffect(() => {
     const checkSession = async () => {
       // DEV 모드 우회
@@ -98,11 +99,12 @@ export default function LoadingPage() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setIsSessionExpired(true);
+        // 로딩 페이지에서는 다이얼로그 대신 바로 로그인 페이지로 리다이렉트
+        navigate('/login', { replace: true });
       }
     };
     checkSession();
-  }, []);
+  }, [navigate]);
 
   // 콘텐츠 정보 로드
   useEffect(() => {
@@ -592,8 +594,6 @@ export default function LoadingPage() {
             </button>
           </div>
         </div>
-
-        <SessionExpiredDialog isOpen={isSessionExpired} />
       </div>
     </div>
   );
