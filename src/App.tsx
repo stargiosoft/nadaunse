@@ -215,32 +215,29 @@ function GAInit() {
 function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // ⭐️ 상품 정보 로드 (allProducts + master_contents)
+  // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
+  const numericId = Number(id);
+  const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
+
+  const [product, setProduct] = useState<any>(staticProduct || null);
+  // ⭐️ allProducts에서 찾았으면 로딩 불필요
+  const [isLoading, setIsLoading] = useState(!staticProduct);
+
+  // ⭐️ master_contents 조회 (UUID 콘텐츠인 경우에만)
   useEffect(() => {
-    const loadProduct = async () => {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📄 [ProductDetailPage] 상품 로드 시작');
-      console.log('📌 [ProductDetailPage] URL id:', id);
-      
-      // 먼저 allProducts에서 찾기 (숫자 ID인 경우)
-      const numericId = Number(id);
-      const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
-      
-      if (staticProduct) {
-        console.log('✅ [ProductDetailPage] allProducts에서 발견:', staticProduct);
-        console.log('📌 [ProductDetailPage] product.type:', staticProduct.type);
-        setProduct(staticProduct);
-        setIsLoading(false);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        return;
-      }
+    // allProducts에서 이미 찾았으면 DB 조회 스킵
+    if (staticProduct) {
+      console.log('✅ [ProductDetailPage] allProducts에서 즉시 로드:', staticProduct.title);
+      return;
+    }
 
-      // allProducts에 없으면 마스터 콘텐츠 조회 (UUID인 경우)
+    const loadProduct = async () => {
+      // ⭐️ master_contents 조회 (UUID 콘텐츠인 경우)
       if (id) {
-        console.log('🔍 [ProductDetailPage] allProducts에 없음 → master_contents 조회');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📄 [ProductDetailPage] master_contents 조회 시작');
+        console.log('📌 [ProductDetailPage] URL id:', id);
         
         try {
           const { data, error } = await supabase
@@ -292,8 +289,8 @@ function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
   }
@@ -462,44 +459,28 @@ function ProductDetailPage() {
 function PaymentNewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [product, setProduct] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // ⭐️ 상품 정보 로드 (allProducts + master_contents)
+  // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
+  const numericId = Number(id);
+  const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
+
+  const [product, setProduct] = useState<any>(staticProduct || null);
+  // ⭐️ allProducts 조회는 즉시 완료, master_contents는 PaymentNew가 직접 조회
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 로그 출력 (디버깅용)
   useEffect(() => {
-    const loadProduct = async () => {
-      console.log('🔍 [PaymentNewPage] 상품 로드 시작, ID:', id);
-      
-      // 먼저 allProducts에서 찾기 (숫자 ID인 경우)
-      const numericId = Number(id);
-      const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
-      
-      if (staticProduct) {
-        console.log('✅ [PaymentNewPage] allProducts에서 발견:', staticProduct);
-        setProduct(staticProduct);
-        setIsLoading(false);
-        return;
-      }
-
-      // allProducts에 없으면 마스터 콘텐츠 조회 (UUID인 경우)
-      if (id) {
-        console.log('🔍 [PaymentNewPage] allProducts에 없음 → master_contents 조회');
-        
-        // ⭐ master_contents는 PaymentNew 컴포넌트가 직접 조회하도록 위임
-        // contentId만 전달하고 product는 null로 설정
-        setProduct(null);
-      }
-      
-      setIsLoading(false);
-    };
-
-    loadProduct();
-  }, [id]);
+    if (staticProduct) {
+      console.log('✅ [PaymentNewPage] allProducts에서 즉시 로드:', staticProduct.title);
+    } else {
+      console.log('🔍 [PaymentNewPage] master_contents → PaymentNew가 직접 조회');
+    }
+  }, [staticProduct]);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
+        <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
   }
@@ -629,27 +610,28 @@ function BirthInfoPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const goBack = useGoBack(`/product/${id}`); // ⭐ 직전 페이지로 (fallback: 콘텐츠 상세)
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
+  const numericId = Number(id);
+  const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
+
+  const [product, setProduct] = useState<Product | null>(staticProduct || null);
+  // ⭐️ allProducts에서 찾았으면 상품 로딩 불필요
+  const [isLoading, setIsLoading] = useState(!staticProduct);
   const [hasSajuInfo, setHasSajuInfo] = useState<boolean | null>(null); // ⭐ 사주 정보 존재 여부
 
+  // ⭐️ master_contents 조회 (UUID 콘텐츠인 경우에만)
   useEffect(() => {
-    const loadProduct = async () => {
-      // 먼저 allProducts에서 찾기 (숫자 ID인 경우)
-      const numericId = Number(id);
-      const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
-      
-      if (staticProduct) {
-        console.log('✅ [BirthInfoPage] allProducts에서 발견:', staticProduct);
-        console.log('📌 [BirthInfoPage] product.type:', staticProduct.type);
-        setProduct(staticProduct);
-        setIsLoading(false);
-        return;
-      }
+    // allProducts에서 이미 찾았으면 DB 조회 스킵
+    if (staticProduct) {
+      console.log('✅ [BirthInfoPage] allProducts에서 즉시 로드:', staticProduct.title);
+      return;
+    }
 
-      // allProducts에 없으면 마스터 콘텐츠 조회 (UUID인 경우)
+    const loadProduct = async () => {
+      // master_contents 조회 (UUID인 경우)
       if (id) {
-        console.log('🔍 [BirthInfoPage] allProducts에 없음 → master_contents 조회');
+        console.log('🔍 [BirthInfoPage] master_contents 조회 시작...');
         
         try {
           const { data, error } = await supabase
@@ -737,8 +719,8 @@ function BirthInfoPage() {
 
   if (isLoading || (product?.type === 'free' && hasSajuInfo === null)) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
   }

@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgPaths from "../imports/svg-tta3ixz6w2";
-import emptyStateSvgPaths from "../imports/svg-hw6oxtisye";
+import emptyStateSvgPaths from "../imports/svg-297vu4q7h0"; // Empty State 아이콘 (둥지)
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import Loading from './Loading';
@@ -788,10 +788,18 @@ export default function SajuSelectPage() {
             {/* Empty State or Cards */}
             {otherSaju.length === 0 ? (
               <div className="content-stretch flex flex-col gap-[28px] items-center justify-center py-[40px] relative shrink-0 w-full">
-                <div className="relative shrink-0 size-[62px]">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 62 62">
-                    <path d={emptyStateSvgPaths.p30e68780} fill="#E7E7E7" />
-                    <path d={emptyStateSvgPaths.p14ef2c00} fill="#E7E7E7" />
+                <div className="relative shrink-0 size-[64px]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 48 48">
+                    <g id="Icons">
+                      <path d={emptyStateSvgPaths.p3a144140} fill="#E7E7E7" id="Vector" />
+                      <path d={emptyStateSvgPaths.p15b23580} fill="#D4D4D4" id="Vector_2" />
+                      <path d={emptyStateSvgPaths.p3b09d000} fill="#D4D4D4" id="Vector_3" />
+                      <path d={emptyStateSvgPaths.p1c433500} fill="#E7E7E7" id="Vector_4" />
+                      <path d={emptyStateSvgPaths.p136e2000} fill="#F3F3F3" id="Vector_5" />
+                      <path d={emptyStateSvgPaths.p15328600} fill="#D4D4D4" id="Vector_6" />
+                      <path d={emptyStateSvgPaths.p1d148980} fill="#E7E7E7" id="Vector_7" />
+                      <path d={emptyStateSvgPaths.p2d904400} fill="#F3F3F3" id="Vector_8" />
+                    </g>
                   </svg>
                 </div>
                 <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
