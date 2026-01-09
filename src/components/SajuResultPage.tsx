@@ -270,15 +270,9 @@ export default function SajuResultPage() {
       return cachedImage; // Blob URL
     }
     
-    // 2. 캐시 없으면 원본 URL 사용 (DB에 저장된 URL)
-    if (answer.tarot_card_image_url) {
-      console.log('🌐 [사주결과-타로] DB URL 사용:', answer.tarot_card_name);
-      return answer.tarot_card_image_url;
-    }
-    
-    // 3. 둘 다 없으면 Supabase Storage URL 생성
+    // 2. 캐시 없으면 스테이징 Storage URL 생성 (DB URL은 프로덕션 URL이라 사용 안함)
     console.log('🔗 [사주결과-타로] Storage URL 생성:', answer.tarot_card_name);
-    return getTarotCardImageUrl(answer.tarot_card_name, supabaseUrl);
+    return getTarotCardImageUrl(answer.tarot_card_name);
   };
 
   const handlePrevious = () => {

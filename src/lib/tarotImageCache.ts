@@ -1,13 +1,15 @@
 /**
  * 타로 카드 이미지 캐싱 유틸리티
- * 
+ *
  * ⭐ Cache API를 사용하여 큰 이미지도 효율적으로 캐싱합니다.
  * - localStorage: 5-10MB 제한
  * - Cache API: 50MB 이상 (브라우저에 따라 다름)
- * 
+ *
  * 사용자가 사주 풀이를 보는 동안 타로 이미지를 미리 캐싱하여
  * 타로 결과 페이지에서 즉시 로드할 수 있도록 합니다.
  */
+
+import { getTarotCardImageUrl } from './tarotCards';
 
 const CACHE_NAME = 'tarot-images-v1';
 const CACHE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7일
@@ -143,9 +145,11 @@ export async function preloadTarotImages(orderId: string, supabaseUrl: string): 
     console.log(`📦 [타로캐시] ${tarotCards.length}장의 타로 카드 발견`);
     
     // 2. 각 타로 카드 이미지 캐싱 (병렬 처리)
-    const cachePromises = tarotCards.map((card: any) => {
-      if (card.tarot_card_name && card.tarot_card_image_url) {
-        return cacheTarotImage(card.tarot_card_name, card.tarot_card_image_url);
+    // ⭐ DB의 tarot_card_image_url 대신 getTarotCardImageUrl 사용 (스테이징 Storage 공용)
+    const cachePromises = tarotCards.map((card: { tarot_card_name: string | null }) => {
+      if (card.tarot_card_name) {
+        const imageUrl = getTarotCardImageUrl(card.tarot_card_name);
+        return cacheTarotImage(card.tarot_card_name, imageUrl);
       }
       return Promise.resolve(false);
     });

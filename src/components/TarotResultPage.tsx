@@ -247,9 +247,11 @@ export default function TarotResultPage() {
 
     console.log(`🎴 [타로프리로드] ${tarotQuestions.length}장 프리로드 시작`);
     
-    tarotQuestions.forEach((q: any) => {
-      if (q.tarot_card_name && q.tarot_card_image_url) {
-        cacheTarotImage(q.tarot_card_name, q.tarot_card_image_url).catch(err => {
+    // ⭐ DB URL 대신 getTarotCardImageUrl 사용 (스테이징 Storage 공용)
+    tarotQuestions.forEach((q: { tarot_card_name: string | null }) => {
+      if (q.tarot_card_name) {
+        const imageUrl = getTarotCardImageUrl(q.tarot_card_name);
+        cacheTarotImage(q.tarot_card_name, imageUrl).catch(err => {
           console.warn(`⚠️ [타로프리로드] 실패 (무시): ${q.tarot_card_name}`, err);
         });
       }
@@ -276,11 +278,10 @@ export default function TarotResultPage() {
         const storageUrl = getTarotCardImageUrl(result.tarot_card_name, supabaseUrl);
         setCardImageUrl(storageUrl);
         
-        if (result.tarot_card_image_url) {
-          cacheTarotImage(result.tarot_card_name, result.tarot_card_image_url).catch(err => {
-            console.warn('⚠️ [타로결과] 백그라운드 캐싱 실패:', err);
-          });
-        }
+        // ⭐ DB URL 대신 getTarotCardImageUrl 사용 (스테이징 Storage 공용)
+        cacheTarotImage(result.tarot_card_name, storageUrl).catch(err => {
+          console.warn('⚠️ [타로결과] 백그라운드 캐싱 실패:', err);
+        });
       }
     };
 
