@@ -74,6 +74,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   const [visibleCount, setVisibleCount] = useState(3); // ⭐ 처음에는 3개 표시
   const [visiblePaidCount, setVisiblePaidCount] = useState(6); // ⭐ 유료 콘텐츠는 6개씩
   const scrollObserverRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref (바운스 방지)
 
   /**
    * 초기 데이터 로드
@@ -138,8 +139,11 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
 
   /**
    * 🔝 페이지 진입 시 스크롤을 최상단으로 이동
+   * ⭐ SajuResultPage와 동일한 패턴으로 바운스 방지
    */
   useEffect(() => {
+    // ⭐ 스크롤 컨테이너와 window 모두 최상단으로 이동
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
     window.scrollTo(0, 0);
     console.log('🔝 [FreeContentDetail] 스크롤 최상단으로 이동');
   }, [contentId]); // contentId가 바뀔 때마다 최상단으로
@@ -277,6 +281,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     visibleCount,
     visiblePaidCount,
     scrollObserverRef,
+    scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
     // Actions
     handlePurchase,
     setShowResult,
@@ -408,6 +413,7 @@ export default function FreeContentDetail({
     visibleCount,
     visiblePaidCount,
     scrollObserverRef,
+    scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
     handlePurchase,
     setShowResult,
     loadMorePaidContents
@@ -465,30 +471,31 @@ export default function FreeContentDetail({
   const hasMoreCards = recommendedContents.length > visibleCount;
 
   return (
-    <div className="bg-white relative min-h-screen w-full flex justify-center pb-[4px]">
-      <div className="w-full max-w-[440px] relative">
+    <div className="bg-white fixed inset-0 flex flex-col w-full">
+      <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
         {/* Top Navigation */}
-        <TopNavigation 
-          onBack={onBack} 
-          onHome={onHome} 
-          title={content.title} 
+        <TopNavigation
+          onBack={onBack}
+          onHome={onHome}
+          title={content.title}
         />
 
-        {/* Content */}
-        <motion.div 
-          className="pb-[120px] overflow-x-hidden"
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.1
+        {/* ⭐ Scrollable Content Area - overscroll-contain으로 바운스 방지 */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
+          <motion.div
+            className="pb-[120px] overflow-x-hidden"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1
+                }
               }
-            }
-          }}
-        >
+            }}
+          >
           {/* Product Image & Info */}
           <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
             <ProductInfo content={content} />
@@ -522,12 +529,14 @@ export default function FreeContentDetail({
               <AdBanner onClick={onBannerClick} />
             </div>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </div>
+        {/* ⭐ 스크롤 컨테이너 끝 */}
 
         {/* Bottom Button */}
-        <BottomButton 
-          onClick={onPurchase || handlePurchase} 
-          text="무료로 보기" 
+        <BottomButton
+          onClick={onPurchase || handlePurchase}
+          text="무료로 보기"
         />
       </div>
     </div>
