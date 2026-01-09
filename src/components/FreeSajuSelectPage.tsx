@@ -617,9 +617,6 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedMySaju
               </div>
             </div>
           </div>
-          <div className="bg-white h-[28px] relative shrink-0 w-full">
-            <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
-          </div>
         </div>
 
         {/* 케밥 메뉴 */}

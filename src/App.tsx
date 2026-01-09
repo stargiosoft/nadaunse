@@ -1485,12 +1485,8 @@ function MasterContentCreateFlowWrapper() {
   // 권한 확인 중이면 로딩 표시
   if (isCheckingAuth) {
     return (
-      <div className="bg-[#f9f9f9] relative w-full min-h-screen flex justify-center items-center">
-        <div className="text-center">
-          <p className="font-medium text-[16px] text-[#1b1b1b]">
-            한 확인 중...
-          </p>
-        </div>
+      <div className="bg-white relative w-full min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
   }
