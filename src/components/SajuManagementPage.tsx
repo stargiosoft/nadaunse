@@ -605,11 +605,11 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
       setIsPrimarySajuChangeDialogOpen(false);
       setPendingPrimarySajuId(null);
 
-      // 4단계: 목록 로고침 (프로필 페이지에도 반영되도록)
-      await loadSajuList();
-
-      // 5단계: 토스트 메시지 표시 (2.2초 후 자동 사라짐)
+      // 4단계: 토스트 메시지 표시 (2.2초 후 자동 사라짐)
       toast.success('대표 사주가 변경되었습니다.', { duration: 2200 });
+
+      // 5단계: 프로필 페이지로 이동 (토스트는 그대로 노출됨)
+      onBack();
     } catch (error) {
       console.error('❌ [대표사주변경] 실패:', error);
       toast.error('대표 사주 변경에 실패했습니다');
