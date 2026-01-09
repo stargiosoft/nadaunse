@@ -24,34 +24,41 @@ export function preloadImages(urls: string[], priority: 'high' | 'low' = 'low'):
       return;
     }
 
-    const delay = priority === 'high' ? 0 : 100;
+    // ⚡ 병렬 로딩: high는 즉시, low는 50ms 후 시작 (UI 블로킹 방지)
+    const startDelay = priority === 'high' ? 0 : 50;
     let loadedCount = 0;
     const totalCount = urls.length;
 
-    urls.forEach((url, index) => {
-      setTimeout(() => {
+    const loadImages = () => {
+      urls.forEach((url) => {
         const cleanedUrl = cleanImageUrl(url);
         const img = new Image();
         img.src = cleanedUrl;
-        
+
         img.onload = () => {
           loadedCount++;
           console.log(`✅ [Preload] 이미지 로드 완료: ${cleanedUrl} (${loadedCount}/${totalCount})`);
-          
+
           if (loadedCount === totalCount) {
             resolve();
           }
         };
-        
+
         img.onerror = () => {
           loadedCount++;
           console.warn(`⚠️ [Preload] 이미지 로드 실패: ${cleanedUrl} (${loadedCount}/${totalCount})`);
-          
+
           if (loadedCount === totalCount) {
             resolve();
           }
         };
-      }, index * delay);
-    });
+      });
+    };
+
+    if (startDelay === 0) {
+      loadImages();
+    } else {
+      setTimeout(loadImages, startDelay);
+    }
   });
 }
