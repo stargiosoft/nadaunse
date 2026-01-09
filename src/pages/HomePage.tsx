@@ -1502,10 +1502,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="bg-white relative w-full min-h-screen flex justify-center">
-      <div className="bg-white relative w-full max-w-[440px] min-h-screen flex flex-col items-center">
+    <div className="bg-white fixed inset-0 flex justify-center">
+      <div className="bg-white w-full max-w-[440px] h-full flex flex-col">
         {/* Top Navigation */}
-        <TopNavigationContainer 
+        <TopNavigationContainer
           selectedCategory={selectedCategory}
           onCategoryChange={handleCategoryChange}
           selectedType={selectedType}
@@ -1515,8 +1515,10 @@ export default function HomePage() {
           isVisible={showNavigation}
         />
 
-        {/* Content Area */}
-        <div className="content-stretch flex flex-col gap-[8px] items-start px-[20px] pt-[182px] pb-[60px] relative shrink-0 w-full">
+        {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Content Area */}
+          <div className="content-stretch flex flex-col gap-[8px] items-start px-[20px] pt-[182px] pb-[60px] relative shrink-0 w-full">
           
           {/* ⭐️ 초기 로딩 중: 스켈레톤 UI 표시 */}
           {isInitialLoading ? (
@@ -1569,6 +1571,7 @@ export default function HomePage() {
             </>
           )}
         </div>
+        </div>{/* ⭐ Scrollable Container 닫기 */}
       </div>
     </div>
   );

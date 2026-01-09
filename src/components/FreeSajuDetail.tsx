@@ -188,37 +188,31 @@ export default function FreeSajuDetail({
   }
 
   return (
-    <div className="bg-white relative min-h-screen w-full flex justify-center overscroll-none">
-      <div className="w-full max-w-[440px] relative overscroll-none">
+    <div className="bg-white fixed inset-0 flex justify-center">
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
         {/* Top Bar */}
-        <div className="bg-white h-[52px] relative shrink-0 w-full">
-          <div className="flex flex-col justify-center size-full">
-            <div className="box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] fixed top-0 left-1/2 -translate-x-1/2 z-50 bg-white w-full max-w-[440px]">
-              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                <div className="box-border content-stretch flex gap-[10px] items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]">
-                  <div className="relative shrink-0 size-[24px]"></div>
-                </div>
-                <p className="basis-0 font-semibold grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">상세 풀이</p>
-                <button
-                  onClick={onClose}
-                  className="group box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] bg-transparent border-none cursor-pointer transition-colors duration-200 active:bg-gray-100"
-                >
-                  <div className="relative shrink-0 size-[24px] transition-transform duration-200 group-active:scale-90 flex items-center justify-center">
-                    <svg className="block size-[20px]" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <g id="Box">
-                        <path d="M4 20L20 4" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                        <path d="M20 20L4 4" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                      </g>
-                    </svg>
-                  </div>
-                </button>
+        <div className="bg-white h-[52px] shrink-0 w-full z-20">
+          <div className="flex items-center justify-between px-[12px] h-full w-full">
+            <div className="opacity-0 p-[4px] size-[44px]" />
+            <p className="font-semibold text-[18px] text-black text-center tracking-[-0.36px]">상세 풀이</p>
+            <button
+              onClick={onClose}
+              className="group flex items-center justify-center p-[4px] rounded-[12px] size-[44px] bg-transparent border-none cursor-pointer transition-colors duration-200 active:bg-gray-100"
+            >
+              <div className="size-[24px] transition-transform duration-200 group-active:scale-90 flex items-center justify-center">
+                <svg className="block size-[20px]" fill="none" viewBox="0 0 24 24">
+                  <path d="M4 20L20 4" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                  <path d="M20 20L4 4" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                </svg>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="px-0 pb-[100px] pt-[12px]">
+        {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지 */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Content Area */}
+          <div className="px-0 pb-[100px] pt-[12px]">
           <motion.div 
             className="content-stretch flex flex-col gap-[40px] items-start relative shrink-0 w-full"
             variants={containerVariants}
@@ -463,6 +457,7 @@ export default function FreeSajuDetail({
             </motion.div>
           </motion.div>
         </div>
+        </div>{/* ⭐ Scrollable Container 닫기 */}
       </div>
     </div>
   );
