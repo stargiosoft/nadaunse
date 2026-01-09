@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
+import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 
 // 케밥 메뉴 아이콘 SVG path
 const KEBAB_ICON_PATH = "M8 2.75C7.58579 2.75 7.25 3.08579 7.25 3.5C7.25 3.91421 7.58579 4.25 8 4.25C8.41421 4.25 8.75 3.91421 8.75 3.5C8.75 3.08579 8.41421 2.75 8 2.75ZM8 7.25C7.58579 7.25 7.25 7.58579 7.25 8C7.25 8.41421 7.58579 8.75 8 8.75C8.41421 8.75 8.75 8.41421 8.75 8C8.75 7.58579 8.41421 7.25 8 7.25ZM8 11.75C7.58579 11.75 7.25 12.0858 7.25 12.5C7.25 12.9142 7.58579 13.25 8 13.25C8.41421 13.25 8.75 12.9142 8.75 12.5C8.75 12.0858 8.41421 11.75 8 11.75Z";
@@ -32,12 +33,10 @@ interface SajuCardProps {
 }
 
 /**
- * 띠 계산 (생년 기준)
+ * 띠 계산 (입춘 기준)
  */
-const getChineseZodiac = (birthDate: string): string => {
-  const year = parseInt(birthDate.split('-')[0] || birthDate.substring(0, 4));
-  const zodiacs = ['원숭이띠', '닭띠', '개띠', '돼지띠', '쥐띠', '소띠', '호랑이띠', '토끼띠', '용띠', '뱀띠', '말띠', '양띠'];
-  return zodiacs[year % 12];
+const getChineseZodiac = (birthDate: string, birthTime?: string): string => {
+  return getChineseZodiacByLichun(birthDate, birthTime);
 };
 
 /**
@@ -71,7 +70,7 @@ export default function SajuCard({
   showRadio = true,
   className = '',
 }: SajuCardProps) {
-  const zodiac = saju.zodiac || getChineseZodiac(saju.birth_date);
+  const zodiac = saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time);
 
   // 별자리 계산
   const getConstellationFromDate = () => {
