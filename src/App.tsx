@@ -46,6 +46,7 @@ import { supabase } from './lib/supabase';
 import { Toaster, toast } from 'sonner';
 import { Toast } from './components/ui/Toast';
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
+import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 페이지 이미지 프리로드
 import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
 
@@ -508,9 +509,12 @@ function PaymentNewPage() {
         contentId={id}
         onBack={() => navigate(`/`)}
         onPurchase={async () => {
+          // ⭐ 로딩 페이지 이미지 미리 로드 (사주 입력/선택 동안 백그라운드에서 로드)
+          preloadLoadingPageImages();
+
           // 결제 완료 후 사주 정보 유무 확인하여 분기
           const { data: { user } } = await supabase.auth.getUser();
-          
+
           console.log('🔍 [handlePurchaseComplete] 사주 정보 확인 시작');
           console.log('👤 [handlePurchaseComplete] user:', user?.id);
           
@@ -558,9 +562,12 @@ function PaymentNewPage() {
 
   // ⭐ allProducts에서 찾은 경우 (기존 로직 유지)
   const handlePurchaseComplete = async () => {
+    // ⭐ 로딩 페이지 이미지 미리 로드 (사주 입력/선택 동안 백그라운드에서 로드)
+    preloadLoadingPageImages();
+
     // 결제 완료 후 사주 정보 유무 확인하여 분기
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     console.log('🔍 [handlePurchaseComplete] 사주 정보 확인 시작');
     console.log('👤 [handlePurchaseComplete] user:', user?.id);
     
