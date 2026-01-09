@@ -1218,6 +1218,9 @@ export default function PaymentNew({
         specialDiscount={specialDiscount}
         totalPrice={totalPrice}
       />
+
+      {/* ⭐ 세션 만료 다이얼로그 (로그아웃 상태에서 결제 페이지 접근 시) */}
+      <SessionExpiredDialog isOpen={isSessionExpired} />
     </div>
   );
 }

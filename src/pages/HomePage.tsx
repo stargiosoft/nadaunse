@@ -424,9 +424,10 @@ interface ContentCardProps {
   content: MasterContent;
   onClick: () => void;
   isFeatured?: boolean;
+  index?: number;
 }
 
-function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps) {
+function ContentCard({ content, onClick, isFeatured = false, index = 0 }: ContentCardProps) {
   const isPaid = content.content_type === 'paid';
   
   if (isFeatured) {
@@ -442,7 +443,8 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
         {content.thumbnail_url ? (
           <img
             alt={content.title}
-            loading="lazy"
+            loading="eager"
+            fetchPriority="high"
             className="absolute inset-0 object-cover rounded-[16px] size-full"
             src={content.thumbnail_url}
             onLoad={(e) => {
@@ -496,7 +498,8 @@ function ContentCard({ content, onClick, isFeatured = false }: ContentCardProps)
           {content.thumbnail_url ? (
             <img
               alt={content.title}
-              loading="lazy"
+              loading={index < 5 ? "eager" : "lazy"}
+              fetchPriority={index < 5 ? "high" : "auto"}
               className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full"
               src={content.thumbnail_url}
               onLoad={(e) => {
@@ -1539,6 +1542,7 @@ export default function HomePage() {
                     <ContentCard
                       content={content}
                       onClick={() => handleContentClick(content.id)}
+                      index={index}
                     />
                     {index < contentsList.length - 1 && <Divider />}
                   </div>
