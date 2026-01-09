@@ -847,29 +847,27 @@ function FreeResultPage() {
   console.log('📌 [FreeResultPage] userName:', userName);
   console.log('📌 [FreeResultPage] contentId:', contentId);
   
-  // ⭐️ 상품 정보 로드 (allProducts + master_contents 통합 처리)
-  const [product, setProduct] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // ⭐️ 상품 정보 로드 (allProducts는 동기, master_contents는 비동기)
+  // allProducts 조회는 즉시 완료되므로 초기값으로 설정
+  const numericId = Number(id);
+  const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
+
+  const [product, setProduct] = useState<any>(staticProduct || null);
+  // ⭐️ allProducts에서 찾았으면 로딩 불필요
+  const [isLoading, setIsLoading] = useState(!staticProduct);
   const [recommendedContents, setRecommendedContents] = useState<any[]>([]);
 
   useEffect(() => {
-    const loadProduct = async () => {
-      console.log('🔍 [FreeResultPage] 상품 로드 시작...');
-      
-      // 먼저 allProducts에서 찾기 (숫자 ID인 경우)
-      const numericId = Number(id);
-      const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
-      
-      if (staticProduct) {
-        console.log('✅ [FreeResultPage] allProducts에서 발견:', staticProduct);
-        setProduct(staticProduct);
-        setIsLoading(false);
-        return;
-      }
+    // ⭐️ allProducts에서 이미 찾았으면 DB 조회 스킵
+    if (staticProduct) {
+      console.log('✅ [FreeResultPage] allProducts에서 즉시 로드:', staticProduct);
+      return;
+    }
 
-      // allProducts에 없으면 마스터 콘텐츠 조회 (UUID인 경우)
+    const loadProduct = async () => {
+      // ⭐️ master_contents 조회 (UUID 콘텐츠인 경우)
       if (id) {
-        console.log('🔍 [FreeResultPage] allProducts에 없음 → master_contents 조회');
+        console.log('🔍 [FreeResultPage] master_contents 조회 시작...');
         
         try {
           const { data, error } = await supabase

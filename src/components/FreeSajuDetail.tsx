@@ -75,33 +75,11 @@ export default function FreeSajuDetail({
   const [isBannerPressed, setIsBannerPressed] = useState(false); // ⭐️ 배너 프레스 상태
   const observerTarget = useRef<HTMLDivElement>(null);
   
-  // ⭐️ localStorage에서 결과 데이터 로드
-  const [cachedData, setCachedData] = useState<CachedData | null>(null);
-  const [dataLoadError, setDataLoadError] = useState(false);
-  const [isDataLoading, setIsDataLoading] = useState(true); // ⭐️ 초기 로딩 상태 추가
-
-  // 🔝 데이터 로딩 완료 후 스크롤을 최상단으로 이동
-  useEffect(() => {
-    // 로딩 완료 + 데이터가 있을 때만 스크롤 초기화
-    // (로딩 스피너 → 실제 콘텐츠 전환 시점에 실행)
-    if (!isDataLoading && cachedData) {
-      // setTimeout을 사용하여 DOM이 완전히 렌더링된 후 스크롤 실행
-      // iOS Safari/Chrome에서 requestAnimationFrame만으로는 부족할 수 있음
-      const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isDataLoading, cachedData]); // 로딩 상태 및 데이터 변경 시 실행
-
-  useEffect(() => {
+  // ⭐️ localStorage에서 결과 데이터 즉시 로드 (동기 작업이므로 로딩 불필요)
+  const loadCachedData = (): { data: CachedData | null; error: boolean } => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📋 [FreeSajuDetail] localStorage에서 데이터 로드 시작');
+    console.log('📋 [FreeSajuDetail] localStorage에서 데이터 즉시 로드');
     console.log('📌 [FreeSajuDetail] recordId (resultKey):', recordId);
-
-    // ⭐️ 로딩 시작
-    setIsDataLoading(true);
-    setDataLoadError(false);
 
     try {
       const dataStr = localStorage.getItem(recordId);
@@ -109,32 +87,34 @@ export default function FreeSajuDetail({
 
       if (!dataStr) {
         console.error('❌ [FreeSajuDetail] localStorage에 데이터 없음');
-        console.error('📌 [FreeSajuDetail] localStorage 전체 keys:', Object.keys(localStorage));
-        setDataLoadError(true);
-        setIsDataLoading(false); // ⭐️ 로딩 완료
-        return;
+        return { data: null, error: true };
       }
 
       const data: CachedData = JSON.parse(dataStr);
-      console.log('✅ [FreeSajuDetail] 데이터 파싱 완료:', data);
-      console.log('📌 [FreeSajuDetail] results 개수:', data.results?.length);
-
-      // ⭐️ results가 빈 배열이어도 허용 (에러로 처리하지 않음)
-      if (data.results && data.results.length === 0) {
-        console.warn('⚠️ [FreeSajuDetail] results 배열이 비어있지만 표시는 진행');
-      }
-
-      setCachedData(data);
+      console.log('✅ [FreeSajuDetail] 데이터 파싱 완료, results 개수:', data.results?.length);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      return { data, error: false };
     } catch (error) {
       console.error('❌ [FreeSajuDetail] 데이터 로드 중 에러:', error);
-      console.error('📌 [FreeSajuDetail] localStorage recordId:', recordId);
-      console.error('📌 [FreeSajuDetail] localStorage raw data:', localStorage.getItem(recordId));
-      setDataLoadError(true);
-    } finally {
-      setIsDataLoading(false); // ⭐️ 로딩 완료
+      return { data: null, error: true };
     }
+  };
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  // ⭐️ 초기화 시점에 즉시 로드 (useState 초기값으로 함수 실행)
+  const initialLoad = loadCachedData();
+  const [cachedData, setCachedData] = useState<CachedData | null>(initialLoad.data);
+  const [dataLoadError, setDataLoadError] = useState(initialLoad.error);
+
+  // 🔝 컴포넌트 마운트 시 스크롤을 최상단으로 이동
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // ⭐️ recordId가 변경되면 데이터 다시 로드 (페이지 전환 시)
+  useEffect(() => {
+    const result = loadCachedData();
+    setCachedData(result.data);
+    setDataLoadError(result.error);
   }, [recordId]);
 
   /**
@@ -189,19 +169,9 @@ export default function FreeSajuDetail({
     };
   }, [visibleCount, recommendedProducts.length]);
 
-  // ⭐️ 로딩 중이거나 데이터가 아직 없을 때 - 로딩 스피너 표시 (깜빡임 완전 방지)
-  if (isDataLoading || (!dataLoadError && !cachedData)) {
-    return (
-      <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
-        <div className="flex flex-col items-center gap-[12px]">
-          <div className="animate-spin rounded-full h-[32px] w-[32px] border-b-2 border-[#48b2af]"></div>
-        </div>
-      </div>
-    );
-  }
-
-  // ⭐️ 데이터 로드 실패 시 에러 화면 (로딩 완료 + 에러 확정 시에만)
-  if (dataLoadError) {
+  // ⭐️ 데이터 로드 실패 또는 데이터 없음 시 에러 화면
+  // (localStorage 읽기는 동기 작업이므로 로딩 스피너 불필요)
+  if (dataLoadError || !cachedData) {
     return (
       <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
         <div className="text-center px-[20px]">
