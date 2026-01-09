@@ -291,155 +291,120 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
   // Load content and questions
   useEffect(() => {
-    // ⭐ contentId가 변경되면 즉시 상태 초기화 (이전 콘텐츠 깜빡임 방지)
-    setContent(null);
-    setQuestions([]);
-    setIsFreeContent(null);
-    setIsLoading(true);
-    setIsCouponLoaded(false); // ⭐ 쿠폰 로딩 상태도 초기화 (다른 콘텐츠에서 true였으면 문제)
-    
-    const fetchContent = async () => {
-      // 로그인 상태 확인
-      const userJson = localStorage.getItem('user');
-      setIsLoggedIn(!!userJson);
-      
-      // 🚀 먼저 캐시에서 로드 (Optimistic UI)
-      const hasCache = loadFromCache();
-      if (hasCache) {
-        console.log('✅ 캐시에서 즉시 표시 (백그라운드에서 최신 데이터 로드 중...)');
-        setIsLoading(false); // ⭐ 캐시가 있으면 즉시 로딩 해제
-        
-        // ⭐ 백그라운드에서 최신 데이터 업데이트 (비동기, 사용자는 기다리지 않음)
-        updateInBackground(userJson);
-        return; // ⭐ 조기 종료
-      }
-      
-      // ⭐ 캐시가 없을 때만 로딩 표시
-      setIsLoading(true);
-      
-      // ⭐ 캐시가 없을 때: content_type만 먼저 빠르게 조회
-      try {
-        const { data: typeData } = await supabase
-          .from('master_contents')
-          .select('content_type')
-          .eq('id', contentId)
-          .single();
-        
-        if (typeData) {
-          setIsFreeContent(typeData.content_type === 'free');
-          console.log('⚡ content_type 먼저 확인:', typeData.content_type);
-        }
-      } catch (error) {
-        console.error('content_type 조회 실패:', error);
-      }
-      
-      // DB에서 최신 데이터 로드
-      await updateInBackground(userJson);
-    };
+    // 로그인 상태 확인
+    const userJson = localStorage.getItem('user');
+    setIsLoggedIn(!!userJson);
 
-    // ⭐ 백그라운드 업데이트 함수 (캐시 유무와 관계없이 호출)
-    const updateInBackground = async (userJson: string | null) => {
+    // ⭐ 백그라운드 업데이트 함수 (API 병렬화 적용)
+    const updateInBackground = async (userJsonParam: string | null) => {
       try {
-        // 🔄 최신 데이터를 DB에서 불러옴
-        const { data: contentData, error: contentError } = await supabase
-          .from('master_contents')
-          .select('id, title, content_type, category_main, thumbnail_url, description, questioner_info, weekly_clicks, view_count, price_original, price_discount, discount_rate, status')
-          .eq('id', contentId)
-          .eq('status', 'deployed')
-          .single();
+        // 🚀 콘텐츠 + 질문 동시 조회 (Promise.all)
+        const [contentResult, questionsResult] = await Promise.all([
+          supabase
+            .from('master_contents')
+            .select('id, title, content_type, category_main, thumbnail_url, description, questioner_info, weekly_clicks, view_count, price_original, price_discount, discount_rate, status')
+            .eq('id', contentId)
+            .eq('status', 'deployed')
+            .single(),
+          supabase
+            .from('master_content_questions')
+            .select('*')
+            .eq('content_id', contentId)
+            .order('question_order', { ascending: true })
+        ]);
+
+        const { data: contentData, error: contentError } = contentResult;
+        const { data: questionsData, error: questionsError } = questionsResult;
 
         if (contentError || !contentData) {
           console.error('콘텐츠 조회 실패:', contentError);
           throw new Error('콘텐츠를 불러올 수 없습니다.');
         }
 
-      // 질문 리스트 조회
-      const { data: questionsData, error: questionsError } = await supabase
-        .from('master_content_questions')
-        .select('*')
-        .eq('content_id', contentId)
-        .order('question_order', { ascending: true });
+        if (questionsError) {
+          console.error('질문 조회 실패:', questionsError);
+        }
 
-      if (questionsError) {
-        console.error('질문 조회 실패:', questionsError);
-      }
+        const finalQuestionsData = questionsData || [];
 
-      const finalQuestionsData = questionsData || [];
-      
-      // 🎨 썸네일 URL 최적화 (detail용 - 리스트와 동일한 크기로 캐시 히트)
-      const optimizedContent = {
-        ...contentData,
-        thumbnail_url: getThumbnailUrl(contentData.thumbnail_url, 'detail')
-      } as MasterContent;
-      
-      // 💰 가격 정보 디버깅 로그
-      console.log('💰 [상품 상세] 가격 정보:', {
-        price_original: optimizedContent.price_original,
-        price_discount: optimizedContent.price_discount,
-        discount_rate: optimizedContent.discount_rate,
-        final_price_with_welcome_coupon: (optimizedContent.price_discount || 0) - 5000,
-        isLoggedIn: !!userJson
-      });
-      
-      // 🎫 로그인 유저��� 경우 쿠폰 조회
-      if (userJson) {
-        try {
-          const user = JSON.parse(userJson);
+        // 🎨 썸네일 URL 최적화 (detail용 - 리스트와 동일한 크기로 캐시 히트)
+        const optimizedContent = {
+          ...contentData,
+          thumbnail_url: getThumbnailUrl(contentData.thumbnail_url, 'detail')
+        } as MasterContent;
 
-          // 유효한 UUID인지 확인
-          const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
-          if (!isValidUUID) {
-            console.warn('⚠️ [Warning] Invalid user UUID (dev_user detected), skipping user data fetch.');
-            setIsCheckingAnswers(false);
-            throw new Error('INVALID_UUID');
-          }
+        // 💰 가격 정보 디버깅 로그
+        console.log('💰 [상품 상세] 가격 정보:', {
+          price_original: optimizedContent.price_original,
+          price_discount: optimizedContent.price_discount,
+          discount_rate: optimizedContent.discount_rate,
+          final_price_with_welcome_coupon: (optimizedContent.price_discount || 0) - 5000,
+          isLoggedIn: !!userJsonParam
+        });
 
-          const { data: couponsData, error: couponsError } = await supabase
-            .from('user_coupons')
-            .select(`
-              id,
-              is_used,
-              expired_at,
-              coupons (
-                name,
-                discount_amount,
-                coupon_type
-              )
-            `)
-            .eq('user_id', user.id)
-            .eq('is_used', false);
-
-          if (couponsError) {
-            console.error('❌ 쿠폰 조회 실패:', couponsError);
-          } else {
-            // 만료되지 않은 쿠폰만 필터링
-            const validCoupons = (couponsData || []).filter((coupon: any) => {
-              if (!coupon.expired_at) return true; // 만료일 없음 = 무제한
-              return new Date(coupon.expired_at) > new Date(); // 만료일이 미래인 경우만
-            }) as UserCoupon[];
-            
-            setUserCoupons(validCoupons);
-            console.log('🎟️ [쿠폰 조회] 사용 가능한 쿠폰:', validCoupons.length, '개');
-            validCoupons.forEach((coupon, idx) => {
-              console.log(`  [${idx + 1}] 쿠폰명: "${coupon.coupons.name}", 할인금액: ${coupon.coupons.discount_amount}원`);
-            });
-          }
-          
-          // ⭐ 답변 존재 여부 확인 (타로 콘텐츠용)
+        // 🎫 로그인/로그아웃에 따른 쿠폰 조회 (병렬화)
+        if (userJsonParam) {
           try {
-            console.log('🔍 [타로] 답변 존재 여부 확인 시작...');
-            const { data: ordersData, error: ordersError } = await supabase
-              .from('orders')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('content_id', contentId)  // ✅ product_id → content_id로 수정
-              .order('created_at', { ascending: false })
-              .limit(1);
+            const user = JSON.parse(userJsonParam);
 
+            // 유효한 UUID인지 확인
+            const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
+            if (!isValidUUID) {
+              console.warn('⚠️ [Warning] Invalid user UUID (dev_user detected), skipping user data fetch.');
+              setIsCheckingAnswers(false);
+              throw new Error('INVALID_UUID');
+            }
+
+            // 🚀 쿠폰 + 주문 동시 조회 (Promise.all)
+            const [couponsResult, ordersResult] = await Promise.all([
+              supabase
+                .from('user_coupons')
+                .select(`
+                  id,
+                  is_used,
+                  expired_at,
+                  coupons (
+                    name,
+                    discount_amount,
+                    coupon_type
+                  )
+                `)
+                .eq('user_id', user.id)
+                .eq('is_used', false),
+              supabase
+                .from('orders')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('content_id', contentId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+            ]);
+
+            const { data: couponsData, error: couponsError } = couponsResult;
+            const { data: ordersData, error: ordersError } = ordersResult;
+
+            // 쿠폰 처리
+            if (couponsError) {
+              console.error('❌ 쿠폰 조회 실패:', couponsError);
+            } else {
+              // 만료되지 않은 쿠폰만 필터링
+              const validCoupons = (couponsData || []).filter((coupon: any) => {
+                if (!coupon.expired_at) return true; // 만료일 없음 = 무제한
+                return new Date(coupon.expired_at) > new Date(); // 만료일이 미래인 경우만
+              }) as UserCoupon[];
+
+              setUserCoupons(validCoupons);
+              console.log('🎟️ [쿠폰 조회] 사용 가능한 쿠폰:', validCoupons.length, '개');
+              validCoupons.forEach((coupon, idx) => {
+                console.log(`  [${idx + 1}] 쿠폰명: "${coupon.coupons.name}", 할인금액: ${coupon.coupons.discount_amount}원`);
+              });
+            }
+
+            // 답변 존재 여부 확인 (타로 콘텐츠용)
             if (!ordersError && ordersData && ordersData.length > 0) {
               const orderId = ordersData[0].id;
               console.log('✅ [타로] 주문 찾음, orderId:', orderId);
-              
+
               // order_answers에서 답변 존재 여부 확인
               const { data: answersData, error: answersError } = await supabase
                 .from('order_answers')
@@ -448,69 +413,107 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 .limit(1);
 
               if (!answersError && answersData && answersData.length > 0) {
-                console.log('����������� [타로] 답변 이미 존재함 → 카드 선택 화면 스킵');
+                console.log('✅ [타로] 답변 이미 존재함 → 카드 선택 화면 스킵');
                 setHasExistingAnswers(true);
               } else {
                 console.log('ℹ️ [타로] 답변 없음 → 카드 선택 화면 표시');
                 setHasExistingAnswers(false);
               }
             } else {
-              console.log('ℹ️ [타로] 주��� 내역 없음');
+              console.log('ℹ️ [타로] 주문 내역 없음');
               setHasExistingAnswers(false);
             }
-          } catch (error) {
-            console.error('❌ [타���] 답변 체크 중 오류:', error);
-            setHasExistingAnswers(false);
-          } finally {
+
+            setIsCheckingAnswers(false);
+          } catch (error: any) {
+            if (error.message !== 'INVALID_UUID') {
+              console.error('쿠폰 조회 중 오류:', error);
+            }
             setIsCheckingAnswers(false);
           }
-        } catch (error: any) {
-          if (error.message !== 'INVALID_UUID') {
-            console.error('쿠폰 조회 중 오류:', error);
-          }
+        } else {
+          // 로그아웃 상태면 답변 체크 불필요
           setIsCheckingAnswers(false);
-        }
-      } else {
-        // 로그아웃 상태면 답변 체크 불필요
-        setIsCheckingAnswers(false);
 
-        // ⭐ 로그아웃 상태에서도 welcome 쿠폰 금액 조회 (혜택가 표시용)
-        try {
-          const { data: welcomeCouponData } = await supabase
-            .from('coupons')
-            .select('discount_amount')
-            .eq('coupon_type', 'welcome')
-            .eq('is_active', true)
-            .single();
+          // ⭐ 로그아웃 상태에서도 welcome 쿠폰 금액 조회 (혜택가 표시용)
+          try {
+            const { data: welcomeCouponData } = await supabase
+              .from('coupons')
+              .select('discount_amount')
+              .eq('coupon_type', 'welcome')
+              .eq('is_active', true)
+              .single();
 
-          if (welcomeCouponData) {
-            setWelcomeCouponDiscount(welcomeCouponData.discount_amount);
-            console.log('💰 [로그아웃] welcome 쿠폰 할인 금액:', welcomeCouponData.discount_amount);
+            if (welcomeCouponData) {
+              setWelcomeCouponDiscount(welcomeCouponData.discount_amount);
+              console.log('💰 [로그아웃] welcome 쿠폰 할인 금액:', welcomeCouponData.discount_amount);
+            }
+          } catch (couponError) {
+            console.warn('⚠️ [로그아웃] welcome 쿠폰 조회 실패:', couponError);
+          } finally {
+            // ⭐ 쿠폰 로딩 완료 (가격 영역 동시 표시용)
+            setIsCouponLoaded(true);
           }
-        } catch (couponError) {
-          console.warn('⚠️ [로그아웃] welcome 쿠폰 조회 실패:', couponError);
-        } finally {
-          // ⭐ 쿠폰 로딩 완료 (가격 영역 동시 표시용)
-          setIsCouponLoaded(true);
         }
-      }
-      
-      // 💾 새 캐시 저장 (최신 데이터로 덮어쓰기)
-      saveToCache(optimizedContent, finalQuestionsData as Question[]);
-      
-      // ✅ 최신 데이터로 UI 업데이트
-      setContent(optimizedContent);
-      setQuestions(finalQuestionsData as Question[]);
-      // 🔥 중요: DB에서 불러온 최신 content_type으로 업데이트
-      setIsFreeContent(optimizedContent.content_type === 'free');
-      setIsLoading(false);
-      
-      console.log('✅ 최신 데이터로 업데이트 완��', { content_type: optimizedContent.content_type });
+
+        // 💾 새 캐시 저장 (최신 데이터로 덮어쓰기)
+        saveToCache(optimizedContent, finalQuestionsData as Question[]);
+
+        // ✅ 최신 데이터로 UI 업데이트
+        setContent(optimizedContent);
+        setQuestions(finalQuestionsData as Question[]);
+        // 🔥 중요: DB에서 불러온 최신 content_type으로 업데이트
+        setIsFreeContent(optimizedContent.content_type === 'free');
+        setIsLoading(false);
+
+        console.log('✅ 최신 데이터로 업데이트 완료', { content_type: optimizedContent.content_type });
       } catch (error) {
         console.error('❌ 백그라운드 업데이트 실패:', error);
         // 에러 시에도 로딩 해제
         setIsLoading(false);
       }
+    };
+
+    // 🚀 캐시 확인을 상태 초기화 전에 먼저 수행!
+    const hasCache = loadFromCache();
+
+    if (hasCache) {
+      console.log('✅ 캐시에서 즉시 표시 (백그라운드에서 최신 데이터 로드 중...)');
+      // ⭐ 캐시가 있으면 상태 초기화 없이 즉시 표시
+      setIsLoading(false);
+      setIsCouponLoaded(false);
+
+      // ⭐ 백그라운드에서 최신 데이터 업데이트 (비동기, 사용자는 기다리지 않음)
+      updateInBackground(userJson);
+      return; // ⭐ 조기 종료
+    }
+
+    // ⭐ 캐시가 없을 때만 상태 초기화 (이전 콘텐츠 깜빡임 방지)
+    setContent(null);
+    setQuestions([]);
+    setIsFreeContent(null);
+    setIsLoading(true);
+    setIsCouponLoaded(false);
+
+    const fetchContent = async () => {
+      // ⭐ 캐시가 없을 때: content_type만 먼저 빠르게 조회
+      try {
+        const { data: typeData } = await supabase
+          .from('master_contents')
+          .select('content_type')
+          .eq('id', contentId)
+          .single();
+
+        if (typeData) {
+          setIsFreeContent(typeData.content_type === 'free');
+          console.log('⚡ content_type 먼저 확인:', typeData.content_type);
+        }
+      } catch (error) {
+        console.error('content_type 조회 실패:', error);
+      }
+
+      // DB에서 최신 데이터 로드
+      await updateInBackground(userJson);
     };
 
     fetchContent();
