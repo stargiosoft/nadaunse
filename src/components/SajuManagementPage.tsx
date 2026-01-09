@@ -62,10 +62,34 @@ interface SajuManagementPageProps {
 }
 
 export default function SajuManagementPage({ onBack, onNavigateToInput, onNavigateToAdd, onEditMySaju, onEditOtherSaju }: SajuManagementPageProps) {
-  const [mySaju, setMySaju] = useState<SajuInfo | null>(null);
-  const [otherSajuList, setOtherSajuList] = useState<SajuInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedSajuId, setSelectedSajuId] = useState<string | null>(null);
+  // 🚀 동기적 캐시 확인 (useState 초기화 시점)
+  const getInitialState = () => {
+    try {
+      const cachedJson = localStorage.getItem('saju_records_cache');
+      if (cachedJson) {
+        const cached = JSON.parse(cachedJson) as SajuInfo[];
+        if (cached.length > 0) {
+          console.log('🚀 [SajuManagementPage] 초기화 시 캐시 발견 → 즉시 렌더링');
+          const ownerSaju = cached.find(s => s.notes === '본인');
+          const others = cached.filter(s => s.notes !== '본인');
+          // 대표 사주 선택
+          const primarySaju = cached.find(s => s.is_primary === true);
+          const selectedId = primarySaju?.id || ownerSaju?.id || (cached.length > 0 ? cached[0].id : null);
+          return { mySaju: ownerSaju || null, otherSajuList: others, selectedId, hasCache: true };
+        }
+      }
+    } catch (e) {
+      console.error('❌ [SajuManagementPage] 초기 캐시 파싱 실패:', e);
+    }
+    return { mySaju: null, otherSajuList: [], selectedId: null, hasCache: false };
+  };
+
+  const initialState = getInitialState();
+  const [mySaju, setMySaju] = useState<SajuInfo | null>(initialState.mySaju);
+  const [otherSajuList, setOtherSajuList] = useState<SajuInfo[]>(initialState.otherSajuList);
+  // 🚀 캐시가 있으면 isLoading: false로 시작 (스켈레톤 없이 즉시 렌더링)
+  const [isLoading, setIsLoading] = useState(!initialState.hasCache);
+  const [selectedSajuId, setSelectedSajuId] = useState<string | null>(initialState.selectedId);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [isPrimarySajuChangeDialogOpen, setIsPrimarySajuChangeDialogOpen] = useState(false);
@@ -273,34 +297,8 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   };
 
   useEffect(() => {
-    // 🚀 캐시 우선 렌더링: localStorage에서 캐시된 사주 데이터 확인
-    const cachedRecordsJson = localStorage.getItem('saju_records_cache');
-    if (cachedRecordsJson) {
-      try {
-        const cachedRecords = JSON.parse(cachedRecordsJson) as SajuInfo[];
-        if (cachedRecords.length > 0) {
-          console.log('✅ [SajuManagementPage] 캐시 데이터 사용 → 즉시 렌더링');
-          setSajuList(cachedRecords);
-          setIsLoading(false);
-
-          // 백그라운드에서 API 업데이트
-          loadSajuList();
-
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (session?.user) {
-              loadSajuList();
-            }
-          });
-
-          return () => {
-            subscription.unsubscribe();
-          };
-        }
-      } catch (e) {
-        console.error('❌ [SajuManagementPage] 캐시 파싱 실패:', e);
-      }
-    }
-
+    // 🚀 캐시가 있으면 백그라운드에서만 업데이트 (이미 useState에서 렌더링됨)
+    // 캐시가 없으면 로딩 표시 후 API 호출
     loadSajuList();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

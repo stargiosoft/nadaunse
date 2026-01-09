@@ -30,9 +30,33 @@ export default function SajuSelectPage() {
   const navigate = useNavigate();
   const { id: productId } = useParams();
   const location = useLocation();
-  const [selectedSajuId, setSelectedSajuId] = useState<string | null>(null);
-  const [sajuList, setSajuList] = useState<SajuRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // 🚀 동기적 캐시 확인 (useState 초기화 시점)
+  const getInitialState = () => {
+    try {
+      const cachedJson = localStorage.getItem('saju_records_cache');
+      if (cachedJson) {
+        const cached = JSON.parse(cachedJson) as SajuRecord[];
+        if (cached.length > 0) {
+          console.log('🚀 [SajuSelectPage] 초기화 시 캐시 발견 → 즉시 렌더링');
+          // 대표 사주 자동 선택
+          const primarySaju = cached.find(s => s.is_primary);
+          const mySaju = cached.find(s => s.notes === '본인');
+          const selectedId = primarySaju?.id || mySaju?.id || cached[0]?.id || null;
+          return { list: cached, selectedId, hasCache: true };
+        }
+      }
+    } catch (e) {
+      console.error('❌ [SajuSelectPage] 초기 캐시 파싱 실패:', e);
+    }
+    return { list: [], selectedId: null, hasCache: false };
+  };
+
+  const initialState = getInitialState();
+  const [selectedSajuId, setSelectedSajuId] = useState<string | null>(initialState.selectedId);
+  const [sajuList, setSajuList] = useState<SajuRecord[]>(initialState.list);
+  // 🚀 캐시가 있으면 isLoading: false로 시작 (스켈레톤 없이 즉시 렌더링)
+  const [isLoading, setIsLoading] = useState(!initialState.hasCache);
   const [showLoading, setShowLoading] = useState(false);
   const [loadingName, setLoadingName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false); // ⭐ 중복 호출 방지
@@ -143,37 +167,8 @@ export default function SajuSelectPage() {
       console.log('💾 [SajuSelectPage] referrer 저장: /purchase-history');
     }
 
-    // 🚀 캐시 우선 렌더링: localStorage에서 캐시된 사주 데이터 확인
-    const cachedRecordsJson = localStorage.getItem('saju_records_cache');
-    if (cachedRecordsJson) {
-      try {
-        const cachedRecords = JSON.parse(cachedRecordsJson) as SajuRecord[];
-        if (cachedRecords.length > 0) {
-          console.log('✅ [SajuSelectPage] 캐시 데이터 사용 → 즉시 렌더링');
-          setSajuList(cachedRecords);
-
-          // 대표 사주 자동 선택
-          const primarySaju = cachedRecords.find(s => s.is_primary);
-          const mySaju = cachedRecords.find(s => s.notes === '본인');
-          if (primarySaju) {
-            setSelectedSajuId(primarySaju.id);
-          } else if (mySaju) {
-            setSelectedSajuId(mySaju.id);
-          } else if (cachedRecords.length > 0) {
-            setSelectedSajuId(cachedRecords[0].id);
-          }
-
-          setIsLoading(false);
-
-          // 백그라운드에서 API 업데이트
-          loadSajuList();
-          return;
-        }
-      } catch (e) {
-        console.error('❌ [SajuSelectPage] 캐시 파싱 실패:', e);
-      }
-    }
-
+    // 🚀 캐시가 있으면 백그라운드에서만 업데이트 (이미 useState에서 렌더링됨)
+    // 캐시가 없으면 로딩 표시 후 API 호출
     loadSajuList();
   }, [location]);
 

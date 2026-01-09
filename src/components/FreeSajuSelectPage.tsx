@@ -46,25 +46,50 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
 
   // ⭐ prefetchedSajuRecords(전체 배열)가 있으면 우선 사용, 없으면 prefetchedMySaju(단일) 사용
   const hasPrefetchedData = !!(prefetchedSajuRecords?.length || prefetchedMySaju);
-  const initialRecords = prefetchedSajuRecords?.length
-    ? prefetchedSajuRecords
-    : (prefetchedMySaju ? [prefetchedMySaju] : []);
 
-  const [sajuRecords, setSajuRecords] = useState<SajuRecord[]>(initialRecords);
+  // 🚀 동기적 캐시 확인 (useState 초기화 시점)
+  const getInitialState = () => {
+    // prefetched 데이터가 있으면 우선 사용
+    if (prefetchedSajuRecords?.length) {
+      return { records: prefetchedSajuRecords, hasCache: true };
+    }
+    if (prefetchedMySaju) {
+      return { records: [prefetchedMySaju], hasCache: true };
+    }
+
+    // localStorage 캐시 확인
+    try {
+      const cachedJson = localStorage.getItem('saju_records_cache');
+      if (cachedJson) {
+        const cached = JSON.parse(cachedJson) as SajuRecord[];
+        if (cached.length > 0) {
+          console.log('🚀 [FreeSajuSelectPage] 초기화 시 캐시 발견 → 즉시 렌더링');
+          return { records: cached, hasCache: true };
+        }
+      }
+    } catch (e) {
+      console.error('❌ [FreeSajuSelectPage] 초기 캐시 파싱 실패:', e);
+    }
+
+    return { records: [], hasCache: false };
+  };
+
+  const initialState = getInitialState();
+  const [sajuRecords, setSajuRecords] = useState<SajuRecord[]>(initialState.records);
 
   // ⭐ 초기 선택: 대표 사주 > 본인 사주 > 첫번째
   const getInitialSelectedId = () => {
-    if (!initialRecords.length) return null;
-    const primary = initialRecords.find(r => r.is_primary);
+    if (!initialState.records.length) return null;
+    const primary = initialState.records.find(r => r.is_primary);
     if (primary) return primary.id;
-    const mySaju = initialRecords.find(r => r.notes === '본인');
+    const mySaju = initialState.records.find(r => r.notes === '본인');
     if (mySaju) return mySaju.id;
-    return initialRecords[0].id;
+    return initialState.records[0].id;
   };
 
   const [selectedSajuId, setSelectedSajuId] = useState<string | null>(getInitialSelectedId());
-  // ⭐ prefetched 데이터가 있으면 로딩 스킵
-  const [isLoading, setIsLoading] = useState(!hasPrefetchedData);
+  // 🚀 캐시가 있으면 isLoading: false로 시작 (스켈레톤 없이 즉시 렌더링)
+  const [isLoading, setIsLoading] = useState(!initialState.hasCache);
   const [isDeleting, setIsDeleting] = useState(false);
   
   // ⭐ 케밥 메뉴 상태
@@ -203,37 +228,8 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
       return;
     }
 
-    // 🚀 캐시 우선 렌더링: localStorage에서 캐시된 사주 데이터 확인
-    const cachedRecordsJson = localStorage.getItem('saju_records_cache');
-    if (cachedRecordsJson) {
-      try {
-        const cachedRecords = JSON.parse(cachedRecordsJson) as SajuRecord[];
-        if (cachedRecords.length > 0) {
-          console.log('✅ [FreeSajuSelectPage] 캐시 데이터 사용 → 즉시 렌더링');
-          setSajuRecords(cachedRecords);
-
-          // 대표 사주 자동 선택
-          const primarySaju = cachedRecords.find(r => r.is_primary);
-          const mySaju = cachedRecords.find(r => r.notes === '본인');
-          if (primarySaju) {
-            setSelectedSajuId(primarySaju.id);
-          } else if (mySaju) {
-            setSelectedSajuId(mySaju.id);
-          } else {
-            setSelectedSajuId(cachedRecords[0].id);
-          }
-
-          setIsLoading(false);
-
-          // 백그라운드에서 API 업데이트
-          loadSajuRecords();
-          return;
-        }
-      } catch (e) {
-        console.error('❌ [FreeSajuSelectPage] 캐시 파싱 실패:', e);
-      }
-    }
-
+    // 🚀 캐시가 있으면 백그라운드에서만 업데이트 (이미 useState에서 렌더링됨)
+    // 캐시가 없으면 로딩 표시 후 API 호출
     loadSajuRecords();
   }, [productId, navigate, onBack, hasPrefetchedData]);
 
