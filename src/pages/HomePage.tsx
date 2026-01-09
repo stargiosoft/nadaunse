@@ -761,16 +761,26 @@ export default function HomePage() {
   // 🚀 백그라운드에서 나머지 콘텐츠 프리페칭 (현재 필터 기준)
   const prefetchRemainingContents = useCallback(async (totalCount: number, category: TabCategory, type: 'all' | 'paid' | 'free') => {
     try {
-      const remainingCount = totalCount - 10;
-      const batchSize = 20; // 한 번에 20개씩 로드
-      let loadedCount = 0;
       const cacheKey = getCacheKey(category, type);
 
-      console.log(`🔮 [Prefetch] 총 ${remainingCount}개 콘텐츠를 백그라운드에서 로드합니다... (${category}/${type})`);
+      // ⚡ 캐시에 이미 있는 개수 확인 (거기서부터 시작)
+      const existingCache = localStorage.getItem(cacheKey);
+      const cachedCount = existingCache ? JSON.parse(existingCache).data.length : 10;
+
+      const remainingCount = totalCount - cachedCount;
+      const batchSize = 20; // 한 번에 20개씩 로드
+      let loadedCount = 0;
+
+      if (remainingCount <= 0) {
+        console.log(`✅ [Prefetch] 이미 모든 콘텐츠가 캐시됨 (${cachedCount}/${totalCount})`);
+        return;
+      }
+
+      console.log(`🔮 [Prefetch] 총 ${remainingCount}개 콘텐츠를 백그라운드에서 로드합니다... (${category}/${type}, 시작: ${cachedCount})`);
 
       // 여러 배치로 나누어 로드
       while (loadedCount < remainingCount) {
-        const startIndex = 10 + loadedCount;
+        const startIndex = cachedCount + loadedCount;
         const endIndex = Math.min(startIndex + batchSize - 1, totalCount - 1);
 
         console.log(`🔮 [Prefetch] 배치 로드 중... (${startIndex} ~ ${endIndex})`);
@@ -928,13 +938,63 @@ export default function HomePage() {
       // 🚀 Phase 1: 모든 필터에서 캐시 활용
       const hasCache = loadFromCache(selectedCategory, selectedType);
 
-      // 캐시가 있어도 이미지 로딩을 위해 약간의 딜레이 후 스켈레톤 해제
+      // ⚡ 캐시 히트 시: 즉시 UI 표시 + 백그라운드에서 이미지 프리로드 & 나머지 프리페칭
       if (hasCache) {
         console.log(`⚡ [Cache Hit] 캐시에서 즉시 로드 (${selectedCategory}/${selectedType})`);
-        // 🔧 이미지 프리로드 시간 확보를 위해 최소 딜레이 적용
-        setTimeout(() => {
-          setIsInitialLoading(false);
-        }, 100);
+        setIsInitialLoading(false);
+
+        // 🚀 백그라운드에서 이미지 프리로드 + 나머지 콘텐츠 프리페칭
+        (async () => {
+          try {
+            const cacheKey = getCacheKey(selectedCategory, selectedType);
+            const cached = localStorage.getItem(cacheKey);
+
+            if (cached) {
+              const cachedData = JSON.parse(cached).data as MasterContent[];
+
+              // 🖼️ 캐시된 콘텐츠 이미지 프리로드 (중복 체크)
+              const imageUrls = cachedData
+                .map(c => c.thumbnail_url)
+                .filter(url => url && !preloadedUrlsRef.current.has(url)) as string[];
+
+              if (imageUrls.length > 0) {
+                console.log(`🖼️ [Cache Preload] ${imageUrls.length}개 이미지 프리로드 시작`);
+                await preloadImages(imageUrls, 'high');
+                imageUrls.forEach(url => preloadedUrlsRef.current.add(url));
+                console.log(`✅ [Cache Preload] ${imageUrls.length}개 이미지 프리로드 완료`);
+              }
+            }
+
+            // 전체 콘텐츠 개수 조회
+            let countQuery = supabase
+              .from('master_contents')
+              .select('id', { count: 'exact', head: true })
+              .eq('status', 'deployed');
+
+            if (selectedCategory !== '전체') {
+              countQuery = countQuery.eq('category_main', selectedCategory);
+            }
+            if (selectedType === 'paid') {
+              countQuery = countQuery.eq('content_type', 'paid');
+            } else if (selectedType === 'free') {
+              countQuery = countQuery.eq('content_type', 'free');
+            }
+
+            const { count } = await countQuery;
+            const cachedCount = cached ? JSON.parse(cached).data.length : 0;
+
+            console.log(`📊 [Cache Check] 캐시: ${cachedCount}개, 전체: ${count}개`);
+
+            // 캐시 데이터가 전체보다 적으면 나머지 프리페칭
+            if (count && cachedCount < count) {
+              console.log(`🔮 [Prefetch] 나머지 ${count - cachedCount}개 백그라운드 로드 시작`);
+              prefetchRemainingContents(count, selectedCategory, selectedType);
+            }
+          } catch (error) {
+            console.warn('⚠️ [Cache Check] 전체 개수 확인 실패 (무시):', error);
+          }
+        })();
+
         return;
       }
 
