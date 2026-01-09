@@ -39,27 +39,56 @@ export default function SajuResultPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref
   const [isSessionExpired, setIsSessionExpired] = useState(false);
 
+  // ⭐ 세션 체크 상태 추가 (알림톡 링크 접속 시 세션 없으면 로그인 페이지로 리다이렉트)
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [hasValidSession, setHasValidSession] = useState(false);
+
+  // ⭐ 다른 계정 주문 에러 상태 (A 계정 구매 → B 계정 로그인 시)
+  const [isWrongAccount, setIsWrongAccount] = useState(false);
+
   console.log('🔍 [SajuResultPage] 초기화:', { orderId, contentId, startPage, currentPage });
 
-  // ⭐ 세션 체크 - 로그아웃 상태면 다이얼로그 표시
+  // ⭐ 세션 체크 - 알림톡 링크 접속 시 세션 없으면 로그인 페이지로 리다이렉트
+  // RLS 정책: order_results는 auth.uid() = orders.user_id 조건으로 보호됨
+  // 세션 없이 접속하면 데이터 조회 실패 → 로딩 페이지로 무한 리다이렉트되는 버그 수정
   useEffect(() => {
     const checkSession = async () => {
+      console.log('🔐 [SajuResultPage] 세션 체크 시작...');
+
       // DEV 모드 우회
       if (import.meta.env.DEV) {
         const localUserJson = localStorage.getItem('user');
         if (localUserJson) {
           const localUser = JSON.parse(localUserJson);
-          if (localUser.provider === 'dev') return;
+          if (localUser.provider === 'dev') {
+            console.log('🔧 [SajuResultPage] DEV 모드 - 세션 체크 스킵');
+            setHasValidSession(true);
+            setIsCheckingSession(false);
+            return;
+          }
         }
       }
 
       const { data: { user } } = await supabase.auth.getUser();
+
       if (!user) {
-        setIsSessionExpired(true);
+        // ⭐ 세션 없음 → 현재 URL 저장 후 로그인 페이지로 리다이렉트
+        const currentUrl = `${location.pathname}${location.search}`;
+        console.log('🔐 [SajuResultPage] 세션 없음 → 로그인 페이지로 리다이렉트');
+        console.log('📍 [SajuResultPage] 로그인 후 돌아올 URL:', currentUrl);
+
+        localStorage.setItem('redirectAfterLogin', currentUrl);
+        navigate('/login/new', { replace: true });
+        return;
       }
+
+      console.log('✅ [SajuResultPage] 세션 유효:', user.id);
+      setHasValidSession(true);
+      setIsCheckingSession(false);
     };
+
     checkSession();
-  }, []);
+  }, [navigate, location.pathname, location.search]);
 
   // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
   useEffect(() => {
@@ -83,10 +112,11 @@ export default function SajuResultPage() {
     });
   }, [currentPage]);
 
-  // 답변 데이터 로드
+  // 답변 데이터 로드 - 세션 체크 완료 후에만 실행
   useEffect(() => {
     const loadAnswers = async () => {
-      if (!orderId) return;
+      // ⭐ 세션 체크 완료 전이거나 세션이 없으면 데이터 로드 안 함
+      if (!orderId || isCheckingSession || !hasValidSession) return;
 
       try {
         console.log('📊 데이터 로드 시작:', { orderId });
@@ -174,24 +204,28 @@ export default function SajuResultPage() {
         if (resultsData && resultsData.length > 0) {
           setAnswers(resultsData as Answer[]);
         } else {
-          console.warn('⚠️ order_results가 비어있습니다. 로딩 페이지로 리다이렉트');
-          
-          // ⭐ 콘텐츠 ID 가져오기 (로딩 페이지 이동용)
-          let redirectContentId = contentIdParam;
-          
-          if (!redirectContentId) {
-            // URL에 contentId가 없으면 orders 테이블에서 조회
-            const { data: orderData } = await supabase
-              .from('orders')
-              .select('content_id')
-              .eq('id', orderId)
-              .single();
-            
-            redirectContentId = orderData?.content_id || '';
+          console.warn('⚠️ order_results가 비어있습니다.');
+
+          // ⭐ 주문이 현재 사용자 것인지 확인 (RLS로 인해 자기 주문만 조회됨)
+          const { data: orderCheck, error: orderCheckError } = await supabase
+            .from('orders')
+            .select('id, content_id, ai_generation_completed')
+            .eq('id', orderId)
+            .single();
+
+          console.log('🔍 [사주결과] 주문 확인:', { orderCheck, orderCheckError });
+
+          // ⭐ 주문이 없거나 조회 실패 → 다른 계정의 주문
+          if (orderCheckError || !orderCheck) {
+            console.error('❌ [사주결과] 다른 계정의 주문이거나 존재하지 않는 주문');
+            setIsWrongAccount(true);
+            setLoading(false);
+            return;
           }
-          
-          // 로딩 페이지로 리다이렉트 (API call 아직 진행 중)
-          console.log('🔄 [사주결과] 로딩 페이지로 리다이렉트:', { orderId, contentId: redirectContentId });
+
+          // ⭐ 주문은 있지만 결과가 없음 → AI 아직 생성 중 → 로딩 페이지로 이동
+          const redirectContentId = contentIdParam || orderCheck.content_id || '';
+          console.log('🔄 [사주결과] AI 생성 중 → 로딩 페이지로 리다이렉트:', { orderId, contentId: redirectContentId });
           navigate(`/loading?orderId=${orderId}&contentId=${redirectContentId}`);
           return;
         }
@@ -220,7 +254,7 @@ export default function SajuResultPage() {
     };
 
     loadAnswers();
-  }, [orderId, contentIdParam]); // ⭐ contentIdParam dependency 추가
+  }, [orderId, contentIdParam, isCheckingSession, hasValidSession]); // ⭐ 세션 상태 dependency 추가
 
   const currentAnswer = answers[currentPage - 1];
   const totalPages = answers.length;
@@ -316,13 +350,22 @@ export default function SajuResultPage() {
     setIsTableOfContentsOpen(!isTableOfContentsOpen);
   };
 
-  if (loading) {
+  // ⭐ 세션 체크 중이거나 데이터 로딩 중이면 로딩 화면 표시
+  if (isCheckingSession || loading) {
     return (
       <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[440px] mx-auto">
         <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
       </div>
     );
   }
+
+  // ⭐ 다른 계정 주문 → 로그아웃 후 다시 로그인 유도
+  const handleLogoutAndRetry = async () => {
+    const currentUrl = `${location.pathname}${location.search}`;
+    localStorage.setItem('redirectAfterLogin', currentUrl);
+    await supabase.auth.signOut();
+    navigate('/login/new', { replace: true });
+  };
 
   return (
     <div className="fixed top-0 bottom-0 left-1/2 -translate-x-1/2 bg-white flex flex-col w-full max-w-[440px]">
@@ -454,6 +497,49 @@ export default function SajuResultPage() {
       )}
 
       <SessionExpiredDialog isOpen={isSessionExpired} />
+
+      {/* ⭐ 다른 계정 주문 모달 (A 계정 구매 → B 계정 로그인 시) */}
+      {isWrongAccount && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          {/* 배경 dim 처리 */}
+          <div className="absolute inset-0 bg-black/50" />
+
+          {/* 다이얼로그 */}
+          <div className="relative w-[320px] bg-white rounded-[20px] overflow-hidden border border-[#f3f3f3]">
+            {/* 텍스트 영역 */}
+            <div className="px-[28px] py-[20px]">
+              <div className="flex flex-col gap-[8px] items-center text-center">
+                <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[17px] leading-[25.5px] tracking-[-0.34px] text-black">
+                  다른 계정으로 구매한 운세예요
+                </p>
+                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[20px] tracking-[-0.3px] text-[#868686]">
+                  운세를 구매한 계정으로<br />다시 로그인해 주세요.
+                </p>
+              </div>
+            </div>
+
+            {/* 버튼 영역 */}
+            <div className="px-[24px] pb-[20px] flex flex-col gap-[8px]">
+              <button
+                onClick={handleLogoutAndRetry}
+                className="w-full h-[48px] bg-[#48b2af] rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+              >
+                <span className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] leading-[25px] tracking-[-0.32px] text-white">
+                  다른 계정으로 로그인
+                </span>
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full h-[48px] bg-[#f5f5f5] rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+              >
+                <span className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] leading-[25px] tracking-[-0.32px] text-[#666666]">
+                  홈으로 이동
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
