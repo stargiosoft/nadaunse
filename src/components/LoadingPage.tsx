@@ -21,6 +21,24 @@ interface FreeContent {
 const FREE_CONTENTS_CACHE_KEY = 'free_contents_cache_v1';
 const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
 
+// 🚀 동기적 캐시 확인 함수 (useState 초기화 시점)
+function getInitialFreeContents(): FreeContent[] {
+  try {
+    const cachedData = localStorage.getItem(FREE_CONTENTS_CACHE_KEY);
+    if (cachedData) {
+      const { contents, timestamp } = JSON.parse(cachedData);
+      const now = Date.now();
+      if (now - timestamp < CACHE_EXPIRY && Array.isArray(contents) && contents.length > 0) {
+        console.log('🚀 [LoadingPage] 초기화 시 캐시 발견 → 즉시 렌더링:', contents.length, '개');
+        return contents;
+      }
+    }
+  } catch (e) {
+    console.error('❌ [LoadingPage] 초기 캐시 파싱 실패:', e);
+  }
+  return [];
+}
+
 // ⭐ Progress Bar 컴포넌트 분리 (100ms 리렌더링 격리)
 function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
   const [progress, setProgress] = useState(0);
@@ -79,8 +97,8 @@ export default function LoadingPage() {
   const [contentTitle, setContentTitle] = useState('AI 풀이 생성 중');
   const [devNextUrl, setDevNextUrl] = useState<string | null>(null); // ⭐ [개발 모드] 다음 URL state
 
-  // ⭐ 무료 콘텐츠 state
-  const [freeContents, setFreeContents] = useState<FreeContent[]>([]);
+  // 🚀 무료 콘텐츠 state - 캐시에서 동기적 초기화
+  const [freeContents, setFreeContents] = useState<FreeContent[]>(getInitialFreeContents);
   const [displayCount, setDisplayCount] = useState(6); // 초기 6개 표시
   // 로딩 페이지에서는 세션 만료 시 바로 리다이렉트하므로 상태 불필요
 
@@ -110,9 +128,25 @@ export default function LoadingPage() {
     checkSession();
   }, [navigate]);
 
-  // 콘텐츠 정보 로드
+  // 🚀 콘텐츠 제목 로드 (캐시 우선)
   useEffect(() => {
     if (!contentId) return;
+
+    // 🚀 캐시에서 먼저 확인 (무료 콘텐츠 캐시)
+    try {
+      const cachedData = localStorage.getItem(FREE_CONTENTS_CACHE_KEY);
+      if (cachedData) {
+        const { contents } = JSON.parse(cachedData);
+        const cached = contents?.find((c: FreeContent) => c.id === contentId);
+        if (cached?.title) {
+          console.log('🚀 [LoadingPage] 캐시에서 제목 발견:', cached.title);
+          setContentTitle(cached.title);
+          return; // 캐시에서 찾으면 API 스킵
+        }
+      }
+    } catch (e) {
+      // 캐시 파싱 실패 시 무시하고 API 호출
+    }
 
     const fetchContentTitle = async () => {
       try {
@@ -138,9 +172,24 @@ export default function LoadingPage() {
   useEffect(() => {
     const fetchFreeContents = async () => {
       try {
+        // 🚀 이미 초기화 시점에 캐시에서 로드되었으면 스킵
+        if (freeContents.length > 0) {
+          console.log('✅ [무료콘텐츠] 이미 캐시에서 로드됨 → API 스킵');
+
+          // 🚀 이미지 프리로드만 수행
+          const thumbnails = freeContents
+            .slice(0, 3)
+            .map((c: FreeContent) => c.thumbnail_url)
+            .filter(Boolean) as string[];
+          if (thumbnails.length > 0) {
+            preloadImages(thumbnails, 'high');
+          }
+          return;
+        }
+
         console.log('🔍 [무료콘텐츠] 로드 시작');
 
-        // 캐시 확인
+        // 캐시 확인 (초기화 시점에 못 찾았을 경우 재확인)
         const cachedData = localStorage.getItem(FREE_CONTENTS_CACHE_KEY);
         if (cachedData) {
           const { contents, timestamp } = JSON.parse(cachedData);

@@ -245,8 +245,6 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
    * 구매 버튼 클릭 (무료 체험) - Fallback only
    */
   const handlePurchase = () => {
-    console.log('🔘 [FreeContentDetail] handlePurchase 호출됨');
-
     if (!content || questions.length === 0) {
       alert('질문지가 없습니다.');
       return;
@@ -255,14 +253,10 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     // 🚀 캐시 확인: 사주 정보가 있으면 바로 사주 선택 페이지로 이동 (birthinfo 스킵)
     try {
       const cachedJson = localStorage.getItem('saju_records_cache');
-      console.log('🔍 [FreeContentDetail] 캐시 확인:', cachedJson ? `${cachedJson.length}자` : 'null');
-
       if (cachedJson) {
         const cached = JSON.parse(cachedJson);
-        console.log('🔍 [FreeContentDetail] 파싱 결과:', Array.isArray(cached), cached?.length);
-
         if (Array.isArray(cached) && cached.length > 0) {
-          console.log('🚀 [FreeContentDetail] 사주 캐시 발견 → birthinfo 스킵, 바로 사주 선택으로 이동');
+          console.log('🚀 [FreeContentDetail] 사주 캐시 발견 → birthinfo 스킵');
           navigate(`/product/${contentId}/free-saju-select`);
           return;
         }
@@ -272,7 +266,6 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     }
 
     // Fallback: 캐시가 없으면 birthinfo로 이동
-    console.log('📍 [FreeContentDetail] 캐시 없음 → birthinfo로 이동');
     navigate(`/product/${contentId}/birthinfo`);
   };
 
