@@ -162,6 +162,9 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
         return;
       }
 
+      // 🚀 캐시 저장
+      localStorage.setItem('saju_records_cache', JSON.stringify(records));
+
       setSajuRecords(records);
 
       // ⭐ prefetchedMySaju로 이미 선택된 경우 유지, 아니면 대표 사주 자동 선택
@@ -198,6 +201,37 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
     if (hasPrefetchedData) {
       console.log('✅ [FreeSajuSelectPage] prefetched 데이터 사용 → DB 쿼리 스킵');
       return;
+    }
+
+    // 🚀 캐시 우선 렌더링: localStorage에서 캐시된 사주 데이터 확인
+    const cachedRecordsJson = localStorage.getItem('saju_records_cache');
+    if (cachedRecordsJson) {
+      try {
+        const cachedRecords = JSON.parse(cachedRecordsJson) as SajuRecord[];
+        if (cachedRecords.length > 0) {
+          console.log('✅ [FreeSajuSelectPage] 캐시 데이터 사용 → 즉시 렌더링');
+          setSajuRecords(cachedRecords);
+
+          // 대표 사주 자동 선택
+          const primarySaju = cachedRecords.find(r => r.is_primary);
+          const mySaju = cachedRecords.find(r => r.notes === '본인');
+          if (primarySaju) {
+            setSelectedSajuId(primarySaju.id);
+          } else if (mySaju) {
+            setSelectedSajuId(mySaju.id);
+          } else {
+            setSelectedSajuId(cachedRecords[0].id);
+          }
+
+          setIsLoading(false);
+
+          // 백그라운드에서 API 업데이트
+          loadSajuRecords();
+          return;
+        }
+      } catch (e) {
+        console.error('❌ [FreeSajuSelectPage] 캐시 파싱 실패:', e);
+      }
     }
 
     loadSajuRecords();

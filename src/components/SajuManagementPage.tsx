@@ -258,6 +258,12 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
       if (error) throw error;
 
       console.log('📋 [사주목록] 조회 완료:', data?.length || 0, '건');
+
+      // 🚀 캐시 저장
+      if (data && data.length > 0) {
+        localStorage.setItem('saju_records_cache', JSON.stringify(data));
+      }
+
       setSajuList(data || []);
     } catch (error) {
       console.error('❌ [사주목록] 조회 실패:', error);
@@ -267,6 +273,34 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   };
 
   useEffect(() => {
+    // 🚀 캐시 우선 렌더링: localStorage에서 캐시된 사주 데이터 확인
+    const cachedRecordsJson = localStorage.getItem('saju_records_cache');
+    if (cachedRecordsJson) {
+      try {
+        const cachedRecords = JSON.parse(cachedRecordsJson) as SajuInfo[];
+        if (cachedRecords.length > 0) {
+          console.log('✅ [SajuManagementPage] 캐시 데이터 사용 → 즉시 렌더링');
+          setSajuList(cachedRecords);
+          setIsLoading(false);
+
+          // 백그라운드에서 API 업데이트
+          loadSajuList();
+
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
+              loadSajuList();
+            }
+          });
+
+          return () => {
+            subscription.unsubscribe();
+          };
+        }
+      } catch (e) {
+        console.error('❌ [SajuManagementPage] 캐시 파싱 실패:', e);
+      }
+    }
+
     loadSajuList();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

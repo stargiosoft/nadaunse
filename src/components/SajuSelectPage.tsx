@@ -143,6 +143,37 @@ export default function SajuSelectPage() {
       console.log('💾 [SajuSelectPage] referrer 저장: /purchase-history');
     }
 
+    // 🚀 캐시 우선 렌더링: localStorage에서 캐시된 사주 데이터 확인
+    const cachedRecordsJson = localStorage.getItem('saju_records_cache');
+    if (cachedRecordsJson) {
+      try {
+        const cachedRecords = JSON.parse(cachedRecordsJson) as SajuRecord[];
+        if (cachedRecords.length > 0) {
+          console.log('✅ [SajuSelectPage] 캐시 데이터 사용 → 즉시 렌더링');
+          setSajuList(cachedRecords);
+
+          // 대표 사주 자동 선택
+          const primarySaju = cachedRecords.find(s => s.is_primary);
+          const mySaju = cachedRecords.find(s => s.notes === '본인');
+          if (primarySaju) {
+            setSelectedSajuId(primarySaju.id);
+          } else if (mySaju) {
+            setSelectedSajuId(mySaju.id);
+          } else if (cachedRecords.length > 0) {
+            setSelectedSajuId(cachedRecords[0].id);
+          }
+
+          setIsLoading(false);
+
+          // 백그라운드에서 API 업데이트
+          loadSajuList();
+          return;
+        }
+      } catch (e) {
+        console.error('❌ [SajuSelectPage] 캐시 파싱 실패:', e);
+      }
+    }
+
     loadSajuList();
   }, [location]);
 
@@ -167,6 +198,11 @@ export default function SajuSelectPage() {
         console.error('❌ 사주 목록 조회 실패:', error);
         setIsLoading(false);
         return;
+      }
+
+      // 🚀 캐시 저장
+      if (sajuData && sajuData.length > 0) {
+        localStorage.setItem('saju_records_cache', JSON.stringify(sajuData));
       }
 
       setSajuList(sajuData || []);
