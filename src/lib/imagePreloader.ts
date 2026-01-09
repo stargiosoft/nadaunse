@@ -24,13 +24,13 @@ export function preloadImages(urls: string[], priority: 'high' | 'low' = 'low'):
       return;
     }
 
-    // ⚡ 병렬 로딩: high는 즉시, low는 50ms 후 시작 (UI 블로킹 방지)
-    const startDelay = priority === 'high' ? 0 : 50;
+    // 순차 로딩: high는 즉시(0ms 간격), low는 100ms 간격으로 분산
+    const delay = priority === 'high' ? 0 : 100;
     let loadedCount = 0;
     const totalCount = urls.length;
 
-    const loadImages = () => {
-      urls.forEach((url) => {
+    urls.forEach((url, index) => {
+      setTimeout(() => {
         const cleanedUrl = cleanImageUrl(url);
         const img = new Image();
         img.src = cleanedUrl;
@@ -52,13 +52,7 @@ export function preloadImages(urls: string[], priority: 'high' | 'low' = 'low'):
             resolve();
           }
         };
-      });
-    };
-
-    if (startDelay === 0) {
-      loadImages();
-    } else {
-      setTimeout(loadImages, startDelay);
-    }
+      }, index * delay);
+    });
   });
 }
