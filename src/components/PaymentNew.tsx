@@ -10,6 +10,7 @@ import Footer from "./Footer";
 import { SessionExpiredDialog } from "./SessionExpiredDialog";
 import PaymentSkeleton from "./skeletons/PaymentSkeleton";
 import { DEV } from "../lib/env";
+import { preloadLoadingPageImages } from "../lib/imagePreloader";
 
 // 포트원 타입 선언
 declare global {
@@ -387,6 +388,9 @@ export default function PaymentNew({
           console.log("📦 저장된 orderId:", savedOrder.id);
         }
 
+        // ⭐ 로딩 페이지 이미지 미리 로드
+        preloadLoadingPageImages();
+
         onPurchase();
       } catch (error) {
         console.error("❌ 0원 주문 저장 실패:", error);
@@ -523,6 +527,9 @@ export default function PaymentNew({
               );
               console.log("📦 저장된 orderId:", savedOrder.id);
             }
+
+            // ⭐ 로딩 페이지 이미지 미리 로드
+            preloadLoadingPageImages();
 
             onPurchase();
           } catch (error) {
