@@ -237,13 +237,34 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
       return;
     }
 
-    // 🚀 캐시가 이미 있으면 API 스킵 (즉시 렌더링 완료)
-    if (initialState.hasCache) {
-      console.log('✅ [FreeSajuSelectPage] 캐시 사용 → API 쿼리 스킵');
-      return;
+    // 🚀 캐시 유효성 확인 (사주 추가 후 돌아왔을 때 캐시가 삭제되었을 수 있음)
+    const cachedJson = localStorage.getItem('saju_records_cache');
+    if (cachedJson) {
+      try {
+        const cached = JSON.parse(cachedJson) as SajuRecord[];
+        if (cached.length > 0) {
+          console.log('✅ [FreeSajuSelectPage] 캐시 사용 → API 쿼리 스킵');
+          // ⭐ 캐시 데이터로 상태 업데이트 (사주 추가 후 돌아온 경우 대응)
+          setSajuRecords(cached);
+          setIsLoading(false);
+          // 선택된 사주가 유효한지 확인
+          setSelectedSajuId(prev => {
+            if (prev && cached.find(r => r.id === prev)) return prev;
+            const primary = cached.find(r => r.is_primary);
+            if (primary) return primary.id;
+            const mySaju = cached.find(r => r.notes === '본인');
+            if (mySaju) return mySaju.id;
+            return cached[0]?.id || null;
+          });
+          return;
+        }
+      } catch (e) {
+        console.error('❌ [FreeSajuSelectPage] 캐시 파싱 실패:', e);
+      }
     }
 
-    // 캐시가 없을 때만 API 호출
+    // 캐시가 없거나 무효화된 경우 API 호출
+    console.log('✅ [FreeSajuSelectPage] 캐시 없음 → API 호출');
     loadSajuRecords();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, hasPrefetchedData]);  // ← onBack, navigate 제거

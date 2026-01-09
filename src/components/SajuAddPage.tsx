@@ -449,6 +449,10 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         });
       }
 
+      // ⭐ 캐시 무효화 (SajuSelectPage에서 새 데이터 로드하도록)
+      localStorage.removeItem('saju_records_cache');
+      console.log('🗑️ [SajuAddPage] saju_records_cache 캐시 무효화');
+
       // 저장 완료 후 관리 페이지로 이동
       setTimeout(() => {
         if (returnTo) {
