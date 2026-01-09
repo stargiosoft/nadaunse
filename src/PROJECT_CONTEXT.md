@@ -261,6 +261,19 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 </details>
 
 <details>
+<summary><b>마스터 콘텐츠 관리 (6개)</b></summary>
+
+```
+/components/MasterContentCreate.tsx     → 콘텐츠 생성 (기본정보: 제목, 설명, 가격)
+/components/MasterContentQuestions.tsx  → 질문지 작성 (AI 프롬프트용)
+/components/MasterContentDetail.tsx     → 콘텐츠 상세/수정 (관리자용)
+/components/MasterContentDetailPage.tsx → 사용자용 상세 페이지
+/components/MasterContentList.tsx       → 콘텐츠 목록 관리 (수정/삭제/배포)
+/components/MasterContentLoadingPage.tsx → AI 썸네일 생성 로딩
+```
+</details>
+
+<details>
 <summary><b>인증</b></summary>
 
 ```
@@ -341,11 +354,13 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 /components/SajuAddPage.tsx             → 관계 사주 추가
 /components/PurchaseHistoryPage.tsx     → 구매 내역
 
-# 마스터 콘텐츠 관리
-/components/MasterContentList.tsx       → 콘텐츠 목록
-/components/MasterContentCreate.tsx     → 콘텐츠 생성
-/components/MasterContentQuestions.tsx  → 질문지 작성
+# 마스터 콘텐츠 관리 (6개)
+/components/MasterContentCreate.tsx     → 콘텐츠 생성 (기본정보)
+/components/MasterContentQuestions.tsx  → 질문지 작성 (AI 프롬프트용)
+/components/MasterContentDetail.tsx     → 콘텐츠 상세/수정 (관리자용)
 /components/MasterContentDetailPage.tsx → 사용자용 상세
+/components/MasterContentList.tsx       → 콘텐츠 목록 관리
+/components/MasterContentLoadingPage.tsx → AI 썸네일 생성 로딩
 ```
 
 ### 🧠 비즈니스 로직
@@ -908,6 +923,7 @@ useEffect(() => {
 | 1.2.0 | 2026-01-06 | 타로 서비스 추가, 개발/배포 환경 분리, iOS Safari 최적화, 컴포넌트 51개/Edge Functions 17개 반영 | AI Assistant |
 | 1.3.0 | 2026-01-07 | iOS 스와이프 뒤로가기 히스토리 관리 버그 해결 추가 | AI Assistant |
 | 1.4.0 | 2026-01-07 | 개발 안정성 강화 - Sentry, 로거, 재시도 로직, 결제 웹훅/환불, Edge Functions 20개 | AI Assistant |
+| 1.4.1 | 2026-01-09 | 마스터 콘텐츠 관리 섹션 추가 (6개 컴포넌트 상세화) | AI Assistant |
 
 ---
 
@@ -982,6 +998,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.4.0
-**최종 업데이트**: 2026-01-07
+**문서 버전**: 1.4.1
+**최종 업데이트**: 2026-01-09
 **문서 끝**
