@@ -222,9 +222,14 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
     setKebabMenuOpen(false);
     setSelectedSajuForKebab(null);
 
-    // ⭐ prefetched 데이터가 있으면 DB 쿼리 스킵
+    // ⭐ prefetched 데이터가 있으면 DB 쿼리 스킵 + 캐시에 저장
     if (hasPrefetchedData) {
       console.log('✅ [FreeSajuSelectPage] prefetched 데이터 사용 → DB 쿼리 스킵');
+      // 🚀 prefetched 데이터를 캐시에 저장 (두 번째 방문 시 즉시 로드용)
+      if (sajuRecords.length > 0) {
+        localStorage.setItem('saju_records_cache', JSON.stringify(sajuRecords));
+        console.log('💾 [FreeSajuSelectPage] prefetched 데이터 캐시 저장 완료');
+      }
       return;
     }
 
