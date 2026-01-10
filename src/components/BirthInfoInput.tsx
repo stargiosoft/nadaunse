@@ -53,6 +53,22 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
     document.body.scrollTop = 0;
   }, []);
 
+  // ⭐ 뒤로가기 감지 - 콘텐츠 상세 페이지로 리다이렉트
+  useEffect(() => {
+    if (!productId) return;
+
+    // 히스토리에 현재 페이지 상태 추가 (뒤로가기 감지용)
+    window.history.pushState({ birthInfoPage: true }, '');
+
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('🔙 [BirthInfoInput] 뒤로가기 감지 → 콘텐츠 상세 페이지로 이동');
+      navigate(`/master/content/detail/${productId}`, { replace: true });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [productId, navigate]);
+
   // 컴포넌트 마운트 시 이름 필드에 자동 포커스
   useEffect(() => {
     const timer = setTimeout(() => {

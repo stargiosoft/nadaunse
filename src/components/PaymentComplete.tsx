@@ -8,6 +8,24 @@ export default function PaymentComplete() {
   const [status, setStatus] = useState<'loading' | 'success' | 'fail'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // ⭐ 뒤로가기 감지 - 콘텐츠 상세 페이지로 리다이렉트
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const contentId = params.get('contentId');
+    if (!contentId) return;
+
+    // 히스토리에 현재 페이지 상태 추가 (뒤로가기 감지용)
+    window.history.pushState({ paymentCompletePage: true }, '');
+
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('🔙 [PaymentComplete] 뒤로가기 감지 → 콘텐츠 상세 페이지로 이동');
+      navigate(`/master/content/detail/${contentId}`, { replace: true });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [navigate]);
+
   useEffect(() => {
     const handlePaymentComplete = async () => {
       const params = new URLSearchParams(window.location.search);
