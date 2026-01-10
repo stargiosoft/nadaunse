@@ -312,7 +312,10 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
             .eq('id', selectedSajuId)
             .eq('user_id', user.id);
 
-          console.log('✅ [FreeSajuSelectPage] 백그라운드: 대표 사주 업데이트 완료');
+          // ⭐ 캐시 무효화 (ProfilePage, SajuManagementPage에서 새 대표 사주 로드하도록)
+          localStorage.removeItem('primary_saju');
+          localStorage.removeItem('saju_records_cache');
+          console.log('✅ [FreeSajuSelectPage] 백그라운드: 대표 사주 업데이트 완료 + 캐시 무효화');
         }
       } catch (error) {
         console.error('❌ [FreeSajuSelectPage] 백그라운드: 대표 사주 업데이트 실패:', error);
