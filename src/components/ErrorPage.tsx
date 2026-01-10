@@ -75,12 +75,12 @@ export default function ErrorPage({ type }: ErrorPageProps) {
   };
 
   return (
-    <div className="bg-white relative min-h-screen w-full flex items-center justify-center">
-      <div className="relative w-full max-w-[440px] min-h-screen flex flex-col bg-white">
-        
+    <div className="bg-white relative h-screen h-[100dvh] w-full flex items-center justify-center overflow-hidden">
+      <div className="relative w-full max-w-[440px] h-full flex flex-col bg-white">
+
         {/* Main Content - 중앙 정렬 */}
         <motion.div
-          className="flex-1 flex flex-col items-center justify-center px-[20px]"
+          className="flex-1 flex flex-col items-center justify-center px-[20px] min-h-0"
           initial="hidden"
           animate="visible"
           variants={{
@@ -245,11 +245,11 @@ export default function ErrorPage({ type }: ErrorPageProps) {
           }}
           initial="hidden"
           animate="visible"
-          className="content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full"
+          className="shrink-0 content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full"
         >
-          <div className="bg-white relative shrink-0 w-full">
+          <div className="bg-white relative shrink-0 w-full pb-[env(safe-area-inset-bottom)]">
             <div className="flex flex-col items-center justify-center size-full">
-              <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
+              <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] pb-[max(12px,env(safe-area-inset-bottom))] relative w-full">
                 {config.twoButtons ? (
                   // 500, 503 에러: 2버튼 레이아웃
                   <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full">
