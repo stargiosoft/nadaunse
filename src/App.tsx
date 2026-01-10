@@ -1271,10 +1271,11 @@ function SajuInputPageWrapper() {
       onBack={() => navigate('/profile')}
       onSaved={() => {
         // 저장 완료 후 returnTo가 있으면 해당 경로로, 없으면 관리 페이지로 이동
+        // ⭐ replace: true로 히스토리 교체 → iOS 스와이프 뒤로가기 시 올바른 페이지(프로필)로 이동
         if (returnTo) {
-          navigate(returnTo);
+          navigate(returnTo, { replace: true });
         } else {
-          navigate('/saju/management');
+          navigate('/saju/management', { replace: true });
         }
       }}
     />
@@ -1311,7 +1312,7 @@ function SajuAddPageWrapper() {
   return (
     <SajuAddPage
       onBack={() => navigate('/saju/management')}
-      onSaved={() => navigate('/saju/management')}
+      onSaved={() => navigate('/saju/management', { replace: true })}
     />
   );
 }
