@@ -105,9 +105,9 @@ export default function PaymentNew({
   }, [contentId]);
 
   // ⭐ 결제 완료 체크 함수 (재사용) - ref를 사용하여 항상 최신 contentId 참조
-  const checkAndRedirectIfPaid = useCallback(async () => {
+  const checkAndRedirectIfPaid = useCallback(async (useBrowserRedirect = false) => {
     const currentContentId = contentIdRef.current;
-    console.log('🔍 [PaymentNew] checkAndRedirectIfPaid 호출, contentId:', currentContentId);
+    console.log('🔍 [PaymentNew] checkAndRedirectIfPaid 호출, contentId:', currentContentId, 'useBrowserRedirect:', useBrowserRedirect);
 
     const {
       data: { user },
@@ -115,7 +115,7 @@ export default function PaymentNew({
     if (!user) {
       console.log('❌ [PaymentNew] 로그인 안됨');
       setIsSessionExpired(true);
-      return;
+      return false;
     }
 
     // 이미 결제 완료된 주문이 있는지 확인
@@ -131,8 +131,16 @@ export default function PaymentNew({
       console.log('🔍 [PaymentNew] 기존 완료 주문 조회 결과:', existingOrder);
 
       if (existingOrder) {
-        console.log('🔄 [PaymentNew] 이미 결제 완료됨 → 상세 페이지로 리다이렉트:', `/content/${currentContentId}`);
-        navigate(`/content/${currentContentId}`, { replace: true });
+        const targetUrl = `/content/${currentContentId}`;
+        console.log('🔄 [PaymentNew] 이미 결제 완료됨 → 상세 페이지로 리다이렉트:', targetUrl);
+
+        // bfcache에서 복원된 경우 React Router가 제대로 동작하지 않을 수 있으므로 브라우저 리다이렉트 사용
+        if (useBrowserRedirect) {
+          console.log('🔄 [PaymentNew] window.location.replace 사용');
+          window.location.replace(targetUrl);
+        } else {
+          navigate(targetUrl, { replace: true });
+        }
         return true;
       }
     } else {
@@ -153,8 +161,8 @@ export default function PaymentNew({
         console.log('🔄 [PaymentNew] bfcache 복원 감지 (pageshow persisted)');
         // 결제 처리 중 상태 리셋
         setIsProcessingPayment(false);
-        // 결제 완료 체크 후 리다이렉트
-        const redirected = await checkAndRedirectIfPaid();
+        // 결제 완료 체크 후 리다이렉트 (bfcache에서는 브라우저 리다이렉트 사용)
+        const redirected = await checkAndRedirectIfPaid(true);
         console.log('🔄 [PaymentNew] bfcache 리다이렉트 결과:', redirected);
       }
     };
@@ -165,7 +173,8 @@ export default function PaymentNew({
         console.log('🔄 [PaymentNew] 페이지 visible');
         // isProcessingPayment 상태와 무관하게 결제 완료 여부 체크
         setIsProcessingPayment(false);
-        await checkAndRedirectIfPaid();
+        // visibilitychange에서도 브라우저 리다이렉트 사용 (bfcache 복원일 수 있음)
+        await checkAndRedirectIfPaid(true);
       }
     };
 
