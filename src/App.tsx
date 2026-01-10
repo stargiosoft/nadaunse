@@ -1284,10 +1284,11 @@ function SajuInputPageWrapper() {
 function SajuManagementPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
+  const goBack = useGoBack('/profile'); // 🛡️ iOS 스와이프 뒤로가기 대응: navigate(-1) 사용
 
   return (
     <SajuManagementPage
-      onBack={() => navigate('/profile')}
+      onBack={goBack}
       onNavigateToInput={() => navigate('/saju/input')}
       onNavigateToAdd={() => navigate('/saju/add')}
       onEditMySaju={(sajuInfo) => {

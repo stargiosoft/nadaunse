@@ -98,36 +98,68 @@ export default function PaymentNew({
 
   const navigate = useNavigate();
 
+  // ⭐ 결제 완료 체크 함수 (재사용)
+  const checkAndRedirectIfPaid = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setIsSessionExpired(true);
+      return;
+    }
+
+    // 이미 결제 완료된 주문이 있는지 확인
+    if (contentId) {
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('id, pstatus')
+        .eq('user_id', user.id)
+        .eq('content_id', contentId)
+        .eq('pstatus', 'completed')
+        .maybeSingle();
+
+      if (existingOrder) {
+        console.log('🔄 [PaymentNew] 이미 결제 완료됨 → 상세 페이지로 리다이렉트');
+        navigate(`/content/${contentId}`, { replace: true });
+        return true;
+      }
+    }
+    return false;
+  };
+
   // ⭐ 세션 체크 및 결제 완료 체크 - 결제 페이지 진입 시
   useEffect(() => {
-    const checkSessionAndOrder = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setIsSessionExpired(true);
-        return;
-      }
+    checkAndRedirectIfPaid();
+  }, [contentId]);
 
-      // ⭐ 이미 결제 완료된 주문이 있는지 확인 (뒤로가기로 돌아온 경우 대응)
-      if (contentId) {
-        const { data: existingOrder } = await supabase
-          .from('orders')
-          .select('id, pstatus')
-          .eq('user_id', user.id)
-          .eq('content_id', contentId)
-          .eq('pstatus', 'completed')
-          .maybeSingle();
-
-        if (existingOrder) {
-          console.log('🔄 [PaymentNew] 이미 결제 완료됨 → 상세 페이지로 리다이렉트');
-          navigate(`/content/${contentId}`, { replace: true });
-          return;
-        }
+  // ⭐ bfcache 복원 시 처리 (iOS Safari 스와이프 뒤로가기 대응)
+  useEffect(() => {
+    const handlePageShow = async (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('🔄 [PaymentNew] bfcache 복원 감지');
+        // 결제 처리 중 상태 리셋
+        setIsProcessingPayment(false);
+        // 결제 완료 체크 후 리다이렉트
+        await checkAndRedirectIfPaid();
       }
     };
-    checkSessionAndOrder();
-  }, [contentId, navigate]);
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isProcessingPayment) {
+        console.log('🔄 [PaymentNew] 페이지 visible + isProcessingPayment=true → 체크');
+        setIsProcessingPayment(false);
+        await checkAndRedirectIfPaid();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [contentId, isProcessingPayment]);
 
   // contentId가 있으면 DB에서 데이터 로드
   useEffect(() => {
