@@ -1026,12 +1026,12 @@ function ProfilePageWrapper() {
     <ProfilePage
       onBack={goBack}
       onLogout={handleLogout}
-      onNavigateToMasterContent={() => navigate('/master/content')}
-      onNavigateToTermsOfService={() => navigate('/terms-of-service')}
-      onNavigateToPrivacyPolicy={() => navigate('/privacy-policy')}
-      onNavigateToPurchaseHistory={() => navigate('/purchase-history')}
-      onNavigateToSajuInput={() => navigate('/saju/input')}
-      onNavigateToSajuManagement={() => navigate('/saju/management')}
+      onNavigateToMasterContent={() => navigate('/master/content', { state: { canGoBack: true } })}
+      onNavigateToTermsOfService={() => navigate('/terms-of-service', { state: { canGoBack: true } })}
+      onNavigateToPrivacyPolicy={() => navigate('/privacy-policy', { state: { canGoBack: true } })}
+      onNavigateToPurchaseHistory={() => navigate('/purchase-history', { state: { canGoBack: true } })}
+      onNavigateToSajuInput={() => navigate('/saju/input', { state: { canGoBack: true } })}
+      onNavigateToSajuManagement={() => navigate('/saju/management', { state: { canGoBack: true } })}
     />
   );
 }

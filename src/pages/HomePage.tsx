@@ -1455,9 +1455,10 @@ export default function HomePage() {
     const user = localStorage.getItem('user');
     console.log('🔐 [프로필 클릭] user:', user ? '있음' : '없음', 'isLoggedIn:', isLoggedIn);
     if (user || isLoggedIn) {
-      navigate('/profile');
+      // 🛡️ iOS 스와이프 뒤로가기 대응: canGoBack 상태 전달
+      navigate('/profile', { state: { canGoBack: true } });
     } else {
-      navigate('/login');
+      navigate('/login', { state: { canGoBack: true } });
     }
   };
 
