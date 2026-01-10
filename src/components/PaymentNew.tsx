@@ -96,18 +96,38 @@ export default function PaymentNew({
   const [isSessionExpired, setIsSessionExpired] =
     useState(false);
 
-  // ⭐ 세션 체크 - 결제 페이지 진입 시
+  const navigate = useNavigate();
+
+  // ⭐ 세션 체크 및 결제 완료 체크 - 결제 페이지 진입 시
   useEffect(() => {
-    const checkSession = async () => {
+    const checkSessionAndOrder = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
         setIsSessionExpired(true);
+        return;
+      }
+
+      // ⭐ 이미 결제 완료된 주문이 있는지 확인 (뒤로가기로 돌아온 경우 대응)
+      if (contentId) {
+        const { data: existingOrder } = await supabase
+          .from('orders')
+          .select('id, pstatus')
+          .eq('user_id', user.id)
+          .eq('content_id', contentId)
+          .eq('pstatus', 'completed')
+          .maybeSingle();
+
+        if (existingOrder) {
+          console.log('🔄 [PaymentNew] 이미 결제 완료됨 → 상세 페이지로 리다이렉트');
+          navigate(`/content/${contentId}`, { replace: true });
+          return;
+        }
       }
     };
-    checkSession();
-  }, []);
+    checkSessionAndOrder();
+  }, [contentId, navigate]);
 
   // contentId가 있으면 DB에서 데이터 로드
   useEffect(() => {
