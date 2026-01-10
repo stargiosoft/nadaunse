@@ -538,9 +538,10 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
   const hasOtherSaju = otherSajus.length > 0;
 
   return (
-    <div className="fixed top-0 bottom-0 left-1/2 -translate-x-1/2 bg-white flex flex-col w-full max-w-[390px]">
-      {/* Top Navigation - shrink-0로 고정 높이 */}
-      <div className="bg-white shrink-0 w-full z-10">
+    <div className="bg-white fixed inset-0 flex justify-center">
+      <div className="w-full max-w-[390px] h-full flex flex-col bg-white">
+        {/* Top Navigation - shrink-0로 고정 높이 */}
+        <div className="bg-white shrink-0 w-full z-10">
         {/* Navigation Bar */}
         <div className="bg-white h-[52px] relative shrink-0 w-full">
           <div className="flex flex-col justify-center size-full">
@@ -723,13 +724,14 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
         />
       )}
 
-      {/* 삭제 확인 다이얼로그 */}
-      <ConfirmDialog
-        isOpen={isDeleteDialogOpen}
-        title="등록된 사주를 삭제하시겠어요?"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setIsDeleteDialogOpen(false)}
-      />
+        {/* 삭제 확인 다이얼로그 */}
+        <ConfirmDialog
+          isOpen={isDeleteDialogOpen}
+          title="등록된 사주를 삭제하시겠어요?"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setIsDeleteDialogOpen(false)}
+        />
+      </div>
     </div>
   );
 }

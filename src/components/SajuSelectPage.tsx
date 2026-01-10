@@ -752,9 +752,10 @@ export default function SajuSelectPage() {
   }
 
   return (
-    <div className="fixed top-0 bottom-0 left-1/2 -translate-x-1/2 bg-white flex flex-col w-full max-w-[390px]">
-      {/* Top Navigation - shrink-0로 고정 높이 */}
-      <div className="bg-white shrink-0 w-full z-10">
+    <div className="bg-white fixed inset-0 flex justify-center">
+      <div className="w-full max-w-[390px] h-full flex flex-col bg-white">
+        {/* Top Navigation - shrink-0로 고정 높이 */}
+        <div className="bg-white shrink-0 w-full z-10">
         {/* Navigation Bar */}
         <div className="bg-white h-[52px] relative shrink-0 w-full">
           <div className="flex flex-col justify-center size-full">
@@ -951,7 +952,8 @@ export default function SajuSelectPage() {
         onCancel={() => setIsDeleteDialogOpen(false)}
       />
 
-      <SessionExpiredDialog isOpen={isSessionExpired} />
+        <SessionExpiredDialog isOpen={isSessionExpired} />
+      </div>
     </div>
   );
 }
