@@ -678,36 +678,6 @@ export default function PaymentNew({
         </div>
       )}
 
-      {/* ⭐ 재구매 확인 다이얼로그 */}
-      <AlertDialog open={showRepurchaseDialog} onOpenChange={setShowRepurchaseDialog}>
-        <AlertDialogContent className="max-w-[320px] rounded-[20px] p-[24px] gap-0">
-          <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[26px] tracking-[-0.36px] text-center text-black whitespace-pre-line">
-            {"이미 구매한 상품이에요.\n구매를 다시 하시겠어요?"}
-          </p>
-          <AlertDialogFooter className="flex flex-row gap-[12px] mt-[24px]">
-            <AlertDialogCancel
-              className="flex-1 h-[52px] rounded-[16px] bg-[#f3f3f3] hover:bg-[#e8e8e8] border-none font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] text-[#6d6d6d]"
-              onClick={() => {
-                setShowRepurchaseDialog(false);
-                // 상세 페이지로 돌아가기
-                navigate(`/master/content/detail/${contentId}`, { replace: true });
-              }}
-            >
-              아니요
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="flex-1 h-[52px] rounded-[16px] bg-[#48b2af] hover:bg-[#3d9996] font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] text-white"
-              onClick={() => {
-                setShowRepurchaseDialog(false);
-                // 다이얼로그 닫고 결제 페이지 유지 (재구매 진행)
-              }}
-            >
-              네
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
         {/* Top Navigation */}
         <div className="bg-white h-[52px] shrink-0 w-full z-20">

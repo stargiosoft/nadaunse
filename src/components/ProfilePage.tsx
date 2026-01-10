@@ -156,6 +156,13 @@ export default function ProfilePage({
   };
 
   const initialState = getInitialState();
+
+  // 🚀 캐시가 있으면 애니메이션 스킵을 위한 조건부 variants
+  const skipAnimation = initialState.hasCache;
+  const itemVariants = skipAnimation
+    ? { hidden: { opacity: 1, y: 0 }, visible: { opacity: 1, y: 0 } } // 애니메이션 없음
+    : { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } };
+
   const [user, setUser] = useState<any>(initialState.user);
   const [isMaster, setIsMaster] = useState(initialState.isMaster);
   const [isCheckingSaju, setIsCheckingSaju] = useState(false);
@@ -414,10 +421,11 @@ export default function ProfilePage({
             // 로딩 중 - 스켈레톤 표시
             <ProfileSkeletonWithSaju />
           ) : (
-            <motion.div 
+            <motion.div
               className="flex flex-col flex-1"
-              initial="hidden" 
-              animate="visible" 
+              // 🚀 캐시가 있으면 애니메이션 스킵 (initial={false}로 즉시 visible 상태)
+              initial={initialState.hasCache ? false : "hidden"}
+              animate="visible"
               variants={{
                 hidden: { opacity: 1 },
                 visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
@@ -427,7 +435,7 @@ export default function ProfilePage({
                 // 사주 정보 있음
                 <>
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="content-stretch flex gap-[12px] items-center w-full pb-[12px]"
                   >
                     {/* Profile Image with Shimmer Skeleton (YouTube Style) */}
@@ -473,7 +481,7 @@ export default function ProfilePage({
 
                   {/* 생년월일시 / 띠 / 별자리 / 성별 */}
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="bg-[#f9f9f9] relative rounded-[12px] w-full mb-[24px]"
                   >
                     <div className="flex flex-col items-center justify-center size-full">
@@ -509,7 +517,7 @@ export default function ProfilePage({
                   // Profile Icon - 중앙 정렬
                   <motion.div 
                     key="profile-icon"
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="flex items-center justify-center relative shrink-0 w-full pt-[28px]"
                   >
                     <ProfileIcon />
@@ -518,7 +526,7 @@ export default function ProfilePage({
                   // Text Lines
                   <motion.div 
                     key="text-lines"
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full pt-[32px]"
                   >
                     <p className="font-semibold leading-[25px] text-[20px] text-black text-center tracking-[-0.34px]">
@@ -532,7 +540,7 @@ export default function ProfilePage({
                   // Button
                   <motion.button
                     key="register-button"
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     onClick={handleSajuMenuClick}
                     disabled={isCheckingSaju}
                     whileTap={{ scale: 0.96 }}
@@ -551,7 +559,7 @@ export default function ProfilePage({
 
               {/* Divider */}
               <motion.div 
-                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                variants={itemVariants}
                 className="h-[8px] -mx-[20px] bg-[#f9f9f9] my-[0px]" 
               />
 
@@ -569,7 +577,7 @@ export default function ProfilePage({
                 >
                   {isMaster && (
                     <motion.div 
-                      variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                      variants={itemVariants}
                       className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" 
                       onClick={onNavigateToMasterContent}
                     >
@@ -580,7 +588,7 @@ export default function ProfilePage({
                     </motion.div>
                   )}
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" 
                     onClick={handleSajuMenuClick}
                   >
@@ -622,7 +630,7 @@ export default function ProfilePage({
                     </div>
                   </motion.div>
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors" 
                     onClick={onNavigateToPurchaseHistory}
                   >
@@ -817,7 +825,7 @@ export default function ProfilePage({
                     </div>
                   </motion.div>
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     onClick={handleLogout} 
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                   >
@@ -827,7 +835,7 @@ export default function ProfilePage({
                     </div>
                   </motion.div>
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                   >
@@ -840,7 +848,7 @@ export default function ProfilePage({
                   {/* 디버그용 버튼: 사주 미등록 화면 토글 */}
                   {DEV && (
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     onClick={() => setShowEmptyState(!showEmptyState)}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors bg-red-50"
                   >
@@ -853,7 +861,7 @@ export default function ProfilePage({
                   {/* ⭐ DEV 전용: 에러 페이지 확인 버튼들 */}
                   {DEV && (
                     <motion.div 
-                      variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                      variants={itemVariants}
                       className="content-stretch flex flex-col gap-[8px] mt-[16px] px-[16px]"
                     >
                       <p className="text-[12px] text-[#848484] font-medium mb-[4px]">
@@ -889,7 +897,7 @@ export default function ProfilePage({
                   )}
                   {/* Footer */}
                   <motion.div 
-                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }}
+                    variants={itemVariants}
                     className="-mx-[20px] mt-auto"
                   >
                     <Footer 
