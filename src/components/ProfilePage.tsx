@@ -115,22 +115,54 @@ function getChineseZodiac(birthDate: string): string {
   return zodiacs[year % 12];
 }
 
-export default function ProfilePage({ 
-  onBack, 
-  onLogout, 
-  onNavigateToMasterContent, 
-  onNavigateToTermsOfService, 
-  onNavigateToPrivacyPolicy, 
-  onNavigateToPurchaseHistory, 
-  onNavigateToSajuInput, 
-  onNavigateToSajuManagement 
+export default function ProfilePage({
+  onBack,
+  onLogout,
+  onNavigateToMasterContent,
+  onNavigateToTermsOfService,
+  onNavigateToPrivacyPolicy,
+  onNavigateToPurchaseHistory,
+  onNavigateToSajuInput,
+  onNavigateToSajuManagement
 }: ProfilePageProps) {
-  const [user, setUser] = useState<any>(null);
-  const [isMaster, setIsMaster] = useState(false);
+  // 🚀 동기적 캐시 확인 (useState 초기화 시점) - 스켈레톤 플래시 방지
+  const getInitialState = () => {
+    try {
+      const cachedUserJson = localStorage.getItem('user');
+      const cachedSajuJson = localStorage.getItem('primary_saju');
+
+      if (cachedUserJson && cachedSajuJson) {
+        const cachedUser = JSON.parse(cachedUserJson);
+        const cachedSaju = JSON.parse(cachedSajuJson);
+        console.log('🚀 [ProfilePage] 초기화 시 캐시 발견 → 즉시 렌더링');
+        return {
+          user: cachedUser,
+          isMaster: cachedUser.role === 'master',
+          primarySaju: cachedSaju,
+          isLoadingSaju: false, // 캐시가 있으면 로딩 없이 시작
+          hasCache: true
+        };
+      }
+    } catch (e) {
+      console.error('❌ [ProfilePage] 초기 캐시 파싱 실패:', e);
+    }
+    return {
+      user: null,
+      isMaster: false,
+      primarySaju: null,
+      isLoadingSaju: true, // 캐시가 없으면 로딩 표시
+      hasCache: false
+    };
+  };
+
+  const initialState = getInitialState();
+  const [user, setUser] = useState<any>(initialState.user);
+  const [isMaster, setIsMaster] = useState(initialState.isMaster);
   const [isCheckingSaju, setIsCheckingSaju] = useState(false);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
-  const [primarySaju, setPrimarySaju] = useState<SajuRecord | null>(null);
-  const [isLoadingSaju, setIsLoadingSaju] = useState(true);
+  const [primarySaju, setPrimarySaju] = useState<SajuRecord | null>(initialState.primarySaju);
+  // 🚀 캐시가 있으면 isLoadingSaju: false로 시작 (스켈레톤 없이 즉시 렌더링)
+  const [isLoadingSaju, setIsLoadingSaju] = useState(initialState.isLoadingSaju);
   const [showEmptyState, setShowEmptyState] = useState(false);
 
   const navigate = useNavigate(); // ⭐ useNavigate 사용
@@ -169,46 +201,13 @@ export default function ProfilePage({
         }
       }
 
-      // 🚀 캐시 우선 렌더링: localStorage에 user 정보가 있으면 먼저 표시
-      const cachedUserJson = localStorage.getItem('user');
-      const cachedSajuJson = localStorage.getItem('primary_saju');
       // ⭐ 캐시 버스터 플래그: 사주 수정 시 설정됨
       const needsRefresh = localStorage.getItem('profile_needs_refresh') === 'true';
-      let cachedUser = null;
-      let hasCachedSaju = false;
 
-      if (cachedUserJson) {
-        try {
-          cachedUser = JSON.parse(cachedUserJson);
-          // ⭐ 캐시된 user 정보로 즉시 렌더링
-          setUser(cachedUser);
-          setIsMaster(cachedUser.role === 'master');
-          console.log('✅ [ProfilePage] 캐시에서 user 즉시 표시');
-        } catch (e) {
-          console.error('JSON parse error', e);
-          localStorage.removeItem('user');
-        }
-      }
-
-      // ⭐ 캐시된 사주 정보로 즉시 렌더링 (스켈레톤 없이)
-      if (cachedSajuJson) {
-        try {
-          const cachedSaju = JSON.parse(cachedSajuJson);
-          setPrimarySaju(cachedSaju);
-          setIsLoadingSaju(false); // 캐시 있으면 로딩 즉시 해제
-          hasCachedSaju = true;
-          console.log('✅ [ProfilePage] 캐시에서 saju 즉시 표시');
-        } catch (e) {
-          console.error('JSON parse error (saju)', e);
-          localStorage.removeItem('primary_saju');
-        }
-      }
-
-      // ⭐ 캐시 버스터: 캐시가 있고 refresh 플래그가 없으면 백그라운드 API 호출 스킵
-      // → iOS 스와이프 뒤로가기 시 불필요한 리로드 방지
-      if (hasCachedSaju && cachedUser && !needsRefresh) {
-        console.log('🚀 [ProfilePage] 캐시 유효 + refresh 불필요 → API 호출 스킵');
-        setIsLoadingSaju(false);
+      // 🚀 초기화 시점에 이미 캐시가 로드되었고, refresh가 필요 없으면 API 호출 스킵
+      // → iOS 스와이프 뒤로가기 시 불필요한 리로드 완전 방지
+      if (initialState.hasCache && !needsRefresh) {
+        console.log('🚀 [ProfilePage] 초기 캐시 유효 + refresh 불필요 → API 호출 완전 스킵');
         return;
       }
 
