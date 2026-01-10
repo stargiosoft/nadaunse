@@ -11,6 +11,13 @@ import { SessionExpiredDialog } from "./SessionExpiredDialog";
 import PaymentSkeleton from "./skeletons/PaymentSkeleton";
 import { DEV } from "../lib/env";
 import { preloadLoadingPageImages } from "../lib/imagePreloader";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "./ui/alert-dialog";
 
 // 포트원 타입 선언
 declare global {
@@ -95,6 +102,9 @@ export default function PaymentNew({
   >(null);
   const [isSessionExpired, setIsSessionExpired] =
     useState(false);
+  // ⭐ 재구매 확인 다이얼로그 상태
+  const [showRepurchaseDialog, setShowRepurchaseDialog] =
+    useState(false);
 
   const navigate = useNavigate();
 
@@ -123,10 +133,10 @@ export default function PaymentNew({
 
     // 이미 결제 완료된 주문이 있는지 확인
     if (currentContentId) {
-      // 먼저 해당 콘텐츠에 대한 모든 주문 조회 (디버깅용)
+      // 먼저 해당 콘텐츠에 대한 모든 주문 조회 (ai_generation_completed 포함)
       const { data: allOrders, error: allOrdersError } = await supabase
         .from('orders')
-        .select('id, pstatus, content_id, created_at')
+        .select('id, pstatus, content_id, created_at, ai_generation_completed')
         .eq('user_id', user.id)
         .eq('content_id', currentContentId);
 
@@ -138,18 +148,29 @@ export default function PaymentNew({
       console.log('🔍 [PaymentNew] completed주문찾음:', completedOrder ? 'YES' : 'NO');
 
       if (completedOrder) {
-        // ⭐ 유료 콘텐츠이므로 /master/content/detail/:id로 리다이렉트
-        const targetUrl = `/master/content/detail/${currentContentId}`;
-        console.log('🔄 [PaymentNew] 이미 결제 완료됨 → 상세 페이지로 리다이렉트:', targetUrl);
+        // ⭐ AI 생성 완료 여부에 따라 분기
+        // - ai_generation_completed = true → 재구매 확인 다이얼로그 표시
+        // - ai_generation_completed = false → 결제 후 사주선택에서 뒤로가기한 경우 → 상세 페이지로 리다이렉트
+        console.log('🔍 [PaymentNew] ai_generation_completed:', completedOrder.ai_generation_completed);
 
-        // bfcache에서 복원된 경우 React Router가 제대로 동작하지 않을 수 있으므로 브라우저 리다이렉트 사용
-        if (useBrowserRedirect) {
-          console.log('🔄 [PaymentNew] window.location.replace 사용');
-          window.location.replace(targetUrl);
+        if (completedOrder.ai_generation_completed) {
+          // ⭐ AI 생성 완료된 기존 구매 → 재구매 확인 다이얼로그 표시
+          console.log('🔄 [PaymentNew] AI 생성 완료된 기존 구매 → 재구매 확인 다이얼로그 표시');
+          setShowRepurchaseDialog(true);
+          return false; // 리다이렉트하지 않음
         } else {
-          navigate(targetUrl, { replace: true });
+          // ⭐ 결제 후 사주선택에서 뒤로가기한 경우 → 상세 페이지로 리다이렉트
+          const targetUrl = `/master/content/detail/${currentContentId}`;
+          console.log('🔄 [PaymentNew] AI 생성 미완료 (뒤로가기) → 상세 페이지로 리다이렉트:', targetUrl);
+
+          if (useBrowserRedirect) {
+            console.log('🔄 [PaymentNew] window.location.replace 사용');
+            window.location.replace(targetUrl);
+          } else {
+            navigate(targetUrl, { replace: true });
+          }
+          return true;
         }
-        return true;
       }
     } else {
       console.log('⚠️ [PaymentNew] contentId가 없음');
@@ -684,6 +705,36 @@ export default function PaymentNew({
           </div>
         </div>
       )}
+
+      {/* ⭐ 재구매 확인 다이얼로그 */}
+      <AlertDialog open={showRepurchaseDialog} onOpenChange={setShowRepurchaseDialog}>
+        <AlertDialogContent className="max-w-[320px] rounded-[20px] p-[24px] gap-0">
+          <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[26px] tracking-[-0.36px] text-center text-black whitespace-pre-line">
+            {"이미 구매한 상품이에요.\n구매를 다시 하시겠어요?"}
+          </p>
+          <AlertDialogFooter className="flex flex-row gap-[12px] mt-[24px]">
+            <AlertDialogCancel
+              className="flex-1 h-[52px] rounded-[16px] bg-[#f3f3f3] hover:bg-[#e8e8e8] border-none font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] text-[#6d6d6d]"
+              onClick={() => {
+                setShowRepurchaseDialog(false);
+                // 상세 페이지로 돌아가기
+                navigate(`/master/content/detail/${contentId}`, { replace: true });
+              }}
+            >
+              아니요
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="flex-1 h-[52px] rounded-[16px] bg-[#48b2af] hover:bg-[#3d9996] font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] text-white"
+              onClick={() => {
+                setShowRepurchaseDialog(false);
+                // 다이얼로그 닫고 결제 페이지 유지 (재구매 진행)
+              }}
+            >
+              네
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
         {/* Top Navigation */}
