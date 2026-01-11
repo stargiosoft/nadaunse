@@ -2049,30 +2049,44 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         </div>
 
         {/* Bottom Button */}
-        <div className="shrink-0 z-20 bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] relative">
+        <div className="shrink-0 z-50 bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] relative pointer-events-auto">
           <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
             <div className="bg-white relative shrink-0 w-full">
               <div className="flex flex-col items-center justify-center size-full">
                 <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[20px] py-[12px] relative w-full">
-                  <motion.button
+                  <motion.div
+                    role="button"
+                    tabIndex={0}
+                    aria-label="구매하기"
                     onTouchStart={() => console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchStart', { timestamp: new Date().toISOString() })}
-                    onTouchEnd={() => console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchEnd', { timestamp: new Date().toISOString() })}
-                    onClick={() => {
-                      console.log('🖱️ [MasterContentDetailPage] 구매버튼 onClick 이벤트 발생', { timestamp: new Date().toISOString() });
+                    onTouchEnd={(e) => {
+                      console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchEnd', { timestamp: new Date().toISOString() });
+                      e.preventDefault(); // ⭐ iOS 더블탭 방지
                       onPurchase();
                     }}
-                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer border-none overflow-hidden touch-manipulation"
-                    whileTap={{ scale: 0.96, backgroundColor: "#36908f" }}
+                    onClick={(e) => {
+                      console.log('🖱️ [MasterContentDetailPage] 구매버튼 onClick 이벤트 발생', { timestamp: new Date().toISOString() });
+                      e.preventDefault(); // ⭐ iOS 더블탭 방지
+                      onPurchase();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onPurchase();
+                      }
+                    }}
+                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer overflow-hidden touch-manipulation pointer-events-auto select-none [-webkit-touch-callout:none] active:bg-[#36908f]"
+                    whileTap={{ scale: 0.96 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
                     <div className="flex flex-row items-center justify-center size-full">
                       <div className="box-border content-stretch flex gap-[10px] h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                          <p className="font-medium leading-[25px] not-italic relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px] whitespace-pre">구매하기</p>
+                          <p className="font-medium leading-[25px] not-italic relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px] whitespace-pre select-none [-webkit-touch-callout:none]">구매하기</p>
                         </div>
                       </div>
                     </div>
-                  </motion.button>
+                  </motion.div>
                 </div>
               </div>
             </div>
