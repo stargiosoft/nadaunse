@@ -2061,7 +2061,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       console.log('🖱️ [MasterContentDetailPage] 구매버튼 onClick 이벤트 발생', { timestamp: new Date().toISOString() });
                       onPurchase();
                     }}
-                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer border-none overflow-hidden"
+                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer border-none overflow-hidden touch-manipulation"
                     whileTap={{ scale: 0.96, backgroundColor: "#36908f" }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >

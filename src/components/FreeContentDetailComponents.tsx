@@ -564,7 +564,7 @@ export function BottomButton({ onClick, text }: BottomButtonProps) {
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 onClick={handleClick}
-                className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer overflow-hidden select-none [-webkit-touch-callout:none]"
+                className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer overflow-hidden select-none [-webkit-touch-callout:none] touch-manipulation"
                 whileTap={{ scale: 0.96, backgroundColor: "#36908f" }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
