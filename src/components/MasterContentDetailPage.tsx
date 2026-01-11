@@ -796,10 +796,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const onBack = () => navigate('/');
   
   const onPurchase = async () => {
+    console.log('🔵 [MasterContentDetailPage] onPurchase 함수 시작', {
+      timestamp: new Date().toISOString(),
+      contentId
+    });
     console.log('🛒 [유료상품] 구매하기 클릭:', contentId);
-    
+
     // ⭐ Supabase Auth로 로그인 체크
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('🔐 [MasterContentDetailPage] 로그인 체크 완료:', { isLoggedIn: !!user });
     
     if (!user) {
       // ⭐ 로그아웃 유저 → 로그인 페이지로 이동 (결제 페이지로 리다이렉트)
@@ -808,12 +813,14 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       localStorage.setItem('redirectAfterLogin', redirectUrl);
       console.log('✅ localStorage 저장 확인:', localStorage.getItem('redirectAfterLogin'));
       // ⭐ canGoBack 상태 추가 - 로그인 페이지에서 뒤로가기 시 직전 페이지로 이동 가능
+      console.log('🟢 [MasterContentDetailPage] navigate 호출: /login/new');
       navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${contentId}` } });
       return;
     }
-    
+
     // ⭐ 로그인 유저 → 바로 실제 결제 페이지로 이동 (더미 페이지 건너뜀)
     console.log('✅ 로그인 유저 - 실제 결제 페이지로 이동');
+    console.log('🟢 [MasterContentDetailPage] navigate 호출:', `/product/${contentId}/payment/new`);
     navigate(`/product/${contentId}/payment/new`);
   };
 
@@ -2047,8 +2054,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             <div className="bg-white relative shrink-0 w-full">
               <div className="flex flex-col items-center justify-center size-full">
                 <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[20px] py-[12px] relative w-full">
-                  <motion.button 
-                    onClick={onPurchase}
+                  <motion.button
+                    onTouchStart={() => console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchStart', { timestamp: new Date().toISOString() })}
+                    onTouchEnd={() => console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchEnd', { timestamp: new Date().toISOString() })}
+                    onClick={() => {
+                      console.log('🖱️ [MasterContentDetailPage] 구매버튼 onClick 이벤트 발생', { timestamp: new Date().toISOString() });
+                      onPurchase();
+                    }}
                     className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer border-none overflow-hidden"
                     whileTap={{ scale: 0.96, backgroundColor: "#36908f" }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}

@@ -540,14 +540,30 @@ interface BottomButtonProps {
 }
 
 export function BottomButton({ onClick, text }: BottomButtonProps) {
+  const handleTouchStart = () => {
+    console.log('📱 [BottomButton] onTouchStart', { text, timestamp: new Date().toISOString() });
+  };
+
+  const handleTouchEnd = () => {
+    console.log('📱 [BottomButton] onTouchEnd', { text, timestamp: new Date().toISOString() });
+  };
+
+  const handleClick = () => {
+    console.log('🖱️ [BottomButton] onClick 이벤트 발생', { text, timestamp: new Date().toISOString() });
+    onClick();
+    console.log('✅ [BottomButton] onClick 핸들러 실행 완료');
+  };
+
   return (
     <div className="fixed bottom-0 box-border content-stretch flex flex-col items-start left-1/2 shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] translate-x-[-50%] w-full max-w-[440px] z-10">
       <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
         <div className="bg-white relative shrink-0 w-full">
           <div className="flex flex-col items-center justify-center size-full">
             <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[20px] py-[12px] relative w-full">
-              <motion.div 
-                onClick={onClick}
+              <motion.div
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onClick={handleClick}
                 className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer overflow-hidden select-none [-webkit-touch-callout:none]"
                 whileTap={{ scale: 0.96, backgroundColor: "#36908f" }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
