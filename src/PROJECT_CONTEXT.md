@@ -216,11 +216,13 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 ```
 /components/MasterContentDetailPage.tsx → 유료 상세 (메인)
 /components/PaymentNew.tsx              → 결제
+/components/CouponBottomSheetNew.tsx    → 쿠폰 선택 바텀시트
+/components/PaymentComplete.tsx         → 결제 완료
 /components/BirthInfoInput.tsx          → 사주 입력
 /components/SajuSelectPage.tsx          → 사주 선택
 /components/LoadingPage.tsx             → 로딩
 /components/SajuResultPage.tsx          → 결과
-/components/CouponBottomSheetNew.tsx    → 쿠폰 선택
+/components/ResultCompletePage.tsx      → 풀이 완료 ("풀이는 여기까지예요")
 ```
 </details>
 
@@ -251,13 +253,11 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 </details>
 
 <details>
-<summary><b>프로필 & 구매</b></summary>
+<summary><b>프로필</b></summary>
 
 ```
 /components/ProfilePage.tsx             → 프로필 메인
 /components/PurchaseHistoryPage.tsx     → 구매 내역
-/components/WelcomeCouponPage.tsx       → 웰컴 쿠폰
-/components/ResultCompletePage.tsx      → 풀이 완료 ("풀이는 여기까지예요")
 ```
 </details>
 
@@ -275,10 +275,12 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 </details>
 
 <details>
-<summary><b>인증</b></summary>
+<summary><b>인증 & 회원가입</b></summary>
 
 ```
 /components/LoginPageNew.tsx            → 로그인
+/components/TermsPage.tsx               → 약관 동의
+/components/WelcomeCouponPage.tsx       → 회원가입 완료 (웰컴 쿠폰 안내)
 /components/ExistingAccountPageNew.tsx  → 기존 계정 연동
 /components/SessionExpiredDialog.tsx    → 세션 만료
 /lib/auth.ts                            → 인증 헬퍼
@@ -302,12 +304,14 @@ export const publicAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "<product
 
 ---
 
-### 🔐 인증 관련
+### 🔐 인증 & 회원가입
 ```
 /lib/auth.ts                    → Supabase Auth 헬퍼 함수
 /lib/supabase.ts                → Supabase 클라이언트 설정
 /pages/AuthCallback.tsx         → OAuth 콜백 처리
 /components/LoginPageNew.tsx    → 로그인 페이지
+/components/TermsPage.tsx       → 약관 동의 페이지
+/components/WelcomeCouponPage.tsx → 회원가입 완료 (웰컴 쿠폰 안내)
 /components/ExistingAccountPageNew.tsx  → 기존 계정 연동
 /components/SessionExpiredDialog.tsx    → 세션 만료 다이얼로그
 ```
