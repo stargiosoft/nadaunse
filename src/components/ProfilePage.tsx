@@ -131,10 +131,12 @@ export default function ProfilePage({
       const cachedUserJson = localStorage.getItem('user');
       const cachedSajuJson = localStorage.getItem('primary_saju');
 
-      if (cachedUserJson && cachedSajuJson) {
+      // ⭐ user 정보만 있어도 캐시로 간주 (사주 없는 상태도 캐시됨)
+      if (cachedUserJson) {
         const cachedUser = JSON.parse(cachedUserJson);
-        const cachedSaju = JSON.parse(cachedSajuJson);
+        const cachedSaju = cachedSajuJson ? JSON.parse(cachedSajuJson) : null;
         console.log('🚀 [ProfilePage] 초기화 시 캐시 발견 → 즉시 렌더링');
+        console.log('📌 [ProfilePage] 사주 정보:', cachedSaju ? '있음' : '없음');
         return {
           user: cachedUser,
           isMaster: cachedUser.role === 'master',
