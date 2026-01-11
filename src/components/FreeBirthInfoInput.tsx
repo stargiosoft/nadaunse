@@ -430,6 +430,13 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       console.log('✅ [FreeBirthInfoInput] 사주 정보 저장 완료:', sajuData);
       console.log('📌 [FreeBirthInfoInput] sajuData.id:', sajuData?.id);
 
+      // ⭐️ 프로필 페이지 캐시 업데이트 (프로필 돌아갈 때 새로운 사주 정보 표시)
+      if (sajuData) {
+        localStorage.setItem('primary_saju', JSON.stringify(sajuData));
+        localStorage.setItem('profile_needs_refresh', 'true');
+        console.log('✅ [FreeBirthInfoInput] primary_saju 캐시 업데이트 완료');
+      }
+
       // ⭐️ Edge Function 호출 제거 - FreeContentLoading에서 처리
       console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
 

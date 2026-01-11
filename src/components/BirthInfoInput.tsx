@@ -440,6 +440,13 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
 
       console.log('✅ [사주입력] 저장 성공:', sajuData);
 
+      // ⭐️ 프로필 페이지 캐시 업데이트 (프로필 돌아갈 때 새로운 사주 정보 표시)
+      if (sajuData) {
+        localStorage.setItem('primary_saju', JSON.stringify(sajuData));
+        localStorage.setItem('profile_needs_refresh', 'true');
+        console.log('✅ [BirthInfoInput] primary_saju 캐시 업데이트 완료');
+      }
+
       // ⭐️ localStorage 대신 DB에서 진행 중인 주문 직접 조회 (GlobalAIMonitor와 동일한 로직)
       console.log('🔍 [사주입력] 진행 중인 주문 조회 시작...');
       
