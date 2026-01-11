@@ -141,23 +141,35 @@ serve(async (req) => {
               throw new Error(`사주 답변 생성 실패: ${data.error}`)
             }
 
-            // ⭐️ order_results 테이블에 저장
-            const { error: insertError } = await supabase
+            // ⭐️ order_results 테이블에 저장 (upsert로 중복 방지)
+            // ⚠️ 먼저 기존 답변이 있는지 확인
+            const { data: existingResult } = await supabase
               .from('order_results')
-              .insert({
-                order_id: orderId,
-                question_id: question.id,  // ⭐️ 필수! NOT NULL 컬럼
-                question_order: question.question_order,
-                question_text: question.question_text,
-                gpt_response: data.answerText,
-                question_type: 'saju',  // 질문 타입 추가
-                created_at: new Date().toISOString()
-              })
+              .select('id')
+              .eq('order_id', orderId)
+              .eq('question_id', question.id)
+              .single()
 
-            if (insertError) {
-              console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
+            if (existingResult) {
+              console.log(`⚠️ 이미 존재하는 답변 스킵 (질문 ${question.question_order})`)
             } else {
-              console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
+              const { error: insertError } = await supabase
+                .from('order_results')
+                .insert({
+                  order_id: orderId,
+                  question_id: question.id,  // ⭐️ 필수! NOT NULL 컬럼
+                  question_order: question.question_order,
+                  question_text: question.question_text,
+                  gpt_response: data.answerText,
+                  question_type: 'saju',  // 질문 타입 추가
+                  created_at: new Date().toISOString()
+                })
+
+              if (insertError) {
+                console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
+              } else {
+                console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
+              }
             }
 
             console.log(`✅ 사주 답변 생성 완료 (질문 ${question.question_order})`)
@@ -189,32 +201,44 @@ serve(async (req) => {
               throw new Error(`타로 답변 생성 실패: ${data.error}`)
             }
 
-            // ⭐️ order_results 테이블에 저장
-            const { error: insertError } = await supabase
+            // ⭐️ order_results 테이블에 저장 (upsert로 중복 방지)
+            // ⚠️ 먼저 기존 답변이 있는지 확인
+            const { data: existingTarotResult } = await supabase
               .from('order_results')
-              .insert({
-                order_id: orderId,
-                question_id: question.id,  // ⭐️ 필수! NOT NULL 컬럼
-                question_order: question.question_order,
-                question_text: question.question_text,
-                gpt_response: data.answerText,
-                question_type: 'tarot',  // 질문 타입 추가
-                tarot_card_id: data.tarotCardId || null,  // ⭐ 타로 카드 ID
-                tarot_card_name: data.tarotCard || null,  // ⭐ 타로 카드 이름
-                tarot_card_image_url: data.imageUrl || null,  // ⭐ 타로 카드 이미지 URL
-                created_at: new Date().toISOString()
-              })
-            
-            console.log('🎴 [타로] DB 저장 데이터:', {
-              tarot_card_id: data.tarotCardId,
-              tarot_card_name: data.tarotCard,
-              tarot_card_image_url: data.imageUrl
-            })
+              .select('id')
+              .eq('order_id', orderId)
+              .eq('question_id', question.id)
+              .single()
 
-            if (insertError) {
-              console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
+            if (existingTarotResult) {
+              console.log(`⚠️ 이미 존재하는 타로 답변 스킵 (질문 ${question.question_order})`)
             } else {
-              console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
+              const { error: insertError } = await supabase
+                .from('order_results')
+                .insert({
+                  order_id: orderId,
+                  question_id: question.id,  // ⭐️ 필수! NOT NULL 컬럼
+                  question_order: question.question_order,
+                  question_text: question.question_text,
+                  gpt_response: data.answerText,
+                  question_type: 'tarot',  // 질문 타입 추가
+                  tarot_card_id: data.tarotCardId || null,  // ⭐ 타로 카드 ID
+                  tarot_card_name: data.tarotCard || null,  // ⭐ 타로 카드 이름
+                  tarot_card_image_url: data.imageUrl || null,  // ⭐ 타로 카드 이미지 URL
+                  created_at: new Date().toISOString()
+                })
+
+              console.log('🎴 [타로] DB 저장 데이터:', {
+                tarot_card_id: data.tarotCardId,
+                tarot_card_name: data.tarotCard,
+                tarot_card_image_url: data.imageUrl
+              })
+
+              if (insertError) {
+                console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
+              } else {
+                console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
+              }
             }
 
             console.log(`✅ 타로 답변 생성 완료 (질문 ${question.question_order})`)
