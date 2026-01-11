@@ -14,6 +14,7 @@ import { PrimarySajuChangeDialog } from './PrimarySajuChangeDialog';
 import { SajuKebabMenu } from './SajuKebabMenu';
 import { ConfirmDialog } from './ConfirmDialog';
 import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
+import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { Radio } from './ui/Radio';
 import { motion } from "motion/react";
 
@@ -387,11 +388,9 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
     return `${calendarPrefix} ${year}.${month}.${day}`;
   };
 
-  // 띠 계산 (간단 버전 - 생년 기준)
-  const getChineseZodiac = (birthDate: string): string => {
-    const year = parseInt(birthDate.split('-')[0] || birthDate.substring(0, 4));
-    const zodiacs = ['원숭이띠', '닭띠', '개띠', '돼지띠', '쥐띠', '소띠', '호랑이띠', '토끼띠', '용띠', '뱀띠', '말띠', '양띠'];
-    return zodiacs[year % 12];
+  // 띠 계산 (입춘 기준)
+  const getChineseZodiac = (birthDate: string, birthTime?: string): string => {
+    return getChineseZodiacByLichun(birthDate, birthTime);
   };
 
   /**
@@ -837,10 +836,10 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                 {/* Profile Image */}
                 <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
                   <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-                    <img 
-                      alt={mySaju.zodiac || getChineseZodiac(mySaju.birth_date)}
+                    <img
+                      alt={mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
                       className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-                      src={getZodiacImageUrl(mySaju.zodiac || getChineseZodiac(mySaju.birth_date))}
+                      src={getZodiacImageUrl(mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time))}
                       loading="lazy"
                     />
                     <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
@@ -872,7 +871,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     </div>
                     <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                        {mySaju.zodiac || getChineseZodiac(mySaju.birth_date)}
+                        {mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
                       </p>
                       <div className="h-[6px] relative shrink-0 w-[1px]">
                         <div className="absolute inset-[-8.33%_-0.4px]">
@@ -969,10 +968,10 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     {/* Profile Image */}
                     <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
                       <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-                        <img 
-                          alt={saju.zodiac || getChineseZodiac(saju.birth_date)}
+                        <img
+                          alt={saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
                           className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-                          src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date))}
+                          src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time))}
                           loading="lazy"
                         />
                         <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
@@ -1004,7 +1003,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         </div>
                         <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            {saju.zodiac || getChineseZodiac(saju.birth_date)}
+                            {saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
                           </p>
                           <div className="h-[6px] relative shrink-0 w-[1px]">
                             <div className="absolute inset-[-8.33%_-0.4px]">

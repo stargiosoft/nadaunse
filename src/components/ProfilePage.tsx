@@ -8,6 +8,7 @@ import { signOut } from '../lib/auth';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import Footer from './Footer';
 import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
+import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { ProfileSkeletonWithSaju } from './skeletons/ProfileSkeleton';
 import { ProfileImage } from './ProfileImage';
 import { DEV } from '../lib/env';
@@ -108,11 +109,9 @@ function formatBirthDate(birthDate: string, calendarType?: string): string {
   return `${calendarPrefix} ${year}.${month}.${day}`;
 }
 
-// 띠 계산 (간단 버전 - 생년 기준)
-function getChineseZodiac(birthDate: string): string {
-  const year = parseInt(birthDate.split('-')[0] || birthDate.substring(0, 4));
-  const zodiacs = ['원숭이띠', '닭띠', '개띠', '돼지띠', '쥐띠', '소띠', '호랑이띠', '토끼띠', '용띠', '뱀띠', '말띠', '양띠'];
-  return zodiacs[year % 12];
+// 띠 계산 (입춘 기준 - zodiacCalculator 사용)
+function getChineseZodiac(birthDate: string, birthTime?: string): string {
+  return getChineseZodiacByLichun(birthDate, birthTime);
 }
 
 export default function ProfilePage({
@@ -501,9 +500,9 @@ export default function ProfilePage({
                         />
                       </div>
 
-                      <img 
-                        alt={primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date)}
-                        src={getZodiacImageUrl(primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date))}
+                      <img
+                        alt={primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
+                        src={getZodiacImageUrl(primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time))}
                         className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full z-0"
                         loading="lazy"
                         onLoad={(e) => e.currentTarget.setAttribute('data-loaded', 'true')}
@@ -513,7 +512,7 @@ export default function ProfilePage({
 
                     <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px text-nowrap">
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] h-[16px] leading-[16px] overflow-ellipsis overflow-hidden text-[#848484] text-[12px] tracking-[-0.24px] w-full">
-                        {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date)}
+                        {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
                       </p>
                       <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[25px] min-w-full overflow-ellipsis overflow-hidden text-[16px] text-black tracking-[-0.32px] w-[min-content]">
                         {primarySaju.full_name} ({primarySaju.notes})
@@ -534,7 +533,7 @@ export default function ProfilePage({
                           </p>
                           <TextDivider />
                           <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
-                            {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date)}
+                            {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
                           </p>
                           <TextDivider />
                           <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
