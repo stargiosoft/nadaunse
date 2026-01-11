@@ -3,7 +3,7 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-11
+> **최종 업데이트**: 2026-01-12
 
 ---
 
@@ -12,6 +12,80 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-12
+
+### iOS 첫 번째 클릭 이벤트 누락: z-index/pointer-events 충돌 해결
+**결정**: 스크롤 컨테이너와 Fixed 하단 버튼 간의 z-index 및 pointer-events 충돌 문제 해결
+**배경**:
+- iOS Safari에서 하단 고정 CTA 버튼의 첫 번째 클릭이 로그조차 잡히지 않는 버그 발생
+- 두 번째 클릭부터는 정상 작동
+- 콘솔 로그에 클릭 이벤트가 전혀 기록되지 않아 이벤트 자체가 전달되지 않는 것으로 확인
+
+**문제 시나리오**:
+```
+1. 페이지 로드 후 스크롤 컨테이너가 전체 화면 차지
+2. 하단 고정 버튼(fixed, z-index: 50)이 렌더링됨
+3. 첫 번째 클릭 시도 → 이벤트 누락 (로그 없음)
+4. 두 번째 클릭 시도 → 정상 작동
+```
+
+**근본 원인**:
+- 스크롤 가능한 컨테이너(`overflow-y-auto`)가 하단 고정 버튼 영역까지 확장
+- iOS Safari의 터치 이벤트 처리 순서 문제:
+  1. 첫 터치가 스크롤 컨테이너 레이어에 먼저 등록됨
+  2. z-index가 높아도 pointer-events가 명시적으로 설정되지 않으면 하위 레이어가 이벤트 캡처
+  3. 두 번째 터치부터 올바른 레이어로 이벤트 전달
+
+**해결 방법**:
+```tsx
+// ✅ 하단 고정 버튼에 pointer-events 명시적 설정
+<div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-auto">
+  <button className="w-full h-14 bg-primary text-white">
+    구매하기
+  </button>
+</div>
+
+// ✅ 스크롤 컨테이너의 하단 패딩 확보 (버튼 영역만큼)
+<div className="overflow-y-auto pb-20">
+  {/* 콘텐츠 */}
+</div>
+```
+
+**추가 최적화**:
+```tsx
+// 스크롤 컨테이너가 하단 버튼 영역을 침범하지 않도록 높이 제한
+<div className="overflow-y-auto max-h-[calc(100vh-5rem)]">
+  {/* 5rem = 하단 버튼 높이 + 여백 */}
+</div>
+```
+
+**핵심 원리**:
+- iOS Safari는 터치 이벤트를 레이어별로 처리하며, 첫 터치 시 레이어 인식 과정이 필요
+- `pointer-events: auto`를 명시적으로 설정하면 해당 요소가 우선적으로 이벤트를 수신
+- 스크롤 컨테이너의 영역을 명확히 제한하여 fixed 요소와의 충돌 방지
+- z-index만으로는 터치 이벤트 우선순위가 보장되지 않음
+
+**테스트 결과**:
+- iOS Safari 17.x: 첫 클릭부터 정상 작동 확인 ✅
+- iOS Chrome: 정상 작동 확인 ✅
+- Android Chrome: 정상 작동 확인 ✅
+- Desktop Safari/Chrome: 정상 작동 확인 ✅
+
+**영향**:
+- 모든 하단 고정 CTA 버튼 컴포넌트
+- `/components/PaymentNew.tsx`
+- `/components/MasterContentDetailPage.tsx`
+- `/components/FreeContentDetail.tsx`
+- 기타 fixed bottom 버튼을 사용하는 모든 페이지
+
+**교훈**:
+- iOS Safari의 터치 이벤트는 z-index만으로 제어 불가
+- `pointer-events` 속성을 명시적으로 설정하는 것이 안전
+- 스크롤 컨테이너와 fixed 요소 간 영역 겹침을 최소화해야 함
+- 모바일 이벤트 디버깅 시 첫 상호작용 테스트 필수
 
 ---
 
@@ -1189,17 +1263,17 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
-## 📊 주요 결정 통계 (2026-01-11 기준)
+## 📊 주요 결정 통계 (2026-01-12 기준)
 
-- **총 결정 기록**: 34개
+- **총 결정 기록**: 35개
 - **아키텍처 변경**: 10개
 - **성능 최적화**: 5개
-- **사용자 경험 개선**: 10개 (iOS 스와이프 뒤로가기 대응 +4, 로그인 플로우 개선 +1)
+- **사용자 경험 개선**: 11개 (iOS 터치 이벤트 개선 +1, iOS 스와이프 뒤로가기 대응 +4, 로그인 플로우 개선 +1)
 - **보안 강화**: 6개
 - **개발 안정성**: 3개
 
 ---
 
-**문서 버전**: 2.2.0
-**최종 업데이트**: 2026-01-11
+**문서 버전**: 2.3.0
+**최종 업데이트**: 2026-01-12
 **문서 끝**
