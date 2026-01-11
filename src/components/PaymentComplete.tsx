@@ -98,6 +98,10 @@ export default function PaymentComplete() {
             console.log('✅ 주문 저장 완료:', savedOrder);
             console.log('✅ 저장된 주문 pstatus:', savedOrder?.pstatus);
             console.log('✅ 저장된 주문 content_id:', savedOrder?.content_id);
+
+            // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
+            localStorage.removeItem('purchase_history_cache');
+            console.log('🗑️ 구매내역 캐시 무효화 완료');
           }
 
           // ⭐ 쿠폰 사용 처리 (모바일 결제)
