@@ -289,54 +289,67 @@ serve(async (req) => {
     // - send-alimtalk Edge Function에서 총 4번 시도 (1회 + 3회 재시도)
     // - 4번 모두 실패해도 AI 답변은 정상적으로 저장되며, 사용자는 결과를 볼 수 있음
     // - 알림톡 실패 로그는 alimtalk_logs 테이블에 기록됨
+    // ⭐️ 본인 사주에서 전화번호 조회 (함께보는 사주로 지인 사주 선택해도 본인에게 알림톡 발송)
     try {
       console.log('📱 알림톡 발송 시작...')
-      
+
+      // 1단계: 주문에서 user_id 조회
       const { data: orderInfo, error: orderInfoError } = await supabase
         .from('orders')
-        .select(`
-          user_id,
-          saju_records!inner(full_name, phone_number)
-        `)
+        .select('user_id')
         .eq('id', orderId)
         .single()
 
-      if (orderInfoError || !orderInfo) {
-        console.error('❌ 주문 정보 조회 실패:', orderInfoError)
+      if (orderInfoError || !orderInfo || !orderInfo.user_id) {
+        console.error('❌ 주문 정보 조회 실패 또는 user_id 없음:', orderInfoError)
       } else {
-        const phoneNumber = orderInfo.saju_records?.phone_number
-        const customerName = orderInfo.saju_records?.full_name
+        // 2단계: 본인 사주에서 전화번호 조회 (is_primary=true 우선, 없으면 notes='본인')
+        const { data: primarySaju, error: primarySajuError } = await supabase
+          .from('saju_records')
+          .select('full_name, phone_number')
+          .eq('user_id', orderInfo.user_id)
+          .or('is_primary.eq.true,notes.eq.본인')
+          .order('is_primary', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .single()
 
-        if (!phoneNumber) {
-          console.warn('⚠️ 전화번호 없음, 알림톡 발송 스킵')
-        } else if (!customerName) {
-          console.warn('⚠️ 고객명 없음, 알림톡 발송 스킵')
+        if (primarySajuError || !primarySaju) {
+          console.warn('⚠️ 본인 사주 조회 실패:', primarySajuError)
         } else {
-          console.log('📞 알림톡 발송 대상:', customerName, phoneNumber)
-          
-          // 알림톡 발송 Edge Function 호출
-          const alimtalkResponse = await fetch(`${supabaseUrl}/functions/v1/send-alimtalk`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              orderId: orderId,
-              userId: orderInfo.user_id || 'anonymous',  // ⭐️ 방어 코드: user_id가 NULL일 경우 대비
-              mobile: phoneNumber,
-              customerName: customerName,
-              contentId: contentId
-            })
-          })
+          const phoneNumber = primarySaju.phone_number
+          const customerName = primarySaju.full_name
 
-          const alimtalkResult = await alimtalkResponse.json()
-
-          if (alimtalkResult.success) {
-            console.log('✅ 알림톡 발송 완료:', alimtalkResult.messageId)
+          if (!phoneNumber) {
+            console.warn('⚠️ 본인 사주에 전화번호 없음, 알림톡 발송 스킵')
+          } else if (!customerName) {
+            console.warn('⚠️ 본인 사주에 고객명 없음, 알림톡 발송 스킵')
           } else {
-            console.warn('⚠️ 알림톡 발송 실패 (무시하고 계속):', alimtalkResult.error)
-            console.warn('⚠️ 사용자는 여전히 결과를 확인할 수 있습니다.')
+            console.log('📞 알림톡 발송 대상 (본인 사주):', customerName, phoneNumber)
+
+            // 알림톡 발송 Edge Function 호출
+            const alimtalkResponse = await fetch(`${supabaseUrl}/functions/v1/send-alimtalk`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderId: orderId,
+                userId: orderInfo.user_id || 'anonymous',  // ⭐️ 방어 코드: user_id가 NULL일 경우 대비
+                mobile: phoneNumber,
+                customerName: customerName,
+                contentId: contentId
+              })
+            })
+
+            const alimtalkResult = await alimtalkResponse.json()
+
+            if (alimtalkResult.success) {
+              console.log('✅ 알림톡 발송 완료:', alimtalkResult.messageId)
+            } else {
+              console.warn('⚠️ 알림톡 발송 실패 (무시하고 계속):', alimtalkResult.error)
+              console.warn('⚠️ 사용자는 여전히 결과를 확인할 수 있습니다.')
+            }
           }
         }
       }
