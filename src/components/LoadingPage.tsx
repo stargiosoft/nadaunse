@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import svgPaths from "../imports/svg-ezi6geedzp";
@@ -108,6 +108,9 @@ export default function LoadingPage() {
 
   // ⭐ 현재 콘텐츠의 카테고리 (다른 운세 보기 클릭 시 홈 필터에 사용)
   const [contentCategory, setContentCategory] = useState<string | null>(null);
+
+  // ⭐ iOS Safari 고스트 클릭 방지 (페이지 마운트 후 500ms 동안 버튼 클릭 무시)
+  const mountTimeRef = useRef<number>(Date.now());
 
   // ⭐ 세션 체크 - 로그아웃 상태면 로그인 페이지로 즉시 리다이렉트
   // (로딩 페이지가 작동 중이므로 다이얼로그 대신 바로 이동)
@@ -501,8 +504,21 @@ export default function LoadingPage() {
     return () => clearInterval(pollingInterval);
   }, [orderId, contentId, navigate]);
 
+  // ⭐ iOS Safari 고스트 클릭 방지 헬퍼 함수
+  // 페이지 마운트 후 500ms 이내의 클릭은 무시
+  const isGhostClick = (): boolean => {
+    const elapsed = Date.now() - mountTimeRef.current;
+    if (elapsed < 500) {
+      console.log('👻 [LoadingPage] 고스트 클릭 무시 (마운트 후', elapsed, 'ms)');
+      return true;
+    }
+    return false;
+  };
+
   // X 버튼 클릭 (홈으로)
   const handleClose = () => {
+    if (isGhostClick()) return;
+
     // 로딩 상태 저장 (이탈 후 재진입 대응)
     if (contentId) {
       localStorage.setItem(`loading_${contentId}`, JSON.stringify({
@@ -515,11 +531,14 @@ export default function LoadingPage() {
 
   // 홈으로 가기
   const handleGoHome = () => {
+    if (isGhostClick()) return;
     navigate('/');
   };
 
   // 다른 운세 보기
   const handleViewOther = () => {
+    if (isGhostClick()) return;
+
     // ⭐ 홈으로 이동하면서 localStorage에 필터 정보 저장
     // - 현재 본 콘텐츠의 카테고리로 필터 자동 선택
     // - 카테고리 정보가 없으면 '전체'로 설정

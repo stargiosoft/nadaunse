@@ -494,51 +494,46 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
         console.log('✅ [사주입력] 주문 업데이트 완료');
       }
 
-      // ⭐️ 즉시 로딩 페이지로 이동 (SajuSelectPage와 동일한 UX)
-      console.log('🚀 [사주입력] 로딩 페이지로 즉시 이동');
-      console.log('📌 contentId:', existingOrder.content_id);
-      console.log('📌 orderId:', pendingOrderId);
-      
-      // ⭐ navigate 호출 직전 로그
-      console.log('⏰ [사주입력] navigate 호출 직전!');
-      navigate(`/loading?contentId=${existingOrder.content_id}&orderId=${pendingOrderId}`);
-      console.log('⏰ [사주입력] navigate 호출 완료!');
-
-      // ⭐️ 백그라운드에서 AI 답변 생성 시작 (비동기, 결과 대기 안 )
+      // ⭐️ 백그라운드에서 AI 답변 생성 시작 (비동기, 결과 대기 안 함)
+      // ⚠️ 중요: navigate 호출 전에 Edge Function 호출해야 안정적으로 실행됨
       console.log('🚀 AI 답변 생성 시작 (백그라운드)');
       console.log('📌 sajuRecordId:', sajuData.id);
-      
+      console.log('📌 contentId:', existingOrder.content_id);
+      console.log('📌 orderId:', pendingOrderId);
+
       // ⭐ 타로 콘텐츠인지 확인하고 타로 카드 선택
       const { data: contentData } = await supabase
         .from('master_contents')
         .select('category_main')
         .eq('id', existingOrder.content_id)
         .single();
-      
+
       const { data: questionsData } = await supabase
         .from('master_content_questions')
         .select('question_type')
         .eq('content_id', existingOrder.content_id)
         .eq('question_type', 'tarot');
-      
+
       const isTarotContent = contentData?.category_main?.includes('타로') || contentData?.category_main?.toLowerCase() === 'tarot';
       const tarotQuestionCount = questionsData?.length || 0;
-      
-      let requestBody: any = {
+
+      let requestBody: Record<string, unknown> = {
         contentId: existingOrder.content_id,
         orderId: pendingOrderId,
         sajuRecordId: sajuData.id
       };
-      
+
       // 타로 콘텐츠이고 타로 질문이 있으면 랜덤 카드 선택
       if (isTarotContent && tarotQuestionCount > 0) {
         const tarotCards = getTarotCardsForQuestions(tarotQuestionCount);
         requestBody.tarotCards = tarotCards;
         console.log('🎴 [타로] 랜덤 카드 선택:', tarotCards);
       }
-      
+
       console.log('📤 Edge Function 호출 파라미터:', requestBody);
 
+      // ⭐ Edge Function 호출을 먼저 시작 (fire and forget)
+      // navigate 이전에 호출해야 component unmount 전에 요청이 확실히 시작됨
       supabase.functions
         .invoke('generate-content-answers', {
           body: requestBody
@@ -555,6 +550,11 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
           console.error('❌ AI 생성 오류:', err);
           console.error('❌ 오류 상세:', JSON.stringify(err));
         });
+
+      // ⭐️ 로딩 페이지로 이동 (Edge Function 호출 후)
+      console.log('🚀 [사주입력] 로딩 페이지로 이동');
+      console.log('⏰ [사주입력] navigate 호출!');
+      navigate(`/loading?contentId=${existingOrder.content_id}&orderId=${pendingOrderId}`);
       
     } catch (error) {
       console.error('❌ [사주입력] 처리 중 오류:', error);
