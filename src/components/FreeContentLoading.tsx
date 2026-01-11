@@ -460,7 +460,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
   }, [contentId, sajuRecordId, guestMode, userNameFromUrl, navigate]);
 
   return (
-    <div className="bg-white relative min-h-screen w-full flex justify-center" data-name="로딩중 _ 390">
+    <div className="bg-white fixed inset-0 w-full h-full flex justify-center overflow-hidden" data-name="로딩중 _ 390">
       <div className="w-full max-w-[440px] relative">
         {/* Loading Content */}
         <div className="absolute content-stretch flex flex-col gap-[44px] items-center left-0 top-1/2 translate-y-[-50%] w-full px-[20px]">
