@@ -240,13 +240,34 @@ export default function PurchaseHistoryPage() {
     } else {
       // ⭐ 유료 콘텐츠: 사주 정보 입력 여부 & order_results 체크
       console.log('🔍 [구매내역] 유료 콘텐츠 상태 체크 시작:', item.id);
-      
+
       try {
-        // 1️⃣ 사주 정보 입력 여부 체크
+        // 🔒 **보안 체크**: saju_record_id가 null이어도 AI 결과가 있으면 결과 페이지로 이동
+        // (사주 삭제 후 재선택으로 다른 사주 보기 방지)
         if (!item.saju_record_id) {
-          // ❌ 사주 정보가 입력되지 않음 → 사주 선택/입력 페이지로
-          console.log('❌ [구매내역] 사주 정보 미입력 → 사주 선택/입력 페이지로 이동');
-          
+          console.log('⚠️ [구매내역] saju_record_id null → AI 결과 존재 여부 체크');
+
+          // AI 결과가 이미 존재하는지 확인
+          const { data: existingResults, error: resultsCheckError } = await supabase
+            .from('order_results')
+            .select('id')
+            .eq('order_id', item.id)
+            .limit(1);
+
+          if (resultsCheckError) {
+            console.error('❌ [구매내역] AI 결과 체크 실패:', resultsCheckError);
+          }
+
+          // 🚨 AI 결과가 존재하면 → 결과 페이지로 즉시 이동 (재선택 불가)
+          if (existingResults && existingResults.length > 0) {
+            console.log('🚨 [보안] AI 결과 존재 → 사주 재선택 차단, 결과 페이지로 이동');
+            navigate(`/result/saju?orderId=${item.id}&contentId=${item.content_id}&from=purchase`);
+            return;
+          }
+
+          // AI 결과가 없으면 → 사주 선택/입력 페이지로 (최초 구매)
+          console.log('✅ [구매내역] AI 결과 없음 → 사주 선택/입력 허용');
+
           // 등록된 사주 정보가 있는지 확인
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
@@ -254,7 +275,7 @@ export default function PurchaseHistoryPage() {
               .from('saju_records')
               .select('id')
               .eq('user_id', user.id);
-            
+
             if (sajuError) {
               console.error('❌ [구매내역] 사주 정보 조회 실패:', sajuError);
               // 에러 시 사주 입력 페이지로 이동 (canGoBack 상태 추가)

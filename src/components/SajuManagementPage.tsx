@@ -512,16 +512,38 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
       // 1단계: 해당 사주를 참조하는 orders 조회
       const { data: relatedOrders, error: fetchError } = await supabase
         .from('orders')
-        .select('*')
+        .select('id, pstatus, ai_generation_completed')
         .eq('saju_record_id', selectedSajuForKebab.id);
 
       if (fetchError) throw fetchError;
 
       console.log('📋 [사주삭제] 연관된 주문:', relatedOrders?.length || 0, '건');
 
-      // 2단계: orders에 사주 정보 하드코딩으로 채우기
+      // 🔒 **보안 체크**: 유료 주문 중 AI 생성 완료된 건이 있으면 삭제 불가
       if (relatedOrders && relatedOrders.length > 0) {
-        for (const order of relatedOrders) {
+        const completedPaidOrders = relatedOrders.filter(
+          order => order.pstatus === 'paid' && order.ai_generation_completed === true
+        );
+
+        if (completedPaidOrders.length > 0) {
+          console.error('🚨 [사주삭제] AI 생성 완료된 유료 주문 존재 → 삭제 불가:', completedPaidOrders.length, '건');
+          setIsDeleting(false);
+          alert('이 사주 정보는 이미 구매한 운세와 연결되어 있어 삭제할 수 없습니다.\n\n구매 내역에서 운세 결과를 확인하실 수 있습니다.');
+          return;
+        }
+      }
+
+      // 2단계: 미완료 주문만 처리 - orders에 사주 정보 하드코딩으로 채우기
+      if (relatedOrders && relatedOrders.length > 0) {
+        // 전체 주문 정보 다시 가져오기 (update에 필요한 필드 포함)
+        const { data: fullOrders, error: fullFetchError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('saju_record_id', selectedSajuForKebab.id);
+
+        if (fullFetchError) throw fullFetchError;
+
+        for (const order of fullOrders || []) {
           const { error: updateError } = await supabase
             .from('orders')
             .update({
