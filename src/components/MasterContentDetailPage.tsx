@@ -796,7 +796,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const onBack = () => navigate('/');
   
   const onPurchase = async () => {
-    console.log('🛒 [유료상품] 구매하기 클릭:', contentId);
+    console.log('🛒 [유료상품] 구매하기 탭 이벤트 발생:', contentId, '시간:', new Date().toISOString());
     
     // ⭐ Supabase Auth로 로그인 체크
     const { data: { user } } = await supabase.auth.getUser();
@@ -2047,9 +2047,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             <div className="bg-white relative shrink-0 w-full">
               <div className="flex flex-col items-center justify-center size-full">
                 <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[20px] py-[12px] relative w-full">
-                  <motion.button 
-                    onClick={onPurchase}
-                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer border-none overflow-hidden"
+                  <motion.button
+                    onTap={onPurchase}
+                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer border-none overflow-hidden touch-manipulation"
                     whileTap={{ scale: 0.96, backgroundColor: "#36908f" }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
