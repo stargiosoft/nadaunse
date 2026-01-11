@@ -366,7 +366,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     }
   };
 
-  // 필수 필드 검증 (이름, 생년월일만 필수)
+  // 필수 필드 검증 (이름, 생년월일 필수 + 유료 콘텐츠일 경우 휴대폰 번호 필수)
   const isFormValid = () => {
     const nameValid = name.trim().length >= 1;
     const birthDateValid = birthDate.replace(/[^\d]/g, '').length === 8 && isValidDate(birthDate);
@@ -374,7 +374,14 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     // 태어난 시간: 선택사항 (비어있거나, "모르겠어요" 체크되어 있거나, 정상 입력되어 있으면 OK)
     const birthTimeValid = birthTime.length === 0 || unknownTime || isValidTime(birthTime);
 
-    return nameValid && birthDateValid && birthTimeValid;
+    // ⭐ 유료 콘텐츠 플로우에서는 휴대폰 번호 필수 (11자리, 01로 시작)
+    let phoneNumberValid = true;
+    if (isFromPaidContent) {
+      const phoneNumbers = phoneNumber.replace(/[^\d]/g, '');
+      phoneNumberValid = phoneNumbers.length === 11 && phoneNumbers.startsWith('01');
+    }
+
+    return nameValid && birthDateValid && birthTimeValid && phoneNumberValid;
   };
 
   // 저장 버튼 클릭 시 유효성 검사
@@ -401,8 +408,17 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
       newErrors.birthTime = '태어난 시를 정확하게 입력해주세요.';
     }
     
-    // 휴대폰 번호 검증 (선택 필드)
-    if (phoneNumber.trim() !== '') {
+    // 휴대폰 번호 검증
+    // ⭐ 유료 콘텐츠 플로우에서는 필수
+    if (isFromPaidContent) {
+      const phoneNumbers = phoneNumber.replace(/[^\d]/g, '');
+      if (phoneNumbers.length === 0) {
+        newErrors.phoneNumber = '휴대폰 번호를 입력해 주세요.';
+      } else if (phoneNumbers.length !== 11 || !phoneNumbers.startsWith('01')) {
+        newErrors.phoneNumber = '휴대폰 번호를 다시 확인해 주세요.';
+      }
+    } else if (phoneNumber.trim() !== '') {
+      // 일반 플로우에서는 선택 필드
       const phoneNumbers = phoneNumber.replace(/[^\d]/g, '');
       if (phoneNumbers.length !== 11 || !phoneNumbers.startsWith('01')) {
         newErrors.phoneNumber = '휴대폰 번호를 다시 확인해 주세요.';
