@@ -17,6 +17,61 @@
 
 ## 2026-01-11
 
+### iOS 스와이프 뒤로가기: PaymentNew popstate 핸들러 제거
+**결정**: PaymentNew.tsx에서 `pushState` + `popstate` 패턴 제거, bfcache 핸들러만 유지
+**배경**:
+- 유료 콘텐츠 상세 → 결제 → 스와이프 뒤로가기 → 유료 콘텐츠 상세 (OK)
+- → 다시 스와이프 뒤로가기 → 홈이 아닌 유료 콘텐츠 상세로 이동 (버그)
+
+**문제 원인**:
+```typescript
+// ❌ 이전 코드 - 히스토리 스택 중복 발생
+useEffect(() => {
+  window.history.pushState({ paymentPage: true }, '');
+
+  const handlePopState = () => {
+    navigate(`/master/content/detail/${contentId}`, { replace: true });
+  };
+
+  window.addEventListener('popstate', handlePopState);
+  return () => window.removeEventListener('popstate', handlePopState);
+}, [contentId, navigate]);
+```
+
+**히스토리 스택 분석**:
+```
+1. 초기: [Home, Detail, Payment]
+2. pushState: [Home, Detail, Payment, {dummy}]
+3. 스와이프 뒤로가기 → popstate 발생
+4. navigate(replace): [Home, Detail, Detail] ← Payment가 Detail로 대체됨!
+5. 다시 스와이프 뒤로가기 → Detail (Home이 아닌)
+```
+
+**해결 방법**:
+```typescript
+// ✅ 수정된 코드 - pushState/popstate 제거, bfcache만 유지
+useEffect(() => {
+  const handlePageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) {
+      setIsProcessingPayment(false); // bfcache 복원 시 상태 리셋만
+    }
+  };
+
+  window.addEventListener('pageshow', handlePageShow);
+  return () => window.removeEventListener('pageshow', handlePageShow);
+}, []);
+```
+
+**핵심 원리**:
+- `pushState` + `navigate(replace)` 조합은 히스토리 스택을 예측 불가능하게 만듦
+- iOS 스와이프 뒤로가기는 브라우저가 자연스럽게 처리하도록 두는 것이 최선
+- bfcache 복원 시 상태 리셋만 처리 (버튼 비활성화 상태 해제 등)
+
+**영향**: `/components/PaymentNew.tsx`
+**테스트**: iOS Safari에서 결제 페이지 진입 후 여러 번 스와이프 뒤로가기 테스트 완료
+
+---
+
 ### iOS 스와이프 뒤로가기: 프로필/사주관리 페이지 캐시 기반 렌더링
 **결정**: ProfilePage, SajuManagementPage에 캐시 기반 초기 렌더링 적용
 **배경**:
