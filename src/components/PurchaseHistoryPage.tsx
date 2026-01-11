@@ -326,8 +326,8 @@ export default function PurchaseHistoryPage() {
             console.log('⚠️ [구매내역] 타로 프리로드 실패 (무시):', err);
           });
           
-          // 즉시 결과 페이지로 이동 (히스토리에서 구매내역을 대체하여 뒤로가기 시 프로필로 이동)
-          navigate(`/result/saju?orderId=${item.id}&contentId=${item.content_id}&from=purchase`, { replace: true });
+          // 즉시 결과 페이지로 이동 (히스토리 유지 - 뒤로가기 시 구매내역으로 이동)
+          navigate(`/result/saju?orderId=${item.id}&contentId=${item.content_id}&from=purchase`);
         } else {
           // ⚠️ 아직 생성 중 → 로딩 페이지로 이동
           console.log(`⚠️ [구매내역] 아직 생성 중 (${completedAnswers}/${totalQuestions}) → 로딩 페이지로 이동`);

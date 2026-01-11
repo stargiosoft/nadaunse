@@ -1059,22 +1059,14 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                 <div className="w-full max-w-[440px] px-[20px] py-[12px]">
                   <div
                     onClick={handleNavigateToAdd}
-                    className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer hover:bg-[#3a9794] active:bg-[#2d7a78] active:scale-96 transition-all duration-150 ease-in-out"
+                    className="bg-[#48b2af] h-[56px] rounded-[16px] w-full cursor-pointer hover:bg-[#3a9794] active:bg-[#2d7a78] active:scale-96 transition-all duration-150 ease-in-out flex items-center justify-center gap-[4px]"
                   >
-                    <div className="flex flex-row items-center justify-center size-full">
-                      <div className="content-stretch flex h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
-                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                          <p className="leading-[25px] relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px]">
-                            사주 정보 추가
-                          </p>
-                          <div className="relative shrink-0 size-[16px]">
-                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                              <path d={svgPaths.p46c90f0} fill="white" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25px] text-[16px] text-nowrap text-white tracking-[-0.32px]">
+                      사주 정보 추가
+                    </p>
+                    <svg className="size-[16px]" fill="none" viewBox="0 0 24 24">
+                      <path d={svgPaths.p2a89300} fill="white" />
+                    </svg>
                   </div>
                 </div>
               </div>

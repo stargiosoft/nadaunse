@@ -98,22 +98,6 @@ export default function PaymentNew({
 
   const navigate = useNavigate();
 
-  // ⭐ 뒤로가기 감지 - 콘텐츠 상세 페이지로 리다이렉트
-  useEffect(() => {
-    if (!contentId) return;
-
-    // 히스토리에 현재 페이지 상태 추가 (뒤로가기 감지용)
-    window.history.pushState({ paymentPage: true }, '');
-
-    const handlePopState = (event: PopStateEvent) => {
-      console.log('🔙 [PaymentNew] 뒤로가기 감지 → 콘텐츠 상세 페이지로 이동');
-      navigate(`/master/content/detail/${contentId}`, { replace: true });
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [contentId, navigate]);
-
   // ⭐ bfcache 복원 시 처리 (iOS Safari 스와이프 뒤로가기 대응)
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
