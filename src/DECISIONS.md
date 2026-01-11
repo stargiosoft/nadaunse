@@ -17,6 +17,81 @@
 
 ## 2026-01-11
 
+### 로그인 직후 프로필 페이지 강제 리로드: 별도 플래그 사용
+**결정**: `show_login_toast`와 `force_profile_reload` 별도 플래그로 분리
+**배경**:
+- 로그인 후 프로필 접속 시 사주 정보가 표시되지 않는 문제
+- `show_login_toast` 플래그가 HomePage에서 즉시 제거되어 ProfilePage 도달 시 플래그 없음
+- AuthCallback에서 사주 프리페칭 시도 시 무한 로딩 발생
+- 로그인 로직을 건드리지 않고 해결 필요
+
+**문제 시나리오**:
+```
+1. 로그인 → AuthCallback (show_login_toast = true)
+2. 홈 리다이렉트 → HomePage
+   - LoginToast 컴포넌트에서 show_login_toast 감지
+   - 토스트 표시 후 즉시 플래그 제거
+3. 프로필 클릭 → ProfilePage
+   - show_login_toast 이미 없음
+   - 캐시 있으면 API 호출 스킵
+   - 사주 정보 없음으로 표시 (버그!)
+```
+
+**해결 방법**:
+```typescript
+// AuthCallback.tsx - 두 개의 독립적인 플래그 설정
+sessionStorage.setItem('show_login_toast', 'true');        // 토스트 표시용
+sessionStorage.setItem('force_profile_reload', 'true');    // 프로필 API 강제 호출용
+
+// ProfilePage.tsx - 별도 플래그로 강제 리로드 감지
+const forceReload = sessionStorage.getItem('force_profile_reload') === 'true';
+
+// 캐시가 있어도 강제 리로드 시 API 호출
+if (initialState.hasCache && !needsRefresh && !forceReload) {
+  return; // API 호출 스킵
+}
+
+if (forceReload) {
+  // API 호출 → 사주 정보 + 캐시 저장
+  // ...
+  sessionStorage.removeItem('force_profile_reload'); // 한 번만 호출
+}
+```
+
+**동작 흐름**:
+```
+1. 로그인 → AuthCallback
+   - show_login_toast = true (토스트용)
+   - force_profile_reload = true (프로필 리로드용)
+
+2. 홈 리다이렉트 → HomePage
+   - show_login_toast 감지 → 토스트 표시
+   - show_login_toast 제거 (HomePage에서)
+
+3. 프로필 클릭 → ProfilePage
+   - force_profile_reload = true 감지 ✅
+   - API 강제 호출 → 사주 정보 + 캐시 저장
+   - force_profile_reload 제거
+
+4. 다음 프로필 방문
+   - force_profile_reload 없음
+   - 캐시 사용 (API 호출 스킵)
+```
+
+**핵심 원리**:
+- 토스트 표시와 프로필 리로드를 별도 플래그로 분리
+- show_login_toast: HomePage LoginToast에서만 사용 (즉시 제거)
+- force_profile_reload: ProfilePage에서만 사용 (API 호출 후 제거)
+- 각 플래그의 생명주기가 독립적으로 관리됨
+
+**영향**:
+- `/src/pages/AuthCallback.tsx`
+- `/src/components/ProfilePage.tsx`
+- `/src/App.tsx` (WelcomeCouponPageWrapper)
+**테스트**: 로그아웃 → 로그인 → 프로필 클릭 → 사주 정보 표시 확인
+
+---
+
 ### iOS 스와이프 뒤로가기: 사주 추가 후 히스토리 2단계 뒤로가기
 **결정**: 사주 추가 완료 후 `navigate(-2)`로 2단계 뒤로 이동
 **배경**:
@@ -1065,10 +1140,10 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ## 📊 주요 결정 통계 (2026-01-11 기준)
 
-- **총 결정 기록**: 33개
+- **총 결정 기록**: 34개
 - **아키텍처 변경**: 10개
 - **성능 최적화**: 5개
-- **사용자 경험 개선**: 9개 (iOS 스와이프 뒤로가기 대응 +4)
+- **사용자 경험 개선**: 10개 (iOS 스와이프 뒤로가기 대응 +4, 로그인 플로우 개선 +1)
 - **보안 강화**: 6개
 - **개발 안정성**: 3개
 
