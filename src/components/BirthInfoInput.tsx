@@ -435,7 +435,7 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
         birthDate: birthDate,
         birthTime: finalBirthTime,
         unknownTime: unknownTime || birthTime.trim() === '',
-        phoneNumber: phoneNumber.replace(/[^\\d]/g, '') || undefined
+        phoneNumber: phoneNumber.replace(/[^\d]/g, '') || undefined
       });
 
       console.log('✅ [사주입력] 저장 성공:', sajuData);

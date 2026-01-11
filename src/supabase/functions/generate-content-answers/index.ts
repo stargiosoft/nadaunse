@@ -323,25 +323,43 @@ serve(async (req) => {
           } else if (!customerName) {
             console.warn('⚠️ 본인 사주에 고객명 없음, 알림톡 발송 스킵')
           } else {
-            console.log('📞 알림톡 발송 대상 (본인 사주):', customerName, phoneNumber)
+            console.log('📞 알림톡 발송 대상:', customerName, phoneNumber)
 
             // 알림톡 발송 Edge Function 호출
-            const alimtalkResponse = await fetch(`${supabaseUrl}/functions/v1/send-alimtalk`, {
+            const alimtalkUrl = `${supabaseUrl}/functions/v1/send-alimtalk`
+            const alimtalkPayload = {
+              orderId: orderId,
+              userId: orderInfo.user_id || 'anonymous',  // ⭐️ 방어 코드: user_id가 NULL일 경우 대비
+              mobile: phoneNumber,
+              customerName: customerName,
+              contentId: contentId
+            }
+
+            console.log('📱 [알림톡] 호출 URL:', alimtalkUrl)
+            console.log('📱 [알림톡] 요청 payload:', JSON.stringify(alimtalkPayload, null, 2))
+
+            const alimtalkResponse = await fetch(alimtalkUrl, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${supabaseServiceKey}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                orderId: orderId,
-                userId: orderInfo.user_id || 'anonymous',  // ⭐️ 방어 코드: user_id가 NULL일 경우 대비
-                mobile: phoneNumber,
-                customerName: customerName,
-                contentId: contentId
-              })
+              body: JSON.stringify(alimtalkPayload)
             })
 
-            const alimtalkResult = await alimtalkResponse.json()
+            console.log('📱 [알림톡] 응답 상태:', alimtalkResponse.status)
+            console.log('📱 [알림톡] 응답 헤더:', JSON.stringify(Object.fromEntries(alimtalkResponse.headers.entries()), null, 2))
+
+            const alimtalkResultText = await alimtalkResponse.text()
+            console.log('📱 [알림톡] 응답 원본:', alimtalkResultText)
+
+            let alimtalkResult
+            try {
+              alimtalkResult = JSON.parse(alimtalkResultText)
+            } catch (parseError) {
+              console.error('📱 [알림톡] JSON 파싱 실패:', parseError)
+              alimtalkResult = { success: false, error: `JSON 파싱 실패: ${alimtalkResultText.substring(0, 200)}` }
+            }
 
             if (alimtalkResult.success) {
               console.log('✅ 알림톡 발송 완료:', alimtalkResult.messageId)
