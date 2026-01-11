@@ -288,24 +288,30 @@ serve(async (req) => {
 
     // 실패한 질문 확인
     const failedQuestions = results.filter(r => !r.success)
-    
+    const allSucceeded = failedQuestions.length === 0
+
     if (failedQuestions.length > 0) {
       console.warn('⚠️ 일부 질문 처리 실패:', failedQuestions)
+      console.warn(`📊 실패 요약: ${failedQuestions.length}/${questions.length}개 질문 실패`)
     }
 
-    // 5. orders 테이블 업데이트 (AI 생성 완료)
-    const { error: orderUpdateError } = await supabase
-      .from('orders')
-      .update({ 
-        ai_generation_completed: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', orderId)
+    // 5. orders 테이블 업데이트 (⭐ 모든 질문이 성공한 경우에만 완료 표시)
+    if (allSucceeded) {
+      const { error: orderUpdateError } = await supabase
+        .from('orders')
+        .update({
+          ai_generation_completed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
 
-    if (orderUpdateError) {
-      console.error('⚠️ orders 테이블 업데이트 실패:', orderUpdateError)
+      if (orderUpdateError) {
+        console.error('⚠️ orders 테이블 업데이트 실패:', orderUpdateError)
+      } else {
+        console.log('✅ orders 테이블 업데이트 완료 (ai_generation_completed = true)')
+      }
     } else {
-      console.log('✅ orders 테이블 업데이트 완료')
+      console.warn(`⚠️ AI 생성 미완료 (${failedQuestions.length}개 실패) - ai_generation_completed 유지 (false)`)
     }
 
     // 7. 알림톡 발송 (실패해도 전체 프로세스 계속 진행)
@@ -400,15 +406,19 @@ serve(async (req) => {
       // 알림톡 실패해도 전체 프로세스는 성공으로 처리
     }
 
-    console.log('✅ 전체 프로세스 완료!')
+    if (allSucceeded) {
+      console.log('✅ 전체 프로세스 완료! 모든 질문 생성 성공')
+    } else {
+      console.warn(`⚠️ 전체 프로세스 완료하였으나 일부 질문 실패 (${failedQuestions.length}/${questions.length})`)
+    }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: allSucceeded,  // ⭐ 모든 질문이 성공한 경우에만 true
         totalQuestions: questions.length,
         successCount: results.filter(r => r.success).length,
         failedCount: failedQuestions.length,
-        results 
+        results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
