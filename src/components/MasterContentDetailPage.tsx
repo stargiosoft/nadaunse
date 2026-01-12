@@ -149,7 +149,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isUsageGuideExpanded, setIsUsageGuideExpanded] = useState(false);
   const [isRefundPolicyExpanded, setIsRefundPolicyExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // ⭐ 초기값 false (무료 콘텐츠는 스켈레톤 사용)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // ⭐ 초기값을 localStorage에서 직접 읽어서 설정 (첫 렌더링부터 올바른 로그인 상태 반영 → 가격 영역 깜빡임 방지)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('user'));
   const [isFreeContent, setIsFreeContent] = useState<boolean | null>(null); // ⭐ 무료 콘텐츠 여부 (초기 판별용)
   const [welcomeCouponDiscount, setWelcomeCouponDiscount] = useState<number | null>(null); // ⭐ 로그아웃 유저용 welcome 쿠폰 할인 금액
   const [isCouponLoaded, setIsCouponLoaded] = useState(false); // ⭐ 로그아웃 시 쿠폰 로딩 완료 여부
