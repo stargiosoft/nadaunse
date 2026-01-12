@@ -491,7 +491,7 @@ function PaymentNewPage() {
     return (
       <PaymentNew
         contentId={id}
-        onBack={() => navigate(`/`)}
+        onBack={() => navigate(`/product/${id}`)}
         onPurchase={async () => {
           // ⭐ 로딩 페이지 이미지 미리 로드 (사주 입력/선택 동안 백그라운드에서 로드)
           preloadLoadingPageImages();
