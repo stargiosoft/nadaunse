@@ -387,6 +387,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             // 쿠폰 처리
             if (couponsError) {
               console.error('❌ 쿠폰 조회 실패:', couponsError);
+              // ⭐ 실패해도 쿠폰 로딩 완료 표시 (가격 영역은 표시되어야 함)
+              setIsCouponLoaded(true);
             } else {
               // 만료되지 않은 쿠폰만 필터링
               const validCoupons = (couponsData || []).filter((coupon: any) => {
@@ -399,6 +401,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               validCoupons.forEach((coupon, idx) => {
                 console.log(`  [${idx + 1}] 쿠폰명: "${coupon.coupons.name}", 할인금액: ${coupon.coupons.discount_amount}원`);
               });
+              // ⭐ 로그인 상태에서도 쿠폰 로딩 완료 표시 (가격+혜택가 동시 표시)
+              setIsCouponLoaded(true);
             }
 
             // 답변 존재 여부 확인 (타로 콘텐츠용)
@@ -994,8 +998,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             </div>
                           </div>
                         </div>
-                        {/* 가격 영역 - 로그아웃 시 쿠폰 로딩 완료까지 숨김 (동시 표시) */}
-                        <div className={`relative shrink-0 w-full mt-[-8px] mb-[-4px] ${(isLoggedIn || isCouponLoaded) ? '' : 'hidden'}`}>
+                        {/* 가격 영역 - 쿠폰 로딩 완료까지 숨김 (가격+혜택가 동시 표시) */}
+                        <div className={`relative shrink-0 w-full mt-[-8px] mb-[-4px] ${isCouponLoaded ? '' : 'hidden'}`}>
                           <div className="size-full">
                             <div className="box-border content-stretch flex flex-col gap-0 items-start px-[2px] py-0 relative w-full">
                                 {/* 할인율 + 할인가격 + 정상가격(취소선) */}
@@ -1084,8 +1088,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           </div>
                         </div>
 
-                      {/* 쿠폰 안내 버튼 (조건부 렌더링) - 로그아웃 시 쿠폰 로딩 완료까지 숨김 */}
-                      <div className={`w-full ${(isLoggedIn || isCouponLoaded) ? '' : 'hidden'}`}>
+                      {/* 쿠폰 안내 버튼 (조건부 렌더링) - 쿠폰 로딩 완료까지 숨김 */}
+                      <div className={`w-full ${isCouponLoaded ? '' : 'hidden'}`}>
                       {(() => {
                         // ⭐ coupon_type으로 정확히 구분 + 실제 할인 금액 사용
                         const revisitCoupon = userCoupons.find(c => c.coupons.coupon_type === 'revisit' && !c.is_used);
