@@ -5,6 +5,15 @@ import ArrowLeft from './ArrowLeft';
 import { generateImagePrompt, generateThumbnail } from '../lib/masterContentAI';
 import FreeContentDetail from './FreeContentDetail';
 import { toast } from '../lib/toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 // 🔧 Build v1.2.6 - Router alias fix
 
@@ -278,6 +287,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   
   // UI states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showOrderExistsDialog, setShowOrderExistsDialog] = useState(false); // 주문 데이터 존재 안내
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
   const [regeneratingPreviewIndexes, setRegeneratingPreviewIndexes] = useState<Set<number>>(new Set());
@@ -709,7 +719,27 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   // 삭제하기
   const handleDelete = async () => {
     try {
-      // 0. Storage 썸네일 삭제 (base64가 아닌 경우)
+      // 0. 주문 데이터 체크 (삭제 가능 여부 확인)
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('content_id', contentId)
+        .limit(1);
+
+      if (ordersError) {
+        console.error('주문 데이터 조회 실패:', ordersError);
+        alert('삭제 중 오류가 발생했습니다.');
+        return;
+      }
+
+      // 주문 데이터가 있으면 삭제 불가 안내
+      if (orders && orders.length > 0) {
+        console.log('⚠️ 주문 데이터가 있어 삭제할 수 없음:', orders.length, '건');
+        setShowOrderExistsDialog(true);
+        return;
+      }
+
+      // 1. Storage 썸네일 삭제 (base64가 아닌 경우)
       if (contentData?.thumbnail_url && !contentData.thumbnail_url.startsWith('data:')) {
         try {
           // thumbnail_url에서 Storage 경로 추출
@@ -744,7 +774,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         }
       }
 
-      // 1. 질문들 삭제
+      // 2. 질문들 삭제
       const { error: deleteQuestionsError } = await supabase
         .from('master_content_questions')
         .delete()
@@ -756,7 +786,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         return;
       }
 
-      // 2. 콘텐츠 삭제
+      // 3. 콘텐츠 삭제
       const { error: deleteContentError } = await supabase
         .from('master_contents')
         .delete()
@@ -1418,6 +1448,23 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
             onCancel={() => setShowDeleteConfirm(false)}
           />
         )}
+
+        {/* 주문 데이터 존재 안내 다이얼로그 */}
+        <AlertDialog open={showOrderExistsDialog} onOpenChange={setShowOrderExistsDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>삭제할 수 없어요</AlertDialogTitle>
+              <AlertDialogDescription>
+                주문 데이터가 있어 삭제할 수 없어요.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setShowOrderExistsDialog(false)}>
+                확인
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* 이미지 모달 */}
         {showImageModal && contentData.thumbnail_url && (
