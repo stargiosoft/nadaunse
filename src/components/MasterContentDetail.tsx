@@ -716,10 +716,10 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
     }
   };
 
-  // 삭제하기
-  const handleDelete = async () => {
+  // 삭제하기 버튼 클릭 (주문 데이터 체크)
+  const handleDeleteClick = async () => {
     try {
-      // 0. 주문 데이터 체크 (삭제 가능 여부 확인)
+      // 주문 데이터 체크 (삭제 가능 여부 확인)
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select('id')
@@ -739,7 +739,18 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         return;
       }
 
-      // 1. Storage 썸네일 삭제 (base64가 아닌 경우)
+      // 주문 데이터가 없으면 삭제 확인 다이얼로그 표시
+      setShowDeleteConfirm(true);
+    } catch (error) {
+      console.error('주문 데이터 체크 오류:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 실제 삭제 처리
+  const handleDelete = async () => {
+    try {
+      // 0. Storage 썸네일 삭제 (base64가 아닌 경우)
       if (contentData?.thumbnail_url && !contentData.thumbnail_url.startsWith('data:')) {
         try {
           // thumbnail_url에서 Storage 경로 추출
@@ -1419,7 +1430,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         <div className="fixed bottom-0 left-0 right-0 bg-white px-[16px] py-[16px] max-w-[430px] mx-auto w-full border-t border-[#f0f0f0]">
           <div className="flex gap-[8px]">
             <button
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={handleDeleteClick}
               className="flex-1 h-[52px] rounded-[8px] bg-[#f0f0f0] flex items-center justify-center"
             >
               <p className="font-['Pretendard_Variable:Bold',sans-serif] text-[16px] text-[#666666]">
