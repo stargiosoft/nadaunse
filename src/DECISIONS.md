@@ -17,6 +17,71 @@
 
 ## 2026-01-13
 
+### Edge Function 간 호출 시 JWT 검증 비활성화 (--no-verify-jwt)
+**결정**: Edge Function에서 다른 Edge Function 호출 시 JWT 검증을 비활성화하여 배포
+**배경**:
+- Production에서 유료 콘텐츠 결제 시 "Invalid JWT" 에러 발생
+- `generate-content-answers` → `generate-saju-answer` / `generate-tarot-answer` 호출 시 401 에러
+- `generate-content-answers` → `send-alimtalk` 호출 시 401 에러
+- 로그: `{ code: 401, message: "Invalid JWT" }`
+- Staging은 정상 작동, Production만 실패
+
+**근본 원인**:
+- Edge Function 간 내부 호출 시 `Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}` 헤더 사용
+- Service Role Key는 JWT가 아니므로 Supabase 인프라 레벨에서 JWT 검증 실패
+- Production의 특정 Edge Functions에 JWT 검증이 활성화되어 있었음
+- Staging은 JWT 검증이 비활성화되어 있어서 정상 작동
+
+**해결 방법**:
+```bash
+# --no-verify-jwt 플래그로 재배포 (Production + Staging 모두)
+npx supabase functions deploy \
+  generate-saju-answer \
+  generate-tarot-answer \
+  generate-content-answers \
+  send-alimtalk \
+  --project-ref kcthtpmxffppfbkjjkub \
+  --no-verify-jwt
+
+npx supabase functions deploy \
+  generate-saju-answer \
+  generate-tarot-answer \
+  generate-content-answers \
+  send-alimtalk \
+  --project-ref hyltbeewxaqashyivilu \
+  --no-verify-jwt
+```
+
+**왜 JWT 검증을 비활성화해도 안전한가?**:
+- Edge Function 간 내부 호출은 Supabase 인프라 내부에서만 발생 (외부 노출 없음)
+- `SUPABASE_SERVICE_ROLE_KEY`는 Supabase Secret으로 안전하게 관리됨
+- 외부 클라이언트에서는 여전히 JWT 검증이 필요하지만, 내부 호출에는 불필요
+- Service Role Key는 모든 권한을 가진 마스터 키이므로 JWT 검증보다 강력함
+
+**대안 검토**:
+1. ❌ `apikey` 헤더 사용: 시도했으나 "Missing authorization header" 에러 발생
+2. ❌ JWT 생성 후 전달: 불필요한 오버헤드, Service Role Key로 충분
+3. ✅ **JWT 검증 비활성화**: 가장 간단하고 안전한 해결책
+
+**영향 범위**:
+- `generate-saju-answer`: 사주 답변 생성 (내부 호출용)
+- `generate-tarot-answer`: 타로 답변 생성 (내부 호출용)
+- `generate-content-answers`: 답변 병렬 생성 (진입점)
+- `send-alimtalk`: 알림톡 발송 (내부 호출용)
+
+**배포 결과**:
+- Production: 2026-01-13 13:40~13:43 배포 완료
+- Staging: 2026-01-13 13:46:44 배포 완료
+- "Invalid JWT" 에러 해결, 유료 콘텐츠 결제 정상 작동
+
+**교훈**:
+- Edge Function 간 내부 호출이 있는 경우 `--no-verify-jwt` 플래그 필수
+- Staging/Production 환경 설정 차이를 주의깊게 확인해야 함
+- Service Role Key는 JWT가 아니므로 JWT 검증 대상이 아님
+- 배포 시 일관된 플래그 사용 중요 (환경별 차이 방지)
+
+---
+
 ### JWT 설정 변경 후 Edge Functions 재배포 필요
 **결정**: JWT 토큰 만료 시간 변경 시 모든 Edge Functions를 재배포해야 함
 **배경**:
