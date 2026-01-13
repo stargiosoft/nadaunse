@@ -280,7 +280,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
         // 🎯 쿼리 빌더 시작
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url', { count: 'exact' });
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url', { count: 'exact' });
         
         // 🔍 타입 필터 적용 (종합/심화 해석판/무료 체험판)
         if (filter === 'paid') {
@@ -319,22 +319,28 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           });
 
           // Supabase 데이터를 Content 형식으로 변환
-          const formattedContents: MasterContent[] = data.map((item: any) => ({
-            id: item.id,
-            content_type: item.content_type as 'free' | 'paid',
-            title: item.title,
-            status: item.status, // ✅ 폴백 제거: DB 값을 그대로 사용
-            created_at: new Date(item.created_at).toLocaleString('ko-KR', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            }).replace(/\. /g, '.').replace(/\.$/, '').replace(', ', ' '),
-            // 🎨 썸네일 최적화 (리스트용)
-            thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
-          }));
+          const formattedContents: MasterContent[] = data.map((item: any) => {
+            // 🔥 캐시 버스터: updated_at 타임스탬프 사용
+            const cacheBuster = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+            const baseUrl = getThumbnailUrl(item.thumbnail_url, 'list');
+
+            return {
+              id: item.id,
+              content_type: item.content_type as 'free' | 'paid',
+              title: item.title,
+              status: item.status, // ✅ 폴백 제거: DB 값을 그대로 사용
+              created_at: new Date(item.created_at).toLocaleString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }).replace(/\. /g, '.').replace(/\.$/, '').replace(', ', ' '),
+              // 🎨 썸네일 최적화 + 캐시 버스터 (updated_at 기반)
+              thumbnail_url: baseUrl ? `${baseUrl}?v=${cacheBuster}` : null,
+            };
+          });
           
           // 💾 캐시에 저장 (전체 필터일 때만)
           if (filter === 'all') {
@@ -379,27 +385,34 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
   const fetchContents = useCallback(async () => {
     const { data, error } = await supabase
       .from('master_contents')
-      .select('id, content_type, title, status, created_at, thumbnail_url')
+      .select('id, content_type, title, status, created_at, updated_at, thumbnail_url')
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('콘텐츠 로드 실패:', error);
     } else if (data) {
-      const formattedContents: MasterContent[] = data.map((item: any) => ({
-        id: item.id,
-        content_type: item.content_type as 'free' | 'paid',
-        title: item.title,
-        status: item.status, // ✅ 폴백 제거: DB 값을 그대로 사용
-        created_at: new Date(item.created_at).toLocaleString('ko-KR', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }).replace(/\. /g, '.').replace(/\.$/, '').replace(', ', ' '),
-        thumbnail_url: item.thumbnail_url || null,
-      }));
+      const formattedContents: MasterContent[] = data.map((item: any) => {
+        // 🔥 캐시 버스터: updated_at 타임스탬프 사용
+        const cacheBuster = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+        const baseUrl = getThumbnailUrl(item.thumbnail_url, 'list');
+
+        return {
+          id: item.id,
+          content_type: item.content_type as 'free' | 'paid',
+          title: item.title,
+          status: item.status, // ✅ 폴백 제거: DB 값을 그대로 사용
+          created_at: new Date(item.created_at).toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }).replace(/\. /g, '.').replace(/\.$/, '').replace(', ', ' '),
+          // 🎨 썸네일 + 캐시 버스터 (updated_at 기반)
+          thumbnail_url: baseUrl ? `${baseUrl}?v=${cacheBuster}` : null,
+        };
+      });
       
       // 💾 캐시 저장
       try {
@@ -786,20 +799,20 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
       // 🎯 쿼리 빌더 시작 (필터 적용)
       let query = supabase
         .from('master_contents')
-        .select('id, content_type, title, status, created_at, thumbnail_url', { count: 'exact' });
-      
+        .select('id, content_type, title, status, created_at, updated_at, thumbnail_url', { count: 'exact' });
+
       // 🔍 타입 필터 적용 (종합/심화 해석판/무료 체험판)
       if (filter === 'paid') {
         query = query.eq('content_type', 'paid');
       } else if (filter === 'free') {
         query = query.eq('content_type', 'free');
       }
-      
+
       // 정렬 및 범위 설정
       const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(startIndex, endIndex);
-      
+
       if (error) {
         // 416 에러 (범위 초과)는 조용히 처리
         if (error.message?.includes('416') || error.code === 'PGRST103') {
@@ -822,22 +835,28 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           return;
         }
 
-        const formattedContents: MasterContent[] = data.map((item: any) => ({
-          id: item.id,
-          content_type: item.content_type as 'free' | 'paid',
-          title: item.title,
-          status: item.status, // ✅ 폴백 제거: DB 값을 그대로 사용
-          created_at: new Date(item.created_at).toLocaleString('ko-KR', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }).replace(/\. /g, '.').replace(/\.$/, '').replace(', ', ' '),
-          // 🎨 썸네일 최적화
-          thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
-        }));
+        const formattedContents: MasterContent[] = data.map((item: any) => {
+          // 🔥 캐시 버스터: updated_at 타임스탬프 사용
+          const cacheBuster = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+          const baseUrl = getThumbnailUrl(item.thumbnail_url, 'list');
+
+          return {
+            id: item.id,
+            content_type: item.content_type as 'free' | 'paid',
+            title: item.title,
+            status: item.status, // ✅ 폴백 제거: DB 값을 그대로 사용
+            created_at: new Date(item.created_at).toLocaleString('ko-KR', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            }).replace(/\. /g, '.').replace(/\.$/, '').replace(', ', ' '),
+            // 🎨 썸네일 최적화 + 캐시 버스터 (updated_at 기반)
+            thumbnail_url: baseUrl ? `${baseUrl}?v=${cacheBuster}` : null,
+          };
+        });
         
         setContents(prev => [...prev, ...formattedContents]);
         setCurrentPage(prev => prev + 1);

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from "motion/react";
 import svgPaths from '../imports/svg-e15u41g853';
 import img from "figma:asset/5615ff21216f93eb47cac8ee15adee136174d7be.png";
@@ -10,6 +11,7 @@ interface FreeSajuDetailProps {
   userName: string;
   productTitle: string;
   productImage: string;
+  contentId?: string;  // 🔙 시스템 뒤로가기 시 콘텐츠 상세로 이동하기 위한 ID
   onClose: () => void;
   recommendedProducts?: Array<{
     id: number;
@@ -60,17 +62,19 @@ const itemVariants = {
   }
 };
 
-export default function FreeSajuDetail({ 
-  recordId, 
-  userName, 
+export default function FreeSajuDetail({
+  recordId,
+  userName,
   productTitle,
   productImage,
-  onClose, 
+  contentId,
+  onClose,
   recommendedProducts = [],
   onProductClick,
   onBannerClick,
   onUserIconClick
 }: FreeSajuDetailProps) {
+  const navigate = useNavigate();
   const [visibleCount, setVisibleCount] = useState(3); // ⭐️ 표시할 콘텐츠 개수
   const [isBannerPressed, setIsBannerPressed] = useState(false); // ⭐️ 배너 프레스 상태
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -109,6 +113,36 @@ export default function FreeSajuDetail({
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // 🔙 iOS 스와이프 뒤로가기 대응: bfcache + popstate 핸들러 (DECISIONS.md 패턴)
+  useEffect(() => {
+    if (!contentId) return;
+
+    // 히스토리에 현재 페이지 상태 추가 (뒤로가기 감지용)
+    window.history.pushState({ freeSajuDetailPage: true }, '');
+
+    // popstate: 시스템 뒤로가기 감지 → 콘텐츠 상세로 이동
+    const handlePopState = () => {
+      console.log('🔙 [FreeSajuDetail] 시스템 뒤로가기 감지 → 콘텐츠 상세로 이동');
+      navigate(`/product/${contentId}`, { replace: true });
+    };
+
+    // bfcache에서 복원될 때도 콘텐츠 상세로 이동
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('🔄 [FreeSajuDetail] bfcache 복원 감지 → 콘텐츠 상세로 이동');
+        navigate(`/product/${contentId}`, { replace: true });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [contentId, navigate]);
 
   // ⭐️ recordId가 변경되면 데이터 다시 로드 (페이지 전환 시)
   useEffect(() => {

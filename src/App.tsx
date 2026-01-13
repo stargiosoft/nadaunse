@@ -996,6 +996,7 @@ function FreeResultPage() {
       userName={userName}
       productTitle={product.title}
       productImage={product.image}
+      contentId={id}
       onClose={() => navigate('/')}
       recommendedProducts={recommendedContents.length > 0 ? recommendedContents : recommendedProducts}
       onProductClick={(productId) => {

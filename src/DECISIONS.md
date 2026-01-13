@@ -3,7 +3,7 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-12
+> **최종 업데이트**: 2026-01-13
 
 ---
 
@@ -16,6 +16,37 @@
 ---
 
 ## 2026-01-13
+
+### 사주 API 서버 직접 호출: SAJU_API_KEY 도입
+**결정**: 프론트엔드에서 호출하던 사주 API를 다시 Edge Function(서버)에서 호출하도록 변경. API 키 인증 방식 사용.
+**배경**:
+- 기존 방식: 브라우저에서 사주 API 직접 호출 후 Edge Function에 전달 (빈 응답 문제 해결용)
+- 문제점: API가 키 인증을 요구하게 되어 프론트엔드에서 호출 시 API 키 노출 위험
+- 해결: 서버에서 `SAJU_API_KEY` 환경변수를 사용하여 안전하게 호출
+
+**구현**:
+```typescript
+// Edge Function (generate-content-answers/index.ts)
+const sajuApiKey = Deno.env.get('SAJU_API_KEY')
+// ⚠️ API 키는 gender 값 뒤에 =로 바로 연결 (특수한 형식)
+const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=True&gender=${gender}=${sajuApiKey}`
+console.log('📞 사주 API URL:', sajuApiUrl.replace(sajuApiKey, '***'))  // 키는 마스킹
+```
+
+**변경 내용**:
+- `generate-content-answers/index.ts`: SAJU_API_KEY로 서버 직접 호출
+- `BirthInfoInput.tsx`: 프론트엔드 사주 API 호출 제거
+- `SajuSelectPage.tsx`: 프론트엔드 사주 API 호출 제거
+- `lib/sajuApi.ts`: 더 이상 사용되지 않음 (프론트엔드 호출 금지)
+
+**Supabase Secret 설정**:
+- `SAJU_API_KEY`: Stargio 사주 API 인증 키
+- Staging/Production 모두 설정 필요
+
+**영향**: 사주 콘텐츠 결제 및 AI 생성 플로우
+**결과**: API 키 보안 유지 + 서버 직접 호출로 안정성 확보
+
+---
 
 ### 썸네일 이미지 캐시 버스팅: imageCacheBuster 상태 도입
 **결정**: 썸네일 재생성 시 브라우저 캐시 문제를 해결하기 위해 `imageCacheBuster` 상태를 도입하여 URL에 버전 쿼리 파라미터 추가
@@ -1392,12 +1423,80 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
+### iOS 스와이프 뒤로가기: FreeSajuDetail 결과 페이지 네비게이션 수정
+**결정**: FreeSajuDetail에서 X 버튼은 홈으로, 시스템 뒤로가기는 콘텐츠 상세로 이동
+**배경**:
+- 무료 콘텐츠 결과 페이지(FreeSajuDetail)에서 시스템 뒤로가기 시 로딩 페이지로 이동하는 버그
+- X 버튼: 홈으로 이동 (기존 동작 유지)
+- 시스템 뒤로가기/iOS 스와이프: 콘텐츠 상세로 이동
+
+**문제 시나리오**:
+```
+1. /product/{id} (무료 콘텐츠 상세)
+2. /product/{id}/loading/free (로딩)
+3. /product/{id}/result/free (결과)
+→ 시스템 뒤로가기 시 2번 로딩 페이지로 이동 (버그)
+→ 원하는 동작: 1번 콘텐츠 상세로 이동
+```
+
+**해결 방법**:
+```typescript
+// FreeSajuDetail.tsx - contentId prop 추가 및 popstate/bfcache 핸들러
+useEffect(() => {
+  if (!contentId) return;
+
+  // 히스토리에 현재 페이지 상태 추가 (뒤로가기 감지용)
+  window.history.pushState({ freeSajuDetailPage: true }, '');
+
+  // popstate: 시스템 뒤로가기 감지 → 콘텐츠 상세로 이동
+  const handlePopState = () => {
+    navigate(`/product/${contentId}`, { replace: true });
+  };
+
+  // bfcache에서 복원될 때도 콘텐츠 상세로 이동
+  const handlePageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) {
+      navigate(`/product/${contentId}`, { replace: true });
+    }
+  };
+
+  window.addEventListener('popstate', handlePopState);
+  window.addEventListener('pageshow', handlePageShow);
+  return () => {
+    window.removeEventListener('popstate', handlePopState);
+    window.removeEventListener('pageshow', handlePageShow);
+  };
+}, [contentId, navigate]);
+
+// App.tsx - FreeResultPage에서 contentId 전달
+<FreeSajuDetail
+  contentId={id}
+  onClose={() => navigate('/')}  // X 버튼은 홈으로
+  ...
+/>
+```
+
+**핵심 원리**:
+- X 버튼(`onClose`): 홈으로 이동 (기존 동작 유지)
+- 시스템 뒤로가기(`popstate`): 콘텐츠 상세로 리다이렉트
+- iOS bfcache 복원(`pageshow`): 콘텐츠 상세로 리다이렉트
+- `replace: true`로 히스토리 스택 정리
+
+**영향**:
+- `/src/App.tsx` (FreeResultPage - contentId prop 전달)
+- `/src/components/FreeSajuDetail.tsx` (contentId prop 추가, popstate/bfcache 핸들러)
+**테스트**:
+- X 버튼 → 홈으로 이동 확인
+- iOS Safari 스와이프 뒤로가기 → 콘텐츠 상세로 이동 확인
+
+---
+
 ## 📊 주요 결정 통계 (2026-01-13 기준)
 
-- **총 결정 기록**: 37개
+- **총 결정 기록**: 38개
 - **아키텍처 변경**: 11개 (사주 API 프론트엔드 호출)
 - **성능 최적화**: 6개 (이미지 캐시 버스팅 +1)
-- **사용자 경험 개선**: 11개 (iOS 터치 이벤트 개선, iOS 스와이프 뒤로가기 대응 +4, 로그인 플로우 개선)
+- **사용자 경험 개선**: 12개 (iOS 터치 이벤트 개선, iOS 스와이프 뒤로가기 대응 +5, 로그인 플로우 개선)
 - **보안 강화**: 6개
 - **개발 안정성**: 3개
 
