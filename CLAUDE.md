@@ -81,8 +81,8 @@ import { DEV } from '../lib/env';
 - `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (48개)
 
 ### 7. Edge Functions
-- **소스 코드 위치**: `/src/supabase/functions/` (루트의 `/supabase/` 아님!)
-- **배포 시**: `supabase functions deploy <함수명> --project-ref <project-id>`
+- **소스 코드 위치**: `/supabase/functions/` (Supabase CLI 기본 경로)
+- **배포 시**: `npx supabase functions deploy <함수명> --project-ref <project-id>`
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
@@ -97,12 +97,11 @@ npx supabase functions deploy generate-thumbnail --project-ref hyltbeewxaqashyiv
 npx supabase functions deploy generate-thumbnail --project-ref kcthtpmxffppfbkjjkub
 ```
 
-> ⚠️ Supabase CLI는 기본적으로 `supabase/functions/`를 찾으므로, 배포 전 임시로 폴더 구조를 맞춰야 함
-
 ### 8. 사주 API 호출 (중요!)
-- **프론트엔드에서 직접 호출**: Edge Function 경유 시 빈 응답 이슈 발생
-- **핵심 파일**: `/lib/sajuApi.ts`
-- **상세 내용**: `DECISIONS.md` → "2026-01-13 사주 API 프론트엔드 직접 호출" 섹션
+- **Edge Function에서 서버 직접 호출**: `SAJU_API_KEY` 환경변수 사용
+- **API URL**: `https://service.stargio.co.kr:8400/StargioSaju?birthday=...&lunar=True&gender=...=${SAJU_API_KEY}`
+- **핵심 파일**: `generate-content-answers/index.ts`
+- **상세 내용**: `DECISIONS.md` → "2026-01-13 사주 API 서버 직접 호출" 섹션
 
 ---
 
@@ -114,7 +113,6 @@ npx supabase functions deploy generate-thumbnail --project-ref kcthtpmxffppfbkjj
 | `/lib/logger.ts` | 구조화된 로거 (민감정보 마스킹) |
 | `/lib/sentry.ts` | Sentry 에러 모니터링 초기화 |
 | `/lib/fetchWithRetry.ts` | 재시도 로직 (Exponential Backoff) |
-| `/lib/sajuApi.ts` | 사주 API 직접 호출 |
 | `/lib/freeContentService.ts` | 무료 콘텐츠 비즈니스 로직 |
 | `/lib/coupon.ts` | 쿠폰 관리 로직 |
 
@@ -132,8 +130,10 @@ npx supabase functions deploy generate-thumbnail --project-ref kcthtpmxffppfbkjj
 ├── styles/         # Tailwind 설정
 └── imports/        # SVG, 이미지 임포트
 
-/supabase
-└── functions/      # Edge Functions (20개)
+supabase/
+├── functions/      # Edge Functions (20개)
+├── migrations/     # SQL 마이그레이션 파일
+└── *.md            # Supabase 관련 문서
 ```
 
 ---
@@ -180,7 +180,7 @@ chore:    기타 변경
 - Supabase 정보 하드코딩
 - 문서 업데이트 없이 대규모 변경
 - Production DB 직접 조작 (Staging에서 테스트 후 반영)
-- 사주 API를 Edge Function에서 호출 (빈 응답 이슈)
+- 사주 API를 프론트엔드에서 호출 (API 키 노출 위험)
 
 ---
 

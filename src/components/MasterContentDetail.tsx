@@ -712,17 +712,31 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       // 0. Storage 썸네일 삭제 (base64가 아닌 경우)
       if (contentData?.thumbnail_url && !contentData.thumbnail_url.startsWith('data:')) {
         try {
-          // thumbnails/{contentId}.png 형식으로 저장되어 있음
-          const thumbnailPath = `thumbnails/${contentId}.png`;
-          const { error: storageError } = await supabase.storage
-            .from('assets')
-            .remove([thumbnailPath]);
+          // thumbnail_url에서 Storage 경로 추출
+          // URL 형식: https://[project].supabase.co/storage/v1/object/public/assets/thumbnails/filename.png
+          const url = contentData.thumbnail_url;
+          const storagePathMatch = url.match(/\/storage\/v1\/object\/public\/assets\/(.+?)(?:\?|$)/);
 
-          if (storageError) {
-            console.error('Storage 썸네일 삭제 실패:', storageError);
-            // Storage 삭제 실패해도 DB 삭제는 계속 진행
+          if (storagePathMatch && storagePathMatch[1]) {
+            const thumbnailPath = storagePathMatch[1];
+            console.log('🗑️ Storage 썸네일 삭제 시도:', thumbnailPath);
+            console.log('🔍 원본 URL:', url);
+
+            const { data: deleteData, error: storageError } = await supabase.storage
+              .from('assets')
+              .remove([thumbnailPath]);
+
+            console.log('📦 삭제 응답 data:', deleteData);
+            console.log('📦 삭제 응답 error:', storageError);
+
+            if (storageError) {
+              console.error('Storage 썸네일 삭제 실패:', storageError);
+              // Storage 삭제 실패해도 DB 삭제는 계속 진행
+            } else {
+              console.log('✅ Storage 썸네일 삭제 완료:', thumbnailPath);
+            }
           } else {
-            console.log('✅ Storage 썸네일 삭제 완료:', thumbnailPath);
+            console.warn('⚠️ thumbnail_url에서 Storage 경로를 추출할 수 없음:', url);
           }
         } catch (storageError) {
           console.error('Storage 삭제 오류:', storageError);
@@ -1051,6 +1065,15 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
                           alert('상태 변경 실패: ' + error.message);
                         } else {
                           setContentData(prev => prev ? { ...prev, status: 'ready' } : null);
+
+                          // 🔥 홈페이지 캐시 무효화 (상태 변경이 즉시 반영되도록)
+                          const cacheKeys = Object.keys(localStorage).filter(key =>
+                            key.startsWith('homepage_contents_cache') ||
+                            key.startsWith('homepage_categories_cache')
+                          );
+                          cacheKeys.forEach(key => localStorage.removeItem(key));
+                          console.log(`🗑️ [캐시 무효화] ${cacheKeys.length}개 홈페이지 캐시 삭제됨`);
+
                           toast.success('상태가 "배포전"으로 변경되었습니다.');
                         }
                       } catch (error) {

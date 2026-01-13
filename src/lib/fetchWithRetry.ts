@@ -24,7 +24,7 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
   initialDelayMs: 1000,
   maxDelayMs: 10000,
   retryableStatuses: [500, 502, 503, 504],
-  timeoutMs: 30000,
+  timeoutMs: 120000, // Edge Function은 최대 60초 소요될 수 있으므로 120초로 증가
 };
 
 /**

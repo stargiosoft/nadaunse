@@ -766,10 +766,17 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
             : content
         ));
         
-        // 캐시 무효화
+        // 캐시 무효화 (관리자 캐시 + 홈페이지 캐시)
         try {
           localStorage.removeItem(CACHE_KEY);
-          console.log('✅ 캐시 무효화 완료');
+
+          // 🔥 홈페이지 캐시 무효화 (배포 변경이 즉시 반영되도록)
+          const homeCacheKeys = Object.keys(localStorage).filter(key =>
+            key.startsWith('homepage_contents_cache') ||
+            key.startsWith('homepage_categories_cache')
+          );
+          homeCacheKeys.forEach(key => localStorage.removeItem(key));
+          console.log(`✅ 캐시 무효화 완료 (관리자 + 홈페이지 ${homeCacheKeys.length}개)`);
         } catch (err) {
           console.warn('⚠️ 캐시 무효화 실패 (무시):', err);
         }

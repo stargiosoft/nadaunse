@@ -5,7 +5,6 @@ import svgPaths from "../imports/svg-b5r0yb3uuf";
 import { supabase } from '../lib/supabase';
 import MasterContentLoadingPage from './MasterContentLoadingPage';
 import { getTarotCardsForQuestions } from '../lib/tarotCards';
-import { fetchSajuData } from '../lib/sajuApi';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 
 interface BirthInfoInputProps {
@@ -525,21 +524,11 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
       const isTarotContent = contentData?.category_main?.includes('타로') || contentData?.category_main?.toLowerCase() === 'tarot';
       const tarotQuestionCount = questionsData?.length || 0;
 
-      // ⭐ 프론트엔드에서 사주 API 미리 호출 (Edge Function 빈 데이터 문제 해결)
-      console.log('🔮 [프론트엔드] 사주 API 호출 시작...');
-      const sajuApiData = await fetchSajuData(birthDate, finalBirthTime, gender);
-
-      if (sajuApiData) {
-        console.log('✅ [프론트엔드] 사주 API 호출 성공');
-      } else {
-        console.warn('⚠️ [프론트엔드] 사주 API 호출 실패 - Edge Function에서 재시도 예정');
-      }
-
+      // ⭐ 사주 API는 Edge Function에서 SAJU_API_KEY로 직접 호출
       let requestBody: Record<string, unknown> = {
         contentId: existingOrder.content_id,
         orderId: pendingOrderId,
         sajuRecordId: sajuData.id,
-        sajuApiData: sajuApiData  // ⭐ 프론트엔드에서 가져온 사주 데이터 전달
       };
 
       // 타로 콘텐츠이고 타로 질문이 있으면 랜덤 카드 선택
