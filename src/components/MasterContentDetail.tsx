@@ -695,6 +695,9 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
 
       console.log('Update successful');
       toast.success('수정되었어요.');
+
+      // 🔄 수정 완료 후 리스트 페이지로 이동
+      onBack();
     } catch (error) {
       console.error('Save error:', error);
       alert('저장 중 오류가 발생했습니다.');
