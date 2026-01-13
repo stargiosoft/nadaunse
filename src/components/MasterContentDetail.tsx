@@ -441,24 +441,22 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         (payload) => {
           console.log('📡 질문 업데이트 감지:', payload.new);
           const updatedQuestion = payload.new as MasterContentQuestion;
-          
+
           // 질문 리스트 업데이트
-          setQuestions(prev => {
-            const updated = prev.map(q => q.id === updatedQuestion.id ? updatedQuestion : q);
-            
-            // 예시 재생성 완료 감지
-            const index = prev.findIndex(q => q.id === updatedQuestion.id);
-            if (index !== -1) {
-              setRegeneratingPreviewIndexes(current => {
-                const newSet = new Set(current);
-                newSet.delete(index);
-                return newSet;
-              });
-              toast.success('예시가 생성되었습니다.');
-            }
-            
-            return updated;
-          });
+          setQuestions(prev => prev.map(q => q.id === updatedQuestion.id ? updatedQuestion : q));
+
+          // 예시 재생성 완료 감지 - preview_text가 업데이트되면 로딩 상태 해제
+          if (updatedQuestion.preview_text !== null) {
+            // 로딩 상태 클리어 및 토스트 표시
+            setRegeneratingPreviewIndexes(current => {
+              // 로딩 중이었으면 토스트 예약
+              if (current.size > 0) {
+                // ⚠️ setTimeout 0으로 React 렌더링 사이클 완료 후 실행
+                window.setTimeout(() => toast.success('예시가 생성되었습니다.'), 0);
+              }
+              return new Set();
+            });
+          }
         }
       )
       .subscribe();

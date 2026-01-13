@@ -1,4 +1,4 @@
-import { toast as sonnerToast, ExternalToast } from 'sonner@2.0.3';
+import { toast as sonnerToast, ExternalToast } from 'sonner';
 import { Toast, ToastType } from '../components/ui/Toast';
 
 const showToast = (type: ToastType, message: string, options?: ExternalToast) => {
