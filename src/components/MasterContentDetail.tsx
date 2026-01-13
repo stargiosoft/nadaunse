@@ -5,15 +5,6 @@ import ArrowLeft from './ArrowLeft';
 import { generateImagePrompt, generateThumbnail } from '../lib/masterContentAI';
 import FreeContentDetail from './FreeContentDetail';
 import { toast } from '../lib/toast';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './ui/alert-dialog';
 
 // 🔧 Build v1.2.6 - Router alias fix
 
@@ -1461,21 +1452,24 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         )}
 
         {/* 주문 데이터 존재 안내 다이얼로그 */}
-        <AlertDialog open={showOrderExistsDialog} onOpenChange={setShowOrderExistsDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>삭제할 수 없어요</AlertDialogTitle>
-              <AlertDialogDescription>
+        {showOrderExistsDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[16px]">
+            <div className="bg-white rounded-[12px] p-[24px] max-w-[340px] w-full">
+              <p className="font-['Pretendard_Variable:SemiBold',sans-serif] text-[18px] text-[#1b1b1b] text-center mb-[12px]">
+                삭제할 수 없어요
+              </p>
+              <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[14px] text-[#666666] text-center mb-[24px]">
                 주문 데이터가 있어 삭제할 수 없어요.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogAction onClick={() => setShowOrderExistsDialog(false)}>
+              </p>
+              <button
+                onClick={() => setShowOrderExistsDialog(false)}
+                className="w-full h-[48px] bg-[#48b2af] rounded-[8px] font-['Pretendard_Variable:Medium',sans-serif] text-[14px] text-white"
+              >
                 확인
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 이미지 모달 */}
         {showImageModal && contentData.thumbnail_url && (
