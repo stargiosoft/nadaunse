@@ -289,7 +289,8 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // 🚀 UX 개선: 먼저 로딩 페이지로 이동 (즉시 반응)
-    navigate(`/free-loading?contentId=${productId}&sajuRecordId=${selectedSajuId}&userName=${selectedSaju.full_name}`);
+    // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체
+    navigate(`/free-loading?contentId=${productId}&sajuRecordId=${selectedSajuId}&userName=${selectedSaju.full_name}`, { replace: true });
 
     // ⭐ 백그라운드에서 대표 사주 업데이트 (navigate 후 비동기 처리)
     (async () => {

@@ -114,20 +114,13 @@ export default function FreeSajuDetail({
     window.scrollTo(0, 0);
   }, []);
 
-  // 🔙 iOS 스와이프 뒤로가기 대응: bfcache + popstate 핸들러 (DECISIONS.md 패턴)
+  // 🔙 iOS 스와이프 뒤로가기 대응: bfcache 핸들러만 유지 (DECISIONS.md 패턴)
+  // ⚠️ pushState/popstate 패턴은 iOS에서 히스토리 스택 문제를 일으킴
+  // → 대신 사주선택→로딩→결과 이동 시 replace: true 사용으로 해결
   useEffect(() => {
     if (!contentId) return;
 
-    // 히스토리에 현재 페이지 상태 추가 (뒤로가기 감지용)
-    window.history.pushState({ freeSajuDetailPage: true }, '');
-
-    // popstate: 시스템 뒤로가기 감지 → 콘텐츠 상세로 이동
-    const handlePopState = () => {
-      console.log('🔙 [FreeSajuDetail] 시스템 뒤로가기 감지 → 콘텐츠 상세로 이동');
-      navigate(`/product/${contentId}`, { replace: true });
-    };
-
-    // bfcache에서 복원될 때도 콘텐츠 상세로 이동
+    // bfcache에서 복원될 때 콘텐츠 상세로 이동
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         console.log('🔄 [FreeSajuDetail] bfcache 복원 감지 → 콘텐츠 상세로 이동');
@@ -135,11 +128,9 @@ export default function FreeSajuDetail({
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
     window.addEventListener('pageshow', handlePageShow);
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('pageshow', handlePageShow);
     };
   }, [contentId, navigate]);

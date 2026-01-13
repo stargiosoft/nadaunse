@@ -176,7 +176,9 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           console.log('💾 [FreeContentLoading] localStorage 저장 완료 (allProducts)');
           
           // 결과 페이지로 이동
+          // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체
           navigate(`/product/${contentId}/result/free`, {
+            replace: true,
             state: {
               resultKey: resultKey,
               userName: userNameFromUrl,
@@ -398,8 +400,10 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           console.log('💾 [FreeContentLoading] localStorage 저장 완료 (mock fallback)');
 
           // 결과 페이지로 이동
+          // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체
           console.log('🔀 [FreeContentLoading] 결과 페이지로 이동 (mock fallback)');
           navigate(`/product/${contentId}/result/free`, {
+            replace: true,
             state: {
               resultKey: fallbackResultKey,
               userName: userNameFromUrl,
@@ -438,10 +442,12 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         console.log('📌 [FreeContentLoading] resultKey:', resultKey);
 
         // ⭐️ 6단계: 결과 페이지로 이동
+        // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체
         console.log('🔀 [FreeContentLoading] 결과 페이지로 이동');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        
+
         navigate(`/product/${contentId}/result/free`, {
+          replace: true,
           state: {
             resultKey: resultKey,
             userName: userNameFromUrl,
