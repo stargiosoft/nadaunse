@@ -74,7 +74,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
 | [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (51개) |
-| [EDGE_FUNCTIONS_GUIDE.md](./src/supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (20개) |
+| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (20개) |
 
 ## 🔗 Links
 
