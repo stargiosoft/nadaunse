@@ -17,6 +17,36 @@
 
 ## 2026-01-13
 
+### JWT 설정 변경 후 Edge Functions 재배포 필요
+**결정**: JWT 토큰 만료 시간 변경 시 모든 Edge Functions를 재배포해야 함
+**배경**:
+- JWT Access Token 만료 시간을 1시간(3600초) → 7일(604800초)로 변경
+- Staging/Production 모두 설정 변경 완료
+- 하지만 Production에서 유료 콘텐츠 결제 시 "Invalid JWT" 에러 발생
+- Staging은 정상 작동, Production만 실패
+
+**근본 원인**:
+- JWT 설정 변경 후 **Staging Edge Functions는 재배포했지만 Production은 재배포하지 않음**
+- 옛날 버전의 Edge Functions가 새로운 JWT 설정과 호환되지 않음
+- 특히 내부 API 호출(`generate-content-answers` → `generate-saju-answer` / `generate-tarot-answer`)에서 SERVICE_ROLE_KEY 검증 실패
+
+**해결 방법**:
+```bash
+# Production에 Edge Functions 재배포
+supabase functions deploy generate-saju-answer --project-ref kcthtpmxffppfbkjjkub
+supabase functions deploy generate-tarot-answer --project-ref kcthtpmxffppfbkjjkub
+```
+
+**교훈**:
+- JWT 관련 설정(만료 시간, Secret 등) 변경 시 **모든 Edge Functions를 재배포**해야 함
+- Staging과 Production 환경 모두에서 동일하게 재배포 필요
+- Edge Functions는 빌드 시점의 JWT 설정을 캐싱하므로, 설정 변경만으로는 즉시 반영되지 않음
+
+**영향**: 유료 콘텐츠 결제 및 AI 생성 플로우
+**결과**: Production 재배포 후 "Invalid JWT" 에러 해결
+
+---
+
 ### 사주 API 서버 직접 호출: SAJU_API_KEY 도입
 **결정**: 프론트엔드에서 호출하던 사주 API를 다시 Edge Function(서버)에서 호출하도록 변경. API 키 인증 방식 사용.
 **배경**:
