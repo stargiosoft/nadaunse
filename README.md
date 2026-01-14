@@ -82,13 +82,18 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **GitHub**: https://github.com/stargiosoft/nadaunse
 - **Vercel**: https://vercel.com/stargiosofts-projects/nadaunse
 
-## 🆕 최근 주요 변경사항 (2026-01-13)
+## 🆕 최근 주요 변경사항 (2026-01-14)
 
-### 사주 API 프론트엔드 직접 호출
-- **문제**: Edge Function에서 사주 API 호출 시 빈 응답 반환
-- **해결**: 프론트엔드(브라우저)에서 직접 호출 후 Edge Function에 전달
-- **핵심 파일**: `/lib/sajuApi.ts`
+### iOS Safari 무한 스와이프 뒤로가기 지원
+- **문제**: 홈 ↔ 콘텐츠 반복 이동 후 스와이프 뒤로가기 시 페이지 종료
+- **해결**: 동적 버퍼 재충전으로 무한 스와이프 지원
+- **핵심 원리**: `pushState`의 특성(현재 위치 뒤 엔트리 삭제)을 활용
 - **상세**: [DECISIONS.md](./src/DECISIONS.md) 참조
+
+### 사주 API 서버 직접 호출 (SAJU_API_KEY)
+- Edge Function에서 `SAJU_API_KEY` 환경변수를 사용하여 서버 직접 호출
+- 브라우저 헤더 흉내 + 재시도 로직 포함
+- **핵심 파일**: `supabase/functions/generate-content-answers/index.ts`
 
 ### 썸네일 이미지 캐시 버스팅
 - 썸네일 재생성 시 브라우저 캐시로 인한 표시 문제 해결
@@ -96,4 +101,4 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ---
 
-**최종 업데이트**: 2026-01-13
+**최종 업데이트**: 2026-01-14
