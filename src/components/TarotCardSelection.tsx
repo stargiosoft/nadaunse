@@ -148,7 +148,7 @@ export function TarotCardSelection({
           <h1 className={`text-[20px] font-bold tracking-[-0.2px] leading-[28px] transition-colors duration-300 ${
             step === 'spread' ? 'text-white' : 'text-[#151515]'
           }`}>
-            {title || "우리 관계, 지금이 전환점일까?"}
+            {title}
           </h1>
           <p className={`text-[14px] tracking-[-0.42px] leading-[22px] transition-colors duration-300 ${
             step === 'spread' ? 'text-white' : 'text-[#848484]'
