@@ -91,8 +91,8 @@ export default function CouponBottomSheetNew({
           />
           
           {/* Bottom sheet */}
-          <motion.div 
-            className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col max-h-[75vh] pointer-events-auto z-[10000]"
+          <motion.div
+            className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col h-[85vh] pointer-events-auto z-[10000]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -119,7 +119,7 @@ export default function CouponBottomSheetNew({
             </div>
 
             {/* Content - 스크롤 영역 */}
-            <div className="flex-1 overflow-y-auto max-h-[50vh]">
+            <div className="flex-1 overflow-y-auto min-h-0">
               {/* 상단 상품 정보 */}
               <div className="px-[20px] flex flex-col gap-[14px] shrink-0 pb-[16px]">
                 {/* Product card */}
