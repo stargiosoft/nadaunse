@@ -625,15 +625,17 @@ export default function HomePage() {
   const [showNavigation, setShowNavigation] = useState(true);
   const lastScrollY = useRef(0);
 
-  // 🛡️ iOS Safari 앱 종료 방지: 홈은 앱 진입점이므로 최초 진입 시에만 버퍼 추가
-  // PaymentNew, SajuManagementPage와 다른 점: 홈은 첫 페이지라 뒤로갈 곳이 없음
+  // 🛡️ iOS Safari 무한 스와이프 뒤로가기 지원 (동적 버퍼 재충전)
+  // - 홈은 앱 진입점이므로 버퍼 필요 (PaymentNew, SajuManagementPage와 다름)
+  // - pushState는 현재 위치 뒤의 엔트리를 삭제하므로 히스토리 길이가 일정하게 유지됨
+  const BUFFER_COUNT = 5;
+
+  // 🔧 1단계: 최초 진입 시 홈 상태 마킹 + 버퍼 초기화
   useEffect(() => {
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-
-    // 🔑 세션 내 한 번만 버퍼 추가 (콘텐츠 왕복 시 추가 안 함)
     const isHistoryInitialized = sessionStorage.getItem('homepage_history_initialized');
 
-    // 콘텐츠에서 돌아온 경우 플래그만 제거
+    // 콘텐츠에서 돌아온 경우 플래그만 제거 (버퍼는 이미 존재)
     const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
     if (hasNavigatedFromHome) {
       sessionStorage.removeItem('navigatedFromHome');
@@ -641,18 +643,76 @@ export default function HomePage() {
       return;
     }
 
-    // 🛡️ iOS 최초 진입 시에만 버퍼 추가 (앱 종료 방지)
+    // 🛡️ iOS 최초 진입 시 홈 상태 마킹 + 버퍼 추가
     if (isIOS && !isHistoryInitialized) {
-      const bufferCount = 3;
-      for (let i = 0; i < bufferCount; i++) {
+      // 홈 상태 마킹 (버퍼 모두 소진 시 식별용)
+      window.history.replaceState({ type: 'home', index: 0 }, '', window.location.href);
+
+      // 버퍼 추가
+      for (let i = 0; i < BUFFER_COUNT; i++) {
         window.history.pushState({ type: 'home_buffer', index: i }, '', window.location.href);
       }
+
       sessionStorage.setItem('homepage_history_initialized', 'true');
-      console.log(`✅ [히스토리] iOS 최초 진입 → 버퍼 ${bufferCount}개 추가`);
+      console.log(`✅ [히스토리] iOS 최초 진입 → 홈 마킹 + 버퍼 ${BUFFER_COUNT}개 추가, history.length=${window.history.length}`);
     }
   }, []);
 
-  // 🛡️ bfcache 핸들러 (popstate는 제거 - 버퍼 재추가 로직 없음)
+  // 🔧 2단계: popstate 핸들러 - 버퍼 동적 재충전 (핵심 로직)
+  useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (!isIOS) return;
+
+    const handlePopstate = (event: PopStateEvent) => {
+      const state = event.state;
+
+      // 홈이 아닌 페이지에서는 무시 (React Router가 처리)
+      if (window.location.pathname !== '/') return;
+
+      console.log(`🔙 [popstate] state=${JSON.stringify(state)}, history.length=${window.history.length}`);
+
+      // Case 1: 버퍼 영역 도달 시
+      if (state?.type === 'home_buffer') {
+        const bufferIndex = state.index ?? 0;
+        const threshold = Math.floor(BUFFER_COUNT / 2); // 2
+
+        // 버퍼가 중간 이하로 소진되면 새 버퍼 추가
+        // pushState는 현재 위치 뒤의 모든 엔트리를 삭제하므로 길이가 유지됨
+        if (bufferIndex <= threshold) {
+          window.history.pushState(
+            { type: 'home_buffer', index: BUFFER_COUNT - 1 },
+            '',
+            window.location.href
+          );
+          console.log(`🔄 [히스토리] 버퍼 재충전 (index ${bufferIndex} → ${BUFFER_COUNT - 1}), history.length=${window.history.length}`);
+        }
+        return;
+      }
+
+      // Case 2: 홈 상태 도달 (버퍼 모두 소진)
+      if (state?.type === 'home') {
+        console.log('🏠 [히스토리] 홈 상태 도달 → 버퍼 전체 재생성');
+        for (let i = 0; i < BUFFER_COUNT; i++) {
+          window.history.pushState({ type: 'home_buffer', index: i }, '', window.location.href);
+        }
+        return;
+      }
+
+      // Case 3: 상태 없음 (앱 최초 진입점 = 앱 종료 직전)
+      if (!state) {
+        console.log('⚠️ [히스토리] 상태 없는 엔트리 도달 → 홈 마킹 + 버퍼 생성');
+        window.history.replaceState({ type: 'home', index: 0 }, '', window.location.href);
+        for (let i = 0; i < BUFFER_COUNT; i++) {
+          window.history.pushState({ type: 'home_buffer', index: i }, '', window.location.href);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopstate);
+    return () => window.removeEventListener('popstate', handlePopstate);
+  }, []);
+
+  // 🛡️ bfcache 핸들러
   useEffect(() => {
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
