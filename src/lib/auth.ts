@@ -150,6 +150,43 @@ export const signInWithGoogle = async () => {
 };
 
 /**
+ * 사용자 관련 모든 캐시 삭제
+ * 로그아웃, 세션 종료, 계정 전환 시 호출
+ */
+export const clearUserCaches = () => {
+  // 고정 키 캐시 삭제
+  const fixedCacheKeys = [
+    'user',
+    'cached_saju_info',
+    'saju_records_cache',
+    'free_contents_cache_v1',
+    'homepage_contents_cache',
+    'homepage_categories_cache_v2',
+  ];
+
+  fixedCacheKeys.forEach(key => {
+    localStorage.removeItem(key);
+  });
+
+  // 패턴 기반 캐시 삭제 (free_content_detail_*_cache)
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('free_content_detail_')) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+  });
+
+  logger.debug('사용자 캐시 삭제 완료', {
+    fixedKeys: fixedCacheKeys.length,
+    patternKeys: keysToRemove.length
+  });
+};
+
+/**
  * 로그아웃
  */
 export const signOut = async () => {
@@ -166,8 +203,8 @@ export const signOut = async () => {
   // Sentry 사용자 컨텍스트 해제
   setSentryUser(null);
 
-  // 기존 localStorage 정리
-  localStorage.removeItem('user');
+  // 모든 사용자 캐시 삭제
+  clearUserCaches();
 
   logger.info('로그아웃 완료');
 };

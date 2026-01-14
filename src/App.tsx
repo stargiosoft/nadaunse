@@ -48,6 +48,7 @@ import { Toast } from './components/ui/Toast';
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
 import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 페이지 이미지 프리로드
 import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
+import { clearUserCaches } from './lib/auth'; // ⭐ 캐시 삭제 함수
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
 
 // ⚡ 프로덕션 환경 체크 - import.meta.env.DEV 오버라이드
@@ -1557,16 +1558,13 @@ export default function App() {
     document.documentElement.lang = 'ko';
   }, []);
 
-  // 🔐 세션 만료 감지 및 localStorage 정리
+  // 🔐 세션 만료 감지 및 모든 사용자 캐시 정리
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
-        // 세션 만료/로그아웃 → localStorage 정리
-        const hadUser = localStorage.getItem('user');
-        if (hadUser) {
-          localStorage.removeItem('user');
-          console.log('🧹 세션 만료 → localStorage.user 삭제');
-        }
+        // 세션 만료/로그아웃 → 모든 사용자 캐시 삭제
+        console.log('🧹 세션 만료 → 사용자 캐시 전체 삭제');
+        clearUserCaches();
       }
     });
 
