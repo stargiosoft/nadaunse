@@ -157,6 +157,7 @@ export const clearUserCaches = () => {
   // 고정 키 캐시 삭제
   const fixedCacheKeys = [
     'user',
+    'primary_saju',              // 대표 사주 정보 (ProfilePage에서 사용)
     'cached_saju_info',
     'saju_records_cache',
     'free_contents_cache_v1',
