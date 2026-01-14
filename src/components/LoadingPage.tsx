@@ -50,7 +50,7 @@ function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
     }
 
     const startTime = Date.now();
-    const duration = 40000; // 40초
+    const duration = 90000; // 90초
 
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -58,7 +58,7 @@ function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
 
       setProgress(newProgress);
 
-      // 40초 경과 시 99%에서 멈춤
+      // 90초 경과 시 99%에서 멈춤
       if (newProgress >= 99) {
         clearInterval(interval);
       }

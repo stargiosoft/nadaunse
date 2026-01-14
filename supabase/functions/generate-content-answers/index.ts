@@ -188,8 +188,8 @@ serve(async (req) => {
         try {
           console.log(`🔹 질문 ${question.question_order}: ${question.question_type} (시도 ${attempt}/${maxRetries})`)
 
-          // ⭐️ 타임아웃 함수 (1분)
-          const fetchWithTimeout = async (url: string, options: any, timeoutMs = 60000) => {
+          // ⭐️ 타임아웃 함수 (200초)
+          const fetchWithTimeout = async (url: string, options: any, timeoutMs = 200000) => {
             const controller = new AbortController()
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -203,7 +203,7 @@ serve(async (req) => {
             } catch (error) {
               clearTimeout(timeoutId)
               if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('API 호출 타임아웃 (1분 초과)')
+                throw new Error('API 호출 타임아웃 (200초 초과)')
               }
               throw error
             }
