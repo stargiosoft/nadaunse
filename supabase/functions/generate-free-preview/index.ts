@@ -136,7 +136,116 @@ serve(async (req) => {
       questionerInfo = `이름: ${sajuInfo.name}, 성별: ${sajuInfo.gender}, 생년월일: ${sajuInfo.birthDate}, 출생시간: ${sajuInfo.birthTime || '모름'}`
     }
 
-    console.log('📌 [Edge Function] questionerInfo:', questionerInfo)
+    console.log('📌 [Edge Function] questionerInfo (기본):', questionerInfo)
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('🔮 [Edge Function] 3-1. 사주 API 호출 (상세 사주 정보 조회)')
+
+    // 사주 API 호출하여 상세 사주 정보 조회 (SAJU_API_KEY 사용)
+    let detailedSajuInfo = ''
+
+    try {
+      const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim()
+
+      if (!sajuApiKey) {
+        console.warn('⚠️ [Edge Function] SAJU_API_KEY 환경변수 없음, 기본 사주 정보만 사용')
+      } else {
+        // 날짜/시간 포맷 변환
+        let birthDateStr: string
+        let birthTimeStr: string
+        let genderStr: string
+
+        if (sajuRecordId) {
+          // 로그인 모드: DB 필드명 사용
+          birthDateStr = sajuInfo.birth_date as string
+          birthTimeStr = sajuInfo.birth_time as string || '12:00'
+          genderStr = sajuInfo.gender as string
+        } else {
+          // 게스트 모드: 프론트엔드 필드명 사용
+          birthDateStr = sajuInfo.birthDate as string
+          birthTimeStr = sajuInfo.birthTime as string || '12:00'
+          genderStr = sajuInfo.gender as string
+        }
+
+        // 날짜 포맷: YYYY-MM-DD 또는 YYYY-MM-DDTHH:mm:ss → YYYYMMDD
+        const datePart = birthDateStr.includes('T') ? birthDateStr.split('T')[0] : birthDateStr.split(' ')[0]
+        const dateOnly = datePart.replace(/-/g, '')
+
+        // 시간 포맷: HH:mm → HHmm
+        const timeOnly = birthTimeStr.replace(/:/g, '').substring(0, 4)
+        const birthday = dateOnly + timeOnly
+
+        const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=false&gender=${genderStr}&apiKey=${sajuApiKey}`
+        console.log('📞 [Edge Function] 사주 API URL:', sajuApiUrl.replace(sajuApiKey, '***'))
+
+        // 최대 3번 재시도
+        let cachedSajuData: Record<string, unknown> | null = null
+
+        for (let sajuAttempt = 1; sajuAttempt <= 3; sajuAttempt++) {
+          try {
+            const sajuResponse = await fetch(sajuApiUrl, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Host': 'service.stargio.co.kr:8400',
+                'Origin': 'https://nadaunse.com',
+                'Referer': 'https://nadaunse.com/',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'cross-site',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+              }
+            })
+
+            console.log(`📡 [Edge Function] 사주 API 응답 상태 (시도 ${sajuAttempt}/3):`, sajuResponse.status)
+
+            if (!sajuResponse.ok) {
+              throw new Error(`사주 API HTTP 오류: ${sajuResponse.status}`)
+            }
+
+            const rawText = await sajuResponse.text()
+            console.log('📡 [Edge Function] 응답 길이:', rawText.length)
+
+            // JSON 파싱
+            cachedSajuData = JSON.parse(rawText)
+
+            // 유효성 검증
+            if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
+              console.log('✅ [Edge Function] 사주 API 호출 성공 (키 개수:', Object.keys(cachedSajuData).length, ')')
+              break
+            } else {
+              throw new Error('사주 API가 빈 데이터를 반환했습니다.')
+            }
+          } catch (sajuError) {
+            console.error(`❌ [Edge Function] 사주 API 시도 ${sajuAttempt}/3 실패:`, sajuError)
+            if (sajuAttempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * sajuAttempt))
+            }
+          }
+        }
+
+        // 사주 API 데이터를 문자열로 변환하여 프롬프트에 포함
+        if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
+          // 주요 사주 정보 추출 (API 응답 구조에 따라 조정)
+          const sajuDataStr = JSON.stringify(cachedSajuData, null, 2)
+          detailedSajuInfo = `\n\n### 상세 사주 데이터 (명리학 분석용)\n${sajuDataStr}`
+          console.log('✅ [Edge Function] 상세 사주 정보 추가 완료')
+        } else {
+          console.warn('⚠️ [Edge Function] 사주 API 호출 실패, 기본 정보만 사용')
+        }
+      }
+    } catch (sajuApiError) {
+      console.error('❌ [Edge Function] 사주 API 처리 오류:', sajuApiError)
+      console.warn('⚠️ [Edge Function] 기본 사주 정보만 사용하여 계속 진행')
+    }
+
+    // 최종 questionerInfo 구성 (기본 정보 + 상세 사주 데이터)
+    const fullQuestionerInfo = questionerInfo + detailedSajuInfo
+    console.log('📌 [Edge Function] fullQuestionerInfo 길이:', fullQuestionerInfo.length)
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('🤖 [Edge Function] 4. AI 답변 생성 시작')
@@ -169,7 +278,7 @@ serve(async (req) => {
 ${question.question_text}
 
 ## **사주 정보**
-${questionerInfo}
+${fullQuestionerInfo}
 
 ## **답변 작성 지침**
 
@@ -213,7 +322,7 @@ ${questionerInfo}
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',  // ⭐️ gpt-4o-mini로 변경 (gpt-4.1-nano는 존재하지 않음)
+          model: 'gpt-4.1-nano',  // 
           messages: [
             {
               role: 'user',

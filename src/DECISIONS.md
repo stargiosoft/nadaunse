@@ -15,6 +15,61 @@
 
 ---
 
+## 2026-01-14
+
+### generate-free-preview 사주 API 연동 (무료 콘텐츠 품질 고도화)
+**결정**: 무료 콘텐츠 생성 시에도 유료 콘텐츠와 동일하게 Stargio 사주 API를 호출하여 상세 사주 데이터를 AI 프롬프트에 포함
+**배경**:
+- 기존 `generate-free-preview`: 단순 생년월일/성별 정보만 사용하여 사주 콘텐츠 생성
+- `generate-content-answers` (유료): SAJU_API_KEY로 상세 사주 데이터(격국, 일주, 대운 등) 활용
+- 무료 콘텐츠도 동일한 품질의 사주 분석 제공 필요
+
+**구현**:
+```typescript
+// supabase/functions/generate-free-preview/index.ts (142-248번 줄)
+
+// 1. SAJU_API_KEY 환경변수 사용
+const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim()
+
+// 2. 날짜/시간 포맷 변환 (로그인/게스트 모드 분기)
+const birthday = dateOnly + timeOnly  // YYYYMMDDHHmm
+
+// 3. 사주 API 호출 (브라우저 헤더 흉내, 최대 3번 재시도)
+const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=True&gender=${gender}&apiKey=${sajuApiKey}`
+const sajuResponse = await fetch(sajuApiUrl, {
+  headers: {
+    'User-Agent': 'Mozilla/5.0...',
+    'Origin': 'https://nadaunse.com',
+    'Referer': 'https://nadaunse.com/',
+    // ... 브라우저 헤더
+  }
+})
+
+// 4. 상세 사주 정보를 questionerInfo에 추가
+const fullQuestionerInfo = questionerInfo + detailedSajuInfo
+```
+
+**프롬프트 변경**:
+```
+## **사주 정보**
+${fullQuestionerInfo}  // 기본 정보 + 상세 사주 데이터 (JSON)
+```
+
+**폴백 전략**:
+- SAJU_API_KEY 미설정 또는 API 호출 실패 시 기본 정보만 사용
+- 에러가 발생해도 무료 콘텐츠 생성은 계속 진행 (graceful degradation)
+
+**변경 파일**:
+- `supabase/functions/generate-free-preview/index.ts`: 사주 API 호출 로직 추가 (142-248번 줄)
+
+**영향 범위**:
+- 무료 콘텐츠 생성 플로우
+- `generate-free-preview` Edge Function
+
+**결과**: 무료 콘텐츠도 유료와 동일한 품질의 상세 사주 분석 제공
+
+---
+
 ## 2026-01-13
 
 ### Gemini 생성 이미지 WebP 변환 및 저장 최적화

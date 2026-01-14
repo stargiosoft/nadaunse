@@ -115,7 +115,7 @@ serve(async (req) => {
       const timeOnly = (sajuRecord.birth_time as string).replace(/:/g, '')
       const birthday = dateOnly + timeOnly
 
-      const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=True&gender=${sajuRecord.gender}&apiKey=${sajuApiKey}`
+      const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=false&gender=${sajuRecord.gender}&apiKey=${sajuApiKey}`
       console.log('📞 사주 API URL:', sajuApiUrl.replace(sajuApiKey, '***'))  // 키는 로그에서 마스킹
 
       // 최대 3번 재시도
@@ -421,6 +421,23 @@ serve(async (req) => {
     try {
       console.log('📱 알림톡 발송 시작...')
 
+      // ⭐️ 0단계: 이미 알림톡이 발송되었는지 확인 (중복 발송 방지)
+      const { data: existingAlimtalk, error: alimtalkCheckError } = await supabase
+        .from('alimtalk_logs')
+        .select('id, status')
+        .eq('order_id', orderId)
+        .eq('status', 'success')
+        .limit(1)
+
+      if (alimtalkCheckError) {
+        console.warn('⚠️ 알림톡 중복 체크 실패 (계속 진행):', alimtalkCheckError)
+      } else if (existingAlimtalk && existingAlimtalk.length > 0) {
+        console.log('⏭️ 이미 알림톡이 발송되었습니다. 중복 발송 스킵 (order_id:', orderId, ')')
+        // 알림톡 발송 스킵하고 성공으로 처리
+      } else {
+        // 알림톡 발송 진행
+        console.log('✅ 알림톡 중복 체크 통과, 발송 진행')
+
       // 1단계: 주문에서 user_id 조회
       const { data: orderInfo, error: orderInfoError } = await supabase
         .from('orders')
@@ -498,6 +515,7 @@ serve(async (req) => {
           }
         }
       }
+      } // ⭐️ else 블록 (알림톡 중복 체크 통과 시) 닫기
     } catch (alimtalkError) {
       console.warn('⚠️ 알림톡 발송 오류 (무시하고 계속):', alimtalkError)
       console.warn('⚠️ 사용자는 여전히 결과를 확인할 수 있습니다.')
