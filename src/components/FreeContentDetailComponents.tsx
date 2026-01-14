@@ -298,8 +298,8 @@ export function AdBanner({ onBannerClick }: AdBannerProps) {
   // 배너 로딩 중 스켈레톤 UI
   if (!banner) {
     return (
-      <div className="bg-[#f8f8f8] box-border content-stretch flex flex-col gap-[10px] items-start p-[20px] relative shrink-0 w-full mb-[52px]">
-        <div className="bg-gray-200 relative rounded-[16px] shrink-0 w-full h-[100px] animate-pulse" />
+      <div className="px-[20px] w-full">
+        <div className="bg-gray-200 rounded-[16px] w-full h-[80px] animate-pulse" />
       </div>
     );
   }
@@ -307,32 +307,28 @@ export function AdBanner({ onBannerClick }: AdBannerProps) {
   const imageUrl = getBannerImageUrl(banner.imageFileName);
 
   return (
-    <div className="bg-[#f8f8f8] box-border content-stretch flex flex-col gap-[10px] items-start p-[20px] relative shrink-0 w-full mb-[52px]">
-      <div
+    <div className="px-[20px] w-full">
+      {/* 이미지 로딩 중 스켈레톤 */}
+      {!imageLoaded && !imageError && (
+        <div className="bg-gray-200 rounded-[16px] w-full h-[80px] animate-pulse" />
+      )}
+
+      {/* 이미지 로드 실패 시 폴백 UI */}
+      {imageError && (
+        <div className="bg-gray-100 rounded-[16px] w-full h-[80px] flex items-center justify-center">
+          <p className="text-gray-400 text-sm">배너를 불러올 수 없습니다</p>
+        </div>
+      )}
+
+      {/* 배너 이미지 - PNG 자체가 완성된 배너 디자인 */}
+      <img
+        src={imageUrl}
+        alt={banner.alt}
         onClick={handleClick}
-        className="bg-white relative rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] shrink-0 w-full cursor-pointer transition-transform duration-200 ease-in-out active:scale-[0.96] overflow-hidden transform-gpu"
-      >
-        {/* 이미지 로딩 중 스켈레톤 */}
-        {!imageLoaded && !imageError && (
-          <div className="w-full aspect-[351/100] bg-gray-100 animate-pulse" />
-        )}
-
-        {/* 이미지 로드 실패 시 폴백 UI */}
-        {imageError && (
-          <div className="w-full aspect-[351/100] bg-gray-100 flex items-center justify-center">
-            <p className="text-gray-400 text-sm">배너를 불러올 수 없습니다</p>
-          </div>
-        )}
-
-        {/* 배너 이미지 */}
-        <img
-          src={imageUrl}
-          alt={banner.alt}
-          className={`w-full h-auto object-cover ${!imageLoaded ? 'hidden' : ''}`}
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageError(true)}
-        />
-      </div>
+        className={`w-full h-auto rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] cursor-pointer transition-transform duration-200 ease-in-out active:scale-[0.96] transform-gpu ${!imageLoaded ? 'hidden' : ''}`}
+        onLoad={() => setImageLoaded(true)}
+        onError={() => setImageError(true)}
+      />
     </div>
   );
 }
