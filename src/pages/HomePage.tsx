@@ -625,29 +625,26 @@ export default function HomePage() {
   const [showNavigation, setShowNavigation] = useState(true);
   const lastScrollY = useRef(0);
 
-  // 🛡️ iOS Safari 히스토리 버그 해결: 홈 진입 시 가짜 히스토리 추가
+  // 🛡️ iOS Safari 히스토리 버그 해결: 앱 최초 진입 시에만 버퍼 추가
+  // DECISIONS.md 핵심 원리: iOS 스와이프 뒤로가기는 브라우저가 자연스럽게 처리하도록 두는 것이 최선
   useEffect(() => {
     const initHistory = () => {
-      const currentLength = window.history.length;
       const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-      console.log('🔧 [히스토리 초기화] 현재 길이:', currentLength, 'iOS:', isIOS);
 
-      // 🔑 SessionStorage에서 히스토리 상태 확인
+      // 🔑 이미 버퍼가 초기화되었는지 확인 (세션 내 한 번만 실행)
+      const isHistoryInitialized = sessionStorage.getItem('homepage_history_initialized');
+
+      // 🔄 콘텐츠에서 돌아온 경우 플래그만 제거하고 버퍼는 추가하지 않음
       const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
-      console.log('🔍 [히스토리] SessionStorage 상태:', hasNavigatedFromHome);
-
-      // 🔄 홈으로 돌아왔으면 플래그 제거
       if (hasNavigatedFromHome) {
         sessionStorage.removeItem('navigatedFromHome');
-        console.log('🧹 [히스토리] SessionStorage 플래그 제거');
+        console.log('🧹 [히스토리] 콘텐츠에서 돌아옴 → 플래그 제거 (버퍼 추가 스킵)');
+        return; // 버퍼 추가 스킵
       }
 
-      // 🛡️ iOS에서는 무조건 버퍼 추가 (history.length 체크 제거)
-      // iOS Safari/Chrome에서 history.length가 실제 스택 상태를 반영하지 않는 버그 대응
-      const bufferCount = isIOS ? 5 : 2;
-      const shouldAddBuffer = isIOS || currentLength <= 2;
-
-      if (shouldAddBuffer) {
+      // 🛡️ 앱 최초 진입 시에만 버퍼 추가 (세션 내 한 번)
+      if (!isHistoryInitialized && isIOS) {
+        const bufferCount = 3; // 앱 종료 방지용 최소 버퍼
         for (let i = 0; i < bufferCount; i++) {
           window.history.pushState({
             type: 'home_buffer',
@@ -655,14 +652,17 @@ export default function HomePage() {
             timestamp: Date.now()
           }, '', window.location.href);
         }
-        console.log(`✅ [히스토리] iOS 버퍼 ${bufferCount}개 추가 완료 → 새 길이:`, window.history.length);
+        sessionStorage.setItem('homepage_history_initialized', 'true');
+        console.log(`✅ [히스토리] 최초 진입 → iOS 버퍼 ${bufferCount}개 추가 완료`);
+      } else {
+        console.log('🔍 [히스토리] 버퍼 추가 스킵 (이미 초기화됨 또는 비-iOS)');
       }
     };
 
     initHistory();
   }, []);
 
-  // 🛡️ iOS popstate 이벤트 핸들러 - 스와이프 뒤로가기 시 앱 종료 방지
+  // 🛡️ iOS popstate 이벤트 핸들러 - 홈에서 앱 종료 방지 (버퍼 재추가 최소화)
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -675,9 +675,9 @@ export default function HomePage() {
         historyLength: window.history.length
       });
 
-      // 더미 버퍼 엔트리에 도달한 경우 - 다시 버퍼 추가
+      // 버퍼 엔트리에 도달 시에만 앱 종료 방지용 버퍼 1개 추가
       if (e.state?.type === 'home_buffer') {
-        console.log('🔄 [popstate] 버퍼 엔트리 감지 → 버퍼 재추가');
+        console.log('🔄 [popstate] 버퍼 엔트리 감지 → 앱 종료 방지');
         window.history.pushState({
           type: 'home_buffer',
           index: 0,
@@ -686,17 +686,14 @@ export default function HomePage() {
         return;
       }
 
-      // iOS에서 예상치 못한 상태로 뒤로가기 된 경우 - 홈으로 강제 이동
-      if (isIOS && currentPath === '/' && !e.state && window.history.length <= 2) {
-        console.warn('⚠️ [popstate] iOS 히스토리 버그 감지 → 버퍼 재추가');
-        // 앱이 닫히지 않도록 버퍼 다시 추가
-        for (let i = 0; i < 3; i++) {
-          window.history.pushState({
-            type: 'home_buffer',
-            index: i,
-            timestamp: Date.now()
-          }, '', window.location.href);
-        }
+      // iOS에서 히스토리가 완전히 비어 앱 종료될 위기인 경우에만 버퍼 추가
+      if (isIOS && currentPath === '/' && !e.state && window.history.length <= 1) {
+        console.warn('⚠️ [popstate] iOS 앱 종료 위기 감지 → 버퍼 추가');
+        window.history.pushState({
+          type: 'home_buffer',
+          index: 0,
+          timestamp: Date.now()
+        }, '', window.location.href);
       }
     };
 

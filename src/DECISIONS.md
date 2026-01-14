@@ -3,7 +3,7 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-13
+> **최종 업데이트**: 2026-01-14
 
 ---
 
@@ -345,6 +345,72 @@ useEffect(() => {
 - iOS bfcache 복원(`pageshow`): 콘텐츠 상세로 리다이렉트
 
 **영향**: `/src/App.tsx`, `/src/components/FreeSajuDetail.tsx`
+
+---
+
+### iOS 스와이프 뒤로가기: 홈페이지 히스토리 버퍼 무한 추가 문제 해결
+**결정**: 홈페이지 히스토리 버퍼 추가를 **앱 최초 진입 시 한 번만** 실행하도록 변경
+**배경**:
+- 홈 → 콘텐츠 상세 → 스와이프 뒤로가기 → 홈 반복 시 히스토리 무한 증가
+- history.length: 49 → 53 → 58 → 63... 계속 증가
+- 결국 페이지가 닫히거나 예상치 못한 동작 발생
+
+**문제 시나리오**:
+```
+1. 홈 진입 → iOS 버퍼 5개 추가 (history.length: 49 → 54)
+2. 콘텐츠 클릭 → navigatedFromHome 플래그 설정
+3. 스와이프 뒤로가기 → 홈 돌아옴
+4. 홈 재진입 → 또 버퍼 5개 추가 (history.length: 54 → 59) ← 문제!
+5. 반복...
+```
+
+**원인 코드** (수정 전):
+```typescript
+// 🛡️ iOS에서는 무조건 버퍼 추가 ← 문제의 원인!
+const shouldAddBuffer = isIOS || currentLength <= 2;
+
+if (shouldAddBuffer) {
+  for (let i = 0; i < bufferCount; i++) {
+    window.history.pushState({...}, '', window.location.href);
+  }
+}
+```
+
+**해결 방법** (수정 후):
+```typescript
+// 🔑 이미 버퍼가 초기화되었는지 확인 (세션 내 한 번만 실행)
+const isHistoryInitialized = sessionStorage.getItem('homepage_history_initialized');
+
+// 🔄 콘텐츠에서 돌아온 경우 플래그만 제거하고 버퍼는 추가하지 않음
+const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
+if (hasNavigatedFromHome) {
+  sessionStorage.removeItem('navigatedFromHome');
+  return; // 버퍼 추가 스킵
+}
+
+// 🛡️ 앱 최초 진입 시에만 버퍼 추가 (세션 내 한 번)
+if (!isHistoryInitialized && isIOS) {
+  const bufferCount = 3; // 앱 종료 방지용 최소 버퍼
+  for (let i = 0; i < bufferCount; i++) {
+    window.history.pushState({...}, '', window.location.href);
+  }
+  sessionStorage.setItem('homepage_history_initialized', 'true');
+}
+```
+
+**핵심 원리** (DECISIONS.md 기존 결정 참조):
+- **iOS 스와이프 뒤로가기는 브라우저가 자연스럽게 처리하도록 두는 것이 최선**
+- `pushState`는 최소한으로 사용 (앱 종료 방지 목적으로만)
+- 콘텐츠에서 돌아올 때는 브라우저의 자연스러운 히스토리 탐색에 의존
+
+**변경 사항**:
+1. `homepage_history_initialized` 플래그로 세션 내 한 번만 버퍼 추가
+2. `navigatedFromHome` 플래그가 있으면 버퍼 추가 완전 스킵
+3. 버퍼 개수 축소: 5개 → 3개 (앱 종료 방지에 충분)
+4. popstate 핸들러에서 버퍼 재추가 조건 강화 (`history.length <= 2` → `<= 1`)
+
+**영향**: `/src/pages/HomePage.tsx`
+**테스트**: iOS Safari에서 홈 ↔ 콘텐츠 상세 5회 이상 왕복 후 정상 동작 확인
 
 ---
 

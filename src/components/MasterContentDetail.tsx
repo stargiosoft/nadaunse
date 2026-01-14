@@ -278,6 +278,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   
   // UI states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false); // 수정 확인 다이얼로그
   const [showOrderExistsDialog, setShowOrderExistsDialog] = useState(false); // 주문 데이터 존재 안내
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
@@ -643,7 +644,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
 
       const { priceOriginal, priceDiscount, discountRate } = getPriceByCategory(mainCategory, subCategory);
 
-      // 1. master_contents 업데이트
+      // 1. master_contents 업데이트 (status를 'ready'로 변경)
       const { error: updateError } = await supabase
         .from('master_contents')
         .update({
@@ -656,7 +657,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
           price_original: priceOriginal,
           price_discount: priceDiscount,
           discount_rate: discountRate,
-          // status는 업데이트하지 않음 (기존 값 유지)
+          status: 'ready', // 수정 시 '배포전' 상태로 변경
         })
         .eq('id', contentId);
 
@@ -697,6 +698,15 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       }
 
       console.log('Update successful');
+
+      // 🔥 홈페이지 캐시 무효화 (배포전으로 변경되어 홈에서 숨겨지도록)
+      const cacheKeys = Object.keys(localStorage).filter(key =>
+        key.startsWith('homepage_contents_cache') ||
+        key.startsWith('homepage_categories_cache')
+      );
+      cacheKeys.forEach(key => localStorage.removeItem(key));
+      console.log(`🗑️ [캐시 무효화] ${cacheKeys.length}개 홈페이지 캐시 삭제됨`);
+
       toast.success('수정되었어요.');
 
       // 🔄 수정 완료 후 리스트 페이지로 이동
@@ -1429,7 +1439,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
               </p>
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => setShowEditConfirm(true)}
               className="flex-1 h-[52px] rounded-[8px] bg-[#48b2af] flex items-center justify-center hover:bg-[#3fa3a0] transition-colors"
             >
               <p className="font-['Pretendard_Variable:Bold',sans-serif] text-[16px] text-white">
@@ -1438,6 +1448,18 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
             </button>
           </div>
         </div>
+
+        {/* 수정 확인 다이얼로그 */}
+        {showEditConfirm && (
+          <ConfirmDialog
+            message="배포전 상태로 변경됩니다.&#10;수정하시겠어요?"
+            onConfirm={() => {
+              setShowEditConfirm(false);
+              handleSave();
+            }}
+            onCancel={() => setShowEditConfirm(false)}
+          />
+        )}
 
         {/* 삭제 확인 다이얼로그 */}
         {showDeleteConfirm && (
