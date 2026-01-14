@@ -203,6 +203,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState<number>(0);
   
   // 무한 스크롤 감지용 ref
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -356,6 +357,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           }
           
           setContents(formattedContents);
+          setTotalCount(count || 0); // 🔥 전체 개수 저장
           setHasMore(count ? count > 20 : false);
           setIsInitialLoading(false); // 🔥 초기 로드 완료
           console.log(`✅ 콘텐츠 로드 성공 (${formattedContents.length}개, 전체: ${count}개, 필터: ${filter})`);
@@ -1063,7 +1065,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
         {!isDeployMode && (
           <div className="px-[20px] py-[8px]">
             <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[13px] text-[#808080]">
-              총 {displayContents.length}개
+              총 {totalCount}개
             </p>
           </div>
         )}
