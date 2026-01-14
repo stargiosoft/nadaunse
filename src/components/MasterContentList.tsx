@@ -1096,7 +1096,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
               <ContentItem 
                 key={content.id} 
                 content={content} 
-                onClick={() => navigate(`/master/content/${content.id}`)}
+                onClick={() => window.open(`/master/content/${content.id}`, '_blank')}
                 isDeployMode={isDeployMode}
                 isSelected={selectedIds.has(content.id)}
                 onToggleSelect={() => handleToggleSelect(content.id)}
