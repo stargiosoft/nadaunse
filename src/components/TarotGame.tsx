@@ -215,40 +215,40 @@ function Frame({ targetRef }: { targetRef: React.RefObject<HTMLDivElement> }) {
   );
 }
 
-function Container() {
+function Container({ title, question }: { title?: string; question?: string }) {
   return (
     <div className="content-stretch flex flex-col gap-[4px] items-start justify-start min-h-[86px] relative shrink-0 text-center w-full" data-name="Container">
-      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[30px] relative shrink-0 text-[20px] text-white tracking-[-0.5px] w-full">우리 관계, 지금이 전환점일까?</p>
-      <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[#f3f3f3] text-[14px] tracking-[-0.42px] w-full">질문을 떠올리며 카드를 뽑아주세요</p>
+      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[30px] relative shrink-0 text-[20px] text-white tracking-[-0.5px] w-full">{title}</p>
+      <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[#f3f3f3] text-[14px] tracking-[-0.42px] w-full">{question || "질문을 떠올리며 카드를 뽑아주세요"}</p>
     </div>
   );
 }
 
-function Container1() {
+function Container1({ title, question }: { title?: string; question?: string }) {
   return (
     <div className="relative shrink-0 w-full" data-name="Container">
       <div className="size-full">
         <div className="content-stretch flex flex-col items-start px-[20px] py-[10px] relative w-full">
-          <Container />
+          <Container title={title} question={question} />
         </div>
       </div>
     </div>
   );
 }
 
-function Frame2({ targetRef }: { targetRef: React.RefObject<HTMLDivElement> }) {
+function Frame2({ targetRef, title, question }: { targetRef: React.RefObject<HTMLDivElement>; title?: string; question?: string }) {
   return (
     <div className="content-stretch flex flex-col gap-[44px] items-center relative shrink-0 w-full">
-      <Container1 />
+      <Container1 title={title} question={question} />
       <Frame targetRef={targetRef} />
     </div>
   );
 }
 
-function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio }: any) {
+function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, title, question }: any) {
   return (
     <div className="absolute content-stretch flex flex-col gap-[50px] items-center left-0 top-[18px] w-full">
-      <Frame2 targetRef={targetRef} />
+      <Frame2 targetRef={targetRef} title={title} question={question} />
       <div className="flex items-center justify-center relative shrink-0">
         <CardFan shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} scaleRatio={scaleRatio} />
       </div>
@@ -256,7 +256,7 @@ function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCard
   );
 }
 
-function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, onShuffle, isShuffling, isCardSelected }: any) {
+function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, onShuffle, isShuffling, isCardSelected, title, question }: any) {
   const buttonLabel = isShuffling ? "섞는 중..." : isCardSelected ? "선택 완료" : "카드 섞기";
 
   useEffect(() => {
@@ -270,21 +270,21 @@ function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCard
   }, []);
 
   return (
-    <div 
+    <div
       className="relative w-full overflow-hidden"
-      style={{ 
+      style={{
         backgroundColor: '#41a09e',
         height: 'calc(var(--vh, 1vh) * 100)'
       }}
     >
-      <img 
-        src={tarotBackground} 
-        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-0" 
-        alt="" 
+      <img
+        src={tarotBackground}
+        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-0"
+        alt=""
       />
       <div className="absolute inset-0 z-10 w-full h-full">
-        <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} targetRef={targetRef} scaleRatio={scaleRatio} />
-        <div 
+        <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} targetRef={targetRef} scaleRatio={scaleRatio} title={title} question={question} />
+        <div
           className="fixed left-0 right-0 px-[20px] z-50"
           style={{ bottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}
         >
@@ -324,9 +324,11 @@ function SelectedCard({ data, onReturn }: { data: SelectedCardData; onReturn: ()
 
 interface TarotGameProps {
   onConfirm?: () => void;
+  title?: string;
+  question?: string;
 }
 
-export function TarotGame({ onConfirm }: TarotGameProps) {
+export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [shufflePhase, setShufflePhase] = useState<'idle' | 'mixing' | 'gathered' | 'spreading'>('idle');
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
@@ -422,7 +424,7 @@ export function TarotGame({ onConfirm }: TarotGameProps) {
 
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden" data-name="카드 뽑기 섞기">
-      <Frame1 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={handleCardSelect} targetRef={targetBoxRef} scaleRatio={scaleRatio} onShuffle={handleClickAction} isShuffling={isShuffling} isCardSelected={selectedCard !== null} />
+      <Frame1 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={handleCardSelect} targetRef={targetBoxRef} scaleRatio={scaleRatio} onShuffle={handleClickAction} isShuffling={isShuffling} isCardSelected={selectedCard !== null} title={title} question={question} />
       {selectedCardData && <SelectedCard data={selectedCardData} onReturn={() => { setSelectedCard(null); setSelectedCardData(null); }} />}
     </div>
   );

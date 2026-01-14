@@ -326,7 +326,7 @@ export default function TarotShufflePage() {
       <div className="flex flex-col flex-1 relative w-full overflow-hidden">
         {/* Main Content Area - Centered */}
         <div className="flex-1 w-full relative pb-[68px]">
-          <TarotGame onConfirm={handleConfirmCard} />
+          <TarotGame onConfirm={handleConfirmCard} title={questionText} />
         </div>
       </div>
 
