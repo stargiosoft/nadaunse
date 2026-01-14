@@ -625,82 +625,34 @@ export default function HomePage() {
   const [showNavigation, setShowNavigation] = useState(true);
   const lastScrollY = useRef(0);
 
-  // 🛡️ iOS Safari 히스토리 버그 해결: 앱 최초 진입 시에만 버퍼 추가
-  // DECISIONS.md 핵심 원리: iOS 스와이프 뒤로가기는 브라우저가 자연스럽게 처리하도록 두는 것이 최선
+  // 🛡️ iOS Safari bfcache 핸들러만 유지
+  // DECISIONS.md 핵심 원리: pushState/popstate 제거, 브라우저의 자연스러운 히스토리 탐색에 의존
   useEffect(() => {
-    const initHistory = () => {
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-
-      // 🔑 이미 버퍼가 초기화되었는지 확인 (세션 내 한 번만 실행)
-      const isHistoryInitialized = sessionStorage.getItem('homepage_history_initialized');
-
-      // 🔄 콘텐츠에서 돌아온 경우 플래그만 제거하고 버퍼는 추가하지 않음
-      const hasNavigatedFromHome = sessionStorage.getItem('navigatedFromHome');
-      if (hasNavigatedFromHome) {
-        sessionStorage.removeItem('navigatedFromHome');
-        console.log('🧹 [히스토리] 콘텐츠에서 돌아옴 → 플래그 제거 (버퍼 추가 스킵)');
-        return; // 버퍼 추가 스킵
-      }
-
-      // 🛡️ 앱 최초 진입 시에만 버퍼 추가 (세션 내 한 번)
-      if (!isHistoryInitialized && isIOS) {
-        const bufferCount = 3; // 앱 종료 방지용 최소 버퍼
-        for (let i = 0; i < bufferCount; i++) {
-          window.history.pushState({
-            type: 'home_buffer',
-            index: i,
-            timestamp: Date.now()
-          }, '', window.location.href);
-        }
-        sessionStorage.setItem('homepage_history_initialized', 'true');
-        console.log(`✅ [히스토리] 최초 진입 → iOS 버퍼 ${bufferCount}개 추가 완료`);
-      } else {
-        console.log('🔍 [히스토리] 버퍼 추가 스킵 (이미 초기화됨 또는 비-iOS)');
+    // bfcache 복원 시 상태 리셋 (pageshow)
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        console.log('📄 [pageshow] bfcache에서 복원됨');
+        // 필요시 상태 리셋 로직 추가
       }
     };
 
-    initHistory();
-  }, []);
-
-  // 🛡️ iOS popstate 이벤트 핸들러 - 홈에서 앱 종료 방지 (버퍼 재추가 최소화)
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-      const currentPath = window.location.pathname;
-
-      console.log('📍 [popstate] 이벤트 발생', {
-        state: e.state,
-        currentPath,
-        isIOS,
-        historyLength: window.history.length
-      });
-
-      // 버퍼 엔트리에 도달 시에만 앱 종료 방지용 버퍼 1개 추가
-      if (e.state?.type === 'home_buffer') {
-        console.log('🔄 [popstate] 버퍼 엔트리 감지 → 앱 종료 방지');
-        window.history.pushState({
-          type: 'home_buffer',
-          index: 0,
-          timestamp: Date.now()
-        }, '', window.location.href);
-        return;
-      }
-
-      // iOS에서 히스토리가 완전히 비어 앱 종료될 위기인 경우에만 버퍼 추가
-      if (isIOS && currentPath === '/' && !e.state && window.history.length <= 1) {
-        console.warn('⚠️ [popstate] iOS 앱 종료 위기 감지 → 버퍼 추가');
-        window.history.pushState({
-          type: 'home_buffer',
-          index: 0,
-          timestamp: Date.now()
-        }, '', window.location.href);
+    // 탭 전환 시 상태 확인 (visibilitychange)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ [visibilitychange] 페이지가 다시 보임');
+        // 필요시 데이터 새로고침 로직 추가
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
-  
+
   useEffect(() => {
     const controlNavbar = () => {
       if (typeof window !== 'undefined') {
