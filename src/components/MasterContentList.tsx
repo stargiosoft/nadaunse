@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, ChevronLeft } from 'lucide-react';
+import { Home, ChevronLeft, Search, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { supabase, testConnection } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +11,12 @@ import { toast } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 
 // 🔧 Build v1.2.6 - Router alias fix
+
+// 카테고리 타입
+type TabCategory = '전체' | '개인운세' | '연애' | '이별' | '궁합' | '재물' | '직업' | '시험/학업' | '건강' | '인간관계' | '자녀' | '이사/매매' | '기타';
+
+// 카테고리 목록 (표시 순서)
+const ALL_CATEGORIES: TabCategory[] = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
 
 // 캐시 설정
 const CACHE_KEY = 'master_contents_cache';
@@ -22,6 +29,7 @@ interface MasterContent {
   status: 'loading' | 'failed' | 'ready' | 'deployed';
   created_at: string;
   thumbnail_url: string | null;
+  category_main?: string;
 }
 
 // 체크박스 컴포넌트
@@ -205,9 +213,20 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<'all' | 'loading' | 'failed' | 'ready' | 'deployed'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<TabCategory>('전체');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   // 무한 스크롤 감지용 ref
   const observerTarget = useRef<HTMLDivElement>(null);
+
+  // 검색어 디바운스 (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // 세션 체크
   useEffect(() => {
@@ -294,6 +313,16 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
         // 🔍 상태 필터 적용
         if (statusFilter !== 'all') {
           query = query.eq('status', statusFilter);
+        }
+
+        // 🔍 카테고리 필터 적용
+        if (categoryFilter !== '전체') {
+          query = query.eq('category_main', categoryFilter);
+        }
+
+        // 🔍 검색어 필터 적용 (제목 검색)
+        if (debouncedSearchQuery.trim()) {
+          query = query.ilike('title', `%${debouncedSearchQuery.trim()}%`);
         }
 
         // 정렬 및 범위 설정
@@ -387,7 +416,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
     };
 
     fetchContents();
-  }, [loadFromCache, filter, statusFilter]); // ✅ saveToCache 의존성 제거
+  }, [loadFromCache, filter, statusFilter, categoryFilter, debouncedSearchQuery]); // ✅ 카테고리 필터 추가
 
   // 콘텐츠 수동 새로고침 함수
   const fetchContents = useCallback(async () => {
@@ -673,13 +702,13 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
   // 전체선택 상태
   const isAllSelected = readyContents.length > 0 && selectedIds.size === readyContents.length;
   
-  // 필터 변경 시 currentPage 리셋 및 데이터 다시 로드
+  // 필터/검색어 변경 시 currentPage 리셋 및 데이터 다시 로드
   useEffect(() => {
     setCurrentPage(0);
     setHasMore(true);
     setIsInitialLoading(true); // 🔥 필터 변경 시 초기 로드 상태로 리셋
     // ❌ contents 초기화 제거 - useEffect에서 자동으로 다시 로드됨
-  }, [filter, statusFilter]);
+  }, [filter, statusFilter, categoryFilter, debouncedSearchQuery]);
 
   // 배포선택 모드 진입
   const handleEnterDeployMode = () => {
@@ -828,6 +857,16 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
         query = query.eq('status', statusFilter);
       }
 
+      // 🔍 카테고리 필터 적용
+      if (categoryFilter !== '전체') {
+        query = query.eq('category_main', categoryFilter);
+      }
+
+      // 🔍 검색어 필터 적용 (제목 검색)
+      if (debouncedSearchQuery.trim()) {
+        query = query.ilike('title', `%${debouncedSearchQuery.trim()}%`);
+      }
+
       // 정렬 및 범위 설정
       const { data, error, count } = await query
         .order('created_at', { ascending: false })
@@ -889,7 +928,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, hasMore, isLoading, filter, statusFilter]);
+  }, [currentPage, hasMore, isLoading, filter, statusFilter, categoryFilter, debouncedSearchQuery]);
 
   // 무한 스크롤 감지
   useEffect(() => {
@@ -1022,6 +1061,38 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
           )}
         </div>
 
+        {/* 카테고리 탭 - 배포모드가 아닐 때만 */}
+        {!isDeployMode && (
+          <div className="bg-white px-[4px] py-[8px] shrink-0 w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+            <div className="flex items-center">
+              {ALL_CATEGORIES.map((category) => (
+                <div
+                  key={category}
+                  onClick={() => setCategoryFilter(category)}
+                  className="box-border flex gap-[10px] items-center justify-center px-[16px] py-[8px] relative rounded-[12px] shrink-0 cursor-pointer"
+                >
+                  {categoryFilter === category && (
+                    <motion.div
+                      layoutId="masterCategoryIndicator"
+                      className="absolute inset-0 bg-[#f8f8f8] rounded-[12px]"
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                    />
+                  )}
+                  <p
+                    className={`${
+                      categoryFilter === category
+                        ? "font-['Pretendard_Variable:Medium',sans-serif] font-[500] text-[#151515]"
+                        : "font-['Pretendard_Variable:Medium',sans-serif] text-[#999999]"
+                    } leading-[20px] relative shrink-0 text-[15px] whitespace-nowrap tracking-[-0.45px] transition-colors duration-200 z-10`}
+                  >
+                    {category}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 필터 (Segmented Control) - 배포모드가 아닐 때만 */}
         {!isDeployMode && (
           <div className="bg-white px-[20px] py-[12px] shrink-0 w-full">
@@ -1068,6 +1139,32 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
                   무료 체험판
                 </p>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 검색 입력 - 배포모드가 아닐 때만 */}
+        {!isDeployMode && (
+          <div className="bg-white px-[20px] pb-[8px] shrink-0 w-full">
+            <div className="relative flex items-center">
+              <Search className="absolute left-[12px] size-[18px] text-[#999999]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="제목으로 검색"
+                style={{ paddingLeft: '40px', paddingRight: '40px' }}
+                className="w-full h-[40px] bg-[#f5f5f5] rounded-[10px] text-[14px] text-[#1b1b1b] placeholder:text-[#999999] outline-none focus:ring-2 focus:ring-[#48b2af] focus:ring-opacity-30 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }}
+                  className="size-[24px] flex items-center justify-center text-[#999999] hover:text-[#666666] transition-colors"
+                >
+                  <X className="size-[16px]" />
+                </button>
+              )}
             </div>
           </div>
         )}
