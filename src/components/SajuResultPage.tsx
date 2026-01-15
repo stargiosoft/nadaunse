@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import svgPaths from "../imports/svg-ir0ch2bhrx"; // ⭐ 타로와 동일한 SVG 사용
 import { BottomNavigation } from './BottomNavigation';
 import { supabase, supabaseUrl } from '../lib/supabase';
@@ -17,6 +18,7 @@ interface Answer {
   tarot_card_id?: string | null;
   tarot_card_name?: string | null;
   tarot_card_image_url?: string | null;
+  tarot_user_viewed?: boolean | null;  // ⭐ 타로 카드 선택 화면을 봤는지 여부
 }
 
 export default function SajuResultPage() {
@@ -45,6 +47,31 @@ export default function SajuResultPage() {
 
   // ⭐ 다른 계정 주문 에러 상태 (A 계정 구매 → B 계정 로그인 시)
   const [isWrongAccount, setIsWrongAccount] = useState(false);
+
+  // ⭐ 애니메이션 방향 계산 (렌더링 시점에 계산하여 AnimatePresence가 올바른 값 사용)
+  const prevPageRef = useRef<number>(currentPage);
+  const direction = currentPage > prevPageRef.current ? 1 : currentPage < prevPageRef.current ? -1 : 0;
+
+  // ⭐ ref 업데이트는 useEffect에서 (렌더 완료 후 다음 비교를 위해)
+  useEffect(() => {
+    prevPageRef.current = currentPage;
+  }, [currentPage]);
+
+  // ⭐ 슬라이드 애니메이션 Variants (타로 페이지와 동일)
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 50 : direction < 0 ? -50 : 0,
+      opacity: direction === 0 ? 1 : 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -50 : direction < 0 ? 50 : 0,
+      opacity: 0,
+    }),
+  };
 
   console.log('🔍 [SajuResultPage] 초기화:', { orderId, contentId, startPage, currentPage });
 
@@ -212,7 +239,7 @@ export default function SajuResultPage() {
         // ⭐️ order_results 테이블에서 직접 조회
         const { data: resultsData, error: resultsError } = await supabase
           .from('order_results')
-          .select('question_order, question_text, gpt_response, question_type, tarot_card_id, tarot_card_name, tarot_card_image_url')
+          .select('question_order, question_text, gpt_response, question_type, tarot_card_id, tarot_card_name, tarot_card_image_url, tarot_user_viewed')
           .eq('order_id', orderId)
           .order('question_order', { ascending: true });
 
@@ -226,6 +253,16 @@ export default function SajuResultPage() {
         console.log('📊 [중요] 각 결과의 question_order:', resultsData?.map(r => r.question_order));
 
         if (resultsData && resultsData.length > 0) {
+          // ⭐ 현재 페이지(startPage)의 질문이 타로이고 아직 선택 화면을 보지 않았으면 셔플 페이지로 리다이렉트
+          const currentResult = resultsData.find(r => r.question_order === startPage);
+          if (currentResult?.question_type === 'tarot' && !currentResult?.tarot_user_viewed) {
+            console.log('🎴 [SajuResultPage] 현재 질문이 타로 (미선택) → 타로 셔플 페이지로 리다이렉트');
+            const fromParam = from ? `&from=${from}` : '';
+            const contentIdParam2 = contentIdParam ? `&contentId=${contentIdParam}` : '';
+            navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${startPage}${contentIdParam2}${fromParam}`, { replace: true });
+            return;
+          }
+
           setAnswers(resultsData as Answer[]);
         } else {
           console.warn('⚠️ order_results가 비어있습니다.');
@@ -331,14 +368,19 @@ export default function SajuResultPage() {
       return;
     }
     
-    // ⭐ 다음 질문이 타로면 → 타로 셔플 페이지
+    // ⭐ 다음 질문이 타로면
     if (nextAnswer.question_type === 'tarot') {
       const fromParam = from ? `&from=${from}` : '';
       const contentIdParam = contentId ? `&contentId=${contentId}` : '';
-      console.log('🎴 [SajuResultPage] 다음 질문이 타로 → 타로 셔플 페이지로 이동');
-      console.log('🎴 [SajuResultPage] from 파라미터:', from);
-      console.log('🎴 [SajuResultPage] fromParam:', fromParam);
-      console.log('🎴 [SajuResultPage] 이동 URL:', `/tarot/shuffle?orderId=${orderId}&questionOrder=${nextAnswer.question_order}${contentIdParam}${fromParam}`);
+
+      // ⭐ 이미 타로 카드 선택 화면을 봤는지 확인 (tarot_user_viewed가 true면 이미 봄)
+      if (nextAnswer.tarot_user_viewed) {
+        console.log('🎴 [SajuResultPage] 이미 타로 카드 선택 화면 봄 → 바로 통합 결과 페이지로 이동');
+        navigate(`/result?orderId=${orderId}&questionOrder=${nextAnswer.question_order}${contentIdParam}${fromParam}`);
+        return;
+      }
+
+      console.log('🎴 [SajuResultPage] 다음 질문이 타로 (미선택) → 타로 셔플 페이지로 이동');
       navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${nextAnswer.question_order}${contentIdParam}${fromParam}`);
       return;
     }
@@ -408,73 +450,85 @@ export default function SajuResultPage() {
         {/* Spacer */}
         <div className="h-[8px] shrink-0 w-full" />
 
-        {/* Content Area */}
-        <div className="px-[20px] pb-[200px] w-full">
-        {currentAnswer ? (
-          <div className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full">
-            {/* Header */}
-            <div className="flex gap-[12px] items-center mb-[16px] w-full">
-              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af] shrink-0">
-                {String(currentAnswer.question_order).padStart(2, '0')}
-              </p>
-              <div className="flex-1 h-0 border-t border-[#e7e7e7]" />
-            </div>
-
-            {/* ⭐ 타로 카드 이미지 + 카드명 (타로 질문인 경우만) */}
-            {currentAnswer.question_type === 'tarot' && (
-              <div className="flex flex-col items-center gap-[24px] mb-[24px] w-full">
-                {currentAnswer.tarot_card_image_url && (
-                  <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0] shrink-0">
-                    <img
-                      src={tarotImageUrl || currentAnswer.tarot_card_image_url}
-                      alt={currentAnswer.tarot_card_name || 'Tarot Card'}
-                      className="w-full h-full object-cover"
-                      onLoad={() => setImageLoading(false)}
-                    />
-                    {imageLoading && (
-                      <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {currentAnswer.tarot_card_name && (
-                  <div className="w-full">
-                    <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] text-center w-full break-keep">
-                      {currentAnswer.tarot_card_name}
-                    </p>
-                  </div>
-                )}
+        {/* Content Area - Slide Animation */}
+        <div className="px-[20px] pb-[200px] w-full overflow-hidden">
+        <AnimatePresence custom={direction}>
+          <motion.div
+            key={currentPage}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+          {currentAnswer ? (
+            <div className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full">
+              {/* Header */}
+              <div className="flex gap-[12px] items-center mb-[24px] w-full">
+                <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af] shrink-0">
+                  {String(currentAnswer.question_order).padStart(2, '0')}
+                </p>
+                <div className="flex-1 h-0 border-t border-[#e7e7e7]" />
               </div>
-            )}
 
-            {/* Title */}
-            <div className="mb-[12px] w-full">
-              <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] break-keep">
-                {currentAnswer.question_text}
-              </p>
-            </div>
+              {/* ⭐ 타로 카드 이미지 + 카드명 (타로 질문인 경우만) */}
+              {currentAnswer.question_type === 'tarot' && (
+                <div className="flex flex-col items-center gap-[24px] mb-[24px] w-full">
+                  {currentAnswer.tarot_card_image_url && (
+                    <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0] shrink-0">
+                      <img
+                        src={tarotImageUrl || currentAnswer.tarot_card_image_url}
+                        alt={currentAnswer.tarot_card_name || 'Tarot Card'}
+                        className="w-full h-full object-cover"
+                        onLoad={() => setImageLoading(false)}
+                      />
+                      {imageLoading && (
+                        <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-[#48b2af]"></div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-            {/* Answer Text */}
-            <div className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap break-words w-full">
-              {currentAnswer.gpt_response.split(/(\*\*.*?\*\*)/g).map((part, index) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  return (
-                    <span key={index} className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[17px]">
-                      {part.slice(2, -2)}
-                    </span>
-                  );
-                }
-                return part;
-              })}
+                  {currentAnswer.tarot_card_name && (
+                    <div className="w-full">
+                      <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] text-center w-full break-keep">
+                        {currentAnswer.tarot_card_name}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Title */}
+              <div className="mb-[24px] w-full">
+                <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] break-keep">
+                  {currentAnswer.question_text}
+                </p>
+              </div>
+
+              {/* Answer Text */}
+              <div className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap break-words w-full">
+                {currentAnswer.gpt_response.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+                  if (part.startsWith('**') && part.endsWith('**')) {
+                    return (
+                      <span key={index} className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[17px]">
+                        {part.slice(2, -2)}
+                      </span>
+                    );
+                  }
+                  return part;
+                })}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-[60px] w-full">
-            <p className="text-[#999999]">풀이 결과를 불러올 수 없습니다.</p>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-[60px] w-full">
+              <p className="text-[#999999]">풀이 결과를 불러올 수 없습니다.</p>
+            </div>
+          )}
+          </motion.div>
+        </AnimatePresence>
         </div>
       </div>
 
@@ -483,13 +537,15 @@ export default function SajuResultPage() {
         currentStep={currentPage}
         totalSteps={totalPages}
         onPrevious={() => {
-          const currentQ = answers[currentPage - 1];
-          // [DEV] 타로 질문인 경우, '이전' 클릭 시 타로 결과 화면으로 이동 (중간 단계 생략 방지)
-          if (currentQ?.question_type === 'tarot') {
+          // ⭐ 이전 질문 찾기 (currentPage - 2: 0-based 배열에서 이전 질문)
+          const prevQ = answers[currentPage - 2];
+
+          // 이전 질문이 타로인 경우, 통합 결과 페이지로 이동
+          if (prevQ?.question_type === 'tarot') {
             const fromParam = from ? `&from=${from}` : '';
             const contentIdParam = contentId ? `&contentId=${contentId}` : '';
-            // step=1: 타로 결과 화면으로 이동
-            navigate(`/result/tarot?orderId=${orderId}&questionOrder=${currentQ.question_order}${contentIdParam}${fromParam}&step=1`);
+            console.log('🎴 [SajuResultPage] 이전 질문이 타로 → 통합 결과 페이지로 이동:', prevQ.question_order);
+            navigate(`/result?orderId=${orderId}&questionOrder=${prevQ.question_order}${contentIdParam}${fromParam}`);
             return;
           }
           // 사주 질문인 경우 기존 로직 (내부 페이지 이동)

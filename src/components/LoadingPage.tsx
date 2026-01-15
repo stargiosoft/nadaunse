@@ -483,10 +483,10 @@ export default function LoadingPage() {
               console.log('🎴 [플로우] 이동 URL:', `/tarot/shuffle?orderId=${orderId}&questionOrder=1${fromParam}`);
               navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=1${fromParam}`);
             } else {
-              console.log('🔮 [플로우] 첫 번째 질문이 사주 → 사주 결과 페이지로 이동');
+              console.log('🔮 [플로우] 첫 번째 질문이 사주 → 통합 결과 페이지로 이동');
               const fromParam = from ? `&from=${from}` : '';
-              console.log('🔮 [플로우] 이동 URL:', `/result/saju?orderId=${orderId}&contentId=${finalContentId}${fromParam}`);
-              navigate(`/result/saju?orderId=${orderId}&contentId=${finalContentId}${fromParam}`);
+              console.log('🔮 [플로우] 이동 URL:', `/result?orderId=${orderId}&questionOrder=1&contentId=${finalContentId}${fromParam}`);
+              navigate(`/result?orderId=${orderId}&questionOrder=1&contentId=${finalContentId}${fromParam}`);
             }
           }, 1000);
         }

@@ -46,6 +46,9 @@ export default function TarotResultPage() {
   // ⭐ 다른 계정 주문 에러 상태 (A 계정 구매 → B 계정 로그인 시)
   const [isWrongAccount, setIsWrongAccount] = useState(false);
 
+  // ⭐ [최적화] 캐시된 orderId 추적 (타로→타로 전환 시 API 재호출 방지)
+  const cachedOrderIdRef = useRef<string | null>(null);
+
   // ⭐ 세션 체크 - 알림톡 링크 접속 시 세션 없으면 로그인 페이지로 리다이렉트
   useEffect(() => {
     const checkSession = async () => {
@@ -86,18 +89,13 @@ export default function TarotResultPage() {
     checkSession();
   }, [navigate, location.pathname, location.search]);
 
-  // ⭐ 애니메이션 방향 상태 관리
+  // ⭐ 애니메이션 방향 계산 (렌더링 시점에 바로 계산하여 AnimatePresence가 올바른 값을 사용하도록)
   const prevOrderRef = useRef<number>(questionOrder);
-  const [direction, setDirection] = useState(0);
+  // ⭐ direction을 렌더링 시점에 계산 (useEffect에서 setState로 하면 AnimatePresence가 이전 값을 사용함)
+  const direction = questionOrder > prevOrderRef.current ? 1 : questionOrder < prevOrderRef.current ? -1 : 0;
 
+  // ⭐ ref 업데이트는 useEffect에서 (렌더 완료 후 다음 비교를 위해)
   useEffect(() => {
-    if (questionOrder > prevOrderRef.current) {
-      setDirection(1); // 다음 페이지 (오른쪽에서 왼쪽으로)
-    } else if (questionOrder < prevOrderRef.current) {
-      setDirection(-1); // 이전 페이지 (왼쪽에서 오른쪽으로)
-    } else {
-        setDirection(0);
-    }
     prevOrderRef.current = questionOrder;
   }, [questionOrder]);
 
@@ -112,8 +110,34 @@ export default function TarotResultPage() {
       // ⭐ 세션 체크 완료 전이거나 세션이 없으면 데이터 로드 안 함
       if (!orderId || isCheckingSession || !hasValidSession) return;
 
+      // ⭐ 로딩 상태 초기화 (타로→타로 전환 시 화면이 비는 문제 방지)
+      setLoading(true);
+
       try {
         console.log('📥 [타로결과] 데이터 로드 시작:', { orderId, questionOrder });
+
+        // ⭐ [최적화] 같은 주문의 allResults가 이미 있으면 API 호출 없이 캐시에서 사용
+        if (allResults.length > 0 && cachedOrderIdRef.current === orderId) {
+          const cachedResult = allResults.find(r => r.question_order === questionOrder);
+          if (cachedResult) {
+            console.log('⚡ [타로결과] 캐시 히트 (API 스킵):', { orderId, questionOrder });
+            setResult(cachedResult as TarotResult);
+
+            // 이미지 캐시도 확인
+            if (cachedResult.tarot_card_name) {
+              const cachedImage = await getCachedTarotImage(cachedResult.tarot_card_name);
+              if (cachedImage) {
+                setCardImageUrl(cachedImage);
+                setImageLoading(false);
+              } else {
+                // 캐시 미스 시 네트워크 로드를 위해 별도 useEffect에 맡김
+                setImageLoading(true);
+              }
+            }
+            setLoading(false);
+            return;
+          }
+        }
 
         if (from === 'dev') {
           console.log('🔧 [개발 모드] 타로 결과 페이지 - mock 데이터 사용');
@@ -166,11 +190,22 @@ export default function TarotResultPage() {
           return;
         }
 
-        const { data: allData, error: allError } = await supabase
-          .from('order_results')
-          .select('question_order, question_text, gpt_response, question_type, tarot_card_id, tarot_card_name, tarot_card_image_url')
-          .eq('order_id', orderId)
-          .order('question_order', { ascending: true });
+        // ⭐ [최적화] API 호출 병렬화: order_results와 orders를 동시에 조회
+        const [resultsResponse, ordersResponse] = await Promise.all([
+          supabase
+            .from('order_results')
+            .select('question_order, question_text, gpt_response, question_type, tarot_card_id, tarot_card_name, tarot_card_image_url, tarot_user_viewed')
+            .eq('order_id', orderId)
+            .order('question_order', { ascending: true }),
+          supabase
+            .from('orders')
+            .select('content_id')
+            .eq('id', orderId)
+            .single()
+        ]);
+
+        const { data: allData, error: allError } = resultsResponse;
+        const { data: orderData, error: orderError } = ordersResponse;
 
         if (allError) throw allError;
 
@@ -178,15 +213,8 @@ export default function TarotResultPage() {
         if (!allData || allData.length === 0) {
           console.warn('⚠️ [타로결과] order_results가 비어있습니다.');
 
-          const { data: orderCheck, error: orderCheckError } = await supabase
-            .from('orders')
-            .select('id, content_id')
-            .eq('id', orderId)
-            .single();
-
-          console.log('🔍 [타로결과] 주문 확인:', { orderCheck, orderCheckError });
-
-          if (orderCheckError || !orderCheck) {
+          // orders 조회가 실패했거나 데이터 없으면 다른 계정 주문
+          if (orderError || !orderData) {
             console.error('❌ [타로결과] 다른 계정의 주문이거나 존재하지 않는 주문');
             setIsWrongAccount(true);
             setLoading(false);
@@ -194,7 +222,7 @@ export default function TarotResultPage() {
           }
 
           // 주문은 있지만 결과가 없음 → AI 아직 생성 중
-          const redirectContentId = contentId || orderCheck.content_id || '';
+          const redirectContentId = contentId || orderData.content_id || '';
           console.log('🔄 [타로결과] AI 생성 중 → 로딩 페이지로 리다이렉트');
           navigate(`/loading?orderId=${orderId}&contentId=${redirectContentId}`);
           return;
@@ -202,29 +230,28 @@ export default function TarotResultPage() {
 
         setAllResults(allData);
         setTotalQuestions(allData.length);
+        cachedOrderIdRef.current = orderId;  // ⭐ 캐시된 orderId 저장
         preloadNextTarotImages(allData, questionOrder);
 
-        const { data, error } = await supabase
-          .from('order_results')
-          .select('question_order, question_text, gpt_response, tarot_card_id, tarot_card_name, tarot_card_image_url')
-          .eq('order_id', orderId)
-          .eq('question_order', questionOrder)
-          .single();
+        // ⭐ [최적화] allData에서 직접 현재 질문 찾기 (중복 API 호출 제거)
+        const currentResult = allData.find(r => r.question_order === questionOrder);
+        if (currentResult) {
+          console.log('✅ [타로결과] 데이터 로드 성공:', currentResult);
+          setResult(currentResult as TarotResult);
 
-        if (error) throw error;
-        if (data) {
-          console.log('✅ [타로결과] 데이터 로드 성공:', data);
-          setResult(data as TarotResult);
+          // ⭐ [최적화] 즉시 이미지 캐시 확인 (별도 useEffect 대기 없이)
+          if (currentResult.tarot_card_name) {
+            const cachedImage = await getCachedTarotImage(currentResult.tarot_card_name);
+            if (cachedImage) {
+              console.log('⚡ [타로결과] 이미지 캐시 히트 (즉시 적용):', currentResult.tarot_card_name);
+              setCardImageUrl(cachedImage);
+              setImageLoading(false);
+            }
+          }
         }
 
-        const { data: orderData, error: orderError } = await supabase
-          .from('orders')
-          .select('content_id')
-          .eq('id', orderId)
-          .single();
-
-        if (orderError) throw orderError;
-        if (orderData) {
+        // ⭐ contentId 설정 (병렬 조회 결과 사용)
+        if (!orderError && orderData) {
           console.log('✅ [타로결과] contentId 조회 성공:', orderData.content_id);
           setContentIdState(orderData.content_id);
         }
@@ -298,12 +325,8 @@ export default function TarotResultPage() {
     const fromParam = from ? `&from=${from}` : '';
     const contentIdParam = contentIdState || contentId ? `&contentId=${contentIdState || contentId}` : '';
 
-    if (prevResult.question_type === 'tarot') {
-      navigate(`/result/tarot?orderId=${orderId}&questionOrder=${prevResult.question_order}${contentIdParam}${fromParam}`);
-      return;
-    }
-
-    navigate(`/result/saju?orderId=${orderId}&startPage=${prevResult.question_order}${fromParam}`);
+    // ⭐ 통합 결과 페이지로 이동 (타로/사주 모두 동일)
+    navigate(`/result?orderId=${orderId}&questionOrder=${prevResult.question_order}${contentIdParam}${fromParam}`);
   };
 
   const handleNext = () => {
@@ -323,12 +346,23 @@ export default function TarotResultPage() {
     if (nextResult.question_type === 'tarot') {
       const fromParam = from ? `&from=${from}` : '';
       const contentIdParam = contentIdState || contentId ? `&contentId=${contentIdState || contentId}` : '';
+
+      // ⭐ 이미 타로 카드 선택 화면을 봤는지 확인 (tarot_user_viewed가 true면 이미 봄)
+      if (nextResult.tarot_user_viewed) {
+        console.log('🎴 [TarotResultPage] 이미 타로 카드 선택 화면 봄 → 바로 통합 결과 페이지로 이동');
+        navigate(`/result?orderId=${orderId}&questionOrder=${nextResult.question_order}${contentIdParam}${fromParam}`);
+        return;
+      }
+
+      console.log('🎴 [TarotResultPage] 다음 질문이 타로 (미선택) → 타로 셔플 페이지로 이동');
       navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${nextResult.question_order}${contentIdParam}${fromParam}`);
       return;
     }
-    
+
+    // ⭐ 통합 결과 페이지로 이동 (사주 질문)
     const fromParam = from ? `&from=${from}` : '';
-    navigate(`/result/saju?orderId=${orderId}&startPage=${nextResult.question_order}${fromParam}`);
+    const contentIdParam = contentIdState || contentId ? `&contentId=${contentIdState || contentId}` : '';
+    navigate(`/result?orderId=${orderId}&questionOrder=${nextResult.question_order}${contentIdParam}${fromParam}`);
   };
 
   const handleClose = () => {
@@ -379,10 +413,11 @@ export default function TarotResultPage() {
   const cardName = result.tarot_card_name || '카드 정보 없음';
 
   // ⭐ 슬라이드 애니메이션 Variants
+  // ⭐ direction이 0일 때 (최초 마운트)도 opacity: 1로 시작하도록 수정
   const slideVariants = {
     enter: (direction: number) => ({
       x: direction > 0 ? 50 : direction < 0 ? -50 : 0,
-      opacity: 0,
+      opacity: direction === 0 ? 1 : 0,  // ⭐ direction이 0이면 바로 표시
     }),
     center: {
       x: 0,
@@ -418,7 +453,7 @@ export default function TarotResultPage() {
 
         {/* Content Card - Slide Animation Area */}
         <div className="px-[20px] pb-[200px] w-full overflow-hidden">
-        <AnimatePresence mode="wait" custom={direction}>
+        <AnimatePresence custom={direction}>
           <motion.div
             key={questionOrder}
             custom={direction}
@@ -447,7 +482,7 @@ export default function TarotResultPage() {
                 <img
                   src={cardImageUrl}
                   alt={cardName}
-                  fetchPriority="high"
+                  fetchpriority="high"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     console.error('❌ [타로결과] 이미지 로드 실패:', cardImageUrl);

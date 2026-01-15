@@ -486,7 +486,7 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
           <img
             alt={content.title}
             loading="eager"
-            fetchPriority="high"
+            fetchpriority="high"
             className="absolute inset-0 object-cover rounded-[16px] size-full"
             src={content.thumbnail_url}
             onLoad={(e) => {
@@ -541,7 +541,7 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
             <img
               alt={content.title}
               loading={index < 5 ? "eager" : "lazy"}
-              fetchPriority={index < 5 ? "high" : "auto"}
+              fetchpriority={index < 5 ? "high" : "auto"}
               className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full"
               src={content.thumbnail_url}
               onLoad={(e) => {
@@ -807,6 +807,8 @@ export default function HomePage() {
           }
 
           setAllContents(contents);
+          // ⭐ 캐시에서 로드할 때도 hasMore 설정 (10개 초과면 더 있음)
+          setHasMore(contents.length > 10);
           return true;
         } else {
           console.log(`⏰ 캐시 만료됨 (${category}/${type})`);

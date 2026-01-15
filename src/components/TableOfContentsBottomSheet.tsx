@@ -27,6 +27,7 @@ interface Question {
   question_order: number;
   question_text: string;
   question_type: 'saju' | 'tarot';
+  tarot_user_viewed: boolean | null;
 }
 
 interface ContentInfo {
@@ -108,11 +109,11 @@ export default function TableOfContentsBottomSheet({
       try {
         if (orderId.startsWith('dev_')) {
           const mockQuestions: Question[] = [
-            { id: 'mock_1', question_id: 'q1', question_order: 1, question_text: '그와 나의 인연은 어떻게 발전할까요?', question_type: 'tarot' },
-            { id: 'mock_2', question_id: 'q2', question_order: 2, question_text: '상대방은 나를 어떻게 생각하고 있을까요?', question_type: 'saju' },
-            { id: 'mock_3', question_id: 'q3', question_order: 3, question_text: '관계 발전을 위해 내가 주의해야 할 점은?', question_type: 'saju' },
-            { id: 'mock_4', question_id: 'q4', question_order: 4, question_text: '앞으로 3개월 간 우리 관계의 흐름은?', question_type: 'saju' },
-            { id: 'mock_5', question_id: 'q5', question_order: 5, question_text: '이 사람과의 최종 결말은 어떻게 될까요?', question_type: 'tarot' }
+            { id: 'mock_1', question_id: 'q1', question_order: 1, question_text: '그와 나의 인연은 어떻게 발전할까요?', question_type: 'tarot', tarot_user_viewed: false },
+            { id: 'mock_2', question_id: 'q2', question_order: 2, question_text: '상대방은 나를 어떻게 생각하고 있을까요?', question_type: 'saju', tarot_user_viewed: null },
+            { id: 'mock_3', question_id: 'q3', question_order: 3, question_text: '관계 발전을 위해 내가 주의해야 할 점은?', question_type: 'saju', tarot_user_viewed: null },
+            { id: 'mock_4', question_id: 'q4', question_order: 4, question_text: '앞으로 3개월 간 우리 관계의 흐름은?', question_type: 'saju', tarot_user_viewed: null },
+            { id: 'mock_5', question_id: 'q5', question_order: 5, question_text: '이 사람과의 최종 결말은 어떻게 될까요?', question_type: 'tarot', tarot_user_viewed: false }
           ];
           setQuestions(mockQuestions);
           return;
@@ -120,7 +121,7 @@ export default function TableOfContentsBottomSheet({
 
         const { data, error } = await supabase
           .from('order_results')
-          .select('id, question_id, question_order, question_text, question_type')
+          .select('id, question_id, question_order, question_text, question_type, tarot_user_viewed')
           .eq('order_id', orderId)
           .order('question_order', { ascending: true });
 
@@ -171,10 +172,13 @@ export default function TableOfContentsBottomSheet({
     const fromParam = from ? `&from=${from}` : '';
     const contentIdParam = contentId ? `&contentId=${contentId}` : '';
 
-    if (question.question_type === 'tarot') {
-      navigate(`/result/tarot?orderId=${orderId}&questionOrder=${question.question_order}${contentIdParam}${fromParam}`);
+    if (question.question_type === 'tarot' && !question.tarot_user_viewed) {
+      // ⭐ 타로 카드 미선택 시 셔플 페이지로 이동
+      console.log('🎴 [목차] 타로 미선택 → 셔플 페이지로 이동', { questionOrder: question.question_order });
+      navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${question.question_order}${contentIdParam}${fromParam}`);
     } else {
-      navigate(`/result/saju?orderId=${orderId}&startPage=${question.question_order}${fromParam}`);
+      // ⭐ 통합 결과 페이지로 이동 (사주/타로 모두 동일)
+      navigate(`/result?orderId=${orderId}&questionOrder=${question.question_order}${contentIdParam}${fromParam}`);
     }
   };
 

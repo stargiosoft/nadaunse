@@ -459,6 +459,7 @@
 ### 레거시 (백업됨)
 - `TarotFlowPage.tsx` → `_backup/` (미사용)
 - `TarotCardSelection.tsx` → `_backup/` (미사용)
+- `TarotDemo.tsx` → `_backup/` (TarotFlowPage 의존으로 미사용)
 
 ---
 
@@ -645,7 +646,7 @@
 - **총 컴포넌트**: 50개
 - **페이지 컴포넌트**: 37개
 - **UI/유틸리티 컴포넌트**: 13개
-- **백업된 컴포넌트**: 7개
+- **백업된 컴포넌트**: 8개
 
 ### 카테고리별 분포
 - UI 컴포넌트: 8개
