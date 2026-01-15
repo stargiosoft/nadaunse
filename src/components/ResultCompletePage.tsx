@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Check, ChevronLeft, ChevronRight, X, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Download } from 'lucide-react';
+import PositiveIcon from '../imports/Icons-517-859';
 import { supabase } from '../lib/supabase';
 import svgPaths from "../imports/svg-7sko9n1pie";
 import { motion } from "motion/react";
@@ -232,7 +233,9 @@ function Toast({ message, show }: ToastProps) {
   return (
     <div className="fixed bottom-[36px] left-1/2 -translate-x-1/2 z-50 backdrop-blur-[15px] backdrop-filter bg-[rgba(0,0,0,0.5)] content-stretch flex flex-col items-start pl-[12px] pr-[16px] py-[8px] rounded-[999px]">
       <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
-        <Check className="w-6 h-6 text-[#46BB6F]" />
+        <div className="relative shrink-0 size-[24px]">
+          <PositiveIcon />
+        </div>
         <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[13px] text-nowrap text-white">
           {message}
         </p>
@@ -260,6 +263,7 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
       document.body.style.overscrollBehaviorY = 'auto';
     };
   }, []);
+
 
   // ⭐ 페이지 로드 시 쿠폰 발급 여부 체크 + 추천 콘텐츠 조회 + 현재 콘텐츠 카테고리 조회
   useEffect(() => {

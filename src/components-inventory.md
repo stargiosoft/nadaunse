@@ -1,6 +1,6 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-01-13
+> **최종 업데이트**: 2026-01-15
 > **총 컴포넌트 수**: 51개 (활성화)
 > **UI 컴포넌트 (shadcn/ui)**: 48개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
@@ -499,7 +499,9 @@
   - 재방문 쿠폰 발급 카드 (3,000원 - 운세 구매 고객 전용)
   - "홈으로 가기", "다른 운세 보기" CTA 버튼
   - "이런 운세는 어때요?" 추천 콘텐츠 섹션 (다른 운세 상품 노출)
+  - 쿠폰 발급 토스트 메시지 (PositiveIcon 사용 - 초록색 tick-circle)
 - **파일 경로**: `/components/ResultCompletePage.tsx`
+- **최근 업데이트**: 2026-01-15 - 토스트 아이콘을 lucide-react Check에서 PositiveIcon (tick-circle)으로 변경
 
 ### PurchaseFailure.tsx
 - **역할**: 결제 실패 페이지
@@ -704,6 +706,16 @@
 
 ## 🔄 업데이트 이력
 
+### 2026-01-15
+- **ResultCompletePage.tsx 토스트 아이콘 변경**
+  - 쿠폰 발급 토스트 메시지 아이콘을 lucide-react `Check`에서 커스텀 `PositiveIcon` (tick-circle)으로 변경
+  - `PositiveIcon`: 초록색(#46BB6F) 원형 체크마크 아이콘 (`/imports/Icons-517-859.tsx`)
+- **SajuResultPage.tsx, TarotResultPage.tsx 레이아웃 조정**
+  - 결과 페이지 내 gap, margin-bottom 값 수정
+- **TarotDemo.tsx 삭제**
+  - 사용하지 않는 타로 데모 페이지 제거
+  - App.tsx에서 TarotDemo import 제거
+
 ### 2026-01-14
 - **MasterContentDetail.tsx 질문 변경 감지 로직 추가**
   - `originalQuestions` state로 원본 질문 저장
@@ -809,7 +821,7 @@
 
 ---
 
-**문서 버전**: 2.3.0
-**최종 업데이트**: 2026-01-13
+**문서 버전**: 2.4.0
+**최종 업데이트**: 2026-01-15
 **다음 업데이트**: 새 컴포넌트 추가 또는 주요 변경 시
 **문서 끝**

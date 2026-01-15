@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-13
+> **최종 업데이트**: 2026-01-15
 
 ---
 
@@ -262,7 +262,6 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트)
 /components/TarotGame.tsx               → 카드 섞기 + 선택 통합 컴포넌트
 /components/TarotResultPage.tsx         → 타로 결과
-/pages/TarotDemo.tsx                    → 타로 데모
 /lib/tarotCards.ts                      → 타로 카드 데이터
 ```
 </details>
@@ -356,7 +355,6 @@ const sajuResponse = await fetch(sajuApiUrl, {
 ```
 /App.tsx                        → React Router 설정 (메인 라우터)
 /pages/HomePage.tsx             → 홈 (콘텐츠 목록)
-/pages/TarotDemo.tsx            → 타로 데모
 
 # 무료 콘텐츠
 /components/FreeContentDetail.tsx       → 무료 상세 (메인)
@@ -714,7 +712,6 @@ AI 타로 해석 요청
 - `/components/TarotGame.tsx` - 카드 섞기 + 선택 통합 컴포넌트
 - `/components/TarotResultPage.tsx` - 타로 결과
 - `/lib/tarotCards.ts` - 타로 카드 데이터
-- `/pages/TarotDemo.tsx` - 타로 데모 (개발용)
 
 **Edge Functions**:
 - `/generate-tarot-answer` - 타로 해석 생성
@@ -1112,6 +1109,7 @@ useEffect(() => {
 | 1.5.1 | 2026-01-11 | ResultCompletePage 문서화 추가 (풀이 완료 페이지, 재방문 쿠폰) | AI Assistant |
 | 1.6.0 | 2026-01-11 | iOS 스와이프 뒤로가기 버그 체크리스트 추가 (#10~#12) | AI Assistant |
 | 1.7.0 | 2026-01-13 | 사주 API 백엔드 서버 직접 호출 (SAJU_API_KEY 사용), 이미지 캐시 버스팅, iOS 클릭 이벤트 버그 추가 | AI Assistant |
+| 1.8.0 | 2026-01-15 | TarotDemo.tsx 삭제, ResultCompletePage 토스트 아이콘 변경 (PositiveIcon), 결과 페이지 레이아웃 조정 | AI Assistant |
 
 ---
 
@@ -1213,6 +1211,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.7.0
-**최종 업데이트**: 2026-01-13
+**문서 버전**: 1.8.0
+**최종 업데이트**: 2026-01-15
 **문서 끝**
