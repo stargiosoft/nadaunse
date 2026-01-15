@@ -745,6 +745,7 @@ useEffect(() => {
 | 1.5.0 | 2026-01-13 | 사주 API 백엔드 서버 직접 호출 (SAJU_API_KEY 사용), 이미지 캐시 버스팅 추가 | AI Assistant |
 | 1.6.0 | 2026-01-14 | iOS Safari 무한 스와이프 뒤로가기 지원 (동적 버퍼 재충전), 사주 API 문서 오류 수정 | AI Assistant |
 | 1.7.0 | 2026-01-15 | ResultCompletePage 토스트 아이콘 변경 (PositiveIcon), TarotDemo 삭제, 결과 페이지 레이아웃 조정 | AI Assistant |
+| 1.7.1 | 2026-01-15 | ProfilePage 디버그 버튼 제거, Footer 레이아웃 개선 | AI Assistant |
 
 ---
 
@@ -815,6 +816,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.7.0
+**문서 버전**: 1.7.1
 **최종 업데이트**: 2026-01-15
 **다음 AI에게**: 이 문서 읽는 데 5분 투자하면, 수십 시간의 삽질을 막을 수 있어요. **사주 API는 Edge Function에서 `SAJU_API_KEY`로 서버 직접 호출** (IP 화이트리스트 + 키 인증), iOS Safari 무한 스와이프 뒤로가기 지원 (동적 버퍼 재충전), 이미지 캐시 버스팅을 꼭 기억하세요! 화이팅! 🚀

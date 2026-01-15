@@ -870,8 +870,9 @@ NO  → 추가 로드 후 재시도
 
 **적용 파일들**:
 - `/components/LoginPageNew.tsx` - 테스트 버튼
-- `/components/ProfilePage.tsx` - UI 테스팅용 버튼, 에러 페이지 확인 버튼
 - `/components/MasterContentDetailPage.tsx` - 개발 플래그
+
+**참고**: ProfilePage.tsx의 디버그 버튼들은 2026-01-15에 완전 제거됨
 
 ---
 
@@ -1110,6 +1111,7 @@ useEffect(() => {
 | 1.6.0 | 2026-01-11 | iOS 스와이프 뒤로가기 버그 체크리스트 추가 (#10~#12) | AI Assistant |
 | 1.7.0 | 2026-01-13 | 사주 API 백엔드 서버 직접 호출 (SAJU_API_KEY 사용), 이미지 캐시 버스팅, iOS 클릭 이벤트 버그 추가 | AI Assistant |
 | 1.8.0 | 2026-01-15 | TarotDemo.tsx 삭제, ResultCompletePage 토스트 아이콘 변경 (PositiveIcon), 결과 페이지 레이아웃 조정 | AI Assistant |
+| 1.8.1 | 2026-01-15 | ProfilePage.tsx 디버그 버튼 제거, Footer 레이아웃 개선 (min-height wrapper + flexible spacer) | AI Assistant |
 
 ---
 
@@ -1160,9 +1162,9 @@ useEffect(() => {
   - `isFigmaSite()`: Figma Make 환경 체크
 - **적용 컴포넌트**:
   - `LoginPageNew.tsx`: `isDevelopment()`로 테스트 버튼 분기
-  - `ProfilePage.tsx`: `DEV` 플래그로 UI 테스팅 버튼 숨김
   - `App.tsx`: 프로덕션 환경 체크 및 `import.meta.env.DEV` 오버라이드
 - 테스트 버튼, 디버깅 도구가 프로덕션에 노출되지 않음
+- **참고**: ProfilePage.tsx의 디버그 버튼들은 2026-01-15에 완전 제거됨
 
 ### ✅ iOS Safari 렌더링 최적화
 - `transform-gpu` 클래스로 `border-radius` 이슈 해결
@@ -1211,6 +1213,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.8.0
+**문서 버전**: 1.8.1
 **최종 업데이트**: 2026-01-15
 **문서 끝**

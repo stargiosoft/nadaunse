@@ -468,17 +468,18 @@
 - **역할**: 프로필 페이지 (통합 버전)
 - **사용처**: `/profile` 라우트
 - **타입**: Page Component
-- **주요 기능**: 
+- **주요 기능**:
   - 사용자 프로필 정보
   - 사주 정보 관리 링크
   - 구매 내역 링크
   - 로그아웃
-  - **개발 환경 분리**: 
-    - UI 테스팅용 직접 이동 버튼
-    - 사주 미등록 화면 토글 버튼
-    - 에러 페이지 확인 버튼
+  - **Footer 레이아웃**:
+    - min-height wrapper로 Footer가 항상 하단에 위치
+    - 로그아웃과 Footer 사이 최소 130px 간격 유지
+    - 콘텐츠가 짧으면 spacer가 늘어나서 Footer를 하단에 고정
+    - Footer 아래 빈 공간 없음 (스크롤 영역 내 Footer 배치)
 - **파일 경로**: `/components/ProfilePage.tsx`
-- **최근 업데이트**: 2026-01-06 - 개발용 버튼 환경 분리 처리 (3개)
+- **최근 업데이트**: 2026-01-15 - 디버그 버튼 제거, Footer 레이아웃 개선 (min-height wrapper + flexible spacer)
 
 ### PurchaseHistoryPage.tsx
 - **역할**: 구매 내역 조회 페이지
@@ -707,6 +708,11 @@
 ## 🔄 업데이트 이력
 
 ### 2026-01-15
+- **ProfilePage.tsx 디버그 버튼 제거 및 Footer 레이아웃 개선**
+  - 디버그 버튼 3개 완전 제거: `[디버그] 미등록 화면 보기`, `[DEV] 에러 페이지 확인`
+  - Footer 레이아웃 변경: min-height wrapper + flexible spacer 패턴 적용
+  - 로그아웃과 Footer 사이 최소 130px 간격 유지, 콘텐츠가 짧으면 spacer가 늘어남
+  - Footer 아래 빈 공간 제거 (스크롤 영역 내 Footer 배치)
 - **ResultCompletePage.tsx 토스트 아이콘 변경**
   - 쿠폰 발급 토스트 메시지 아이콘을 lucide-react `Check`에서 커스텀 `PositiveIcon` (tick-circle)으로 변경
   - `PositiveIcon`: 초록색(#46BB6F) 원형 체크마크 아이콘 (`/imports/Icons-517-859.tsx`)
