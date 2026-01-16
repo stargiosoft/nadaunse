@@ -359,12 +359,18 @@
 - **역할**: 사주 정보 관리 메인 페이지
 - **사용처**: `/profile/saju` 라우트
 - **타입**: Page Component
-- **주요 기능**: 
+- **주요 기능**:
   - 저장된 사주 목록 조회
   - 사주 수정/삭제
   - 대표 사주 설정
   - Kebab 메뉴 UI
 - **파일 경로**: `/components/SajuManagementPage.tsx`
+- **최근 업데이트**: 2026-01-16 - 타이포그래피 및 레이아웃 정밀 조정
+  - 섹션 타이틀 font-semibold, 프로필 이름 font-medium
+  - 닉네임-생년월일 간격 축소 (-mb-[8px], -mt-[4px])
+  - Info Container 하단 마진 8px (이미지 정렬)
+  - 섹션 타이틀-프로필 카드 간격 6px
+  - 함께 보는 사주 리스트 간격 1px
 
 ### SajuDetail.tsx
 - **역할**: 사주 상세 정보 조회 페이지

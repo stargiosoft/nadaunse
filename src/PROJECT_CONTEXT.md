@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-15
+> **최종 업데이트**: 2026-01-16
 
 ---
 
@@ -1112,6 +1112,7 @@ useEffect(() => {
 | 1.7.0 | 2026-01-13 | 사주 API 백엔드 서버 직접 호출 (SAJU_API_KEY 사용), 이미지 캐시 버스팅, iOS 클릭 이벤트 버그 추가 | AI Assistant |
 | 1.8.0 | 2026-01-15 | TarotDemo.tsx 삭제, ResultCompletePage 토스트 아이콘 변경 (PositiveIcon), 결과 페이지 레이아웃 조정 | AI Assistant |
 | 1.8.1 | 2026-01-15 | ProfilePage.tsx 디버그 버튼 제거, Footer 레이아웃 개선 (min-height wrapper + flexible spacer) | AI Assistant |
+| 1.8.2 | 2026-01-16 | SajuManagementPage 타이포그래피/레이아웃 정밀 조정 (섹션 타이틀 font-semibold, 프로필 이름 font-medium, 간격 최적화) | AI Assistant |
 
 ---
 
@@ -1213,6 +1214,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.8.1
-**최종 업데이트**: 2026-01-15
+**문서 버전**: 1.8.2
+**최종 업데이트**: 2026-01-16
 **문서 끝**
