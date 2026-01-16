@@ -1,6 +1,6 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-01-15
+> **최종 업데이트**: 2026-01-16
 > **총 컴포넌트 수**: 51개 (활성화)
 > **UI 컴포넌트 (shadcn/ui)**: 48개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
@@ -205,12 +205,13 @@
 - **역할**: 무료 콘텐츠 상세 페이지 (메인 로직)
 - **사용처**: `/master/content/detail/:id` 라우트 (무료 콘텐츠)
 - **타입**: Page Component
-- **주요 기능**: 
+- **주요 기능**:
   - AI 운세 생성 요청 (Edge Function `/generate-free-preview`)
   - localStorage 캐시 관리
   - 결과 표시
 - **비즈니스 로직**: `FreeContentService` 싱글톤 클래스 사용
 - **파일 경로**: `/components/FreeContentDetail.tsx`
+- **최근 업데이트**: 2026-01-16 - 광고 배너 하단 250px 여백 추가 (inline style)
 
 ### FreeContentDetailComponents.tsx
 - **역할**: 무료 콘텐츠 상세 UI 컴포넌트 모음
@@ -736,6 +737,12 @@
 - **iOS Safari 상태바 색상 변경**
   - index.html `theme-color` 메타 태그 #48b2af(민트) → #ffffff(흰색)
   - 흰색 배경 페이지와 시각적 일관성 개선
+
+### 2026-01-16
+- **FreeContentDetail.tsx 광고 배너 하단 여백 추가**
+  - 스크롤 컨테이너에 `paddingBottom: '250px'` inline style 적용
+  - 광고 배너와 하단 CTA 버튼 사이 충분한 여유 공간 확보
+  - Tailwind JIT 컴파일 문제로 `pb-[250px]` 클래스 대신 inline style 사용
 
 ### 2026-01-15
 - **ProfilePage.tsx 디버그 버튼 제거 및 Footer 레이아웃 개선**

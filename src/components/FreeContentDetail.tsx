@@ -508,7 +508,8 @@ export default function FreeContentDetail({
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 바운스 방지 */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
           <motion.div
-            className="pb-[120px] overflow-x-hidden"
+            className="overflow-x-hidden"
+            style={{ paddingBottom: '250px' }}
             initial="hidden"
             animate="visible"
             variants={{
@@ -550,9 +551,7 @@ export default function FreeContentDetail({
 
           {/* Advertisement Banner */}
           <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
-            <div className="mb-[130px]">
-              <AdBanner onBannerClick={onBannerClick} />
-            </div>
+            <AdBanner onBannerClick={onBannerClick} />
           </motion.div>
           </motion.div>
         </div>
