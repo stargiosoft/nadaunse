@@ -846,9 +846,10 @@ export default function PaymentNew({
         }
       `}</style>
       {/* 결제 처리 중 전체화면 로딩 */}
+      {/* ⭐ 0원 결제: "잠시만 기다려주세요", 유료 결제: "결제 페이지로 이동 중..." */}
       {isProcessingPayment && (
         <div className="fixed inset-0 z-50">
-          <PageLoader message="결제 페이지로 이동 중..." />
+          <PageLoader message={totalPrice === 0 ? "잠시만 기다려주세요" : "결제 페이지로 이동 중..."} />
         </div>
       )}
 
