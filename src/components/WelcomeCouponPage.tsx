@@ -142,7 +142,7 @@ function TextComponent() {
 
 function ImageContainer() {
   return (
-    <div className="flex-1 content-stretch flex flex-col gap-[46px] items-center justify-center w-full px-[20px] pb-[80px]" data-name="Image Container">
+    <div className="flex-1 flex flex-col gap-[46px] items-center justify-center w-full px-[20px] pb-[160px]" data-name="Image Container">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
