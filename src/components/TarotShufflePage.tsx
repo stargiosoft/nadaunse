@@ -188,42 +188,64 @@ export default function TarotShufflePage() {
     fetchData();
   }, [orderId, contentIdParam, questionOrder, isCheckingSession, hasValidSession, preloadedQuestionText]);
 
-  // ⭐ 카드 선택 완료 시 DB 저장 후 결과 페이지로 이동
+  // ⭐ 카드 선택 완료 시 DB에서 AI가 생성한 카드 확인 후 결과 페이지로 이동
   const handleConfirmCard = async () => {
     if (!orderId || isSavingCard) return;
 
     setIsSavingCard(true);
 
     try {
-      // 1. 랜덤 타로 카드 선택
-      const selectedCardName = getRandomTarotCard();
-      const cardImageUrl = getTarotCardImageUrl(selectedCardName);
+      // 1. AI가 이미 생성한 타로 카드 읽기
+      const { data: existingResult, error: fetchError } = await supabase
+        .from('order_results')
+        .select('tarot_card_name, tarot_card_image_url')
+        .eq('order_id', orderId)
+        .eq('question_order', questionOrder)
+        .single();
 
-      console.log('🎴 [TarotShufflePage] 카드 선택:', {
-        cardName: selectedCardName,
-        questionOrder,
-        orderId
-      });
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 (0 rows)이 아닌 실제 에러만 throw
+        console.error('❌ [TarotShufflePage] 기존 카드 조회 실패:', fetchError);
+        throw fetchError;
+      }
 
-      // 2. order_results 테이블 업데이트
-      const { error } = await supabase
+      // 2. AI가 생성한 카드가 있으면 그대로 사용, 없으면 랜덤 카드 (fallback)
+      const finalCardName = existingResult?.tarot_card_name || getRandomTarotCard();
+      const finalCardImageUrl = existingResult?.tarot_card_image_url || getTarotCardImageUrl(finalCardName);
+
+      if (existingResult?.tarot_card_name) {
+        console.log('🎴 [TarotShufflePage] AI가 생성한 카드 사용:', {
+          cardName: finalCardName,
+          questionOrder,
+          orderId
+        });
+      } else {
+        console.log('⚠️ [TarotShufflePage] AI 카드 없음 → 랜덤 카드 사용 (fallback):', {
+          cardName: finalCardName,
+          questionOrder,
+          orderId
+        });
+      }
+
+      // 3. 카드 정보와 tarot_user_viewed 업데이트
+      const { error: updateError } = await supabase
         .from('order_results')
         .update({
-          tarot_card_name: selectedCardName,
-          tarot_card_image_url: cardImageUrl,
+          tarot_card_name: finalCardName,
+          tarot_card_image_url: finalCardImageUrl,
           tarot_user_viewed: true
         })
         .eq('order_id', orderId)
         .eq('question_order', questionOrder);
 
-      if (error) {
-        console.error('❌ [TarotShufflePage] 카드 저장 실패:', error);
-        throw error;
+      if (updateError) {
+        console.error('❌ [TarotShufflePage] 카드 정보 업데이트 실패:', updateError);
+        throw updateError;
       }
 
       console.log('✅ [TarotShufflePage] 카드 저장 완료 → 결과 페이지로 이동');
 
-      // 3. 결과 페이지로 이동 (UnifiedResultPage)
+      // 4. 결과 페이지로 이동 (UnifiedResultPage)
       const fromParam = from ? `&from=${from}` : '';
       const contentIdParamStr = contentIdState ? `&contentId=${contentIdState}` : '';
       navigate(`/result?orderId=${orderId}&questionOrder=${questionOrder}${contentIdParamStr}${fromParam}`, { replace: true });
