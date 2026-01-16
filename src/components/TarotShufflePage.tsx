@@ -14,17 +14,27 @@ export default function TarotShufflePage() {
   const orderId = searchParams.get('orderId');
   const from = searchParams.get('from');
   const contentIdParam = searchParams.get('contentId');
-  
+
   // Parse questionOrder from URL, default to 1
   const questionOrderParam = searchParams.get('questionOrder');
   const questionOrder = questionOrderParam ? parseInt(questionOrderParam, 10) : 1;
 
-  const [questionText, setQuestionText] = useState<string>('');
+  // ⭐ LoadingPage에서 전달받은 질문 텍스트 (즉시 렌더링용)
+  const preloadedQuestionText = (location.state as any)?.preloadedQuestionText;
+
+  const [questionText, setQuestionText] = useState<string>(preloadedQuestionText || '');
   const [contentIdState, setContentIdState] = useState<string | null>(null);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   // ⭐ 카드 저장 중 상태
   const [isSavingCard, setIsSavingCard] = useState(false);
+
+  // ⭐ Preloading 디버그 로그
+  useEffect(() => {
+    if (preloadedQuestionText) {
+      console.log('✅ [TarotShufflePage] 질문 텍스트 프리로드 성공:', preloadedQuestionText);
+    }
+  }, [preloadedQuestionText]);
 
   // ⭐ 세션 체크 상태 추가 (알림톡 링크 접속 시 세션 없으면 로그인 페이지로 리다이렉트)
   // ✅ 최적화: localStorage에 캐시된 유저 정보가 있으면 세션 체크 건너뛰기 (즉시 렌더링)
@@ -131,6 +141,12 @@ export default function TarotShufflePage() {
         if (contentId) {
           setContentIdState(contentId);
 
+          // ⭐ 프리로드된 질문 텍스트가 있고 첫 번째 질문이면 DB 조회 건너뛰기
+          if (preloadedQuestionText && questionOrder === 1) {
+            console.log('⚡ [TarotShufflePage] 프리로드된 질문 사용 - DB 조회 생략');
+            return;
+          }
+
           // 2. ⭐ order_results에서 먼저 질문 텍스트 가져오기 (이미 결과가 생성된 경우)
           const { data: orderResults, error: orderResultsError } = await supabase
             .from('order_results')
@@ -170,7 +186,7 @@ export default function TarotShufflePage() {
     }
 
     fetchData();
-  }, [orderId, contentIdParam, questionOrder, isCheckingSession, hasValidSession]);
+  }, [orderId, contentIdParam, questionOrder, isCheckingSession, hasValidSession, preloadedQuestionText]);
 
   // ⭐ 카드 선택 완료 시 DB 저장 후 결과 페이지로 이동
   const handleConfirmCard = async () => {

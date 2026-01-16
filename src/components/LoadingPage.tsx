@@ -7,6 +7,7 @@ import { supabase, supabaseUrl } from '../lib/supabase';
 import { preloadTarotImages } from '../lib/tarotImageCache';
 import { preloadImages } from '../lib/imagePreloader';
 import { motion } from "motion/react";
+import { PageLoader } from './ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 // 로딩 페이지에서는 세션 만료 시 바로 로그인 페이지로 리다이렉트하므로 SessionExpiredDialog 불필요
 
 // ⭐ 무료 콘텐츠 인터페이스
@@ -94,7 +95,8 @@ export default function LoadingPage() {
 
   // Progress bar state
   const [isCompleted, setIsCompleted] = useState(false);
-  const [contentTitle, setContentTitle] = useState('AI 풀이 생성 중');
+  // ⭐ 초기값 null → 타이틀 로드 전 PageLoader 표시 (깜빡임 방지)
+  const [contentTitle, setContentTitle] = useState<string | null>(null);
   const [devNextUrl, setDevNextUrl] = useState<string | null>(null); // ⭐ [개발 모드] 다음 URL state
 
   // 🚀 무료 콘텐츠 state - 캐시에서 동기적 초기화
@@ -157,7 +159,11 @@ export default function LoadingPage() {
 
   // 🚀 콘텐츠 제목 로드 (캐시 우선)
   useEffect(() => {
-    if (!contentId) return;
+    // ⭐ contentId 없으면 기본 타이틀 설정
+    if (!contentId) {
+      setContentTitle('AI 풀이 생성 중');
+      return;
+    }
 
     // 🚀 캐시에서 먼저 확인 (무료 콘텐츠 캐시)
     try {
@@ -186,9 +192,14 @@ export default function LoadingPage() {
         if (error) throw error;
         if (data?.title) {
           setContentTitle(data.title);
+        } else {
+          // ⭐ 데이터는 있으나 title이 없는 경우 기본값 설정
+          setContentTitle('AI 풀이 생성 중');
         }
       } catch (error) {
         console.error('❌ 콘텐츠 제목 로드 실패:', error);
+        // ⭐ API 실패 시 기본값 설정 (무한 로딩 방지)
+        setContentTitle('AI 풀이 생성 중');
       }
     };
 
@@ -461,7 +472,7 @@ export default function LoadingPage() {
 
             const { data: firstQuestion, error: firstQuestionError } = await supabase
               .from('order_results')
-              .select('question_type, question_order, question_id')
+              .select('question_type, question_order, question_id, question_text')
               .eq('order_id', orderId)
               .eq('question_order', 1)
               .single();
@@ -480,8 +491,12 @@ export default function LoadingPage() {
             if (firstQuestion.question_type === 'tarot') {
               console.log('🎴 [플로우] 첫 번째 질문이 타로 → 타로 셔플 페이지로 이동');
               const fromParam = from ? `&from=${from}` : '';
+              console.log('🎴 [플로우] 질문 텍스트 미리 전달:', firstQuestion.question_text);
               console.log('🎴 [플로우] 이동 URL:', `/tarot/shuffle?orderId=${orderId}&questionOrder=1${fromParam}`);
-              navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=1${fromParam}`);
+              // ⭐ 질문 텍스트를 state로 전달하여 즉시 렌더링
+              navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=1${fromParam}`, {
+                state: { preloadedQuestionText: firstQuestion.question_text }
+              });
             } else {
               console.log('🔮 [플로우] 첫 번째 질문이 사주 → 통합 결과 페이지로 이동');
               const fromParam = from ? `&from=${from}` : '';
@@ -550,8 +565,13 @@ export default function LoadingPage() {
     navigate('/');
   };
 
+  // ⭐ 콘텐츠 타이틀 로드 전까지 PageLoader 표시 (타이틀 깜빡임 방지)
+  if (contentTitle === null) {
+    return <PageLoader message="잠시만 기다려주세요" />;
+  }
+
   return (
-    <div 
+    <div
       className="bg-white flex flex-col w-full max-w-[440px] mx-auto relative overflow-hidden"
       style={{ height: '100dvh' }}
     >

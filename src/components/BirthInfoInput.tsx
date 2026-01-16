@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import MasterContentLoadingPage from './MasterContentLoadingPage';
 import { getTarotCardsForQuestions } from '../lib/tarotCards';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
+import { PageLoader } from './ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 
 interface BirthInfoInputProps {
   productId: string;
@@ -570,6 +571,11 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
       setIsSubmitting(false);
     }
   };
+
+  // ⭐ 다음 버튼 클릭 후 로딩 페이지 이동 전 즉시 로딩 표시
+  if (isSubmitting) {
+    return <PageLoader message="잠시만 기다려주세요" />;
+  }
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">

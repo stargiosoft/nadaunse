@@ -119,11 +119,17 @@
 - **역할**: 결제 페이지 (포트원 연동)
 - **사용처**: `/product/:id/payment/new` 라우트
 - **타입**: Page Component
-- **주요 기능**: 
+- **주요 기능**:
   - 심화 해석판 결제
   - 쿠폰 적용 (웰컴 쿠폰 3000원, 재방문 쿠폰 2000원)
+  - 0원 결제 최적화 (불필요한 로딩 제거)
   - 약관 동의
   - PortOne v2 결제 연동
+  - 결제 오버레이 감지 (보이는 요소만 감지)
+- **최근 개선** (2026-01-16):
+  - `display: none` iframe 무시하여 정확한 결제 화면 감지
+  - 0원 결제 시 "결제 페이지로 이동중" 로딩 제거
+  - visibility 체크 로직 추가 (offsetParent, display, visibility)
 - **파일 경로**: `/components/PaymentNew.tsx`
 
 ### PaymentComplete.tsx

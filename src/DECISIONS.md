@@ -227,6 +227,125 @@ FigmaMake는 Tailwind arbitrary value를 적극 사용하여 코드 생성:
 
 ---
 
+### 결제 오버레이 감지 로직 개선 (보이는 요소만 감지)
+**결정**: PaymentNew.tsx의 결제 오버레이 감지 로직에서 `display: none` 또는 `visibility: hidden` 상태의 iframe/div를 무시하도록 개선
+
+**배경**:
+- 카카오페이 결제 시 숨겨진 본인인증 iframe(`display: none`)도 결제 오버레이로 감지되는 버그 발견
+- 실제 결제 QR 화면이 아닌 숨겨진 iframe 감지로 "결제 페이지로 이동중" 로딩이 해제되지 않음
+- 사용자는 무한 로딩 화면만 보고 실제 결제 UI를 볼 수 없음
+
+**문제 코드**:
+```typescript
+// ❌ 문제: 숨겨진 iframe도 감지됨
+allIframes.forEach(iframe => {
+  const src = iframe.getAttribute('src') || '';
+  if (src.includes('iamport') || src.includes('kakaopay')) {
+    paymentFrame = iframe;  // display:none인 iframe도 감지!
+  }
+});
+```
+
+**로그 증거**:
+```
+✅ [PaymentNew] 결제 오버레이 발견: <iframe ... style="display: none;">
+```
+
+**해결 방법**:
+```typescript
+// ✅ 해결: 실제로 보이는 요소만 감지
+allIframes.forEach(iframe => {
+  const src = iframe.getAttribute('src') || '';
+  const isVisible = iframe.offsetParent !== null &&
+                    getComputedStyle(iframe).display !== 'none' &&
+                    getComputedStyle(iframe).visibility !== 'hidden';
+
+  if (isVisible && (src.includes('iamport') || src.includes('kakaopay'))) {
+    paymentFrame = iframe;
+  }
+});
+```
+
+**visibility 체크 3단계**:
+1. `offsetParent !== null`: DOM에서 실제 렌더링되는지 확인
+2. `display !== 'none'`: CSS display 속성 확인
+3. `visibility !== 'hidden'`: CSS visibility 속성 확인
+
+**적용 범위**:
+- `startPaymentOverlayWatch()` 함수: iframe 감지 로직 (131-146번 줄)
+- `startPaymentOverlayWatch()` 함수: div 오버레이 감지 로직 (148-166번 줄)
+- `isPaymentOverlayOpen()` 함수: iframe 감지 로직 (225-240번 줄)
+- `isPaymentOverlayOpen()` 함수: div 오버레이 감지 로직 (242-260번 줄)
+
+**영향**:
+- 결제 오버레이 감지 정확도 향상
+- 무한 로딩 버그 해결
+- 카카오페이/다날 등 모든 PG사에 동일하게 적용
+
+**적용 파일**:
+- `src/components/PaymentNew.tsx`
+
+---
+
+### 0원 결제 시 로딩 UX 개선
+**결정**: 0원 결제(쿠폰으로 100% 할인) 시 "결제 페이지로 이동중" 로딩을 표시하지 않고 바로 주문 처리
+
+**배경**:
+- 0원 결제는 PG(포트원) 호출 없이 바로 주문 저장 후 다음 단계로 이동
+- 기존 로직: 모든 결제에서 `setIsProcessingPayment(true)` 호출 → "결제 페이지로 이동중" 표시
+- 0원 결제 시 불필요한 로딩이 2번 표시되는 혼란스러운 UX
+  1. "결제 페이지로 이동중" (불필요)
+  2. "잠시만 기다려주세요" (실제 로딩)
+
+**개선 전 플로우**:
+```
+0원 구매 클릭 → "결제 페이지로 이동중" → "잠시만 기다려주세요" → 결과 페이지
+                     ↑ 불필요한 로딩
+```
+
+**개선 후 플로우**:
+```
+0원 구매 클릭 → "잠시만 기다려주세요" → 결과 페이지
+```
+
+**구현**:
+```typescript
+// handlePurchaseClick()
+const finalContentId = contentId || productId;
+
+// 0원 결제는 로딩 없이 바로 처리
+if (totalPrice === 0) {
+  // setIsProcessingPayment(true) 호출 없음 ✅
+  try {
+    const savedOrder = await saveOrder({...});
+    onPurchase(); // "잠시만 기다려주세요" 표시
+  } catch (error) {
+    setIsProcessingPayment(false);
+  }
+  return;
+}
+
+// 유료 결제만 로딩 표시
+setIsProcessingPayment(true);  // ✅ 여기서만 호출
+console.log('🔄 [PaymentNew] 유료 결제 처리 시작');
+```
+
+**로딩 표시 조건 정리**:
+| 결제 금액 | 로딩 메시지 | 표시 시점 |
+|----------|-----------|---------|
+| 0원 | "잠시만 기다려주세요" | `onPurchase()` 호출 시 |
+| 유료 | "결제 페이지로 이동중" | PG 모듈 호출 전 |
+
+**적용 파일**:
+- `src/components/PaymentNew.tsx` (539-660번 줄)
+
+**영향**:
+- 0원 결제 UX 개선 (불필요한 로딩 제거)
+- 유료 결제 플로우는 기존과 동일하게 유지
+- 중복 `setIsProcessingPayment(true)` 호출 제거 (696번 줄 삭제)
+
+---
+
 ## 2026-01-14
 
 ### generate-free-preview 사주 API 연동 (무료 콘텐츠 품질 고도화)
@@ -1891,17 +2010,17 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
-## 📊 주요 결정 통계 (2026-01-14 기준)
+## 📊 주요 결정 통계 (2026-01-16 기준)
 
-- **총 결정 기록**: 36개
+- **총 결정 기록**: 38개
 - **아키텍처 변경**: 10개 (사주 API 서버 직접 호출)
 - **성능 최적화**: 6개 (이미지 캐시 버스팅)
-- **사용자 경험 개선**: 11개 (iOS 스와이프 뒤로가기 대응)
+- **사용자 경험 개선**: 13개 (결제 오버레이 감지, 0원 결제 UX)
 - **보안/권한**: 7개 (Storage RLS 정책)
 - **개발 안정성**: 3개
 
 ---
 
-**문서 버전**: 2.7.0
-**최종 업데이트**: 2026-01-14
+**문서 버전**: 2.8.0
+**최종 업데이트**: 2026-01-16
 **문서 끝**
