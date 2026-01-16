@@ -108,8 +108,9 @@ cat PROJECT_CONTEXT.md
 
 **절대 금지**:
 - ❌ `text-*`, `font-*`, `leading-*` 클래스 사용 (globals.css에 정의됨)
-- ❌ `styled-components`, `inline style` 사용
+- ❌ `styled-components` 사용
 - ❌ Tailwind 외 CSS 라이브러리 사용
+- ⚠️ `inline style`은 **FigmaMake 통합 시 타이포그래피/색상에 한해 허용** (CLAUDE.md 참조)
 
 **iOS Safari 체크리스트**:
 - [ ] `overflow: hidden` + `border-radius` 조합 사용 시 `transform-gpu` 추가
@@ -190,12 +191,15 @@ interface User {
 const user: any = {...};
 ```
 
-#### 2. Tailwind CSS만 사용
+#### 2. Tailwind CSS 우선 사용
 ```tsx
-// ✅ 올바름
+// ✅ 올바름 - 레이아웃은 Tailwind
 <div className="flex items-center gap-2">
 
-// ❌ 금지
+// ✅ 허용 - FigmaMake 통합 시 타이포그래피/색상은 inline style
+<p style={{ fontSize: '15px', fontWeight: 500, color: '#368683' }}>텍스트</p>
+
+// ❌ 금지 - 레이아웃에 inline style
 <div style={{ display: 'flex' }}>
 ```
 
@@ -257,9 +261,10 @@ console.log('스크롤:', 500);
 - ❌ `text-2xl`, `font-bold`, `leading-tight` 등
 - ✅ `globals.css`에 정의된 토큰만 사용
 
-#### 2. Styled-components 또는 inline style
-- ❌ `styled.div`, `<div style={{...}}>`
-- ✅ Tailwind 클래스만 사용
+#### 2. Styled-components 사용 금지, inline style 제한적 허용
+- ❌ `styled.div`, `emotion` 등 CSS-in-JS 라이브러리
+- ⚠️ `inline style`은 **FigmaMake 통합 시 타이포그래피/색상에 한해 허용**
+- ✅ 레이아웃은 Tailwind 클래스 사용
 
 #### 3. any 타입 사용
 - ❌ `const data: any = ...`
@@ -466,9 +471,9 @@ file_search:
 cat /styles/globals.css | grep "@theme"
 ```
 
-#### Step 4: Tailwind만 사용해서 수정
+#### Step 4: Tailwind 우선, 타이포그래피는 inline style 허용
 ```tsx
-// ✅ 올바른 예시
+// ✅ 올바른 예시 - 레이아웃은 Tailwind
 <div className="flex items-center justify-center h-screen bg-gray-50">
   <div className="space-y-4">
     {/* 폰트 크기는 globals.css에서 자동 적용됨 */}
@@ -476,8 +481,10 @@ cat /styles/globals.css | grep "@theme"
   </div>
 </div>
 
+// ✅ FigmaMake 통합 시 - 타이포그래피는 inline style 허용
+<p style={{ fontSize: '15px', fontWeight: 500, color: '#368683' }}>텍스트</p>
+
 // ❌ 잘못된 예시
-<div style={{ fontSize: '24px' }}>  {/* inline style 금지 */}
 <div className="text-2xl">          {/* 폰트 클래스 금지 */}
 ```
 
@@ -737,6 +744,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 1.7.8 | 2026-01-16 | FigmaMake 통합 시 inline style 허용 규칙 추가 (타이포그래피/색상에 한해) | AI Assistant |
 | 1.7.7 | 2026-01-16 | HomePage 탭바 스크롤 숨김/노출 기능 추가 (아래 스크롤 시 숨김, 위 스크롤 시 노출) | AI Assistant |
 | 1.7.6 | 2026-01-16 | FreeContentDetail 광고 배너 하단 250px 여백 추가 | AI Assistant |
 | 1.0.0 | 2025-12-21 | 초기 문서 작성 | AI Assistant |
@@ -822,6 +830,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.7.7
+**문서 버전**: 1.7.8
 **최종 업데이트**: 2026-01-16
 **다음 AI에게**: 이 문서 읽는 데 5분 투자하면, 수십 시간의 삽질을 막을 수 있어요. **사주 API는 Edge Function에서 `SAJU_API_KEY`로 서버 직접 호출** (IP 화이트리스트 + 키 인증), iOS Safari 무한 스와이프 뒤로가기 지원 (동적 버퍼 재충전), 이미지 캐시 버스팅을 꼭 기억하세요! 화이팅! 🚀
