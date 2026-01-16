@@ -2,7 +2,7 @@
 
 > **프로젝트**: 나다운세 (운세 서비스)
 > **총 함수 수**: 20개
-> **최종 업데이트**: 2026-01-14
+> **최종 업데이트**: 2026-01-16
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -331,6 +331,44 @@ if (existingAlimtalk?.length > 0) {
   // 알림톡 발송 진행
 }
 ```
+
+**⭐ 타로 카드 이름 일관성 보장 (2026-01-16 추가)**:
+- 타로 풀이 생성 시 사용자가 선택한 카드 이름을 우선 사용
+- `order_results.tarot_card_name`에 저장된 값을 먼저 확인
+- 카드명이 없을 경우에만 `master_content_questions.tarot_cards` 또는 AI 랜덤 선택
+
+**문제**:
+- 사용자가 선택한 카드(예: "The High Priestess")와 AI 생성 결과의 카드(예: "Three of Wands")가 불일치
+- `master_content_questions.tarot_cards`가 null이라 AI가 랜덤으로 카드 선택
+
+**해결** (291-324번 줄):
+```typescript
+// 타로 풀이 생성 전 사용자 선택 카드 확인
+let selectedTarotCard = question.tarot_cards || null;
+
+const { data: existingCard } = await supabase
+  .from('order_results')
+  .select('tarot_card_name')
+  .eq('order_id', orderId)
+  .eq('question_id', question.id)
+  .single();
+
+if (existingCard?.tarot_card_name) {
+  selectedTarotCard = existingCard.tarot_card_name;
+  console.log(`🎴 [타로] 사용자가 선택한 카드 사용: ${selectedTarotCard}`);
+}
+
+// AI에 선택된 카드 전달
+response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-answer`, {
+  body: JSON.stringify({
+    tarotCards: selectedTarotCard
+  })
+})
+```
+
+**영향**:
+- 타로 결과 페이지: 타이틀과 내용의 카드명 일치 ✅
+- 재생성: 기존 선택 카드 유지 ✅
 
 ---
 

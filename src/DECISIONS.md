@@ -17,6 +17,98 @@
 
 ## 2026-01-16
 
+### 타로 카드 이름 일관성 버그 수정 (AI 생성 시 사용자 선택 카드 사용)
+**결정**: `generate-content-answers` Edge Function에서 타로 풀이 생성 시 `order_results` 테이블의 `tarot_card_name` (사용자가 선택한 카드)을 우선 사용하도록 수정
+
+**배경**:
+- 사용자가 타로 카드 셔플 페이지에서 카드를 선택하고 저장 (예: "The High Priestess")
+- 하지만 AI가 생성한 풀이에서는 다른 카드 이름이 나타남 (예: "Three of Wands")
+- 결과 페이지의 타이틀 카드명과 내용의 카드명이 불일치하여 사용자 혼란 발생
+
+**근본 원인**:
+```typescript
+// ❌ 문제: master_content_questions.tarot_cards 값이 null이라 AI가 랜덤으로 카드 선택
+response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-answer`, {
+  body: JSON.stringify({
+    tarotCards: question.tarot_cards  // null → AI가 임의로 선택
+  })
+})
+```
+
+**문제 흐름**:
+```
+1. 사용자 카드 선택 (TarotShufflePage)
+   ↓ order_results.tarot_card_name = "The High Priestess" 저장
+
+2. AI 생성 요청 (generate-content-answers)
+   ↓ question.tarot_cards = null 전달
+
+3. AI 랜덤 선택 (generate-tarot-answer)
+   ↓ "Three of Wands"로 풀이 생성
+
+4. 결과 불일치 ❌
+   - 타이틀: "The High Priestess"
+   - 내용: "Three of Wands"
+```
+
+**해결 방법**:
+```typescript
+// ✅ 해결: order_results에서 사용자가 선택한 카드 먼저 확인
+let selectedTarotCard = question.tarot_cards || null;
+
+// order_results에 이미 선택된 카드가 있는지 확인
+const { data: existingCard } = await supabase
+  .from('order_results')
+  .select('tarot_card_name')
+  .eq('order_id', orderId)
+  .eq('question_id', question.id)
+  .single();
+
+if (existingCard?.tarot_card_name) {
+  selectedTarotCard = existingCard.tarot_card_name;
+  console.log(`🎴 [타로] 사용자가 선택한 카드 사용: ${selectedTarotCard}`);
+} else {
+  console.log(`🎴 [타로] 카드 지정 없음 → AI가 랜덤 선택`);
+}
+
+// AI에 선택된 카드 전달
+response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-answer`, {
+  body: JSON.stringify({
+    tarotCards: selectedTarotCard  // 사용자 선택 카드 또는 null
+  })
+})
+```
+
+**수정 파일**:
+- `supabase/functions/generate-content-answers/index.ts` (291-324번 줄)
+
+**배포**:
+- Staging: `hyltbeewxaqashyivilu` ✅
+- Production: `kcthtpmxffppfbkjjkub` ✅
+
+**영향 범위**:
+- 타로 풀이 결과 페이지: 타이틀과 내용의 카드명이 일치 ✅
+- 사용자 경험: 선택한 카드에 대한 정확한 풀이 제공 ✅
+- 재생성: 기존 주문은 재생성 시 order_results의 카드명 사용 ✅
+
+**예상 동작 (수정 후)**:
+```
+1. 사용자 카드 선택
+   ↓ order_results.tarot_card_name = "The High Priestess"
+
+2. AI 생성 요청
+   ↓ order_results 조회 → "The High Priestess" 발견
+
+3. AI 생성
+   ↓ "The High Priestess"로 풀이 생성
+
+4. 결과 일치 ✅
+   - 타이틀: "The High Priestess"
+   - 내용: "The High Priestess"
+```
+
+---
+
 ### Tailwind CSS v4 Arbitrary Value 제한 및 Inline Style 사용
 **결정**: Tailwind CSS v4에서 arbitrary value가 일부 상황에서 작동하지 않을 때 inline style 사용 허용
 
