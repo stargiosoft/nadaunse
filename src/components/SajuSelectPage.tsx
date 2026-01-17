@@ -283,17 +283,26 @@ export default function SajuSelectPage() {
       toast.error('사주를 선택해주세요.');
       return;
     }
-    
+
     // ⭐ 중복 호출 방지
     if (isGenerating) {
       console.warn('⚠️ [사주선택] 이미 처리 중입니다.');
       return;
     }
-    
+
     setIsGenerating(true);
-    
+
     try {
       console.log('🚀 [사주선택] 선택된 사주 ID:', selectedSajuId);
+
+      // ⭐ 선택된 사주 데이터 찾기 (백그라운드 업데이트용)
+      const selectedSaju = sajuList.find(s => s.id === selectedSajuId);
+      if (!selectedSaju) {
+        console.error('❌ [사주선택] 선택된 사주를 찾을 수 없습니다.');
+        toast.error('사주 정보를 찾을 수 없습니다.');
+        setIsGenerating(false);
+        return;
+      }
 
       // ⭐️ 1단계: 최소한의 정보만 조회 (즉시 로딩 페이지 이동을 위해)
       const { data: { user } } = await supabase.auth.getUser();
@@ -414,26 +423,24 @@ export default function SajuSelectPage() {
 
       // ⭐️ 3단계: 백그라운드에서 주문 업데이트 (비차단)
       console.log('🔄 [사주선택] 백그라운드 주문 업데이트 시작...');
-      if (sajuData) {
-        supabase
-          .from('orders')
-          .update({
-            saju_record_id: selectedSajuId,
-            full_name: sajuData.full_name,
-            gender: sajuData.gender,
-            birth_date: sajuData.birth_date,
-            birth_time: sajuData.birth_time,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', orderId)
-          .then(({ error: updateError }) => {
-            if (updateError) {
-              console.error('❌ [백그라운드] 주문 업데이트 실패:', updateError);
-            } else {
-              console.log('✅ [백그라운드] 주문 업데이트 완료');
-            }
-          });
-      }
+      supabase
+        .from('orders')
+        .update({
+          saju_record_id: selectedSajuId,
+          full_name: selectedSaju.full_name,
+          gender: selectedSaju.gender,
+          birth_date: selectedSaju.birth_date,
+          birth_time: selectedSaju.birth_time,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .then(({ error: updateError }) => {
+          if (updateError) {
+            console.error('❌ [백그라운드] 주문 업데이트 실패:', updateError);
+          } else {
+            console.log('✅ [백그라운드] 주문 업데이트 완료');
+          }
+        });
 
       // ⭐️ 4단계: 백그라운드에서 대표 사주 업데이트 (비동기)
       console.log('🔄 [사주선택] 백그라운드 업데이트 시작...');

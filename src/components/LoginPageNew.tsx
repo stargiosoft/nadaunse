@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { signInWithKakao, signInWithGoogle } from '../lib/auth';
+import { signInWithKakao, signInWithGoogle, clearUserCaches } from '../lib/auth';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -623,6 +623,10 @@ export default function LoginPageNew({
         };
 
         console.log('✅ 사용자 데이터:', userData);
+
+        // ⭐ 로그인 성공 → 이전 계정의 캐시 클리어 (계정 전환 대응)
+        console.log('🧹 [로그인] 이전 계정 캐시 클리어');
+        clearUserCaches();
 
         // 쿠키에 로그인 정보 저장
         setLastLoginProvider('kakao');

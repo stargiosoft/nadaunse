@@ -68,14 +68,13 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 | 문서 | 설명 |
 |------|------|
-| **[CLAUDE.md](./CLAUDE.md)** ⭐ | **개발 규칙 + AI 작업 가이드 (통합본, 필독!)** |
+| [CLAUDE.md](./CLAUDE.md) | 개발 규칙 (필독) |
+| [AI_ONBOARDING.md](./src/AI_ONBOARDING.md) | AI 작업 가이드 (5분) |
 | [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) | 프로젝트 전체 컨텍스트 |
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
 | [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (54개) |
 | [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (21개) |
-
-> **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
 
 ## 🔗 Links
 

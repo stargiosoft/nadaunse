@@ -1,10 +1,6 @@
 # 📚 프로젝트 핵심 문서 가이드
 
 > **최종 업데이트**: 2026-01-17
->
-> **중요 변경사항**: AI_ONBOARDING.md가 CLAUDE.md에 통합되었습니다.
-> - **Before**: 10개 문서 (중복 내용 많음)
-> - **After**: 9개 문서 (CLAUDE.md가 개발 규칙 + AI 작업 가이드 통합본)
 
 ---
 
@@ -12,8 +8,9 @@
 
 | 문서 | 용도 | 타겟 |
 |------|------|------|
-| **CLAUDE.md** ⭐ | Claude Code 개발 규칙 + 작업 가이드 (통합) | AI (필독!) |
+| **CLAUDE.md** ⭐ | Claude Code 개발 규칙 | AI (필독!) |
 | **README.md** | 빠른 시작 | 개발자 |
+| **AI_ONBOARDING.md** | AI 작업 가이드 | AI |
 | **PROJECT_CONTEXT.md** | 아키텍처 + 디버깅 | AI + 개발자 |
 | **DECISIONS.md** | 설계 결정 기록 | 개발자 |
 | **DATABASE_SCHEMA.md** | DB 스키마 | 개발자 |
@@ -26,9 +23,9 @@
 
 ## 📖 문서 상세
 
-### 1. CLAUDE.md ⭐ (AI_ONBOARDING.md 통합)
+### 1. CLAUDE.md ⭐
 
-**용도**: Claude Code 개발 규칙 + AI 작업 가이드 (통합본)
+**용도**: Claude Code 개발 규칙
 
 **타겟**: AI (필독!)
 
@@ -36,22 +33,16 @@
 - Claude Code가 개발할 때 항상 참조하는 핵심 규칙
 - 프로젝트 Tech Stack (React 18, TypeScript, Tailwind v4, Supabase)
 - 8가지 핵심 규칙 (스타일링, TypeScript, 환경 분리, iOS Safari, Supabase, Edge Functions, 사주 API 등)
-- **작업 유형별 가이드 6가지** (버그 수정, 신규 기능, UI 수정, DB 작업, 리팩토링, 모바일 최적화)
-- **핵심 시나리오 5가지** (실제 작업 예시)
 - FigmaMake 통합 가이드 (타이포그래피 inline style 변환 필수)
 - 파일 구조 규칙 및 금지 사항
 - Git 커밋 컨벤션
-- **핵심 문서 이정표** (다른 문서 참고 안내)
 
 **언제 읽나요?**
 - Claude Code가 이 프로젝트에서 작업을 시작할 때 자동으로 참조
 - 개발 규칙을 확인하고 싶을 때
-- 작업 유형별 체크리스트가 필요할 때
-- FigmaMake 코드를 통합할 때
+- FigmaMake 코드를 통합할 때 (타이포그래피 변환 규칙 확인)
 
-**특징**:
-- Claude Code CLI가 자동으로 읽는 파일 (프로젝트 루트 위치)
-- AI_ONBOARDING.md의 핵심 내용이 통합되어 있음
+**특징**: Claude Code CLI가 자동으로 읽는 파일이므로, 프로젝트 루트에 위치
 
 ---
 
@@ -71,7 +62,23 @@
 
 ---
 
-### 3. PROJECT_CONTEXT.md
+### 3. AI_ONBOARDING.md
+
+**용도**: AI 작업 인수인계 가이드
+
+**타겟**: AI (필독!)
+
+**내용**:
+- AI가 작업을 시작하기 전 반드시 알아야 할 핵심 규칙
+- 코딩 컨벤션 (Tailwind, TypeScript, 파일 구조)
+- 금지 사항 및 주의사항
+- 5분 안에 작업 준비 완료
+
+**언제 읽나요?** 새로운 AI가 프로젝트 작업을 인수받을 때 가장 먼저 읽어야 함
+
+---
+
+### 4. PROJECT_CONTEXT.md
 
 **용도**: AI 디버깅 + 전체 아키텍처
 
@@ -92,7 +99,7 @@
 
 ---
 
-### 4. DECISIONS.md
+### 5. DECISIONS.md
 
 **용도**: 아키텍처 결정 기록 (ADR)
 
@@ -111,7 +118,7 @@
 
 ---
 
-### 5. DATABASE_SCHEMA.md
+### 6. DATABASE_SCHEMA.md
 
 **용도**: DB 스키마 상세
 
@@ -130,7 +137,7 @@
 
 ---
 
-### 6. components-inventory.md
+### 7. components-inventory.md
 
 **용도**: 컴포넌트 목록 (52개)
 
@@ -150,7 +157,7 @@
 
 ---
 
-### 7. supabase/EDGE_FUNCTIONS_GUIDE.md
+### 8. supabase/EDGE_FUNCTIONS_GUIDE.md
 
 **용도**: Edge Functions 가이드 (17개)
 
@@ -171,7 +178,7 @@
 
 ---
 
-### 8. supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md
+### 9. supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md
 
 **용도**: Database Triggers & Functions
 
@@ -192,7 +199,7 @@
 
 ---
 
-### 9. supabase/RLS_POLICIES.md
+### 10. supabase/RLS_POLICIES.md
 
 **용도**: RLS (Row Level Security) 정책 가이드 (26개)
 
@@ -218,10 +225,10 @@
 → **README.md** (5분)
 
 ### 🤖 Claude Code가 작업할 때
-→ **CLAUDE.md** (자동 참조) - 8가지 핵심 규칙 + 작업 가이드 자동 적용
+→ **CLAUDE.md** (자동 참조) - 8가지 핵심 규칙 자동 적용
 
 ### 🤖 새로운 AI가 작업 인수받을 때
-→ **CLAUDE.md** (통합본) + **PROJECT_CONTEXT.md** (3분)
+→ **CLAUDE.md** + **AI_ONBOARDING.md** (5분) + **PROJECT_CONTEXT.md** (3분)
 
 ### 🐛 버그 발생 시
 → **PROJECT_CONTEXT.md** + 버그 증상 + 로그를 AI에게 전달
@@ -271,10 +278,11 @@
 
 ## ✅ 문서 완성도 체크리스트
 
-현재 프로젝트는 **9개 핵심 문서**가 모두 완비되어 있습니다.
+현재 프로젝트는 **10개 핵심 문서**가 모두 완비되어 있습니다.
 
-- ✅ **CLAUDE.md** - Claude Code 개발 규칙 + AI 작업 가이드 (통합)
+- ✅ CLAUDE.md - Claude Code 개발 규칙
 - ✅ README.md - 빠른 시작 가이드
+- ✅ AI_ONBOARDING.md - AI 온보딩
 - ✅ PROJECT_CONTEXT.md - 전체 아키텍처
 - ✅ DECISIONS.md - 설계 결정 기록
 - ✅ components-inventory.md - 컴포넌트 목록
@@ -283,22 +291,18 @@
 - ✅ supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md - Triggers & Functions
 - ✅ supabase/RLS_POLICIES.md - RLS 정책
 
-**참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다 (아카이브: docs/archive/)
-
 ---
 
 ## 📂 문서 파일 위치
 
 ```
 nadaunse/
-├── CLAUDE.md                    # ⭐ Claude Code 개발 규칙 + AI 작업 가이드 (통합)
+├── CLAUDE.md                    # ⭐ Claude Code 개발 규칙 (AI 필독!)
 ├── README.md                    # 빠른 시작 가이드
-├── docs/
-│   └── archive/
-│       └── AI_ONBOARDING.md.backup  # (아카이브됨, CLAUDE.md에 통합)
 └── src/
     ├── docs/
     │   └── ★★DOCS_GUIDE★★.md  # 이 문서 (문서 가이드)
+    ├── AI_ONBOARDING.md         # AI 온보딩
     ├── PROJECT_CONTEXT.md       # 프로젝트 전체 컨텍스트
     ├── DECISIONS.md             # 아키텍처 결정 기록
     ├── DATABASE_SCHEMA.md       # DB 스키마
@@ -310,64 +314,3 @@ nadaunse/
         ├── functions/                           # Edge Functions 코드
         └── migrations/                          # DB 마이그레이션
 ```
-
----
-
-## 📜 문서 통합 히스토리
-
-### 2026-01-17: AI_ONBOARDING.md → CLAUDE.md 통합
-
-**목적**: 문서 관리 부담 감소 및 AI 작업 효율성 향상
-
-**Before (10개 문서)**:
-- CLAUDE.md (247줄) - 개발 규칙만
-- AI_ONBOARDING.md (835줄) - AI 작업 가이드
-- README.md, PROJECT_CONTEXT.md, DECISIONS.md 등 7개
-
-**After (9개 문서)**:
-- **CLAUDE.md (531줄)** - 개발 규칙 + AI 작업 가이드 통합
-- README.md, PROJECT_CONTEXT.md, DECISIONS.md 등 8개
-
-**통합된 내용**:
-1. ✅ 작업 유형별 가이드 6가지 (버그 수정, 신규 기능, UI 수정, DB 작업, 리팩토링, 모바일 최적화)
-2. ✅ 핵심 시나리오 5가지 (실제 작업 예시)
-3. ✅ 핵심 문서 이정표 (다른 8개 문서 참고 안내)
-
-**효과**:
-- Claude Code가 CLAUDE.md 1개만 읽으면 작업 시작 가능
-- 중복된 내용 제거 (프로젝트 개요, Tech Stack, 핵심 규칙)
-- 업데이트 시 1개 파일만 수정하면 됨
-
-**아카이브**:
-- `docs/archive/AI_ONBOARDING.md.backup` - 필요 시 복구 가능
-
----
-
-## 💡 문서 활용 팁
-
-### AI에게 작업 요청 시
-
-**추천 순서**:
-1. CLAUDE.md를 먼저 참조하게 함 (자동으로 참조됨)
-2. 구체적인 작업은 PROJECT_CONTEXT.md 참조
-3. 설계 의도는 DECISIONS.md 확인
-
-**예시**:
-```
-"CLAUDE.md의 작업 유형별 가이드를 참고해서
-프로필 페이지에 별점 평가 기능을 추가해줘."
-```
-
-### 개발자가 문서 찾을 때
-
-**빠른 참조**:
-- 개발 규칙 확인 → **CLAUDE.md**
-- 전체 구조 파악 → **PROJECT_CONTEXT.md**
-- 설계 의도 확인 → **DECISIONS.md**
-- DB 작업 → **DATABASE_SCHEMA.md**
-- 컴포넌트 찾기 → **components-inventory.md**
-
----
-
-**문서 버전**: 3.0 (AI_ONBOARDING.md 통합)
-**최종 업데이트**: 2026-01-17
