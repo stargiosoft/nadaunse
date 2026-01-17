@@ -519,21 +519,40 @@ function PaymentNewPage() {
           // ⭐ 로딩 페이지 이미지 미리 로드 (백그라운드에서 병렬 실행)
           preloadLoadingPageImages();
 
-          // ⭐ 결제 완료 후 사주 정보 유무 확인 (최적화: 디버깅 쿼리 제거, ~200ms 절약)
+          // ⭐ 결제 완료 후 사주 정보 유무 확인 (캐시 우선, API는 폴백)
           const { data: { user } } = await supabase.auth.getUser();
 
           if (user) {
-            // ⭐️ is_primary 필드로 본인 사주 확인 (단일 쿼리)
-            const { data: mySaju } = await supabase
-              .from('saju_records')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('is_primary', true)
-              .maybeSingle();
+            // 🚀 1순위: 캐시 확인 (즉시 렌더링, API 쿼리 스킵)
+            const cachedJson = localStorage.getItem('saju_records_cache');
+            let hasSaju = false;
 
-            if (mySaju) {
+            if (cachedJson) {
+              try {
+                const cached = JSON.parse(cachedJson);
+                hasSaju = cached.length > 0;
+                console.log('🚀 [PaymentNew→onPurchase] 캐시 발견 → API 쿼리 스킵', { count: cached.length });
+              } catch (e) {
+                console.error('❌ [PaymentNew→onPurchase] 캐시 파싱 실패:', e);
+              }
+            }
+
+            // 🔍 2순위: 캐시 없을 때만 API 쿼리 (폴백)
+            if (!hasSaju) {
+              console.log('🔍 [PaymentNew→onPurchase] 캐시 없음 → API 쿼리 실행');
+              const { data: mySaju } = await supabase
+                .from('saju_records')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('is_primary', true)
+                .maybeSingle();
+
+              hasSaju = !!mySaju;
+            }
+
+            if (hasSaju) {
               // 본인 사주 있음 → 사주 선택 페이지
-              console.log('✅ 결제 완료 → 사주 선택 페이지로 이동');
+              console.log('✅ 결제 완료 → 사주 선택 페이지로 이동 (캐시 기반)');
               navigate(`/product/${id}/saju-select`);
             } else {
               // 본인 사주 없음 → 사주 입력 페이지
@@ -555,21 +574,40 @@ function PaymentNewPage() {
     // ⭐ 로딩 페이지 이미지 미리 로드 (백그라운드에서 병렬 실행)
     preloadLoadingPageImages();
 
-    // ⭐ 결제 완료 후 사주 정보 유무 확인 (최적화: 디버깅 쿼리 제거, ~200ms 절약)
+    // ⭐ 결제 완료 후 사주 정보 유무 확인 (캐시 우선, API는 폴백)
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      // ⭐️ is_primary 필드로 본인 사주 확인 (단일 쿼리)
-      const { data: mySaju } = await supabase
-        .from('saju_records')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('is_primary', true)
-        .maybeSingle();
+      // 🚀 1순위: 캐시 확인 (즉시 렌더링, API 쿼리 스킵)
+      const cachedJson = localStorage.getItem('saju_records_cache');
+      let hasSaju = false;
 
-      if (mySaju) {
+      if (cachedJson) {
+        try {
+          const cached = JSON.parse(cachedJson);
+          hasSaju = cached.length > 0;
+          console.log('🚀 [handlePurchaseComplete] 캐시 발견 → API 쿼리 스킵', { count: cached.length });
+        } catch (e) {
+          console.error('❌ [handlePurchaseComplete] 캐시 파싱 실패:', e);
+        }
+      }
+
+      // 🔍 2순위: 캐시 없을 때만 API 쿼리 (폴백)
+      if (!hasSaju) {
+        console.log('🔍 [handlePurchaseComplete] 캐시 없음 → API 쿼리 실행');
+        const { data: mySaju } = await supabase
+          .from('saju_records')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_primary', true)
+          .maybeSingle();
+
+        hasSaju = !!mySaju;
+      }
+
+      if (hasSaju) {
         // 본인 사주 있음 → 사주 선택 페이지
-        console.log('✅ 결제 완료 → 사주 선택 페이지로 이동');
+        console.log('✅ 결제 완료 → 사주 선택 페이지로 이동 (캐시 기반)');
         navigate(`/product/${id}/saju-select`);
       } else {
         // 본인 사주 없음 → 사주 입력 페이지
@@ -799,7 +837,8 @@ function FreeResultPage() {
   let recordId = location.state?.recordId || resultKey;
   const userName = location.state?.userName;
   const contentId = location.state?.contentId || id;
-  
+  const productFromState = location.state?.product;  // ⭐ FreeContentLoading에서 전달받은 product
+
   // ⭐️ resultKey가 없으면 로딩 페이지로 리다이렉트 (Edge Function 호출 필수)
   useEffect(() => {
     if (!recordId && id) {
@@ -808,7 +847,7 @@ function FreeResultPage() {
       navigate(`/product/${id}/loading/free`, { replace: true });
     }
   }, [recordId, id, navigate]);
-  
+
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📋 [FreeResultPage] 컴포넌트 마운트');
   console.log('📌 [FreeResultPage] id:', id);
@@ -816,21 +855,25 @@ function FreeResultPage() {
   console.log('📌 [FreeResultPage] recordId:', recordId);
   console.log('📌 [FreeResultPage] userName:', userName);
   console.log('📌 [FreeResultPage] contentId:', contentId);
-  
+  console.log('📌 [FreeResultPage] productFromState:', productFromState ? '있음' : '없음');
+
   // ⭐️ 상품 정보 로드 (allProducts는 동기, master_contents는 비동기)
   // allProducts 조회는 즉시 완료되므로 초기값으로 설정
   const numericId = Number(id);
   const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
 
-  const [product, setProduct] = useState<any>(staticProduct || null);
-  // ⭐️ allProducts에서 찾았으면 로딩 불필요
-  const [isLoading, setIsLoading] = useState(!staticProduct);
+  // ⭐ state에서 전달받은 product 우선 사용 (FreeContentLoading에서 조회 완료)
+  const initialProduct = productFromState || staticProduct || null;
+  const [product, setProduct] = useState<any>(initialProduct);
+  // ⭐️ product가 이미 있으면 로딩 불필요 (state 전달 or allProducts 조회 완료)
+  const [isLoading, setIsLoading] = useState(!initialProduct);
   const [recommendedContents, setRecommendedContents] = useState<any[]>([]);
 
   useEffect(() => {
-    // ⭐️ allProducts에서 이미 찾았으면 DB 조회 스킵
-    if (staticProduct) {
-      console.log('✅ [FreeResultPage] allProducts에서 즉시 로드:', staticProduct);
+    // ⭐️ product가 이미 있으면 DB 조회 스킵 (state 전달 or allProducts 조회 완료)
+    if (initialProduct) {
+      console.log('✅ [FreeResultPage] product 이미 있음 → DB 조회 스킵:', initialProduct);
+      console.log('  - 출처:', productFromState ? 'FreeContentLoading state' : 'allProducts');
       return;
     }
 

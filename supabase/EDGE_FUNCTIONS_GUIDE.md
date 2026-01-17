@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 20개
-> **최종 업데이트**: 2026-01-16
+> **총 함수 수**: 21개
+> **최종 업데이트**: 2026-01-17
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -17,8 +17,9 @@
 6. [사용자 관리 Functions](#-사용자-관리-functions-2개)
 7. [알림 Functions](#-알림-functions-1개)
 8. [결제/환불 Functions](#-결제환불-functions-3개)
-9. [호출 플로우](#-호출-플로우)
-10. [디버깅 팁](#-디버깅-팁)
+9. [모니터링 Functions](#-모니터링-functions-1개)
+10. [호출 플로우](#-호출-플로우)
+11. [디버깅 팁](#-디버깅-팁)
 
 ---
 
@@ -28,12 +29,13 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 8개 | 42% | OpenAI GPT, Gemini |
-| 🎟️ **쿠폰 관리** | 4개 | 21% | Supabase DB |
-| 👤 **사용자/콘텐츠 관리** | 2개 | 11% | JWT 인증, RLS |
+| 🤖 **AI 생성** | 8개 | 38% | OpenAI GPT, Gemini |
+| 🎟️ **쿠폰 관리** | 4개 | 19% | Supabase DB |
+| 👤 **사용자/콘텐츠 관리** | 2개 | 10% | JWT 인증, RLS |
 | 📨 **알림** | 1개 | 5% | TalkDream API (카카오 알림톡) |
-| 💳 **결제/환불** | 3개 | 16% | PortOne API, PostgreSQL Function |
-| 🔧 **콘텐츠 생성 관리** | 1개 | 5% | OpenAI, Gemini 통합 |
+| 💳 **결제/환불** | 3개 | 14% | PortOne API, PostgreSQL Function |
+| 📊 **모니터링** | 1개 | 5% | Sentry, Slack Webhook |
+| 🔧 **콘텐츠 생성 관리** | 2개 | 9% | OpenAI, Gemini 통합 |
 
 ---
 
@@ -89,7 +91,7 @@
 
 ---
 
-### 6️⃣ **결제/환불** (3개) - NEW!
+### 6️⃣ **결제/환불** (3개)
 
 17. `payment-webhook` - 포트원 결제 웹훅 검증
 18. `process-payment` - 결제 트랜잭션 원자적 처리
@@ -97,9 +99,16 @@
 
 ---
 
-### 7️⃣ **콘텐츠 생성 관리** (1개)
+### 7️⃣ **모니터링** (1개)
 
-19. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
+20. `sentry-slack-webhook` - Sentry 이벤트를 Slack으로 중계
+
+---
+
+### 8️⃣ **콘텐츠 생성 관리** (2개)
+
+21. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
+22. `server` - 서버 상태 확인
 
 ---
 
@@ -1030,7 +1039,65 @@ COMMIT;
 
 ---
 
-## 📊 호출 플로우
+## 📊 모니터링 Functions (1개)
+
+### 1. `sentry-slack-webhook`
+
+**역할**: Sentry 에러 이벤트를 Slack으로 중계
+
+**호출 시점**:
+- Sentry에서 에러/이슈 발생 시 자동 호출
+- Sentry Integration Webhook으로 설정
+
+**메서드**: `POST`
+
+**입력**:
+```typescript
+{
+  // Sentry webhook payload
+  action: string,           // "created", "resolved", "assigned" 등
+  data: {
+    issue: {
+      id: string,
+      title: string,
+      culprit: string,      // 에러 발생 위치
+      level: string,        // "error", "warning", "info"
+      metadata: object
+    }
+  }
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  error?: string
+}
+```
+
+**로직**:
+1. Sentry 이벤트 페이로드 파싱
+2. Slack 메시지 포맷 변환 (색상, 필드, 링크 등)
+3. SLACK_WEBHOOK_URL로 메시지 전송
+4. 전송 성공/실패 로깅
+
+**Slack 메시지 형식**:
+- 에러 레벨에 따른 색상 구분 (error: 빨강, warning: 노랑)
+- 에러 제목, 발생 위치, Sentry 링크 포함
+- 타임스탬프, 환경 정보 표시
+
+**환경 변수**:
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL
+
+**장점**:
+- ✅ 실시간 에러 알림
+- ✅ Sentry와 Slack 통합
+- ✅ 에러 정보 시각화
+
+---
+
+## 📈 호출 플로우
 
 ### 무료 콘텐츠 플로우
 

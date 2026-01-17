@@ -259,10 +259,10 @@ export default function PurchaseHistoryPage() {
         const totalQuestions = questionsData?.length || 0;
         console.log(`📋 [구매내역] 전체 질문 개수: ${totalQuestions}`);
 
-        // 2️⃣ 생성 완료된 답변 개수 조회
+        // 2️⃣ 생성 완료된 답변 개수 조회 (RLS 통과를 위해 orders 조인)
         const { data: resultsData, error: resultsError } = await supabase
           .from('order_results')
-          .select('id')
+          .select('id, orders!inner(user_id)')
           .eq('order_id', item.id);
 
         if (resultsError) {

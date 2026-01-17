@@ -6,7 +6,7 @@
  * - 결과 페이지로 이동
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import svgPaths from "../imports/svg-rj5zh7ifhy";
 import { supabase } from '../lib/supabase';
@@ -61,8 +61,12 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
   const guestMode = searchParams.get('guestMode') === 'true';
   const userNameFromUrl = searchParams.get('userName') || userName;
 
+  // ⭐ 중복 실행 방지를 위한 ref
+  const hasStartedGeneration = useRef(false);
+
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('⏱️ [FreeContentLoading] 컴포넌트 마운트');
+  console.log('⏱️ [FreeContentLoading] 컴포넌트 렌더링');
+  console.log('📌 [FreeContentLoading] hasStartedGeneration:', hasStartedGeneration.current);
   console.log('📌 [FreeContentLoading] contentId:', contentId);
   console.log('📌 [FreeContentLoading] sajuRecordId:', sajuRecordId);
   console.log('📌 [FreeContentLoading] guestMode:', guestMode);
@@ -71,12 +75,22 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
 
   // ⭐️ Edge Function 동기 호출 (DB 폴링 제거)
   useEffect(() => {
+    // ⭐ 이미 생성 시작했으면 중복 실행 방지
+    if (hasStartedGeneration.current) {
+      console.log('⚠️ [FreeContentLoading] 이미 생성 시작됨 → 중복 실행 방지');
+      return;
+    }
+
     if (!contentId) {
       console.error('❌ [FreeContentLoading] contentId 없음');
       toast.error('잘못된 접근입니다.');
       navigate('/');
       return;
     }
+
+    // ⭐ 생성 시작 플래그 설정
+    hasStartedGeneration.current = true;
+    console.log('✅ [FreeContentLoading] 생성 시작 플래그 설정 → 중복 방지 활성화');
 
     const generateFreeContent = async () => {
       try {
@@ -176,8 +190,35 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           return;
         }
 
-        // ⭐️ 1단계: contentId로 질문 조회 (master_contents인 경우)
-        console.log('📋 [FreeContentLoading] 질문 조회 시작...');
+        // ⭐️ 1단계: contentId로 콘텐츠 & 질문 조회 (master_contents인 경우)
+        console.log('📋 [FreeContentLoading] 콘텐츠 & 질문 조회 시작...');
+
+        // ⭐ 콘텐츠 정보 조회 (FreeResultPage의 DB 조회 스킵용)
+        const { data: contentData, error: contentError } = await supabase
+          .from('master_contents')
+          .select('*')
+          .eq('id', contentId)
+          .single();
+
+        if (contentError || !contentData) {
+          console.error('❌ [FreeContentLoading] 콘텐츠 조회 실패:', contentError);
+          toast.error('콘텐츠를 찾을 수 없습니다.');
+          navigate('/');
+          return;
+        }
+
+        console.log('✅ [FreeContentLoading] 콘텐츠 조회 완료:', contentData);
+
+        // product 형식으로 변환
+        const productInfo = {
+          id: contentData.id,
+          title: contentData.title,
+          type: 'free',
+          category: contentData.category_main || contentData.category,
+          image: contentData.thumbnail_url || '',
+          description: contentData.description || ''
+        };
+
         const { data: questions, error: questionsError } = await supabase
           .from('master_content_questions')
           .select('*')
@@ -395,7 +436,8 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             state: {
               resultKey: fallbackResultKey,
               userName: userNameFromUrl,
-              contentId: contentId
+              contentId: contentId,
+              product: productInfo  // ⭐ FreeResultPage의 DB 조회 스킵용
             }
           });
           return;
@@ -439,7 +481,8 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           state: {
             resultKey: resultKey,
             userName: userNameFromUrl,
-            contentId: contentId
+            contentId: contentId,
+            product: productInfo  // ⭐ FreeResultPage의 DB 조회 스킵용
           }
         });
 
@@ -451,6 +494,11 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
     };
 
     generateFreeContent();
+
+    // ⭐ 클린업 함수: 컴포넌트 언마운트 시 로그
+    return () => {
+      console.log('🔄 [FreeContentLoading] 컴포넌트 언마운트 또는 useEffect 클린업');
+    };
   }, [contentId, sajuRecordId, guestMode, userNameFromUrl, navigate]);
 
   return (

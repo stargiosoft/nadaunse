@@ -1,6 +1,6 @@
 # 📚 프로젝트 핵심 문서 가이드
 
-> **최종 업데이트**: 2026-01-06
+> **최종 업데이트**: 2026-01-17
 
 ---
 
@@ -8,6 +8,7 @@
 
 | 문서 | 용도 | 타겟 |
 |------|------|------|
+| **CLAUDE.md** ⭐ | Claude Code 개발 규칙 | AI (필독!) |
 | **README.md** | 빠른 시작 | 개발자 |
 | **AI_ONBOARDING.md** | AI 작업 가이드 | AI |
 | **PROJECT_CONTEXT.md** | 아키텍처 + 디버깅 | AI + 개발자 |
@@ -22,7 +23,30 @@
 
 ## 📖 문서 상세
 
-### 1. README.md
+### 1. CLAUDE.md ⭐
+
+**용도**: Claude Code 개발 규칙
+
+**타겟**: AI (필독!)
+
+**내용**:
+- Claude Code가 개발할 때 항상 참조하는 핵심 규칙
+- 프로젝트 Tech Stack (React 18, TypeScript, Tailwind v4, Supabase)
+- 8가지 핵심 규칙 (스타일링, TypeScript, 환경 분리, iOS Safari, Supabase, Edge Functions, 사주 API 등)
+- FigmaMake 통합 가이드 (타이포그래피 inline style 변환 필수)
+- 파일 구조 규칙 및 금지 사항
+- Git 커밋 컨벤션
+
+**언제 읽나요?**
+- Claude Code가 이 프로젝트에서 작업을 시작할 때 자동으로 참조
+- 개발 규칙을 확인하고 싶을 때
+- FigmaMake 코드를 통합할 때 (타이포그래피 변환 규칙 확인)
+
+**특징**: Claude Code CLI가 자동으로 읽는 파일이므로, 프로젝트 루트에 위치
+
+---
+
+### 2. README.md
 
 **용도**: 빠른 시작 가이드
 
@@ -38,7 +62,7 @@
 
 ---
 
-### 2. AI_ONBOARDING.md
+### 3. AI_ONBOARDING.md
 
 **용도**: AI 작업 인수인계 가이드
 
@@ -54,7 +78,7 @@
 
 ---
 
-### 3. PROJECT_CONTEXT.md
+### 4. PROJECT_CONTEXT.md
 
 **용도**: AI 디버깅 + 전체 아키텍처
 
@@ -75,7 +99,7 @@
 
 ---
 
-### 4. DECISIONS.md
+### 5. DECISIONS.md
 
 **용도**: 아키텍처 결정 기록 (ADR)
 
@@ -94,7 +118,7 @@
 
 ---
 
-### 5. DATABASE_SCHEMA.md
+### 6. DATABASE_SCHEMA.md
 
 **용도**: DB 스키마 상세
 
@@ -113,7 +137,7 @@
 
 ---
 
-### 6. components-inventory.md
+### 7. components-inventory.md
 
 **용도**: 컴포넌트 목록 (52개)
 
@@ -133,7 +157,7 @@
 
 ---
 
-### 7. supabase/EDGE_FUNCTIONS_GUIDE.md
+### 8. supabase/EDGE_FUNCTIONS_GUIDE.md
 
 **용도**: Edge Functions 가이드 (17개)
 
@@ -154,7 +178,7 @@
 
 ---
 
-### 8. supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md
+### 9. supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md
 
 **용도**: Database Triggers & Functions
 
@@ -175,7 +199,7 @@
 
 ---
 
-### 9. supabase/RLS_POLICIES.md ⭐ NEW
+### 10. supabase/RLS_POLICIES.md
 
 **용도**: RLS (Row Level Security) 정책 가이드 (26개)
 
@@ -200,8 +224,11 @@
 ### 🆕 처음 프로젝트 시작할 때
 → **README.md** (5분)
 
+### 🤖 Claude Code가 작업할 때
+→ **CLAUDE.md** (자동 참조) - 8가지 핵심 규칙 자동 적용
+
 ### 🤖 새로운 AI가 작업 인수받을 때
-→ **AI_ONBOARDING.md** (5분) + **PROJECT_CONTEXT.md** (3분)
+→ **CLAUDE.md** + **AI_ONBOARDING.md** (5분) + **PROJECT_CONTEXT.md** (3분)
 
 ### 🐛 버그 발생 시
 → **PROJECT_CONTEXT.md** + 버그 증상 + 로그를 AI에게 전달
@@ -224,6 +251,9 @@
 ### 🔧 Database 자동화 작업 시
 → **supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md**
 
+### 🎨 FigmaMake 코드 통합 시
+→ **CLAUDE.md** (FigmaMake 통합 가이드 섹션) - 타이포그래피 inline style 변환 필수
+
 ---
 
 ## 📌 문서 업데이트 규칙
@@ -232,6 +262,7 @@
 
 | 변경사항 | 업데이트할 문서 |
 |----------|----------------|
+| 개발 규칙/컨벤션 변경 | CLAUDE.md |
 | 새 컴포넌트 추가 | components-inventory.md |
 | 새 Edge Function 배포 | supabase/EDGE_FUNCTIONS_GUIDE.md |
 | DB 스키마 변경 | DATABASE_SCHEMA.md |
@@ -247,8 +278,9 @@
 
 ## ✅ 문서 완성도 체크리스트
 
-현재 프로젝트는 **9개 핵심 문서**가 모두 완비되어 있습니다.
+현재 프로젝트는 **10개 핵심 문서**가 모두 완비되어 있습니다.
 
+- ✅ CLAUDE.md - Claude Code 개발 규칙
 - ✅ README.md - 빠른 시작 가이드
 - ✅ AI_ONBOARDING.md - AI 온보딩
 - ✅ PROJECT_CONTEXT.md - 전체 아키텍처
@@ -264,20 +296,21 @@
 ## 📂 문서 파일 위치
 
 ```
-나다운세 원본/
-├── README.md
-├── CLAUDE.md                    # Claude Code 규칙
+nadaunse/
+├── CLAUDE.md                    # ⭐ Claude Code 개발 규칙 (AI 필독!)
+├── README.md                    # 빠른 시작 가이드
 └── src/
-    ├── AI_ONBOARDING.md
-    ├── PROJECT_CONTEXT.md
-    ├── DECISIONS.md
-    ├── DATABASE_SCHEMA.md
-    ├── components-inventory.md
-    ├── DOCS_GUIDE.md            # 이 문서
+    ├── docs/
+    │   └── ★★DOCS_GUIDE★★.md  # 이 문서 (문서 가이드)
+    ├── AI_ONBOARDING.md         # AI 온보딩
+    ├── PROJECT_CONTEXT.md       # 프로젝트 전체 컨텍스트
+    ├── DECISIONS.md             # 아키텍처 결정 기록
+    ├── DATABASE_SCHEMA.md       # DB 스키마
+    ├── components-inventory.md  # 컴포넌트 목록
     └── supabase/
-        ├── EDGE_FUNCTIONS_GUIDE.md
-        ├── DATABASE_TRIGGERS_AND_FUNCTIONS.md
-        ├── RLS_POLICIES.md      # RLS 정책
-        ├── functions/           # Edge Functions 코드
-        └── migrations/          # DB 마이그레이션
+        ├── EDGE_FUNCTIONS_GUIDE.md              # Edge Functions (20개)
+        ├── DATABASE_TRIGGERS_AND_FUNCTIONS.md   # Triggers & Functions
+        ├── RLS_POLICIES.md                      # RLS 정책 (26개)
+        ├── functions/                           # Edge Functions 코드
+        └── migrations/                          # DB 마이그레이션
 ```

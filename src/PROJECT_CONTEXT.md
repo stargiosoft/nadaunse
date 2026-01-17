@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-16
+> **최종 업데이트**: 2026-01-17
 
 ---
 
@@ -46,11 +46,12 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 51개 (활성화)
-- **Edge Functions**: 20개
+- **컴포넌트**: 54개 (활성화, backup 제외)
+- **Edge Functions**: 21개
 - **페이지 컴포넌트**: 38개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
+- **타로 카드 덱**: 78장 (메이저 22장 + 마이너 56장)
 
 ### 필수 문서
 - **[CLAUDE.md](../CLAUDE.md)** - 개발 규칙 (필독)
@@ -79,12 +80,13 @@
 └─────────────────────────────────┘
     ↓
 ┌─────────────────────────────────┐
-│  Edge Functions (Deno) - 20개   │
+│  Edge Functions (Deno) - 21개   │
 │  - AI 콘텐츠 생성 (8개)          │
 │  - 쿠폰 관리 (4개)               │
 │  - 사용자 관리 (2개)             │
 │  - 알림톡 발송 (1개)             │
 │  - 결제/환불 (3개)               │
+│  - 모니터링 (1개)                │
 │  - 기타 (2개)                    │
 └─────────────────────────────────┘
     ↓
@@ -245,8 +247,8 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/FreeContentDetailComponents.tsx → UI 컴포넌트 모음
 /components/FreeBirthInfoInput.tsx      → 사주 입력
 /components/FreeSajuSelectPage.tsx      → 사주 선택
-/components/FreeContentLoading.tsx      → 로딩
-/components/FreeSajuDetail.tsx          → 결과
+/components/FreeContentLoading.tsx      → 무료 로딩 (공통 로딩으로도 사용)
+/components/FreeSajuDetail.tsx          → 사주 결과 (전체)
 /lib/freeContentService.ts              → 비즈니스 로직
 ```
 </details>
@@ -259,10 +261,12 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/PaymentNew.tsx              → 결제
 /components/CouponBottomSheetNew.tsx    → 쿠폰 선택 바텀시트
 /components/PaymentComplete.tsx         → 결제 완료
+/components/PurchaseFailure.tsx         → 결제 실패
 /components/BirthInfoInput.tsx          → 사주 입력
 /components/SajuSelectPage.tsx          → 사주 선택
-/components/LoadingPage.tsx             → 로딩
-/components/SajuResultPage.tsx          → 결과
+/components/LoadingPage.tsx             → 유료 로딩 (주문 완료 폴링)
+/components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
+/components/TableOfContentsBottomSheet.tsx → 목차 바텀시트
 /components/ResultCompletePage.tsx      → 풀이 완료 ("풀이는 여기까지예요")
 ```
 </details>
@@ -272,9 +276,10 @@ const sajuResponse = await fetch(sajuApiUrl, {
 
 ```
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트)
-/components/TarotGame.tsx               → 카드 섞기 + 선택 통합 컴포넌트
-/components/TarotResultPage.tsx         → 타로 결과
-/lib/tarotCards.ts                      → 타로 카드 데이터
+/components/TarotGame.tsx               → 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+/components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
+/lib/tarotCards.ts                      → 타로 카드 데이터 (78장) + 유틸리티 함수
+/lib/tarotImageCache.ts                 → 타로 카드 이미지 캐싱
 ```
 </details>
 
@@ -286,8 +291,10 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/SajuInputPage.tsx           → 내 사주 입력
 /components/SajuAddPage.tsx             → 관계 사주 추가
 /components/SajuDetail.tsx              → 사주 상세
+/components/SajuCard.tsx                → 사주 카드 공통 컴포넌트
 /components/SajuKebabMenu.tsx           → 케밥 메뉴
 /components/PrimarySajuChangeDialog.tsx → 대표 사주 변경
+/components/ConfirmDialog.tsx           → 확인 다이얼로그
 ```
 </details>
 
@@ -309,7 +316,7 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/MasterContentDetail.tsx     → 콘텐츠 상세/수정 (관리자용)
 /components/MasterContentDetailPage.tsx → 사용자용 상세 페이지
 /components/MasterContentList.tsx       → 콘텐츠 목록 관리 (수정/삭제/배포)
-/components/MasterContentLoadingPage.tsx → AI 썸네일 생성 로딩
+/components/MasterContentLoadingPage.tsx → AI 썸네일 생성 로딩 (관리자 전용)
 ```
 </details>
 
@@ -322,8 +329,20 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/WelcomeCouponPage.tsx       → 회원가입 완료 (웰컴 쿠폰 안내)
 /components/ExistingAccountPageNew.tsx  → 기존 계정 연동
 /components/SessionExpiredDialog.tsx    → 세션 만료
+/components/PrivacyPolicyPage.tsx       → 개인정보처리방침
+/components/TermsOfServicePage.tsx      → 이용약관
 /lib/auth.ts                            → 인증 헬퍼
 /pages/AuthCallback.tsx                 → OAuth 콜백
+```
+</details>
+
+<details>
+<summary><b>로딩 페이지 (3개)</b></summary>
+
+```
+/components/FreeContentLoading.tsx      → 무료 로딩 + 공통 로딩 (Edge Function 동기 호출)
+/components/LoadingPage.tsx             → 유료 로딩 (주문 완료 폴링)
+/components/MasterContentLoadingPage.tsx → AI 썸네일 생성 로딩 (관리자 전용)
 ```
 </details>
 
@@ -373,21 +392,23 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/FreeContentDetailComponents.tsx → UI 컴포넌트 모음
 /components/FreeBirthInfoInput.tsx      → 무료 사주 입력
 /components/FreeSajuSelectPage.tsx      → 무료 사주 선택
-/components/FreeContentLoading.tsx      → 무료 로딩
-/components/FreeSajuDetail.tsx          → 무료 결과
+/components/FreeSajuDetail.tsx          → 무료 사주 결과 (전체)
 
 # 유료 콘텐츠
 /components/MasterContentDetailPage.tsx → 유료 콘텐츠 상세 (메인)
 /components/PaymentNew.tsx              → 결제 페이지
+/components/PaymentComplete.tsx         → 결제 완료
+/components/PurchaseFailure.tsx         → 결제 실패
 /components/BirthInfoInput.tsx          → 유료 사주 입력
 /components/SajuSelectPage.tsx          → 유료 사주 선택
-/components/LoadingPage.tsx             → 유료 로딩
-/components/SajuResultPage.tsx          → 사주 결과
+/components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
+/components/TableOfContentsBottomSheet.tsx → 목차 바텀시트
+/components/ResultCompletePage.tsx      → 풀이 완료
 
 # 타로 콘텐츠
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
-/components/TarotGame.tsx               → 카드 섞기 + 선택 통합 컴포넌트
-/components/TarotResultPage.tsx         → 타로 결과
+/components/TarotGame.tsx               → 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+/components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 
 # 프로필 & 사주 관리
 /components/ProfilePage.tsx             → 프로필 (사주 관리)
@@ -401,7 +422,29 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/MasterContentQuestions.tsx  → 질문지 작성 (AI 프롬프트용)
 /components/MasterContentDetail.tsx     → 콘텐츠 상세/수정 (관리자용)
 /components/MasterContentList.tsx       → 콘텐츠 목록 관리
-/components/MasterContentLoadingPage.tsx → AI 썸네일 생성 로딩
+```
+
+### ⏳ 로딩 페이지
+```
+# 무료 콘텐츠 로딩 (공통 로딩으로도 사용)
+/components/FreeContentLoading.tsx
+  → 무료 콘텐츠 로딩 + 공통 로딩 페이지
+  → Edge Function 동기 호출 (DB 폴링 제거)
+  → localStorage 결과 저장
+  → 무료 콘텐츠 캐싱 로직 포함
+
+# 유료 콘텐츠 로딩
+/components/LoadingPage.tsx
+  → 유료 콘텐츠 전용 로딩 페이지
+  → 주문 완료 폴링 (orders.ai_generation_completed)
+  → 타로/사주 콘텐츠 생성 대기
+  → 무료 콘텐츠 캐싱 + 이미지 프리로드
+
+# AI 썸네일 생성 로딩
+/components/MasterContentLoadingPage.tsx
+  → 마스터 콘텐츠 AI 썸네일 생성 로딩
+  → AI 생성 완료 폴링 (최대 2분)
+  → 관리자 전용
 ```
 
 ### 🧠 비즈니스 로직
@@ -410,9 +453,14 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /lib/masterContentAI.ts         → 유료 콘텐츠 AI 생성 로직
 /lib/coupon.ts                  → 쿠폰 관리 로직
 /lib/auth.ts                    → 인증 헬퍼
+/lib/sajuApi.ts                 → 사주 API 호출 로직
 /lib/zodiacUtils.ts             → 띠 계산 유틸
-/lib/tarotCards.ts              → 타로 카드 데이터
+/lib/zodiacCalculator.ts        → 띠 계산기
+/lib/tarotCards.ts              → 타로 카드 데이터 (78장) + 유틸리티 함수
+/lib/tarotImageCache.ts         → 타로 카드 이미지 캐싱
 /lib/image.ts                   → 이미지 최적화 헬퍼
+/lib/imagePreloader.ts          → 이미지 프리로더
+/lib/adBannerConfig.ts          → 광고 배너 설정
 /lib/logger.ts                  → 구조화된 로거 (민감정보 마스킹)
 /lib/fetchWithRetry.ts          → 재시도 로직 (Exponential Backoff)
 /lib/sentry.ts                  → Sentry 에러 모니터링 초기화
@@ -424,7 +472,7 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /utils/scrollRestoreLogger.ts   → 스크롤 복원 디버깅 로거
 ```
 
-### 🗄️ Supabase Edge Functions (20개)
+### 🗄️ Supabase Edge Functions (21개)
 ```
 # AI 생성 Functions (8개)
 /supabase/functions/generate-free-preview/        → 무료 맛보기 생성
@@ -449,10 +497,13 @@ const sajuResponse = await fetch(sajuApiUrl, {
 # 알림 Functions (1개)
 /supabase/functions/send-alimtalk/                → 카카오 알림톡 발송
 
-# 결제/환불 Functions (3개) - NEW!
+# 결제/환불 Functions (3개)
 /supabase/functions/payment-webhook/              → 포트원 결제 웹훅 검증
 /supabase/functions/process-payment/              → 결제 트랜잭션 원자적 처리
 /supabase/functions/process-refund/               → 환불 처리 (쿠폰 복원 포함)
+
+# 모니터링 Functions (1개)
+/supabase/functions/sentry-slack-webhook/         → Sentry 이벤트를 Slack으로 중계
 
 # 기타 Functions (2개)
 /supabase/functions/server/                       → 서버 상태 확인
@@ -706,38 +757,86 @@ AI 생성 요청 (Edge Function)
 ```
 홈 → 타로 콘텐츠 상세 → 결제
     ↓
-LoadingPage (AI 생성 대기)
+orders 생성 (사주/타로 정보 포함)
+    ↓
+LoadingPage (AI 생성 시작)
+    ↓
+Edge Function: generate-content-answers 호출
+    │
+    ├─ 타로 질문 개수 확인
+    ├─ getTarotCardsForQuestions(questionCount) 호출
+    │  → 78장 덱에서 질문 개수만큼 카드 **사전 선택**
+    │  → { 1: "The Fool", 2: "Ace of Cups", ... } 형태로 저장
+    ├─ 선택된 카드로 AI 타로 해석 생성
+    └─ order_results에 (질문, 카드명, 해석) 저장
+    ↓
+LoadingPage 폴링 (2초마다)
+    │ - orders.ai_generation_completed 체크
+    │ - 완료되면 다음 단계로
     ↓
 /tarot/shuffle (TarotShufflePage)
     ↓
-TarotGame (카드 섞기 + 선택 통합)
-    │ - 섞기 애니메이션
-    │ - 카드 선택 (1장)
+TarotGame (카드 섞기 + 선택 - **UI 연출용**, 458줄)
+    │ ⚠️ 실제 카드는 이미 백엔드에서 선택됨
+    │ ⚠️ 사용자는 재미를 위해 카드를 "선택"하는 것
+    │
+    ├─ 1단계: idle (초기 상태, 21장 겹쳐진 상태)
+    ├─ 2단계: mixing (카드 섞기 애니메이션, 5가지 패턴 랜덤)
+    ├─ 3단계: gathered (카드 모으기, 왼쪽 하단으로 집결)
+    ├─ 4단계: spreading (부채꼴 펼치기, 21장 아치형 배치)
+    ├─ 5단계: selected (카드 1장 선택)
+    │
     ↓
-AI 타로 해석 요청
-(generate-tarot-answer)
-    ↓
-타로 결과 표시 (TarotResultPage)
+타로 결과 표시 (SajuResultPage)
+    │ - order_results에서 사전 선택된 카드 이미지 표시
+    │ - AI 해석 텍스트 표시
     │ (다음 질문이 있으면 다시 /tarot/shuffle로)
     ↓
-모든 질문 완료 → 홈 또는 구매내역
+모든 질문 완료 → ResultCompletePage
 ```
 
 **주요 파일**:
 - `/components/TarotShufflePage.tsx` - 타로 셔플 페이지 (라우트: /tarot/shuffle)
-- `/components/TarotGame.tsx` - 카드 섞기 + 선택 통합 컴포넌트
-- `/components/TarotResultPage.tsx` - 타로 결과
-- `/lib/tarotCards.ts` - 타로 카드 데이터
+- `/components/TarotGame.tsx` - 카드 섞기 + 선택 UI 연출 컴포넌트 (458줄)
+  - 5단계 애니메이션 시퀀스: idle → mixing → gathered → spreading → selected
+  - 21장 타로 카드 인터랙션 (더미, 재미 요소)
+  - 모바일 반응형 (320px ~ 440px)
+  - ⚠️ 실제 카드는 이미 백엔드에서 선택되어 있음
+- `/lib/tarotCards.ts` - 타로 카드 데이터 + 유틸리티
+  - TAROT_DECK: 78장 전체 덱 (메이저 22장 + 마이너 56장)
+  - getRandomTarotCards(): 랜덤 카드 선택 (중복 없음)
+  - getTarotCardsForQuestions(): 질문 개수만큼 카드 할당 (백엔드에서 호출)
+  - getTarotCardImageUrl(): 타로 카드 이미지 URL 생성
 
 **Edge Functions**:
-- `/generate-tarot-answer` - 타로 해석 생성
-- `/generate-tarot-preview` - 타로 미리보기
+- `/generate-content-answers` - 타로 카드 사전 선택 + AI 해석 생성 (메인 로직)
+- `/generate-tarot-preview` - 타로 미리보기 (무료 콘텐츠용)
+
+**타로 카드 선택 로직 (중요!)**:
+1. **사전 선택 (LoadingPage 시점)**:
+   - `generate-content-answers` Edge Function에서 `getTarotCardsForQuestions(questionCount)` 호출
+   - 질문 개수만큼 78장 덱에서 중복 없이 랜덤 선택
+   - { 1: "The Fool", 2: "Ace of Cups", ... } 형태로 저장
+   - 선택된 카드로 AI 해석 생성
+   - order_results에 (질문, 카드명, 해석) 저장
+
+2. **UI 애니메이션 (TarotShufflePage 시점)**:
+   - TarotGame에서 21장 더미 카드로 섞기/선택 연출
+   - **실제 카드는 이미 백엔드에서 선택됨**
+   - 사용자는 시각적 재미를 위해 카드를 "선택"
+
+3. **결과 표시 (SajuResultPage)**:
+   - order_results에서 사전 선택된 카드 이미지 + AI 해석 표시
+   - 사용자가 TarotGame에서 "선택"한 카드는 무시됨
 
 **특징**:
-- ✅ 카드 섞기 애니메이션 (TarotGame)
-- ✅ 카드 선택 인터랙션 (TarotGame)
-- ✅ AI 타로 해석 생성
+- ✅ 78장 전체 타로 덱 지원 (메이저 22장 + 마이너 56장)
+- ✅ 카드 섞기 애니메이션 (5가지 패턴, UI 연출용)
+- ✅ 카드 선택 인터랙션 (부채꼴 펼치기, 재미 요소)
+- ✅ AI 타로 해석 생성 (LoadingPage 시점에 완료)
 - ✅ 유료 콘텐츠 전용
+- ✅ 타로 카드 이미지 Storage 연동 (Supabase assets 버킷)
+- ⚠️ **카드 선택은 백엔드에서 먼저, UI는 나중에 연출만**
 
 ---
 
@@ -1116,6 +1215,8 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 1.9.1 | 2026-01-17 | 📂 File Structure 전면 현행화 - UnifiedResultPage 추가, SajuResultPage/TarotResultPage 레거시 제거, 누락 파일 추가 (PurchaseFailure, SajuCard, ConfirmDialog, PrivacyPolicy, TermsOfService, tarotImageCache, imagePreloader, sajuApi, adBannerConfig, zodiacCalculator 등) | AI Assistant |
+| 1.9.0 | 2026-01-17 | 타로 카드 뽑기 로직 상세 문서화 - TAROT_DECK (78장), 카드 선택 로직, TarotGame 애니메이션 5단계, 컴포넌트 개수 업데이트 (51→55개) | AI Assistant |
 | 1.8.7 | 2026-01-16 | HomePage 탭바 스크롤 숨김/노출 기능 추가 - 아래 스크롤 시 SegmentedControl (종합/심화 해석판/무료 체험판) 자동 숨김, 위 스크롤 시 노출, 애니메이션 개선 (300ms ease-out) | AI Assistant |
 | 1.8.6 | 2026-01-16 | FreeContentDetail 광고 배너 하단 250px 여백 추가 (inline style) - 하단 CTA 버튼과 충분한 공간 확보 | AI Assistant |
 | 1.0.0 | 2025-12-20 | 초기 문서 작성 | AI Assistant |
@@ -1235,6 +1336,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.8.7
-**최종 업데이트**: 2026-01-16
+**문서 버전**: 1.9.1
+**최종 업데이트**: 2026-01-17
 **문서 끝**

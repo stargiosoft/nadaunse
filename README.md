@@ -50,7 +50,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 20개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 21개) |
 | AI | OpenAI GPT-4o, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 결제 | PortOne v2 |
 | 알림 | TalkDream API (카카오 알림톡) |
@@ -59,8 +59,8 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ## 📊 주요 통계
 
-- **컴포넌트**: 51개
-- **Edge Functions**: 20개
+- **컴포넌트**: 54개
+- **Edge Functions**: 21개
 - **페이지**: 38개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 
@@ -73,8 +73,8 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) | 프로젝트 전체 컨텍스트 |
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
-| [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (51개) |
-| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (20개) |
+| [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (54개) |
+| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (21개) |
 
 ## 🔗 Links
 

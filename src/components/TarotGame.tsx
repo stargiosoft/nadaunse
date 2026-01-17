@@ -347,13 +347,33 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
 
   // ⭐ 이미지 프리로드 - 카드 뒷면 + 배경 이미지
   useEffect(() => {
+    // ⭐ sessionStorage 캐시 체크 - 이미 로드된 경우 즉시 렌더링
+    const TAROT_CARD_KEY = 'tarot_card_back_preloaded';
+    const TAROT_BG_KEY = 'tarot_bg_preloaded';
+
+    const cardCached = sessionStorage.getItem(TAROT_CARD_KEY);
+    const bgCached = sessionStorage.getItem(TAROT_BG_KEY);
+
+    if (cardCached && bgCached) {
+      // 이미지가 브라우저 캐시에 있음 - 즉시 렌더링
+      console.log('✅ [TarotGame] 캐시된 이미지 사용 - 즉시 렌더링');
+      setImagesLoaded(true);
+      return;
+    }
+
+    // 캐시되지 않은 경우에만 로딩 수행
+    console.log('⏳ [TarotGame] 이미지 로드 시작 (캐시 없음)');
     const imagesToLoad = [cardImage, tarotBackground];
     let loadedCount = 0;
 
     const checkAllLoaded = () => {
       loadedCount++;
       if (loadedCount >= imagesToLoad.length) {
+        console.log('✅ [TarotGame] 이미지 로드 완료');
         setImagesLoaded(true);
+        // 로드 완료 후 캐시 플래그 설정
+        sessionStorage.setItem(TAROT_CARD_KEY, 'true');
+        sessionStorage.setItem(TAROT_BG_KEY, 'true');
       }
     };
 
@@ -365,7 +385,12 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
     });
 
     // 3초 후에도 로드 안 되면 강제 표시 (fallback)
-    const timeout = setTimeout(() => setImagesLoaded(true), 3000);
+    const timeout = setTimeout(() => {
+      console.warn('⚠️ [TarotGame] 이미지 로드 타임아웃 - 강제 렌더링');
+      setImagesLoaded(true);
+      sessionStorage.setItem(TAROT_CARD_KEY, 'true');
+      sessionStorage.setItem(TAROT_BG_KEY, 'true');
+    }, 3000);
     return () => clearTimeout(timeout);
   }, []);
 

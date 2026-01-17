@@ -3,7 +3,7 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-16
+> **최종 업데이트**: 2026-01-17
 
 ---
 
@@ -12,6 +12,343 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-17
+
+### order_results 테이블에서 tarot_card_id 컬럼 제거
+**결정**: `order_results` 테이블에서 `tarot_card_id` 컬럼 제거, `tarot_card_name`만 사용
+
+**배경**:
+- `tarot_card_id`는 초기 설계에서 타로 카드를 식별하기 위해 추가된 컬럼
+- 실제 구현에서는 `tarot_card_name` (문자열)으로 카드를 식별하고 이미지 URL 생성
+- `tarot_card_id`는 실제 코드에서 사용되지 않음 (읽기/쓰기 없음)
+- 불필요한 컬럼으로 인한 혼란 방지 필요
+
+**제거된 컬럼**:
+```sql
+-- order_results 테이블
+tarot_card_id TEXT  -- ❌ 제거됨 (사용 안 함)
+```
+
+**계속 사용되는 컬럼**:
+```sql
+-- order_results 테이블
+tarot_card_name TEXT        -- ✅ 카드 이름 (예: "The Fool", "Ace of Cups")
+tarot_card_image_url TEXT   -- ✅ Supabase Storage URL
+```
+
+**영향 범위**:
+- ✅ 프론트엔드: 변경 없음 (tarot_card_id 사용 안 함)
+- ✅ Edge Functions: 변경 없음 (tarot_card_name만 사용)
+- ✅ 레거시 코드: _backup 폴더의 TarotResultPage.tsx, SajuResultPage.tsx에만 존재
+
+**참고**:
+- 타로 카드 이미지 URL 생성: `/lib/tarotCards.ts`의 `getTarotCardImageUrl(cardName)` 함수 사용
+- 카드 이름으로 Supabase Storage URL 직접 생성 가능
+
+---
+
+### 사주 정보 선택 페이지: 캐시 기반 즉시 렌더링 (무료/유료/프로필 통합)
+**결정**: 무료 콘텐츠, 유료 콘텐츠, 프로필 페이지 모두에서 `saju_records_cache` localStorage 캐시를 활용하여 API 호출 없이 즉시 렌더링
+
+**배경**:
+- 0원 결제 후 사주 선택 페이지 이동 시 불필요한 로딩 페이지가 표시됨
+- PaymentNew → onPurchase 콜백에서 매번 DB API 쿼리 실행 (~200ms)
+- 사주 정보는 이미 localStorage 캐시에 존재하는데도 재조회
+
+**문제 흐름 (Before)**:
+```
+1. PaymentNew (0원 결제 완료)
+   ↓
+2. onPurchase 콜백 실행
+   ↓ DB API 쿼리 (사주 존재 여부 확인)
+   ↓ "잠시만 기다려주세요" 로딩 표시
+   ↓
+3. SajuSelectPage 이동
+   ↓ 캐시 있음 → API 스킵 (즉시 렌더링)
+   ↓
+❌ 문제: 이미 캐시가 있는데 로딩이 표시됨
+```
+
+**해결 방법**:
+
+#### 1. PaymentNew.tsx - 결제 시작 전 캐시 확인
+```typescript
+// ⚡ 0원 결제 + 캐시 있음 → 로딩 표시 스킵
+let shouldSkipLoading = false;
+if (totalPrice === 0) {
+  const cachedJson = localStorage.getItem('saju_records_cache');
+  if (cachedJson) {
+    const cached = JSON.parse(cachedJson);
+    shouldSkipLoading = cached.length > 0;
+    console.log('🚀 [PaymentNew] 캐시 있음 → 로딩 표시 스킵');
+  }
+}
+
+// 조건부 로딩 표시 (캐시 없을 때만)
+if (!shouldSkipLoading) {
+  setIsProcessingPayment(true);
+}
+
+// ... 결제 로직 ...
+
+// 캐시 여부에 따라 페이지 이동
+if (shouldSkipLoading) {
+  onPurchase(); // 즉시 이동
+} else {
+  setTimeout(() => onPurchase(), 50); // 로딩 유지
+}
+```
+
+#### 2. App.tsx - onPurchase 콜백에서 캐시 우선 확인
+```typescript
+onPurchase={async () => {
+  // 🚀 1순위: 캐시 확인 (동기, 즉시)
+  const cachedJson = localStorage.getItem('saju_records_cache');
+  let hasSaju = false;
+
+  if (cachedJson) {
+    const cached = JSON.parse(cachedJson);
+    hasSaju = cached.length > 0;
+    console.log('🚀 캐시 발견 → API 쿼리 스킵');
+  }
+
+  // 🔍 2순위: 캐시 없을 때만 API 쿼리
+  if (!hasSaju) {
+    const { data: mySaju } = await supabase
+      .from('saju_records')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_primary', true)
+      .maybeSingle();
+    hasSaju = !!mySaju;
+  }
+
+  // 페이지 이동
+  if (hasSaju) {
+    navigate(`/product/${id}/saju-select`);
+  } else {
+    navigate(`/product/${id}/birthinfo`);
+  }
+}}
+```
+
+**핵심 원리**:
+1. **PaymentNew**: 결제 시작 전 캐시 확인 → 캐시 있으면 `isProcessingPayment` 설정 안 함
+2. **App.tsx**: `onPurchase` 콜백에서 캐시 우선 확인 → API는 폴백으로만 사용
+3. **SajuSelectPage**: 기존 캐시 기반 렌더링 로직 유지 (변경 없음)
+
+**캐시 키**:
+- `saju_records_cache` - 무료/유료 공통 사주 정보 캐시
+- 사주 추가/수정/삭제 시 자동 업데이트
+
+**동작 흐름 (After)**:
+```
+1. PaymentNew (0원 결제 완료)
+   ↓ 캐시 확인 → 있음
+   ↓ isProcessingPayment = false (로딩 스킵)
+   ↓
+2. onPurchase 콜백 실행
+   ↓ 캐시 확인 → 있음
+   ↓ API 쿼리 스킵
+   ↓
+3. SajuSelectPage 즉시 이동
+   ↓ 캐시로 즉시 렌더링
+   ↓
+✅ 결과: 로딩 없이 부드러운 페이지 전환
+```
+
+**성능 개선**:
+| 상황 | Before | After | 개선 |
+|------|--------|-------|------|
+| **0원 결제 + 캐시 있음** | ~200ms API + 로딩 표시 | 즉시 이동 | 100% ⚡ |
+| **0원 결제 + 캐시 없음** | ~200ms API + 로딩 표시 | ~200ms API + 로딩 표시 | 동일 |
+
+**적용 범위**:
+- `/components/PaymentNew.tsx` (550-660번 줄) - 캐시 확인 로직 추가
+- `/src/App.tsx` (518-582번 줄) - PaymentNewPage의 두 onPurchase 콜백 수정
+- `/components/FreeSajuSelectPage.tsx` - 기존 캐시 기반 렌더링 유지
+- `/components/SajuSelectPage.tsx` - 기존 캐시 기반 렌더링 유지
+- `/components/ProfilePage.tsx` - 기존 캐시 기반 렌더링 유지
+
+**사용자 경험 개선**:
+- ✅ 0원 결제 후 "잠시만 기다려주세요" 로딩 완전히 제거
+- ✅ 결제 페이지 → 사주 선택 페이지 전환이 부드럽고 즉시 완료
+- ✅ iOS Safari 스와이프 뒤로가기 시에도 캐시로 즉시 렌더링
+- ✅ 무료/유료/프로필 모든 플로우에서 일관된 빠른 UX
+
+**테스트 완료**:
+- 0원 결제 (쿠폰 전액 할인) → 사주 선택 ✅
+- 사주 캐시 없는 경우 → 사주 입력 ✅
+- iOS Safari 스와이프 뒤로가기 ✅
+
+---
+
+### 타로 카드 선택 로직: 백엔드 사전 선택 vs 프론트엔드 UI 연출 분리 설계
+**결정**: 타로 카드 선택을 **백엔드 사전 선택 (실제 로직)** + **프론트엔드 UI 연출 (재미 요소)** 로 분리
+
+**배경**:
+- 타로 운세 서비스에서 "카드 선택"은 중요한 사용자 경험 요소
+- 하지만 AI 해석 생성은 LoadingPage 시점에 완료되어야 함 (결과 페이지 즉시 표시)
+- 사용자가 카드를 "선택"하는 재미와 AI 생성 효율성을 모두 충족해야 함
+
+**설계 철학**:
+> **"사용자는 카드를 선택한다고 느끼지만, 실제로는 이미 결정되어 있다"**
+
+**시스템 구조**:
+
+#### 1. 타로 카드 덱 구조 (78장)
+```typescript
+// /lib/tarotCards.ts
+export const TAROT_DECK = [
+  // 메이저 아르카나 (22장)
+  { id: 'major-0', name: 'The Fool', category: 'major' },
+  { id: 'major-1', name: 'The Magician', category: 'major' },
+  // ... 20장 더
+
+  // 마이너 아르카나 (56장)
+  // Wands (14장)
+  { id: 'wands-ace', name: 'Ace of Wands', category: 'wands' },
+  { id: 'wands-2', name: 'Two of Wands', category: 'wands' },
+  // ... 12장 더
+
+  // Cups (14장), Swords (14장), Pentacles (14장)
+  // ...
+];
+
+// 질문 개수만큼 중복 없이 랜덤 선택
+export function getTarotCardsForQuestions(questionCount: number) {
+  const shuffled = [...TAROT_DECK].sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, questionCount);
+  return selected.reduce((acc, card, index) => {
+    acc[index + 1] = card.name; // { 1: "The Fool", 2: "Ace of Cups", ... }
+    return acc;
+  }, {} as Record<number, string>);
+}
+```
+
+#### 2. 백엔드 사전 선택 (LoadingPage 시점)
+```typescript
+// supabase/functions/generate-content-answers/index.ts
+// ⚡ 질문 개수만큼 타로 카드 미리 선택
+const tarotCards = getTarotCardsForQuestions(questions.length);
+console.log('🎴 [타로] 사전 선택된 카드:', tarotCards);
+// { 1: "The Fool", 2: "Ace of Cups", 3: "The High Priestess" }
+
+// 각 질문마다 카드 할당 + AI 해석 생성
+for (const question of questions) {
+  const selectedCard = tarotCards[question.question_number];
+
+  // AI 타로 해석 생성
+  const answer = await generateTarotAnswer({
+    question: question.question_text,
+    tarotCard: selectedCard,
+    // ...
+  });
+
+  // order_results에 저장
+  await supabase.from('order_results').insert({
+    order_id: orderId,
+    question_number: question.question_number,
+    question_text: question.question_text,
+    answer_text: answer,
+    tarot_card_name: selectedCard, // ⭐ 카드명 함께 저장
+  });
+}
+```
+
+**핵심**: AI 해석은 LoadingPage 시점에 모두 완료 → 사용자는 "기다림 없이" 결과 확인 가능
+
+#### 3. 프론트엔드 UI 연출 (TarotShufflePage)
+```typescript
+// /components/TarotGame.tsx (458줄, 5단계 애니메이션)
+// ⚠️ 이 컴포넌트는 순수하게 "재미"를 위한 UI 연출
+
+const stages = [
+  'idle',       // 21장 겹쳐진 상태
+  'mixing',     // 카드 섞기 애니메이션 (5가지 패턴 랜덤)
+  'gathered',   // 왼쪽 하단으로 모으기
+  'spreading',  // 부채꼴 펼치기 (아치형)
+  'selected',   // 카드 1장 선택
+];
+
+// 사용자가 "선택"한 카드는 무시됨!
+const handleCardClick = (index: number) => {
+  setSelectedCardIndex(index);
+  // ⚠️ 실제로는 백엔드에서 이미 선택된 카드를 보여줄 뿐
+};
+```
+
+**핵심**: 21장 더미 카드로 시각적 재미 제공, 실제 선택과는 무관
+
+#### 4. 결과 표시 (SajuResultPage)
+```typescript
+// order_results에서 사전 선택된 카드 표시
+const { data: result } = await supabase
+  .from('order_results')
+  .select('tarot_card_name, answer_text')
+  .eq('order_id', orderId)
+  .eq('question_number', currentQuestion)
+  .single();
+
+// 사용자가 TarotGame에서 "선택"한 카드는 무시
+// 백엔드에서 사전 선택한 카드를 표시
+<TarotCardImage cardName={result.tarot_card_name} />
+<AnswerText>{result.answer_text}</AnswerText>
+```
+
+**전체 플로우**:
+```
+1. 결제 완료 → LoadingPage 진입
+   ↓
+2. Edge Function 호출 (generate-content-answers)
+   ├─ 질문 3개라면 78장 덱에서 3장 랜덤 선택
+   ├─ { 1: "The Fool", 2: "Ace of Cups", 3: "The High Priestess" }
+   ├─ 각 카드로 AI 해석 생성
+   └─ order_results에 (질문, 카드명, 해석) 저장
+   ↓
+3. LoadingPage 폴링 → 완료 감지
+   ↓
+4. TarotShufflePage 이동 (1번째 질문)
+   ├─ TarotGame 애니메이션 연출 (21장 더미 카드)
+   ├─ 사용자가 카드 "선택" (재미 요소)
+   └─ "다음" 버튼 클릭
+   ↓
+5. SajuResultPage (1번째 질문 결과)
+   ├─ order_results에서 1번 질문 카드 조회
+   ├─ "The Fool" 이미지 + AI 해석 표시
+   └─ (사용자가 "선택"한 카드는 무시됨)
+   ↓
+6. 다음 질문 있으면 다시 4번으로 (2번째 질문)
+```
+
+**왜 이렇게 설계했는가?**
+
+| 요구사항 | 해결 방법 | 이유 |
+|----------|-----------|------|
+| **빠른 결과 표시** | 백엔드 사전 선택 + AI 생성 | LoadingPage에서 모든 해석 완료 → 결과 페이지 즉시 표시 |
+| **사용자 재미** | TarotGame UI 연출 | 카드 섞기, 선택 애니메이션으로 몰입감 제공 |
+| **일관성 유지** | 카드명 order_results 저장 | 타이틀과 내용의 카드명 불일치 방지 |
+| **재생성 대응** | order_results 우선 조회 | 사용자가 선택한 카드로 재생성 가능 |
+
+**트레이드오프**:
+- ✅ **장점**: 사용자는 기다림 없이 즉시 결과 확인 + 카드 선택 재미
+- ⚠️ **단점**: 사용자가 "선택"한 카드와 실제 카드가 다를 수 있음 (하지만 사용자는 모름)
+
+**핵심 파일**:
+- `/lib/tarotCards.ts` - 78장 타로 덱 + 유틸리티 함수
+- `/components/TarotShufflePage.tsx` - 타로 셔플 페이지 (라우트)
+- `/components/TarotGame.tsx` - 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+- `supabase/functions/generate-content-answers/index.ts` - 백엔드 사전 선택 + AI 생성
+
+**사용자 경험**:
+- ✅ "내가 선택한 카드로 운세를 봤다"는 느낌
+- ✅ 기다림 없이 즉시 결과 확인 (AI 생성은 이미 완료)
+- ✅ 시각적으로 풍부한 카드 선택 애니메이션
+
+**영향 범위**: 타로 운세 전체 플로우
 
 ---
 

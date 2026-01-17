@@ -30,7 +30,6 @@ import { freeContentService, MasterContent, Question } from '../lib/freeContentS
 import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
 import FreeContentLoading from './FreeContentLoading';
-import FreeContentResult from './FreeContentResult';
 import FreeContentDetailSkeleton from './skeletons/FreeContentDetailSkeleton';
 import {
   TopNavigation,

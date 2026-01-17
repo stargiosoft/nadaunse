@@ -135,7 +135,7 @@ export function GlobalAIMonitor() {
 
       const { data: answers, error: answersError } = await supabase
         .from('order_results')
-        .select('id')
+        .select('id, orders!inner(user_id)')
         .eq('order_id', orderId);
 
       if (answersError) {

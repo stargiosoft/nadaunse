@@ -15,7 +15,6 @@ interface ResultItem {
   question_text: string;
   gpt_response: string;
   question_type: 'saju' | 'tarot';
-  tarot_card_id: string | null;
   tarot_card_name: string | null;
   tarot_card_image_url: string | null;
   tarot_user_viewed: boolean | null;
@@ -166,11 +165,20 @@ export default function UnifiedResultPage() {
       try {
         console.log('📥 [UnifiedResultPage] 데이터 로드:', { orderId, currentQuestionOrder });
 
-        // ⭐ 병렬 조회
+        // ⭐ 병렬 조회 (RLS 통과를 위해 orders 조인 추가)
         const [resultsResponse, ordersResponse] = await Promise.all([
           supabase
             .from('order_results')
-            .select('question_order, question_text, gpt_response, question_type, tarot_card_id, tarot_card_name, tarot_card_image_url, tarot_user_viewed')
+            .select(`
+              question_order,
+              question_text,
+              gpt_response,
+              question_type,
+              tarot_card_name,
+              tarot_card_image_url,
+              tarot_user_viewed,
+              orders!inner(user_id)
+            `)
             .eq('order_id', orderId)
             .order('question_order', { ascending: true }),
           supabase

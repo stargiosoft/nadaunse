@@ -121,7 +121,15 @@ export default function TableOfContentsBottomSheet({
 
         const { data, error } = await supabase
           .from('order_results')
-          .select('id, question_id, question_order, question_text, question_type, tarot_user_viewed')
+          .select(`
+            id,
+            question_id,
+            question_order,
+            question_text,
+            question_type,
+            tarot_user_viewed,
+            orders!inner(user_id)
+          `)
           .eq('order_id', orderId)
           .order('question_order', { ascending: true });
 

@@ -58,10 +58,6 @@ function getTarotCardImageUrl(cardName: string, supabaseUrl: string): string {
 }
 
 // ⭐ 타로 카드 ID 생성 (영문 카드명을 kebab-case로 변환)
-function getTarotCardId(cardName: string): string {
-  return cardName.toLowerCase().replace(/ /g, '-')
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -199,15 +195,13 @@ ${questionText}
 
     // ⭐ 타로 카드 상세 정보 생성
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const tarotCardId = getTarotCardId(selectedCard)
     const tarotCardImageUrl = getTarotCardImageUrl(selectedCard, supabaseUrl)
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        answerText: answerText, 
+      JSON.stringify({
+        success: true,
+        answerText: answerText,
         tarotCard: selectedCard,  // 카드 이름 (영문)
-        tarotCardId: tarotCardId,  // 카드 ID (kebab-case)
         imageUrl: tarotCardImageUrl  // 카드 이미지 URL
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

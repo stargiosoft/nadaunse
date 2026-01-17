@@ -94,6 +94,17 @@ export async function fetchWithRetry(
 
       clearTimeout(timeoutId);
 
+      // ⭐ 416 Range Not Satisfiable: 페이지네이션 범위 초과 (정상 처리)
+      // Supabase는 offset이 범위를 벗어나면 416을 반환하지만, 이는 "데이터 없음"을 의미
+      // 빈 배열로 응답을 변환하여 정상 처리
+      if (response.status === 416) {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          statusText: 'OK',
+          headers: response.headers,
+        });
+      }
+
       // 성공 또는 재시도 불가능한 상태 코드
       if (response.ok || !isRetryable(response.status, opts.retryableStatuses)) {
         return response;

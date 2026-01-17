@@ -553,11 +553,30 @@ export default function PaymentNew({
       return;
     }
 
-    // ⭐ 즉시 로딩 상태 활성화 (버튼 클릭 즉시 피드백)
-    setIsProcessingPayment(true);
-    console.log('🔄 [PaymentNew] 결제 처리 시작 - 로딩 표시');
-
     const finalContentId = contentId || productId;
+
+    // ⭐ 0원 결제 && 캐시 있음 → 로딩 표시 안 함 (즉시 페이지 이동)
+    let shouldSkipLoading = false;
+    if (totalPrice === 0) {
+      try {
+        const cachedJson = localStorage.getItem('saju_records_cache');
+        if (cachedJson) {
+          const cached = JSON.parse(cachedJson);
+          shouldSkipLoading = cached.length > 0;
+          if (shouldSkipLoading) {
+            console.log('🚀 [PaymentNew] 캐시 있음 → 로딩 표시 스킵');
+          }
+        }
+      } catch (e) {
+        console.error('❌ [PaymentNew] 캐시 확인 실패:', e);
+      }
+    }
+
+    // ⭐ 조건부 로딩 표시 (캐시 없을 때만)
+    if (!shouldSkipLoading) {
+      setIsProcessingPayment(true);
+      console.log('🔄 [PaymentNew] 결제 처리 시작 - 로딩 표시');
+    }
 
     // 결제금액이 0원이면 바로 주문 저장 후 다음 단계로 (PG 호출 없음)
     if (totalPrice === 0) {
@@ -587,27 +606,24 @@ export default function PaymentNew({
         localStorage.removeItem('purchase_history_cache');
         console.log('🗑️ 구매내역 캐시 무효화 완료');
 
-        // ⭐️ 쿠폰 사용 처리
+        // ⭐️ orderId를 localStorage에 저장
+        if (savedOrder?.id) {
+          localStorage.setItem("pendingOrderId", savedOrder.id);
+          console.log("📦 저장된 orderId:", savedOrder.id);
+        }
+
+        // ⭐ 병렬 처리: 쿠폰 사용 + 이미지 프리로드
+        const promises = [];
+
+        // 쿠폰 사용 처리 (필요한 경우에만)
         if (selectedCouponId && savedOrder?.id) {
           console.log("🎟️ [0원결제] 쿠폰 사용 처리 시작:", {
             userCouponId: selectedCouponId,
             orderId: savedOrder.id,
           });
 
-          // 쿠폰 사용 전 상태 확인
-          const { data: beforeUpdate } = await supabase
-            .from("user_coupons")
-            .select("*, coupons(name, discount_amount)")
-            .eq("id", selectedCouponId)
-            .single();
-
-          console.log(
-            "📋 [0원결제] 쿠폰 사용 전 상태:",
-            beforeUpdate,
-          );
-
-          const { data: updatedCoupon, error: couponError } =
-            await supabase
+          promises.push(
+            supabase
               .from("user_coupons")
               .update({
                 is_used: true,
@@ -616,34 +632,37 @@ export default function PaymentNew({
               })
               .eq("id", selectedCouponId)
               .select("*, coupons(name, discount_amount)")
-              .single();
-
-          if (couponError) {
-            console.error(
-              "❌ [0원결제] 쿠폰 사용 처리 실패:",
-              couponError,
-            );
-          } else {
-            console.log("✅ [0원결제] 쿠폰 사용 처리 완료:", {
-              userCouponId: selectedCouponId,
-              couponName: updatedCoupon?.coupons?.name,
-              isUsed: updatedCoupon?.is_used,
-              usedAt: updatedCoupon?.used_at,
-              usedOrderId: updatedCoupon?.used_order_id,
-            });
-          }
+              .single()
+              .then(({ data: updatedCoupon, error: couponError }) => {
+                if (couponError) {
+                  console.error("❌ [0원결제] 쿠폰 사용 처리 실패:", couponError);
+                } else {
+                  console.log("✅ [0원결제] 쿠폰 사용 처리 완료:", {
+                    userCouponId: selectedCouponId,
+                    couponName: updatedCoupon?.coupons?.name,
+                  });
+                }
+              })
+          );
         }
 
-        // ⭐️ orderId를 localStorage에 저장
-        if (savedOrder?.id) {
-          localStorage.setItem("pendingOrderId", savedOrder.id);
-          console.log("📦 저장된 orderId:", savedOrder.id);
+        // 이미지 프리로드 (항상 실행)
+        promises.push(Promise.resolve(preloadLoadingPageImages()));
+
+        // 병렬 실행 후 페이지 이동
+        await Promise.all(promises);
+
+        // ⭐ 캐시가 있으면 즉시 navigate (로딩 없음)
+        // 캐시 없으면 짧은 딜레이 후 navigate (API 쿼리 시간 확보)
+        if (shouldSkipLoading) {
+          console.log('🚀 [0원결제] 캐시 있음 → 즉시 페이지 이동');
+          onPurchase();
+        } else {
+          console.log('🔄 [0원결제] 캐시 없음 → 짧은 딜레이 후 페이지 이동');
+          setTimeout(() => {
+            onPurchase();
+          }, 50);
         }
-
-        // ⭐ 로딩 페이지 이미지 미리 로드
-        preloadLoadingPageImages();
-
-        onPurchase();
       } catch (error) {
         console.error("❌ 0원 주문 저장 실패:", error);
         alert("주문 저장에 실패했습니다. 다시 시도해주세요.");
@@ -742,61 +761,6 @@ export default function PaymentNew({
             localStorage.removeItem('purchase_history_cache');
             console.log('🗑️ 구매내역 캐시 무효화 완료');
 
-            // ⭐️ 폰 사용 처리 (유료 결제)
-            if (selectedCouponId && savedOrder?.id) {
-              console.log(
-                "🎟️ [유료결제] 쿠폰 사용 처리 시작:",
-                {
-                  userCouponId: selectedCouponId,
-                  orderId: savedOrder.id,
-                },
-              );
-
-              // 쿠폰 사용 전 상태 확인
-              const { data: beforeUpdate } = await supabase
-                .from("user_coupons")
-                .select("*, coupons(name, discount_amount)")
-                .eq("id", selectedCouponId)
-                .single();
-
-              console.log(
-                "📋 [유료결제] 쿠폰 사용 전 상태:",
-                beforeUpdate,
-              );
-
-              const {
-                data: updatedCoupon,
-                error: couponError,
-              } = await supabase
-                .from("user_coupons")
-                .update({
-                  is_used: true,
-                  used_at: new Date().toISOString(),
-                  used_order_id: savedOrder.id,
-                })
-                .eq("id", selectedCouponId)
-                .select("*, coupons(name, discount_amount)")
-                .single();
-
-              if (couponError) {
-                console.error(
-                  "❌ [유료결제] 쿠폰 사용 처리 실패:",
-                  couponError,
-                );
-              } else {
-                console.log(
-                  "✅ [유료결제] 쿠폰 사용 처리 완료:",
-                  {
-                    userCouponId: selectedCouponId,
-                    couponName: updatedCoupon?.coupons?.name,
-                    isUsed: updatedCoupon?.is_used,
-                    usedAt: updatedCoupon?.used_at,
-                    usedOrderId: updatedCoupon?.used_order_id,
-                  },
-                );
-              }
-            }
-
             // ⭐️ orderId를 localStorage에 저장
             if (savedOrder?.id) {
               localStorage.setItem(
@@ -806,12 +770,53 @@ export default function PaymentNew({
               console.log("📦 저장된 orderId:", savedOrder.id);
             }
 
-            // ⭐ 로딩 페이지 이미지 미리 로드
-            preloadLoadingPageImages();
+            // ⭐ 병렬 처리: 쿠폰 사용 + 이미지 프리로드
+            const promises = [];
 
-            // ⭐ 결제 성공 시 푸시된 history state 정리 후 다음 페이지로 이동
-            window.history.replaceState({}, '', window.location.href);
-            onPurchase();
+            // 쿠폰 사용 처리 (필요한 경우에만)
+            if (selectedCouponId && savedOrder?.id) {
+              console.log("🎟️ [유료결제] 쿠폰 사용 처리 시작:", {
+                userCouponId: selectedCouponId,
+                orderId: savedOrder.id,
+              });
+
+              promises.push(
+                supabase
+                  .from("user_coupons")
+                  .update({
+                    is_used: true,
+                    used_at: new Date().toISOString(),
+                    used_order_id: savedOrder.id,
+                  })
+                  .eq("id", selectedCouponId)
+                  .select("*, coupons(name, discount_amount)")
+                  .single()
+                  .then(({ data: updatedCoupon, error: couponError }) => {
+                    if (couponError) {
+                      console.error("❌ [유료결제] 쿠폰 사용 처리 실패:", couponError);
+                    } else {
+                      console.log("✅ [유료결제] 쿠폰 사용 처리 완료:", {
+                        userCouponId: selectedCouponId,
+                        couponName: updatedCoupon?.coupons?.name,
+                      });
+                    }
+                  })
+              );
+            }
+
+            // 이미지 프리로드 (항상 실행)
+            promises.push(Promise.resolve(preloadLoadingPageImages()));
+
+            // 병렬 실행 후 페이지 이동
+            await Promise.all(promises);
+
+            // ⭐ 로딩 유지하고 짧은 딜레이 후 navigate
+            // PaymentNew 언마운트 시 로딩도 자동으로 사라짐
+            setTimeout(() => {
+              // ⭐ 결제 성공 시 푸시된 history state 정리 후 다음 페이지로 이동
+              window.history.replaceState({}, '', window.location.href);
+              onPurchase();
+            }, 50); // 50ms - 사용자가 눈치채기 어려운 수준
           } catch (error) {
             console.error("주문 저장 실패:", error);
             // ⭐ 에러 시에도 history state 정리

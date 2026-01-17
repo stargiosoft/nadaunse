@@ -3,7 +3,7 @@
 > **대상**: 이 프로젝트를 처음 맡는 AI 어시스턴트
 > **목적**: 5분 안에 프로젝트 컨텍스트를 파악하고 즉시 작업 시작
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-16
+> **최종 업데이트**: 2026-01-17
 
 ---
 
@@ -36,8 +36,8 @@ cat PROJECT_CONTEXT.md
 - **Supabase 환경 분리**: Production / Staging
 
 ### 주요 통계
-- **컴포넌트**: 51개 (활성화)
-- **Edge Functions**: 20개
+- **컴포넌트**: 54개 (활성화)
+- **Edge Functions**: 21개
 - **페이지**: 38개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개

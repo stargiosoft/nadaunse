@@ -147,10 +147,15 @@ export default function TarotShufflePage() {
             return;
           }
 
-          // 2. ⭐ order_results에서 먼저 질문 텍스트 가져오기 (이미 결과가 생성된 경우)
+          // 2. ⭐ order_results에서 먼저 질문 텍스트 가져오기 (RLS 통과를 위해 orders 조인)
           const { data: orderResults, error: orderResultsError } = await supabase
             .from('order_results')
-            .select('question_order, question_text, question_type')
+            .select(`
+              question_order,
+              question_text,
+              question_type,
+              orders!inner(user_id)
+            `)
             .eq('order_id', orderId)
             .order('question_order', { ascending: true });
 
@@ -195,10 +200,14 @@ export default function TarotShufflePage() {
     setIsSavingCard(true);
 
     try {
-      // 1. AI가 이미 생성한 타로 카드 읽기
+      // 1. AI가 이미 생성한 타로 카드 읽기 (RLS 통과를 위해 orders 조인)
       const { data: existingResult, error: fetchError } = await supabase
         .from('order_results')
-        .select('tarot_card_name, tarot_card_image_url')
+        .select(`
+          tarot_card_name,
+          tarot_card_image_url,
+          orders!inner(user_id)
+        `)
         .eq('order_id', orderId)
         .eq('question_order', questionOrder)
         .single();

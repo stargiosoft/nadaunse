@@ -405,10 +405,10 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               const orderId = ordersData[0].id;
               console.log('✅ [타로] 주문 찾음, orderId:', orderId);
 
-              // order_results에서 답변 존재 여부 확인
+              // order_results에서 답변 존재 여부 확인 (RLS 통과를 위해 orders 조인)
               const { data: answersData, error: answersError } = await supabase
                 .from('order_results')
-                .select('id')
+                .select('id, orders!inner(user_id)')
                 .eq('order_id', orderId)
                 .limit(1);
 

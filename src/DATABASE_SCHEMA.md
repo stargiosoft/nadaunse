@@ -181,9 +181,8 @@
 | `question_type` | text | - | - | 질문 타입 (saju, tarot) |
 | `question_text` | text | - | - | 질문 내용 (캐시) |
 | `gpt_response` | text | - | - | GPT 응답 내용 |
-| `tarot_card_id` | text | - | - | 타로 카드 ID |
-| `tarot_card_name` | text | - | - | 타로 카드 이름 |
-| `tarot_card_image_url` | text | - | - | 타로 카드 이미지 URL |
+| `tarot_card_name` | text | - | - | 타로 카드 이름 (예: "The Fool", "Ace of Cups") |
+| `tarot_card_image_url` | text | - | - | 타로 카드 이미지 URL (Supabase Storage) |
 | `model_used` | text | - | - | 사용된 AI 모델명 |
 | `status` | text | - | `'pending'` | 생성 상태 (pending, completed, failed) |
 | `error_message` | text | - | - | 에러 메시지 |
