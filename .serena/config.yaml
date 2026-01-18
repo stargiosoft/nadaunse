@@ -1,0 +1,20 @@
+# Serena Configuration for nadaunse
+# LSP 기반 심볼 검색/편집으로 토큰 절약
+
+# 프로젝트 언어 (TypeScript/React)
+languages:
+  - typescript
+
+# 제외할 경로
+exclude_patterns:
+  - node_modules/
+  - build/
+  - dist/
+  - .vercel/
+  - .git/
+  - "*.log"
+  - "package-lock.json"
+  - ".DS_Store"
+
+# 추가 설정
+max_file_size: 1048576  # 1MB
