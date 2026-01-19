@@ -46,9 +46,9 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 54개 (활성화, backup 제외)
+- **컴포넌트**: 55개 (활성화, backup 제외)
 - **Edge Functions**: 21개
-- **페이지 컴포넌트**: 38개
+- **페이지 컴포넌트**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
 - **타로 카드 덱**: 78장 (메이저 22장 + 마이너 56장)
@@ -399,6 +399,7 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/PaymentNew.tsx              → 결제 페이지
 /components/PaymentComplete.tsx         → 결제 완료
 /components/PurchaseFailure.tsx         → 결제 실패
+/components/AlimtalkInfoInputPage.tsx   → 알림톡 전화번호 입력
 /components/BirthInfoInput.tsx          → 유료 사주 입력
 /components/SajuSelectPage.tsx          → 유료 사주 선택
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
@@ -1215,6 +1216,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 1.9.2 | 2026-01-19 | AlimtalkInfoInputPage 추가, SajuCard/SajuManagementPage 구분자 렌더링 방식 변경 (SVG → CSS div), 컴포넌트 개수 업데이트 (54→55개) | AI Assistant |
 | 1.9.1 | 2026-01-17 | 📂 File Structure 전면 현행화 - UnifiedResultPage 추가, SajuResultPage/TarotResultPage 레거시 제거, 누락 파일 추가 (PurchaseFailure, SajuCard, ConfirmDialog, PrivacyPolicy, TermsOfService, tarotImageCache, imagePreloader, sajuApi, adBannerConfig, zodiacCalculator 등) | AI Assistant |
 | 1.9.0 | 2026-01-17 | 타로 카드 뽑기 로직 상세 문서화 - TAROT_DECK (78장), 카드 선택 로직, TarotGame 애니메이션 5단계, 컴포넌트 개수 업데이트 (51→55개) | AI Assistant |
 | 1.8.7 | 2026-01-16 | HomePage 탭바 스크롤 숨김/노출 기능 추가 - 아래 스크롤 시 SegmentedControl (종합/심화 해석판/무료 체험판) 자동 숨김, 위 스크롤 시 노출, 애니메이션 개선 (300ms ease-out) | AI Assistant |
@@ -1336,6 +1338,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 1.9.1
-**최종 업데이트**: 2026-01-17
+**문서 버전**: 1.9.2
+**최종 업데이트**: 2026-01-19
 **문서 끝**

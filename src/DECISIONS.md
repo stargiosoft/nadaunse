@@ -4,6 +4,7 @@
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-01-19
+> **주요 결정**: 구분자 렌더링 방식 변경 (SVG → CSS div), iOS 스크롤 버그 수정
 
 ---
 
@@ -16,6 +17,67 @@
 ---
 
 ## 2026-01-19
+
+### 사주 정보 카드 구분자(|) 렌더링 방식 변경 (SVG → CSS div)
+**결정**: `SajuCard.tsx`, `SajuManagementPage.tsx`의 구분자(|)를 SVG에서 순수 CSS div로 변경
+
+**배경**:
+- iPhone 모바일에서 사주 정보 카드의 구분자(|)가 페이지마다 다르게 렌더링되는 문제 발생
+- SajuCard는 w-[1px] Tailwind 클래스 + SVG strokeWidth 사용
+- SajuManagementPage는 w-[0.5px] + w-[12px] 혼용
+- 동일한 구분자인데 두께가 다르게 표시됨 (일부는 보이지 않음)
+
+**원인 분석**:
+- Tailwind CSS v4의 arbitrary value (w-[1px], w-[0.5px])는 모바일 고해상도 디스플레이에서 예측 불가능하게 렌더링
+- w-[1px]는 디바이스 픽셀 비율(2x~3x)에 따라 2~3픽셀로 확대되어 두껍게 보임
+- w-[0.5px]는 일부 브라우저에서 렌더링되지 않거나 1px로 올림 처리됨
+- SVG strokeWidth도 브라우저마다 다르게 해석
+
+**해결 방법**:
+```tsx
+// Before - SVG 방식 (렌더링 불일치)
+<svg width="1" height="12" viewBox="0 0 1 12">
+  <line x1="0.5" y1="0" x2="0.5" y2="12" stroke="#D4D4D4" strokeWidth="0.7"/>
+</svg>
+
+// After - CSS div 방식 (렌더링 일관성)
+<div
+  className="h-[6px]"
+  style={{
+    width: '1px',
+    backgroundColor: '#D4D4D4',
+    borderRadius: '0.5px'
+  }}
+/>
+```
+
+**변경 내용**:
+1. **높이 통일**: h-[12px] → h-[6px] (텍스트 베이스라인 16px의 37.5%)
+2. **너비 명시**: inline style `width: '1px'` 사용 (Tailwind arbitrary value 대신)
+3. **라운드 처리**: `borderRadius: '0.5px'` 추가 (양 끝을 부드럽게)
+4. **색상**: `backgroundColor: '#D4D4D4'` 직접 지정
+
+**적용 범위**:
+- `SajuCard.tsx` - FreeSajuSelectPage, SajuSelectPage, SajuManagementPage에서 공통 사용
+- `SajuManagementPage.tsx` - 내 사주 섹션, 함께 보는 사주 섹션 모두 적용
+
+**트레이드오프**:
+- ✅ 모든 모바일 디바이스에서 일관된 렌더링
+- ✅ 코드 단순화 (SVG 제거)
+- ✅ 디자인 시안과 일치 (h-[6px] + borderRadius)
+- ⚠️ inline style 사용 (Tailwind 규칙 예외 - CLAUDE.md 2순위 해결책)
+
+**교훈**:
+- Tailwind CSS v4 arbitrary value는 모바일 고해상도 디스플레이에서 주의 필요
+- 픽셀 단위 작업은 inline style로 명시적 지정이 안전
+- 디자인 일관성이 중요한 요소는 CSS 기본 속성 사용 권장
+
+**관련 커밋**:
+- `20152598` - SajuCard.tsx 구분자 SVG → inline style 전환
+- `8666f196` - SajuManagementPage.tsx 구분자 SVG 제거 → 단순 div
+- `5cfc6ad7` - 구분자 높이 6px + borderRadius 0.5px 적용
+
+---
 
 ### UnifiedResultPage에서 Framer Motion AnimatePresence 제거
 **결정**: `UnifiedResultPage.tsx`에서 `AnimatePresence`와 `motion.div`를 제거하고 일반 `div`로 교체
