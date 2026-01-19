@@ -1047,7 +1047,6 @@ function FreeResultPage() {
 function AlimtalkInfoInputPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
-  const goBack = useGoBack('/');
 
   // URL 쿼리 파라미터에서 orderId, contentId, selectedSajuId 추출
   const searchParams = new URLSearchParams(location.search);
@@ -1063,9 +1062,14 @@ function AlimtalkInfoInputPageWrapper() {
     return null;
   }
 
+  // ⭐ 뒤로가기: 상품 상세 페이지로 이동
+  const handleBack = () => {
+    navigate(`/master/content/detail/${contentId}`, { replace: true });
+  };
+
   return (
     <AlimtalkInfoInputPage
-      onBack={goBack}
+      onBack={handleBack}
       orderId={orderId}
       contentId={contentId}
       selectedSajuId={selectedSajuId}

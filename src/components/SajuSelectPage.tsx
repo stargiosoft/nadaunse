@@ -370,6 +370,30 @@ export default function SajuSelectPage() {
 
       console.log('✅ [사주선택] 진행 중인 주문 발견:', orderId);
 
+      // ⭐ 대표 사주 업데이트 (휴대폰 번호 체크 전에 먼저 실행)
+      console.log('🔄 [사주선택] 대표 사주 업데이트...');
+      try {
+        // 모든 사주 is_primary=false로 변경
+        await supabase
+          .from('saju_records')
+          .update({ is_primary: false })
+          .eq('user_id', user.id);
+
+        // 선택된 사주만 is_primary=true로 변경
+        await supabase
+          .from('saju_records')
+          .update({ is_primary: true })
+          .eq('id', selectedSajuId)
+          .eq('user_id', user.id);
+
+        // ⭐ 캐시 무효화 (ProfilePage, SajuManagementPage에서 새 대표 사주 로드하도록)
+        localStorage.removeItem('primary_saju');
+        localStorage.removeItem('saju_records_cache');
+        console.log('✅ [사주선택] 대표 사주 업데이트 완료 + 캐시 무효화');
+      } catch (error) {
+        console.error('❌ [사주선택] 대표 사주 업데이트 실패:', error);
+      }
+
       // ⭐ 휴대폰 번호 체크 (notes='본인' 사주의 phone_number가 null이면 AlimtalkInfoInputPage로 이동)
       console.log('🔍 [사주선택] 본인 사주 휴대폰 번호 체크...');
       const { data: mySajuList, error: mySajuError } = await supabase
@@ -461,34 +485,6 @@ export default function SajuSelectPage() {
             console.log('✅ [백그라운드] 주문 업데이트 완료');
           }
         });
-
-      // ⭐️ 4단계: 백그라운드에서 대표 사주 업데이트 (비동기)
-      console.log('🔄 [사주선택] 백그라운드 업데이트 시작...');
-
-      // 대표 사주 업데이트 (백그라운드)
-      (async () => {
-        try {
-          // 모든 사주 is_primary=false로 변경
-          await supabase
-            .from('saju_records')
-            .update({ is_primary: false })
-            .eq('user_id', user.id);
-
-          // 선택된 사주만 is_primary=true로 변경
-          await supabase
-            .from('saju_records')
-            .update({ is_primary: true })
-            .eq('id', selectedSajuId)
-            .eq('user_id', user.id);
-
-          // ⭐ 캐시 무효화 (ProfilePage, SajuManagementPage에서 새 대표 사주 로드하도록)
-          localStorage.removeItem('primary_saju');
-          localStorage.removeItem('saju_records_cache');
-          console.log('✅ [백그라운드] 대표 사주 업데이트 완료 + 캐시 무효화');
-        } catch (error) {
-          console.error('❌ [백그라운드] 대표 사주 업데이트 실패:', error);
-        }
-      })();
 
       // ⭐️ 백그라운드에서 AI 응답 생성 시작 (비동기, 결과 대기 안 함)
       // 이미 AI 생성이 완료되었는지 확인
