@@ -104,7 +104,35 @@ export default function AlimtalkInfoInputPage({
         return;
       }
 
-      // ⭐ 2단계: notes='본인' 사주 찾기
+      // ⭐ 2단계: 주문 소유자 확인 (보안 검증)
+      console.log('🔍 [AlimtalkInfoInput] 주문 소유자 확인:', orderId);
+      const { data: orderData, error: orderCheckError } = await supabase
+        .from('orders')
+        .select('user_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderCheckError || !orderData) {
+        console.error('❌ [AlimtalkInfoInput] 주문 조회 실패:', orderCheckError);
+        toast.error('주문 정보를 찾을 수 없습니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (orderData.user_id !== user.id) {
+        console.error('❌ [AlimtalkInfoInput] 다른 사용자의 주문:', {
+          orderUserId: orderData.user_id,
+          currentUserId: user.id
+        });
+        toast.error('잘못된 접근입니다. 본인의 주문만 접근할 수 있습니다.');
+        setIsSubmitting(false);
+        navigate('/', { replace: true });
+        return;
+      }
+
+      console.log('✅ [AlimtalkInfoInput] 주문 소유자 확인 완료');
+
+      // ⭐ 3단계: notes='본인' 사주 찾기
       const { data: mySajuList, error: sajuError } = await supabase
         .from('saju_records')
         .select('id')
@@ -128,7 +156,7 @@ export default function AlimtalkInfoInputPage({
 
       const mySajuId = mySajuList[0].id;
 
-      // ⭐ 3단계: notes='본인' 사주의 phone_number 업데이트 (하이픈 제거하여 숫자만 저장)
+      // ⭐ 4단계: notes='본인' 사주의 phone_number 업데이트 (하이픈 제거하여 숫자만 저장)
       const normalizedPhoneNumber = phoneNumber.replace(/[^\d]/g, '');
 
       const { error: updateError } = await supabase
@@ -150,7 +178,7 @@ export default function AlimtalkInfoInputPage({
       localStorage.removeItem('primary_saju');
       localStorage.removeItem('saju_records_cache');
 
-      // ⭐ 4단계: 선택된 사주 정보 조회 및 orders 테이블 업데이트
+      // ⭐ 5단계: 선택된 사주 정보 조회 및 orders 테이블 업데이트
       console.log('🔍 [AlimtalkInfoInput] 선택된 사주 정보 조회:', selectedSajuId);
       const { data: selectedSaju, error: sajuFetchError } = await supabase
         .from('saju_records')
@@ -189,11 +217,11 @@ export default function AlimtalkInfoInputPage({
 
       console.log('✅ [AlimtalkInfoInput] orders 테이블 업데이트 완료');
 
-      // ⭐ 5단계: 즉시 로딩 페이지로 이동
+      // ⭐ 6단계: 즉시 로딩 페이지로 이동
       console.log('🚀 [AlimtalkInfoInput] 로딩 페이지로 이동');
       navigate(`/loading?contentId=${contentId}&orderId=${orderId}`);
 
-      // ⭐ 6단계: 백그라운드에서 AI 응답 생성 시작
+      // ⭐ 7단계: 백그라운드에서 AI 응답 생성 시작
       console.log('🔄 [AlimtalkInfoInput] 백그라운드 AI 생성 시작...');
 
       // 타로 콘텐츠인지 확인하고 타로 카드 선택 (병렬 실행)
