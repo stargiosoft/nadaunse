@@ -51,17 +51,16 @@ const formatBirthDate = (birthDate: string, calendarType?: string): string => {
 
 /**
  * 구분자 (|) 컴포넌트
- * ⚠️ inline style 사용: Tailwind v4 arbitrary value 제한 (모바일 렌더링 이슈)
- * strokeWidth 0.7: 모바일 고해상도 디스플레이에서 얇은 구분자 표현
+ * ⚠️ CSS div 사용: SVG subpixel rendering 이슈 방지 (모바일에서 두께 불일치)
  */
 const Separator = () => (
-  <div className="h-[6px] relative shrink-0" style={{ width: '1px' }}>
-    <div className="absolute inset-[-8.33%_-0.4px]">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-        <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" strokeWidth="0.7" />
-      </svg>
-    </div>
-  </div>
+  <div
+    className="h-[12px] shrink-0"
+    style={{
+      width: '1px',
+      backgroundColor: '#D4D4D4'
+    }}
+  />
 );
 
 export default function SajuCard({

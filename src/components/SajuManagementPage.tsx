@@ -878,13 +878,13 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
                       </p>
-                      <div className="h-[6px] relative shrink-0" style={{ width: '1px' }}>
-                        <div className="absolute inset-[-8.33%_-0.4px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                            <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" strokeWidth="0.7" />
-                          </svg>
-                        </div>
-                      </div>
+                      <div
+                        className="h-[12px] shrink-0"
+                        style={{
+                          width: '1px',
+                          backgroundColor: '#D4D4D4'
+                        }}
+                      />
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {(() => {
                           const dateOnly = mySaju.birth_date.split('T')[0];
@@ -892,13 +892,13 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                           return getConstellation(parseInt(month), parseInt(day));
                         })()}
                       </p>
-                      <div className="h-[6px] relative shrink-0" style={{ width: '1px' }}>
-                        <div className="absolute inset-[-8.33%_-0.4px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                            <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" strokeWidth="0.7" />
-                          </svg>
-                        </div>
-                      </div>
+                      <div
+                        className="h-[12px] shrink-0"
+                        style={{
+                          width: '1px',
+                          backgroundColor: '#D4D4D4'
+                        }}
+                      />
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {mySaju.gender === 'male' || mySaju.gender === '남' || mySaju.gender === '남성' ? '남성' : '여성'}
                       </p>
@@ -1010,13 +1010,13 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
                           </p>
-                          <div className="h-[6px] relative shrink-0" style={{ width: '1px' }}>
-                            <div className="absolute inset-[-8.33%_-0.4px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" strokeWidth="0.7" />
-                              </svg>
-                            </div>
-                          </div>
+                          <div
+                            className="h-[12px] shrink-0"
+                            style={{
+                              width: '1px',
+                              backgroundColor: '#D4D4D4'
+                            }}
+                          />
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {(() => {
                               const dateOnly = saju.birth_date.split('T')[0];
@@ -1024,13 +1024,13 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                               return getConstellation(parseInt(month), parseInt(day));
                             })()}
                           </p>
-                          <div className="h-[6px] relative shrink-0" style={{ width: '1px' }}>
-                            <div className="absolute inset-[-8.33%_-0.4px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" strokeWidth="0.7" />
-                              </svg>
-                            </div>
-                          </div>
+                          <div
+                            className="h-[12px] shrink-0"
+                            style={{
+                              width: '1px',
+                              backgroundColor: '#D4D4D4'
+                            }}
+                          />
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {saju.gender === 'male' || saju.gender === '남' || saju.gender === '남성' ? '남성' : '여성'}
                           </p>
