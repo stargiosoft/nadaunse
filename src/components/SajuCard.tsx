@@ -55,10 +55,11 @@ const formatBirthDate = (birthDate: string, calendarType?: string): string => {
  */
 const Separator = () => (
   <div
-    className="h-[12px] shrink-0"
+    className="h-[6px] shrink-0"
     style={{
       width: '1px',
-      backgroundColor: '#D4D4D4'
+      backgroundColor: '#D4D4D4',
+      borderRadius: '0.5px'
     }}
   />
 );

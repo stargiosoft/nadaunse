@@ -879,10 +879,11 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         {mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
                       </p>
                       <div
-                        className="h-[12px] shrink-0"
+                        className="h-[6px] shrink-0"
                         style={{
                           width: '1px',
-                          backgroundColor: '#D4D4D4'
+                          backgroundColor: '#D4D4D4',
+                          borderRadius: '0.5px'
                         }}
                       />
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
@@ -893,10 +894,11 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         })()}
                       </p>
                       <div
-                        className="h-[12px] shrink-0"
+                        className="h-[6px] shrink-0"
                         style={{
                           width: '1px',
-                          backgroundColor: '#D4D4D4'
+                          backgroundColor: '#D4D4D4',
+                          borderRadius: '0.5px'
                         }}
                       />
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
@@ -1011,10 +1013,11 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                             {saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
                           </p>
                           <div
-                            className="h-[12px] shrink-0"
+                            className="h-[6px] shrink-0"
                             style={{
                               width: '1px',
-                              backgroundColor: '#D4D4D4'
+                              backgroundColor: '#D4D4D4',
+                              borderRadius: '0.5px'
                             }}
                           />
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
@@ -1025,10 +1028,11 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                             })()}
                           </p>
                           <div
-                            className="h-[12px] shrink-0"
+                            className="h-[6px] shrink-0"
                             style={{
                               width: '1px',
-                              backgroundColor: '#D4D4D4'
+                              backgroundColor: '#D4D4D4',
+                              borderRadius: '0.5px'
                             }}
                           />
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
