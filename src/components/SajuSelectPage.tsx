@@ -370,6 +370,26 @@ export default function SajuSelectPage() {
 
       console.log('✅ [사주선택] 진행 중인 주문 발견:', orderId);
 
+      // ⭐ 휴대폰 번호 체크 (notes='본인' 사주의 phone_number가 null이면 AlimtalkInfoInputPage로 이동)
+      console.log('🔍 [사주선택] 본인 사주 휴대폰 번호 체크...');
+      const { data: mySajuList, error: mySajuError } = await supabase
+        .from('saju_records')
+        .select('id, phone_number')
+        .eq('user_id', user.id)
+        .eq('notes', '본인')
+        .limit(1);
+
+      if (!mySajuError && mySajuList && mySajuList.length > 0) {
+        const mySaju = mySajuList[0];
+        if (!mySaju.phone_number) {
+          console.log('📱 [사주선택] 휴대폰 번호 없음 → AlimtalkInfoInputPage로 이동');
+          setIsGenerating(false);
+          navigate(`/alimtalk/input?orderId=${orderId}&contentId=${contentId}&selectedSajuId=${selectedSajuId}`);
+          return;
+        }
+        console.log('✅ [사주선택] 휴대폰 번호 확인 완료');
+      }
+
       // ⭐ 재생성이 필요한 케이스 확인 (로딩 페이지 이동 전에 먼저 리셋해야 race condition 방지)
       // 케이스 1: 사주 정보 없이 생성된 결과 (구매 후 이탈 → 나중에 사주 선택)
       // 케이스 2: 다른 사주로 재생성 요청 (bfcache 복원 후 다른 사주 선택)
