@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { getTarotCardImageUrl } from '../lib/tarotCards';
 import { getCachedTarotImage, cacheTarotImage } from '../lib/tarotImageCache';
@@ -55,6 +56,15 @@ export default function UnifiedResultPage() {
   // ⭐ 스크롤 컨테이너 ref
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // ⭐ 애니메이션 방향 계산 (렌더링 시점에 계산)
+  const prevOrderRef = useRef<number>(currentQuestionOrder);
+  const direction = currentQuestionOrder > prevOrderRef.current ? 1 : currentQuestionOrder < prevOrderRef.current ? -1 : 0;
+
+  // ⭐ ref 업데이트 (다음 비교를 위해)
+  useEffect(() => {
+    prevOrderRef.current = currentQuestionOrder;
+  }, [currentQuestionOrder]);
+
   // ⭐ URL 쿼리 파라미터 변경 감지 (TableOfContentsBottomSheet에서 navigate 시)
   useEffect(() => {
     const newQuestionOrder = parseInt(questionOrderParam);
@@ -63,6 +73,22 @@ export default function UnifiedResultPage() {
       setCurrentQuestionOrder(newQuestionOrder);
     }
   }, [questionOrderParam]);
+
+  // ⭐ 슬라이드 애니메이션 Variants
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 50 : direction < 0 ? -50 : 0,
+      opacity: direction === 0 ? 1 : 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -50 : direction < 0 ? 50 : 0,
+      opacity: 0,
+    }),
+  };
 
   // ⭐ 세션 체크
   useEffect(() => {
@@ -414,12 +440,20 @@ export default function UnifiedResultPage() {
       >
         <div className="h-[8px] shrink-0 w-full" />
 
-        {/* Content */}
-        <div className="px-[20px] w-full">
-          <div
-            key={`result-${currentQuestionOrder}`}
-            className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full"
-          >
+        {/* Content - Slide Animation */}
+        <div className="px-[20px] w-full overflow-hidden">
+          <AnimatePresence mode="popLayout" custom={direction}>
+            <motion.div
+              key={currentQuestionOrder}
+              layout
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full"
+            >
               {/* Header */}
               <div className="flex gap-[12px] items-center mb-[24px] w-full">
                 <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af] shrink-0">
@@ -493,7 +527,8 @@ export default function UnifiedResultPage() {
                   return part;
                 })}
               </div>
-            </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
