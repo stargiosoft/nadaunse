@@ -18,6 +18,63 @@
 
 ## 2026-01-19
 
+### 타로 카드 이미지 로딩 실패 문제 해결 (모바일 최적화)
+**결정**: `tarotImageCache.ts`의 `getCachedTarotImage()` 함수를 Blob URL 대신 실제 Storage URL 반환하도록 변경
+
+**배경**:
+- 모바일 환경에서 UnifiedResultPage의 이전/다음 버튼 클릭 시 타로 카드 이미지가 간헐적으로 로드 실패
+- 에러 로그에서 캐시 히트는 성공하지만 이미지 로드 완전 실패 발생
+- 특히 빠른 페이지 전환 시 문제가 더 자주 발생
+
+**원인 분석**:
+```typescript
+// 기존 코드 (문제 있음)
+const blob = await response.blob();
+const blobUrl = URL.createObjectURL(blob);  // blob:http://... URL 생성
+return blobUrl;
+```
+
+1. **Blob URL 메모리 누수**: `getCachedTarotImage()` 호출 시마다 새로운 blob URL 생성
+2. **미회수 Blob URL**: 이전에 생성한 blob URL을 `URL.revokeObjectURL()`로 해제하지 않음
+3. **모바일 메모리 제약**: 모바일 브라우저의 엄격한 메모리 관리로 인해 사용되지 않는 blob URL 가비지 컬렉션
+4. **타이밍 문제**: React 리렌더링으로 새 blob URL 생성 후 이전 URL이 `<img>` 태그에 남아있을 때 브라우저가 해당 URL을 무효화하면 이미지 로드 실패
+
+**해결 방법**:
+```typescript
+// After - Storage URL 직접 반환 (안정적)
+export async function getCachedTarotImage(cardName: string): Promise<string | null> {
+  // Cache API에서 이미지 존재 여부만 확인
+  const cache = await caches.open(CACHE_NAME);
+  const response = await cache.match(metadata.imageUrl);
+  
+  if (!response) {
+    return null;
+  }
+
+  // ⭐ Blob URL 생성하지 않고 실제 Storage URL 반환
+  return metadata.imageUrl;  // https://...supabase.co/storage/...
+}
+```
+
+**장점**:
+- ✅ Blob URL 생성/해제 로직 불필요 → 메모리 누수 제거
+- ✅ 브라우저가 Cache API와 자체 HTTP 캐시를 활용하여 네트워크 요청 최소화
+- ✅ 모바일에서도 안정적인 이미지 로딩 (URL 무효화 문제 없음)
+- ✅ 빠른 페이지 전환에도 이미지 정상 표시
+
+**영향 범위**:
+- `src/lib/tarotImageCache.ts`: `getCachedTarotImage()` 함수
+- `src/components/UnifiedResultPage.tsx`: 변경 없음 (기존 코드 그대로 작동)
+
+**참고**:
+- Cache API는 HTTP(S) URL을 키로 사용하여 Response 객체 저장
+- 브라우저는 동일 URL 요청 시 Cache API → HTTP 캐시 → 네트워크 순서로 조회
+- Blob URL 없이도 캐싱 효과 동일하게 유지
+
+---
+
+## 2026-01-19
+
 ### 사주 정보 카드 구분자(|) 렌더링 방식 변경 (SVG → CSS div)
 **결정**: `SajuCard.tsx`, `SajuManagementPage.tsx`의 구분자(|)를 SVG에서 순수 CSS div로 변경
 

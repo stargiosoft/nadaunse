@@ -70,7 +70,17 @@ export async function cacheTarotImage(cardName: string, imageUrl: string): Promi
 
 /**
  * ⭐ Cache API에서 캐시된 이미지 가져오기
- * 반환값: Blob URL
+ * 반환값: 실제 Storage URL (blob URL 대신 직접 URL 사용)
+ * 
+ * ⚠️ 이전 blob URL 방식의 문제점:
+ * - 매번 새로운 blob URL 생성 시 이전 URL revoke 안 됨 → 메모리 누수
+ * - 모바일 브라우저가 메모리 부족 시 blob URL을 무효화 → 이미지 로드 실패
+ * - 빠른 페이지 전환 시 blob URL이 가비지 컬렉션되어 이미지 깨짐
+ * 
+ * ✅ 해결 방법: Cache API에서 실제 Storage URL 반환
+ * - Blob URL 생성하지 않음 (메모리 누수 없음)
+ * - 브라우저가 자체 캐시와 Cache API 활용하여 네트워크 요청 최소화
+ * - 모바일에서도 안정적인 이미지 로딩
  */
 export async function getCachedTarotImage(cardName: string): Promise<string | null> {
   try {
@@ -92,7 +102,7 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
       return null;
     }
 
-    // ⭐ Cache API에서 이미지 가져오기 (imageUrl을 키로 사용)
+    // ⭐ Cache API에서 이미지 확인 (실제 캐시 여부만 체크)
     const cache = await caches.open(CACHE_NAME);
     const response = await cache.match(metadata.imageUrl);
     
@@ -102,12 +112,10 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
       return null;
     }
 
-    // ⭐ Blob URL로 변환 (메모리 효율적)
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    
+    // ⭐ Blob URL 생성하지 않고 실제 Storage URL 반환
+    // 브라우저가 Cache API와 자체 캐시를 활용하여 네트워크 요청 최소화
     console.log(`⚡ [타로캐시] 캐시 히트: ${cardName}`);
-    return blobUrl;
+    return metadata.imageUrl;
   } catch (error) {
     console.error(`❌ [타로캐시] 로드 실패: ${cardName}`, error);
     return null;
