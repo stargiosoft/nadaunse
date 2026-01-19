@@ -290,8 +290,7 @@ export default function SajuSelectPage() {
       return;
     }
 
-    setIsGenerating(true);
-
+    // ⭐ setIsGenerating은 휴대폰 번호 체크 후에 호출 (PageLoader 순간 노출 방지)
     try {
       console.log('🚀 [사주선택] 선택된 사주 ID:', selectedSajuId);
 
@@ -413,6 +412,9 @@ export default function SajuSelectPage() {
         }
         console.log('✅ [사주선택] 휴대폰 번호 확인 완료');
       }
+
+      // ⭐ 휴대폰 번호가 있으면 이제 로딩 UI 표시
+      setIsGenerating(true);
 
       // ⭐ 재생성이 필요한 케이스 확인 (로딩 페이지 이동 전에 먼저 리셋해야 race condition 방지)
       // 케이스 1: 사주 정보 없이 생성된 결과 (구매 후 이탈 → 나중에 사주 선택)
