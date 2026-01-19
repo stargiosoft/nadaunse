@@ -150,11 +150,50 @@ export default function AlimtalkInfoInputPage({
       localStorage.removeItem('primary_saju');
       localStorage.removeItem('saju_records_cache');
 
-      // ⭐ 4단계: 즉시 로딩 페이지로 이동
+      // ⭐ 4단계: 선택된 사주 정보 조회 및 orders 테이블 업데이트
+      console.log('🔍 [AlimtalkInfoInput] 선택된 사주 정보 조회:', selectedSajuId);
+      const { data: selectedSaju, error: sajuFetchError } = await supabase
+        .from('saju_records')
+        .select('full_name, gender, birth_date, birth_time')
+        .eq('id', selectedSajuId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (sajuFetchError || !selectedSaju) {
+        console.error('❌ [AlimtalkInfoInput] 선택된 사주 조회 실패:', sajuFetchError);
+        toast.error('사주 정보를 찾을 수 없습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('🔄 [AlimtalkInfoInput] orders 테이블 업데이트...');
+      const { error: orderUpdateError } = await supabase
+        .from('orders')
+        .update({
+          saju_record_id: selectedSajuId,
+          full_name: selectedSaju.full_name,
+          gender: selectedSaju.gender,
+          birth_date: selectedSaju.birth_date,
+          birth_time: selectedSaju.birth_time,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .eq('user_id', user.id);
+
+      if (orderUpdateError) {
+        console.error('❌ [AlimtalkInfoInput] orders 업데이트 실패:', orderUpdateError);
+        toast.error('주문 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('✅ [AlimtalkInfoInput] orders 테이블 업데이트 완료');
+
+      // ⭐ 5단계: 즉시 로딩 페이지로 이동
       console.log('🚀 [AlimtalkInfoInput] 로딩 페이지로 이동');
       navigate(`/loading?contentId=${contentId}&orderId=${orderId}`);
 
-      // ⭐ 5단계: 백그라운드에서 AI 응답 생성 시작
+      // ⭐ 6단계: 백그라운드에서 AI 응답 생성 시작
       console.log('🔄 [AlimtalkInfoInput] 백그라운드 AI 생성 시작...');
 
       // 타로 콘텐츠인지 확인하고 타로 카드 선택 (병렬 실행)
