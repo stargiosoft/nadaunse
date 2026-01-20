@@ -33,82 +33,90 @@ export function ConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
-        onClick={onCancel}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-[16px] w-[320px] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Dialog */}
-        <div 
-          className="relative rounded-[20px] w-[320px]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="content-stretch flex flex-col items-start overflow-clip relative rounded-[inherit] w-full">
-            {/* 제목 */}
-            <div className="bg-white relative shrink-0 w-full">
-              <div className="flex flex-row items-center justify-center size-full">
-                <div className="content-stretch flex items-center justify-center px-[28px] py-[32px] relative w-full">
-                  <div className="basis-0 content-stretch flex flex-col gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="font-semibold leading-[25.5px] relative shrink-0 text-[18px] text-black tracking-[-0.36px] w-full">
-                      {title}
-                    </p>
-                    {message && (
-                      <p className="font-normal leading-[20px] relative shrink-0 text-[15px] text-[#848484] tracking-[-0.3px] w-full">
-                        {message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* 제목 */}
+        <div className="px-[24px] pt-[32px] pb-[24px]">
+          <p
+            className="text-center"
+            style={{
+              fontFamily: 'Pretendard Variable, sans-serif',
+              fontWeight: 600,
+              fontSize: '18px',
+              lineHeight: '25.5px',
+              letterSpacing: '-0.36px',
+              color: '#151515'
+            }}
+          >
+            {title}
+          </p>
+          {message && (
+            <p
+              className="text-center mt-[8px]"
+              style={{
+                fontFamily: 'Pretendard Variable, sans-serif',
+                fontWeight: 400,
+                fontSize: '15px',
+                lineHeight: '20px',
+                letterSpacing: '-0.3px',
+                color: '#848484'
+              }}
+            >
+              {message}
+            </p>
+          )}
+        </div>
 
-            {/* 버튼 그룹 */}
-            <div className="bg-white relative shrink-0 w-full">
-              <div className="size-full">
-                <div className="content-stretch flex flex-col items-start pb-[20px] pt-0 px-[24px] relative w-full">
-                  <div className="content-stretch flex gap-[16px] items-center justify-center relative shrink-0 w-full">
-                    {/* 취소 버튼 */}
-                    <button
-                      onClick={onCancel}
-                      className="basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 bg-[#f3f3f3]"
-                    >
-                      <div className="flex flex-row items-center justify-center size-full">
-                        <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
-                          <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                            <p className="font-medium leading-[20px] relative shrink-0 text-[#525252] text-[15px] text-nowrap tracking-[-0.45px]">
-                              {cancelText}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
+        {/* 버튼 영역 */}
+        <div className="flex gap-[8px] px-[16px] pb-[16px]">
+          {/* 취소 버튼 */}
+          <button
+            onClick={onCancel}
+            className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
+            style={{ backgroundColor: '#f5f5f5' }}
+          >
+            <p
+              style={{
+                fontFamily: 'Pretendard Variable, sans-serif',
+                fontWeight: 600,
+                fontSize: '15px',
+                lineHeight: '20px',
+                letterSpacing: '-0.45px',
+                color: '#848484'
+              }}
+            >
+              {cancelText}
+            </p>
+          </button>
 
-                    {/* 확인 버튼 */}
-                    <button
-                      onClick={onConfirm}
-                      className="basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 bg-[#48b2af]"
-                    >
-                      <div className="flex flex-row items-center justify-center size-full">
-                        <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
-                          <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                            <p className="font-medium leading-[20px] relative shrink-0 text-[15px] text-nowrap text-white tracking-[-0.45px]">
-                              {confirmText}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Border 레이어 (별도) */}
-          <div aria-hidden="true" className="absolute border border-[#f3f3f3] border-solid inset-[-1px] pointer-events-none rounded-[21px]" />
+          {/* 확인 버튼 */}
+          <button
+            onClick={onConfirm}
+            className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
+            style={{ backgroundColor: '#48b2af' }}
+          >
+            <p
+              style={{
+                fontFamily: 'Pretendard Variable, sans-serif',
+                fontWeight: 600,
+                fontSize: '15px',
+                lineHeight: '20px',
+                letterSpacing: '-0.45px',
+                color: '#ffffff'
+              }}
+            >
+              {confirmText}
+            </p>
+          </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
