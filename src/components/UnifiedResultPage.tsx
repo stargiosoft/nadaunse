@@ -229,10 +229,18 @@ export default function UnifiedResultPage() {
         console.log('📊 [UnifiedResultPage] 결과 데이터 로드 완료:', {
           count: resultsData.length,
           questionOrders: resultsData.map(r => r.question_order),
+          questionOrderTypes: resultsData.map(r => typeof r.question_order),
           firstQuestion: resultsData[0]?.question_type,
           targetQuestionOrder: currentQuestionOrder
         });
-        setAllResults(resultsData as ResultItem[]);
+
+        // ⭐ Type 안전성: question_order를 명시적으로 number로 변환
+        const normalizedResults = resultsData.map(r => ({
+          ...r,
+          question_order: Number(r.question_order)
+        })) as ResultItem[];
+
+        setAllResults(normalizedResults);
 
         // ⭐ contentId 설정
         if (!contentIdParam && orderData?.content_id) {
@@ -281,17 +289,19 @@ export default function UnifiedResultPage() {
   // ⭐ 현재 결과의 타로 이미지 로드
   const currentResult = allResults.find(r => r.question_order === currentQuestionOrder);
 
-  // 🔍 디버깅 로그
+  // 🔍 디버깅 로그 (Type Mismatch 체크 추가)
   console.log('🔍 [UnifiedResultPage] 렌더링 상태:', {
     currentQuestionOrder,
+    currentQuestionOrderType: typeof currentQuestionOrder,
     allResultsLength: allResults.length,
+    allResultsQuestionOrders: allResults.map(r => ({ order: r.question_order, type: typeof r.question_order })),
     currentResultExists: !!currentResult,
     currentResultQuestionOrder: currentResult?.question_order,
     questionType: currentResult?.question_type,
     isTarot: currentResult?.question_type === 'tarot',
     questionText: currentResult?.question_text?.substring(0, 30),
     gptResponseLength: currentResult?.gpt_response?.length || 0,
-    gptResponseStart: currentResult?.gpt_response?.substring(0, 50),
+    gptResponseStart: currentResult?.gpt_response?.substring(0, 50) || '(empty)',
     loading,
     isCheckingSession,
     hasValidSession
