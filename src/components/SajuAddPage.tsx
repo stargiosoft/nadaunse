@@ -145,14 +145,11 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
   }, [editMode, sajuData, sajuInfo]);
 
   const relationshipOptions = [
-    '친구',
-    '가족',
     '연인',
-    '엄마',
-    '아빠',
-    '형제',
-    '자매',
-    '직장동료',
+    '가족',
+    '친구',
+    '지인',
+    '동료',
     '기타'
   ];
 
