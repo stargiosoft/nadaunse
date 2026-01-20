@@ -871,7 +871,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                 <motion.div
                   className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col pointer-events-auto z-[10000]"
                   style={{
-                    maxHeight: 'calc(100vh - 40px)',
+                    maxHeight: '85vh',
                     height: 'auto'
                   }}
                   initial={{ y: "100%" }}
@@ -909,6 +909,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     className="flex-1 overflow-y-auto px-[24px] pb-[24px]"
                     style={{
                       minHeight: 0,
+                      maxHeight: '50vh',
                       WebkitOverflowScrolling: 'touch'
                     }}
                   >
