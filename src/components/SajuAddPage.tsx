@@ -868,8 +868,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                 />
                 
                 {/* Bottom Sheet */}
-                <motion.div 
-                  className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col max-h-[94vh] pointer-events-auto z-[10000]"
+                <motion.div
+                  className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col pointer-events-auto z-[10000]"
+                  style={{
+                    maxHeight: 'calc(100vh - 40px)',
+                    height: 'auto'
+                  }}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -901,7 +905,13 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                   </div>
 
                   {/* Options List */}
-                  <div className="flex-1 overflow-y-auto px-[24px] pb-[24px]">
+                  <div
+                    className="flex-1 overflow-y-auto px-[24px] pb-[24px]"
+                    style={{
+                      minHeight: 0,
+                      WebkitOverflowScrolling: 'touch'
+                    }}
+                  >
                     <div className="flex flex-col">
                       {relationshipOptions.map((option, index) => (
                         <div key={option}>
