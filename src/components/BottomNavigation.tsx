@@ -52,11 +52,20 @@ export function BottomNavigation({
                   </svg>
                 </div>
               </button>
-              <p className="font-['Pretendard_Variable:Medium',sans-serif] pt-[1px] font-medium text-[15px] leading-[23.5px] tracking-[-0.3px]">
-                <span className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[#151515]">
+              <p 
+                className="pt-[1px]"
+                style={{
+                  fontFamily: 'Pretendard Variable, sans-serif',
+                  fontWeight: 500,
+                  fontSize: '15px',
+                  lineHeight: '23.5px',
+                  letterSpacing: '-0.3px'
+                }}
+              >
+                <span style={{ fontWeight: 600, color: '#151515' }}>
                   {String(currentStep).padStart(2, '0')}/
                 </span>
-                <span className="text-[#b7b7b7]"> {String(totalSteps).padStart(2, '0')}</span>
+                <span style={{ color: '#b7b7b7' }}> {String(totalSteps).padStart(2, '0')}</span>
               </p>
             </div>
 
@@ -78,7 +87,16 @@ export function BottomNavigation({
                     strokeWidth="1.7"
                   />
                 </svg>
-                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[14px] leading-[22px] tracking-[-0.42px] text-black">
+                <p 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '22px',
+                    letterSpacing: '-0.42px',
+                    color: '#000000'
+                  }}
+                >
                   이전
                 </p>
               </button>
@@ -92,7 +110,16 @@ export function BottomNavigation({
                 disabled={disableNext}
                 className="flex gap-[4px] items-center h-[34px] px-[8px] rounded-[12px] hover:bg-gray-100 active:bg-gray-100 active:scale-95 transition-all duration-200 disabled:opacity-30"
               >
-                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[14px] leading-[22px] tracking-[-0.42px] text-black">
+                <p 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '22px',
+                    letterSpacing: '-0.42px',
+                    color: '#000000'
+                  }}
+                >
                   {nextLabel}
                 </p>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
