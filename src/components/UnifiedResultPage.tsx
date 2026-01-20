@@ -285,6 +285,9 @@ export default function UnifiedResultPage() {
   });
 
   useEffect(() => {
+    let currentBlobUrl: string | null = null;
+    let isMounted = true;
+
     const loadCardImage = async () => {
       if (!currentResult || currentResult.question_type !== 'tarot' || !currentResult.tarot_card_name) {
         setCardImageUrl('');
@@ -298,15 +301,18 @@ export default function UnifiedResultPage() {
 
       const cachedImage = await getCachedTarotImage(currentResult.tarot_card_name);
 
+      if (!isMounted) return; // cleanup 후 실행 방지
+
       if (cachedImage) {
-        console.log('⚡ [UnifiedResultPage] 이미지 캐시 히트:', currentResult.tarot_card_name);
+        console.log('⚡ [UnifiedResultPage] 이미지 캐시 히트 (Blob URL):', currentResult.tarot_card_name);
+        currentBlobUrl = cachedImage; // cleanup에서 revoke할 URL 저장
         setCardImageUrl(cachedImage);
 
-        // ⭐ 이미지가 이미 로드되어 있는지 체크 (브라우저 캐시)
+        // ⭐ 이미지가 이미 로드되어 있는지 체크 (Blob URL은 항상 새로 생성됨)
         // → setTimeout으로 다음 틱에 체크 (DOM 업데이트 후)
         setTimeout(() => {
-          if (tarotImageRef.current?.complete && tarotImageRef.current?.naturalWidth > 0) {
-            console.log('✅ [UnifiedResultPage] 이미지 이미 로드됨 (브라우저 캐시):', currentResult.tarot_card_name);
+          if (isMounted && tarotImageRef.current?.complete && tarotImageRef.current?.naturalWidth > 0) {
+            console.log('✅ [UnifiedResultPage] 이미지 이미 로드됨:', currentResult.tarot_card_name);
             setImageLoading(false);
           }
         }, 0);
@@ -319,6 +325,15 @@ export default function UnifiedResultPage() {
     };
 
     loadCardImage();
+
+    // ⭐ Cleanup: Blob URL revoke로 메모리 누수 방지
+    return () => {
+      isMounted = false;
+      if (currentBlobUrl && currentBlobUrl.startsWith('blob:')) {
+        console.log('🗑️ [UnifiedResultPage] Blob URL revoke:', currentBlobUrl.substring(0, 50));
+        URL.revokeObjectURL(currentBlobUrl);
+      }
+    };
   }, [currentResult?.question_order, currentResult?.tarot_card_name]);
 
   // ⭐ 이미지 로드 실패 시 폴백 처리
