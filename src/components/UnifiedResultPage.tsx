@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { getTarotCardImageUrl } from '../lib/tarotCards';
 import { getCachedTarotImage, cacheTarotImage } from '../lib/tarotImageCache';
@@ -56,15 +55,6 @@ export default function UnifiedResultPage() {
   // ⭐ 스크롤 컨테이너 ref
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // ⭐ 애니메이션 방향 계산 (렌더링 시점에 계산)
-  const prevOrderRef = useRef<number>(currentQuestionOrder);
-  const direction = currentQuestionOrder > prevOrderRef.current ? 1 : currentQuestionOrder < prevOrderRef.current ? -1 : 0;
-
-  // ⭐ ref 업데이트 (다음 비교를 위해)
-  useEffect(() => {
-    prevOrderRef.current = currentQuestionOrder;
-  }, [currentQuestionOrder]);
-
   // ⭐ URL 쿼리 파라미터 변경 감지 + 타로 셔플 리다이렉트 체크
   useEffect(() => {
     const newQuestionOrder = parseInt(questionOrderParam);
@@ -84,22 +74,6 @@ export default function UnifiedResultPage() {
       }
     }
   }, [questionOrderParam, allResults, contentId, from, orderId, navigate]);
-
-  // ⭐ 슬라이드 애니메이션 Variants
-  const slideVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 50 : direction < 0 ? -50 : 0,
-      opacity: direction === 0 ? 1 : 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -50 : direction < 0 ? 50 : 0,
-      opacity: 0,
-    }),
-  };
 
   // ⭐ 세션 체크
   useEffect(() => {
@@ -483,26 +457,18 @@ export default function UnifiedResultPage() {
       >
         <div className="shrink-0 w-full" style={{ height: '8px' }} />
 
-        {/* Content - Slide Animation */}
-        <div className="w-full" style={{ paddingLeft: '20px', paddingRight: '20px' }}> {/* ✅ overflow-hidden 제거 */}
-          <AnimatePresence mode="wait" custom={direction}> {/* ✅ popLayout → wait */}
-            <motion.div
-              key={currentQuestionOrder}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="w-full"
-              style={{
-                minHeight: '500px', // Prevent content collapse
-                backgroundColor: '#f9f9f9',
-                pointerEvents: 'auto',
-                borderRadius: '16px',
-                padding: '20px'
-              }} // ⭐ 터치 이벤트 명시적 활성화
-            >
+        {/* Content */}
+        <div className="w-full" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+          <div
+            key={`result-${currentQuestionOrder}`}
+            className="w-full"
+            style={{
+              minHeight: '500px',
+              backgroundColor: '#f9f9f9',
+              borderRadius: '16px',
+              padding: '20px'
+            }}
+          >
               {/* Header */}
               <div 
                 className="flex items-center w-full"
@@ -638,8 +604,7 @@ export default function UnifiedResultPage() {
                   return part;
                 })}
               </div>
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </div>
       </div>
 
