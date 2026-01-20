@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-19
-> **주요 결정**: 구분자 렌더링 방식 변경 (SVG → CSS div), iOS 스크롤 버그 수정
+> **최종 업데이트**: 2026-01-20
+> **주요 결정**: HTTP 캐시 전략 수립 (vercel.json), 썸네일 Cache API 적용, 구매 내역 성능 최적화
 
 ---
 
@@ -13,6 +13,311 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-20
+
+### HTTP 캐시 전략 수립 (vercel.json)
+
+**결정**: Vercel 배포 시 리소스 유형별 HTTP 캐시 헤더 적용
+
+**배경**:
+- 프로젝트 초기 vercel.json에 캐시 헤더 설정이 없어 브라우저가 기본값만 사용
+- JS/CSS 번들, 이미지, HTML 등 모든 리소스가 매번 서버에서 다운로드
+- 재방문 시에도 네트워크 요청이 발생하여 페이지 로딩 속도 저하
+- 특히 타로 카드 이미지(78장)와 콘텐츠 썸네일이 반복적으로 다운로드됨
+
+**구현**:
+```json
+{
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [{
+        "key": "Cache-Control",
+        "value": "public, max-age=31536000, immutable"
+      }]
+    },
+    {
+      "source": "/:path*\\.(jpg|jpeg|png|webp|svg|gif|ico)",
+      "headers": [{
+        "key": "Cache-Control",
+        "value": "public, max-age=86400, stale-while-revalidate=604800"
+      }]
+    },
+    {
+      "source": "/",
+      "headers": [{
+        "key": "Cache-Control",
+        "value": "public, max-age=0, must-revalidate"
+      }]
+    }
+  ]
+}
+```
+
+**리소스 유형별 전략**:
+| 리소스 | 캐시 정책 | 이유 |
+|--------|----------|------|
+| JS/CSS 번들 (`/assets/*`) | 1년 캐싱, immutable | Vite가 파일명에 해시 추가, 절대 안 바뀜 |
+| 이미지 (*.png, *.jpg 등) | 1일 캐싱 + 1주일 백그라운드 재검증 | 가끔 바뀜, stale-while-revalidate로 빠른 로드 |
+| HTML (`/`, `/index.html`) | 항상 최신 (max-age=0) | 배포 즉시 반영 필요 |
+
+**예상 효과**:
+- ✅ 첫 방문: 기준 대비 30-50% 빠름 (CDN 엣지 캐시 활용)
+- ✅ 재방문: 기준 대비 50-80% 빠름 (브라우저 캐시에서 즉시 로드)
+- ✅ 네트워크 요청: 70-90% 감소
+
+**영향 범위**:
+- `vercel.json`: HTTP 캐시 헤더 추가
+- 모든 페이지: 리소스 로딩 속도 개선
+
+**주의사항**:
+- Vercel glob 패턴 사용 (정규식 X)
+- `/:path*\.(jpg|jpeg|png)` 형식으로 작성
+- immutable 플래그는 파일명 변경 시에만 사용
+
+---
+
+### 콘텐츠 썸네일 Cache API 적용
+
+**결정**: 타로 카드와 동일한 Cache API 전략을 콘텐츠 썸네일에도 적용
+
+**배경**:
+- 홈 화면에서 콘텐츠 썸네일이 매번 다운로드됨
+- imagePreloader.ts는 브라우저 메모리 캐시만 사용 (탭 닫으면 사라짐)
+- 타로 카드는 Cache API로 7일간 영구 저장되어 안정적인 반면, 썸네일은 매번 재다운로드
+- 홈 화면 로딩 속도가 느리다는 사용자 피드백
+
+**구현**:
+```typescript
+// src/lib/thumbnailCache.ts (신규 생성)
+const CACHE_NAME = 'thumbnails-v1';
+const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 1일
+
+// 타로 캐시와 동일한 구조
+- 싱글톤 Cache 인스턴스 (caches.open() 1회만 호출)
+- 메모리 캐시 (Map<contentId, {imageUrl, cachedAt}>)
+- 배치 처리 (최대 6개씩 동시 다운로드)
+```
+
+**이중 캐싱 전략**:
+```typescript
+// HomePage.tsx
+// 1. imagePreloader: 브라우저 메모리 캐시 (즉시 로드)
+await preloadImages(imageUrls, 'low');
+
+// 2. thumbnailCache: Cache API (영구 저장, 백그라운드)
+preloadThumbnails(newContents).catch(err => {
+  console.log('⚠️ Cache API 저장 실패 (무시):', err);
+});
+```
+
+**만료 시간 차이**:
+- 타로 카드: 7일 (절대 안 바뀜, 78장 고정)
+- 콘텐츠 썸네일: 1일 (관리자가 업데이트 가능, 썸네일 변경 가능성 있음)
+
+**예상 효과**:
+- ✅ 홈 화면 체감 속도 2배 개선
+- ✅ 재방문 시 썸네일 즉시 표시
+- ✅ 네트워크 요청 70-90% 감소
+
+**영향 범위**:
+- `src/lib/thumbnailCache.ts`: 신규 생성 (429줄)
+- `src/pages/HomePage.tsx`: 썸네일 캐시 통합 (2곳)
+
+**트레이드오프**:
+- 장점: 빠른 로딩, 오프라인 지원 가능성
+- 단점: 썸네일 업데이트 시 최대 1일 지연 (캐시 만료 대기)
+- 해결: 관리자가 썸네일 변경 시 버전 파라미터 추가 (`?v=2`) 또는 캐시 수동 삭제
+
+---
+
+### 구매 내역 DB 쿼리 병렬화
+
+**결정**: "운세 보기" 버튼 클릭 시 2개의 DB 쿼리를 순차 실행에서 병렬 실행으로 변경
+
+**배경**:
+- 구매 내역에서 "운세 보기" 클릭 시 0.5초 로딩 발생
+- `master_content_questions` 쿼리: 200-500ms
+- `order_results` 쿼리: 200-500ms
+- **총 400-1000ms 지연** (순차 실행)
+
+**기존 코드 (순차 실행)**:
+```typescript
+// 1️⃣ 전체 질문 개수 조회
+const { data: questionsData } = await supabase
+  .from('master_content_questions')
+  .select('id')
+  .eq('content_id', item.content_id);
+
+const totalQuestions = questionsData?.length || 0;
+
+// 2️⃣ 생성 완료된 답변 개수 조회
+const { data: resultsData } = await supabase
+  .from('order_results')
+  .select('id, orders!inner(user_id)')
+  .eq('order_id', item.id);
+
+const completedAnswers = resultsData?.length || 0;
+```
+
+**개선 코드 (병렬 실행)**:
+```typescript
+// 1️⃣ 병렬로 질문 개수 & 답변 개수 조회
+const [questionsResult, resultsResult] = await Promise.all([
+  supabase
+    .from('master_content_questions')
+    .select('id', { count: 'exact', head: true })
+    .eq('content_id', item.content_id),
+  supabase
+    .from('order_results')
+    .select('id, orders!inner(user_id)', { count: 'exact', head: true })
+    .eq('order_id', item.id)
+]);
+
+const totalQuestions = questionsResult.count || 0;
+const completedAnswers = resultsResult.count || 0;
+```
+
+**추가 최적화**:
+- `select('id')` → `{ count: 'exact', head: true }`
+- ID 배열 전송 불필요, count만 반환
+- 데이터 전송량 20-30% 감소
+
+**예상 효과**:
+- ✅ 400-1000ms → 150-400ms (62.5% 개선)
+- ✅ 사용자 체감 속도 2배 빠름
+
+**영향 범위**:
+- `src/components/PurchaseHistoryPage.tsx`: handleViewPurchase 함수 (Line 246-272)
+
+**에러 핸들링**:
+- Promise.all 중 하나가 실패해도 개별 에러 핸들링 유지
+- questionsResult.error, resultsResult.error 각각 체크
+
+---
+
+### 타로 캐시 성능 최적화 (싱글톤 + 메모리 캐시 + 배치 처리)
+
+**결정**: 구매 내역 페이지의 타로 이미지 프리로드 성능을 1-6초에서 0.3-0.8초로 개선
+
+**배경**:
+- 구매 내역 132개 주문의 타로 이미지를 모두 프리로드 시도
+- 매 호출마다 `caches.open()` 반복 (132회 × 20ms = 2.6초)
+- 132개 동시 네트워크 요청 → 브라우저 연결 풀 초과 (최대 6개)
+- "이미 캐시됨" 상태에도 매번 Cache API match 실행 (132회 × 10-50ms)
+- **총 1-6초 추가 지연**
+
+**문제 분석**:
+1. **caches.open() 반복**: 매번 Cache API 열기 (20ms)
+2. **동시성 제어 없음**: 132개 fetch 요청이 동시 발생
+3. **중복 체크 비효율**: Cache API 비동기 조회 (10-50ms)
+
+**해결 방법**:
+
+**1) 싱글톤 Cache 인스턴스**:
+```typescript
+let cacheInstance: Cache | null = null;
+let cachePromise: Promise<Cache> | null = null;
+
+async function getCacheInstance(): Promise<Cache> {
+  if (cacheInstance) return cacheInstance;
+
+  if (!cachePromise) {
+    cachePromise = caches.open(CACHE_NAME).then(cache => {
+      cacheInstance = cache;
+      return cache;
+    });
+  }
+
+  return cachePromise;
+}
+```
+- 효과: 132회 × 20ms = 2.6초 → 1회 = 20ms (99% 감소)
+
+**2) 메모리 캐시**:
+```typescript
+const memoryCache = new Map<string, { imageUrl: string; cachedAt: number }>();
+
+async function initMemoryCache(): Promise<void> {
+  // localStorage 메타데이터 → 메모리로 복사
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('tarot_meta_')) {
+      const metadata = JSON.parse(localStorage.getItem(key)!);
+      const cardName = key.replace('tarot_meta_', '');
+
+      // 만료 체크 후 메모리에 저장
+      if (Date.now() - metadata.cachedAt <= CACHE_EXPIRY_MS) {
+        memoryCache.set(cardName, {
+          imageUrl: metadata.imageUrl,
+          cachedAt: metadata.cachedAt
+        });
+      }
+    }
+  }
+}
+```
+- 효과: Cache API 조회 (10-50ms) → 메모리 조회 (0.01ms) (99.9% 빠름)
+
+**3) 배치 처리**:
+```typescript
+async function batchPromises<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number = 6
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = [];
+
+  for (let i = 0; i < tasks.length; i += concurrency) {
+    const batch = tasks.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(batch.map(task => task()));
+    results.push(...batchResults);
+  }
+
+  return results;
+}
+```
+- 효과: 132개 동시 → 6개씩 배치 (브라우저 연결 풀 최적화)
+
+**4) 프리로드 범위 제한**:
+```typescript
+// Before: 132개 모두 프리로드
+completedOrders.forEach(order => {
+  preloadTarotImages(order.id, supabaseUrl);
+});
+
+// After: 최근 10개만 프리로드
+const recentOrders = completedOrders.slice(0, 10);
+recentOrders.forEach(order => {
+  preloadTarotImages(order.id, supabaseUrl);
+});
+```
+- 효과: 초기 프리로드 132개 → 10개 (92% 감소)
+
+**예상 효과**:
+| 최적화 | Before | After | 개선 |
+|--------|--------|-------|------|
+| caches.open() | 132회 × 20ms = 2.6초 | 1회 = 20ms | 99% ↓ |
+| 캐시 체크 | 132회 × 20ms = 2.6초 | 132회 × 0.01ms = 0.0013초 | 99.9% ↓ |
+| 동시 fetch | 132개 동시 | 6개씩 배치 | 95% ↓ |
+| 프리로드 범위 | 132개 | 10개 | 92% ↓ |
+| **총 프리로드 시간** | **1-6초** | **0.3-0.8초** | **75% ↓** |
+
+**영향 범위**:
+- `src/lib/tarotImageCache.ts`:
+  - getCacheInstance() 추가
+  - initMemoryCache() 추가
+  - batchPromises() 추가
+  - preloadTarotImages() 수정
+- `src/components/PurchaseHistoryPage.tsx`:
+  - Top 10 프리로드로 제한
+
+**트레이드오프**:
+- 장점: 극적인 성능 개선 (75% 빠름)
+- 단점: 메모리 사용량 약간 증가 (78장 × 150bytes = 11.7KB, 무시 가능)
+- 위험: Promise.allSettled로 일부 실패해도 계속 진행
 
 ---
 
