@@ -1455,7 +1455,7 @@ export default function PaymentNew({
         </div>{/* ⭐ Scrollable Container 닫기 */}
 
         {/* Bottom Button */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 box-border content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full max-w-[440px] z-10">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 box-border content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full max-w-[440px] z-10 pointer-events-auto">
           <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
             <div className="bg-white relative shrink-0 w-full">
               <div className="flex flex-col items-center justify-center size-full">

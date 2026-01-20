@@ -290,8 +290,7 @@ export default function SajuSelectPage() {
       return;
     }
 
-    setIsGenerating(true);
-
+    // ⭐ setIsGenerating은 휴대폰 번호 체크 후에 호출 (PageLoader 순간 노출 방지)
     try {
       console.log('🚀 [사주선택] 선택된 사주 ID:', selectedSajuId);
 
@@ -370,6 +369,53 @@ export default function SajuSelectPage() {
 
       console.log('✅ [사주선택] 진행 중인 주문 발견:', orderId);
 
+      // ⭐ 대표 사주 업데이트 (휴대폰 번호 체크 전에 먼저 실행)
+      console.log('🔄 [사주선택] 대표 사주 업데이트...');
+      try {
+        // 모든 사주 is_primary=false로 변경
+        await supabase
+          .from('saju_records')
+          .update({ is_primary: false })
+          .eq('user_id', user.id);
+
+        // 선택된 사주만 is_primary=true로 변경
+        await supabase
+          .from('saju_records')
+          .update({ is_primary: true })
+          .eq('id', selectedSajuId)
+          .eq('user_id', user.id);
+
+        // ⭐ 캐시 무효화 (ProfilePage, SajuManagementPage에서 새 대표 사주 로드하도록)
+        localStorage.removeItem('primary_saju');
+        localStorage.removeItem('saju_records_cache');
+        console.log('✅ [사주선택] 대표 사주 업데이트 완료 + 캐시 무효화');
+      } catch (error) {
+        console.error('❌ [사주선택] 대표 사주 업데이트 실패:', error);
+      }
+
+      // ⭐ 휴대폰 번호 체크 (notes='본인' 사주의 phone_number가 null이면 AlimtalkInfoInputPage로 이동)
+      console.log('🔍 [사주선택] 본인 사주 휴대폰 번호 체크...');
+      const { data: mySajuList, error: mySajuError } = await supabase
+        .from('saju_records')
+        .select('id, phone_number')
+        .eq('user_id', user.id)
+        .eq('notes', '본인')
+        .limit(1);
+
+      if (!mySajuError && mySajuList && mySajuList.length > 0) {
+        const mySaju = mySajuList[0];
+        if (!mySaju.phone_number) {
+          console.log('📱 [사주선택] 휴대폰 번호 없음 → AlimtalkInfoInputPage로 이동');
+          setIsGenerating(false);
+          navigate(`/alimtalk/input?orderId=${orderId}&contentId=${contentId}&selectedSajuId=${selectedSajuId}`);
+          return;
+        }
+        console.log('✅ [사주선택] 휴대폰 번호 확인 완료');
+      }
+
+      // ⭐ 휴대폰 번호가 있으면 이제 로딩 UI 표시
+      setIsGenerating(true);
+
       // ⭐ 재생성이 필요한 케이스 확인 (로딩 페이지 이동 전에 먼저 리셋해야 race condition 방지)
       // 케이스 1: 사주 정보 없이 생성된 결과 (구매 후 이탈 → 나중에 사주 선택)
       // 케이스 2: 다른 사주로 재생성 요청 (bfcache 복원 후 다른 사주 선택)
@@ -441,34 +487,6 @@ export default function SajuSelectPage() {
             console.log('✅ [백그라운드] 주문 업데이트 완료');
           }
         });
-
-      // ⭐️ 4단계: 백그라운드에서 대표 사주 업데이트 (비동기)
-      console.log('🔄 [사주선택] 백그라운드 업데이트 시작...');
-
-      // 대표 사주 업데이트 (백그라운드)
-      (async () => {
-        try {
-          // 모든 사주 is_primary=false로 변경
-          await supabase
-            .from('saju_records')
-            .update({ is_primary: false })
-            .eq('user_id', user.id);
-
-          // 선택된 사주만 is_primary=true로 변경
-          await supabase
-            .from('saju_records')
-            .update({ is_primary: true })
-            .eq('id', selectedSajuId)
-            .eq('user_id', user.id);
-
-          // ⭐ 캐시 무효화 (ProfilePage, SajuManagementPage에서 새 대표 사주 로드하도록)
-          localStorage.removeItem('primary_saju');
-          localStorage.removeItem('saju_records_cache');
-          console.log('✅ [백그라운드] 대표 사주 업데이트 완료 + 캐시 무효화');
-        } catch (error) {
-          console.error('❌ [백그라운드] 대표 사주 업데이트 실패:', error);
-        }
-      })();
 
       // ⭐️ 백그라운드에서 AI 응답 생성 시작 (비동기, 결과 대기 안 함)
       // 이미 AI 생성이 완료되었는지 확인
@@ -661,27 +679,29 @@ export default function SajuSelectPage() {
 
       console.log('📋 [SajuSelectPage] 연관된 주문:', relatedOrders?.length || 0, '건');
 
-      // 2단계: orders에 사주 정보 하드코딩으로 채우기
+      // 2단계: orders에 사주 정보 하드코딩으로 채우기 (병렬 처리)
       if (relatedOrders && relatedOrders.length > 0) {
-        for (const order of relatedOrders) {
-          const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-              full_name: order.full_name || selectedSajuForKebab.full_name,
-              gender: order.gender || selectedSajuForKebab.gender,
-              birth_date: order.birth_date || selectedSajuForKebab.birth_date,
-              birth_time: order.birth_time || selectedSajuForKebab.birth_time,
-              saju_record_id: null // FK 해제
-            })
-            .eq('id', order.id);
-
-          if (updateError) {
-            console.error('❌ [SajuSelectPage] 주문 업데이트 실패:', order.id, updateError);
-            throw updateError;
-          }
-
-          console.log('✅ [SajuSelectPage] 주문 업데이트 완료:', order.id);
-        }
+        await Promise.all(
+          relatedOrders.map(order =>
+            supabase
+              .from('orders')
+              .update({
+                full_name: order.full_name || selectedSajuForKebab.full_name,
+                gender: order.gender || selectedSajuForKebab.gender,
+                birth_date: order.birth_date || selectedSajuForKebab.birth_date,
+                birth_time: order.birth_time || selectedSajuForKebab.birth_time,
+                saju_record_id: null // FK 해제
+              })
+              .eq('id', order.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error('❌ [SajuSelectPage] 주문 업데이트 실패:', order.id, error);
+                  throw error;
+                }
+                console.log('✅ [SajuSelectPage] 주문 업데이트 완료:', order.id);
+              })
+          )
+        );
       }
 
       // 3단계: saju_records 삭제 (user_id 조건 추가로 RLS 우회)

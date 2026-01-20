@@ -1046,15 +1046,33 @@ function FreeResultPage() {
 // ⭐ 알림톡 정보 입력 페이지 Wrapper
 function AlimtalkInfoInputPageWrapper() {
   const navigate = useNavigate();
-  const goBack = useGoBack('/');
+  const location = useLocation();
+
+  // URL 쿼리 파라미터에서 orderId, contentId, selectedSajuId 추출
+  const searchParams = new URLSearchParams(location.search);
+  const orderId = searchParams.get('orderId');
+  const contentId = searchParams.get('contentId');
+  const selectedSajuId = searchParams.get('selectedSajuId');
+
+  // 필수 파라미터 누락 시 홈으로 리다이렉트
+  if (!orderId || !contentId || !selectedSajuId) {
+    console.error('❌ [AlimtalkInfoInput] 필수 파라미터 누락:', { orderId, contentId, selectedSajuId });
+    toast.error('잘못된 접근입니다.');
+    navigate('/', { replace: true });
+    return null;
+  }
+
+  // ⭐ 뒤로가기: 상품 상세 페이지로 이동
+  const handleBack = () => {
+    navigate(`/master/content/detail/${contentId}`, { replace: true });
+  };
 
   return (
     <AlimtalkInfoInputPage
-      onBack={goBack}
-      onNext={(phoneNumber) => {
-        console.log('📱 [AlimtalkInfoInput] 휴대폰 번호:', phoneNumber);
-        // TODO: 다음 페이지로 이동 로직 구현
-      }}
+      onBack={handleBack}
+      orderId={orderId}
+      contentId={contentId}
+      selectedSajuId={selectedSajuId}
     />
   );
 }

@@ -126,6 +126,18 @@
   - visibility 체크 로직 추가 (offsetParent, display, visibility)
 - **파일 경로**: `/components/PaymentNew.tsx`
 
+### AlimtalkInfoInputPage.tsx
+- **역할**: 알림톡 전화번호 입력 페이지
+- **사용처**: `/alimtalk-info/:orderId` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 유료 콘텐츠 구매 후 전화번호 미등록 사용자 대상
+  - 사주 정보에 전화번호 업데이트
+  - 주문 소유자 검증 (다른 계정 주문 접근 방지)
+  - 뒤로가기 시 상품 상세 페이지로 이동
+- **파일 경로**: `/components/AlimtalkInfoInputPage.tsx`
+- **추가 날짜**: 2026-01-19
+
 ### PaymentComplete.tsx
 - **역할**: 결제 완료 페이지
 - **사용처**: `/payment/complete` 라우트
@@ -364,7 +376,9 @@
   - 대표 사주 설정
   - Kebab 메뉴 UI
 - **파일 경로**: `/components/SajuManagementPage.tsx`
-- **최근 업데이트**: 2026-01-16 - 타이포그래피 및 레이아웃 정밀 조정
+- **최근 업데이트**: 2026-01-19 - 구분자 렌더링 방식 변경
+  - SVG → CSS div로 전환 (모바일 렌더링 일관성 확보)
+  - 높이 h-[6px], borderRadius 0.5px 적용
   - 섹션 타이틀 font-semibold, 프로필 이름 font-medium
   - 닉네임-생년월일 간격 축소 (-mb-[8px], -mt-[4px])
   - Info Container 하단 마진 8px (이미지 정렬)
@@ -416,12 +430,14 @@
 - **주요 기능**:
   - 프로필 이미지 (띠 동물)
   - 이름, 생년월일 표시
-  - 띠|별자리|성별 정보 표시
+  - 띠|별자리|성별 정보 표시 (구분자: CSS div)
   - 라디오 버튼 선택 UI
   - 케밥 메뉴 버튼 (옵션)
 - **파일 경로**: `/components/SajuCard.tsx`
 - **추가 날짜**: 2026-01-07
-- **최근 업데이트**: 2026-01-16 - SajuManagementPage와 동일한 UI로 스타일링 통일
+- **최근 업데이트**: 2026-01-19 - 구분자 렌더링 방식 변경
+  - SVG → CSS div로 전환 (모바일 렌더링 일관성 확보)
+  - 높이 h-[6px], borderRadius 0.5px 적용
   - 프로필 이름 font-medium 적용
   - 닉네임-생년월일 간격 축소 (-mb-[8px], -mt-[4px])
   - Info Container 하단 마진 8px (프로필 이미지와 정렬)
@@ -665,15 +681,15 @@
 
 ## 📊 통계
 
-- **총 컴포넌트**: 54개
-- **페이지 컴포넌트**: 40개
+- **총 컴포넌트**: 55개
+- **페이지 컴포넌트**: 41개
 - **UI/유틸리티 컴포넌트**: 14개
 - **백업된 컴포넌트**: 9개
 
 ### 카테고리별 분포
 - UI 컴포넌트: 7개
 - 인증 관련: 3개
-- 결제 관련: 4개
+- 결제 관련: 5개 (AlimtalkInfoInputPage 추가)
 - 무료 콘텐츠: 8개 (FreeProductDetail, FreeContentResult 백업)
 - 마스터 콘텐츠 관리: 6개
 - 사주 정보 관리: 10개 (SajuCard 추가)
@@ -729,6 +745,20 @@
 ---
 
 ## 🔄 업데이트 이력
+
+### 2026-01-19
+- **AlimtalkInfoInputPage.tsx 컴포넌트 추가**
+  - 유료 콘텐츠 구매 후 전화번호 미등록 사용자 대상 전화번호 입력 페이지
+  - 주문 소유자 검증 (다른 계정 주문 접근 방지)
+  - 뒤로가기 시 상품 상세 페이지로 이동
+  - 결제 관련 섹션에 추가 (4개 → 5개)
+- **SajuCard.tsx, SajuManagementPage.tsx 구분자 렌더링 방식 변경**
+  - SVG → CSS div로 전환 (모바일 렌더링 일관성 확보)
+  - 높이 h-[6px], borderRadius 0.5px 적용
+  - iPhone 모바일에서 구분자(|) 렌더링 불일치 문제 완전 해결
+- **통계 업데이트**
+  - 총 컴포넌트: 54개 → 55개 (AlimtalkInfoInputPage 추가)
+  - 결제 관련: 4개 → 5개
 
 ### 2026-01-16
 - **FreeSajuSelectPage.tsx, SajuCard.tsx UI 통일 (SajuManagementPage와 동일)**
@@ -875,7 +905,7 @@
 
 ---
 
-**문서 버전**: 2.5.0
-**최종 업데이트**: 2026-01-16
+**문서 버전**: 2.6.0
+**최종 업데이트**: 2026-01-19
 **다음 업데이트**: 새 컴포넌트 추가 또는 주요 변경 시
 **문서 끝**

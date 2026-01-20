@@ -55,14 +55,25 @@ export default function UnifiedResultPage() {
   // ⭐ 스크롤 컨테이너 ref
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // ⭐ URL 쿼리 파라미터 변경 감지 (TableOfContentsBottomSheet에서 navigate 시)
+  // ⭐ URL 쿼리 파라미터 변경 감지 + 타로 셔플 리다이렉트 체크
   useEffect(() => {
     const newQuestionOrder = parseInt(questionOrderParam);
     if (!isNaN(newQuestionOrder) && newQuestionOrder !== currentQuestionOrder) {
       console.log('📍 [UnifiedResultPage] URL 파라미터 변경 감지:', currentQuestionOrder, '→', newQuestionOrder);
       setCurrentQuestionOrder(newQuestionOrder);
+
+      // ⭐ allResults가 있을 때만 타로 셔플 체크
+      if (allResults.length > 0) {
+        const targetResult = allResults.find(r => r.question_order === newQuestionOrder);
+        if (targetResult?.question_type === 'tarot' && !targetResult?.tarot_user_viewed) {
+          console.log('🎴 [UnifiedResultPage] URL 파라미터 변경 → 타로 미선택 → 셔플 페이지');
+          const fromParam = from ? `&from=${from}` : '';
+          const contentIdStr = contentId ? `&contentId=${contentId}` : '';
+          navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${newQuestionOrder}${contentIdStr}${fromParam}`, { replace: true });
+        }
+      }
     }
-  }, [questionOrderParam]);
+  }, [questionOrderParam, allResults, contentId, from, orderId, navigate]);
 
   // ⭐ 세션 체크
   useEffect(() => {
@@ -134,6 +145,13 @@ export default function UnifiedResultPage() {
     const loadData = async () => {
       if (!orderId || isCheckingSession || !hasValidSession) return;
 
+      // ⭐ 이미 데이터가 있으면 스킵 (중복 로드 방지)
+      if (allResults.length > 0) {
+        console.log('✅ [UnifiedResultPage] 데이터 이미 로드됨, 스킵');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       try {
@@ -185,10 +203,18 @@ export default function UnifiedResultPage() {
         console.log('📊 [UnifiedResultPage] 결과 데이터 로드 완료:', {
           count: resultsData.length,
           questionOrders: resultsData.map(r => r.question_order),
+          questionOrderTypes: resultsData.map(r => typeof r.question_order),
           firstQuestion: resultsData[0]?.question_type,
           targetQuestionOrder: currentQuestionOrder
         });
-        setAllResults(resultsData as ResultItem[]);
+
+        // ⭐ Type 안전성: question_order를 명시적으로 number로 변환
+        const normalizedResults = resultsData.map(r => ({
+          ...r,
+          question_order: Number(r.question_order)
+        })) as ResultItem[];
+
+        setAllResults(normalizedResults);
 
         // ⭐ contentId 설정
         if (!contentIdParam && orderData?.content_id) {
@@ -216,15 +242,9 @@ export default function UnifiedResultPage() {
     };
 
     loadData();
-  }, [orderId, isCheckingSession, hasValidSession, navigate, contentIdParam]);
+  }, [orderId, isCheckingSession, hasValidSession, navigate, contentIdParam, allResults.length]);
 
-  // ⭐ URL 파라미터 변경 시 currentQuestionOrder 동기화
-  useEffect(() => {
-    const newOrder = parseInt(questionOrderParam);
-    if (newOrder !== currentQuestionOrder && allResults.length > 0) {
-      setCurrentQuestionOrder(newOrder);
-    }
-  }, [questionOrderParam]);
+  // ⭐ (중복 제거됨 - 69-92번째 줄 useEffect에서 처리)
 
   // ⭐ 타로 이미지 프리로드
   const preloadTarotImages = (data: ResultItem[], currentOrder: number) => {
@@ -243,17 +263,19 @@ export default function UnifiedResultPage() {
   // ⭐ 현재 결과의 타로 이미지 로드
   const currentResult = allResults.find(r => r.question_order === currentQuestionOrder);
 
-  // 🔍 디버깅 로그
+  // 🔍 디버깅 로그 (Type Mismatch 체크 추가)
   console.log('🔍 [UnifiedResultPage] 렌더링 상태:', {
     currentQuestionOrder,
+    currentQuestionOrderType: typeof currentQuestionOrder,
     allResultsLength: allResults.length,
+    allResultsQuestionOrders: allResults.map(r => ({ order: r.question_order, type: typeof r.question_order })),
     currentResultExists: !!currentResult,
     currentResultQuestionOrder: currentResult?.question_order,
     questionType: currentResult?.question_type,
     isTarot: currentResult?.question_type === 'tarot',
     questionText: currentResult?.question_text?.substring(0, 30),
     gptResponseLength: currentResult?.gpt_response?.length || 0,
-    gptResponseStart: currentResult?.gpt_response?.substring(0, 50),
+    gptResponseStart: currentResult?.gpt_response?.substring(0, 50) || '(empty)',
     loading,
     isCheckingSession,
     hasValidSession
@@ -379,8 +401,8 @@ export default function UnifiedResultPage() {
   // ⭐ 결과 없음
   if (!currentResult) {
     return (
-      <div className="bg-white flex items-center justify-center min-h-screen w-full max-w-[440px] mx-auto">
-        <p className="text-[#999999]">풀이 결과를 불러올 수 없습니다.</p>
+      <div className="bg-white flex items-center justify-center min-h-screen w-full mx-auto" style={{ maxWidth: '440px' }}>
+        <p style={{ color: '#999999' }}>풀이 결과를 불러올 수 없습니다.</p>
       </div>
     );
   }
@@ -389,19 +411,34 @@ export default function UnifiedResultPage() {
   const isTarot = currentResult.question_type === 'tarot';
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col w-full max-w-[440px] mx-auto">
+    <div className="fixed inset-0 bg-white flex flex-col w-full mx-auto" style={{ maxWidth: '440px' }}>
       {/* Top Navigation */}
-      <div className="bg-white h-[52px] shrink-0 w-full z-20">
-        <div className="flex items-center justify-between px-[12px] h-full">
-          <div className="w-[44px] h-[44px] opacity-0" />
-          <h1 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[25.5px] tracking-[-0.36px] text-black text-center flex-1">
+      <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+        <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
+          <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+          <h1 
+            className="text-center flex-1"
+            style={{
+              fontFamily: 'Pretendard Variable, sans-serif',
+              fontWeight: 600,
+              fontSize: '18px',
+              lineHeight: '25.5px',
+              letterSpacing: '-0.36px',
+              color: '#000000'
+            }}
+          >
             상세 풀이
           </h1>
           <button
             onClick={handleClose}
-            className="group flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
+            className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+            style={{ width: '44px', height: '44px', borderRadius: '12px' }}
           >
-            <X className="w-[24px] h-[24px] text-[#848484] transition-transform duration-200 group-active:scale-90" strokeWidth={1.8} />
+            <X 
+              className="transition-transform duration-200 group-active:scale-90" 
+              style={{ width: '24px', height: '24px', color: '#848484' }}
+              strokeWidth={1.8} 
+            />
           </button>
         </div>
       </div>
@@ -409,30 +446,67 @@ export default function UnifiedResultPage() {
       {/* Scrollable Content Area - iOS 터치 스크롤 지원 */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto"
-        style={{ paddingBottom: '128px', WebkitOverflowScrolling: 'touch' }}
+        className="flex-1 overflow-y-auto"
+        style={{
+          minHeight: 0,
+          height: 'calc(100vh - 52px - 68px)', // viewport - top nav - bottom nav
+          paddingBottom: '128px',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y' // ⭐ 세로 스크롤 명시적 허용
+        }}
       >
-        <div className="h-[8px] shrink-0 w-full" />
+        <div className="shrink-0 w-full" style={{ height: '8px' }} />
 
         {/* Content */}
-        <div className="px-[20px] w-full">
+        <div className="w-full" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
           <div
             key={`result-${currentQuestionOrder}`}
-            className="bg-[#f9f9f9] rounded-[16px] p-[20px] w-full"
+            className="w-full"
+            style={{
+              minHeight: '500px',
+              backgroundColor: '#f9f9f9',
+              borderRadius: '16px',
+              padding: '20px'
+            }}
           >
               {/* Header */}
-              <div className="flex gap-[12px] items-center mb-[24px] w-full">
-                <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-[#48b2af] shrink-0">
+              <div 
+                className="flex items-center w-full"
+                style={{ gap: '12px', marginBottom: '24px' }}
+              >
+                <p 
+                  className="shrink-0"
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 600,
+                    fontSize: '20px',
+                    lineHeight: '28px',
+                    letterSpacing: '-0.2px',
+                    color: '#48b2af'
+                  }}
+                >
                   {String(currentResult.question_order).padStart(2, '0')}
                 </p>
-                <div className="flex-1 h-0 border-t border-[#e7e7e7]" />
+                <div className="flex-1 h-0 border-t" style={{ borderColor: '#e7e7e7' }} />
               </div>
 
               {/* 타로: 카드 이미지 + 카드명 */}
               {isTarot && (
-                <div className="flex flex-col items-center gap-[24px] mb-[24px] w-full">
+                <div 
+                  className="flex flex-col items-center w-full"
+                  style={{ gap: '24px', marginBottom: '24px' }}
+                >
                   {/* 카드 이미지 */}
-                  <div className="relative h-[260px] w-[150px] rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] overflow-hidden bg-[#f0f0f0] shrink-0">
+                  <div 
+                    className="relative overflow-hidden shrink-0"
+                    style={{
+                      height: '260px',
+                      width: '150px',
+                      backgroundColor: '#f0f0f0',
+                      boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
+                      borderRadius: '16px'
+                    }}
+                  >
                     <img
                       src={cardImageUrl}
                       alt={currentResult.tarot_card_name || 'Tarot Card'}
@@ -464,7 +538,17 @@ export default function UnifiedResultPage() {
 
                   {/* 카드명 */}
                   {currentResult.tarot_card_name && (
-                    <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] text-center w-full break-keep">
+                    <p 
+                      className="text-center w-full break-keep"
+                      style={{
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: 700,
+                        fontSize: '18px',
+                        lineHeight: '24px',
+                        letterSpacing: '-0.36px',
+                        color: '#151515'
+                      }}
+                    >
                       {currentResult.tarot_card_name}
                     </p>
                   )}
@@ -473,19 +557,46 @@ export default function UnifiedResultPage() {
 
               {/* 사주: 질문 제목 */}
               {!isTarot && (
-                <div className="mb-[24px] w-full">
-                  <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[18px] leading-[24px] tracking-[-0.36px] text-[#151515] break-keep">
+                <div className="w-full" style={{ marginBottom: '24px' }}>
+                  <p 
+                    className="break-keep"
+                    style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontWeight: 700,
+                      fontSize: '18px',
+                      lineHeight: '24px',
+                      letterSpacing: '-0.36px',
+                      color: '#151515'
+                    }}
+                  >
                     {currentResult.question_text}
                   </p>
                 </div>
               )}
 
               {/* AI 응답 */}
-              <div className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] leading-[28.5px] tracking-[-0.32px] text-[#151515] whitespace-pre-wrap break-words w-full">
+              <div 
+                className="whitespace-pre-wrap break-words w-full"
+                style={{
+                  fontFamily: 'Pretendard Variable, sans-serif',
+                  fontWeight: 400,
+                  fontSize: '16px',
+                  lineHeight: '28.5px',
+                  letterSpacing: '-0.32px',
+                  color: '#151515'
+                }}
+              >
                 {(currentResult.gpt_response || '').split(/(\*\*.*?\*\*)/g).map((part, index) => {
                   if (part.startsWith('**') && part.endsWith('**')) {
                     return (
-                      <span key={index} className="font-['Pretendard_Variable:Bold',sans-serif] font-bold text-[17px]">
+                      <span 
+                        key={index}
+                        style={{
+                          fontFamily: 'Pretendard Variable, sans-serif',
+                          fontWeight: 700,
+                          fontSize: '17px'
+                        }}
+                      >
                         {part.slice(2, -2)}
                       </span>
                     );
@@ -493,7 +604,7 @@ export default function UnifiedResultPage() {
                   return part;
                 })}
               </div>
-            </div>
+          </div>
         </div>
       </div>
 
@@ -524,31 +635,75 @@ export default function UnifiedResultPage() {
       {isWrongAccount && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-[320px] bg-white rounded-[20px] overflow-hidden border border-[#f3f3f3]">
-            <div className="px-[28px] py-[20px]">
-              <div className="flex flex-col gap-[8px] items-center text-center">
-                <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[17px] leading-[25.5px] tracking-[-0.34px] text-black">
+          <div 
+            className="relative bg-white overflow-hidden border" 
+            style={{ width: '320px', borderColor: '#f3f3f3', borderRadius: '20px' }}
+          >
+            <div style={{ paddingLeft: '28px', paddingRight: '28px', paddingTop: '20px', paddingBottom: '20px' }}>
+              <div className="flex flex-col items-center text-center" style={{ gap: '8px' }}>
+                <p 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 600,
+                    fontSize: '17px',
+                    lineHeight: '25.5px',
+                    letterSpacing: '-0.34px',
+                    color: '#000000'
+                  }}
+                >
                   다른 계정으로 구매한 운세예요
                 </p>
-                <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[20px] tracking-[-0.3px] text-[#868686]">
+                <p 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    lineHeight: '20px',
+                    letterSpacing: '-0.3px',
+                    color: '#868686'
+                  }}
+                >
                   운세를 구매한 계정으로<br />다시 로그인해 주세요.
                 </p>
               </div>
             </div>
-            <div className="px-[24px] pb-[20px] flex flex-col gap-[8px]">
+            <div 
+              className="flex flex-col"
+              style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '20px', gap: '8px' }}
+            >
               <button
                 onClick={handleLogoutAndRetry}
-                className="w-full h-[48px] bg-[#48b2af] rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                style={{ height: '48px', backgroundColor: '#48b2af', borderRadius: '12px' }}
               >
-                <span className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] leading-[25px] tracking-[-0.32px] text-white">
+                <span 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '25px',
+                    letterSpacing: '-0.32px',
+                    color: '#ffffff'
+                  }}
+                >
                   다른 계정으로 로그인
                 </span>
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="w-full h-[48px] bg-[#f5f5f5] rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                style={{ height: '48px', backgroundColor: '#f5f5f5', borderRadius: '12px' }}
               >
-                <span className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] leading-[25px] tracking-[-0.32px] text-[#666666]">
+                <span 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '25px',
+                    letterSpacing: '-0.32px',
+                    color: '#666666'
+                  }}
+                >
                   홈으로 이동
                 </span>
               </button>

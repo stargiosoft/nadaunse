@@ -5,6 +5,7 @@ import { MasterContent } from '../types/masterContent';
 import { supabase } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
 import { preloadImages } from '../lib/imagePreloader';
+import { preloadThumbnails } from '../lib/thumbnailCache';
 import HomeSkeleton from '../components/skeletons/HomeSkeleton';
 import { DotLoading } from '../components/ui/PageLoader';
 import svgPaths from "../imports/svg-94402brxf8";
@@ -910,9 +911,16 @@ export default function HomePage() {
 
             if (imageUrls.length > 0) {
               console.log(`🖼️ [Prefetch] ${imageUrls.length}개 이미지 프리로드 시작...`);
+
+              // ⚡ 즉시 로드 (imagePreloader - 브라우저 캐시용)
               await preloadImages(imageUrls, 'low');
               imageUrls.forEach(url => preloadedUrlsRef.current.add(url));
               console.log(`✅ [Prefetch] ${imageUrls.length}개 이미지 프리로드 완료`);
+
+              // 🗄️ Cache API 저장 (백그라운드, 완료 대기 안 함)
+              preloadThumbnails(newContents).catch(err => {
+                console.log('⚠️ [Prefetch] Cache API 저장 실패 (무시):', err);
+              });
             }
           }
 
@@ -1277,12 +1285,19 @@ export default function HomePage() {
         console.log('🎯 [Featured Preload] Featured 이미지 우선 프리로드:', featuredUrl);
         preloadImages([featuredUrl], 'high');
         preloadedUrlsRef.current.add(featuredUrl);
+
+        // 🗄️ Featured 콘텐츠 Cache API 저장 (백그라운드)
+        preloadThumbnails([featuredContent]).catch(err => {
+          console.log('⚠️ [Featured Preload] Cache API 저장 실패 (무시):', err);
+        });
       }
 
       // 추가로 다음 5개 콘텐츠의 썸네일도 미리 로드 (중복 제외)
-      const nextImages = allContents
+      const nextContents = allContents
         .filter(c => c.id !== featuredContent.id)
-        .slice(0, 5)
+        .slice(0, 5);
+
+      const nextImages = nextContents
         .map(c => c.thumbnail_url)
         .filter((url): url is string => Boolean(url) && !preloadedUrlsRef.current.has(url));
 
@@ -1290,6 +1305,11 @@ export default function HomePage() {
         console.log(`🖼️ [Next Images Preload] 다음 ${nextImages.length}개 이미지 프리로드`);
         preloadImages(nextImages, 'low');
         nextImages.forEach(url => preloadedUrlsRef.current.add(url));
+
+        // 🗄️ 다음 5개 콘텐츠 Cache API 저장 (백그라운드)
+        preloadThumbnails(nextContents).catch(err => {
+          console.log('⚠️ [Next Images Preload] Cache API 저장 실패 (무시):', err);
+        });
       }
     }
   }, [featuredContent, allContents]);

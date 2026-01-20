@@ -1,11 +1,15 @@
 /**
  * 알림톡 정보 입력 페이지
  * - 결제 완료 후 알림톡 수신을 위한 휴대폰 번호 입력
- * - 퍼블리싱 전용 (로직 미구현)
+ * - 무료 콘텐츠에서 사주 정보를 입력한 경우 phone_number가 null일 수 있어, 유료 결제 후 최초 1회 입력받음
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { NavigationHeader } from './NavigationHeader';
+import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { getTarotCardsForQuestions } from '../lib/tarotCards';
 
 // 카카오 말풍선 아이콘 SVG
 const KakaoIcon = () => (
@@ -21,27 +25,260 @@ const KakaoIcon = () => (
 
 interface AlimtalkInfoInputPageProps {
   onBack: () => void;
-  onNext?: (phoneNumber: string) => void;
+  orderId: string;
+  contentId: string;
+  selectedSajuId: string;
 }
 
-export default function AlimtalkInfoInputPage({ onBack, onNext }: AlimtalkInfoInputPageProps) {
+export default function AlimtalkInfoInputPage({
+  onBack,
+  orderId,
+  contentId,
+  selectedSajuId
+}: AlimtalkInfoInputPageProps) {
+  const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 휴대폰 번호 유효성 검사 (숫자만, 10-11자리)
-  const isValidPhoneNumber = /^[0-9]{10,11}$/.test(phoneNumber);
+  // 휴대폰 번호 입력 핸들러 (자동 포매팅 - BirthInfoInput.tsx와 동일)
+  const handlePhoneNumberChange = (value: string) => {
+    // 숫자만 입력 가능
+    const numbers = value.replace(/[^\d]/g, '');
 
-  // 휴대폰 번호 입력 핸들러 (숫자만 허용)
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, '');
-    if (value.length <= 11) {
-      setPhoneNumber(value);
+    // 11자리 제한
+    if (numbers.length > 11) return;
+
+    // 자동 포매팅: 010-0000-0000
+    let formatted = numbers;
+    if (numbers.length >= 4) {
+      formatted = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}${numbers.length > 7 ? `-${numbers.slice(7, 11)}` : ''}`;
+    }
+
+    setPhoneNumber(formatted);
+
+    // 11자리 입력 완료 시 유효성 검사
+    if (numbers.length === 11) {
+      if (!numbers.startsWith('01')) {
+        setError('휴대폰 번호를 다시 확인해 주세요.');
+      } else {
+        setError(undefined);
+      }
+    } else if (numbers.length > 0 && numbers.length < 11) {
+      // 입력 중일 때는 에러 표시 안함
+      setError(undefined);
+    } else {
+      setError(undefined);
     }
   };
 
+  // 휴대폰 번호 유효성 검사 (11자리, 01로 시작)
+  const isValidPhoneNumber = () => {
+    const phoneNumbers = phoneNumber.replace(/[^\d]/g, '');
+    return phoneNumbers.length === 11 && phoneNumbers.startsWith('01');
+  };
+
   // 다음 버튼 클릭 핸들러
-  const handleNext = () => {
-    if (isValidPhoneNumber && onNext) {
-      onNext(phoneNumber);
+  const handleNext = async () => {
+    if (!isValidPhoneNumber()) {
+      setError('휴대폰 번호를 정확하게 입력해 주세요.');
+      return;
+    }
+
+    if (isSubmitting) {
+      console.warn('⚠️ [AlimtalkInfoInput] 이미 처리 중입니다.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      console.log('🚀 [AlimtalkInfoInput] 휴대폰 번호 저장 시작');
+
+      // ⭐ 1단계: 현재 사용자 확인
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error('로그인이 필요합니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ⭐ 2단계: 주문 소유자 확인 (보안 검증)
+      console.log('🔍 [AlimtalkInfoInput] 주문 소유자 확인:', orderId);
+      const { data: orderData, error: orderCheckError } = await supabase
+        .from('orders')
+        .select('user_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderCheckError || !orderData) {
+        console.error('❌ [AlimtalkInfoInput] 주문 조회 실패:', orderCheckError);
+        toast.error('주문 정보를 찾을 수 없습니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (orderData.user_id !== user.id) {
+        console.error('❌ [AlimtalkInfoInput] 다른 사용자의 주문:', {
+          orderUserId: orderData.user_id,
+          currentUserId: user.id
+        });
+        toast.error('잘못된 접근입니다. 본인의 주문만 접근할 수 있습니다.');
+        setIsSubmitting(false);
+        navigate('/', { replace: true });
+        return;
+      }
+
+      console.log('✅ [AlimtalkInfoInput] 주문 소유자 확인 완료');
+
+      // ⭐ 3단계: notes='본인' 사주 찾기
+      const { data: mySajuList, error: sajuError } = await supabase
+        .from('saju_records')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('notes', '본인')
+        .limit(1);
+
+      if (sajuError) {
+        console.error('❌ [AlimtalkInfoInput] 본인 사주 조회 실패:', sajuError);
+        toast.error('사주 정보를 찾을 수 없습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!mySajuList || mySajuList.length === 0) {
+        console.error('❌ [AlimtalkInfoInput] 본인 사주가 없습니다.');
+        toast.error('본인 사주 정보가 없습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const mySajuId = mySajuList[0].id;
+
+      // ⭐ 4단계: notes='본인' 사주의 phone_number 업데이트 (하이픈 제거하여 숫자만 저장)
+      const normalizedPhoneNumber = phoneNumber.replace(/[^\d]/g, '');
+
+      const { error: updateError } = await supabase
+        .from('saju_records')
+        .update({ phone_number: normalizedPhoneNumber })
+        .eq('id', mySajuId)
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('❌ [AlimtalkInfoInput] 휴대폰 번호 업데이트 실패:', updateError);
+        toast.error('휴대폰 번호 저장에 실패했습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('✅ [AlimtalkInfoInput] 휴대폰 번호 업데이트 완료:', normalizedPhoneNumber);
+
+      // ⭐ 캐시 무효화
+      localStorage.removeItem('primary_saju');
+      localStorage.removeItem('saju_records_cache');
+
+      // ⭐ 5단계: 선택된 사주 정보 조회 및 orders 테이블 업데이트
+      console.log('🔍 [AlimtalkInfoInput] 선택된 사주 정보 조회:', selectedSajuId);
+      const { data: selectedSaju, error: sajuFetchError } = await supabase
+        .from('saju_records')
+        .select('full_name, gender, birth_date, birth_time')
+        .eq('id', selectedSajuId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (sajuFetchError || !selectedSaju) {
+        console.error('❌ [AlimtalkInfoInput] 선택된 사주 조회 실패:', sajuFetchError);
+        toast.error('사주 정보를 찾을 수 없습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('🔄 [AlimtalkInfoInput] orders 테이블 업데이트...');
+      const { error: orderUpdateError } = await supabase
+        .from('orders')
+        .update({
+          saju_record_id: selectedSajuId,
+          full_name: selectedSaju.full_name,
+          gender: selectedSaju.gender,
+          birth_date: selectedSaju.birth_date,
+          birth_time: selectedSaju.birth_time,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .eq('user_id', user.id);
+
+      if (orderUpdateError) {
+        console.error('❌ [AlimtalkInfoInput] orders 업데이트 실패:', orderUpdateError);
+        toast.error('주문 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('✅ [AlimtalkInfoInput] orders 테이블 업데이트 완료');
+
+      // ⭐ 6단계: 즉시 로딩 페이지로 이동
+      console.log('🚀 [AlimtalkInfoInput] 로딩 페이지로 이동');
+      navigate(`/loading?contentId=${contentId}&orderId=${orderId}`);
+
+      // ⭐ 7단계: 백그라운드에서 AI 응답 생성 시작
+      console.log('🔄 [AlimtalkInfoInput] 백그라운드 AI 생성 시작...');
+
+      // 타로 콘텐츠인지 확인하고 타로 카드 선택 (병렬 실행)
+      const [contentResult, questionsResult] = await Promise.all([
+        supabase
+          .from('master_contents')
+          .select('category_main')
+          .eq('id', contentId)
+          .single(),
+        supabase
+          .from('master_content_questions')
+          .select('question_type')
+          .eq('content_id', contentId)
+          .eq('question_type', 'tarot')
+      ]);
+
+      const contentData = contentResult.data;
+      const questionsData = questionsResult.data;
+
+      const isTarotContent = contentData?.category_main?.includes('타로') || contentData?.category_main?.toLowerCase() === 'tarot';
+      const tarotQuestionCount = questionsData?.length || 0;
+
+      const requestBody: Record<string, unknown> = {
+        contentId: contentId,
+        orderId: orderId,
+        sajuRecordId: selectedSajuId,
+      };
+
+      // 타로 콘텐츠이고 타로 질문이 있으면 랜덤 카드 선택
+      if (isTarotContent && tarotQuestionCount > 0) {
+        const tarotCards = getTarotCardsForQuestions(tarotQuestionCount);
+        requestBody.tarotCards = tarotCards;
+        console.log('🎴 [타로] 랜덤 카드 선택:', tarotCards);
+      }
+
+      console.log('📤 [AlimtalkInfoInput] 백그라운드 Edge Function 호출:', requestBody);
+
+      // ⭐ 백그라운드에서 실행 (await 없이)
+      supabase.functions
+        .invoke('generate-content-answers', {
+          body: requestBody
+        })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('❌ [백그라운드] AI 생성 실패:', error);
+          } else {
+            console.log('✅ [백그라운드] AI 생성 성공:', data);
+          }
+        })
+        .catch((err) => {
+          console.error('❌ [백그라운드] AI 생성 오류:', err);
+        });
+
+    } catch (error) {
+      console.error('❌ [AlimtalkInfoInput] 오류:', error);
+      toast.error('처리 중 오류가 발생했습니다.');
+      setIsSubmitting(false);
     }
   };
 
@@ -132,7 +369,7 @@ export default function AlimtalkInfoInputPage({ onBack, onNext }: AlimtalkInfoIn
                 style={{
                   height: '56px',
                   backgroundColor: '#ffffff',
-                  border: '1px solid #e7e7e7',
+                  border: `1px solid ${error ? '#e87878' : '#e7e7e7'}`,
                   borderRadius: '16px',
                   padding: '0 12px',
                 }}
@@ -140,10 +377,10 @@ export default function AlimtalkInfoInputPage({ onBack, onNext }: AlimtalkInfoIn
                 <input
                   type="tel"
                   inputMode="numeric"
-                  pattern="[0-9]*"
+                  pattern="[0-9-]*"
                   value={phoneNumber}
-                  onChange={handlePhoneNumberChange}
-                  placeholder="'-'하이픈 없이 숫자만 입력해 주세요"
+                  onChange={(e) => handlePhoneNumberChange(e.target.value)}
+                  placeholder="010-1234-5678"
                   className="w-full outline-none bg-transparent"
                   style={{
                     fontFamily: 'Pretendard Variable, sans-serif',
@@ -155,6 +392,24 @@ export default function AlimtalkInfoInputPage({ onBack, onNext }: AlimtalkInfoIn
                   }}
                 />
               </div>
+
+              {/* 에러 메시지 */}
+              {error && (
+                <div style={{ padding: '0 4px' }}>
+                  <p
+                    style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontSize: '12px',
+                      fontWeight: 400,
+                      lineHeight: '16px',
+                      letterSpacing: '-0.24px',
+                      color: '#e87878',
+                    }}
+                  >
+                    {error}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -169,13 +424,13 @@ export default function AlimtalkInfoInputPage({ onBack, onNext }: AlimtalkInfoIn
           <div style={{ padding: '12px 20px' }}>
             <button
               onClick={handleNext}
-              disabled={!isValidPhoneNumber}
+              disabled={!isValidPhoneNumber() || isSubmitting}
               className="w-full flex items-center justify-center transition-colors"
               style={{
                 height: '56px',
                 borderRadius: '16px',
-                backgroundColor: isValidPhoneNumber ? '#41a09e' : '#f8f8f8',
-                cursor: isValidPhoneNumber ? 'pointer' : 'not-allowed',
+                backgroundColor: (isValidPhoneNumber() && !isSubmitting) ? '#41a09e' : '#f8f8f8',
+                cursor: (isValidPhoneNumber() && !isSubmitting) ? 'pointer' : 'not-allowed',
                 border: 'none',
               }}
             >
@@ -186,10 +441,10 @@ export default function AlimtalkInfoInputPage({ onBack, onNext }: AlimtalkInfoIn
                   fontWeight: 500,
                   lineHeight: '25px',
                   letterSpacing: '-0.32px',
-                  color: isValidPhoneNumber ? '#ffffff' : '#b7b7b7',
+                  color: (isValidPhoneNumber() && !isSubmitting) ? '#ffffff' : '#b7b7b7',
                 }}
               >
-                다음
+                {isSubmitting ? '처리 중...' : '다음'}
               </span>
             </button>
           </div>

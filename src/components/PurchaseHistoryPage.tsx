@@ -188,20 +188,21 @@ export default function PurchaseHistoryPage() {
       // ⭐ 백그라운드에서 타로 이미지 프리로드 (완료 대기 없음)
       if (data && data.length > 0) {
         console.log('🎴 [구매내역] 백그라운드 타로 프리로드 시작...');
-        
+
         // 완료된 주문만 필터링
-        const completedOrders = data.filter((order: PurchaseItem) => 
+        const completedOrders = data.filter((order: PurchaseItem) =>
           order.pstatus === 'completed'
         );
-        
-        // 각 주문의 타로 이미지 프리로드 (병렬 처리, 완료 대기 안함)
-        completedOrders.forEach((order: PurchaseItem) => {
+
+        // 최근 10개 주문만 프리로드 (나머지는 클릭 시 로드)
+        const recentOrders = completedOrders.slice(0, 10);
+        recentOrders.forEach(order => {
           preloadTarotImages(order.id, supabaseUrl).catch(err => {
-            console.log(`⚠️ [구매내역] ${order.id} 타로 프리로드 실패 (무시):`, err);
+            console.log(`⚠️ [구매내역] ${order.id} 타로 프리로드 실패:`, err);
           });
         });
-        
-        console.log(`✅ [구매내역] ${completedOrders.length}개 주문의 타로 프리로드 백그라운드 시작`);
+
+        console.log(`✅ [구매내역] 최근 ${recentOrders.length}개 주문 타로 프리로드 시작 (총 ${completedOrders.length}개 중)`);
       }
     } catch (err) {
       console.error('❌ 구매내역 로드 에러:', err);
@@ -243,34 +244,33 @@ export default function PurchaseHistoryPage() {
       console.log('🔍 [구매내역] 유료 콘텐츠 상태 체크 시작:', item.id);
 
       try {
-        // 1️⃣ 전체 질문 개수 조회
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('master_content_questions')
-          .select('id')
-          .eq('content_id', item.content_id);
+        // 1️⃣ 병렬로 질문 개수 & 답변 개수 조회
+        const [questionsResult, resultsResult] = await Promise.all([
+          supabase
+            .from('master_content_questions')
+            .select('id', { count: 'exact', head: true })
+            .eq('content_id', item.content_id),
+          supabase
+            .from('order_results')
+            .select('id, orders!inner(user_id)', { count: 'exact', head: true })
+            .eq('order_id', item.id)
+        ]);
 
-        if (questionsError) {
-          console.error('❌ [구매내역] 질문 개수 조회 실패:', questionsError);
+        // 에러 핸들링
+        if (questionsResult.error) {
+          console.error('❌ [구매내역] 질문 개수 조회 실패:', questionsResult.error);
           // 에러 시 일단 통합 결과 페이지로 이동 (from=purchase 포함)
           navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
           return;
         }
 
-        const totalQuestions = questionsData?.length || 0;
-        console.log(`📋 [구매내역] 전체 질문 개수: ${totalQuestions}`);
-
-        // 2️⃣ 생성 완료된 답변 개수 조회 (RLS 통과를 위해 orders 조인)
-        const { data: resultsData, error: resultsError } = await supabase
-          .from('order_results')
-          .select('id, orders!inner(user_id)')
-          .eq('order_id', item.id);
-
-        if (resultsError) {
-          console.error('❌ [구매내역] order_results 조회 실패:', resultsError);
+        if (resultsResult.error) {
+          console.error('❌ [구매내역] order_results 조회 실패:', resultsResult.error);
         }
 
-        const completedAnswers = resultsData?.length || 0;
-        console.log(`📊 [구매내역] 완료된 답변 개수: ${completedAnswers} / ${totalQuestions}`);
+        const totalQuestions = questionsResult.count || 0;
+        const completedAnswers = resultsResult.count || 0;
+        console.log(`📋 [구매내역] 병렬 쿼리 완료 - 전체: ${totalQuestions}, 완료: ${completedAnswers}`);
 
         // 3️⃣ order_results가 있으면 → 결과 페이지 (saju_record_id null이어도 OK)
         // orders 테이블에 사주 스냅샷(full_name, gender, birth_date, birth_time)이 저장되어 있음

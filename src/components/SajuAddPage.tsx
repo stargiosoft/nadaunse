@@ -145,14 +145,11 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
   }, [editMode, sajuData, sajuInfo]);
 
   const relationshipOptions = [
-    '친구',
-    '가족',
     '연인',
-    '엄마',
-    '아빠',
-    '형제',
-    '자매',
-    '직장동료',
+    '가족',
+    '친구',
+    '지인',
+    '동료',
     '기타'
   ];
 
@@ -859,20 +856,19 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         {createPortal(
           <AnimatePresence>
             {showRelationshipPicker && (
-              <div className="fixed inset-0 z-[9999] flex items-end justify-center pointer-events-none" style={{ minHeight: '100vh', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="fixed inset-0 z-[9999] pointer-events-none">
                 {/* Backdrop */}
-                <motion.div 
-                  className="fixed inset-0 bg-black/50 touch-none pointer-events-auto" 
+                <motion.div
+                  className="fixed inset-0 bg-black/50 touch-none pointer-events-auto"
                   onClick={() => setShowRelationshipPicker(false)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  style={{ position: 'fixed', height: '100vh', top: 0, left: 0, right: 0, bottom: 0 }}
                 />
-                
+
                 {/* Bottom Sheet */}
-                <motion.div 
-                  className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col max-h-[94vh] pointer-events-auto z-[10000]"
+                <motion.div
+                  className="fixed bottom-0 left-0 right-0 w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col pointer-events-auto z-[10000]"
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -904,7 +900,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                   </div>
 
                   {/* Options List */}
-                  <div className="flex-1 overflow-y-auto px-[24px] pb-[100px]">
+                  <div
+                    className="overflow-y-auto px-[24px] pb-[24px]"
+                    style={{
+                      WebkitOverflowScrolling: 'touch'
+                    }}
+                  >
                     <div className="flex flex-col">
                       {relationshipOptions.map((option, index) => (
                         <div key={option}>

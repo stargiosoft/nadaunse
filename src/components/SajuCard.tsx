@@ -51,15 +51,17 @@ const formatBirthDate = (birthDate: string, calendarType?: string): string => {
 
 /**
  * 구분자 (|) 컴포넌트
+ * ⚠️ CSS div 사용: SVG subpixel rendering 이슈 방지 (모바일에서 두께 불일치)
  */
 const Separator = () => (
-  <div className="h-[6px] relative shrink-0 w-[1px]">
-    <div className="absolute inset-[-8.33%_-0.4px]">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-        <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-      </svg>
-    </div>
-  </div>
+  <div
+    className="h-[6px] shrink-0"
+    style={{
+      width: '1px',
+      backgroundColor: '#D4D4D4',
+      borderRadius: '0.5px'
+    }}
+  />
 );
 
 export default function SajuCard({

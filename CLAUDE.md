@@ -142,6 +142,131 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 
 **프로젝트 규모** (컴포넌트 51개, 페이지 38개, Edge Functions 20개)에서 Serena는 필수입니다.
 
+### 10. 캐싱 전략 (Cache Strategy)
+
+**새로운 기능을 개발할 때 항상 캐싱을 염두에 두세요.**
+
+#### 캐시 계층 구조 (빠른 순서)
+
+```
+1. Memory Cache (Map)          → 0.01ms (즉시)
+2. Cache API (Service Worker)  → 10-50ms (영구 저장, 50MB+)
+3. HTTP Cache (Browser)        → Vercel 설정 필요
+4. localStorage                → 5-10MB 제한, 메타데이터용
+5. sessionStorage              → 임시 상태, 탭 닫으면 사라짐
+```
+
+#### 리소스 유형별 캐싱 전략
+
+| 리소스 유형 | 캐싱 방법 | 만료 시간 | 이유 |
+|------------|----------|----------|------|
+| **타로 카드 이미지 (78장)** | Cache API + 메모리 캐시 | 7일 | 절대 안 바뀜, 적극적 캐싱 |
+| **콘텐츠 썸네일** | Cache API + 메모리 캐시 | 1일 | 가끔 바뀜, 업데이트 반영 |
+| **무료 콘텐츠 목록** | localStorage | 5분 | 자주 바뀔 수 있음 |
+| **사주 정보 목록** | localStorage | 세션 유지 | 사용자가 추가/수정 가능 |
+| **스크롤 위치** | sessionStorage | 세션 동안 | 탭 닫으면 불필요 |
+
+#### 필수 패턴
+
+**1) Cache API 사용 시 (이미지 등)**
+```typescript
+// ✅ 싱글톤 + 메모리 캐시 + 배치 처리 패턴 사용
+let cacheInstance: Cache | null = null;
+const memoryCache = new Map<string, { url: string; cachedAt: number }>();
+
+async function getCacheInstance(): Promise<Cache> {
+  if (cacheInstance) return cacheInstance;
+  cacheInstance = await caches.open('my-cache-v1');
+  return cacheInstance;
+}
+
+// 메모리 캐시 우선 체크 (0.01ms)
+const cached = memoryCache.get(key);
+if (cached && Date.now() - cached.cachedAt < EXPIRY_MS) {
+  return cached.url;
+}
+
+// Cache API 확인 (10-50ms)
+const cache = await getCacheInstance();
+const response = await cache.match(url);
+```
+
+**2) HTTP 캐시 설정 (vercel.json)**
+```json
+{
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [{
+        "key": "Cache-Control",
+        "value": "public, max-age=31536000, immutable"
+      }]
+    }
+  ]
+}
+```
+
+**3) localStorage 사용 시**
+```typescript
+// ✅ 만료 시간 포함
+const cacheKey = 'my_cache_v1';
+const cached = localStorage.getItem(cacheKey);
+if (cached) {
+  const { data, timestamp } = JSON.parse(cached);
+  if (Date.now() - timestamp < EXPIRY_MS) {
+    return data;
+  }
+}
+
+// 캐시 저장
+localStorage.setItem(cacheKey, JSON.stringify({
+  data: myData,
+  timestamp: Date.now()
+}));
+```
+
+#### 캐싱 체크리스트
+
+새로운 기능 개발 시:
+- [ ] 이 데이터는 얼마나 자주 바뀌나? (캐시 만료 시간 결정)
+- [ ] 데이터 크기가 얼마나 되나? (localStorage 5-10MB vs Cache API 50MB+)
+- [ ] 오프라인 지원이 필요한가? (Cache API 사용)
+- [ ] 브라우저 캐시 헤더 설정 필요한가? (vercel.json 업데이트)
+- [ ] 동시 요청이 많은가? (배치 처리 필요)
+
+#### 성능 최적화 패턴
+
+**❌ 잘못된 예시**:
+```typescript
+// 매번 caches.open() 호출 (느림)
+for (const item of items) {
+  const cache = await caches.open('my-cache');
+  await cache.put(item.url, response);
+}
+
+// 132개 동시 fetch (브라우저 연결 풀 초과)
+items.forEach(item => fetch(item.url));
+```
+
+**✅ 올바른 예시**:
+```typescript
+// 싱글톤 Cache 인스턴스 사용
+const cache = await getCacheInstance();
+
+// 배치 처리 (최대 6개씩)
+for (let i = 0; i < items.length; i += 6) {
+  const batch = items.slice(i, i + 6);
+  await Promise.allSettled(batch.map(item => fetch(item.url)));
+}
+```
+
+#### 참고 파일
+
+- **타로 카드 캐시**: `src/lib/tarotImageCache.ts` (싱글톤 + 메모리 + 배치 처리 예시)
+- **콘텐츠 썸네일 캐시**: `src/lib/thumbnailCache.ts` (동일 패턴)
+- **HTTP 캐시 설정**: `vercel.json` (JS/CSS 1년, 이미지 1일)
+- **상세 문서**: `DECISIONS.md` → "2026-01-20 캐싱 전략" 섹션
+
 ---
 
 ## 핵심 라이브러리

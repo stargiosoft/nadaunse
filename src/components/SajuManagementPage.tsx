@@ -530,25 +530,28 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
 
         if (fullFetchError) throw fullFetchError;
 
-        for (const order of fullOrders || []) {
-          const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-              full_name: order.full_name || selectedSajuForKebab.full_name,
-              gender: order.gender || selectedSajuForKebab.gender,
-              birth_date: order.birth_date || selectedSajuForKebab.birth_date,
-              birth_time: order.birth_time || selectedSajuForKebab.birth_time,
-              saju_record_id: null // FK 해제
-            })
-            .eq('id', order.id);
-
-          if (updateError) {
-            console.error('❌ [사주삭제] 주문 업데이트 실패:', order.id, updateError);
-            throw updateError;
-          }
-
-          console.log('✅ [사주삭제] 주문 업데이트 완료:', order.id);
-        }
+        // ⚡ 병렬 처리로 성능 개선
+        await Promise.all(
+          (fullOrders || []).map(order =>
+            supabase
+              .from('orders')
+              .update({
+                full_name: order.full_name || selectedSajuForKebab.full_name,
+                gender: order.gender || selectedSajuForKebab.gender,
+                birth_date: order.birth_date || selectedSajuForKebab.birth_date,
+                birth_time: order.birth_time || selectedSajuForKebab.birth_time,
+                saju_record_id: null // FK 해제
+              })
+              .eq('id', order.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error('❌ [사주삭제] 주문 업데이트 실패:', order.id, error);
+                  throw error;
+                }
+                console.log('✅ [사주삭제] 주문 업데이트 완료:', order.id);
+              })
+          )
+        );
       }
 
       // 3단계: saju_records 삭제 (user_id 조건 추가로 RLS 우회)
@@ -604,8 +607,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         }
       }
 
-      // ⭐ 캐시 선행 업데이트: 삭제 후 새 대표 사주 조회해서 캐시에 저장
-      // → ProfilePage에서 백그라운드 API 호출 없이 즉시 표시
+      // ⭐ 캐시 선행 업데이트 + 메모리 state 동기화
       const { data: updatedSajuList, error: fetchUpdatedError } = await supabase
         .from('saju_records')
         .select('*')
@@ -617,11 +619,22 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         const newPrimary = updatedSajuList.find((s: any) => s.is_primary) || updatedSajuList[0];
         localStorage.setItem('primary_saju', JSON.stringify(newPrimary));
         localStorage.setItem('saju_records_cache', JSON.stringify(updatedSajuList));
-        console.log('✅ [사주삭제] 캐시 선행 업데이트 완료 - 새 대표 사주:', newPrimary.full_name);
+
+        // ⚡ 메모리 state 즉시 업데이트 (loadSajuList 호출 불필요)
+        setSajuList(updatedSajuList);
+        setMySaju(updatedSajuList.find((s: any) => s.notes === '본인') || null);
+        setOtherSajuList(updatedSajuList.filter((s: any) => s.notes !== '본인'));
+        setSelectedSajuId(newPrimary.id);
+
+        console.log('✅ [사주삭제] 캐시 + 메모리 state 업데이트 완료 - 새 대표 사주:', newPrimary.full_name);
       } else if (updatedSajuList && updatedSajuList.length === 0) {
         // 모든 사주가 삭제된 경우
         localStorage.removeItem('primary_saju');
         localStorage.removeItem('saju_records_cache');
+        setSajuList([]);
+        setMySaju(null);
+        setOtherSajuList([]);
+        setSelectedSajuId(null);
         console.log('🗑️ [사주삭제] 모든 사주 삭제됨 - 캐시 무효화');
       } else {
         // 조회 실패 시 기존 방식대로 무효화
@@ -630,9 +643,8 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         console.log('🗑️ [사주삭제] primary_saju, saju_records_cache 캐시 무효화');
       }
 
-      // 4단계: 토스트 + 목록 새로고침
+      // 4단계: 토스트 표시
       toast.success('삭제되었습니다.');
-      await loadSajuList();
       setSelectedSajuForKebab(null);
     } catch (error) {
       console.error('❌ [사주삭제] 삭제 실패:', error);
@@ -859,7 +871,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     </p>
                     <div 
                       onClick={(event) => handleKebabClick(event, mySaju)}
-                      className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
+                      className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
                     >
                       <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
@@ -878,13 +890,14 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
                       </p>
-                      <div className="h-[6px] relative shrink-0 w-[0.5px]">
-                        <div className="absolute inset-[-8.33%_-0.4px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                            <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                          </svg>
-                        </div>
-                      </div>
+                      <div
+                        className="h-[6px] shrink-0"
+                        style={{
+                          width: '1px',
+                          backgroundColor: '#D4D4D4',
+                          borderRadius: '0.5px'
+                        }}
+                      />
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {(() => {
                           const dateOnly = mySaju.birth_date.split('T')[0];
@@ -892,13 +905,14 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                           return getConstellation(parseInt(month), parseInt(day));
                         })()}
                       </p>
-                      <div className="h-[6px] relative shrink-0 w-[0.5px]">
-                        <div className="absolute inset-[-8.33%_-0.4px]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                            <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                          </svg>
-                        </div>
-                      </div>
+                      <div
+                        className="h-[6px] shrink-0"
+                        style={{
+                          width: '1px',
+                          backgroundColor: '#D4D4D4',
+                          borderRadius: '0.5px'
+                        }}
+                      />
                       <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                         {mySaju.gender === 'male' || mySaju.gender === '남' || mySaju.gender === '남성' ? '남성' : '여성'}
                       </p>
@@ -991,7 +1005,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         </p>
                         <div 
                           onClick={(event) => handleKebabClick(event, saju)}
-                          className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
+                          className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
                         >
                           <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
                             <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
@@ -1010,13 +1024,14 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
                           </p>
-                          <div className="h-[6px] relative shrink-0 w-[0.5px]">
-                            <div className="absolute inset-[-8.33%_-0.4px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                              </svg>
-                            </div>
-                          </div>
+                          <div
+                            className="h-[6px] shrink-0"
+                            style={{
+                              width: '1px',
+                              backgroundColor: '#D4D4D4',
+                              borderRadius: '0.5px'
+                            }}
+                          />
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {(() => {
                               const dateOnly = saju.birth_date.split('T')[0];
@@ -1024,13 +1039,14 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                               return getConstellation(parseInt(month), parseInt(day));
                             })()}
                           </p>
-                          <div className="h-[6px] relative shrink-0 w-[0.5px]">
-                            <div className="absolute inset-[-8.33%_-0.4px]">
-                              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                                <path d="M0.5 0.5V6.5" stroke="#D4D4D4" strokeLinecap="round" />
-                              </svg>
-                            </div>
-                          </div>
+                          <div
+                            className="h-[6px] shrink-0"
+                            style={{
+                              width: '1px',
+                              backgroundColor: '#D4D4D4',
+                              borderRadius: '0.5px'
+                            }}
+                          />
                           <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
                             {saju.gender === 'male' || saju.gender === '남' || saju.gender === '남성' ? '남성' : '여성'}
                           </p>
