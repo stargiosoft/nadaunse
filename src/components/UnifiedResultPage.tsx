@@ -51,6 +51,7 @@ export default function UnifiedResultPage() {
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [usedFallback, setUsedFallback] = useState(false); // 폴백 시도 여부
+  const [retryCount, setRetryCount] = useState(0); // 재시도 횟수
 
   // ⭐ 스크롤 컨테이너 ref
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -320,6 +321,7 @@ export default function UnifiedResultPage() {
       setImageLoading(true);
       setImageError(false);
       setUsedFallback(false); // 새 이미지 로드 시 폴백 상태 초기화
+      setRetryCount(0); // 재시도 카운터 초기화
 
       const cachedImage = await getCachedTarotImage(currentResult.tarot_card_name);
 
@@ -381,15 +383,47 @@ export default function UnifiedResultPage() {
     };
   }, []); // empty dependency = unmount 시에만 cleanup 실행
 
-  // ⭐ 이미지 로드 실패 시 폴백 처리
-  const handleImageError = () => {
-    if (!usedFallback && currentResult?.tarot_card_name) {
-      // 캐시 URL 실패 시 직접 Storage URL로 폴백
-      console.log('⚠️ [UnifiedResultPage] 캐시 이미지 실패 → 네트워크 폴백:', currentResult.tarot_card_name);
+  // ⭐ 이미지 로드 실패 시 재시도 + 폴백 처리
+  const handleImageError = async () => {
+    if (!currentResult?.tarot_card_name) {
+      console.error('❌ [UnifiedResultPage] currentResult 없음');
+      setImageError(true);
+      return;
+    }
 
-      // ⭐ 폴백 시 이전 Blob URL revoke
+    const MAX_RETRIES = 3;
+
+    // 1차: 캐시에서 재시도 (최대 3번)
+    if (retryCount < MAX_RETRIES) {
+      console.log(`🔄 [UnifiedResultPage] 캐시 재시도 ${retryCount + 1}/${MAX_RETRIES}:`, currentResult.tarot_card_name);
+
+      // 이전 Blob URL revoke
       if (previousBlobUrlRef.current?.startsWith('blob:')) {
-        console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (폴백):', previousBlobUrlRef.current.substring(0, 50));
+        URL.revokeObjectURL(previousBlobUrlRef.current);
+        previousBlobUrlRef.current = null;
+      }
+
+      // 캐시에서 새로운 Blob URL 생성
+      const cachedImage = await getCachedTarotImage(currentResult.tarot_card_name);
+      if (cachedImage) {
+        console.log('✅ [UnifiedResultPage] 캐시 재시도 성공:', currentResult.tarot_card_name);
+        previousBlobUrlRef.current = cachedImage;
+        setCardImageUrl(cachedImage);
+        setRetryCount(retryCount + 1);
+        return;
+      }
+
+      console.log('⚠️ [UnifiedResultPage] 캐시 재시도 실패, 다음 시도로 이동');
+      setRetryCount(retryCount + 1);
+      return;
+    }
+
+    // 2차: Storage URL로 폴백
+    if (!usedFallback) {
+      console.log('⚠️ [UnifiedResultPage] 캐시 재시도 모두 실패 → Storage URL 폴백:', currentResult.tarot_card_name);
+
+      // 이전 Blob URL revoke
+      if (previousBlobUrlRef.current?.startsWith('blob:')) {
         URL.revokeObjectURL(previousBlobUrlRef.current);
         previousBlobUrlRef.current = null;
       }
@@ -397,11 +431,12 @@ export default function UnifiedResultPage() {
       const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
       setCardImageUrl(storageUrl);
       setUsedFallback(true);
-    } else {
-      // 폴백도 실패하면 에러 표시
-      console.error('❌ [UnifiedResultPage] 이미지 로드 완전 실패:', currentResult?.tarot_card_name);
-      setImageError(true);
+      return;
     }
+
+    // 3차: 완전 실패 → 에러 표시
+    console.error('❌ [UnifiedResultPage] 이미지 로드 완전 실패 (모든 재시도 실패):', currentResult?.tarot_card_name);
+    setImageError(true);
   };
 
   // ⭐ 이전 버튼
