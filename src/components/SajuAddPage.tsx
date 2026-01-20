@@ -901,7 +901,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                   </div>
 
                   {/* Options List */}
-                  <div className="flex-1 overflow-y-auto px-[24px] pb-[100px]">
+                  <div className="flex-1 overflow-y-auto px-[24px] pb-[24px]">
                     <div className="flex flex-col">
                       {relationshipOptions.map((option, index) => (
                         <div key={option}>
