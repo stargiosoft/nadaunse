@@ -52,7 +52,7 @@ export function PageLoader({
   className
 }: PageLoaderProps) {
   return (
-    <div className={`bg-white flex items-center justify-center min-h-screen w-full ${className || ''}`}>
+    <div className={`bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden ${className || ''}`}>
       <div className="flex flex-col items-center gap-[20px]">
         <DotLoading />
         {showMessage && (
