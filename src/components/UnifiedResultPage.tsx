@@ -55,6 +55,9 @@ export default function UnifiedResultPage() {
   // ⭐ 스크롤 컨테이너 ref
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // ⭐ 타로 이미지 ref (이미 로드된 이미지 감지용)
+  const tarotImageRef = useRef<HTMLImageElement>(null);
+
   // ⭐ URL 쿼리 파라미터 변경 감지 + 타로 셔플 리다이렉트 체크
   useEffect(() => {
     const newQuestionOrder = parseInt(questionOrderParam);
@@ -298,7 +301,15 @@ export default function UnifiedResultPage() {
       if (cachedImage) {
         console.log('⚡ [UnifiedResultPage] 이미지 캐시 히트:', currentResult.tarot_card_name);
         setCardImageUrl(cachedImage);
-        setImageLoading(false);
+
+        // ⭐ 이미지가 이미 로드되어 있는지 체크 (브라우저 캐시)
+        // → setTimeout으로 다음 틱에 체크 (DOM 업데이트 후)
+        setTimeout(() => {
+          if (tarotImageRef.current?.complete && tarotImageRef.current?.naturalWidth > 0) {
+            console.log('✅ [UnifiedResultPage] 이미지 이미 로드됨 (브라우저 캐시):', currentResult.tarot_card_name);
+            setImageLoading(false);
+          }
+        }, 0);
       } else {
         console.log('🌐 [UnifiedResultPage] 네트워크 로드:', currentResult.tarot_card_name);
         const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
@@ -508,12 +519,16 @@ export default function UnifiedResultPage() {
                     }}
                   >
                     <img
+                      ref={tarotImageRef}
                       src={cardImageUrl}
                       alt={currentResult.tarot_card_name || 'Tarot Card'}
                       fetchpriority="high"
                       className="w-full h-full object-cover"
                       onError={handleImageError}
-                      onLoad={() => setImageLoading(false)}
+                      onLoad={() => {
+                        console.log('🖼️ [UnifiedResultPage] onLoad 이벤트 발생:', currentResult.tarot_card_name);
+                        setImageLoading(false);
+                      }}
                     />
                     {imageError && (
                       <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
