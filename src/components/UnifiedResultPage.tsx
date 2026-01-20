@@ -65,14 +65,25 @@ export default function UnifiedResultPage() {
     prevOrderRef.current = currentQuestionOrder;
   }, [currentQuestionOrder]);
 
-  // ⭐ URL 쿼리 파라미터 변경 감지 (TableOfContentsBottomSheet에서 navigate 시)
+  // ⭐ URL 쿼리 파라미터 변경 감지 + 타로 셔플 리다이렉트 체크
   useEffect(() => {
     const newQuestionOrder = parseInt(questionOrderParam);
     if (!isNaN(newQuestionOrder) && newQuestionOrder !== currentQuestionOrder) {
       console.log('📍 [UnifiedResultPage] URL 파라미터 변경 감지:', currentQuestionOrder, '→', newQuestionOrder);
       setCurrentQuestionOrder(newQuestionOrder);
+
+      // ⭐ allResults가 있을 때만 타로 셔플 체크
+      if (allResults.length > 0) {
+        const targetResult = allResults.find(r => r.question_order === newQuestionOrder);
+        if (targetResult?.question_type === 'tarot' && !targetResult?.tarot_user_viewed) {
+          console.log('🎴 [UnifiedResultPage] URL 파라미터 변경 → 타로 미선택 → 셔플 페이지');
+          const fromParam = from ? `&from=${from}` : '';
+          const contentIdStr = contentId ? `&contentId=${contentId}` : '';
+          navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${newQuestionOrder}${contentIdStr}${fromParam}`, { replace: true });
+        }
+      }
     }
-  }, [questionOrderParam]);
+  }, [questionOrderParam, allResults, contentId, from, orderId, navigate]);
 
   // ⭐ 슬라이드 애니메이션 Variants
   const slideVariants = {
@@ -160,6 +171,13 @@ export default function UnifiedResultPage() {
     const loadData = async () => {
       if (!orderId || isCheckingSession || !hasValidSession) return;
 
+      // ⭐ 이미 데이터가 있으면 스킵 (중복 로드 방지)
+      if (allResults.length > 0) {
+        console.log('✅ [UnifiedResultPage] 데이터 이미 로드됨, 스킵');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       try {
@@ -242,15 +260,9 @@ export default function UnifiedResultPage() {
     };
 
     loadData();
-  }, [orderId, isCheckingSession, hasValidSession, navigate, contentIdParam]);
+  }, [orderId, isCheckingSession, hasValidSession, navigate, contentIdParam, allResults.length]);
 
-  // ⭐ URL 파라미터 변경 시 currentQuestionOrder 동기화
-  useEffect(() => {
-    const newOrder = parseInt(questionOrderParam);
-    if (newOrder !== currentQuestionOrder && allResults.length > 0) {
-      setCurrentQuestionOrder(newOrder);
-    }
-  }, [questionOrderParam]);
+  // ⭐ (중복 제거됨 - 69-92번째 줄 useEffect에서 처리)
 
   // ⭐ 타로 이미지 프리로드
   const preloadTarotImages = (data: ResultItem[], currentOrder: number) => {
