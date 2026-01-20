@@ -856,23 +856,19 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         {createPortal(
           <AnimatePresence>
             {showRelationshipPicker && (
-              <div className="fixed inset-0 z-[9999] flex items-end justify-center pointer-events-none" style={{ minHeight: '100vh', paddingTop: 'env(safe-area-inset-top)' }}>
+              <div className="fixed inset-0 z-[9999] pointer-events-none">
                 {/* Backdrop */}
-                <motion.div 
-                  className="fixed inset-0 bg-black/50 touch-none pointer-events-auto" 
+                <motion.div
+                  className="fixed inset-0 bg-black/50 touch-none pointer-events-auto"
                   onClick={() => setShowRelationshipPicker(false)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  style={{ position: 'fixed', height: '100vh', top: 0, left: 0, right: 0, bottom: 0 }}
                 />
-                
+
                 {/* Bottom Sheet */}
                 <motion.div
-                  className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col pointer-events-auto z-[10000]"
-                  style={{
-                    height: 'auto'
-                  }}
+                  className="fixed bottom-0 left-0 right-0 w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col pointer-events-auto z-[10000]"
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
