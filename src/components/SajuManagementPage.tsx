@@ -871,7 +871,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                     </p>
                     <div 
                       onClick={(event) => handleKebabClick(event, mySaju)}
-                      className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
+                      className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto"
                     >
                       <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
                         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
@@ -1005,7 +1005,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                         </p>
                         <div 
                           onClick={(event) => handleKebabClick(event, saju)}
-                          className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
+                          className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto"
                         >
                           <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
                             <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
