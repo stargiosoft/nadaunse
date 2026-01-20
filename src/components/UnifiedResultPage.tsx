@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { supabase, supabaseUrl } from '../lib/supabase';
@@ -228,7 +228,8 @@ export default function UnifiedResultPage() {
         }
 
         // ⭐ 현재 질문이 타로이고 아직 선택 안 했으면 셔플 페이지로
-        const currentResult = resultsData.find(r => r.question_order === currentQuestionOrder);
+        // ⚠️ normalizedResults 사용 (question_order가 number로 변환됨)
+        const currentResult = normalizedResults.find(r => r.question_order === currentQuestionOrder);
         if (currentResult?.question_type === 'tarot' && !currentResult?.tarot_user_viewed) {
           console.log('🎴 [UnifiedResultPage] 타로 미선택 → 셔플 페이지');
           const fromParam = from ? `&from=${from}` : '';
@@ -266,8 +267,10 @@ export default function UnifiedResultPage() {
     });
   };
 
-  // ⭐ 현재 결과의 타로 이미지 로드
-  const currentResult = allResults.find(r => r.question_order === currentQuestionOrder);
+  // ⭐ 현재 결과 (useMemo로 캐싱하여 불필요한 재렌더링 방지)
+  const currentResult = useMemo(() => {
+    return allResults.find(r => r.question_order === currentQuestionOrder);
+  }, [allResults, currentQuestionOrder]);
 
   // 🔍 디버깅 로그 (Type Mismatch 체크 추가)
   console.log('🔍 [UnifiedResultPage] 렌더링 상태:', {
@@ -296,7 +299,18 @@ export default function UnifiedResultPage() {
         setImageLoading(false);
         // ⭐ 비타로 카드로 전환 시 이전 Blob URL revoke
         if (previousBlobUrlRef.current?.startsWith('blob:')) {
-          console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (비타로):', previousBlobUrlRef.current.substring(0, 50));
+          console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (비타로):', {
+            blobUrl: previousBlobUrlRef.current.substring(0, 50),
+            reason: !currentResult ? 'currentResult is null/undefined' :
+                    currentResult.question_type !== 'tarot' ? `question_type is ${currentResult.question_type}` :
+                    'tarot_card_name is missing',
+            currentQuestionOrder,
+            currentResult: currentResult ? {
+              question_order: currentResult.question_order,
+              question_type: currentResult.question_type,
+              tarot_card_name: currentResult.tarot_card_name
+            } : null
+          });
           URL.revokeObjectURL(previousBlobUrlRef.current);
           previousBlobUrlRef.current = null;
         }
