@@ -428,15 +428,44 @@ UnifiedResultPage에서 타로 카드 이미지가 간헐적으로 공란으로 
   - 모바일 안정성 향상
   - 빠른 페이지 전환에도 이미지 정상 표시
 
+**5) 2026-01-20: useMemo + 재시도 로직 (최종 해결)**
+- **증상**: Blob URL 방식으로 복원했지만 여전히 모바일에서 간헐적 로드 실패, "비타로" 로그가 타로 카드에서 발생
+- **근본 원인**:
+  - `currentResult` 객체가 매 렌더링마다 `allResults.find()`로 재생성되어 새로운 참조 생성
+  - useEffect의 dependency에 `currentResult?.question_order` 등이 포함되어 있어 객체 참조 변경 시 불필요한 재실행
+  - 빠른 페이지 전환 시 `currentResult`가 일시적으로 undefined가 되어 "비타로" 조건 트리거
+  - 복잡한 Blob URL 생명주기 관리가 React 리렌더링과 타이밍 충돌
+- **해결**:
+  - `currentResult`를 `useMemo`로 래핑하여 객체 참조 안정화:
+    ```typescript
+    const currentResult = useMemo(() => {
+      return allResults.find(r => r.question_order === currentQuestionOrder);
+    }, [allResults, currentQuestionOrder]);
+    ```
+  - Blob URL 생명주기 관리 대신 **3단계 재시도 로직** 도입:
+    1. 캐시 재시도 (최대 3회, 매번 새로운 Blob URL 생성)
+    2. Storage URL 폴백 (직접 네트워크 요청)
+    3. 에러 표시
+  - `retryCount` state 추가로 재시도 횟수 관리
+  - 이미지 로드 시작 시 `retryCount` 초기화
+- **핵심 개선**:
+  - useMemo로 불필요한 useEffect 재실행 방지 (객체 참조 안정화)
+  - 재시도 로직으로 타이밍 이슈 우회 (복잡한 생명주기 관리 불필요)
+  - 네트워크 폴백으로 최종 안정성 보장
+- **커밋**: `0cf16a41` (feat: 타로 카드 이미지 로드 실패 시 자동 재시도 로직 추가)
+
 **교훈**:
 - 캐시 레이어 간 동기화 검증 필수 (메타데이터 ≠ 실제 데이터)
 - 애니메이션 라이브러리는 이미지 로드 타이밍과 충돌 가능성 검토 필요
 - Blob URL 사용 시 생명주기 관리 필수 (생성/해제)
 - 모바일 환경의 메모리 제약을 고려한 최적화 전략 필요
+- **⭐ React useEffect의 객체 dependency는 참조 변경 시 재실행됨** - 원시값(primitive) 사용하거나 useMemo로 참조 안정화 필수
+- **⭐ 복잡한 생명주기 관리보다 재시도 로직이 더 안정적** - 타이밍 이슈가 많은 환경에서는 Retry 패턴이 더 효과적
+- **⭐ 디버깅 시 상태 변화 타임라인 추적 필수** - 컴포넌트 리렌더링, useEffect 실행 순서를 로그로 추적해야 근본 원인 파악 가능
 
 **영향 범위**:
-- `src/lib/tarotImageCache.ts`: 캐시 로직 핵심
-- `src/components/UnifiedResultPage.tsx`: 타로 카드 결과 표시
+- `src/lib/tarotImageCache.ts`: 캐시 로직 핵심, Blob URL 생성
+- `src/components/UnifiedResultPage.tsx`: 타로 카드 결과 표시, useMemo + 재시도 로직
 - `src/components/PurchaseHistoryPage.tsx`: 프리로드 최적화
 
 ---
