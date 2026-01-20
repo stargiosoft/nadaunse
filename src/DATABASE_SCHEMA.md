@@ -65,7 +65,7 @@
 | `birth_time` | text | NOT NULL | - | 출생 시간 (HH:mm 형식) |
 | `calendar_type` | text | - | `'solar'` | 양력/음력 구분 (solar, lunar) |
 | `zodiac` | text | - | - | 띠 정보 (쥐띠, 소띠, 호랑이띠 등) |
-| `notes` | text | - | - | 관계 메모 (본인, 배우자, 지인 등) |
+| `notes` | text | - | - | 관계 메모 (연인, 가족, 친구, 지인, 동료, 기타) |
 | `phone_number` | text | - | - | 전화번호 |
 | `is_primary` | boolean | - | `false` | 대표 사주 여부 (사용자당 1개만 true) |
 | `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |

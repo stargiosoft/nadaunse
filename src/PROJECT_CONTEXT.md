@@ -540,7 +540,7 @@ user_id (uuid, FK → users)
 full_name, gender, birth_date, birth_time
 calendar_type (solar/lunar)   -- 양력/음력
 zodiac (text)                 -- 띠 (자동 계산)
-notes (text)                  -- '본인', '배우자', '지인' 등
+notes (text)                  -- '연인', '가족', '친구', '지인', '동료', '기타'
 is_primary (boolean)          -- 대표 사주 여부
 created_at, updated_at
 ```
@@ -1217,6 +1217,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.0.1 | 2026-01-20 | **UI/UX 및 성능 개선** - UnifiedResultPage Framer Motion 제거 (타로 카드 2번째 질문부터 공란 버그 수정), SajuAddPage 관계 선택 리스트 변경 (9개 → 6개: 연인/가족/친구/지인/동료/기타), DB 마이그레이션 (관계 필드 정규화), ProfilePage 로그아웃 확인 다이얼로그 추가, ConfirmDialog 이중 레이어 버그 수정, 사주 삭제 성능 최적화 3개 페이지 (2초 → 0.3초, Promise.all 병렬 처리), SajuAddPage 관계 선택 bottom sheet 간격 수정 (pb-[100px] → pb-[24px]), DECISIONS.md 타로 카드 캐시 이슈 히스토리 문서화 | AI Assistant |
 | 2.0.0 | 2026-01-20 | **캐싱 전략 대폭 개선** - vercel.json HTTP 캐시 헤더 추가 (JS/CSS 1년, 이미지 1일), thumbnailCache.ts 신규 생성 (콘텐츠 썸네일 Cache API), 타로 캐시 최적화 (싱글톤 + 메모리 캐시 + 배치 처리, 1-6초 → 0.3-0.8초), 구매 내역 DB 쿼리 병렬화 (400-1000ms → 150-400ms) | AI Assistant |
 | 1.9.2 | 2026-01-19 | AlimtalkInfoInputPage 추가, SajuCard/SajuManagementPage 구분자 렌더링 방식 변경 (SVG → CSS div), 컴포넌트 개수 업데이트 (54→55개) | AI Assistant |
 | 1.9.1 | 2026-01-17 | 📂 File Structure 전면 현행화 - UnifiedResultPage 추가, SajuResultPage/TarotResultPage 레거시 제거, 누락 파일 추가 (PurchaseFailure, SajuCard, ConfirmDialog, PrivacyPolicy, TermsOfService, tarotImageCache, imagePreloader, sajuApi, adBannerConfig, zodiacCalculator 등) | AI Assistant |
