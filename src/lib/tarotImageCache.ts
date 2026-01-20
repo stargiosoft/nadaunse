@@ -14,23 +14,83 @@ import { getTarotCardImageUrl } from './tarotCards';
 const CACHE_NAME = 'tarot-images-v1';
 const CACHE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7일
 
+// 싱글톤 Cache 인스턴스
+let cacheInstance: Cache | null = null;
+let cachePromise: Promise<Cache> | null = null;
+
+/**
+ * Cache API 인스턴스 싱글톤
+ * 최초 1회만 open, 이후 재사용
+ */
+async function getCacheInstance(): Promise<Cache> {
+  if (cacheInstance) return cacheInstance;
+
+  if (!cachePromise) {
+    cachePromise = caches.open(CACHE_NAME).then(cache => {
+      cacheInstance = cache;
+      return cache;
+    });
+  }
+
+  return cachePromise;
+}
+
+// 메모리 캐시: { cardName: { imageUrl, cachedAt } }
+const memoryCache = new Map<string, { imageUrl: string; cachedAt: number }>();
+
+/**
+ * 메모리 캐시 초기화 (페이지 로드 시 1회)
+ */
+async function initMemoryCache(): Promise<void> {
+  if (memoryCache.size > 0) return; // 이미 초기화됨
+
+  // localStorage 메타데이터 → 메모리로 복사
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('tarot_meta_')) {
+      const metadataStr = localStorage.getItem(key);
+      if (metadataStr) {
+        const metadata = JSON.parse(metadataStr);
+        const cardName = key.replace('tarot_meta_', '');
+
+        // 만료 체크
+        const age = Date.now() - metadata.cachedAt;
+        if (age <= CACHE_EXPIRY_MS) {
+          memoryCache.set(cardName, {
+            imageUrl: metadata.imageUrl,
+            cachedAt: metadata.cachedAt
+          });
+        } else {
+          // 만료된 메타데이터 삭제
+          localStorage.removeItem(key);
+        }
+      }
+    }
+  }
+
+  console.log(`✅ [타로캐시] 메모리 캐시 초기화: ${memoryCache.size}장`);
+}
+
 /**
  * ⭐ Cache API를 사용하여 이미지 캐싱
  * localStorage의 용량 제한(5-10MB)을 우회하고 큰 이미지도 캐싱 가능
  */
 export async function cacheTarotImage(cardName: string, imageUrl: string): Promise<boolean> {
   try {
-    // 이미 캐시되어 있으면 스킵
-    const cached = await getCachedTarotImage(cardName);
+    // 🚀 메모리 캐시 우선 체크
+    const cached = memoryCache.get(cardName);
     if (cached) {
-      console.log(`✅ [타로캐시] 이미 캐시됨: ${cardName}`);
-      return true;
+      const age = Date.now() - cached.cachedAt;
+      if (age <= CACHE_EXPIRY_MS) {
+        console.log(`✅ [타로캐시] 이미 캐시됨 (메모리): ${cardName}`);
+        return true;
+      }
     }
 
     console.log(`📥 [타로캐시] 다운로드 시작: ${cardName}`);
-    
-    // ⭐ Cache API 열기
-    const cache = await caches.open(CACHE_NAME);
+
+    // ⭐ Cache API 열기 (싱글톤 사용)
+    const cache = await getCacheInstance();
     
     // ⭐ 이미지 다운로드 및 캐싱
     const response = await fetch(imageUrl, {
@@ -53,13 +113,20 @@ export async function cacheTarotImage(cardName: string, imageUrl: string): Promi
     await cache.put(imageUrl, response);
     
     // 메타데이터 저장 (만료 시간 체크용)
+    const cachedAt = Date.now();
     const metadata = {
       cardName,
       imageUrl,
-      cachedAt: Date.now(),
+      cachedAt,
     };
     localStorage.setItem(`tarot_meta_${cardName}`, JSON.stringify(metadata));
-    
+
+    // ✅ 성공 시 메모리 캐시도 업데이트
+    memoryCache.set(cardName, {
+      imageUrl,
+      cachedAt
+    });
+
     console.log(`✅ [타로캐시] 저장 완료: ${cardName} (${sizeInKB.toFixed(1)}KB)`);
     return true;
   } catch (error) {
@@ -84,16 +151,43 @@ export async function cacheTarotImage(cardName: string, imageUrl: string): Promi
  */
 export async function getCachedTarotImage(cardName: string): Promise<string | null> {
   try {
-    // 메타데이터 확인 (만료 체크)
+    // 🚀 1차 체크: 메모리 캐시 (0.01ms - 즉시)
+    const cached = memoryCache.get(cardName);
+    if (cached) {
+      // 만료 체크 (메모리에서 빠르게)
+      const age = Date.now() - cached.cachedAt;
+      if (age <= CACHE_EXPIRY_MS) {
+        // ⭐ Cache API에서 실제 존재 여부 확인 (메모리 캐시와 동기화)
+        const cache = await getCacheInstance();
+        const response = await cache.match(cached.imageUrl);
+        
+        if (response) {
+          console.log(`⚡ [타로캐시] 메모리 히트 + Cache API 검증 완료: ${cardName}`);
+          return cached.imageUrl;
+        } else {
+          // Cache API에 없으면 메모리 캐시도 무효화
+          console.log(`⚠️ [타로캐시] 메모리 히트했지만 Cache API에 없음 → 삭제: ${cardName}`);
+          memoryCache.delete(cardName);
+          localStorage.removeItem(`tarot_meta_${cardName}`);
+          return null;
+        }
+      } else {
+        // 만료됨 → 삭제
+        memoryCache.delete(cardName);
+        localStorage.removeItem(`tarot_meta_${cardName}`);
+      }
+    }
+
+    // 2차 체크: localStorage 메타데이터 확인 (메모리 캐시 미스 시)
     const metadataKey = `tarot_meta_${cardName}`;
     const metadataStr = localStorage.getItem(metadataKey);
-    
+
     if (!metadataStr) {
       return null; // 캐시되지 않음
     }
 
     const metadata = JSON.parse(metadataStr);
-    
+
     // 만료 체크 (7일)
     const age = Date.now() - metadata.cachedAt;
     if (age > CACHE_EXPIRY_MS) {
@@ -102,8 +196,8 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
       return null;
     }
 
-    // ⭐ Cache API에서 이미지 확인 (실제 캐시 여부만 체크)
-    const cache = await caches.open(CACHE_NAME);
+    // ⭐ Cache API에서 이미지 확인 (실제 캐시 여부만 체크, 싱글톤 사용)
+    const cache = await getCacheInstance();
     const response = await cache.match(metadata.imageUrl);
     
     if (!response) {
@@ -123,49 +217,84 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
 }
 
 /**
+ * 동시성 제어 헬퍼 (최대 N개씩 배치 처리)
+ */
+async function batchPromises<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number = 6
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = [];
+
+  for (let i = 0; i < tasks.length; i += concurrency) {
+    const batch = tasks.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(batch.map(task => task()));
+    results.push(...batchResults);
+
+    console.log(`📦 [타로캐시] 배치 ${Math.floor(i / concurrency) + 1} 완료 (${batchResults.length}개)`);
+  }
+
+  return results;
+}
+
+/**
  * 주문의 모든 타로 카드 이미지를 미리 캐싱
  * LoadingPage에서 AI 생성 완료 후 호출
  */
 export async function preloadTarotImages(orderId: string, supabaseUrl: string): Promise<void> {
   try {
     console.log('🎴 [타로캐시] 프리로드 시작:', orderId);
-    
+
+    // 🚀 메모리 캐시 초기화 (최초 1회)
+    await initMemoryCache();
+
     // ⭐ Supabase Client 동적 임포트 (순환 참조 방지)
     const { supabase } = await import('./supabase');
-    
+
     // 1. 주문의 타로 카드 정보 조회
     const { data: tarotCards, error } = await supabase
       .from('order_results')
       .select('tarot_card_name, tarot_card_image_url')
       .eq('order_id', orderId)
       .eq('question_type', 'tarot');
-    
-    if (error) {
-      console.error('❌ [타로캐시] 타로 카드 조회 실패:', error);
-      return;
-    }
-    
-    if (!tarotCards || tarotCards.length === 0) {
+
+    if (error || !tarotCards || tarotCards.length === 0) {
       console.log('ℹ️ [타로캐시] 타로 카드 없음 (사주만 있는 콘텐츠)');
       return;
     }
-    
-    console.log(`📦 [타로캐시] ${tarotCards.length}장의 타로 카드 발견`);
-    
-    // 2. 각 타로 카드 이미지 캐싱 (병렬 처리)
-    // ⭐ DB의 tarot_card_image_url 대신 getTarotCardImageUrl 사용 (스테이징 Storage 공용)
-    const cachePromises = tarotCards.map((card: { tarot_card_name: string | null }) => {
-      if (card.tarot_card_name) {
-        const imageUrl = getTarotCardImageUrl(card.tarot_card_name);
-        return cacheTarotImage(card.tarot_card_name, imageUrl);
-      }
-      return Promise.resolve(false);
+
+    // 🔍 중복 제거 (같은 카드명 여러 번 나올 수 있음)
+    const uniqueCards = Array.from(
+      new Set(tarotCards.map(c => c.tarot_card_name).filter(Boolean))
+    );
+
+    console.log(`📦 [타로캐시] ${uniqueCards.length}장의 유니크 타로 카드 발견 (원본: ${tarotCards.length}장)`);
+
+    // ⚡ 이미 캐시된 카드 필터링 (메모리 캐시로 빠르게)
+    const uncachedCards = uniqueCards.filter(cardName => {
+      const cached = memoryCache.get(cardName!);
+      if (!cached) return true;
+
+      const age = Date.now() - cached.cachedAt;
+      return age > CACHE_EXPIRY_MS; // 만료된 것만 다시 캐싱
     });
-    
-    const results = await Promise.allSettled(cachePromises);
-    
+
+    if (uncachedCards.length === 0) {
+      console.log('✅ [타로캐시] 모든 카드 이미 캐시됨');
+      return;
+    }
+
+    console.log(`📥 [타로캐시] ${uncachedCards.length}장 다운로드 필요`);
+
+    // 🚀 배치 처리 (최대 6개씩)
+    const tasks = uncachedCards.map(cardName => () => {
+      const imageUrl = getTarotCardImageUrl(cardName!);
+      return cacheTarotImage(cardName!, imageUrl);
+    });
+
+    const results = await batchPromises(tasks, 6);
+
     const successCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
-    console.log(`✅ [타로캐시] 프리로드 완료: ${successCount}/${tarotCards.length}장 성공`);
+    console.log(`✅ [타로캐시] 프리로드 완료: ${successCount}/${uncachedCards.length}장 성공`);
   } catch (error) {
     console.error('❌ [타로캐시] 프리로드 실패:', error);
   }
@@ -176,7 +305,7 @@ export async function preloadTarotImages(orderId: string, supabaseUrl: string): 
  */
 export async function clearTarotCache(cardNames?: string[]): Promise<void> {
   try {
-    const cache = await caches.open(CACHE_NAME);
+    const cache = await getCacheInstance();
     
     if (cardNames) {
       // 특정 카드만 삭제
