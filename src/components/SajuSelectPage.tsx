@@ -679,27 +679,29 @@ export default function SajuSelectPage() {
 
       console.log('📋 [SajuSelectPage] 연관된 주문:', relatedOrders?.length || 0, '건');
 
-      // 2단계: orders에 사주 정보 하드코딩으로 채우기
+      // 2단계: orders에 사주 정보 하드코딩으로 채우기 (병렬 처리)
       if (relatedOrders && relatedOrders.length > 0) {
-        for (const order of relatedOrders) {
-          const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-              full_name: order.full_name || selectedSajuForKebab.full_name,
-              gender: order.gender || selectedSajuForKebab.gender,
-              birth_date: order.birth_date || selectedSajuForKebab.birth_date,
-              birth_time: order.birth_time || selectedSajuForKebab.birth_time,
-              saju_record_id: null // FK 해제
-            })
-            .eq('id', order.id);
-
-          if (updateError) {
-            console.error('❌ [SajuSelectPage] 주문 업데이트 실패:', order.id, updateError);
-            throw updateError;
-          }
-
-          console.log('✅ [SajuSelectPage] 주문 업데이트 완료:', order.id);
-        }
+        await Promise.all(
+          relatedOrders.map(order =>
+            supabase
+              .from('orders')
+              .update({
+                full_name: order.full_name || selectedSajuForKebab.full_name,
+                gender: order.gender || selectedSajuForKebab.gender,
+                birth_date: order.birth_date || selectedSajuForKebab.birth_date,
+                birth_time: order.birth_time || selectedSajuForKebab.birth_time,
+                saju_record_id: null // FK 해제
+              })
+              .eq('id', order.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error('❌ [SajuSelectPage] 주문 업데이트 실패:', order.id, error);
+                  throw error;
+                }
+                console.log('✅ [SajuSelectPage] 주문 업데이트 완료:', order.id);
+              })
+          )
+        );
       }
 
       // 3단계: saju_records 삭제 (user_id 조건 추가로 RLS 우회)
