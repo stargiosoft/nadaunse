@@ -303,8 +303,8 @@ export default function TarotShufflePage() {
     navigate('/login/new', { replace: true });
   };
 
-  // ⭐ 세션 체크 중이면 로딩 화면 표시
-  if (isCheckingSession) {
+  // ⭐ 세션 체크 중이거나 질문 텍스트 로드 전이면 로딩 화면 표시
+  if (isCheckingSession || !questionText) {
     return <PageLoader />;
   }
 
