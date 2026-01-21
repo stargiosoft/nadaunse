@@ -678,7 +678,8 @@ export default function LoginPageNew({
         return;
       }
       
-      alert('로그인에 실패했습니다.\\n' + (error.message || error));
+      console.error('로그인 에러:', error);
+      alert('로그인에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -708,7 +709,7 @@ export default function LoginPageNew({
       console.log('🔄 구글 로그인 리다이렉트 중...');
     } catch (error: any) {
       console.error('❌ 구글 로그인 실패:', error);
-      alert('구글 로그인에 실패했습니다.\\n' + (error.message || error));
+      alert('구글 로그인에 실패했습니다. 다시 시도해주세요.');
     }
   };
 

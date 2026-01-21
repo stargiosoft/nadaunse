@@ -435,8 +435,9 @@ export default function ExistingAccountPageNew({ provider, onBack, onLoginWithCo
         return;
       }
       
-      // 그 외 에러는 알림 표시
-      alert('로그인에 실패했습니다.\n' + (error.message || error));
+      // 그 외 에러는 알림 표시 (에러 상세는 콘솔에만 기록)
+      console.error('로그인 에러:', error);
+      alert('로그인에 실패했습니다. 다시 시도해주세요.');
       setIsLoading(false);
     }
   };
