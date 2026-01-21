@@ -274,3 +274,138 @@ export const trackContentCreate = (contentType: string, contentId?: string) => {
 export const trackLogout = () => {
   trackEvent('logout');
 };
+
+// ============================================
+// 마케팅 퍼널 이벤트 (2026-01-21 추가)
+// ============================================
+
+// 17. 로그인 버튼 클릭
+export const trackLoginClick = (method: 'kakao' | 'google') => {
+  trackEvent('login_click', { method });
+};
+
+// 18. 웰컴 쿠폰 발급
+export const trackWelcomeCouponIssued = (couponAmount: number = 3000) => {
+  trackEvent('welcome_coupon_issued', { coupon_amount: couponAmount });
+};
+
+// 19. 무료 콘텐츠 클릭
+export const trackFreeContentClick = (contentId: string, title: string) => {
+  trackEvent('free_content_click', {
+    content_id: contentId,
+    content_title: title,
+  });
+};
+
+// 20. 무료 사주 입력 완료
+export const trackFreeBirthInfoSubmit = (contentId: string, isLoggedIn: boolean) => {
+  trackEvent('free_birthinfo_submit', {
+    content_id: contentId,
+    is_logged_in: isLoggedIn,
+  });
+};
+
+// 21. 무료 결과 조회
+export const trackFreeResultView = (contentId: string) => {
+  trackEvent('free_result_view', { content_id: contentId });
+};
+
+// 22. 무료 결과 끝까지 봄
+export const trackFreeResultComplete = (contentId: string) => {
+  trackEvent('free_result_complete', { content_id: contentId });
+};
+
+// 23. 유료 콘텐츠 상세 조회
+export const trackPaidContentView = (contentId: string, title: string, price: number) => {
+  trackEvent('paid_content_view', {
+    content_id: contentId,
+    content_title: title,
+    price: price,
+  });
+};
+
+// 24. 구매 버튼 클릭
+export const trackPurchaseClick = (contentId: string, title: string, price: number) => {
+  trackEvent('purchase_click', {
+    content_id: contentId,
+    content_title: title,
+    price: price,
+  });
+};
+
+// 25. 결제 페이지 진입
+export const trackCheckoutStart = (contentId: string, title: string, price: number) => {
+  trackEvent('checkout_start', {
+    content_id: contentId,
+    content_title: title,
+    price: price,
+  });
+};
+
+// 26. 쿠폰 적용
+export const trackCouponApply = (
+  contentId: string,
+  couponType: 'welcome' | 'revisit',
+  discountAmount: number
+) => {
+  trackEvent('coupon_apply', {
+    content_id: contentId,
+    coupon_type: couponType,
+    discount_amount: discountAmount,
+  });
+};
+
+// 27. 결제 수단 선택
+export const trackPaymentMethodSelect = (method: 'kakaopay' | 'card') => {
+  trackEvent('payment_method_select', { method });
+};
+
+// 28. 구매 완료 (쿠폰 정보 포함)
+export const trackPurchaseComplete = (params: {
+  transactionId: string;
+  contentId: string;
+  contentTitle: string;
+  value: number;
+  originalPrice: number;
+  paymentMethod: string;
+  couponUsed: boolean;
+  couponType?: 'welcome' | 'revisit' | null;
+  couponAmount?: number;
+}) => {
+  trackEvent('purchase', {
+    transaction_id: params.transactionId,
+    content_id: params.contentId,
+    content_title: params.contentTitle,
+    value: params.value,
+    original_price: params.originalPrice,
+    currency: 'KRW',
+    payment_method: params.paymentMethod,
+    coupon_used: params.couponUsed,
+    coupon_type: params.couponType || 'none',
+    coupon_amount: params.couponAmount || 0,
+  });
+};
+
+// 29. 유료 결과 조회
+export const trackPaidResultView = (orderId: string, contentId: string) => {
+  trackEvent('paid_result_view', {
+    order_id: orderId,
+    content_id: contentId,
+  });
+};
+
+// 30. 유료 결과 끝까지 봄
+export const trackPaidResultComplete = (orderId: string, contentId: string) => {
+  trackEvent('paid_result_complete', {
+    order_id: orderId,
+    content_id: contentId,
+  });
+};
+
+// 31. 재방문 쿠폰 발급
+export const trackRevisitCouponIssued = (orderId: string, couponAmount: number = 3000) => {
+  trackEvent('revisit_coupon_issued', {
+    order_id: orderId,
+    coupon_amount: couponAmount,
+  });
+};

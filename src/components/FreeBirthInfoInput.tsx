@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from "motion/react";
 import svgPaths from "../imports/svg-b5r0yb3uuf";
 import { supabase } from '../lib/supabase';
+import { trackFreeBirthInfoSubmit } from '../utils/analytics';
 
 interface FreeBirthInfoInputProps {
   productId: string;
@@ -406,6 +407,9 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
         // ⭐️ Edge Function 호출 제거 - FreeContentLoading에서 처리
         console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
 
+        // 📊 GA 이벤트: 무료 사주 입력 완료 (비로그인)
+        trackFreeBirthInfoSubmit(productId, false);
+
         // 로딩 페이지로 이동 (사주 데이터 직접 전달)
         const loadingUrl = `/free-loading?contentId=${productId}&userName=${encodeURIComponent(name)}&guestMode=true`;
         console.log('🔀 [FreeBirthInfoInput] 로딩 페이지로 이동 (게스트):', loadingUrl);
@@ -439,6 +443,9 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
 
       // ⭐️ Edge Function 호출 제거 - FreeContentLoading에서 처리
       console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
+
+      // 📊 GA 이벤트: 무료 사주 입력 완료 (로그인)
+      trackFreeBirthInfoSubmit(productId, true);
 
       // ⭐️ 로딩 페이지로 이동 (sajuRecordId 전달)
       const loadingUrl = `/free-loading?contentId=${productId}&sajuRecordId=${sajuData.id}&userName=${encodeURIComponent(name)}`;

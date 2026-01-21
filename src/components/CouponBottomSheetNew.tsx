@@ -2,6 +2,7 @@ import svgPaths from "../imports/svg-lofdjvm6te";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
 import { useEffect } from "react";
+import { trackCouponApply } from "../utils/analytics";
 
 interface Coupon {
   id: string;
@@ -22,6 +23,7 @@ interface CouponBottomSheetNewProps {
   basePrice: number;
   specialDiscount: number;
   totalPrice: number;
+  contentId?: string; // 📊 GA 이벤트용
 }
 
 export default function CouponBottomSheetNew({
@@ -36,8 +38,15 @@ export default function CouponBottomSheetNew({
   basePrice,
   specialDiscount,
   totalPrice,
+  contentId,
 }: CouponBottomSheetNewProps) {
   const handleApply = () => {
+    // 📊 GA 이벤트: 쿠폰 적용
+    if (selectedCoupon && contentId) {
+      const couponType = selectedCoupon.description?.includes('welcome') ? 'welcome'
+        : selectedCoupon.description?.includes('revisit') ? 'revisit' : 'welcome';
+      trackCouponApply(contentId, couponType, selectedCoupon.discount);
+    }
     onClose();
   };
 
