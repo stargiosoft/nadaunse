@@ -15,6 +15,7 @@ nul
 
 # Build output
 dist/
+build/
 
 # IDE
 .idea/
