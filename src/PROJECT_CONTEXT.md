@@ -131,6 +131,9 @@
 - ✅ **Figma 임포트 이미지**: `figma:asset/` 스킴 사용 (경로 접두사 금지)
 - ✅ **새 이미지**: `ImageWithFallback` 컴포넌트 필수 사용
 - ✅ **SVG**: `/imports/svg-*.ts` 파일에서 임포트
+- ✅ **이미지 저장 위치**: `/public` 폴더 (절대 경로 `/image.jpg`로 참조)
+- ❌ **외부 이미지 URL 사용 금지**: CSP(Content Security Policy)로 차단됨
+- ✅ **CSP 허용 도메인**: `'self'`, `data:`, `blob:`, `https://*.supabase.co`, `https://*.kakaocdn.net`
 
 ### 5. 비즈니스 로직 패턴
 - ✅ **싱글톤 서비스 클래스** 패턴 사용 (`FreeContentService`)

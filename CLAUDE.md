@@ -74,7 +74,30 @@ import { DEV } from '../lib/env';
 </div>
 ```
 
-### 5. Supabase 환경 분리
+### 5. 이미지 처리 (CSP 제한)
+- **외부 이미지 URL 사용 금지**: CSP(Content Security Policy)로 인해 외부 도메인 이미지가 차단됨
+- **이미지 저장 위치**: `/public` 폴더에 저장
+- **참조 방법**: 절대 경로 사용 (예: `/my-image.jpg`)
+- **잘못된 예시**: `https://i.postimg.cc/...`, `https://cdn.example.com/...`
+
+```tsx
+// ❌ 잘못된 예시 - CSP에 의해 차단됨
+const bgImage = "https://i.postimg.cc/WzwkjYXT/background.jpg";
+
+// ✅ 올바른 예시 - public 폴더에 저장 후 절대 경로 사용
+// 파일 위치: /Users/star/nadaunse/public/background.jpg
+const bgImage = "/background.jpg";
+
+<img src={bgImage} alt="Background" />
+```
+
+**CSP 허용 도메인**:
+- `self` (같은 도메인)
+- `data:`, `blob:` (인라인 데이터)
+- `https://*.supabase.co` (Supabase Storage)
+- `https://*.kakaocdn.net` (카카오 이미지)
+
+### 6. Supabase 환경 분리
 | 환경 | Project ID | 용도 |
 |------|------------|------|
 | Production | `kcthtpmxffppfbkjjkub` | nadaunse.com |
@@ -83,11 +106,11 @@ import { DEV } from '../lib/env';
 - **환경변수 사용**: `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_ANON_KEY`
 - **하드코딩 금지**: Supabase URL, Project ID 직접 작성 금지
 
-### 6. 컴포넌트 재사용
+### 7. 컴포넌트 재사용
 - 새 컴포넌트 만들기 전 `components-inventory.md` 확인
 - `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (48개)
 
-### 7. Edge Functions
+### 8. Edge Functions
 - **소스 코드 위치**: `/supabase/functions/` (Supabase CLI 기본 경로)
 - **배포 시**: `npx supabase functions deploy <함수명> --project-ref <project-id>`
 - Deno runtime 사용
@@ -104,7 +127,7 @@ npx supabase functions deploy generate-thumbnail --project-ref hyltbeewxaqashyiv
 npx supabase functions deploy generate-thumbnail --project-ref kcthtpmxffppfbkjjkub
 ```
 
-### 8. 사주 API 호출 (중요!)
+### 9. 사주 API 호출 (중요!)
 - **Edge Function에서 서버 직접 호출**: `SAJU_API_KEY` 환경변수 사용 (IP 화이트리스트 + 키 인증)
 - **브라우저 헤더 필수**: User-Agent, Origin, Referer 등 브라우저 헤더 포함하여 호출
 - **재시도 로직**: 최대 3번 재시도 (1초, 2초 간격)
@@ -112,7 +135,7 @@ npx supabase functions deploy generate-thumbnail --project-ref kcthtpmxffppfbkjj
 - **핵심 파일**: `supabase/functions/generate-content-answers/index.ts` (96-174번 줄)
 - **상세 내용**: `DECISIONS.md` → "2026-01-13 사주 API 서버 직접 호출" 섹션
 
-### 9. Serena 사용 (MANDATORY - 토큰 절약)
+### 10. Serena 사용 (MANDATORY - 토큰 절약)
 
 **Serena는 LSP 기반 심볼 검색/편집 도구로, 파일 전체를 읽지 않고 필요한 코드만 조회하여 토큰을 대폭 절약합니다.**
 
@@ -142,7 +165,7 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 
 **프로젝트 규모** (컴포넌트 51개, 페이지 38개, Edge Functions 20개)에서 Serena는 필수입니다.
 
-### 10. 캐싱 전략 (Cache Strategy)
+### 11. 캐싱 전략 (Cache Strategy)
 
 **새로운 기능을 개발할 때 항상 캐싱을 염두에 두세요.**
 
@@ -665,6 +688,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 - `any` 타입 사용
 - inline style 사용 **(예외: FigmaMake 통합 시 타이포그래피/색상은 허용)**
 - `text-*`, `font-*`, `leading-*` Tailwind 클래스 사용
+- **외부 이미지 URL 사용 (CSP 차단됨)** - `/public` 폴더에 저장 후 절대 경로 사용
 - 문서 업데이트 없이 대규모 변경
 
 ### 환경/배포

@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-20
-> **주요 결정**: HTTP 캐시 전략 수립 (vercel.json), 썸네일 Cache API 적용, 구매 내역 성능 최적화
+> **최종 업데이트**: 2026-01-21
+> **주요 결정**: 타로 셔플 배경 이미지 CSP 오류 수정, 이미지 로컬 저장 규칙 수립
 
 ---
 
@@ -13,6 +13,77 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-21
+
+### 타로 셔플 배경 이미지 CSP 오류 수정
+
+**결정**: 모든 이미지를 로컬 `/public` 폴더에 저장하고 절대 경로로 참조
+
+**배경**:
+- TarotGame 컴포넌트에서 외부 URL (`https://i.postimg.cc/...`) 사용
+- staging 서버에서 CSP(Content Security Policy) 위반으로 이미지 로딩 차단
+- 콘솔 오류: `Loading the image 'https://i.postimg.cc/...' violates the following Content Security Policy directive: "img-src 'self' data: blob: https://*.supabase.co https://*.kakaocdn.net"`
+- CSP 허용 도메인: `'self'`, `data:`, `blob:`, `https://*.supabase.co`, `https://*.kakaocdn.net`
+
+**문제점**:
+1. 외부 이미지 호스팅 서비스(`postimg.cc`) 사용으로 CSP 차단
+2. 배경 이미지가 표시되지 않음 (청록색 배경 패턴 누락)
+3. 외부 서비스 의존성으로 인한 안정성 문제 (서비스 장애 시 이미지 미표시)
+
+**해결 방법**:
+1. **이미지 다운로드**: 외부 URL에서 로컬로 다운로드
+   ```bash
+   curl -L "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg" -o public/tarot-shuffle-background.jpg
+   ```
+
+2. **코드 수정**: 외부 URL → 절대 경로
+   ```tsx
+   // Before (TarotGame.tsx:6)
+   const tarotBackground = "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg";
+
+   // After
+   const tarotBackground = "/tarot-shuffle-background.jpg";
+   ```
+
+3. **프리로딩 코드 수정** (LoadingPage.tsx:206)
+   ```tsx
+   // Before
+   const tarotBackgroundUrl = 'https://i.postimg.cc/...';
+
+   // After
+   const tarotBackgroundUrl = '/tarot-shuffle-background.jpg';
+   ```
+
+**추가 개선**:
+- TarotGame Container에서 title prop이 없을 때 기본값 표시
+  ```tsx
+  // Before
+  <p>{title}</p>
+
+  // After
+  <p>{title || "질문을 떠올려 주세요"}</p>
+  ```
+
+**영향 범위**:
+- `TarotGame.tsx`: 배경 이미지 경로 변경
+- `LoadingPage.tsx`: 이미지 프리로딩 경로 변경
+- `/public/tarot-shuffle-background.jpg`: 새 파일 추가 (9.8KB)
+- CSP 오류 완전히 제거됨
+- 배경 이미지 정상 표시
+
+**새로운 규칙**:
+- ✅ **모든 이미지는 `/public` 폴더에 저장**
+- ✅ **절대 경로로 참조** (예: `/image.jpg`)
+- ❌ **외부 이미지 URL 사용 금지** (CSP 차단됨)
+- ✅ **Supabase Storage 이미지는 사용 가능** (`https://*.supabase.co`)
+- ✅ **카카오 프로필 이미지는 사용 가능** (`https://*.kakaocdn.net`)
+
+**참고 문서**:
+- `CLAUDE.md` → "### 5. 이미지 처리 (CSP 제한)"
+- `★PUBLISHING_GUIDE★.md` → "## 9. 이미지 처리 (CSP 제한)"
 
 ---
 
