@@ -323,7 +323,7 @@ serve(async (req) => {
 
 #### 보안 문서
 
-- **상세 가이드**: `src/docs/SECURITY.md`
+- **상세 가이드**: `src/docs/★SECURITY★.md`
 - **적용된 보안 조치**: CORS, CSP, 보안 헤더, npm 취약점 해결
 - **향후 TODO**: Rate Limiting, CSP Nonce, SRI
 
@@ -377,7 +377,7 @@ supabase/
 | Edge Function 추가 | **supabase/EDGE_FUNCTIONS_GUIDE.md** |
 | Trigger/Function 추가 | **supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md** |
 | RLS 정책 변경 | **supabase/RLS_POLICIES.md** |
-| 보안 정책 변경 | **src/docs/SECURITY.md** |
+| 보안 정책 변경 | **src/docs/★SECURITY★.md** |
 
 ---
 
@@ -722,7 +722,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 | 문서 | 언제 읽나요? | 주요 내용 |
 |------|-------------|----------|
-| **[SECURITY.md](./src/docs/SECURITY.md)** | 새 기능 개발, 보안 점검 시 | CORS, CSP, 보안 헤더, 인증, 에러 처리, 향후 TODO |
+| **[★SECURITY★.md](./src/docs/★SECURITY★.md)** | 새 기능 개발, 보안 점검 시 | CORS, CSP, 보안 헤더, 인증, 에러 처리, 향후 TODO |
 
 ### 📋 작업 시나리오별 문서 참고 순서
 
