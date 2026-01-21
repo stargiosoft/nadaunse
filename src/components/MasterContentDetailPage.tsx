@@ -15,6 +15,7 @@ import { getThumbnailUrl } from '../lib/image';
 import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
 import { trackViewItem, trackPurchaseClick } from '../utils/analytics';
+import SEO from './SEO';
 
 // Animation Variants
 const staggerContainer = {
@@ -802,10 +803,17 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   };
 
   return (
-    <div className="flex justify-center h-[100dvh] w-full overflow-hidden touch-pan-y overscroll-none">
-      <div className="w-full max-w-[440px] h-full flex flex-col relative bg-white overflow-hidden">
-        {/* Top Navigation */}
-        <div className="shrink-0 z-20 bg-white relative">
+    <>
+      <SEO
+        title={content.title}
+        description={content.description || `${content.title} - AI가 분석하는 나만의 운세`}
+        canonical={`/product/${contentId}`}
+        ogImage={content.thumbnail_url}
+      />
+      <div className="flex justify-center h-[100dvh] w-full overflow-hidden touch-pan-y overscroll-none">
+        <div className="w-full max-w-[440px] h-full flex flex-col relative bg-white overflow-hidden">
+          {/* Top Navigation */}
+          <div className="shrink-0 z-20 bg-white relative">
           
           <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
             <div className="bg-white h-[52px] relative shrink-0 w-full">
@@ -2071,7 +2079,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         </div>
 
 
+        </div>
       </div>
-    </div>
+    </>
   );
 }

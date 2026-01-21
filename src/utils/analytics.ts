@@ -360,7 +360,7 @@ export const trackPaymentMethodSelect = (method: 'kakaopay' | 'card') => {
   trackEvent('payment_method_select', { method });
 };
 
-// 28. 구매 완료 (쿠폰 정보 포함)
+// 28. 구매 완료 (GA4 전자상거래 표준 형식 + 쿠폰 정보)
 export const trackPurchaseComplete = (params: {
   transactionId: string;
   contentId: string;
@@ -372,13 +372,23 @@ export const trackPurchaseComplete = (params: {
   couponType?: 'welcome' | 'revisit' | null;
   couponAmount?: number;
 }) => {
+  // GA4 전자상거래 표준: items 배열 필수
   trackEvent('purchase', {
     transaction_id: params.transactionId,
-    content_id: params.contentId,
-    content_title: params.contentTitle,
     value: params.value,
-    original_price: params.originalPrice,
     currency: 'KRW',
+    // GA4 필수: items 배열
+    items: [
+      {
+        item_id: params.contentId,
+        item_name: params.contentTitle,
+        price: params.originalPrice,
+        discount: params.couponAmount || 0,
+        quantity: 1,
+        item_category: '운세 콘텐츠',
+      },
+    ],
+    // 커스텀 파라미터
     payment_method: params.paymentMethod,
     coupon_used: params.couponUsed,
     coupon_type: params.couponType || 'none',
