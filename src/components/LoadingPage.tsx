@@ -8,6 +8,9 @@ import { motion } from "motion/react";
 import kakaoIcon from '../assets/loading/kakao-icon.svg';
 import tarotCardBack from '../assets/f494ca2b3b180a2d66b2960718e3e515db3248a2.png';
 
+// 타로 배경 이미지 - public 폴더에서 절대 경로로 참조
+const tarotBackground = "/tarot-shuffle-background.jpg";
+
 // ⭐ 무료 콘텐츠 인터페이스
 interface FreeContent {
   id: string;
@@ -203,7 +206,7 @@ export default function LoadingPage() {
     // 타로 배경 이미지 - 백그라운드 low priority 로드
     const TAROT_BG_KEY = 'tarot_bg_preloaded';
     if (!sessionStorage.getItem(TAROT_BG_KEY)) {
-      const tarotBackgroundUrl = 'https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg';
+      const tarotBackgroundUrl = '/tarot-shuffle-background.jpg';
       setTimeout(() => {
         preloadImages([tarotBackgroundUrl], 'low');
         sessionStorage.setItem(TAROT_BG_KEY, 'true');
