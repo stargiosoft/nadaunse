@@ -532,6 +532,45 @@ curl -L "https://example.com/image.jpg" -o my-image.jpg
 - [ ] 카카오 프로필 이미지는 사용 가능
 - [ ] 개발자 도구 콘솔에서 CSP 오류 확인
 
+### 실제 케이스: 타로 셔플 배경 이미지 CSP 오류 수정
+
+**문제 상황** (2026-01-21):
+```tsx
+// TarotGame.tsx - 외부 URL 사용
+const tarotBackground = "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg";
+```
+
+**콘솔 오류**:
+```
+Loading the image 'https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg'
+violates the following Content Security Policy directive: "img-src 'self' data: blob:
+https://*.supabase.co https://*.kakaocdn.net". The action has been blocked.
+```
+
+**해결 방법**:
+1. 이미지 다운로드:
+   ```bash
+   curl -L "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg" \
+     -o public/tarot-shuffle-background.jpg
+   ```
+
+2. 코드 수정:
+   ```tsx
+   // TarotGame.tsx - 절대 경로 사용
+   const tarotBackground = "/tarot-shuffle-background.jpg";
+   ```
+
+3. 프리로딩 코드도 수정:
+   ```tsx
+   // LoadingPage.tsx
+   const tarotBackgroundUrl = '/tarot-shuffle-background.jpg';
+   ```
+
+**결과**:
+- ✅ CSP 오류 완전히 제거
+- ✅ 배경 이미지 정상 표시 (청록색 배경 + 별/달 패턴)
+- ✅ 외부 서비스 의존성 제거
+
 ---
 
 ## 10. 실제 예시: AlimtalkInfoInputPage

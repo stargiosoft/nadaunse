@@ -41,6 +41,7 @@ import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
 import { PageLoader } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import HomePage from './pages/HomePage';
+import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
 import AuthCallback from './pages/AuthCallback';
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
@@ -1660,6 +1661,7 @@ export default function App() {
           <Route path="/result" element={<UnifiedResultPage />} /> {/* ⭐ 통합 결과 페이지 */}
           <Route path="/result/saju" element={<ResultSajuRedirect />} /> {/* ⭐ 알림톡 템플릿 호환성 (리다이렉트) */}
           <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
+          <Route path="/test/tarot" element={<TestTarotPage />} /> {/* ⭐ 테스트용 타로 셔플 (로그인 불필요) */}
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />

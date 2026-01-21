@@ -8,6 +8,17 @@ import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PageLoader } from './ui/PageLoader';
 
 export default function TarotShufflePage() {
+  // ⭐ iOS Safari viewport height 처리
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    return () => window.removeEventListener('resize', setVh);
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -298,9 +309,21 @@ export default function TarotShufflePage() {
   }
 
   return (
-    <div className="bg-white w-full max-w-[440px] mx-auto relative flex flex-col h-screen">
-      {/* ⭐ Top Navigation - z-index를 50에서 20으로 변경 (바텀시트 딤 z-40보다 낮게) */}
-      <div className="bg-white h-[52px] relative shrink-0 w-full sticky top-0 z-20">
+    <div
+      className="w-full max-w-[440px] mx-auto relative overflow-hidden"
+      style={{
+        minHeight: '100vh',
+        height: '100vh',
+        backgroundColor: '#41a09e'
+      }}
+    >
+      {/* TarotGame - 전체 화면 배경 */}
+      <div className="absolute inset-0 w-full" style={{ minHeight: '100vh', height: '100%' }}>
+        <TarotGame onConfirm={handleConfirmCard} title={questionText} />
+      </div>
+
+      {/* ⭐ Top Navigation - 고정 위치로 배치 */}
+      <div className="fixed top-0 left-0 right-0 bg-white h-[52px] z-50 max-w-[440px] mx-auto">
         <div className="flex items-center justify-between px-[12px] h-full">
           <div className="w-[44px] h-[44px] opacity-0" />
           <h1 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[25.5px] tracking-[-0.36px] text-black text-center flex-1">
@@ -312,13 +335,6 @@ export default function TarotShufflePage() {
           >
             <X className="w-[24px] h-[24px] text-[#848484] transition-transform duration-200 group-active:scale-90" strokeWidth={1.8} />
           </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col flex-1 relative w-full overflow-hidden">
-        {/* Main Content Area - Centered */}
-        <div className="flex-1 w-full relative pb-[68px]">
-          <TarotGame onConfirm={handleConfirmCard} title={questionText} />
         </div>
       </div>
 

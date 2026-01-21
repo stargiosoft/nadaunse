@@ -278,11 +278,13 @@ const sajuResponse = await fetch(sajuApiUrl, {
 <summary><b>타로 콘텐츠</b></summary>
 
 ```
-/components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트)
-/components/TarotGame.tsx               → 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+/components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
+/components/TarotGame.tsx               → 카드 섞기 + 선택 UI (21장, iOS Safari 전체화면 배경 대응)
+/pages/TestTarotPage.tsx                → 테스트용 타로 페이지 (라우트: /test/tarot, 로그인 불필요)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 /lib/tarotCards.ts                      → 타로 카드 데이터 (78장) + 유틸리티 함수
 /lib/tarotImageCache.ts                 → 타로 카드 이미지 캐싱
+/public/tarot-shuffle-background.jpg    → 타로 셔플 배경 이미지 (CSP 대응, 9.8KB)
 ```
 </details>
 
@@ -411,8 +413,10 @@ const sajuResponse = await fetch(sajuApiUrl, {
 
 # 타로 콘텐츠
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
-/components/TarotGame.tsx               → 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+/components/TarotGame.tsx               → 카드 섞기 + 선택 UI (21장, iOS Safari 전체화면 배경 대응)
+/pages/TestTarotPage.tsx                → 테스트용 타로 페이지 (라우트: /test/tarot, 로그인 불필요)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
+/public/tarot-shuffle-background.jpg    → 타로 셔플 배경 이미지 (CSP 대응, 9.8KB)
 
 # 프로필 & 사주 관리
 /components/ProfilePage.tsx             → 프로필 (사주 관리)
