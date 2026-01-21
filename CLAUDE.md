@@ -267,6 +267,66 @@ for (let i = 0; i < items.length; i += 6) {
 - **HTTP 캐시 설정**: `vercel.json` (JS/CSS 1년, 이미지 1일)
 - **상세 문서**: `DECISIONS.md` → "2026-01-20 캐싱 전략" 섹션
 
+### 11. 보안 (Security)
+
+**새로운 기능 개발 시 반드시 보안 점검을 수행하세요.**
+
+#### 필수 보안 원칙
+
+| 원칙 | 설명 |
+|------|------|
+| **시크릿 하드코딩 금지** | API 키, 비밀번호는 반드시 환경변수 사용 |
+| **에러 메시지 일반화** | 사용자에게 상세 에러 노출 금지 (`error.message` 직접 표시 금지) |
+| **입력값 검증** | 사용자 입력은 항상 서버에서 재검증 |
+| **CORS 화이트리스트** | Edge Function은 `server/cors.ts` 사용 필수 |
+
+#### 코드 작성 시 체크리스트
+
+```typescript
+// ❌ 잘못된 예시
+alert('에러: ' + error.message);  // 에러 상세 노출
+const API_KEY = 'sk-xxxx';         // 시크릿 하드코딩
+fetch(userInput);                  // 입력값 미검증
+
+// ✅ 올바른 예시
+console.error('에러:', error);     // 콘솔에만 상세 기록
+alert('처리에 실패했습니다.');      // 일반 메시지 표시
+const API_KEY = Deno.env.get('API_KEY');  // 환경변수 사용
+```
+
+#### Edge Function 보안 템플릿
+
+```typescript
+import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts';
+
+serve(async (req) => {
+  // 1. CORS 처리
+  if (req.method === 'OPTIONS') {
+    return handleCorsPreflightRequest(req);
+  }
+  const corsHeaders = getCorsHeaders(req);
+
+  // 2. 인증 검증 (필요한 경우)
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(
+      JSON.stringify({ error: '인증이 필요합니다' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // 3. 입력값 검증
+  // 4. 비즈니스 로직
+  // 5. 에러 처리 (상세 정보는 로그에만)
+});
+```
+
+#### 보안 문서
+
+- **상세 가이드**: `src/docs/SECURITY.md`
+- **적용된 보안 조치**: CORS, CSP, 보안 헤더, npm 취약점 해결
+- **향후 TODO**: Rate Limiting, CSP Nonce, SRI
+
 ---
 
 ## 핵심 라이브러리
@@ -317,6 +377,7 @@ supabase/
 | Edge Function 추가 | **supabase/EDGE_FUNCTIONS_GUIDE.md** |
 | Trigger/Function 추가 | **supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md** |
 | RLS 정책 변경 | **supabase/RLS_POLICIES.md** |
+| 보안 정책 변경 | **src/docs/SECURITY.md** |
 
 ---
 
@@ -600,15 +661,23 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ## 금지 사항
 
+### 코드 품질
 - `any` 타입 사용
 - inline style 사용 **(예외: FigmaMake 통합 시 타이포그래피/색상은 허용)**
 - `text-*`, `font-*`, `leading-*` Tailwind 클래스 사용
-- 개발 전용 코드 프로덕션 노출
-- Supabase 정보 하드코딩
 - 문서 업데이트 없이 대규모 변경
+
+### 환경/배포
+- 개발 전용 코드 프로덕션 노출
 - Production DB 직접 조작 (Staging에서 테스트 후 반영)
-- 사주 API를 프론트엔드에서 호출 (API 키 노출 위험)
-- Edge Function에서 사주 API 호출 시 브라우저 헤더 누락 (차단될 수 있음)
+
+### 보안 (CRITICAL)
+- ❌ **API 키/시크릿 하드코딩** → 환경변수 사용 필수
+- ❌ **에러 상세 메시지 사용자 노출** → `alert(error.message)` 금지
+- ❌ **CORS `*` 설정** → `server/cors.ts` 화이트리스트 사용
+- ❌ **사주 API 프론트엔드 호출** → Edge Function에서만 호출
+- ❌ **npm 취약점 방치** → 배포 전 `npm audit` 확인 필수
+- ❌ **Supabase 정보 하드코딩** → 환경변수 사용
 
 ---
 
@@ -649,6 +718,12 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 |------|-------------|----------|
 | **[README.md](./README.md)** | 프로젝트 처음 시작할 때 | 환경 설정, 빠른 시작, Supabase/Vercel 설정 |
 
+### 🔒 보안
+
+| 문서 | 언제 읽나요? | 주요 내용 |
+|------|-------------|----------|
+| **[SECURITY.md](./src/docs/SECURITY.md)** | 새 기능 개발, 보안 점검 시 | CORS, CSP, 보안 헤더, 인증, 에러 처리, 향후 TODO |
+
 ### 📋 작업 시나리오별 문서 참고 순서
 
 #### 🐛 버그 수정
@@ -683,4 +758,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-01-17
+**최종 업데이트**: 2026-01-21
