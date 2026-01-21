@@ -1,12 +1,7 @@
 // Supabase Edge Function: 타로 답변 생성 (GPT-4.1)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
 // 78장 타로 덱
 const TAROT_DECK = [
@@ -60,8 +55,10 @@ function getTarotCardImageUrl(cardName: string, supabaseUrl: string): string {
 // ⭐ 타로 카드 ID 생성 (영문 카드명을 kebab-case로 변환)
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return handleCorsPreflightRequest(req)
   }
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const { 
