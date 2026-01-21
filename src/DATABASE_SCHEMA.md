@@ -1,8 +1,8 @@
 # 데이터베이스 스키마 문서
 
 > **작성일**: 2024-12-17
-> **버전**: 1.3.2
-> **최종 업데이트**: 2026-01-13
+> **버전**: 1.4.0
+> **최종 업데이트**: 2026-01-21
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -40,7 +40,8 @@
 | `marketing_agreed` | boolean | - | `false` | 마케팅 정보 수신 동의 여부 |
 | `ads_agreed` | boolean | - | `false` | 광고성 정보 수신 동의 여부 |
 | `terms_agreed_at` | timestamptz | - | - | 약관 동의 일시 |
-| `last_login_at` | timestamptz | - | `now()` | 마지막 로그인 일시 |
+| `last_login_at` | timestamptz | - | `now()` | 마지막 방문 일시 (일일 방문 기준 업데이트) |
+| `visit_count` | integer | - | `1` | 총 방문 일수 (일일 방문 기준) |
 | `created_at` | timestamptz | - | `now()` | 계정 생성 일시 |
 | `role` | text | CHECK | `'user'` | 사용자 권한 (master, admin, user) |
 
@@ -345,6 +346,7 @@ coupons (쿠폰 마스터)
 | 1.3.0 | 2026-01-07 | orders 테이블에 webhook_verified_at, refund 관련 컬럼 추가 (결제 안정성 강화) | AI Assistant |
 | 1.3.1 | 2026-01-13 | 스키마 검토 완료 (변경 없음) - 사주 API/캐시 버스팅은 클라이언트 측 변경 | AI Assistant |
 | 1.3.2 | 2026-01-13 | 스테이징 스키마를 프로덕션 기준으로 되돌림 (orders.content_id nullable, refund_amount DEFAULT 제거) | AI Assistant |
+| 1.4.0 | 2026-01-21 | users 테이블에 visit_count 컬럼 추가 (일일 방문 횟수 추적) | AI Assistant |
 
 ---
 
