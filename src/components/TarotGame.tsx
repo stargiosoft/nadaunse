@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { ButtonSquareButton } from "./ButtonSquareButton";
 import cardImage from "figma:asset/f494ca2b3b180a2d66b2960718e3e515db3248a2.png"; // Using existing card image from TarotShufflePage
 
-// 배경 이미지 URL 정의
-const tarotBackground = "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg";
+// 배경 이미지 - public 폴더에서 절대 경로로 참조
+const tarotBackground = "/tarot-shuffle-background.jpg";
 
 // Design base width (440px)
 const BASE_WIDTH = 440;
@@ -221,7 +221,7 @@ function Container({ title, question }: { title?: string; question?: string }) {
 
   return (
     <div className="content-stretch flex flex-col gap-[4px] items-start justify-start min-h-[86px] relative shrink-0 text-center w-full" data-name="Container">
-      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[30px] relative shrink-0 text-[20px] text-white tracking-[-0.5px] w-full">{title}</p>
+      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[30px] relative shrink-0 text-[20px] text-white tracking-[-0.5px] w-full">{title || "질문을 떠올려 주세요"}</p>
       <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[#f3f3f3] text-[14px] tracking-[-0.42px] w-full">{question || "질문을 떠올리며 카드를 뽑아주세요"}</p>
     </div>
   );
@@ -250,7 +250,7 @@ function Frame2({ targetRef, title, question }: { targetRef: React.RefObject<HTM
 
 function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, title, question }: any) {
   return (
-    <div className="absolute content-stretch flex flex-col gap-[50px] items-center left-0 top-[18px] w-full">
+    <div className="absolute content-stretch flex flex-col gap-[50px] items-center left-0 w-full" style={{ top: '70px' }}>
       <Frame2 targetRef={targetRef} title={title} question={question} />
       <div className="flex items-center justify-center relative shrink-0">
         <CardFan shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} scaleRatio={scaleRatio} />
@@ -262,30 +262,24 @@ function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCard
 function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, onShuffle, isShuffling, isCardSelected, title, question }: any) {
   const buttonLabel = isShuffling ? "섞는 중..." : isCardSelected ? "선택 완료" : "카드 섞기";
 
-  useEffect(() => {
-    const setVh = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    setVh();
-    window.addEventListener('resize', setVh);
-    return () => window.removeEventListener('resize', setVh);
-  }, []);
-
   return (
     <div
-      className="relative w-full overflow-hidden"
+      className="relative w-full h-full"
       style={{
-        backgroundColor: '#41a09e',
-        height: 'calc(var(--vh, 1vh) * 100)'
+        backgroundColor: '#41a09e'
       }}
     >
-      <img
-        src={tarotBackground}
-        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none z-0"
-        alt=""
+      {/* 배경 이미지 - 데스크탑용 (모바일은 body 배경 사용) */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          backgroundImage: `url(${tarotBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+          backgroundRepeat: 'no-repeat'
+        }}
       />
-      <div className="absolute inset-0 z-10 w-full h-full">
+      <div className="relative z-10 w-full h-full">
         <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} targetRef={targetRef} scaleRatio={scaleRatio} title={title} question={question} />
         <div
           className="fixed left-0 right-0 px-[20px] z-50"
@@ -344,6 +338,65 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
 
   // ⭐ 이미지 로딩 상태 - 카드/배경 이미지 로드 완료 후 렌더링
   const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  // ⭐ body 배경 설정 + 스크롤 막기 + Safari 테마 색상 변경
+  useEffect(() => {
+    // body 스타일 백업
+    const originalBackground = document.body.style.background;
+    const originalBackgroundColor = document.body.style.backgroundColor;
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalWidth = document.body.style.width;
+    const originalHeight = document.body.style.height;
+
+    // Safari 테마 색상 변경
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const originalThemeColor = metaThemeColor?.getAttribute('content') || '#ffffff';
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', '#267973');
+    }
+
+    // 데스크톱은 흰색, 모바일만 배경 이미지 설정
+    const isMobile = window.innerWidth <= 440;
+
+    // 스크롤 완전 차단
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+
+    if (isMobile) {
+      // 모바일: 배경 이미지 + 색상
+      document.body.style.backgroundColor = '#41a09e';
+      document.body.style.backgroundImage = `url(${tarotBackground})`;
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center top';
+      document.body.style.backgroundRepeat = 'no-repeat';
+      document.body.style.backgroundAttachment = 'fixed';
+    } else {
+      // 데스크톱: 흰색 배경
+      document.body.style.backgroundColor = '#ffffff';
+    }
+
+    return () => {
+      document.body.style.background = originalBackground;
+      document.body.style.backgroundColor = originalBackgroundColor;
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.width = originalWidth;
+      document.body.style.height = originalHeight;
+      document.body.style.backgroundImage = '';
+      document.body.style.backgroundSize = '';
+      document.body.style.backgroundPosition = '';
+      document.body.style.backgroundRepeat = '';
+      document.body.style.backgroundAttachment = '';
+
+      // Safari 테마 색상 복원
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', originalThemeColor);
+      }
+    };
+  }, []);
 
   // ⭐ 이미지 프리로드 - 카드 뒷면 + 배경 이미지
   useEffect(() => {
@@ -444,7 +497,7 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   // ⭐ 이미지 로딩 중에는 로딩 스피너 표시
   if (!imagesLoaded) {
     return (
-      <div className="flex items-center justify-center w-full h-full bg-[#41a09e]">
+      <div className="flex items-center justify-center w-full h-full" style={{ backgroundColor: '#41a09e' }}>
         <div className="animate-spin rounded-full h-[48px] w-[48px] border-b-2 border-white"></div>
       </div>
     );

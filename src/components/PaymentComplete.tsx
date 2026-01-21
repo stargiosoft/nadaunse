@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import PurchaseFailure from './PurchaseFailure';
 import { PageLoader } from './ui/PageLoader';
+import { trackPurchase } from '../utils/analytics';
 
 export default function PaymentComplete() {
   const navigate = useNavigate();
@@ -103,6 +104,29 @@ export default function PaymentComplete() {
             // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
             localStorage.removeItem('purchase_history_cache');
             console.log('🗑️ 구매내역 캐시 무효화 완료');
+
+            // 📊 GA4: 구매 완료 이벤트 (purchase)
+            if (contentId) {
+              const { data: contentData } = await supabase
+                .from('master_contents')
+                .select('id, title, category_main, price_discount')
+                .eq('id', contentId)
+                .single();
+
+              if (contentData) {
+                trackPurchase(
+                  merchantUid,
+                  {
+                    id: contentData.id,
+                    title: contentData.title,
+                    category: contentData.category_main,
+                    discountPrice: paidAmount,
+                  },
+                  payMethod
+                );
+                console.log('📊 [GA4] purchase 이벤트 전송:', contentData.title);
+              }
+            }
           }
 
           // ⭐ 쿠폰 사용 처리 (모바일 결제)

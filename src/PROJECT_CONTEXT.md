@@ -131,6 +131,9 @@
 - ✅ **Figma 임포트 이미지**: `figma:asset/` 스킴 사용 (경로 접두사 금지)
 - ✅ **새 이미지**: `ImageWithFallback` 컴포넌트 필수 사용
 - ✅ **SVG**: `/imports/svg-*.ts` 파일에서 임포트
+- ✅ **이미지 저장 위치**: `/public` 폴더 (절대 경로 `/image.jpg`로 참조)
+- ❌ **외부 이미지 URL 사용 금지**: CSP(Content Security Policy)로 차단됨
+- ✅ **CSP 허용 도메인**: `'self'`, `data:`, `blob:`, `https://*.supabase.co`, `https://*.kakaocdn.net`
 
 ### 5. 비즈니스 로직 패턴
 - ✅ **싱글톤 서비스 클래스** 패턴 사용 (`FreeContentService`)
@@ -275,11 +278,13 @@ const sajuResponse = await fetch(sajuApiUrl, {
 <summary><b>타로 콘텐츠</b></summary>
 
 ```
-/components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트)
-/components/TarotGame.tsx               → 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+/components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
+/components/TarotGame.tsx               → 카드 섞기 + 선택 UI (21장, iOS Safari 전체화면 배경 대응)
+/pages/TestTarotPage.tsx                → 테스트용 타로 페이지 (라우트: /test/tarot, 로그인 불필요)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 /lib/tarotCards.ts                      → 타로 카드 데이터 (78장) + 유틸리티 함수
 /lib/tarotImageCache.ts                 → 타로 카드 이미지 캐싱
+/public/tarot-shuffle-background.jpg    → 타로 셔플 배경 이미지 (CSP 대응, 9.8KB)
 ```
 </details>
 
@@ -408,8 +413,10 @@ const sajuResponse = await fetch(sajuApiUrl, {
 
 # 타로 콘텐츠
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
-/components/TarotGame.tsx               → 카드 섞기 + 선택 UI 연출 (458줄, 5단계 애니메이션)
+/components/TarotGame.tsx               → 카드 섞기 + 선택 UI (21장, iOS Safari 전체화면 배경 대응)
+/pages/TestTarotPage.tsx                → 테스트용 타로 페이지 (라우트: /test/tarot, 로그인 불필요)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
+/public/tarot-shuffle-background.jpg    → 타로 셔플 배경 이미지 (CSP 대응, 9.8KB)
 
 # 프로필 & 사주 관리
 /components/ProfilePage.tsx             → 프로필 (사주 관리)

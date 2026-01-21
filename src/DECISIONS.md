@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-20
-> **주요 결정**: HTTP 캐시 전략 수립 (vercel.json), 썸네일 Cache API 적용, 구매 내역 성능 최적화
+> **최종 업데이트**: 2026-01-21
+> **주요 결정**: 타로 셔플 배경 이미지 CSP 오류 수정, 이미지 로컬 저장 규칙 수립
 
 ---
 
@@ -13,6 +13,163 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-21
+
+### 타로 셔플 배경 이미지 CSP 오류 수정
+
+**결정**: 모든 이미지를 로컬 `/public` 폴더에 저장하고 절대 경로로 참조
+
+**배경**:
+- TarotGame 컴포넌트에서 외부 URL (`https://i.postimg.cc/...`) 사용
+- staging 서버에서 CSP(Content Security Policy) 위반으로 이미지 로딩 차단
+- 콘솔 오류: `Loading the image 'https://i.postimg.cc/...' violates the following Content Security Policy directive: "img-src 'self' data: blob: https://*.supabase.co https://*.kakaocdn.net"`
+- CSP 허용 도메인: `'self'`, `data:`, `blob:`, `https://*.supabase.co`, `https://*.kakaocdn.net`
+
+**문제점**:
+1. 외부 이미지 호스팅 서비스(`postimg.cc`) 사용으로 CSP 차단
+2. 배경 이미지가 표시되지 않음 (청록색 배경 패턴 누락)
+3. 외부 서비스 의존성으로 인한 안정성 문제 (서비스 장애 시 이미지 미표시)
+
+**해결 방법**:
+1. **이미지 다운로드**: 외부 URL에서 로컬로 다운로드
+   ```bash
+   curl -L "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg" -o public/tarot-shuffle-background.jpg
+   ```
+
+2. **코드 수정**: 외부 URL → 절대 경로
+   ```tsx
+   // Before (TarotGame.tsx:6)
+   const tarotBackground = "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg";
+
+   // After
+   const tarotBackground = "/tarot-shuffle-background.jpg";
+   ```
+
+3. **프리로딩 코드 수정** (LoadingPage.tsx:206)
+   ```tsx
+   // Before
+   const tarotBackgroundUrl = 'https://i.postimg.cc/...';
+
+   // After
+   const tarotBackgroundUrl = '/tarot-shuffle-background.jpg';
+   ```
+
+**추가 개선**:
+- TarotGame Container에서 title prop이 없을 때 기본값 표시
+  ```tsx
+  // Before
+  <p>{title}</p>
+
+  // After
+  <p>{title || "질문을 떠올려 주세요"}</p>
+  ```
+
+**영향 범위**:
+- `TarotGame.tsx`: 배경 이미지 경로 변경
+- `LoadingPage.tsx`: 이미지 프리로딩 경로 변경
+- `/public/tarot-shuffle-background.jpg`: 새 파일 추가 (9.8KB)
+- CSP 오류 완전히 제거됨
+- 배경 이미지 정상 표시
+
+**새로운 규칙**:
+- ✅ **모든 이미지는 `/public` 폴더에 저장**
+- ✅ **절대 경로로 참조** (예: `/image.jpg`)
+- ❌ **외부 이미지 URL 사용 금지** (CSP 차단됨)
+- ✅ **Supabase Storage 이미지는 사용 가능** (`https://*.supabase.co`)
+- ✅ **카카오 프로필 이미지는 사용 가능** (`https://*.kakaocdn.net`)
+
+**참고 문서**:
+- `CLAUDE.md` → "### 5. 이미지 처리 (CSP 제한)"
+- `★PUBLISHING_GUIDE★.md` → "## 9. 이미지 처리 (CSP 제한)"
+
+### 타로 셔플 모바일 전체 화면 배경 최적화
+
+**결정**: iOS Safari/Chrome에서 주소창 아래까지 배경 이미지 표시 + 데스크톱 440px 프레임 제한
+
+**배경**:
+- 모바일 Safari: 하단 주소창 아래에 흰색 여백 표시
+- 모바일 Chrome: 아래로 당겨서 새로고침 기능 차단됨
+- 데스크톱: 440px 프레임 밖까지 배경 이미지 표시되어 불필요한 영역 차지
+- 페이지 스크롤이 가능하여 사용자 경험 저하
+
+**문제점**:
+1. **iOS Safari**: `100vh` 계산이 주소창을 포함한 높이로 설정되어 실제 보이는 영역보다 작음
+2. **Chrome pull-to-refresh**: `overflow: hidden`으로 인해 새로고침 제스처 차단
+3. **데스크톱**: 배경 이미지가 max-width 제한 없이 전체 화면에 표시
+4. **스크롤**: 콘텐츠 높이가 viewport보다 커서 스크롤 발생
+
+**해결 방법**:
+1. **iOS Safari 주소창 대응**:
+   ```tsx
+   // body 배경 동적 설정 (모바일만)
+   const isMobile = window.innerWidth <= 440;
+   if (isMobile) {
+     document.body.style.backgroundColor = '#41a09e';
+     document.body.style.backgroundImage = `url(${tarotBackground})`;
+     document.body.style.backgroundSize = 'cover';
+     document.body.style.backgroundAttachment = 'fixed';
+   }
+   ```
+
+2. **Safari 주소창 색상 변경**:
+   ```tsx
+   // 테마 색상 동적 변경 (민트색 → 진한 청록색)
+   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+   if (metaThemeColor) {
+     metaThemeColor.setAttribute('content', '#267973');
+   }
+   ```
+
+3. **스크롤 차단 (pull-to-refresh 허용)**:
+   ```tsx
+   // body 고정하여 스크롤 완전 차단
+   document.body.style.overflow = 'hidden';
+   document.body.style.position = 'fixed';
+   document.body.style.width = '100%';
+   document.body.style.height = '100%';
+   ```
+
+4. **데스크톱 배경 제한**:
+   ```tsx
+   // 데스크톱: body 흰색, 컴포넌트 내부에 배경 이미지
+   if (!isMobile) {
+     document.body.style.backgroundColor = '#ffffff';
+   }
+   // TarotGame 내부에 배경 div 추가
+   <div className="absolute inset-0" style={{ backgroundImage: `url(${tarotBackground})` }} />
+   ```
+
+5. **상단 네비게이션 고정**:
+   ```tsx
+   // absolute → fixed로 변경
+   <div className="fixed top-0 left-0 right-0 bg-white h-[52px] z-50 max-w-[440px]">
+   ```
+
+**영향 범위**:
+- `TarotGame.tsx`: body 배경 동적 설정, 테마 색상 변경, 스크롤 차단
+- `TarotShufflePage.tsx`: 상단 네비 고정, overflow-hidden 추가
+- `TestTarotPage.tsx`: 새 테스트 페이지 생성 (로그인 불필요)
+- `index.html`: viewport-fit=cover 추가
+- `App.tsx`: /test/tarot 라우트 추가
+
+**결과**:
+- ✅ iOS Safari: 주소창 아래까지 배경 이미지 표시
+- ✅ Safari 주소창: 배경색과 어울리는 진한 청록색 (`#267973`)
+- ✅ Chrome pull-to-refresh: 작동 가능
+- ✅ 데스크톱: 440px 프레임 안에만 배경 표시, 밖은 흰색
+- ✅ 스크롤: 완전히 차단되어 고정된 화면
+- ✅ 상단 네비: 스크롤 시에도 고정
+
+**트레이드오프**:
+- Safari 주소창과 배경색이 완벽히 일치하지 않음 (배경 이미지 패턴 vs 단색)
+- `position: fixed` 사용으로 일부 Chrome 기기에서 pull-to-refresh가 작동하지 않을 수 있음
+
+**테스트 페이지**:
+- `/test/tarot` 라우트 추가 (로그인 불필요)
+- 개발/테스트 환경에서 타로 UI 빠르게 확인 가능
 
 ---
 

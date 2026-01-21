@@ -446,7 +446,134 @@ function MyPageWrapper() {
 
 ---
 
-## 9. 실제 예시: AlimtalkInfoInputPage
+## 9. 이미지 처리 (CSP 제한)
+
+### CSP(Content Security Policy)란?
+- 웹 보안 정책으로 외부 리소스 로딩을 제한
+- 나다운세는 `img-src` 지시어로 이미지 도메인 제한
+- **외부 이미지 URL 사용 시 브라우저가 차단함**
+
+### 허용된 이미지 도메인
+```
+img-src 'self' data: blob: https://*.supabase.co https://*.kakaocdn.net
+```
+
+- `'self'`: 같은 도메인 (nadaunse.com, staging.nadaunse.com)
+- `data:`, `blob:`: 인라인 데이터 URI
+- `https://*.supabase.co`: Supabase Storage
+- `https://*.kakaocdn.net`: 카카오 프로필 이미지
+
+### 이미지 저장 및 사용 방법
+
+#### ❌ 잘못된 예시 (CSP 차단됨)
+```tsx
+// 외부 URL 사용 - 브라우저가 차단함
+const bgImage = "https://i.postimg.cc/WzwkjYXT/background.jpg";
+const iconUrl = "https://cdn.example.com/icon.png";
+
+<img src={bgImage} alt="Background" />
+```
+
+**콘솔 오류**:
+```
+Loading the image 'https://i.postimg.cc/...' violates the following
+Content Security Policy directive: "img-src 'self' data: blob: ...".
+The action has been blocked.
+```
+
+#### ✅ 올바른 예시 1: public 폴더 사용
+```tsx
+// 1. 이미지 파일을 /public 폴더에 저장
+//    파일 위치: /Users/star/nadaunse/public/background.jpg
+
+// 2. 절대 경로로 참조
+const bgImage = "/background.jpg";
+
+<img src={bgImage} alt="Background" />
+```
+
+#### ✅ 올바른 예시 2: Vite import 사용
+```tsx
+// 1. 이미지 파일을 /src/assets 폴더에 저장
+//    파일 위치: /Users/star/nadaunse/src/assets/icon.png
+
+// 2. import 구문 사용
+import iconImage from '../assets/icon.png';
+
+<img src={iconImage} alt="Icon" />
+```
+
+#### ✅ 올바른 예시 3: Supabase Storage 사용
+```tsx
+// Supabase Storage에 업로드된 이미지는 CSP 허용됨
+const thumbnailUrl = "https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/thumbnails/image.jpg";
+
+<img src={thumbnailUrl} alt="Thumbnail" />
+```
+
+### 이미지 다운로드 및 변환 가이드
+
+외부 이미지를 사용해야 하는 경우:
+
+```bash
+# 1. 이미지 다운로드
+cd /Users/star/nadaunse/public
+curl -L "https://example.com/image.jpg" -o my-image.jpg
+
+# 2. 코드에서 절대 경로로 참조
+# const myImage = "/my-image.jpg";
+```
+
+### 체크리스트
+
+- [ ] 모든 이미지가 `/public` 폴더 또는 `/src/assets`에 있음
+- [ ] 외부 URL 사용 금지 (https://i.postimg.cc, https://cdn.example.com 등)
+- [ ] Supabase Storage 이미지는 사용 가능
+- [ ] 카카오 프로필 이미지는 사용 가능
+- [ ] 개발자 도구 콘솔에서 CSP 오류 확인
+
+### 실제 케이스: 타로 셔플 배경 이미지 CSP 오류 수정
+
+**문제 상황** (2026-01-21):
+```tsx
+// TarotGame.tsx - 외부 URL 사용
+const tarotBackground = "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg";
+```
+
+**콘솔 오류**:
+```
+Loading the image 'https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg'
+violates the following Content Security Policy directive: "img-src 'self' data: blob:
+https://*.supabase.co https://*.kakaocdn.net". The action has been blocked.
+```
+
+**해결 방법**:
+1. 이미지 다운로드:
+   ```bash
+   curl -L "https://i.postimg.cc/WzwkjYXT/talo-seupeuledeu-batang-(wonbon).jpg" \
+     -o public/tarot-shuffle-background.jpg
+   ```
+
+2. 코드 수정:
+   ```tsx
+   // TarotGame.tsx - 절대 경로 사용
+   const tarotBackground = "/tarot-shuffle-background.jpg";
+   ```
+
+3. 프리로딩 코드도 수정:
+   ```tsx
+   // LoadingPage.tsx
+   const tarotBackgroundUrl = '/tarot-shuffle-background.jpg';
+   ```
+
+**결과**:
+- ✅ CSP 오류 완전히 제거
+- ✅ 배경 이미지 정상 표시 (청록색 배경 + 별/달 패턴)
+- ✅ 외부 서비스 의존성 제거
+
+---
+
+## 10. 실제 예시: AlimtalkInfoInputPage
 
 ```tsx
 import { useState } from 'react';
@@ -564,7 +691,7 @@ export default function AlimtalkInfoInputPage({ onBack, onNext }: Props) {
 
 ---
 
-## 10. iOS Safari 호환성
+## 11. iOS Safari 호환성
 
 ### 스크롤 바운스 방지 레이아웃 (⭐ 권장)
 
@@ -650,7 +777,7 @@ export default function MyPage() {
 
 ---
 
-## 11. 실제 프로젝트 컴포넌트 참조
+## 12. 실제 프로젝트 컴포넌트 참조
 
 퍼블리싱 시 참고할 만한 실제 컴포넌트들입니다.
 

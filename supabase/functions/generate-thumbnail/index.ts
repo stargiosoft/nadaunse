@@ -17,21 +17,19 @@ const wasmBytes = await Deno.readFile(
 await initializeImageMagick(wasmBytes)
 console.log('✅ ImageMagick WASM 초기화 완료')
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
 // 레퍼런스 이미지 URL (Supabase Storage)
-const REFERENCE_SWAN_IMAGE_URL = Deno.env.get('REFERENCE_SWAN_IMAGE_URL') || 
+const REFERENCE_SWAN_IMAGE_URL = Deno.env.get('REFERENCE_SWAN_IMAGE_URL') ||
   'https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/assets/ref.png.png'
 
 serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return handleCorsPreflightRequest(req)
   }
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const { imagePrompt, referenceImageBase64, contentId } = await req.json()

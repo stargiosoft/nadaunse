@@ -3,11 +3,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts';
 
 interface ContentData {
   content_type: 'paid' | 'free';
@@ -40,8 +36,10 @@ interface RequestBody {
 serve(async (req) => {
   // CORS 처리
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // 1️⃣ Authorization 헤더에서 JWT 토큰 추출

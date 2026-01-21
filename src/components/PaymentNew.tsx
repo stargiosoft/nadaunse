@@ -12,6 +12,7 @@ import PaymentSkeleton from "./skeletons/PaymentSkeleton";
 import { DEV } from "../lib/env";
 import { preloadLoadingPageImages } from "../lib/imagePreloader";
 import { PageLoader } from "./ui/PageLoader";
+import { trackBeginCheckout } from "../utils/analytics";
 
 // 포트원 타입 선언
 declare global {
@@ -492,6 +493,20 @@ export default function PaymentNew({
       ? currentProduct.discountPrice - couponDiscount
       : 0,
   );
+
+  // 📊 GA4: 결제 시작 이벤트 (begin_checkout)
+  useEffect(() => {
+    if (currentProduct && !isLoadingContent && !isLoadingCoupons) {
+      trackBeginCheckout({
+        id: currentProduct.id,
+        title: currentProduct.title,
+        category: currentProduct.category,
+        type: currentProduct.type,
+        discountPrice: currentProduct.discountPrice,
+      });
+      console.log('📊 [GA4] begin_checkout 이벤트 전송:', currentProduct.title);
+    }
+  }, [currentProduct?.id, isLoadingContent, isLoadingCoupons]);
 
   // 포트원 SDK 로드 및 초기화
   useEffect(() => {

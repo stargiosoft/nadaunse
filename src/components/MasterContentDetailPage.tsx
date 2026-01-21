@@ -14,6 +14,7 @@ import { supabase, saveOrder } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
 import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
+import { trackViewItem } from '../utils/analytics';
 
 // Animation Variants
 const staggerContainer = {
@@ -552,6 +553,20 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
     incrementViewCount();
   }, [contentId]);
+
+  // 📊 GA4: 제품 보기 이벤트 (view_item)
+  useEffect(() => {
+    if (content && !isLoading) {
+      trackViewItem({
+        id: content.id,
+        title: content.title,
+        category: content.category_main,
+        type: content.content_type,
+        discountPrice: content.price_discount || 0,
+      });
+      console.log('📊 [GA4] view_item 이벤트 전송:', content.title);
+    }
+  }, [content?.id, isLoading]);
 
   // ⭐ 로딩 중이고 content_type을 아직 모를 �� (캐시 없음) → 스켈레톤 표시
   if (isLoading && !content) {
@@ -1668,7 +1683,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                         <div className="content-stretch flex flex-col gap-[30px] items-center justify-center relative shrink-0 w-full">
                           <div className="h-[152px] relative shrink-0 w-[146px]">
                             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                              <img alt="오리 캐릭터" className="absolute h-[125.71%] left-[-1.09%] max-w-none top-[-17.49%] w-[102.17%]" src={imgGeminiGeneratedImageEj66M7Ej66M7Ej661} loading="eager" fetchPriority="high" />
+                              <img alt="오리 캐릭터" className="absolute h-[125.71%] left-[-1.09%] max-w-none top-[-17.49%] w-[102.17%]" src={imgGeminiGeneratedImageEj66M7Ej66M7Ej661} loading="eager" />
                             </div>
                           </div>
                           <p className="font-bold leading-[24px] min-w-full not-italic relative shrink-0 text-[19px] text-black text-center tracking-[-0.36px] w-[min-content]">우리 운세는 왜 다를까요?</p>

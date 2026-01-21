@@ -1128,7 +1128,8 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
                           .eq('id', contentId);
                         
                         if (error) {
-                          alert('상태 변경 실패: ' + error.message);
+                          console.error('상태 변경 실패:', error);
+                          alert('상태 변경에 실패했습니다. 다시 시도해주세요.');
                         } else {
                           setContentData(prev => prev ? { ...prev, status: 'ready' } : null);
 

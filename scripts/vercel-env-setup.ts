@@ -7,7 +7,7 @@ import { chromium } from '@playwright/test';
 const ENV_VARS = [
   {
     name: 'VITE_KAKAO_AUTH_SECRET',
-    value: 'nadaunse_secret_2025',
+    value: '', // 보안상 직접 입력 필요 (절대 하드코딩 금지)
     environments: ['production', 'preview', 'development'],
   },
   {

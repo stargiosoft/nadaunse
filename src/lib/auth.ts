@@ -32,8 +32,13 @@ export const signInWithKakao = async () => {
 
               // Supabase 계정 이메일 생성
               const email = kakaoUser.kakao_account?.email || `kakao_${kakaoUser.id}@temp.fortune.app`;
-              // 카카오 ID를 기반으로 고유한 비밀번호 생성 (환경변수 사용)
-              const kakaoAuthSecret = import.meta.env.VITE_KAKAO_AUTH_SECRET || 'nadaunse_secret_2025';
+              // 카카오 ID를 기반으로 고유한 비밀번호 생성 (환경변수 필수)
+              const kakaoAuthSecret = import.meta.env.VITE_KAKAO_AUTH_SECRET;
+              if (!kakaoAuthSecret) {
+                logger.error('VITE_KAKAO_AUTH_SECRET 환경변수가 설정되지 않았습니다.');
+                reject(new Error('서버 설정 오류: 인증 시크릿이 누락되었습니다.'));
+                return;
+              }
               const password = `kakao_${kakaoUser.id}_${kakaoAuthSecret}`;
 
               // 1. 먼저 로그인 시도

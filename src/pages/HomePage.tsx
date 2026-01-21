@@ -1250,8 +1250,36 @@ export default function HomePage() {
           .single();
 
         if (userData && !error) {
-          // localStorage에 저장 (기존 코드 호환용)
-          localStorage.setItem('user', JSON.stringify(userData));
+          // 📊 일일 방문 체크 - last_login_at과 오늘 날짜 비교
+          const lastVisitDate = userData.last_login_at 
+            ? new Date(userData.last_login_at).toDateString() 
+            : null;
+          const today = new Date().toDateString();
+          
+          if (lastVisitDate !== today) {
+            // 오늘 첫 방문 → visit_count++, last_login_at 업데이트
+            const newVisitCount = (userData.visit_count || 0) + 1;
+            const { data: updatedUser, error: updateError } = await supabase
+              .from('users')
+              .update({ 
+                visit_count: newVisitCount,
+                last_login_at: new Date().toISOString()
+              })
+              .eq('id', session.user.id)
+              .select()
+              .single();
+            
+            if (updatedUser && !updateError) {
+              console.log(`📊 [방문] 일일 방문 카운트 업데이트: ${newVisitCount}회`);
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+            } else {
+              console.error('❌ [방문] 업데이트 실패:', updateError);
+              localStorage.setItem('user', JSON.stringify(userData));
+            }
+          } else {
+            // 오늘 이미 방문함 → 업데이트 없이 저장
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
         }
       } else {
         setIsLoggedIn(false);
@@ -1494,7 +1522,8 @@ export default function HomePage() {
   useEffect(() => {
     // 필터 변경 시 상태 리셋
     setCurrentPage(0);
-    setHasMore(true);
+    // ⚠️ hasMore는 여기서 설정하지 않음 - loadFromCache/fetchPublishedContents에서 설정
+    // setHasMore(true)를 여기서 하면 loadFromCache의 setHasMore(false)를 덮어씀
 
     // ⭐ 스크롤 이동 완전 제거 - 브라우저 기본 동작 사용
     // isFirstMount 체크도 제거 (더 이상 필요 없음)
