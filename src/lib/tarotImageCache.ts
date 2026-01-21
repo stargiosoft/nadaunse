@@ -38,6 +38,35 @@ async function getCacheInstance(): Promise<Cache> {
 // 메모리 캐시: { cardName: { imageUrl, cachedAt } }
 const memoryCache = new Map<string, { imageUrl: string; cachedAt: number }>();
 
+// ⭐ Blob URL 메모리 캐시: 동기식 즉시 반환용
+// 캐시된 Blob URL을 저장하여 async 없이 0.01ms로 반환
+const blobUrlCache = new Map<string, { blobUrl: string; cachedAt: number }>();
+
+/**
+ * ⭐ [신규] 동기식 메모리 캐시 체크 (0.01ms)
+ * Blob URL이 메모리에 캐시되어 있으면 즉시 반환
+ * 캐시 미스 시 null 반환 (이후 getCachedTarotImage 호출 필요)
+ * 
+ * ⚠️ 호출자는 useEffect cleanup에서 URL.revokeObjectURL() 호출 불필요
+ *    (blobUrlCache가 관리하므로 revoke하면 안 됨)
+ */
+export function getMemoryCachedBlobUrl(cardName: string): string | null {
+  const cached = blobUrlCache.get(cardName);
+  if (!cached) return null;
+
+  // 만료 체크 (7일)
+  const age = Date.now() - cached.cachedAt;
+  if (age > CACHE_EXPIRY_MS) {
+    // 만료된 Blob URL 정리
+    URL.revokeObjectURL(cached.blobUrl);
+    blobUrlCache.delete(cardName);
+    return null;
+  }
+
+  console.log(`⚡ [타로캐시] Blob URL 메모리 히트 (동기): ${cardName}`);
+  return cached.blobUrl;
+}
+
 /**
  * 메모리 캐시 초기화 (페이지 로드 시 1회)
  */
@@ -127,7 +156,11 @@ export async function cacheTarotImage(cardName: string, imageUrl: string): Promi
       cachedAt
     });
 
-    console.log(`✅ [타로캐시] 저장 완료: ${cardName} (${sizeInKB.toFixed(1)}KB)`);
+    // ⭐ Blob URL도 미리 생성하여 blobUrlCache에 저장 (동기식 체크용)
+    const blobUrl = URL.createObjectURL(blob);
+    blobUrlCache.set(cardName, { blobUrl, cachedAt });
+
+    console.log(`✅ [타로캐시] 저장 완료 (+ Blob URL 캐시): ${cardName} (${sizeInKB.toFixed(1)}KB)`);
     return true;
   } catch (error) {
     console.error(`❌ [타로캐시] 캐싱 실패: ${cardName}`, error);
@@ -164,9 +197,13 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
         if (response) {
           console.log(`⚡ [타로캐시] 메모리 히트 + Cache API 검증 완료: ${cardName}`);
 
-          // ⭐ Blob URL 생성하여 반환
+          // ⭐ Blob URL 생성하여 반환 + blobUrlCache에도 저장
           const blob = await response.blob();
           const blobUrl = URL.createObjectURL(blob);
+          
+          // ⭐ 다음 호출 시 동기식으로 반환할 수 있도록 저장
+          blobUrlCache.set(cardName, { blobUrl, cachedAt: Date.now() });
+          
           return blobUrl;
         } else {
           // Cache API에 없으면 메모리 캐시도 무효화
@@ -210,10 +247,14 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
       return null;
     }
 
-    // ⭐ Blob URL 생성하여 반환
+    // ⭐ Blob URL 생성하여 반환 + blobUrlCache에도 저장
     console.log(`⚡ [타로캐시] 캐시 히트: ${cardName}`);
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
+    
+    // ⭐ 다음 호출 시 동기식으로 반환할 수 있도록 저장
+    blobUrlCache.set(cardName, { blobUrl, cachedAt: Date.now() });
+    
     return blobUrl;
   } catch (error) {
     console.error(`❌ [타로캐시] 로드 실패: ${cardName}`, error);

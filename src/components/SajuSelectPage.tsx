@@ -312,46 +312,48 @@ export default function SajuSelectPage() {
         return;
       }
 
-      // 진행 중인 주문 조회 (가장 중요!)
-      console.log('🔍 [사주선택] 진행 중인 주문 조회...');
+      // ⚡ 성능 최적화: 주문 조회 + 휴대폰 번호 조회를 병렬 실행
+      console.log('🔍 [사주선택] 주문 조회 + 휴대폰 번호 조회 (병렬)...');
 
-      // ⭐ localStorage에 pendingOrderId가 있으면 해당 주문 직접 조회 (구매내역에서 재접속한 경우)
       const pendingOrderId = localStorage.getItem('pendingOrderId');
-      let orders: any[] = [];
-      let ordersError: any = null;
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-      if (pendingOrderId) {
-        console.log('🔍 [사주선택] pendingOrderId로 직접 조회:', pendingOrderId);
-        const { data, error } = await supabase
-          .from('orders')
-          .select('id, content_id, ai_generation_completed, saju_record_id')
-          .eq('id', pendingOrderId)
+      // ⭐ 병렬 실행: 주문 조회 + 휴대폰 번호 조회
+      const [ordersResult, phoneResult] = await Promise.all([
+        // 주문 조회
+        pendingOrderId
+          ? supabase
+              .from('orders')
+              .select('id, content_id, ai_generation_completed, saju_record_id')
+              .eq('id', pendingOrderId)
+              .eq('user_id', user.id)
+              .single()
+          : supabase
+              .from('orders')
+              .select('id, content_id, ai_generation_completed, saju_record_id')
+              .eq('user_id', user.id)
+              .eq('ai_generation_completed', false)
+              .gte('created_at', tenMinutesAgo)
+              .order('created_at', { ascending: false })
+              .limit(1),
+        // 휴대폰 번호 조회
+        supabase
+          .from('saju_records')
+          .select('id, phone_number')
           .eq('user_id', user.id)
-          .single();
+          .eq('notes', '본인')
+          .limit(1)
+      ]);
 
-        orders = data ? [data] : [];
-        ordersError = error;
-      } else {
-        // 일반적인 경우: 최근 10분 이내의 미완료 주문 조회
-        console.log('🔍 [사주선택] 최근 미완료 주문 조회...');
-        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
-        const { data, error } = await supabase
-          .from('orders')
-          .select('id, content_id, ai_generation_completed, saju_record_id')
-          .eq('user_id', user.id)
-          .eq('ai_generation_completed', false)
-          .gte('created_at', tenMinutesAgo)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        orders = data || [];
-        ordersError = error;
-      }
+      // 주문 결과 처리
+      const orders = pendingOrderId
+        ? (ordersResult.data ? [ordersResult.data] : [])
+        : (ordersResult.data || []);
+      const ordersError = ordersResult.error;
 
       if (ordersError) {
         console.error('❌ [사주선택] 주문 조회 실패:', ordersError);
-        toast.error('주문 정보를 불러올 수 없습���다. 다시 시도해주세요.');
+        toast.error('주문 정보를 불러올 수 없습니다. 다시 시도해주세요.');
         setIsGenerating(false);
         return;
       }
@@ -369,38 +371,9 @@ export default function SajuSelectPage() {
 
       console.log('✅ [사주선택] 진행 중인 주문 발견:', orderId);
 
-      // ⭐ 대표 사주 업데이트 (휴대폰 번호 체크 전에 먼저 실행)
-      console.log('🔄 [사주선택] 대표 사주 업데이트...');
-      try {
-        // 모든 사주 is_primary=false로 변경
-        await supabase
-          .from('saju_records')
-          .update({ is_primary: false })
-          .eq('user_id', user.id);
-
-        // 선택된 사주만 is_primary=true로 변경
-        await supabase
-          .from('saju_records')
-          .update({ is_primary: true })
-          .eq('id', selectedSajuId)
-          .eq('user_id', user.id);
-
-        // ⭐ 캐시 무효화 (ProfilePage, SajuManagementPage에서 새 대표 사주 로드하도록)
-        localStorage.removeItem('primary_saju');
-        localStorage.removeItem('saju_records_cache');
-        console.log('✅ [사주선택] 대표 사주 업데이트 완료 + 캐시 무효화');
-      } catch (error) {
-        console.error('❌ [사주선택] 대표 사주 업데이트 실패:', error);
-      }
-
-      // ⭐ 휴대폰 번호 체크 (notes='본인' 사주의 phone_number가 null이면 AlimtalkInfoInputPage로 이동)
-      console.log('🔍 [사주선택] 본인 사주 휴대폰 번호 체크...');
-      const { data: mySajuList, error: mySajuError } = await supabase
-        .from('saju_records')
-        .select('id, phone_number')
-        .eq('user_id', user.id)
-        .eq('notes', '본인')
-        .limit(1);
+      // 휴대폰 번호 결과 처리
+      const mySajuList = phoneResult.data;
+      const mySajuError = phoneResult.error;
 
       if (!mySajuError && mySajuList && mySajuList.length > 0) {
         const mySaju = mySajuList[0];
@@ -412,6 +385,28 @@ export default function SajuSelectPage() {
         }
         console.log('✅ [사주선택] 휴대폰 번호 확인 완료');
       }
+
+      // ⭐ 대표 사주 업데이트 + 캐시 무효화 (백그라운드, 비차단)
+      console.log('🔄 [사주선택] 대표 사주 업데이트 (백그라운드)...');
+      localStorage.removeItem('primary_saju');
+      localStorage.removeItem('saju_records_cache');
+
+      // 비동기로 실행 (await 없이)
+      Promise.all([
+        supabase
+          .from('saju_records')
+          .update({ is_primary: false })
+          .eq('user_id', user.id),
+        supabase
+          .from('saju_records')
+          .update({ is_primary: true })
+          .eq('id', selectedSajuId)
+          .eq('user_id', user.id)
+      ]).then(() => {
+        console.log('✅ [백그라운드] 대표 사주 업데이트 완료');
+      }).catch((error) => {
+        console.error('❌ [백그라운드] 대표 사주 업데이트 실패:', error);
+      });
 
       // ⭐ 휴대폰 번호가 있으면 이제 로딩 UI 표시
       setIsGenerating(true);

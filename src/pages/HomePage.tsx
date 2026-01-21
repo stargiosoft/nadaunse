@@ -1522,7 +1522,8 @@ export default function HomePage() {
   useEffect(() => {
     // 필터 변경 시 상태 리셋
     setCurrentPage(0);
-    setHasMore(true);
+    // ⚠️ hasMore는 여기서 설정하지 않음 - loadFromCache/fetchPublishedContents에서 설정
+    // setHasMore(true)를 여기서 하면 loadFromCache의 setHasMore(false)를 덮어씀
 
     // ⭐ 스크롤 이동 완전 제거 - 브라우저 기본 동작 사용
     // isFirstMount 체크도 제거 (더 이상 필요 없음)

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { getTarotCardImageUrl } from '../lib/tarotCards';
-import { getCachedTarotImage, cacheTarotImage } from '../lib/tarotImageCache';
+import { getCachedTarotImage, cacheTarotImage, getMemoryCachedBlobUrl } from '../lib/tarotImageCache';
 import TableOfContentsBottomSheet from './TableOfContentsBottomSheet';
 import { BottomNavigation } from './BottomNavigation';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
@@ -318,11 +318,27 @@ export default function UnifiedResultPage() {
         return;
       }
 
+      // ⚡ 1단계: 동기식 메모리 캐시 체크 (0.01ms - placeholder 없이 즉시 표시)
+      const syncCachedBlobUrl = getMemoryCachedBlobUrl(currentResult.tarot_card_name);
+      if (syncCachedBlobUrl) {
+        console.log('⚡⚡ [UnifiedResultPage] 동기식 메모리 캐시 히트 (placeholder 스킵):', currentResult.tarot_card_name);
+        // ⭐ Blob URL은 blobUrlCache가 관리하므로 revoke하지 않음
+        previousBlobUrlRef.current = syncCachedBlobUrl;
+        setCardImageUrl(syncCachedBlobUrl);
+        setImageLoading(false); // ⭐ 즉시 로딩 완료 (placeholder 없음!)
+        setImageError(false);
+        setUsedFallback(false);
+        setRetryCount(0);
+        return;
+      }
+
+      // ⭐ 동기 캐시 미스 시에만 로딩 상태 + 비동기 체크 진행
       setImageLoading(true);
       setImageError(false);
       setUsedFallback(false); // 새 이미지 로드 시 폴백 상태 초기화
       setRetryCount(0); // 재시도 카운터 초기화
 
+      // ⭐ 2단계: Cache API 비동기 체크 (10-50ms)
       const cachedImage = await getCachedTarotImage(currentResult.tarot_card_name);
 
       if (!isMounted) return; // cleanup 후 실행 방지
