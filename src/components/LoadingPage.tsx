@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import SEO from './SEO';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { supabase, supabaseUrl } from '../lib/supabase';
@@ -500,10 +501,12 @@ export default function LoadingPage() {
   };
 
   return (
-    <div
-      className="bg-white flex flex-col w-full max-w-[440px] mx-auto relative overflow-hidden"
-      style={{ height: '100dvh' }}
-    >
+    <>
+      <SEO title="로딩" noIndex={true} />
+      <div
+        className="bg-white flex flex-col w-full max-w-[440px] mx-auto relative overflow-hidden"
+        style={{ height: '100dvh' }}
+      >
       {/* Top Navigation - Fixed */}
       <div className="bg-white relative shrink-0 w-full sticky top-0 z-20" style={{ height: '52px' }}>
         <div className="flex items-center justify-end h-full" style={{ padding: '0 12px' }}>
@@ -763,5 +766,6 @@ export default function LoadingPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

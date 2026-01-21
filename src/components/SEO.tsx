@@ -1,5 +1,13 @@
 import { Helmet } from 'react-helmet-async';
 
+interface ProductJsonLd {
+  name: string;
+  description: string;
+  image?: string;
+  price?: number;
+  priceCurrency?: string;
+}
+
 interface SEOProps {
   title?: string;
   description?: string;
@@ -8,6 +16,7 @@ interface SEOProps {
   ogType?: 'website' | 'article';
   canonical?: string;
   noIndex?: boolean;
+  product?: ProductJsonLd;
 }
 
 const DEFAULT_TITLE = '나다운세 - AI 사주 타로 운세';
@@ -23,9 +32,30 @@ export function SEO({
   ogType = 'website',
   canonical,
   noIndex = false,
+  product,
 }: SEOProps) {
   const fullTitle = title ? `${title} | 나다운세` : DEFAULT_TITLE;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined;
+
+  // Product JSON-LD 스키마 생성
+  const productJsonLd = product ? {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description,
+    image: product.image || ogImage,
+    brand: {
+      '@type': 'Brand',
+      name: '나다운세'
+    },
+    offers: {
+      '@type': 'Offer',
+      price: product.price || 0,
+      priceCurrency: product.priceCurrency || 'KRW',
+      availability: 'https://schema.org/InStock',
+      url: canonicalUrl
+    }
+  } : null;
 
   return (
     <Helmet>
@@ -52,6 +82,13 @@ export function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImage} />
+
+      {/* Product JSON-LD */}
+      {productJsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(productJsonLd)}
+        </script>
+      )}
     </Helmet>
   );
 }

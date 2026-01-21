@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import SEO from './SEO';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
 import svgPathsArrows from "../imports/svg-iwpvhe731i";
@@ -444,8 +445,10 @@ export default function ProfilePage({
   };
 
   return (
-    <div className="bg-white fixed inset-0 flex justify-center">
-      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+    <>
+      <SEO title="프로필" noIndex={true} />
+      <div className="bg-white fixed inset-0 flex justify-center">
+        <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
 
         {/* Top Navigation */}
         <div className="bg-white h-[52px] shrink-0 w-full z-20">
@@ -1051,6 +1054,7 @@ export default function ProfilePage({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

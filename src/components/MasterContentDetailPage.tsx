@@ -809,6 +809,12 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         description={content.description || `${content.title} - AI가 분석하는 나만의 운세`}
         canonical={`/product/${contentId}`}
         ogImage={content.thumbnail_url}
+        product={{
+          name: content.title,
+          description: content.description || `${content.title} - AI가 분석하는 나만의 운세`,
+          image: content.thumbnail_url,
+          price: content.price_discount || content.price_original || 0,
+        }}
       />
       <div className="flex justify-center h-[100dvh] w-full overflow-hidden touch-pan-y overscroll-none">
         <div className="w-full max-w-[440px] h-full flex flex-col relative bg-white overflow-hidden">

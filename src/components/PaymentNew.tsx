@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import SEO from './SEO';
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
@@ -885,7 +886,9 @@ export default function PaymentNew({
   }
 
   return (
-    <div className="bg-white fixed inset-0 flex justify-center">
+    <>
+      <SEO title="결제" noIndex={true} />
+      <div className="bg-white fixed inset-0 flex justify-center">
       <style>{`
         body::-webkit-scrollbar {
           display: none;
@@ -1569,5 +1572,6 @@ export default function PaymentNew({
       {/* ⭐ 세션 만료 다이얼로그 (로그아웃 상태에서 결제 페이지 접근 시) */}
       <SessionExpiredDialog isOpen={isSessionExpired} />
     </div>
+    </>
   );
 }

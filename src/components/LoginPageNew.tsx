@@ -9,6 +9,7 @@ import svgPaths from "../imports/svg-h2fyyvfh8o";
 import { imgGroup, imgGroup1, imgGroup2, imgGroup3 } from "../imports/svg-cp95o";
 import { projectId } from '../utils/supabase/info';
 import { trackLoginClick } from '../utils/analytics';
+import SEO from './SEO';
 
 declare global {
   interface Window {
@@ -717,10 +718,12 @@ export default function LoginPageNew({
   };
 
   return (
-    <div 
-      className="bg-white relative w-full h-[100vh] overflow-y-auto overflow-x-hidden flex justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" 
-      data-name="첫 로그인 (카카오)"
-      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+    <>
+      <SEO title="로그인" noIndex={true} />
+      <div 
+        className="bg-white relative w-full h-[100vh] overflow-y-auto overflow-x-hidden flex justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" 
+        data-name="첫 로그인 (카카오)"
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >
       {/* 개발용 임시 버튼 그룹 */}
       {isDevelopment() && (
@@ -780,5 +783,6 @@ export default function LoginPageNew({
         </div>
       </div>
     </div>
+    </>
   );
 }
