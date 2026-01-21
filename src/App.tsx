@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { useGoBack } from './hooks/useIOSSafeNavigate';
 // ProductDetail, FreeProductDetail은 백업 처리됨 (2026-01-09)
 // FreeProductDetail → FreeContentDetail로 대체 (하드코딩 더미 데이터 버그 수정)
@@ -1713,8 +1714,9 @@ export default function App() {
   }, []);
 
   return (
-    <Router>
-      <ErrorBoundary>
+    <HelmetProvider>
+      <Router>
+        <ErrorBoundary>
         <HistoryDebug />
         <GAInit />
         <LoginToast />
@@ -1781,7 +1783,8 @@ export default function App() {
             className: 'toast-viewport-center',
           }}
         />
-      </ErrorBoundary>
-    </Router>
+        </ErrorBoundary>
+      </Router>
+    </HelmetProvider>
   );
 }

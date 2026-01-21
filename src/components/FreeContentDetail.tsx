@@ -31,6 +31,7 @@ import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
 import FreeContentLoading from './FreeContentLoading';
 import FreeContentDetailSkeleton from './skeletons/FreeContentDetailSkeleton';
+import SEO from './SEO';
 import {
   TopNavigation,
   ProductInfo,
@@ -495,14 +496,21 @@ export default function FreeContentDetail({
   const hasMoreCards = recommendedContents.length > visibleCount;
 
   return (
-    <div className="bg-white fixed inset-0 flex flex-col w-full">
-      <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
-        {/* Top Navigation */}
-        <TopNavigation
-          onBack={onBack}
-          onHome={onHome}
-          title={content.title}
-        />
+    <>
+      <SEO
+        title={content.title}
+        description={content.description || `${content.title} - 무료로 보는 AI 운세`}
+        canonical={`/product/${contentId}`}
+        ogImage={content.thumbnail_url}
+      />
+      <div className="bg-white fixed inset-0 flex flex-col w-full">
+        <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
+          {/* Top Navigation */}
+          <TopNavigation
+            onBack={onBack}
+            onHome={onHome}
+            title={content.title}
+          />
 
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 바운스 방지 */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain">
@@ -556,12 +564,13 @@ export default function FreeContentDetail({
         </div>
         {/* ⭐ 스크롤 컨테이너 끝 */}
 
-        {/* Bottom Button */}
-        <BottomButton
-          onClick={onPurchase || handlePurchase}
-          text="무료로 보기"
-        />
+          {/* Bottom Button */}
+          <BottomButton
+            onClick={onPurchase || handlePurchase}
+            text="무료로 보기"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

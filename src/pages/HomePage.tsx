@@ -11,6 +11,7 @@ import { DotLoading } from '../components/ui/PageLoader';
 import svgPaths from "../imports/svg-94402brxf8";
 import svgPathsLogo from "../imports/svg-7fu3k5931y";
 import { trackFreeContentClick, trackPaidContentView } from '../utils/analytics';
+import SEO from '../components/SEO';
 
 type TabCategory = '전체' | '개인운세' | '연애' | '이별' | '궁합' | '재물' | '직업' | '시험/학업' | '건강' | '인간관계' | '자녀' | '이사/매매' | '기타';
 
@@ -1648,9 +1649,14 @@ export default function HomePage() {
   };
 
   return (
-    <div className="bg-white fixed inset-0 flex justify-center">
-      <div className="bg-white w-full max-w-[440px] h-full flex flex-col">
-        {/* Top Navigation */}
+    <>
+      <SEO
+        canonical="/"
+        keywords="AI 사주, AI 타로, 무료 운세, 오늘의 운세, 사주팔자, 타로점, 신년운세"
+      />
+      <div className="bg-white fixed inset-0 flex justify-center">
+        <div className="bg-white w-full max-w-[440px] h-full flex flex-col">
+          {/* Top Navigation */}
         <TopNavigationContainer
           selectedCategory={selectedCategory}
           onCategoryChange={handleCategoryChange}
@@ -1717,8 +1723,9 @@ export default function HomePage() {
             </>
           )}
         </div>
-        </div>{/* ⭐ Scrollable Container 닫기 */}
+          </div>{/* ⭐ Scrollable Container 닫기 */}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

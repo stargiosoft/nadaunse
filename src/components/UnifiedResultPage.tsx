@@ -225,8 +225,14 @@ export default function UnifiedResultPage() {
         setAllResults(normalizedResults);
 
         // ⭐ contentId 설정
+        const effectiveContentId = contentIdParam || orderData?.content_id || '';
         if (!contentIdParam && orderData?.content_id) {
           setContentId(orderData.content_id);
+        }
+
+        // 📊 GA 이벤트: 유료 결과 조회
+        if (orderId && effectiveContentId) {
+          trackPaidResultView(orderId, effectiveContentId);
         }
 
         // ⭐ 현재 질문이 타로이고 아직 선택 안 했으면 셔플 페이지로
@@ -486,6 +492,10 @@ export default function UnifiedResultPage() {
 
     // ⭐ 다음 질문이 없으면 완료 페이지
     if (!nextResult) {
+      // 📊 GA 이벤트: 유료 결과 완독
+      if (orderId && contentId) {
+        trackPaidResultComplete(orderId, contentId);
+      }
       navigate('/result/complete', { state: { orderId, contentId } });
       return;
     }
