@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 import svgPaths from "../imports/svg-h2fyyvfh8o";
 import { imgGroup, imgGroup1, imgGroup2, imgGroup3 } from "../imports/svg-cp95o";
 import { projectId } from '../utils/supabase/info';
+import { trackLoginClick } from '../utils/analytics';
 
 declare global {
   interface Window {
@@ -562,6 +563,7 @@ export default function LoginPageNew({
 
   const handleKakaoLogin = async () => {
     console.log('🔐 카카오 로그인 시도');
+    trackLoginClick('kakao'); // 📊 GA 이벤트
     
     // 🔒 다른 제공자로 이미 가입한 경우 체크
     const existingProvider = getLastLoginProvider();
@@ -685,6 +687,7 @@ export default function LoginPageNew({
 
   const handleGoogleLogin = async () => {
     console.log('🔐 구글 로그인 시도');
+    trackLoginClick('google'); // 📊 GA 이벤트
 
     // 🔒 다른 제공자로 이미 가입한 경우 체크
     const existingProvider = getLastLoginProvider();

@@ -8,6 +8,7 @@ import TableOfContentsBottomSheet from './TableOfContentsBottomSheet';
 import { BottomNavigation } from './BottomNavigation';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PageLoader } from './ui/PageLoader';
+import { trackPaidResultView, trackPaidResultComplete } from '../utils/analytics';
 
 interface ResultItem {
   question_order: number;

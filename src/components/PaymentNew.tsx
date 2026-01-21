@@ -12,7 +12,7 @@ import PaymentSkeleton from "./skeletons/PaymentSkeleton";
 import { DEV } from "../lib/env";
 import { preloadLoadingPageImages } from "../lib/imagePreloader";
 import { PageLoader } from "./ui/PageLoader";
-import { trackBeginCheckout } from "../utils/analytics";
+import { trackBeginCheckout, trackPaymentMethodSelect, trackCheckoutStart, trackPurchaseComplete } from "../utils/analytics";
 
 // 포트원 타입 선언
 declare global {
@@ -617,6 +617,21 @@ export default function PaymentNew({
 
         console.log("✅ 0원 주문 저장 완료:", savedOrder);
 
+        // 📊 GA 이벤트: 구매 완료 (쿠폰 정보 포함)
+        const couponType = selectedCoupon?.description?.includes('welcome') ? 'welcome'
+          : selectedCoupon?.description?.includes('revisit') ? 'revisit' : null;
+        trackPurchaseComplete({
+          transactionId: merchantUid,
+          contentId: finalContentId || '',
+          contentTitle: currentProduct?.title || '',
+          value: 0,
+          originalPrice: currentProduct?.price || 0,
+          paymentMethod: 'free',
+          couponUsed: !!selectedCoupon,
+          couponType: couponType,
+          couponAmount: selectedCoupon?.discount || 0,
+        });
+
         // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
         localStorage.removeItem('purchase_history_cache');
         console.log('🗑️ 구매내역 캐시 무효화 완료');
@@ -771,6 +786,21 @@ export default function PaymentNew({
               response.imp_uid,
               response.merchant_uid,
             );
+
+            // 📊 GA 이벤트: 구매 완료 (쿠폰 정보 포함)
+            const paidCouponType = selectedCoupon?.description?.includes('welcome') ? 'welcome'
+              : selectedCoupon?.description?.includes('revisit') ? 'revisit' : null;
+            trackPurchaseComplete({
+              transactionId: response.merchant_uid,
+              contentId: finalContentId || '',
+              contentTitle: currentProduct?.title || '',
+              value: totalPrice,
+              originalPrice: currentProduct?.price || 0,
+              paymentMethod: selectedPaymentMethod === 'kakaopay' ? 'kakaopay' : 'card',
+              couponUsed: !!selectedCoupon,
+              couponType: paidCouponType,
+              couponAmount: selectedCoupon?.discount || 0,
+            });
 
             // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
             localStorage.removeItem('purchase_history_cache');
@@ -1211,9 +1241,10 @@ export default function PaymentNew({
                     <div className="content-stretch flex flex-col gap-[12px] h-[84px] items-start relative shrink-0 w-full">
                       {/* 카카오페이 */}
                       <button
-                        onClick={() =>
-                          setSelectedPaymentMethod("kakaopay")
-                        }
+                        onClick={() => {
+                          setSelectedPaymentMethod("kakaopay");
+                          trackPaymentMethodSelect("kakaopay"); // 📊 GA 이벤트
+                        }}
                         className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full bg-transparent border-none cursor-pointer p-0"
                       >
                         <div className="content-stretch flex items-center justify-center relative shrink-0 size-[36px]">
@@ -1274,9 +1305,10 @@ export default function PaymentNew({
 
                       {/* 신용·체크카드 */}
                       <button
-                        onClick={() =>
-                          setSelectedPaymentMethod("card")
-                        }
+                        onClick={() => {
+                          setSelectedPaymentMethod("card");
+                          trackPaymentMethodSelect("card"); // 📊 GA 이벤트
+                        }}
                         className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full bg-transparent border-none cursor-pointer p-0"
                       >
                         <div className="content-stretch flex items-center justify-center relative shrink-0 size-[36px]">
@@ -1531,6 +1563,7 @@ export default function PaymentNew({
         basePrice={basePrice}
         specialDiscount={specialDiscount}
         totalPrice={totalPrice}
+        contentId={contentId || productId} // 📊 GA 이벤트용
       />
 
       {/* ⭐ 세션 만료 다이얼로그 (로그아웃 상태에서 결제 페이지 접근 시) */}

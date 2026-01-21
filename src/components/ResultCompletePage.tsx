@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import svgPaths from "../imports/svg-7sko9n1pie";
 import { motion } from "motion/react";
 import ArrowLeft from './ArrowLeft';
+import { trackRevisitCouponIssued } from '../utils/analytics';
 
 interface ResultCompletePageProps {
   onBack?: () => void;
@@ -476,6 +477,9 @@ export default function ResultCompletePage({ onBack, onClose }: ResultCompletePa
         console.log('✅ 쿠폰 발급 성공:', data);
         setIsCouponIssued(true);
         setShowToast(true);
+
+        // 📊 GA 이벤트: 재방문 쿠폰 발급
+        trackRevisitCouponIssued(orderId, 3000);
 
         // 2.2초 후 토스트 숨기기
         setTimeout(() => {

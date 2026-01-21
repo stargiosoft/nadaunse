@@ -209,8 +209,102 @@ function GAInit() {
   }, []);
 
   useEffect(() => {
-    // 우트 변경 시 페이지뷰 트래킹
-    trackPageView(location.pathname + location.search, document.title);
+    // 라우트별 페이지 타이틀 매핑
+    const getPageTitle = (pathname: string): string => {
+      const BASE_TITLE = '나다운세';
+
+      // 정적 라우트 매핑
+      const staticRoutes: Record<string, string> = {
+        '/': '홈',
+        '/login': '로그인',
+        '/login/new': '로그인',
+        '/login/existing/new': '기존 계정 연동',
+        '/terms': '약관 동의',
+        '/terms-of-service': '이용약관',
+        '/privacy-policy': '개인정보처리방침',
+        '/profile': '마이페이지',
+        '/purchase-history': '구매 내역',
+        '/saju/management': '사주 관리',
+        '/saju/input': '내 사주 입력',
+        '/saju/add': '사주 추가',
+        '/loading': '운세 생성 중',
+        '/free-loading': '무료 운세 생성 중',
+        '/result': '운세 결과',
+        '/result/complete': '풀이 완료',
+        '/result/saju': '운세 결과',
+        '/tarot/shuffle': '타로 카드 선택',
+        '/test/tarot': '타로 테스트',
+        '/payment/complete': '결제 완료',
+        '/welcome-coupon': '가입 완료',
+        '/signup/terms': '회원가입 약관',
+        '/auth/callback': '로그인 처리 중',
+        '/alimtalk/input': '알림톡 정보 입력',
+        '/master/content': '콘텐츠 관리',
+        '/master/content/create': '콘텐츠 생성',
+        '/master/content/create/questions': '질문 작성',
+        '/error/404': '페이지를 찾을 수 없음',
+        '/error/500': '서버 오류',
+        '/error/503': '서비스 점검 중',
+        '/error/network': '네트워크 오류',
+      };
+
+      // 정적 라우트 확인
+      if (staticRoutes[pathname]) {
+        return `${staticRoutes[pathname]} | ${BASE_TITLE}`;
+      }
+
+      // 동적 라우트 패턴 매칭
+      if (pathname.startsWith('/product/') && pathname.endsWith('/payment')) {
+        return `결제 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/') && pathname.endsWith('/birthinfo')) {
+        return `사주 정보 입력 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/') && pathname.endsWith('/saju-select')) {
+        return `사주 선택 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/') && pathname.endsWith('/free-saju-select')) {
+        return `무료 사주 선택 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/') && pathname.endsWith('/free-saju-add')) {
+        return `무료 사주 추가 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/') && pathname.includes('/result/free')) {
+        return `무료 운세 결과 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/') && pathname.includes('/result')) {
+        return `운세 결과 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/product/')) {
+        return `상품 상세 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/free/content/')) {
+        return `무료 운세 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/master/content/detail/') && pathname.endsWith('/payment')) {
+        return `결제 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/master/content/detail/')) {
+        return `콘텐츠 상세 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/master/content/') && pathname.includes('/birthinfo')) {
+        return `사주 정보 입력 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/master/content/')) {
+        return `콘텐츠 상세 | ${BASE_TITLE}`;
+      }
+
+      // 기본값
+      return BASE_TITLE;
+    };
+
+    const pageTitle = getPageTitle(location.pathname);
+
+    // document.title 업데이트
+    document.title = pageTitle;
+
+    // GA 페이지뷰 트래킹
+    trackPageView(location.pathname + location.search, pageTitle);
   }, [location]);
 
   return null;

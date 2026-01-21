@@ -11,6 +11,8 @@
 
 import svgPaths from "../imports/svg-1h6s4tucob";
 import { motion } from 'motion/react';
+import { useEffect } from 'react';
+import { trackWelcomeCouponIssued, trackSignUp } from '../utils/analytics';
 
 interface WelcomeCouponPageProps {
   onClose: () => void;
@@ -283,6 +285,12 @@ function IndependentIPhoneStatusBar() {
 // ==================== Main Component ====================
 
 export default function WelcomeCouponPage({ onClose }: WelcomeCouponPageProps) {
+  // 📊 GA 이벤트: 회원가입 완료 + 웰컴 쿠폰 발급
+  useEffect(() => {
+    trackSignUp('kakao'); // 회원가입 완료 (카카오가 대부분)
+    trackWelcomeCouponIssued(3000); // 웰컴 쿠폰 3000원 발급
+  }, []);
+
   return (
     <div className="bg-white relative w-full h-[100dvh] flex justify-center overflow-hidden" data-name="약관 동의 완료 _ 390">
       <div className="relative w-full max-w-[440px] h-full bg-white flex flex-col">

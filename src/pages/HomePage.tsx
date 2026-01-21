@@ -10,6 +10,7 @@ import HomeSkeleton from '../components/skeletons/HomeSkeleton';
 import { DotLoading } from '../components/ui/PageLoader';
 import svgPaths from "../imports/svg-94402brxf8";
 import svgPathsLogo from "../imports/svg-7fu3k5931y";
+import { trackFreeContentClick, trackPaidContentView } from '../utils/analytics';
 
 type TabCategory = '전체' | '개인운세' | '연애' | '이별' | '궁합' | '재물' | '직업' | '시험/학업' | '건강' | '인간관계' | '자녀' | '이사/매매' | '기타';
 
@@ -1615,11 +1616,17 @@ export default function HomePage() {
     console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정');
 
     // 🎯 무료/유료 구분하여 적절한 경로로 이동
+    // 📊 GA 이벤트: 콘텐츠 클릭 추적
+    const clickedContent = contentsList.find(c => c.id === contentId) ||
+      (featuredContentFiltered?.id === contentId ? featuredContentFiltered : null);
+
     if (currentData?.content_type === 'free') {
       console.log('🆓 [홈] 무료 콘텐츠 → /free/content/:id로 이동');
+      if (clickedContent) trackFreeContentClick(contentId, clickedContent.title);
       navigate(`/free/content/${contentId}`);
     } else {
       console.log('💰 [홈] 유료 콘텐츠 → /master/content/detail/:id로 이동');
+      if (clickedContent) trackPaidContentView(contentId, clickedContent.title, clickedContent.price_discount || clickedContent.price_original || 0);
       navigate(`/master/content/detail/${contentId}`);
     }
   };

@@ -14,7 +14,7 @@ import { supabase, saveOrder } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
 import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
-import { trackViewItem } from '../utils/analytics';
+import { trackViewItem, trackPurchaseClick } from '../utils/analytics';
 
 // Animation Variants
 const staggerContainer = {
@@ -773,6 +773,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       contentId
     });
     console.log('🛒 [유료상품] 구매하기 클릭:', contentId);
+
+    // 📊 GA 이벤트: 구매 버튼 클릭
+    if (content) {
+      trackPurchaseClick(contentId, content.title, content.price_discount || content.price_original || 0);
+    }
 
     // ⭐ Supabase Auth로 로그인 체크
     const { data: { user } } = await supabase.auth.getUser();
