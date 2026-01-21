@@ -36,6 +36,7 @@
             "clsx": "*",
             "cmdk": "^1.1.1",
             "embla-carousel-react": "^8.6.0",
+            "exceljs": "^4.4.0",
             "framer-motion": "*",
             "hono": "*",
             "input-otp": "^1.4.2",
@@ -52,15 +53,14 @@
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
             "tailwind-merge": "*",
-            "vaul": "^1.1.2",
-            "xlsx": "*"
+            "vaul": "^1.1.2"
       },
       "devDependencies": {
             "@playwright/test": "^1.57.0",
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
             "ts-node": "^10.9.2",
-            "vite": "6.3.5"
+            "vite": "^6.4.1"
       },
       "scripts": {
             "dev": "vite",

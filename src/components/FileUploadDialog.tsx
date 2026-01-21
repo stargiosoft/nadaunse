@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 
@@ -110,26 +110,51 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
     setUploadedFile(file);
   };
 
-  const parseExcelData = async (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          resolve(jsonData);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      reader.onerror = () => reject(new Error('파일 읽기 실패'));
-      reader.readAsBinaryString(file);
+  const parseExcelData = async (file: File): Promise<Record<string, unknown>[]> => {
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = await file.arrayBuffer();
+
+    // 파일 확장자에 따라 다른 방식으로 로드
+    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (fileExtension === '.csv') {
+      await workbook.csv.load(arrayBuffer);
+    } else {
+      await workbook.xlsx.load(arrayBuffer);
+    }
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new Error('워크시트를 찾을 수 없습니다.');
+    }
+
+    const jsonData: Record<string, unknown>[] = [];
+    const headers: string[] = [];
+
+    // 첫 번째 행에서 헤더 추출
+    worksheet.getRow(1).eachCell((cell, colNumber) => {
+      headers[colNumber - 1] = cell.value?.toString() || '';
     });
+
+    // 데이터 행 파싱 (2번째 행부터)
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // 헤더 행 스킵
+
+      const rowData: Record<string, unknown> = {};
+      row.eachCell((cell, colNumber) => {
+        const header = headers[colNumber - 1];
+        if (header) {
+          rowData[header] = cell.value;
+        }
+      });
+
+      // 빈 행이 아닌 경우에만 추가
+      if (Object.keys(rowData).length > 0) {
+        jsonData.push(rowData);
+      }
+    });
+
+    return jsonData;
   };
 
   const validateAndProcessData = (data: any[], type: 'paid' | 'free') => {
