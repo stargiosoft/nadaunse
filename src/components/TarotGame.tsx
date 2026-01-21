@@ -221,7 +221,7 @@ function Container({ title, question }: { title?: string; question?: string }) {
 
   return (
     <div className="content-stretch flex flex-col gap-[4px] items-start justify-start min-h-[86px] relative shrink-0 text-center w-full" data-name="Container">
-      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[30px] relative shrink-0 text-[20px] text-white tracking-[-0.5px] w-full">{title || "질문을 떠올려 주세요"}</p>
+      <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold leading-[30px] relative shrink-0 text-[20px] text-white tracking-[-0.5px] w-full">{title}</p>
       <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[#f3f3f3] text-[14px] tracking-[-0.42px] w-full">{question || "질문을 떠올리며 카드를 뽑아주세요"}</p>
     </div>
   );
