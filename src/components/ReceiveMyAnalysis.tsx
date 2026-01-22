@@ -211,11 +211,13 @@ function ButtonSquareButton({ isActive, onClick }: { isActive: boolean, onClick:
         WebkitTapHighlightColor: 'transparent',
         transformOrigin: 'center center',
         willChange: 'transform',
-        backgroundColor: isActive ? '#48b2af' : '#f8f8f8'
+        backgroundColor: isActive ? '#48b2af' : '#f8f8f8',
+        height: '56px',
+        padding: '0 12px',
+        borderRadius: '16px'
       }}
       onClick={isActive ? onClick : undefined}
       className="flex items-center justify-center relative shrink-0 w-full transition-colors"
-      style={{ height: '56px', padding: '0 12px', borderRadius: '16px' }}
       data-name="Button / Square Button"
       disabled={!isActive}
     >

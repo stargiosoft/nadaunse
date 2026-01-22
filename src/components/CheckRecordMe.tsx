@@ -299,10 +299,10 @@ export default function CheckRecordMe() {
                   style={{
                     WebkitTapHighlightColor: 'transparent',
                     transformOrigin: 'center center',
-                    willChange: 'transform'
+                    willChange: 'transform',
+                    gap: '16px'
                   }}
                   className="group flex items-center w-full"
-                  style={{ gap: '16px' }}
                 >
                   <div
                     className="flex-1 relative transition-all duration-200 ease-in-out box-border"
