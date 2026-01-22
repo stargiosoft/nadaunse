@@ -43,6 +43,21 @@ import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더�
 import { PageLoader } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import HomePage from './pages/HomePage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
+// ⭐ 테스트용 Figma 컴포넌트들
+import CheckRecordMe from './components/CheckRecordMe';
+import ReceiveMyAnalysis from './components/ReceiveMyAnalysis';
+import MyReportList from './components/MyReportList';
+import MyReportWeekly from './components/MyReportWeekly';
+import MyReportEmpty from './components/MyReportEmpty';
+import NadaumTags from './components/NadaumTags';
+import NadaumTagsList from './components/NadaumTagsList';
+import ReportWeeklyDetail from './components/ReportWeeklyDetail';
+import ReportWeeklyTarot from './components/ReportWeeklyTarot';
+import ReportWeeklyTarotResult from './components/ReportWeeklyTarotResult';
+import ReportWeeklyMindCare from './components/ReportWeeklyMindCare';
+import ReportWeeklyMemo from './components/ReportWeeklyMemo';
+import ReportWeeklyMemoEdit from './components/ReportWeeklyMemoEdit';
+import CompletionCoupon from './components/CompletionCoupon';
 import AuthCallback from './pages/AuthCallback';
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
@@ -1760,6 +1775,21 @@ export default function App() {
           <Route path="/result/saju" element={<ResultSajuRedirect />} /> {/* ⭐ 알림톡 템플릿 호환성 (리다이렉트) */}
           <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
           <Route path="/test/tarot" element={<TestTarotPage />} /> {/* ⭐ 테스트용 타로 셔플 (로그인 불필요) */}
+          {/* ⭐ 테스트용 Figma 컴포넌트 라우트 */}
+          <Route path="/test/check-record-me" element={<CheckRecordMe />} />
+          <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />
+          <Route path="/test/my-report-list" element={<MyReportList />} />
+          <Route path="/test/my-report-weekly" element={<MyReportList />} /> {/* MyReportList가 전체 화면 렌더링 */}
+          <Route path="/test/my-report-empty" element={<MyReportEmpty />} />
+          <Route path="/test/nadaum-tags" element={<NadaumTags onBack={() => {}} />} />
+          <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} />} />
+          <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail onBack={() => {}} />} />
+          <Route path="/test/report-weekly-tarot" element={<ReportWeeklyTarot />} />
+          <Route path="/test/report-weekly-tarot-result" element={<ReportWeeklyTarotResult />} />
+          <Route path="/test/report-weekly-mind-care" element={<ReportWeeklyMindCare />} />
+          <Route path="/test/report-weekly-memo" element={<ReportWeeklyMemo />} />
+          <Route path="/test/report-weekly-memo-edit" element={<ReportWeeklyMemoEdit initialText="" onCancel={() => {}} onSave={() => {}} />} />
+          <Route path="/test/completion-coupon" element={<CompletionCoupon />} />
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
