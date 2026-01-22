@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-21
-> **주요 결정**: 타로 셔플 배경 이미지 CSP 오류 수정, 이미지 로컬 저장 규칙 수립
+> **최종 업데이트**: 2026-01-22
+> **주요 결정**: 동적 Sitemap 자동 생성 (Edge Function)
 
 ---
 
@@ -13,6 +13,97 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-22
+
+### 동적 Sitemap 자동 생성 (Edge Function)
+
+**결정**: 정적 sitemap.xml 대신 Supabase Edge Function으로 동적 생성
+
+**배경**:
+- SEO 최적화를 위해 sitemap.xml 필요
+- 콘텐츠가 자주 추가/수정되므로 정적 파일 관리 비효율
+- 유료/무료 콘텐츠 상세 페이지가 검색 유입의 주요 랜딩 페이지
+
+**구현 방식**:
+
+1. **Edge Function 생성** (`supabase/functions/generate-sitemap/index.ts`)
+   ```typescript
+   // DB에서 deployed 상태 콘텐츠 조회 (유료 + 무료)
+   const { data: contents } = await supabase
+     .from('master_contents')
+     .select('id, content_type, updated_at')
+     .eq('status', 'deployed')
+     .order('weekly_clicks', { ascending: false });
+
+   // XML 생성
+   // - 유료: /product/:id (priority 0.9)
+   // - 무료: /free/content/:id (priority 0.8)
+   ```
+
+2. **Vercel Rewrite 설정** (`vercel.json`)
+   ```json
+   {
+     "rewrites": [
+       {
+         "source": "/sitemap.xml",
+         "destination": "https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/generate-sitemap"
+       }
+     ]
+   }
+   ```
+
+3. **정적 파일 제거**
+   - `public/sitemap.xml` 삭제 (백업: `public/sitemap.xml.static-backup`)
+   - Vercel이 정적 파일 우선 서빙하므로 제거 필수
+
+**Sitemap 우선순위 (priority)**:
+| 페이지 유형 | priority | changefreq |
+|------------|----------|------------|
+| 홈페이지 (`/`) | 1.0 | daily |
+| 유료 콘텐츠 (`/product/:id`) | 0.9 | weekly |
+| 무료 콘텐츠 (`/free/content/:id`) | 0.8 | weekly |
+| 약관/정책 페이지 | 0.3 | monthly |
+
+**캐싱 전략**:
+- `Cache-Control: public, max-age=3600, s-maxage=3600` (1시간)
+- Vercel Edge에서 캐싱되므로 매 요청마다 Edge Function 호출 안 함
+- 에러 시 5분만 캐싱 (`max-age=300`)
+
+**배포 명령어**:
+```bash
+# 스테이징
+npx supabase functions deploy generate-sitemap --project-ref hyltbeewxaqashyivilu --no-verify-jwt
+
+# 프로덕션
+npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjkub --no-verify-jwt
+```
+
+**주의사항**:
+- `--no-verify-jwt` 필수: sitemap.xml은 인증 없이 접근 가능해야 함
+- Edge Function 로그는 캐시 미스 시에만 기록됨
+
+**프론트엔드 로그**:
+- 콘텐츠 배포 시 콘솔에 sitemap 등록 로그 출력
+  ```
+  🗺️ sitemap 자동 등록 완료 - 다음 크롤링 시 반영됨: 콘텐츠명 (id)
+  ```
+
+**테스트 방법**:
+- 프로덕션: `https://nadaunse.com/sitemap.xml`
+- 스테이징 (직접 호출): `https://hyltbeewxaqashyivilu.supabase.co/functions/v1/generate-sitemap`
+
+**영향 범위**:
+- `supabase/functions/generate-sitemap/index.ts`: 신규 생성
+- `vercel.json`: rewrite 규칙 추가
+- `public/sitemap.xml`: 삭제
+- `src/components/MasterContentList.tsx`: sitemap 등록 로그 추가
+
+**참고**:
+- Google Search Console에서 sitemap 제출 필요
+- robots.txt에 sitemap 경로 명시됨: `Sitemap: https://nadaunse.com/sitemap.xml`
 
 ---
 
