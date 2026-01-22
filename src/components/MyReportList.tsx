@@ -362,7 +362,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick }: MyR
         </div>
 
         {/* Main Content - 스크롤 영역 */}
-        <div className="flex-1 overflow-auto w-full">
+        <div className="flex-1 overflow-y-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="w-full bg-white flex flex-col min-h-full">
             {isInitialEmptyState ? (
               <MyReportEmpty />
