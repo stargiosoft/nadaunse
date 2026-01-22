@@ -184,7 +184,7 @@ function AnimatedCard({ index, shufflePhase, currentMixingPosition, displayIndex
   );
 }
 
-function CardFan({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, scaleRatio }: any) {
+function CardFan({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, scaleRatio, slotCount }: any) {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [pressedCard, setPressedCard] = useState<number | null>(null);
 
@@ -197,7 +197,7 @@ function CardFan({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCa
   const containerHeight = 178 * scaleRatio;
 
   const selectedCardIndices = selectedCards.map((c: SelectedCardData) => c.index);
-  const allSlotsSelected = selectedCards.length >= 3;
+  const allSlotsSelected = selectedCards.length >= slotCount;
 
   return (
     <div style={{ height: `${containerHeight}px`, width: `${containerWidth}px`, transform: 'translateY(-44px)', boxShadow: 'none' }} className="relative">
@@ -208,10 +208,11 @@ function CardFan({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCa
   );
 }
 
-function Frame({ targetRefs }: { targetRefs: React.RefObject<HTMLDivElement>[] }) {
+function Frame({ targetRefs, slotCount }: { targetRefs: React.RefObject<HTMLDivElement>[]; slotCount: number }) {
+  const slots = Array.from({ length: slotCount }, (_, i) => i);
   return (
     <div className="content-stretch flex items-center justify-center relative shrink-0 w-full" style={{ gap: '12px' }}>
-      {[0, 1, 2].map((slotIndex) => (
+      {slots.map((slotIndex) => (
         <div
           key={slotIndex}
           ref={targetRefs[slotIndex]}
@@ -248,33 +249,33 @@ function Container1({ title, question }: { title?: string; question?: string }) 
   );
 }
 
-function Frame2({ targetRefs, title, question }: { targetRefs: React.RefObject<HTMLDivElement>[]; title?: string; question?: string }) {
+function Frame2({ targetRefs, title, question, slotCount }: { targetRefs: React.RefObject<HTMLDivElement>[]; title?: string; question?: string; slotCount: number }) {
   return (
     <div className="content-stretch flex flex-col gap-[44px] items-center relative shrink-0 w-full">
       <Container1 title={title} question={question} />
-      <Frame targetRefs={targetRefs} />
+      <Frame targetRefs={targetRefs} slotCount={slotCount} />
     </div>
   );
 }
 
-function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, targetRefs, scaleRatio, title, question }: any) {
+function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, targetRefs, scaleRatio, title, question, slotCount }: any) {
   return (
     <div className="absolute content-stretch flex flex-col gap-[50px] items-center left-0 w-full" style={{ top: '70px' }}>
-      <Frame2 targetRefs={targetRefs} title={title} question={question} />
+      <Frame2 targetRefs={targetRefs} title={title} question={question} slotCount={slotCount} />
       <div className="flex items-center justify-center relative shrink-0">
-        <CardFan shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={onCardSelect} scaleRatio={scaleRatio} />
+        <CardFan shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={onCardSelect} scaleRatio={scaleRatio} slotCount={slotCount} />
       </div>
     </div>
   );
 }
 
-function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, targetRefs, scaleRatio, onShuffle, isShuffling, selectedCount, title, question }: any) {
+function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, targetRefs, scaleRatio, onShuffle, isShuffling, selectedCount, title, question, slotCount }: any) {
   const buttonLabel = isShuffling
     ? "섞는 중..."
-    : selectedCount === 3
+    : selectedCount === slotCount
       ? "선택 완료"
       : selectedCount > 0
-        ? `${selectedCount}/3 선택됨`
+        ? `${selectedCount}/${slotCount} 선택됨`
         : "카드 섞기";
 
   return (
@@ -295,13 +296,13 @@ function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCar
         }}
       />
       <div className="relative z-10 w-full h-full">
-        <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={onCardSelect} targetRefs={targetRefs} scaleRatio={scaleRatio} title={title} question={question} />
+        <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={onCardSelect} targetRefs={targetRefs} scaleRatio={scaleRatio} title={title} question={question} slotCount={slotCount} />
         <div
           className="fixed left-0 right-0 px-[20px] z-50"
           style={{ bottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}
         >
           <div className="h-[56px] w-full">
-            <ButtonSquareButton onClick={onShuffle} label={buttonLabel} disabled={isShuffling} isActive={selectedCount === 3} />
+            <ButtonSquareButton onClick={onShuffle} label={buttonLabel} disabled={isShuffling} isActive={selectedCount === slotCount} />
           </div>
         </div>
       </div>
@@ -338,9 +339,11 @@ interface TarotGameProps {
   onConfirm?: () => void;
   title?: string;
   question?: string;
+  /** placeholder 슬롯 개수 (기본값: 1, ReportWeeklyTarot에서만 3 사용) */
+  slotCount?: 1 | 3;
 }
 
-export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
+export function TarotGame({ onConfirm, title, question, slotCount = 1 }: TarotGameProps) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [shufflePhase, setShufflePhase] = useState<'idle' | 'mixing' | 'gathered' | 'spreading'>('idle');
   const [selectedCards, setSelectedCards] = useState<SelectedCardData[]>([]);
@@ -493,7 +496,7 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   };
 
   const handleClickAction = () => {
-    if (selectedCards.length === 3) {
+    if (selectedCards.length === slotCount) {
       if (onConfirm) onConfirm();
     } else {
       performShuffle();
@@ -509,8 +512,8 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
       return;
     }
 
-    // Check if all 3 slots are already filled
-    if (selectedCards.length >= 3) return;
+    // Check if all slots are already filled
+    if (selectedCards.length >= slotCount) return;
 
     // Find the next available slot
     const nextSlotIndex = selectedCards.length;
@@ -545,7 +548,7 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
 
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden" data-name="카드 뽑기 섞기">
-      <Frame1 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={handleCardSelect} targetRefs={targetBoxRefs} scaleRatio={scaleRatio} onShuffle={handleClickAction} isShuffling={isShuffling} selectedCount={selectedCards.length} title={title} question={question} />
+      <Frame1 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={handleCardSelect} targetRefs={targetBoxRefs} scaleRatio={scaleRatio} onShuffle={handleClickAction} isShuffling={isShuffling} selectedCount={selectedCards.length} title={title} question={question} slotCount={slotCount} />
       {selectedCards.map((cardData) => (
         <SelectedCard key={cardData.index} data={cardData} onReturn={() => setSelectedCards(prev => prev.filter(c => c.index !== cardData.index))} />
       ))}

@@ -1,39 +1,33 @@
 import svgPaths from "./svg-cdj7f26pgh";
 import { motion } from "motion/react";
 
-function Group() {
-  return (
-    <div className="absolute inset-[1.5%_0.02%_1.77%_-0.03%]" data-name="Group">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 48.0038 46.4307">
-        <g id="Group">
-          <path clipRule="evenodd" d={svgPaths.p8ff0d80} fill="var(--fill-0, #F3F3F3)" fillRule="evenodd" id="Vector" />
-          <path d={svgPaths.p3195a000} fill="var(--fill-0, #D4D4D4)" id="Vector_2" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
 function IconsDesingFlowerFlat() {
   return (
-    <div className="overflow-clip relative shrink-0 size-[48px]" data-name="Icons/desing/flower-flat">
-      <Group />
+    <div className="relative shrink-0" style={{ width: '48px', height: '48px' }}>
+      <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 48.0038 46.4307">
+        <path clipRule="evenodd" d={svgPaths.p8ff0d80} fill="#F3F3F3" fillRule="evenodd" />
+        <path d={svgPaths.p3195a000} fill="#D4D4D4" />
+      </svg>
     </div>
   );
 }
 
 function Container() {
   return (
-    <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 text-[#b7b7b7] text-center w-full" data-name="Container">
-      <p className="css-4hzbpn font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[28.5px] relative shrink-0 text-[16px] tracking-[-0.32px] w-full">이번 주 저장한 태그가 없어요</p>
-      <p className="css-4hzbpn font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] relative shrink-0 text-[14px] tracking-[-0.42px] w-full">운세를 볼수록 태그가 쌓여요</p>
+    <div className="flex flex-col items-center shrink-0 w-full" style={{ gap: '2px' }}>
+      <p className="w-full text-center" style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#b7b7b7' }}>
+        이번 주 저장한 태그가 없어요
+      </p>
+      <p className="w-full text-center" style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', letterSpacing: '-0.42px', color: '#b7b7b7' }}>
+        운세를 볼수록 태그가 쌓여요
+      </p>
     </div>
   );
 }
 
 function Container1() {
   return (
-    <div className="content-stretch flex flex-col gap-[20px] items-center justify-center relative shrink-0 w-full" data-name="Container">
+    <div className="flex flex-col items-center justify-center shrink-0 w-full" style={{ gap: '20px' }}>
       <IconsDesingFlowerFlat />
       <Container />
     </div>
@@ -42,27 +36,24 @@ function Container1() {
 
 function Container2() {
   return (
-    <div className="content-stretch flex gap-[4px] items-center relative shrink-0" data-name="Container">
-      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[15px] text-white tracking-[-0.45px]">태그 쌓으러 가기</p>
+    <div className="flex items-center shrink-0" style={{ gap: '4px' }}>
+      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
+        태그 쌓으러 가기
+      </p>
     </div>
   );
 }
 
 function ButtonSquareButton() {
   return (
-    <motion.button 
-      className="bg-[#48b2af] h-[48px] relative rounded-[12px] shrink-0 w-full active:bg-[#41A09E] cursor-pointer transition-colors block" 
-      data-name="Button / Square Button"
+    <motion.button
+      className="shrink-0 w-full cursor-pointer transition-colors block active:bg-[#41A09E]"
+      style={{ backgroundColor: '#48b2af', height: '48px', borderRadius: '12px' }}
       whileTap={{ scale: 0.99 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      style={{ 
-        WebkitTapHighlightColor: 'transparent',
-        transformOrigin: 'center center',
-        willChange: 'transform'
-      }}
     >
       <div className="flex flex-row items-center justify-center size-full">
-        <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
+        <div className="flex items-center justify-center relative size-full" style={{ padding: '0 12px' }}>
           <Container2 />
         </div>
       </div>
@@ -72,7 +63,7 @@ function ButtonSquareButton() {
 
 function Frame() {
   return (
-    <div className="content-stretch flex flex-col gap-[36px] items-start relative shrink-0 w-full">
+    <div className="flex flex-col items-start shrink-0 w-full" style={{ gap: '36px' }}>
       <Container1 />
       <ButtonSquareButton />
     </div>
@@ -81,7 +72,7 @@ function Frame() {
 
 export default function EmptyContent() {
   return (
-    <div className="content-stretch flex flex-col items-start pb-0 pt-[48px] px-[20px] relative size-full" data-name="EmptyContent">
+    <div className="flex flex-col items-start relative w-full" style={{ padding: '48px 20px 0 20px' }}>
       <Frame />
     </div>
   );

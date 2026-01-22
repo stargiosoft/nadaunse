@@ -276,10 +276,11 @@ interface MyReportListProps {
   onBack?: () => void;
   onTabChange?: (index: number) => void;
   onReportClick?: (id: string) => void;
+  forceEmptyState?: boolean; // 테스트용: 빈 상태 강제
 }
 
-export default function MyReportList({ onBack, onTabChange, onReportClick }: MyReportListProps) {
-  const [reports, setReports] = useState(reportData);
+export default function MyReportList({ onBack, onTabChange, onReportClick, forceEmptyState = false }: MyReportListProps) {
+  const [reports, setReports] = useState(forceEmptyState ? [] : reportData);
   const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
 
   const handleTabChange = (index: number) => {

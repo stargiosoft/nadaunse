@@ -85,6 +85,7 @@ export default function ReportWeeklyTarot({ onBack, onNext }: ReportWeeklyTarotP
             onConfirm={onNext}
             title="다음주, 내 마음 날씨는 어떨까요?"
             question="복잡한 생각은 잠시 내려두고, 편하게 뽑아보세요."
+            slotCount={3}
           />
         </div>
       </div>

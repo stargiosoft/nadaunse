@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-20
+> **최종 업데이트**: 2026-01-22
 
 ---
 
@@ -280,11 +280,30 @@ const sajuResponse = await fetch(sajuApiUrl, {
 ```
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
 /components/TarotGame.tsx               → 카드 섞기 + 선택 UI (21장, iOS Safari 전체화면 배경 대응)
+/components/ReportWeeklyTarot.tsx       → 이번 주 보고서 타로 (slotCount=3)
 /pages/TestTarotPage.tsx                → 테스트용 타로 페이지 (라우트: /test/tarot, 로그인 불필요)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 /lib/tarotCards.ts                      → 타로 카드 데이터 (78장) + 유틸리티 함수
 /lib/tarotImageCache.ts                 → 타로 카드 이미지 캐싱
 /public/tarot-shuffle-background.jpg    → 타로 셔플 배경 이미지 (CSP 대응, 9.8KB)
+```
+
+**TarotGame slotCount 설정**:
+| 사용처 | slotCount | 설명 |
+|--------|-----------|------|
+| `TarotShufflePage` | 1 (기본값) | 유료 콘텐츠 타로 - 카드 1장 선택 |
+| `ReportWeeklyTarot` | 3 | 이번 주 보고서 - 카드 3장 선택 |
+
+```tsx
+// TarotGame props
+interface TarotGameProps {
+  slotCount?: 1 | 3;  // placeholder 슬롯 개수 (기본값: 1)
+  // ...
+}
+
+// 사용 예시
+<TarotGame slotCount={3} />  // ReportWeeklyTarot에서 3장 선택
+<TarotGame />                // TarotShufflePage에서 1장 선택 (기본값)
 ```
 </details>
 
@@ -806,11 +825,15 @@ TarotGame (카드 섞기 + 선택 - **UI 연출용**, 458줄)
 
 **주요 파일**:
 - `/components/TarotShufflePage.tsx` - 타로 셔플 페이지 (라우트: /tarot/shuffle)
-- `/components/TarotGame.tsx` - 카드 섞기 + 선택 UI 연출 컴포넌트 (458줄)
+- `/components/TarotGame.tsx` - 카드 섞기 + 선택 UI 연출 컴포넌트 (550줄+)
   - 5단계 애니메이션 시퀀스: idle → mixing → gathered → spreading → selected
   - 21장 타로 카드 인터랙션 (더미, 재미 요소)
   - 모바일 반응형 (320px ~ 440px)
   - ⚠️ 실제 카드는 이미 백엔드에서 선택되어 있음
+  - **slotCount prop**: placeholder 슬롯 개수 설정 (1 | 3, 기본값: 1)
+    - `TarotShufflePage`: slotCount=1 (유료 콘텐츠, 카드 1장)
+    - `ReportWeeklyTarot`: slotCount=3 (이번 주 보고서, 카드 3장)
+- `/components/ReportWeeklyTarot.tsx` - 이번 주 보고서 타로 페이지 (slotCount=3)
 - `/lib/tarotCards.ts` - 타로 카드 데이터 + 유틸리티
   - TAROT_DECK: 78장 전체 덱 (메이저 22장 + 마이너 56장)
   - getRandomTarotCards(): 랜덤 카드 선택 (중복 없음)
@@ -1224,6 +1247,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.0.2 | 2026-01-22 | **TarotGame slotCount 설정** - TarotGame에 slotCount prop 추가 (1 \| 3, 기본값: 1), TarotShufflePage는 1장, ReportWeeklyTarot은 3장 선택, 버튼 레이블/카드 선택 로직 slotCount 기반 동작 | AI Assistant |
 | 2.0.1 | 2026-01-20 | **UI/UX 및 성능 개선** - UnifiedResultPage Framer Motion 제거 (타로 카드 2번째 질문부터 공란 버그 수정), SajuAddPage 관계 선택 리스트 변경 (9개 → 6개: 연인/가족/친구/지인/동료/기타), DB 마이그레이션 (관계 필드 정규화), ProfilePage 로그아웃 확인 다이얼로그 추가, ConfirmDialog 이중 레이어 버그 수정, 사주 삭제 성능 최적화 3개 페이지 (2초 → 0.3초, Promise.all 병렬 처리), SajuAddPage 관계 선택 bottom sheet 간격 수정 (pb-[100px] → pb-[24px]), DECISIONS.md 타로 카드 캐시 이슈 히스토리 문서화 | AI Assistant |
 | 2.0.0 | 2026-01-20 | **캐싱 전략 대폭 개선** - vercel.json HTTP 캐시 헤더 추가 (JS/CSS 1년, 이미지 1일), thumbnailCache.ts 신규 생성 (콘텐츠 썸네일 Cache API), 타로 캐시 최적화 (싱글톤 + 메모리 캐시 + 배치 처리, 1-6초 → 0.3-0.8초), 구매 내역 DB 쿼리 병렬화 (400-1000ms → 150-400ms) | AI Assistant |
 | 1.9.2 | 2026-01-19 | AlimtalkInfoInputPage 추가, SajuCard/SajuManagementPage 구분자 렌더링 방식 변경 (SVG → CSS div), 컴포넌트 개수 업데이트 (54→55개) | AI Assistant |
@@ -1371,6 +1395,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 2.0.0
-**최종 업데이트**: 2026-01-20
+**문서 버전**: 2.0.2
+**최종 업데이트**: 2026-01-22
 **문서 끝**

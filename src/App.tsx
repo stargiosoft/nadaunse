@@ -1780,7 +1780,7 @@ export default function App() {
           <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />
           <Route path="/test/my-report-list" element={<MyReportList />} />
           <Route path="/test/my-report-weekly" element={<MyReportList />} /> {/* MyReportList가 전체 화면 렌더링 */}
-          <Route path="/test/my-report-empty" element={<MyReportEmpty />} />
+          <Route path="/test/my-report-empty" element={<MyReportList forceEmptyState={true} />} />
           <Route path="/test/nadaum-tags" element={<NadaumTags onBack={() => {}} />} />
           <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} />} />
           <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail onBack={() => {}} />} />
