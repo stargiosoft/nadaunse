@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SEO from './SEO';
 import { supabase } from '../lib/supabase';
 import { issueWelcomeCoupon } from '../lib/coupon';
 import { motion, AnimatePresence } from 'motion/react';
@@ -217,7 +218,9 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
   };
 
   return (
-    <div className="bg-white relative w-full min-h-screen flex justify-center" data-name="약관 동의 _ 390" style={{ scrollbarGutter: 'stable' } as React.CSSProperties}>
+    <>
+      <SEO title="약관 동의" noIndex={true} />
+      <div className="bg-white relative w-full min-h-screen flex justify-center" data-name="약관 동의 _ 390" style={{ scrollbarGutter: 'stable' } as React.CSSProperties}>
       <div className="relative w-full max-w-[440px] min-h-screen flex flex-col bg-white">
         {/* 1. 상단 네비게이션 */}
         <div className="shrink-0 w-full bg-white z-10">
@@ -609,5 +612,6 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
 
       </div>
     </div>
+    </>
   );
 }

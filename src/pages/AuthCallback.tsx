@@ -5,6 +5,7 @@ import { projectId } from '../utils/supabase/info';
 import { setUser as setSentryUser } from '../lib/sentry';
 import { clearUserCaches } from '../lib/auth';
 import { PageLoader } from '../components/ui/PageLoader';
+import { setUserId as setGAUserId } from '../utils/analytics';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -138,6 +139,10 @@ export default function AuthCallback() {
 
         // Sentry 사용자 컨텍스트 설정
         setSentryUser(userData.id, userData.email);
+
+        // GA 사용자 ID 설정 (재방문 추적 개선)
+        setGAUserId(userData.id);
+        console.log('📊 GA user_id 설정 완료');
 
         // 쿠키에 로그인 정보 저장
         document.cookie = `last_login_provider=${userData.provider}; max-age=${60 * 60 * 24 * 365}; path=/`;
