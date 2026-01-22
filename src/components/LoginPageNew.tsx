@@ -8,7 +8,7 @@ import { motion } from 'motion/react';
 import svgPaths from "../imports/svg-h2fyyvfh8o";
 import { imgGroup, imgGroup1, imgGroup2, imgGroup3 } from "../imports/svg-cp95o";
 import { projectId } from '../utils/supabase/info';
-import { trackLoginClick } from '../utils/analytics';
+import { trackLoginClick, setUserId as setGAUserId } from '../utils/analytics';
 import SEO from './SEO';
 
 declare global {
@@ -639,6 +639,9 @@ export default function LoginPageNew({
 
         // localStorage에 저장 (기존 코드 호환용)
         localStorage.setItem('user', JSON.stringify(userData));
+
+        // GA 사용자 ID 설정 (재방문 추적 개선)
+        setGAUserId(userData.id);
 
         // 로그인 성공 콜백
         if (onLoginSuccess) {

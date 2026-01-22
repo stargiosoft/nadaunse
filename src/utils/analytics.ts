@@ -29,11 +29,30 @@ export const initGA = () => {
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
   document.head.appendChild(script);
 
-  // GA 설정
+  // GA 설정 (Safari ITP 대응 포함)
   window.gtag('js', new Date());
   window.gtag('config', GA_MEASUREMENT_ID, {
     send_page_view: false, // 수동으로 페이지뷰 전송
+    cookie_update: true, // 쿠키 만료 시간 갱신 (재방문 시)
+    cookie_expires: 63072000, // 쿠키 만료: 2년 (초 단위)
+    cookie_flags: 'SameSite=Lax;Secure', // 보안 쿠키 설정
   });
+
+  // 로그인된 사용자가 있으면 user_id 설정 (재방문 추적 개선)
+  try {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      if (user?.id) {
+        window.gtag('config', GA_MEASUREMENT_ID, { user_id: user.id });
+        if (isDevelopment) {
+          console.log('👤 GA user_id set from localStorage:', user.id);
+        }
+      }
+    }
+  } catch (e) {
+    // user 파싱 실패 시 무시
+  }
 
   if (isDevelopment) {
     console.log('🔍 GA4 initialized:', GA_MEASUREMENT_ID);
@@ -361,6 +380,9 @@ export const trackPaymentMethodSelect = (method: 'kakaopay' | 'card') => {
 };
 
 // 28. 구매 완료 (GA4 전자상거래 표준 형식 + 쿠폰 정보)
+// ⭐ 2026-01-22 수정: items[0].price에 실제 결제 금액(value) 전송
+// - 이전: originalPrice (정가) → GA에서 잘못된 수익 표시
+// - 수정: value (쿠폰 적용 후 최종 결제 금액) → 실제 수익 반영
 export const trackPurchaseComplete = (params: {
   transactionId: string;
   contentId: string;
@@ -382,8 +404,7 @@ export const trackPurchaseComplete = (params: {
       {
         item_id: params.contentId,
         item_name: params.contentTitle,
-        price: params.originalPrice,
-        discount: params.couponAmount || 0,
+        price: params.value, // ⭐ 실제 결제 금액 (쿠폰 적용 후)
         quantity: 1,
         item_category: '운세 콘텐츠',
       },
@@ -393,6 +414,7 @@ export const trackPurchaseComplete = (params: {
     coupon_used: params.couponUsed,
     coupon_type: params.couponType || 'none',
     coupon_amount: params.couponAmount || 0,
+    original_price: params.originalPrice, // ⭐ 정가는 커스텀 파라미터로 별도 기록
   });
 };
 
