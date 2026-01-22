@@ -795,6 +795,7 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
       } else {
         console.log('✅ DB 업데이트 성공!');
         console.log('✅ 업데이트된 콘텐츠:', updatedData);
+        console.log('🗺️ sitemap 자동 등록 완료 - 다음 크롤링 시 반영됨:', updatedData?.map(c => `${c.title} (${c.id})`).join(', '));
         
         // 성공: 로컬 상태 업데이트
         setContents(prev => prev.map(content => 
