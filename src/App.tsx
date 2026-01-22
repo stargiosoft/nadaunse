@@ -637,14 +637,15 @@ function PaymentNewPage() {
             // 🔍 2순위: 캐시 없을 때만 API 쿼리 (폴백)
             if (!hasSaju) {
               console.log('🔍 [PaymentNew→onPurchase] 캐시 없음 → API 쿼리 실행');
-              const { data: mySaju } = await supabase
+              // ⭐ is_primary 조건 제거: 사주 정보가 하나라도 있으면 선택 페이지로 이동
+              const { data: mySajuList } = await supabase
                 .from('saju_records')
                 .select('id')
                 .eq('user_id', user.id)
-                .eq('is_primary', true)
-                .maybeSingle();
+                .limit(1);
 
-              hasSaju = !!mySaju;
+              hasSaju = mySajuList && mySajuList.length > 0;
+              console.log('🔍 [PaymentNew→onPurchase] API 쿼리 결과:', { hasSaju, count: mySajuList?.length });
             }
 
             if (hasSaju) {
@@ -692,14 +693,15 @@ function PaymentNewPage() {
       // 🔍 2순위: 캐시 없을 때만 API 쿼리 (폴백)
       if (!hasSaju) {
         console.log('🔍 [handlePurchaseComplete] 캐시 없음 → API 쿼리 실행');
-        const { data: mySaju } = await supabase
+        // ⭐ is_primary 조건 제거: 사주 정보가 하나라도 있으면 선택 페이지로 이동
+        const { data: mySajuList } = await supabase
           .from('saju_records')
           .select('id')
           .eq('user_id', user.id)
-          .eq('is_primary', true)
-          .maybeSingle();
+          .limit(1);
 
-        hasSaju = !!mySaju;
+        hasSaju = mySajuList && mySajuList.length > 0;
+        console.log('🔍 [handlePurchaseComplete] API 쿼리 결과:', { hasSaju, count: mySajuList?.length });
       }
 
       if (hasSaju) {
