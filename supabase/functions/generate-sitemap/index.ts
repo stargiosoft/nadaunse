@@ -1,8 +1,8 @@
 /**
  * generate-sitemap Edge Function
- * 
+ *
  * 동적으로 sitemap.xml을 생성합니다.
- * - master_contents 테이블에서 deployed 상태인 유료 콘텐츠 조회
+ * - master_contents 테이블에서 deployed 상태인 콘텐츠 조회 (유료 + 무료)
  * - XML 형식으로 sitemap 생성
  * - 1시간 캐싱
  */
@@ -14,6 +14,12 @@ const SITE_URL = 'https://nadaunse.com';
 // Supabase 클라이언트 생성
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+interface ContentItem {
+  id: string;
+  content_type: 'paid' | 'free';
+  updated_at: string;
+}
 
 Deno.serve(async (req: Request) => {
   // OPTIONS 요청 처리 (CORS preflight)
@@ -30,12 +36,11 @@ Deno.serve(async (req: Request) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // deployed 상태인 유료 콘텐츠 조회 (인기순)
+    // deployed 상태인 모든 콘텐츠 조회 (유료 + 무료, 인기순)
     const { data: contents, error } = await supabase
       .from('master_contents')
-      .select('id, updated_at')
+      .select('id, content_type, updated_at')
       .eq('status', 'deployed')
-      .eq('content_type', 'paid')
       .order('weekly_clicks', { ascending: false })
       .order('updated_at', { ascending: false });
 
@@ -44,7 +49,9 @@ Deno.serve(async (req: Request) => {
       throw new Error(`DB 조회 실패: ${error.message}`);
     }
 
-    console.log(`✅ 유료 콘텐츠 ${contents?.length || 0}개 조회`);
+    const paidCount = contents?.filter(c => c.content_type === 'paid').length || 0;
+    const freeCount = contents?.filter(c => c.content_type === 'free').length || 0;
+    console.log(`✅ 콘텐츠 조회: 유료 ${paidCount}개, 무료 ${freeCount}개`);
 
     // XML 생성
     const xml = generateSitemapXml(contents || []);
@@ -76,7 +83,7 @@ Deno.serve(async (req: Request) => {
 /**
  * Sitemap XML 생성
  */
-function generateSitemapXml(contents: Array<{ id: string; updated_at: string }>): string {
+function generateSitemapXml(contents: ContentItem[]): string {
   const today = new Date().toISOString().split('T')[0];
 
   // 정적 페이지
@@ -86,13 +93,19 @@ function generateSitemapXml(contents: Array<{ id: string; updated_at: string }>)
     { loc: '/privacy-policy', changefreq: 'monthly', priority: '0.3' },
   ];
 
-  // 동적 콘텐츠 페이지
-  const contentPages = contents.map((content) => ({
-    loc: `/product/${content.id}`,
-    changefreq: 'weekly',
-    priority: '0.9',
-    lastmod: content.updated_at ? content.updated_at.split('T')[0] : undefined,
-  }));
+  // 동적 콘텐츠 페이지 (유료: /product/:id, 무료: /free/content/:id)
+  const contentPages = contents.map((content) => {
+    const urlPath = content.content_type === 'paid'
+      ? `/product/${content.id}`
+      : `/free/content/${content.id}`;
+
+    return {
+      loc: urlPath,
+      changefreq: 'weekly',
+      priority: content.content_type === 'paid' ? '0.9' : '0.8', // 유료 > 무료 우선순위
+      lastmod: content.updated_at ? content.updated_at.split('T')[0] : undefined,
+    };
+  });
 
   const allPages = [...staticPages, ...contentPages];
 
