@@ -1,6 +1,6 @@
 import svgPaths from "@/imports/svg-g7inqw5l9h";
 import svgPaths1 from "@/imports/svg-ysqoq72gck";
-import imgThumbnail from "figma:asset/7b851936315a0976f82b567082641209095748c5.png";
+import imgThumbnail from "@/assets/7b851936315a0976f82b567082641209095748c5.png";
 import { motion } from "motion/react";
 
 function LabelBox() {

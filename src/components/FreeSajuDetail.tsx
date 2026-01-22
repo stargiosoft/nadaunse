@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from "motion/react";
 import svgPaths from '../imports/svg-e15u41g853';
-import img from "figma:asset/5615ff21216f93eb47cac8ee15adee136174d7be.png";
-import img2 from "figma:asset/67f3616aab1dcdea805228bdd4e698e8f57dd487.png";
+import img from "@/assets/5615ff21216f93eb47cac8ee15adee136174d7be.png";
+import img2 from "@/assets/67f3616aab1dcdea805228bdd4e698e8f57dd487.png";
 import { AdBanner } from './FreeContentDetailComponents';
 
 interface FreeSajuDetailProps {

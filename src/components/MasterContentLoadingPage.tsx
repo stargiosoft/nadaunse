@@ -4,8 +4,8 @@
  */
 
 import svgPaths from "../imports/svg-v8aod9r8yu";
-import imgGeminiGeneratedImageGmbs6Lgmbs6Lgmbs1 from "figma:asset/35682d96407edc7fb5921d3d1b58f0b20b40da6e.png";
-import imgThumbnail from "figma:asset/7b851936315a0976f82b567082641209095748c5.png";
+import imgGeminiGeneratedImageGmbs6Lgmbs6Lgmbs1 from "@/assets/35682d96407edc7fb5921d3d1b58f0b20b40da6e.png";
+import imgThumbnail from "@/assets/7b851936315a0976f82b567082641209095748c5.png";
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';

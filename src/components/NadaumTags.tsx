@@ -1,5 +1,5 @@
 import svgPaths from "@/imports/svg-9sd270pgzn";
-import imgThumbnail from "figma:asset/7b851936315a0976f82b567082641209095748c5.png";
+import imgThumbnail from "@/assets/7b851936315a0976f82b567082641209095748c5.png";
 import { motion } from "motion/react";
 import Frame427323235 from "@/imports/Frame427323235";
 import ArrowLeft from './ArrowLeft';

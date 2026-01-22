@@ -7,7 +7,7 @@ import svgPathsBase from '@/imports/svg-o5jcc01aog';
 import svgPathsHome from '@/imports/svg-rr05b2c3l6';
 import svgPathsClose from '@/imports/svg-8tqadibmpl';
 import EmptyContent from "@/imports/EmptyContent";
-import imgImage from "figma:asset/13545c727434815b8ecda334fd9e453f4a0ea3ac.png";
+import imgImage from "@/assets/13545c727434815b8ecda334fd9e453f4a0ea3ac.png";
 
 // Combine all paths
 const svgPaths = {

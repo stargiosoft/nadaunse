@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ButtonSquareButton } from "./ButtonSquareButton";
-import cardImage from "figma:asset/f494ca2b3b180a2d66b2960718e3e515db3248a2.png"; // Using existing card image from TarotShufflePage
+import cardImage from "@/assets/f494ca2b3b180a2d66b2960718e3e515db3248a2.png"; // Using existing card image from TarotShufflePage
 
 // 배경 이미지 - public 폴더에서 절대 경로로 참조
 const tarotBackground = "/tarot-shuffle-background.jpg";
@@ -184,33 +184,42 @@ function AnimatedCard({ index, shufflePhase, currentMixingPosition, displayIndex
   );
 }
 
-function CardFan({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, scaleRatio }: any) {
+function CardFan({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, scaleRatio }: any) {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [pressedCard, setPressedCard] = useState<number | null>(null);
-  
+
   useEffect(() => {
     setHoveredCard(null);
     setPressedCard(null);
-  }, [shufflePhase, selectedCard]);
+  }, [shufflePhase, selectedCards]);
 
   const containerWidth = 313 * scaleRatio;
   const containerHeight = 178 * scaleRatio;
-  
+
+  const selectedCardIndices = selectedCards.map((c: SelectedCardData) => c.index);
+  const allSlotsSelected = selectedCards.length >= 3;
+
   return (
     <div style={{ height: `${containerHeight}px`, width: `${containerWidth}px`, transform: 'translateY(-44px)', boxShadow: 'none' }} className="relative">
       {cardPositions.map((_, index) => (
-        <AnimatedCard key={index} index={index} shufflePhase={shufflePhase} currentMixingPosition={mixingPositions[index] || { left: 0, top: 0, rotate: 0 }} displayIndex={deckOrder.indexOf(index)} isSelected={selectedCard === index} onSelect={onCardSelect} isHovered={hoveredCard === index} isPressed={pressedCard === index} onHoverChange={setHoveredCard} onPressChange={setPressedCard} scaleRatio={scaleRatio} anyCardSelected={selectedCard !== null} />
+        <AnimatedCard key={index} index={index} shufflePhase={shufflePhase} currentMixingPosition={mixingPositions[index] || { left: 0, top: 0, rotate: 0 }} displayIndex={deckOrder.indexOf(index)} isSelected={selectedCardIndices.includes(index)} onSelect={onCardSelect} isHovered={hoveredCard === index} isPressed={pressedCard === index} onHoverChange={setHoveredCard} onPressChange={setPressedCard} scaleRatio={scaleRatio} anyCardSelected={allSlotsSelected} />
       ))}
     </div>
   );
 }
 
-function Frame({ targetRef }: { targetRef: React.RefObject<HTMLDivElement> }) {
+function Frame({ targetRefs }: { targetRefs: React.RefObject<HTMLDivElement>[] }) {
   return (
-    <div className="content-stretch flex items-center justify-center relative shrink-0 w-full">
-      <div ref={targetRef} className="bg-[#41a09e] h-[114px] relative rounded-[12px] shrink-0 w-[68px] top-[-40px]">
-        <div aria-hidden="true" className="absolute border border-[#6ac9c6] border-dashed inset-0 pointer-events-none rounded-[12px]" />
-      </div>
+    <div className="content-stretch flex items-center justify-center relative shrink-0 w-full" style={{ gap: '12px' }}>
+      {[0, 1, 2].map((slotIndex) => (
+        <div
+          key={slotIndex}
+          ref={targetRefs[slotIndex]}
+          className="bg-[#41a09e] h-[114px] relative rounded-[12px] shrink-0 w-[68px] top-[-40px]"
+        >
+          <div aria-hidden="true" className="absolute border border-[#6ac9c6] border-dashed inset-0 pointer-events-none rounded-[12px]" />
+        </div>
+      ))}
     </div>
   );
 }
@@ -239,28 +248,34 @@ function Container1({ title, question }: { title?: string; question?: string }) 
   );
 }
 
-function Frame2({ targetRef, title, question }: { targetRef: React.RefObject<HTMLDivElement>; title?: string; question?: string }) {
+function Frame2({ targetRefs, title, question }: { targetRefs: React.RefObject<HTMLDivElement>[]; title?: string; question?: string }) {
   return (
     <div className="content-stretch flex flex-col gap-[44px] items-center relative shrink-0 w-full">
       <Container1 title={title} question={question} />
-      <Frame targetRef={targetRef} />
+      <Frame targetRefs={targetRefs} />
     </div>
   );
 }
 
-function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, title, question }: any) {
+function Frame3({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, targetRefs, scaleRatio, title, question }: any) {
   return (
     <div className="absolute content-stretch flex flex-col gap-[50px] items-center left-0 w-full" style={{ top: '70px' }}>
-      <Frame2 targetRef={targetRef} title={title} question={question} />
+      <Frame2 targetRefs={targetRefs} title={title} question={question} />
       <div className="flex items-center justify-center relative shrink-0">
-        <CardFan shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} scaleRatio={scaleRatio} />
+        <CardFan shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={onCardSelect} scaleRatio={scaleRatio} />
       </div>
     </div>
   );
 }
 
-function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCardSelect, targetRef, scaleRatio, onShuffle, isShuffling, isCardSelected, title, question }: any) {
-  const buttonLabel = isShuffling ? "섞는 중..." : isCardSelected ? "선택 완료" : "카드 섞기";
+function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCards, onCardSelect, targetRefs, scaleRatio, onShuffle, isShuffling, selectedCount, title, question }: any) {
+  const buttonLabel = isShuffling
+    ? "섞는 중..."
+    : selectedCount === 3
+      ? "선택 완료"
+      : selectedCount > 0
+        ? `${selectedCount}/3 선택됨`
+        : "카드 섞기";
 
   return (
     <div
@@ -280,13 +295,13 @@ function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCard
         }}
       />
       <div className="relative z-10 w-full h-full">
-        <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={onCardSelect} targetRef={targetRef} scaleRatio={scaleRatio} title={title} question={question} />
+        <Frame3 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={onCardSelect} targetRefs={targetRefs} scaleRatio={scaleRatio} title={title} question={question} />
         <div
           className="fixed left-0 right-0 px-[20px] z-50"
           style={{ bottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}
         >
           <div className="h-[56px] w-full">
-            <ButtonSquareButton onClick={onShuffle} label={buttonLabel} disabled={isShuffling} isActive={isCardSelected} />
+            <ButtonSquareButton onClick={onShuffle} label={buttonLabel} disabled={isShuffling} isActive={selectedCount === 3} />
           </div>
         </div>
       </div>
@@ -294,7 +309,7 @@ function Frame1({ shufflePhase, mixingPositions, deckOrder, selectedCard, onCard
   );
 }
 
-interface SelectedCardData { index: number; startX: number; startY: number; targetX: number; targetY: number; cardWidth: number; cardHeight: number; isReturning: boolean; }
+interface SelectedCardData { index: number; startX: number; startY: number; targetX: number; targetY: number; cardWidth: number; cardHeight: number; isReturning: boolean; slotIndex: number; }
 
 function SelectedCard({ data, onReturn }: { data: SelectedCardData; onReturn: () => void; }) {
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -328,12 +343,14 @@ interface TarotGameProps {
 export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   const [isShuffling, setIsShuffling] = useState(false);
   const [shufflePhase, setShufflePhase] = useState<'idle' | 'mixing' | 'gathered' | 'spreading'>('idle');
-  const [selectedCard, setSelectedCard] = useState<number | null>(null);
-  const [selectedCardData, setSelectedCardData] = useState<SelectedCardData | null>(null);
+  const [selectedCards, setSelectedCards] = useState<SelectedCardData[]>([]);
   const [scaleRatio, setScaleRatio] = useState(() => getScaleRatio(typeof window !== 'undefined' ? window.innerWidth : BASE_WIDTH));
   const [mixingPositions, setMixingPositions] = useState<{ left: number; top: number; rotate: number }[]>([]);
   const [deckOrder, setDeckOrder] = useState<number[]>(cardPositions.map((_, i) => i));
-  const targetBoxRef = useRef<HTMLDivElement>(null);
+  const targetBoxRef0 = useRef<HTMLDivElement>(null);
+  const targetBoxRef1 = useRef<HTMLDivElement>(null);
+  const targetBoxRef2 = useRef<HTMLDivElement>(null);
+  const targetBoxRefs = [targetBoxRef0, targetBoxRef1, targetBoxRef2];
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ⭐ 이미지 로딩 상태 - 카드/배경 이미지 로드 완료 후 렌더링
@@ -466,7 +483,7 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   
   const performShuffle = async () => {
     if (isShuffling) return;
-    setIsShuffling(true); setSelectedCard(null); setSelectedCardData(null);
+    setIsShuffling(true); setSelectedCards([]);
     for (let i = 0; i < 5; i++) {
       setShufflePhase('mixing'); setMixingPositions(generateMixingPositions(Math.floor(Math.random() * 5), scaleRatio)); setDeckOrder(prev => shuffleArray(prev)); await delay(300);
     }
@@ -476,7 +493,7 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   };
 
   const handleClickAction = () => {
-    if (selectedCard !== null) {
+    if (selectedCards.length === 3) {
       if (onConfirm) onConfirm();
     } else {
       performShuffle();
@@ -484,13 +501,36 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
   };
 
   const handleCardSelect = (index: number, cardRect: DOMRect) => {
-    if (selectedCard === index) {
-      setSelectedCard(null); setSelectedCardData(prev => prev ? { ...prev, isReturning: true } : null);
-    } else if (targetBoxRef.current && containerRef.current) {
-      const targetRect = targetBoxRef.current.getBoundingClientRect();
+    // Check if this card is already selected
+    const existingCardIndex = selectedCards.findIndex(c => c.index === index);
+    if (existingCardIndex !== -1) {
+      // Remove card from selection (return it)
+      setSelectedCards(prev => prev.filter(c => c.index !== index));
+      return;
+    }
+
+    // Check if all 3 slots are already filled
+    if (selectedCards.length >= 3) return;
+
+    // Find the next available slot
+    const nextSlotIndex = selectedCards.length;
+    const targetRef = targetBoxRefs[nextSlotIndex];
+
+    if (targetRef.current && containerRef.current) {
+      const targetRect = targetRef.current.getBoundingClientRect();
       const containerRect = containerRef.current.getBoundingClientRect();
-      setSelectedCard(index);
-      setSelectedCardData({ index, startX: cardRect.left - containerRect.left, startY: cardRect.top - containerRect.top, targetX: targetRect.left - containerRect.left, targetY: targetRect.top - containerRect.top, cardWidth: targetRect.width, cardHeight: targetRect.height, isReturning: false });
+      const newCardData: SelectedCardData = {
+        index,
+        startX: cardRect.left - containerRect.left,
+        startY: cardRect.top - containerRect.top,
+        targetX: targetRect.left - containerRect.left,
+        targetY: targetRect.top - containerRect.top,
+        cardWidth: targetRect.width,
+        cardHeight: targetRect.height,
+        isReturning: false,
+        slotIndex: nextSlotIndex
+      };
+      setSelectedCards(prev => [...prev, newCardData]);
     }
   };
 
@@ -505,8 +545,10 @@ export function TarotGame({ onConfirm, title, question }: TarotGameProps) {
 
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden" data-name="카드 뽑기 섞기">
-      <Frame1 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCard={selectedCard} onCardSelect={handleCardSelect} targetRef={targetBoxRef} scaleRatio={scaleRatio} onShuffle={handleClickAction} isShuffling={isShuffling} isCardSelected={selectedCard !== null} title={title} question={question} />
-      {selectedCardData && <SelectedCard data={selectedCardData} onReturn={() => { setSelectedCard(null); setSelectedCardData(null); }} />}
+      <Frame1 shufflePhase={shufflePhase} mixingPositions={mixingPositions} deckOrder={deckOrder} selectedCards={selectedCards} onCardSelect={handleCardSelect} targetRefs={targetBoxRefs} scaleRatio={scaleRatio} onShuffle={handleClickAction} isShuffling={isShuffling} selectedCount={selectedCards.length} title={title} question={question} />
+      {selectedCards.map((cardData) => (
+        <SelectedCard key={cardData.index} data={cardData} onReturn={() => setSelectedCards(prev => prev.filter(c => c.index !== cardData.index))} />
+      ))}
     </div>
   );
 }

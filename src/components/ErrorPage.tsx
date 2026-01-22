@@ -1,5 +1,4 @@
 import { motion } from 'motion/react';
-import { useNavigate } from 'react-router-dom';
 import { DEV } from '../lib/env';
 import svgPaths404 from '../imports/svg-wp3v25qh3h';
 import svgPaths500 from '../imports/svg-47kifjlpzo';
@@ -12,8 +11,6 @@ interface ErrorPageProps {
 }
 
 export default function ErrorPage({ type }: ErrorPageProps) {
-  const navigate = useNavigate();
-
   // 에러 타입별 설정
   const errorConfig = {
     '404': {
@@ -59,7 +56,9 @@ export default function ErrorPage({ type }: ErrorPageProps) {
   const config = errorConfig[type];
 
   const handleHomeClick = () => {
-    navigate('/');
+    // ErrorBoundary에서 렌더링될 때 React Router가 정상 작동하지 않을 수 있으므로
+    // 브라우저 네이티브 navigation 사용
+    window.location.href = '/';
   };
 
   const handleRetryClick = () => {
@@ -68,7 +67,7 @@ export default function ErrorPage({ type }: ErrorPageProps) {
 
   const handleButtonClick = () => {
     if (type === '404') {
-      navigate('/');
+      window.location.href = '/';
     } else {
       window.location.reload();
     }

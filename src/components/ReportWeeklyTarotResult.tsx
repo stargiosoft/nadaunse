@@ -1,6 +1,6 @@
 import React from 'react';
 import svgPaths from "@/imports/svg-nx753fhzfr";
-import imgSwords11Png from "figma:asset/2ced5a86877d398cd3930c1ef08e032cadaa48d4.png";
+import imgSwords11Png from "@/assets/2ced5a86877d398cd3930c1ef08e032cadaa48d4.png";
 
 function Box() {
   return (

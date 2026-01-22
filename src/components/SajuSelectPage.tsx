@@ -573,11 +573,12 @@ export default function SajuSelectPage() {
 
   // 프로필 이미지 (임시)
   const getProfileImageUrl = (index: number) => {
+    // 프로필 이미지는 사주 정보에서 가져오거나 기본 이미지 사용
     const images = [
-      "figma:asset/23b9117ba4bdef1f5ecec145e7fd9de948dfdc19.png",
-      "figma:asset/daaca24c14d101c5cbe4ec842ac5cd84bb75641c.png",
-      "figma:asset/5312b734fc1c2fbac6211448d9eaa86aaab976d3.png",
-      "figma:asset/35896a24e9fd1c140809ac07411f35177742c019.png"
+      "/profile-default-1.png",
+      "/profile-default-2.png",
+      "/profile-default-3.png",
+      "/profile-default-4.png"
     ];
     return images[index % images.length];
   };
