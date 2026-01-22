@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 21개
-> **최종 업데이트**: 2026-01-17
+> **총 함수 수**: 22개
+> **최종 업데이트**: 2026-01-22
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -18,8 +18,9 @@
 7. [알림 Functions](#-알림-functions-1개)
 8. [결제/환불 Functions](#-결제환불-functions-3개)
 9. [모니터링 Functions](#-모니터링-functions-1개)
-10. [호출 플로우](#-호출-플로우)
-11. [디버깅 팁](#-디버깅-팁)
+10. [SEO Functions](#-seo-functions-1개)
+11. [호출 플로우](#-호출-플로우)
+12. [디버깅 팁](#-디버깅-팁)
 
 ---
 
@@ -29,13 +30,14 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 8개 | 38% | OpenAI GPT, Gemini |
-| 🎟️ **쿠폰 관리** | 4개 | 19% | Supabase DB |
-| 👤 **사용자/콘텐츠 관리** | 2개 | 10% | JWT 인증, RLS |
+| 🤖 **AI 생성** | 8개 | 36% | OpenAI GPT, Gemini |
+| 🎟️ **쿠폰 관리** | 4개 | 18% | Supabase DB |
+| 👤 **사용자/콘텐츠 관리** | 2개 | 9% | JWT 인증, RLS |
 | 📨 **알림** | 1개 | 5% | TalkDream API (카카오 알림톡) |
 | 💳 **결제/환불** | 3개 | 14% | PortOne API, PostgreSQL Function |
 | 📊 **모니터링** | 1개 | 5% | Sentry, Slack Webhook |
 | 🔧 **콘텐츠 생성 관리** | 2개 | 9% | OpenAI, Gemini 통합 |
+| 🔍 **SEO** | 1개 | 5% | 동적 Sitemap 생성 |
 
 ---
 
@@ -105,7 +107,13 @@
 
 ---
 
-### 8️⃣ **콘텐츠 생성 관리** (2개)
+### 8️⃣ **SEO** (1개)
+
+21. `generate-sitemap` - 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
+
+---
+
+### 9️⃣ **콘텐츠 생성 관리** (2개)
 
 21. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
 22. `server` - 서버 상태 확인
@@ -1097,6 +1105,105 @@ COMMIT;
 
 ---
 
+## 🔍 SEO Functions (1개)
+
+### 1. `generate-sitemap`
+
+**역할**: 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
+
+**호출 시점**:
+- `/sitemap.xml` 요청 시 (Vercel rewrite로 연결)
+- Google 크롤러 또는 사용자가 sitemap.xml 접속 시
+
+**메서드**: `GET`
+
+**입력**: 없음 (파라미터 불필요)
+
+**출력**:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://nadaunse.com/</loc>
+    <lastmod>2026-01-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://nadaunse.com/product/{id}</loc>
+    <lastmod>2026-01-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- ... -->
+</urlset>
+```
+
+**로직**:
+```typescript
+// DB에서 deployed 상태 콘텐츠 조회 (유료 + 무료, 인기순)
+const { data: contents } = await supabase
+  .from('master_contents')
+  .select('id, content_type, updated_at')
+  .eq('status', 'deployed')
+  .order('weekly_clicks', { ascending: false })
+  .order('updated_at', { ascending: false });
+
+// URL 경로 생성
+// - 유료 콘텐츠: /product/:id
+// - 무료 콘텐츠: /free/content/:id
+```
+
+**우선순위 (priority)**:
+| 페이지 유형 | priority | changefreq |
+|------------|----------|------------|
+| 홈페이지 (`/`) | 1.0 | daily |
+| 유료 콘텐츠 (`/product/:id`) | 0.9 | weekly |
+| 무료 콘텐츠 (`/free/content/:id`) | 0.8 | weekly |
+| 약관/정책 페이지 | 0.3 | monthly |
+
+**캐싱**:
+- `Cache-Control: public, max-age=3600, s-maxage=3600` (1시간)
+- 에러 시 5분만 캐싱 (`max-age=300`)
+- Vercel Edge에서 캐싱되므로 매 요청마다 Edge Function 호출 안 함
+
+**Vercel 설정** (`vercel.json`):
+```json
+{
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/generate-sitemap"
+    }
+  ]
+}
+```
+
+**배포 명령어**:
+```bash
+# 스테이징
+npx supabase functions deploy generate-sitemap --project-ref hyltbeewxaqashyivilu --no-verify-jwt
+
+# 프로덕션
+npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjkub --no-verify-jwt
+```
+
+**주의사항**:
+- `--no-verify-jwt` 필수: sitemap.xml은 인증 없이 접근 가능해야 함
+- 정적 `public/sitemap.xml` 파일이 있으면 Vercel이 우선 서빙하므로 삭제 필요
+
+**테스트**:
+- 프로덕션: `https://nadaunse.com/sitemap.xml`
+- 스테이징 (직접 호출): `https://hyltbeewxaqashyivilu.supabase.co/functions/v1/generate-sitemap`
+
+**장점**:
+- ✅ 콘텐츠 배포 시 자동으로 sitemap에 반영
+- ✅ 정적 파일 관리 불필요
+- ✅ 인기순 정렬로 중요 페이지 우선 노출
+- ✅ 1시간 캐싱으로 Supabase 비용 절감
+
+---
+
 ## 📈 호출 플로우
 
 ### 무료 콘텐츠 플로우
@@ -1239,6 +1346,7 @@ COMMIT;
 | `payment-webhook` | 💳 결제 | POST | - | 포트원 서버 콜백 |
 | `process-payment` | 💳 결제 | POST | - | 결제 완료 후 |
 | `process-refund` | 💳 환불 | POST | - | 환불 요청 시 |
+| `generate-sitemap` | 🔍 SEO | GET | - | /sitemap.xml 요청 시 |
 
 ---
 
@@ -1286,13 +1394,14 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.3.0
+**문서 버전**: 1.4.0
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-01-13
+**최종 업데이트**: 2026-01-22
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 1.4.0 | 2026-01-22 | `generate-sitemap` 함수 추가 (동적 sitemap.xml 생성, SEO 카테고리 신설) |
 | 1.3.0 | 2026-01-13 | 사주 API 백엔드 서버 직접 호출 (SAJU_API_KEY 사용), IP 화이트리스트 + 키 인증 방식 |
 | 1.2.0 | 2026-01-08 | 알림톡 템플릿 10002 검수 완료, 버튼 URL `/result/saju`로 변경, `server` 함수 제거 |
 | 1.1.0 | 2026-01-07 | 결제/환불 Functions 추가 |
