@@ -184,6 +184,7 @@
 | `gpt_response` | text | - | - | GPT 응답 내용 |
 | `tarot_card_name` | text | - | - | 타로 카드 이름 (예: "The Fool", "Ace of Cups") |
 | `tarot_card_image_url` | text | - | - | 타로 카드 이미지 URL (Supabase Storage) |
+| `tarot_user_viewed` | boolean | - | - | 사용자가 타로 카드를 확인했는지 여부 |
 | `model_used` | text | - | - | 사용된 AI 모델명 |
 | `status` | text | - | `'pending'` | 생성 상태 (pending, completed, failed) |
 | `error_message` | text | - | - | 에러 메시지 |

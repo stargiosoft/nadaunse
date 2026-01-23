@@ -111,12 +111,19 @@ serve(async (req) => {
 
     } else if (sajuData) {
       console.log('🔓 [Edge Function] 게스트 모드 → 전달받은 사주 데이터 사용')
-      sajuInfo = sajuData
+      // snake_case (DB 형식) / camelCase (레거시) 모두 지원
+      sajuInfo = {
+        full_name: sajuData.full_name || sajuData.name,
+        gender: sajuData.gender,
+        birth_date: sajuData.birth_date || sajuData.birthDate,
+        birth_time: sajuData.birth_time || sajuData.birthTime,
+        is_guest: sajuData.is_guest || sajuData.isGuest || true
+      }
       console.log('✅ [Edge Function] 사주 정보 파싱 성공')
-      console.log('📌 [Edge Function] name:', sajuInfo.name)
+      console.log('📌 [Edge Function] full_name:', sajuInfo.full_name)
       console.log('📌 [Edge Function] gender:', sajuInfo.gender)
-      console.log('📌 [Edge Function] birthDate:', sajuInfo.birthDate)
-      console.log('📌 [Edge Function] birthTime:', sajuInfo.birthTime)
+      console.log('📌 [Edge Function] birth_date:', sajuInfo.birth_date)
+      console.log('📌 [Edge Function] birth_time:', sajuInfo.birth_time)
 
     } else {
       console.error('❌ [Edge Function] sajuRecordId와 sajuData 모두 없음')
@@ -126,12 +133,8 @@ serve(async (req) => {
       )
     }
 
-    // 사주 정보 문자열 구성 (로그인/게스트 모드 구분)
-    if (sajuRecordId) {
-      questionerInfo = `이름: ${sajuInfo.full_name}, 성별: ${sajuInfo.gender}, 생년월일: ${sajuInfo.birth_date}, 출생시간: ${sajuInfo.birth_time || '모름'}`
-    } else {
-      questionerInfo = `이름: ${sajuInfo.name}, 성별: ${sajuInfo.gender}, 생년월일: ${sajuInfo.birthDate}, 출생시간: ${sajuInfo.birthTime || '모름'}`
-    }
+    // 사주 정보 문자열 구성 (로그인/게스트 모두 snake_case로 정규화됨)
+    questionerInfo = `이름: ${sajuInfo.full_name}, 성별: ${sajuInfo.gender}, 생년월일: ${sajuInfo.birth_date}, 출생시간: ${sajuInfo.birth_time || '모름'}`
 
     console.log('📌 [Edge Function] questionerInfo (기본):', questionerInfo)
 
@@ -147,21 +150,15 @@ serve(async (req) => {
       if (!sajuApiKey) {
         console.warn('⚠️ [Edge Function] SAJU_API_KEY 환경변수 없음, 기본 사주 정보만 사용')
       } else {
-        // 날짜/시간 포맷 변환
-        let birthDateStr: string
-        let birthTimeStr: string
-        let genderStr: string
+        // 날짜/시간 포맷 변환 (로그인/게스트 모두 snake_case로 정규화됨)
+        const birthDateStr = sajuInfo.birth_date as string
+        const birthTimeStr = (sajuInfo.birth_time as string) || '12:00'
+        const genderStr = sajuInfo.gender as string
 
-        if (sajuRecordId) {
-          // 로그인 모드: DB 필드명 사용
-          birthDateStr = sajuInfo.birth_date as string
-          birthTimeStr = sajuInfo.birth_time as string || '12:00'
-          genderStr = sajuInfo.gender as string
-        } else {
-          // 게스트 모드: 프론트엔드 필드명 사용
-          birthDateStr = sajuInfo.birthDate as string
-          birthTimeStr = sajuInfo.birthTime as string || '12:00'
-          genderStr = sajuInfo.gender as string
+        // 필수 값 검증
+        if (!birthDateStr) {
+          console.warn('⚠️ [Edge Function] 생년월일이 없음, 사주 API 호출 스킵')
+          throw new Error('생년월일 정보가 없습니다.')
         }
 
         // 날짜 포맷: YYYY-MM-DD 또는 YYYY-MM-DDTHH:mm:ss → YYYYMMDD

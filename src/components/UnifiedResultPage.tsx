@@ -416,9 +416,11 @@ export default function UnifiedResultPage() {
 
     const MAX_RETRIES = 3;
 
-    // 1차: 캐시에서 재시도 (최대 3번)
-    if (retryCount < MAX_RETRIES) {
-      console.log(`🔄 [UnifiedResultPage] 캐시 재시도 ${retryCount + 1}/${MAX_RETRIES}:`, currentResult.tarot_card_name);
+    // 1차: 캐시에서 재시도 (최대 3번 - for 루프로 한 번에 처리)
+    // ⚠️ 이전 코드는 setRetryCount 후 return하면 이미지 URL이 변경되지 않아
+    //    onError가 다시 트리거되지 않는 버그가 있었음
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      console.log(`🔄 [UnifiedResultPage] 캐시 재시도 ${i + 1}/${MAX_RETRIES}:`, currentResult.tarot_card_name);
 
       // 이전 Blob URL revoke
       if (previousBlobUrlRef.current?.startsWith('blob:')) {
@@ -432,16 +434,14 @@ export default function UnifiedResultPage() {
         console.log('✅ [UnifiedResultPage] 캐시 재시도 성공:', currentResult.tarot_card_name);
         previousBlobUrlRef.current = cachedImage;
         setCardImageUrl(cachedImage);
-        setRetryCount(retryCount + 1);
+        setRetryCount(i + 1);
         return;
       }
 
       console.log('⚠️ [UnifiedResultPage] 캐시 재시도 실패, 다음 시도로 이동');
-      setRetryCount(retryCount + 1);
-      return;
     }
 
-    // 2차: Storage URL로 폴백
+    // 2차: Storage URL로 폴백 (캐시 재시도 모두 실패)
     if (!usedFallback) {
       console.log('⚠️ [UnifiedResultPage] 캐시 재시도 모두 실패 → Storage URL 폴백:', currentResult.tarot_card_name);
 
@@ -454,6 +454,7 @@ export default function UnifiedResultPage() {
       const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
       setCardImageUrl(storageUrl);
       setUsedFallback(true);
+      setRetryCount(MAX_RETRIES);
       return;
     }
 

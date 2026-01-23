@@ -176,8 +176,8 @@ function IconAndLabel() {
 
 function Container() {
   return (
-    <motion.div 
-      className="backdrop-blur-[15px] backdrop-filter bg-[rgba(0,0,0,0.5)] content-stretch flex items-center justify-center mb-[-13px] px-[16px] py-[6px] relative rounded-bl-[8px] rounded-br-[999px] rounded-tl-[999px] rounded-tr-[999px] shrink-0 z-[2]" 
+    <motion.div
+      className="backdrop-blur-[15px] backdrop-filter bg-[rgba(0,0,0,0.5)] content-stretch flex items-center justify-center px-[16px] py-[6px] relative rounded-bl-[8px] rounded-br-[999px] rounded-tl-[999px] rounded-tr-[999px] shrink-0 z-[2]"
       data-name="Container"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -205,8 +205,8 @@ function IconAndLabel1() {
 
 function Button() {
   return (
-    <motion.div 
-      className="bg-[#fee500] h-[56px] mb-[-13px] relative rounded-[16px] shrink-0 w-full z-[1] overflow-hidden" 
+    <motion.div
+      className="bg-[#fee500] h-[56px] relative rounded-[16px] shrink-0 w-full z-[1] overflow-hidden"
       data-name="Button"
       whileTap={{ scale: 0.97, backgroundColor: "#fada0a" }}
       transition={{ duration: 0.15, ease: "easeOut" }}
@@ -223,8 +223,12 @@ function Button() {
 
 function ButtonSnsButton({ onClick, showRecentBadge }: { onClick?: () => void; showRecentBadge?: boolean }) {
   return (
-    <div onClick={onClick} className="content-stretch flex flex-col isolate items-start pb-[13px] pt-0 px-0 relative shrink-0 w-full cursor-pointer" data-name="Button / SNS Button">
-      {showRecentBadge && <Container />}
+    <div onClick={onClick} className="relative shrink-0 w-full cursor-pointer" data-name="Button / SNS Button" style={{ height: '56px' }}>
+      {showRecentBadge && (
+        <div className="absolute top-0 left-0 flex justify-start z-10" style={{ transform: 'translateY(-50%)' }}>
+          <Container />
+        </div>
+      )}
       <Button />
     </div>
   );
@@ -336,8 +340,8 @@ function ButtonContainer() {
 
 function Button1() {
   return (
-    <motion.div 
-      className="bg-white h-[56px] mb-[-13px] relative rounded-[16px] shrink-0 w-full z-[1] overflow-hidden" 
+    <motion.div
+      className="bg-white h-[56px] relative rounded-[16px] shrink-0 w-full z-[1] overflow-hidden"
       data-name="Button"
       whileTap={{ scale: 0.97, backgroundColor: "#f2f2f2" }}
       transition={{ duration: 0.15, ease: "easeOut" }}
@@ -364,8 +368,12 @@ function ButtonSnsButton1({ onClick, showRecentBadge }: { onClick?: () => void; 
   };
 
   return (
-    <div onClick={handleClick} className="content-stretch flex flex-col isolate items-start pb-[13px] pt-0 px-0 relative shrink-0 w-full cursor-pointer" data-name="Button / SNS Button">
-      {showRecentBadge && <Container />}
+    <div onClick={handleClick} className="relative shrink-0 w-full cursor-pointer" data-name="Button / SNS Button" style={{ height: '56px' }}>
+      {showRecentBadge && (
+        <div className="absolute top-0 left-0 flex justify-start z-10" style={{ transform: 'translateY(-50%)' }}>
+          <Container />
+        </div>
+      )}
       <Button1 />
     </div>
   );

@@ -206,16 +206,28 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
           
           return blobUrl;
         } else {
-          // Cache API에 없으면 메모리 캐시도 무효화
+          // Cache API에 없으면 메모리 캐시 + blobUrlCache도 무효화
           console.log(`⚠️ [타로캐시] 메모리 히트했지만 Cache API에 없음 → 삭제: ${cardName}`);
           memoryCache.delete(cardName);
           localStorage.removeItem(`tarot_meta_${cardName}`);
+          // ⭐ blobUrlCache도 삭제 (무효한 blob URL 정리)
+          const cachedBlob = blobUrlCache.get(cardName);
+          if (cachedBlob) {
+            URL.revokeObjectURL(cachedBlob.blobUrl);
+            blobUrlCache.delete(cardName);
+          }
           return null;
         }
       } else {
         // 만료됨 → 삭제
         memoryCache.delete(cardName);
         localStorage.removeItem(`tarot_meta_${cardName}`);
+        // ⭐ blobUrlCache도 삭제 (만료된 blob URL 정리)
+        const cachedBlob = blobUrlCache.get(cardName);
+        if (cachedBlob) {
+          URL.revokeObjectURL(cachedBlob.blobUrl);
+          blobUrlCache.delete(cardName);
+        }
       }
     }
 
@@ -244,6 +256,12 @@ export async function getCachedTarotImage(cardName: string): Promise<string | nu
     if (!response) {
       console.log(`⚠️ [타로캐시] 메타데이터는 있지만 캐시 없음: ${cardName}`);
       localStorage.removeItem(metadataKey);
+      // ⭐ blobUrlCache도 삭제 (무효한 blob URL 정리)
+      const cachedBlob = blobUrlCache.get(cardName);
+      if (cachedBlob) {
+        URL.revokeObjectURL(cachedBlob.blobUrl);
+        blobUrlCache.delete(cardName);
+      }
       return null;
     }
 
@@ -352,27 +370,38 @@ export async function preloadTarotImages(orderId: string, supabaseUrl: string): 
 export async function clearTarotCache(cardNames?: string[]): Promise<void> {
   try {
     const cache = await getCacheInstance();
-    
+
     if (cardNames) {
       // 특정 카드만 삭제
       for (const name of cardNames) {
         // 메타데이터에서 imageUrl 조회
         const metadataKey = `tarot_meta_${name}`;
         const metadataStr = localStorage.getItem(metadataKey);
-        
+
         if (metadataStr) {
           const metadata = JSON.parse(metadataStr);
           // ⭐ imageUrl을 키로 사용하여 삭제
           await cache.delete(metadata.imageUrl);
         }
-        
+
         localStorage.removeItem(metadataKey);
+        // ⭐ memoryCache도 삭제
+        memoryCache.delete(name);
+        // ⭐ blobUrlCache도 삭제
+        const cachedBlob = blobUrlCache.get(name);
+        if (cachedBlob) {
+          URL.revokeObjectURL(cachedBlob.blobUrl);
+          blobUrlCache.delete(name);
+        }
         console.log(`🗑️ [타로캐시] 삭제: ${name}`);
       }
     } else {
       // 모든 타로 캐시 삭제
       await caches.delete(CACHE_NAME);
-      
+      // ⭐ 싱글톤 인스턴스 초기화 (캐시가 삭제되었으므로)
+      cacheInstance = null;
+      cachePromise = null;
+
       // 메타데이터도 삭제
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -382,7 +411,15 @@ export async function clearTarotCache(cardNames?: string[]): Promise<void> {
         }
       }
       keys.forEach(key => localStorage.removeItem(key));
-      
+
+      // ⭐ memoryCache 전체 삭제
+      memoryCache.clear();
+      // ⭐ blobUrlCache 전체 삭제 (Blob URL revoke 포함)
+      blobUrlCache.forEach((value) => {
+        URL.revokeObjectURL(value.blobUrl);
+      });
+      blobUrlCache.clear();
+
       console.log(`🗑️ [타로캐시] 전체 삭제: ${keys.length}개`);
     }
   } catch (error) {

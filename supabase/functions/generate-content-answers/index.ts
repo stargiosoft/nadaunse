@@ -1,15 +1,18 @@
 // Supabase Edge Function: 콘텐츠 답변 생성 (병렬 처리)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
-import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
 
 serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest(req)
+    return new Response('ok', { headers: corsHeaders })
   }
-
-  const corsHeaders = getCorsHeaders(req)
 
   try {
     const {
@@ -33,21 +36,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // 🛡️ 초기 중복 체크: AI API 호출 전에 이미 생성된 답변이 있는지 확인
-    const { data: existingResults } = await supabase
-      .from('order_results')
-      .select('id')
-      .eq('order_id', orderId)
-      .limit(1)
-
-    if (existingResults && existingResults.length > 0) {
-      console.log('⚠️ 이미 생성된 답변이 존재합니다. 중복 호출 방지로 종료.')
-      return new Response(
-        JSON.stringify({ success: true, message: '이미 생성된 답변이 존재합니다.', skipped: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
 
     // 1. 콘텐츠 정보 조회
     const { data: content, error: contentError } = await supabase
@@ -196,7 +184,7 @@ serve(async (req) => {
 
       while (attempt < maxRetries) {
         attempt++
-        
+
         try {
           console.log(`🔹 질문 ${question.question_order}: ${question.question_type} (시도 ${attempt}/${maxRetries})`)
 
@@ -286,24 +274,7 @@ serve(async (req) => {
             return { questionId: question.id, success: true, type: 'saju', attempt }
 
           } else if (question.question_type === 'tarot') {
-            // ⭐ 타로 풀이 - 먼저 사용자가 선택한 카드가 있는지 확인
-            let selectedTarotCard = question.tarot_cards || null;
-
-            // order_results에 이미 선택된 카드가 있는지 확인
-            const { data: existingCard } = await supabase
-              .from('order_results')
-              .select('tarot_card_name')
-              .eq('order_id', orderId)
-              .eq('question_id', question.id)
-              .single();
-
-            if (existingCard?.tarot_card_name) {
-              selectedTarotCard = existingCard.tarot_card_name;
-              console.log(`🎴 [타로] 사용자가 선택한 카드 사용: ${selectedTarotCard}`);
-            } else {
-              console.log(`🎴 [타로] 카드 지정 없음 → AI가 랜덤 선택 또는 question.tarot_cards 사용`);
-            }
-
+            // 타로 풀이
             response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-answer`, {
               method: 'POST',
               headers: {
@@ -316,12 +287,12 @@ serve(async (req) => {
                 questionerInfo: content.questioner_info,
                 questionText: question.question_text,
                 questionId: question.id,
-                tarotCards: selectedTarotCard
+                tarotCards: question.tarot_cards || null
               })
             })
 
             data = await response.json()
-            
+
             console.log('🎴 [타로] generate-tarot-answer 응답:', data)
 
             if (!data.success) {
@@ -348,9 +319,9 @@ serve(async (req) => {
                   question_order: question.question_order,
                   question_text: question.question_text,
                   gpt_response: data.answerText,
-                  question_type: 'tarot',  // 질문 타입 추가
-                  tarot_card_name: data.tarotCard || null,  // ⭐ 타로 카드 이름
-                  tarot_card_image_url: data.imageUrl || null,  // ⭐ 타로 카드 이미지 URL
+                  question_type: 'tarot',
+                  tarot_card_name: data.tarotCard || null,
+                  tarot_card_image_url: data.imageUrl || null,
                   created_at: new Date().toISOString()
                 })
 
@@ -387,9 +358,9 @@ serve(async (req) => {
 
           // 최대 재시도 횟수 도달
           console.error(`❌ 질문 ${question.question_order} 최종 실패 (${maxRetries}번 시도)`)
-          return { 
-            questionId: question.id, 
-            success: false, 
+          return {
+            questionId: question.id,
+            success: false,
             error: lastError.message,
             attempts: attempt
           }
@@ -397,9 +368,9 @@ serve(async (req) => {
       }
 
       // 이론상 여기 도달 불가 (while 안에서 return)
-      return { 
-        questionId: question.id, 
-        success: false, 
+      return {
+        questionId: question.id,
+        success: false,
         error: lastError?.message || '알 수 없는 오류',
         attempts: maxRetries
       }
@@ -569,9 +540,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('함수 실행 오류:', error)
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : '알 수 없는 오류' 
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : '알 수 없는 오류'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

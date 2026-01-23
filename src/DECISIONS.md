@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-22
-> **주요 결정**: 동적 Sitemap 자동 생성 (Edge Function)
+> **최종 업데이트**: 2026-01-23
+> **주요 결정**: generate-content-answers 병렬 처리 롤백
 
 ---
 
@@ -13,6 +13,42 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-23
+
+### generate-content-answers 배치 처리 → 병렬 처리 롤백
+
+**결정**: `generate-content-answers` Edge Function을 배치 처리(GPT 한 번에 모든 질문)에서 병렬 처리(질문별 개별 API 호출)로 롤백
+
+**배경**:
+- 배치 처리 버전에서 GPT-5.1에 모든 질문을 한 번에 전달하는 방식 도입
+- 프로덕션에서 500 에러 및 응답 품질 저하 발생
+- 사용자 무한 로딩 현상 (ai_generation_completed: false 상태 유지)
+- 11-21초 내 실패 → 내부 오류로 추정 (타임아웃 아님)
+
+**변경 내용**:
+
+| 항목 | 배치 버전 (이전) | 병렬 버전 (롤백) |
+|------|------------------|------------------|
+| API 호출 방식 | GPT-5.1에 모든 질문 한 번에 전달 | 질문별로 `generate-saju-answer`, `generate-tarot-answer` 개별 호출 |
+| 처리 방식 | 배치 프롬프트로 일괄 처리 | `Promise.all()` 병렬 처리 |
+| 재시도 | 배치 실패 시 개별 fallback | 질문당 최대 5회 재시도 (2초, 4초, 6초, 8초 대기) |
+| 타임아웃 | 300초 | 200초 |
+| 코드 크기 | ~1000줄 (타로 덱, 배치 프롬프트 포함) | ~550줄 |
+
+**롤백 커밋**: `8de4635a` (병렬 처리 버전)
+
+**백업 파일**: `supabase/back_up/generate-content-answers_batch_version_2026-01-22.ts`
+
+**영향 범위**:
+- `supabase/functions/generate-content-answers/index.ts`: 병렬 처리 버전으로 교체
+- 스테이징/프로덕션: 재배포 완료
+
+**향후 고려사항**:
+- 배치 처리 재도입 시 GPT 프롬프트 최적화 필요
+- 응답 품질 모니터링 후 재검토
 
 ---
 

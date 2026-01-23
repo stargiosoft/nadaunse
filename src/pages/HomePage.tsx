@@ -796,12 +796,12 @@ export default function HomePage() {
 
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
+        const { data, timestamp, totalCount } = JSON.parse(cached);
         const now = Date.now();
 
         // 캐시가 유효한 경우 (5분 이내)
         if (now - timestamp < CACHE_EXPIRY) {
-          console.log(`✅ 캐시에서 데이터 로드 (${category}/${type})`);
+          console.log(`✅ 캐시에서 데이터 로드 (${category}/${type}), totalCount: ${totalCount}`);
           const contents = data as MasterContent[];
 
           // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
@@ -816,8 +816,11 @@ export default function HomePage() {
           }
 
           setAllContents(contents);
-          // ⭐ 캐시에서 로드할 때도 hasMore 설정 (10개 초과면 더 있음)
-          setHasMore(contents.length > 10);
+          // ⭐ 캐시에 저장된 totalCount 기반으로 hasMore 설정
+          // totalCount가 없으면 (이전 버전 캐시) contents.length > 10으로 판단
+          const hasMoreData = totalCount !== undefined ? totalCount > 10 : contents.length > 10;
+          console.log(`🔍 [Cache] hasMore 설정: ${hasMoreData} (totalCount: ${totalCount}, contents: ${contents.length})`);
+          setHasMore(hasMoreData);
           return true;
         } else {
           console.log(`⏰ 캐시 만료됨 (${category}/${type})`);
@@ -831,14 +834,15 @@ export default function HomePage() {
   }, [getCacheKey]);
   
   // 캐시에 데이터 저장 (필터별 캐시 키 사용)
-  const saveToCache = useCallback((data: MasterContent[], category: TabCategory, type: 'all' | 'paid' | 'free') => {
+  const saveToCache = useCallback((data: MasterContent[], category: TabCategory, type: 'all' | 'paid' | 'free', totalCount?: number) => {
     try {
       const cacheKey = getCacheKey(category, type);
       localStorage.setItem(cacheKey, JSON.stringify({
         data,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        totalCount: totalCount ?? data.length // totalCount가 없으면 data.length 사용
       }));
-      console.log(`💾 캐시에 데이터 저장 (${category}/${type})`);
+      console.log(`💾 캐시에 데이터 저장 (${category}/${type}), totalCount: ${totalCount ?? data.length}`);
     } catch (error) {
       console.error('캐시 저장 실패');
     }
@@ -903,7 +907,7 @@ export default function HomePage() {
               new Map(updatedData.map(item => [item.id, item])).values()
             );
 
-            saveToCache(uniqueData, category, type);
+            saveToCache(uniqueData, category, type, totalCount);
             console.log(`✅ [Prefetch] ${newContents.length}개 추가됨 (누적: ${uniqueData.length}개)`);
 
             // 🖼️ 이미지 프리로드 (백그라운드) - 중복 체크
@@ -961,7 +965,7 @@ export default function HomePage() {
       if (existingCache) {
         try {
           const { timestamp } = JSON.parse(existingCache);
-          if (Date.now() - timestamp < CACHE_DURATION) {
+          if (Date.now() - timestamp < CACHE_EXPIRY) {
             console.log(`⏭️ [Category Prefetch] ${category}/${currentType} 캐시 있음, 스킵`);
             continue;
           }
@@ -990,7 +994,7 @@ export default function HomePage() {
           query = query.eq('content_type', 'free');
         }
 
-        const { data, error } = await query
+        const { data, error, count } = await query
           .order('weekly_clicks', { ascending: false })
           .order('created_at', { ascending: false })
           .range(0, 9); // 첫 10개만 로드 (캐시용)
@@ -1001,8 +1005,8 @@ export default function HomePage() {
         }
 
         if (data && data.length > 0) {
-          saveToCache(data, category, currentType);
-          console.log(`✅ [Category Prefetch] ${category}/${currentType} 캐시 저장 (${data.length}개)`);
+          saveToCache(data, category, currentType, count ?? undefined);
+          console.log(`✅ [Category Prefetch] ${category}/${currentType} 캐시 저장 (${data.length}개, totalCount: ${count})`);
         }
 
         // 서버 부하 방지를 위한 딜레이
@@ -1089,7 +1093,7 @@ export default function HomePage() {
           })) as MasterContent[];
 
           // 💾 캐시에 저장 (모든 필터에서 캐시)
-          saveToCache(contents, selectedCategory, selectedType);
+          saveToCache(contents, selectedCategory, selectedType, count ?? undefined);
 
           // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
           const hasClicks = contents.some(c => c.weekly_clicks > 0);

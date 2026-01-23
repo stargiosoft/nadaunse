@@ -17,6 +17,7 @@ interface PurchaseItem {
   pstatus: string;
   full_name: string | null;    // ⭐ orders 테이블의 직접 컬럼
   birth_date: string | null;   // ⭐ orders 테이블의 직접 컬럼
+  ai_generation_completed: boolean | null;  // ⭐ AI 생성 완료 여부
   master_contents: {
     title: string;
     thumbnail_url: string | null;
@@ -153,6 +154,7 @@ export default function PurchaseHistoryPage() {
           pstatus,
           full_name,
           birth_date,
+          ai_generation_completed,
           master_contents (
             title,
             thumbnail_url,
@@ -270,13 +272,14 @@ export default function PurchaseHistoryPage() {
 
         const totalQuestions = questionsResult.count || 0;
         const completedAnswers = resultsResult.count || 0;
-        console.log(`📋 [구매내역] 병렬 쿼리 완료 - 전체: ${totalQuestions}, 완료: ${completedAnswers}`);
+        const aiCompleted = (item as any).ai_generation_completed === true;
+        console.log(`📋 [구매내역] 병렬 쿼리 완료 - 전체: ${totalQuestions}, 완료: ${completedAnswers}, AI완료: ${aiCompleted}`);
 
-        // 3️⃣ order_results가 있으면 → 결과 페이지 (saju_record_id null이어도 OK)
+        // 3️⃣ AI 생성 완료 OR 모든 답변 완료 → 결과 페이지로 즉시 이동
         // orders 테이블에 사주 스냅샷(full_name, gender, birth_date, birth_time)이 저장되어 있음
-        if (completedAnswers > 0 && completedAnswers >= totalQuestions) {
-          // ✅ 모든 답변 완료 → 결과 페이지로 즉시 이동
-          console.log('✅ [구매내역] 모든 답변 완료 → 결과 페이지로 즉시 이동');
+        if (completedAnswers > 0 && (aiCompleted || completedAnswers >= totalQuestions)) {
+          // ✅ AI 생성 완료 → 결과 페이지로 즉시 이동
+          console.log(`✅ [구매내역] AI 생성 완료 (${completedAnswers}/${totalQuestions}) → 결과 페이지로 즉시 이동`);
 
           // ⭐ 타로 이미지 프리로드 (백그라운드 처리, 완료 대기 안함)
           preloadTarotImages(item.id, supabaseUrl).catch(err => {
@@ -288,9 +291,9 @@ export default function PurchaseHistoryPage() {
           return;
         }
 
-        // 4️⃣ order_results가 일부만 있으면 → 로딩 페이지 (계속 생성 중)
-        if (completedAnswers > 0 && completedAnswers < totalQuestions) {
-          console.log(`⚠️ [구매내역] 일부 생성 완료 (${completedAnswers}/${totalQuestions}) → 로딩 페이지로 이동`);
+        // 4️⃣ AI 생성 중 (ai_generation_completed=false) + 일부 결과 있음 → 로딩 페이지
+        if (completedAnswers > 0 && !aiCompleted && completedAnswers < totalQuestions) {
+          console.log(`⚠️ [구매내역] AI 생성 중 (${completedAnswers}/${totalQuestions}) → 로딩 페이지로 이동`);
           navigate(`/loading?orderId=${item.id}&contentId=${item.content_id}&from=purchase`);
           return;
         }

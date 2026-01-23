@@ -453,6 +453,48 @@ export default function PaymentNew({
     fetchUserCoupons();
   }, []);
 
+  // ⭐ 사주 레코드 프리페치 (결제 완료 후 빠른 페이지 이동을 위해)
+  useEffect(() => {
+    const prefetchSajuRecords = async () => {
+      try {
+        // 이미 캐시가 있으면 스킵
+        const cachedJson = localStorage.getItem('saju_records_cache');
+        if (cachedJson) {
+          console.log('✅ [PaymentNew] 사주 캐시 이미 존재 → 프리페치 스킵');
+          return;
+        }
+
+        const userJson = localStorage.getItem("user");
+        const user = userJson ? JSON.parse(userJson) : null;
+
+        if (!user?.id) {
+          return;
+        }
+
+        console.log('🔄 [PaymentNew] 사주 레코드 프리페치 시작...');
+
+        const { data: sajuRecords, error } = await supabase
+          .from('saju_records')
+          .select('id, full_name, gender, birth_date, birth_time, is_primary, notes')
+          .eq('user_id', user.id)
+          .order('is_primary', { ascending: false });
+
+        if (error) {
+          console.error('❌ [PaymentNew] 사주 프리페치 실패:', error);
+          return;
+        }
+
+        // 캐시 저장 (5분 유효)
+        localStorage.setItem('saju_records_cache', JSON.stringify(sajuRecords || []));
+        console.log('✅ [PaymentNew] 사주 프리페치 완료:', sajuRecords?.length || 0, '개');
+      } catch (error) {
+        console.error('❌ [PaymentNew] 사주 프리페치 오류:', error);
+      }
+    };
+
+    prefetchSajuRecords();
+  }, []);
+
   // product 또는 contentData에서 가격 정보 추출
   const currentProduct =
     product ||

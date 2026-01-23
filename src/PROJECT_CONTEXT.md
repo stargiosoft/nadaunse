@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-20
+> **최종 업데이트**: 2026-01-23 (v2.3.0 - 문서 중복 제거)
 
 ---
 
@@ -60,45 +60,351 @@
 
 ## 🗺️ System Map
 
-```
-[User Browser (Mobile)]
-    ↓
-[React SPA (Figma Make / Vite)]
-    ↓
-┌─────────────────────────────────┐
-│  Supabase Auth (OAuth)          │
-│  - Google, Kakao 로그인          │
-│  - Session 관리                  │
-└─────────────────────────────────┘
-    ↓
-┌─────────────────────────────────┐
-│  PostgreSQL (Supabase)          │
-│  - users, saju_records          │
-│  - master_contents, orders      │
-│  - coupons, user_coupons        │
-│  - order_results (AI 생성 결과) │
-└─────────────────────────────────┘
-    ↓
-┌─────────────────────────────────┐
-│  Edge Functions (Deno) - 21개   │
-│  - AI 콘텐츠 생성 (8개)          │
-│  - 쿠폰 관리 (4개)               │
-│  - 사용자 관리 (2개)             │
-│  - 알림톡 발송 (1개)             │
-│  - 결제/환불 (3개)               │
-│  - 모니터링 (1개)                │
-│  - 기타 (2개)                    │
-└─────────────────────────────────┘
-    ↓
-[OpenAI API / Anthropic API / Google Gemini]
+### 전체 시스템 아키텍처
 
-[PortOne Payment Gateway]
-    ↓
-[Webhook → Edge Function]
-    ↓
-[AI Generation → DB Update]
-    ↓
-[TalkDream API → 카카오 알림톡]
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT LAYER                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  [User Browser - Mobile First]                                              │
+│      ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  React SPA (Vite 6.3.5)                                              │   │
+│  │  ├── Pages (41개) ─────────────── 라우팅 (React Router v7)           │   │
+│  │  ├── Components (55개) ────────── UI 렌더링 (Tailwind v4)            │   │
+│  │  ├── Hooks ────────────────────── 상태 관리 (useState, useEffect)    │   │
+│  │  ├── Services (/lib/) ─────────── 비즈니스 로직 (싱글톤 패턴)         │   │
+│  │  └── Utils ────────────────────── 순수 유틸리티 함수                  │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CACHE LAYER                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │ Memory Cache │  │  Cache API   │  │ localStorage │  │sessionStorage│    │
+│  │   (Map)      │  │ (50MB+)      │  │  (5-10MB)    │  │  (임시)      │    │
+│  │   0.01ms     │  │  10-50ms     │  │   5-10ms     │  │   5-10ms     │    │
+│  ├──────────────┤  ├──────────────┤  ├──────────────┤  ├──────────────┤    │
+│  │ 타로 이미지   │  │ 타로 이미지   │  │ 사주 정보    │  │ 스크롤 위치   │    │
+│  │ 썸네일 URL   │  │ 썸네일 이미지  │  │ 무료 콘텐츠  │  │ 폼 상태      │    │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            BACKEND LAYER (Supabase)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────┐      ┌─────────────────────────────────────────┐  │
+│  │   Supabase Auth     │      │         Edge Functions (Deno)           │  │
+│  │   ───────────────   │      │         ─────────────────────           │  │
+│  │   • Google OAuth    │      │   AI 생성 (8개)                          │  │
+│  │   • Kakao OAuth     │      │   ├── generate-free-preview             │  │
+│  │   • Session 관리    │      │   ├── generate-master-content           │  │
+│  │   • JWT 토큰        │      │   ├── generate-saju-answer/preview      │  │
+│  └─────────────────────┘      │   ├── generate-tarot-answer/preview     │  │
+│            ↓                  │   ├── generate-image-prompt             │  │
+│  ┌─────────────────────┐      │   └── generate-thumbnail                │  │
+│  │   PostgreSQL (RLS)  │      │                                         │  │
+│  │   ───────────────   │      │   쿠폰 관리 (4개)                        │  │
+│  │   • users           │←────→│   ├── get-available-coupons             │  │
+│  │   • saju_records    │      │   ├── apply-coupon-to-order             │  │
+│  │   • master_contents │      │   ├── issue-welcome-coupon              │  │
+│  │   • orders          │      │   └── issue-revisit-coupon              │  │
+│  │   • order_results   │      │                                         │  │
+│  │   • coupons         │      │   결제/환불 (3개)                        │  │
+│  │   • user_coupons    │      │   ├── payment-webhook                   │  │
+│  │   ───────────────   │      │   ├── process-payment                   │  │
+│  │   Triggers (5개)    │      │   └── process-refund                    │  │
+│  │   Functions (5개)   │      │                                         │  │
+│  └─────────────────────┘      │   기타 (6개)                             │  │
+│            ↓                  │   ├── users, master-content             │  │
+│  ┌─────────────────────┐      │   ├── send-alimtalk                     │  │
+│  │   Supabase Storage  │      │   └── sentry-slack-webhook              │  │
+│  │   ───────────────   │      └─────────────────────────────────────────┘  │
+│  │   • thumbnails/     │                                                    │
+│  │   • tarot-cards/    │                                                    │
+│  │   • assets/         │                                                    │
+│  └─────────────────────┘                                                    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          EXTERNAL SERVICES                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
+│  │    AI APIs      │  │   Payment       │  │   Notification  │             │
+│  │  ─────────────  │  │  ─────────────  │  │  ─────────────  │             │
+│  │  OpenAI GPT-4o  │  │  PortOne v2     │  │  TalkDream API  │             │
+│  │  Claude 3.5     │  │  (카카오페이,   │  │  (카카오 알림톡) │             │
+│  │  Gemini 2.5     │  │   토스, 카드)   │  │                 │             │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
+│           ↓                    ↓                    ↓                       │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
+│  │  Stargio API    │  │   Sentry        │  │   Vercel        │             │
+│  │  ─────────────  │  │  ─────────────  │  │  ─────────────  │             │
+│  │  사주 데이터     │  │  에러 모니터링   │  │  배포/호스팅    │             │
+│  │  (IP+Key 인증)  │  │  실시간 추적    │  │  CDN, SSL      │             │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 데이터 흐름 (Data Flow)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         1. 인증 플로우 (OAuth)                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [사용자] → [로그인 버튼] → [OAuth Provider (Google/Kakao)]                  │
+│      ↓                              ↓                                        │
+│  [AuthCallback.tsx] ← ─ ─ ─ ─ [리다이렉트 + 토큰]                            │
+│      ↓                                                                       │
+│  [Supabase Auth] → [Session 생성] → [users 테이블 upsert]                   │
+│      ↓                                                                       │
+│  [약관 동의 체크] → [TermsPage] → [WelcomeCouponPage] → [홈]                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      2. 무료 콘텐츠 생성 플로우                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [FreeContentDetail] → [사주 입력/선택] → [FreeContentLoading]              │
+│         ↓                                        ↓                          │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │                    Edge Function 호출                             │       │
+│  │  generate-free-preview                                           │       │
+│  │      ↓                                                           │       │
+│  │  [Stargio 사주 API] → [사주 데이터 수신]                          │       │
+│  │      ↓                                                           │       │
+│  │  [AI API (GPT-4o/Claude)] → [운세 생성]                          │       │
+│  │      ↓                                                           │       │
+│  │  [응답 반환] ─────────────────────────────────────────────────────│───→  │
+│  └──────────────────────────────────────────────────────────────────┘   ↓   │
+│                                                                    [결과 표시]│
+│  ※ 로그아웃: localStorage 캐시 / 로그인: DB 저장 가능                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      3. 유료 콘텐츠 결제 플로우                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [MasterContentDetailPage] → [PaymentNew] → [쿠폰 선택 (선택)]              │
+│         ↓                         ↓                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │  PortOne 결제 SDK                                                 │       │
+│  │      ↓                                                           │       │
+│  │  [PG사 결제창] → [결제 완료]                                       │       │
+│  │      ↓                                                           │       │
+│  │  [payment-webhook] ← ─ ─ ─ [PortOne 서버 콜백]                    │       │
+│  │      ↓                                                           │       │
+│  │  [process-payment] → [orders 생성] → [user_coupons 사용 처리]     │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│         ↓                                                                   │
+│  [사주 입력/선택] → [LoadingPage (폴링)]                                     │
+│         ↓                                                                   │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │  generate-content-answers                                         │       │
+│  │      ↓                                                           │       │
+│  │  [Stargio 사주 API] → [AI 운세 생성] → [order_results 저장]       │       │
+│  │      ↓                                                           │       │
+│  │  [orders.ai_generation_completed = true]                          │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│         ↓                                                                   │
+│  [UnifiedResultPage] → [TableOfContents] → [ResultCompletePage]             │
+│         ↓                                                                   │
+│  [send-alimtalk] → [카카오 알림톡 발송]                                      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         4. 타로 콘텐츠 플로우                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [결제 완료] → [LoadingPage]                                                 │
+│       ↓                                                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │  generate-content-answers                                         │       │
+│  │      ↓                                                           │       │
+│  │  [getTarotCardsForQuestions()] → 78장 덱에서 카드 사전 선택        │       │
+│  │      ↓                                                           │       │
+│  │  [AI 타로 해석 생성] → [order_results 저장]                        │       │
+│  │  ※ 카드는 이 시점에 이미 결정됨!                                   │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│       ↓                                                                      │
+│  [TarotShufflePage] → [TarotGame]                                           │
+│       ↓                                                                      │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │  UI 연출 (사용자 경험용, 실제 선택 아님)                            │       │
+│  │  idle → mixing → gathered → spreading → selected                 │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│       ↓                                                                      │
+│  [UnifiedResultPage] → 사전 선택된 카드 이미지 + AI 해석 표시               │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   5. 마스터 콘텐츠 관리 플로우 (관리자 전용)                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ※ 관리자(role='master')만 접근 가능한 콘텐츠 생성/관리 플로우               │
+│                                                                              │
+│  [MasterContentList] ──────────────────────────────────────────────────────│
+│       │ 콘텐츠 목록 관리 (수정/삭제/배포)                                     │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  신규 콘텐츠 생성                                                     │   │
+│  │  [MasterContentCreate] → 기본정보 입력 (제목, 설명, 가격)              │   │
+│  │       ↓                                                               │   │
+│  │  [MasterContentQuestions] → 질문지 작성 (AI 프롬프트용)                │   │
+│  │       ↓                                                               │   │
+│  │  [master_contents 테이블 저장] → status: 'loading'                    │   │
+│  │       ↓                                                               │   │
+│  │  ┌─────────────────────────────────────────────────────────────┐     │   │
+│  │  │  AI 썸네일 생성 (Edge Function)                              │     │   │
+│  │  │  generate-image-prompt → generate-thumbnail                  │     │   │
+│  │  │       ↓                                                      │     │   │
+│  │  │  [Gemini 2.5 Flash] → 이미지 생성                            │     │   │
+│  │  │       ↓                                                      │     │   │
+│  │  │  [Supabase Storage] → thumbnails/{contentId}.webp 저장       │     │   │
+│  │  └─────────────────────────────────────────────────────────────┘     │   │
+│  │       ↓                                                               │   │
+│  │  [MasterContentLoadingPage] → AI 생성 완료 폴링 (최대 2분)            │   │
+│  │       ↓                                                               │   │
+│  │  [master_contents.status = 'deployed'] → 콘텐츠 배포 완료             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  콘텐츠 수정/상세                                                     │   │
+│  │  [MasterContentDetail] → 콘텐츠 상세/수정 (관리자용)                   │   │
+│  │       ↓                                                               │   │
+│  │  • 기본정보 수정 (제목, 설명, 가격)                                   │   │
+│  │  • 질문지 수정                                                        │   │
+│  │  • 썸네일 재생성 (imageCacheBuster로 캐시 버스팅)                     │   │
+│  │  • 콘텐츠 아카이브/삭제                                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  [MasterContentDetailPage] → 사용자용 상세 페이지 (구매 유도)               │
+│                                                                              │
+│  **관련 파일**:                                                              │
+│  • /components/MasterContentCreate.tsx     → 콘텐츠 생성                    │
+│  • /components/MasterContentQuestions.tsx  → 질문지 작성                    │
+│  • /components/MasterContentDetail.tsx     → 상세/수정 (관리자)             │
+│  • /components/MasterContentDetailPage.tsx → 상세 (사용자)                  │
+│  • /components/MasterContentList.tsx       → 목록 관리                      │
+│  • /components/MasterContentLoadingPage.tsx → AI 썸네일 로딩                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 프론트엔드 레이어 구조
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND ARCHITECTURE                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                         App.tsx (Router)                             │   │
+│  │  React Router v7 - 모든 라우트 정의, 페이지 Wrapper 컴포넌트         │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                      Pages Layer (41개)                              │   │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │   │
+│  │  │  HomePage   │ │ProfilePage  │ │ PaymentNew  │ │LoadingPage  │   │   │
+│  │  │  (홈)       │ │ (프로필)    │ │  (결제)     │ │  (로딩)     │   │   │
+│  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘   │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                   Components Layer (55개)                            │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │ Feature Components (도메인별)                                   │ │   │
+│  │  │ • FreeContent*    - 무료 콘텐츠 (6개)                          │ │   │
+│  │  │ • MasterContent*  - 유료 콘텐츠 관리 (6개)                      │ │   │
+│  │  │ • Saju*           - 사주 관리 (7개)                            │ │   │
+│  │  │ • Tarot*          - 타로 (3개)                                 │ │   │
+│  │  │ • Payment*        - 결제 (4개)                                 │ │   │
+│  │  │ • Auth*           - 인증 (5개)                                 │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │ UI Components (/components/ui/) - shadcn/ui 기반 (48개)        │ │   │
+│  │  │ • Button, Input, Dialog, Sheet, Toast, Skeleton 등            │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  │  ┌───────────────────────────────────────────────────────────────┐ │   │
+│  │  │ Common Components                                              │ │   │
+│  │  │ • NavigationHeader, Footer, BottomNavigation                  │ │   │
+│  │  │ • ErrorPage, ErrorBoundary, ImageWithFallback                 │ │   │
+│  │  └───────────────────────────────────────────────────────────────┘ │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    Services Layer (/lib/)                            │   │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐       │   │
+│  │  │freeContentService│ │  coupon.ts     │ │    auth.ts      │       │   │
+│  │  │ (싱글톤)        │ │  쿠폰 로직      │ │  인증 헬퍼      │       │   │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘       │   │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐       │   │
+│  │  │ tarotCards.ts   │ │tarotImageCache  │ │thumbnailCache   │       │   │
+│  │  │ 78장 덱 데이터   │ │ Cache API      │ │ Cache API      │       │   │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘       │   │
+│  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐       │   │
+│  │  │fetchWithRetry   │ │   logger.ts    │ │   sentry.ts    │       │   │
+│  │  │ 재시도 로직     │ │ 구조화 로깅    │ │ 에러 모니터링   │       │   │
+│  │  └─────────────────┘ └─────────────────┘ └─────────────────┘       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     Utils Layer (/utils/)                            │   │
+│  │  analytics.ts, scrollRestoreLogger.ts, supabase/info.tsx            │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 환경별 배포 구조
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         DEPLOYMENT ENVIRONMENTS                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                        PRODUCTION                                    │   │
+│  │  Domain: nadaunse.com, www.nadaunse.com                              │   │
+│  │  Supabase: kcthtpmxffppfbkjjkub                                      │   │
+│  │  Features: 모든 기능 활성화, DEV=false                               │   │
+│  │  Monitoring: Sentry 활성화                                           │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                         STAGING                                      │   │
+│  │  Domain: Vercel Preview URLs                                         │   │
+│  │  Supabase: hyltbeewxaqashyivilu                                      │   │
+│  │  Features: 테스트 기능 포함, DEV=true                                │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                        DEVELOPMENT                                   │   │
+│  │  Domain: localhost:5173                                              │   │
+│  │  Supabase: hyltbeewxaqashyivilu (Staging과 동일)                     │   │
+│  │  Features: 디버그 도구 활성화, DEV=true                              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                       FIGMA MAKE                                     │   │
+│  │  Domain: nadaunse.figma.site                                         │   │
+│  │  Supabase: kcthtpmxffppfbkjjkub (Production)                         │   │
+│  │  Features: DEV=false (도메인 기반 감지, /lib/env.ts)                 │   │
+│  │  ※ import.meta.env.DEV가 부정확할 수 있어 도메인 체크 필수           │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -280,11 +586,30 @@ const sajuResponse = await fetch(sajuApiUrl, {
 ```
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
 /components/TarotGame.tsx               → 카드 섞기 + 선택 UI (21장, iOS Safari 전체화면 배경 대응)
+/components/ReportWeeklyTarot.tsx       → 이번 주 보고서 타로 (slotCount=3)
 /pages/TestTarotPage.tsx                → 테스트용 타로 페이지 (라우트: /test/tarot, 로그인 불필요)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 /lib/tarotCards.ts                      → 타로 카드 데이터 (78장) + 유틸리티 함수
 /lib/tarotImageCache.ts                 → 타로 카드 이미지 캐싱
 /public/tarot-shuffle-background.jpg    → 타로 셔플 배경 이미지 (CSP 대응, 9.8KB)
+```
+
+**TarotGame slotCount 설정**:
+| 사용처 | slotCount | 설명 |
+|--------|-----------|------|
+| `TarotShufflePage` | 1 (기본값) | 유료 콘텐츠 타로 - 카드 1장 선택 |
+| `ReportWeeklyTarot` | 3 | 이번 주 보고서 - 카드 3장 선택 |
+
+```tsx
+// TarotGame props
+interface TarotGameProps {
+  slotCount?: 1 | 3;  // placeholder 슬롯 개수 (기본값: 1)
+  // ...
+}
+
+// 사용 예시
+<TarotGame slotCount={3} />  // ReportWeeklyTarot에서 3장 선택
+<TarotGame />                // TarotShufflePage에서 1장 선택 (기본값)
 ```
 </details>
 
@@ -482,138 +807,36 @@ const sajuResponse = await fetch(sajuApiUrl, {
 ```
 
 ### 🗄️ Supabase Edge Functions (21개)
-```
-# AI 생성 Functions (8개)
-/supabase/functions/generate-free-preview/        → 무료 맛보기 생성
-/supabase/functions/generate-master-content/      → 유료 콘텐츠 생성
-/supabase/functions/generate-saju-answer/         → 사주 운세 생성
-/supabase/functions/generate-saju-preview/        → 사주 미리보기
-/supabase/functions/generate-tarot-answer/        → 타로 운세 생성
-/supabase/functions/generate-tarot-preview/       → 타로 미리보기
-/supabase/functions/generate-image-prompt/        → 이미지 프롬프트 생성
-/supabase/functions/generate-thumbnail/           → 썸네일 생성
 
-# 쿠폰 관리 Functions (4개)
-/supabase/functions/get-available-coupons/        → 사용 가능 쿠폰 조회
-/supabase/functions/apply-coupon-to-order/        → 주문에 쿠폰 적용
-/supabase/functions/issue-welcome-coupon/         → 가입 쿠폰 발급
-/supabase/functions/issue-revisit-coupon/         → 재방문 쿠폰 발급
+| 카테고리 | 개수 | 주요 기능 |
+|----------|------|----------|
+| AI 생성 | 8개 | 무료/유료 콘텐츠, 사주/타로 운세, 썸네일 생성 |
+| 쿠폰 관리 | 4개 | 조회, 적용, 웰컴/재방문 쿠폰 발급 |
+| 결제/환불 | 3개 | 웹훅 검증, 결제 처리, 환불 |
+| 사용자 관리 | 2개 | 사용자, 마스터 콘텐츠 |
+| 알림 | 1개 | 카카오 알림톡 발송 |
+| 모니터링 | 1개 | Sentry → Slack 중계 |
+| 기타 | 2개 | 서버 상태, 콘텐츠 답변 생성 |
 
-# 사용자 관리 Functions (2개)
-/supabase/functions/users/                        → 사용자 관리
-/supabase/functions/master-content/               → 마스터 콘텐츠 관리
-
-# 알림 Functions (1개)
-/supabase/functions/send-alimtalk/                → 카카오 알림톡 발송
-
-# 결제/환불 Functions (3개)
-/supabase/functions/payment-webhook/              → 포트원 결제 웹훅 검증
-/supabase/functions/process-payment/              → 결제 트랜잭션 원자적 처리
-/supabase/functions/process-refund/               → 환불 처리 (쿠폰 복원 포함)
-
-# 모니터링 Functions (1개)
-/supabase/functions/sentry-slack-webhook/         → Sentry 이벤트를 Slack으로 중계
-
-# 기타 Functions (2개)
-/supabase/functions/server/                       → 서버 상태 확인
-/supabase/functions/generate-content-answers/     → 콘텐츠 답변 생성
-```
-
-**상세 문서**: `/supabase/EDGE_FUNCTIONS_GUIDE.md`
+**📚 상세 문서**: [EDGE_FUNCTIONS_GUIDE.md](../supabase/EDGE_FUNCTIONS_GUIDE.md) - 각 함수별 입력/출력 형식, 배포 방법
 
 ---
 
 ## 🗄️ Database Schema
 
-### 핵심 테이블
+### 핵심 테이블 요약
 
-#### `users`
-```sql
--- 사용자 계정 (Supabase Auth + 추가 정보)
-id (uuid, PK)
-provider (text)               -- 'kakao', 'google'
-provider_id (text)
-email, nickname, profile_image
-terms_agreed, privacy_agreed, marketing_agreed
-role (text)                   -- 'master', 'admin', 'user'
-created_at, updated_at
-```
+| 테이블 | 용도 | 주요 컬럼 |
+|--------|------|----------|
+| `users` | 사용자 계정 | provider, role, 약관 동의 |
+| `saju_records` | 사주 정보 | 생년월일, 성별, 음력/양력, 띠 |
+| `master_contents` | 운세 콘텐츠 | 제목, 가격, 썸네일, status |
+| `orders` | 결제 주문 | 결제 금액, PortOne ID, AI 생성 완료 여부 |
+| `order_results` | AI 생성 결과 | 질문/답변 쌍 |
+| `user_coupons` | 사용자 쿠폰 | 발급/사용 추적 |
+| `coupons` | 쿠폰 마스터 | 할인 금액, 쿠폰 타입 |
 
-#### `saju_records`
-```sql
--- 사용자 사주 정보 (로그인 사용자만 저장)
-id (uuid, PK)
-user_id (uuid, FK → users)
-full_name, gender, birth_date, birth_time
-calendar_type (solar/lunar)   -- 양력/음력
-zodiac (text)                 -- 띠 (자동 계산)
-notes (text)                  -- '연인', '가족', '친구', '지인', '동료', '기타'
-is_primary (boolean)          -- 대표 사주 여부
-created_at, updated_at
-```
-
-#### `master_contents`
-```sql
--- 마스터가 생성한 운세 콘텐츠
-id (uuid, PK)
-content_type (text)           -- 'free' | 'paid'
-category_main (text)          -- '연애', '재물', '건강', '타로' 등
-title, description
-price_original, price_discount, discount_rate
-thumbnail_url
-view_count, weekly_clicks
-status (text)                 -- 'loading' | 'deployed' | 'archived'
-created_at, updated_at
-```
-
-#### `orders`
-```sql
--- 결제 주문 (유료 콘텐츠만)
-id (uuid, PK)
-user_id (uuid, FK → users)
-content_id (uuid, FK → master_contents)
-saju_record_id (uuid, FK → saju_records)
-merchant_uid, imp_uid         -- PortOne 결제 ID
-paid_amount, pay_method
-pstatus (text)                -- 'pending' | 'paid' | 'failed'
-ai_generation_completed (boolean)
-created_at, updated_at
-```
-
-#### `order_results`
-```sql
--- AI 생성 결과 저장 (유료 콘텐츠)
-id (uuid, PK)
-order_id (uuid, FK → orders)
-question_number (int)
-question_text, answer_text
-created_at
-```
-
-#### `user_coupons`
-```sql
--- 사용자별 쿠폰 (발급 → 사용 추적)
-id (uuid, PK)
-user_id (uuid, FK → users)
-coupon_id (uuid, FK → coupons)
-is_used (boolean)
-used_order_id (uuid, FK → orders)     -- 사용된 주문
-source_order_id (uuid, FK → orders)   -- 발급 원인 주문
-created_at, used_at
-```
-
-#### `coupons`
-```sql
--- 쿠폰 마스터 정보
-id (uuid, PK)
-name (text)                   -- '신규 가입 3000원 쿠폰'
-discount_amount (int)
-coupon_type (text)            -- 'welcome', 'revisit'
-is_active (boolean)
-created_at
-```
-
-**상세 문서**: `/DATABASE_SCHEMA.md`
+**📚 상세 문서**: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) - 전체 컬럼, 타입, 제약조건, 인덱스
 
 ---
 
@@ -806,11 +1029,15 @@ TarotGame (카드 섞기 + 선택 - **UI 연출용**, 458줄)
 
 **주요 파일**:
 - `/components/TarotShufflePage.tsx` - 타로 셔플 페이지 (라우트: /tarot/shuffle)
-- `/components/TarotGame.tsx` - 카드 섞기 + 선택 UI 연출 컴포넌트 (458줄)
+- `/components/TarotGame.tsx` - 카드 섞기 + 선택 UI 연출 컴포넌트 (550줄+)
   - 5단계 애니메이션 시퀀스: idle → mixing → gathered → spreading → selected
   - 21장 타로 카드 인터랙션 (더미, 재미 요소)
   - 모바일 반응형 (320px ~ 440px)
   - ⚠️ 실제 카드는 이미 백엔드에서 선택되어 있음
+  - **slotCount prop**: placeholder 슬롯 개수 설정 (1 | 3, 기본값: 1)
+    - `TarotShufflePage`: slotCount=1 (유료 콘텐츠, 카드 1장)
+    - `ReportWeeklyTarot`: slotCount=3 (이번 주 보고서, 카드 3장)
+- `/components/ReportWeeklyTarot.tsx` - 이번 주 보고서 타로 페이지 (slotCount=3)
 - `/lib/tarotCards.ts` - 타로 카드 데이터 + 유틸리티
   - TAROT_DECK: 78장 전체 덱 (메이저 22장 + 마이너 56장)
   - getRandomTarotCards(): 랜덤 카드 선택 (중복 없음)
@@ -1224,6 +1451,10 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.3.0 | 2026-01-23 | **문서 중복 제거** - Database Schema, Edge Functions 섹션 간소화 (상세 문서 참조로 변경), 관리 포인트 감소 | AI Assistant |
+| 2.2.0 | 2026-01-23 | **마스터 콘텐츠 관리 플로우 추가** - System Map에 5번째 데이터 흐름 추가 (콘텐츠 생성/질문지 작성/AI 썸네일 생성/배포 플로우), 관련 6개 컴포넌트 문서화 | AI Assistant |
+| 2.1.0 | 2026-01-23 | **System Map 대폭 보강** - 전체 시스템 아키텍처 다이어그램, 데이터 흐름 (인증/무료/유료/타로 플로우), 프론트엔드 레이어 구조, 환경별 배포 구조 추가 | AI Assistant |
+| 2.0.2 | 2026-01-22 | **TarotGame slotCount 설정** - TarotGame에 slotCount prop 추가 (1 \| 3, 기본값: 1), TarotShufflePage는 1장, ReportWeeklyTarot은 3장 선택, 버튼 레이블/카드 선택 로직 slotCount 기반 동작 | AI Assistant |
 | 2.0.1 | 2026-01-20 | **UI/UX 및 성능 개선** - UnifiedResultPage Framer Motion 제거 (타로 카드 2번째 질문부터 공란 버그 수정), SajuAddPage 관계 선택 리스트 변경 (9개 → 6개: 연인/가족/친구/지인/동료/기타), DB 마이그레이션 (관계 필드 정규화), ProfilePage 로그아웃 확인 다이얼로그 추가, ConfirmDialog 이중 레이어 버그 수정, 사주 삭제 성능 최적화 3개 페이지 (2초 → 0.3초, Promise.all 병렬 처리), SajuAddPage 관계 선택 bottom sheet 간격 수정 (pb-[100px] → pb-[24px]), DECISIONS.md 타로 카드 캐시 이슈 히스토리 문서화 | AI Assistant |
 | 2.0.0 | 2026-01-20 | **캐싱 전략 대폭 개선** - vercel.json HTTP 캐시 헤더 추가 (JS/CSS 1년, 이미지 1일), thumbnailCache.ts 신규 생성 (콘텐츠 썸네일 Cache API), 타로 캐시 최적화 (싱글톤 + 메모리 캐시 + 배치 처리, 1-6초 → 0.3-0.8초), 구매 내역 DB 쿼리 병렬화 (400-1000ms → 150-400ms) | AI Assistant |
 | 1.9.2 | 2026-01-19 | AlimtalkInfoInputPage 추가, SajuCard/SajuManagementPage 구분자 렌더링 방식 변경 (SVG → CSS div), 컴포넌트 개수 업데이트 (54→55개) | AI Assistant |
@@ -1371,6 +1602,6 @@ useEffect(() => {
 
 ---
 
-**문서 버전**: 2.0.0
-**최종 업데이트**: 2026-01-20
+**문서 버전**: 2.3.0
+**최종 업데이트**: 2026-01-23
 **문서 끝**

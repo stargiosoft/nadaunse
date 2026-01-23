@@ -23,10 +23,11 @@
 | 배포 | Vercel |
 
 ### 주요 통계
-- **컴포넌트**: 51개
-- **Edge Functions**: 20개
-- **페이지**: 38개
+- **컴포넌트**: 55개
+- **Edge Functions**: 21개
+- **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
+- **타로 카드 덱**: 78장
 
 ---
 
@@ -116,7 +117,7 @@ const bgImage = "/background.jpg";
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
-- **총 20개**: AI 생성(8), 쿠폰 관리(4), 사용자 관리(2), 알림(1), 결제/환불(3), 기타(2)
+- **총 21개**: AI 생성(8), 쿠폰 관리(4), 사용자 관리(2), 알림(1), 결제/환불(3), 모니터링(1), 기타(2)
 
 **배포 명령어 예시**:
 ```bash
@@ -163,7 +164,7 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 → 94% 토큰 절약!
 ```
 
-**프로젝트 규모** (컴포넌트 51개, 페이지 38개, Edge Functions 20개)에서 Serena는 필수입니다.
+**프로젝트 규모** (컴포넌트 55개, 페이지 41개, Edge Functions 21개)에서 Serena는 필수입니다.
 
 ### 11. 캐싱 전략 (Cache Strategy)
 
@@ -369,8 +370,8 @@ serve(async (req) => {
 
 ```
 /src
-├── components/     # React 컴포넌트 (51개)
-├── pages/          # 페이지 컴포넌트 (38개)
+├── components/     # React 컴포넌트 (55개)
+├── pages/          # 페이지 컴포넌트 (41개)
 ├── lib/            # 비즈니스 로직, 유틸리티
 ├── utils/          # 순수 유틸리티 함수
 ├── hooks/          # Custom hooks
@@ -378,7 +379,7 @@ serve(async (req) => {
 └── imports/        # SVG, 이미지 임포트
 
 supabase/
-├── functions/      # Edge Functions (20개)
+├── functions/      # Edge Functions (21개)
 ├── migrations/     # SQL 마이그레이션 파일
 └── *.md            # Supabase 관련 문서
 ```
@@ -444,13 +445,31 @@ FigmaMake 코드를 그대로 통합하면 **디자인이 완전히 깨집니다
 FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ```
-코드 생성 규칙:
-1. 모든 텍스트 스타일(fontSize, fontWeight, lineHeight, color, letterSpacing)은
-   반드시 inline style로 작성하세요. Tailwind의 text-*, font-*, leading-* 클래스를 사용하지 마세요.
-2. 배경색, 테두리색 등 색상 관련 속성도 inline style로 작성하세요.
-3. 레이아웃(flex, grid, items-center 등)은 Tailwind 클래스를 사용해도 됩니다.
-4. fontFamily는 'Pretendard Variable'을 사용하세요.
-5. gap, padding 등 spacing에서 arbitrary value가 필요하면 inline style을 사용하세요.
+📌 중요 요구사항:
+
+1. 기존 로컬 개발 파일에 합칠 예정이므로 독립적인 컴포넌트로 작성
+2. 반응형: 320px(최소) ~ 440px(최대), PC에서는 440px 고정
+
+🎨 스타일링 규칙 (필수):
+
+- 모든 typography(폰트 크기, 굵기, 줄 높이, 색상)는 inline style 사용
+- 레이아웃(flex, padding, margin, gap)만 Tailwind 클래스 사용
+- HEX 색상, 픽셀 값은 반드시 inline style로 (Tailwind arbitrary value 금지)
+
+예시:
+❌ className="text-[15px] text-[#368683] font-medium"
+✅ style={{ fontSize: '15px', color: '#368683', fontWeight: 500 }}
+
+❌ className="bg-[#f0f8f8] border-[#48b2af]"
+✅ style={{ backgroundColor: '#f0f8f8', border: '1.5px solid #48b2af' }}
+
+✅ className="flex gap-4 items-center rounded-2xl px-6 py-4" (레이아웃은 OK)
+
+📋 Tech Stack:
+
+- React 18 + TypeScript
+- Tailwind CSS v4.0
+- 폰트: fontFamily: 'Pretendard Variable'
 ```
 
 ### 통합 체크리스트
@@ -782,4 +801,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-01-21
+**최종 업데이트**: 2026-01-23
