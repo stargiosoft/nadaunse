@@ -111,7 +111,9 @@ export default function LoadingPage() {
   const [devNextUrl, setDevNextUrl] = useState<string | null>(null);
 
   // 🚀 무료 콘텐츠 state - 캐시에서 동기적 초기화
-  const [freeContents, setFreeContents] = useState<FreeContent[]>(getInitialFreeContents);
+  const initialFreeContents = getInitialFreeContents();
+  const [freeContents, setFreeContents] = useState<FreeContent[]>(initialFreeContents);
+  const [isLoadingFreeContents, setIsLoadingFreeContents] = useState(initialFreeContents.length === 0);
   const [loadedThumbnails, setLoadedThumbnails] = useState<Set<string>>(new Set());
 
   // ⭐ 현재 콘텐츠의 카테고리 (다른 운세 보기 클릭 시 홈 필터에 사용)
@@ -225,6 +227,7 @@ export default function LoadingPage() {
         // 🚀 이미 초기화 시점에 캐시에서 로드되었으면 스킵
         if (freeContents.length > 0) {
           console.log('✅ [무료콘텐츠] 이미 캐시에서 로드됨 → API 스킵');
+          setIsLoadingFreeContents(false);
 
           // 🚀 이미지 프리로드만 수행
           const thumbnails = freeContents
@@ -247,6 +250,7 @@ export default function LoadingPage() {
           if (now - timestamp < CACHE_EXPIRY) {
             console.log('✅ [무료콘텐츠] 캐시 사용:', contents.length, '개');
             setFreeContents(contents);
+            setIsLoadingFreeContents(false);
 
             const thumbnails = contents
               .slice(0, 3)
@@ -269,12 +273,14 @@ export default function LoadingPage() {
         if (contentsError) throw contentsError;
         if (!contents || contents.length === 0) {
           console.log('⚠️ [무료콘텐츠] 데이터 없음');
+          setIsLoadingFreeContents(false);
           return;
         }
 
         console.log('✅ [무료콘텐츠] 인기순 정렬 완료:', contents.map(c => `${c.title}(${c.weekly_clicks})`));
 
         setFreeContents(contents);
+        setIsLoadingFreeContents(false);
 
         // 캐시 저장
         localStorage.setItem(FREE_CONTENTS_CACHE_KEY, JSON.stringify({
@@ -303,6 +309,7 @@ export default function LoadingPage() {
         }
       } catch (error) {
         console.error('❌ [무료콘텐츠] 로드 실패:', error);
+        setIsLoadingFreeContents(false);
       }
     };
 
@@ -582,32 +589,64 @@ export default function LoadingPage() {
         {/* 구분선 */}
         <div className="w-full" style={{ height: '12px', backgroundColor: '#f9f9f9' }} />
 
-        {/* 무료 콘텐츠 섹션 */}
-        {freeContents.length > 0 && (
-          <div className="flex flex-col items-center w-full" style={{ gap: '8px', padding: '36px 0' }}>
-            {/* Section Title */}
-            <div className="flex flex-col items-center w-full" style={{ gap: '12px', padding: '0 20px' }}>
-              <div className="flex items-center justify-between w-full">
-                <p
-                  className="flex-1"
-                  style={{
-                    fontFamily: "'Pretendard Variable', sans-serif",
-                    fontWeight: 600,
-                    fontSize: '17px',
-                    lineHeight: '24px',
-                    letterSpacing: '-0.34px',
-                    color: 'black'
-                  }}
-                >
-                  기다리는 동안 무료 운세 보기
-                </p>
-              </div>
+        {/* 무료 콘텐츠 섹션 - 항상 렌더링 (로딩 중이면 스켈레톤) */}
+        <div className="flex flex-col items-center w-full" style={{ gap: '8px', padding: '36px 0' }}>
+          {/* Section Title */}
+          <div className="flex flex-col items-center w-full" style={{ gap: '12px', padding: '0 20px' }}>
+            <div className="flex items-center justify-between w-full">
+              <p
+                className="flex-1"
+                style={{
+                  fontFamily: "'Pretendard Variable', sans-serif",
+                  fontWeight: 600,
+                  fontSize: '17px',
+                  lineHeight: '24px',
+                  letterSpacing: '-0.34px',
+                  color: 'black'
+                }}
+              >
+                기다리는 동안 무료 운세 보기
+              </p>
             </div>
+          </div>
 
-            {/* Content List */}
-            <div className="bg-white flex flex-col items-start w-full" style={{ padding: '0 20px' }}>
-              <div className="flex flex-col items-start w-full" style={{ gap: '2px' }}>
-                {freeContents.map((content, index) => (
+          {/* Content List */}
+          <div className="bg-white flex flex-col items-start w-full" style={{ padding: '0 20px' }}>
+            <div className="flex flex-col items-start w-full" style={{ gap: '2px' }}>
+              {/* 로딩 중이면 스켈레톤 3개 표시 */}
+              {isLoadingFreeContents ? (
+                [1, 2, 3].map((_, index) => (
+                  <div key={index}>
+                    {index > 0 && (
+                      <div className="w-full" style={{ height: '1px', backgroundColor: '#f9f9f9' }} />
+                    )}
+                    <div
+                      className="flex flex-col items-center justify-center rounded-[16px] w-full"
+                      style={{ height: '78px', padding: '12px 0' }}
+                    >
+                      <div className="flex items-start w-full" style={{ gap: '12px' }}>
+                        {/* Thumbnail Skeleton */}
+                        <div
+                          className="rounded-[12px] shrink-0 animate-pulse"
+                          style={{ height: '54px', width: '80px', backgroundColor: '#f3f3f3' }}
+                        />
+                        {/* Text Skeleton */}
+                        <div className="flex flex-1 flex-col items-start" style={{ gap: '8px' }}>
+                          <div
+                            className="animate-pulse rounded"
+                            style={{ height: '20px', width: '70%', backgroundColor: '#f3f3f3' }}
+                          />
+                          <div
+                            className="animate-pulse rounded"
+                            style={{ height: '16px', width: '50px', backgroundColor: '#f3f3f3' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : freeContents.length > 0 ? (
+                freeContents.map((content, index) => (
                   <div key={content.id}>
                     {/* 구분선 (첫 번째 아이템 제외) */}
                     {index > 0 && (
@@ -688,11 +727,11 @@ export default function LoadingPage() {
                       </div>
                     </button>
                   </div>
-                ))}
-              </div>
+                ))
+              ) : null}
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Bottom Buttons - Fixed */}

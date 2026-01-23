@@ -319,15 +319,13 @@ serve(async (req) => {
                   question_order: question.question_order,
                   question_text: question.question_text,
                   gpt_response: data.answerText,
-                  question_type: 'tarot',  // 질문 타입 추가
-                  tarot_card_id: data.tarotCardId || null,  // ⭐ 타로 카드 ID
-                  tarot_card_name: data.tarotCard || null,  // ⭐ 타로 카드 이름
-                  tarot_card_image_url: data.imageUrl || null,  // ⭐ 타로 카드 이미지 URL
+                  question_type: 'tarot',
+                  tarot_card_name: data.tarotCard || null,
+                  tarot_card_image_url: data.imageUrl || null,
                   created_at: new Date().toISOString()
                 })
 
               console.log('🎴 [타로] DB 저장 데이터:', {
-                tarot_card_id: data.tarotCardId,
                 tarot_card_name: data.tarotCard,
                 tarot_card_image_url: data.imageUrl
               })
