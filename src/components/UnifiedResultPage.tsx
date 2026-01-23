@@ -540,6 +540,91 @@ export default function UnifiedResultPage() {
     return <PageLoader />;
   }
 
+  // ⭐ 다른 계정 주문 - 다이얼로그 표시
+  if (isWrongAccount) {
+    return (
+      <div className="bg-white flex items-center justify-center min-h-screen w-full mx-auto" style={{ maxWidth: '440px' }}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" />
+          <div 
+            className="relative bg-white overflow-hidden border" 
+            style={{ width: '320px', borderColor: '#f3f3f3', borderRadius: '20px' }}
+          >
+            <div style={{ paddingLeft: '28px', paddingRight: '28px', paddingTop: '20px', paddingBottom: '20px' }}>
+              <div className="flex flex-col items-center text-center" style={{ gap: '8px' }}>
+                <p 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 600,
+                    fontSize: '17px',
+                    lineHeight: '25.5px',
+                    letterSpacing: '-0.34px',
+                    color: '#000000'
+                  }}
+                >
+                  다른 계정으로 구매한 운세예요
+                </p>
+                <p 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    lineHeight: '20px',
+                    letterSpacing: '-0.3px',
+                    color: '#868686'
+                  }}
+                >
+                  운세를 구매한 계정으로<br />다시 로그인해 주세요.
+                </p>
+              </div>
+            </div>
+            <div 
+              className="flex flex-col"
+              style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '20px', gap: '8px' }}
+            >
+              <button
+                onClick={handleLogoutAndRetry}
+                className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                style={{ height: '48px', backgroundColor: '#48b2af', borderRadius: '12px' }}
+              >
+                <span 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '25px',
+                    letterSpacing: '-0.32px',
+                    color: '#ffffff'
+                  }}
+                >
+                  다른 계정으로 로그인
+                </span>
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                style={{ height: '48px', backgroundColor: '#f5f5f5', borderRadius: '12px' }}
+              >
+                <span 
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '25px',
+                    letterSpacing: '-0.32px',
+                    color: '#666666'
+                  }}
+                >
+                  홈으로 이동
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ⭐ 결과 없음
   if (!currentResult) {
     return (
@@ -777,86 +862,7 @@ export default function UnifiedResultPage() {
 
       <SessionExpiredDialog isOpen={isSessionExpired} />
 
-      {/* 다른 계정 주문 모달 */}
-      {isWrongAccount && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" />
-          <div 
-            className="relative bg-white overflow-hidden border" 
-            style={{ width: '320px', borderColor: '#f3f3f3', borderRadius: '20px' }}
-          >
-            <div style={{ paddingLeft: '28px', paddingRight: '28px', paddingTop: '20px', paddingBottom: '20px' }}>
-              <div className="flex flex-col items-center text-center" style={{ gap: '8px' }}>
-                <p 
-                  style={{
-                    fontFamily: 'Pretendard Variable, sans-serif',
-                    fontWeight: 600,
-                    fontSize: '17px',
-                    lineHeight: '25.5px',
-                    letterSpacing: '-0.34px',
-                    color: '#000000'
-                  }}
-                >
-                  다른 계정으로 구매한 운세예요
-                </p>
-                <p 
-                  style={{
-                    fontFamily: 'Pretendard Variable, sans-serif',
-                    fontWeight: 500,
-                    fontSize: '15px',
-                    lineHeight: '20px',
-                    letterSpacing: '-0.3px',
-                    color: '#868686'
-                  }}
-                >
-                  운세를 구매한 계정으로<br />다시 로그인해 주세요.
-                </p>
-              </div>
-            </div>
-            <div 
-              className="flex flex-col"
-              style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '20px', gap: '8px' }}
-            >
-              <button
-                onClick={handleLogoutAndRetry}
-                className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                style={{ height: '48px', backgroundColor: '#48b2af', borderRadius: '12px' }}
-              >
-                <span 
-                  style={{
-                    fontFamily: 'Pretendard Variable, sans-serif',
-                    fontWeight: 500,
-                    fontSize: '16px',
-                    lineHeight: '25px',
-                    letterSpacing: '-0.32px',
-                    color: '#ffffff'
-                  }}
-                >
-                  다른 계정으로 로그인
-                </span>
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-                style={{ height: '48px', backgroundColor: '#f5f5f5', borderRadius: '12px' }}
-              >
-                <span 
-                  style={{
-                    fontFamily: 'Pretendard Variable, sans-serif',
-                    fontWeight: 500,
-                    fontSize: '16px',
-                    lineHeight: '25px',
-                    letterSpacing: '-0.32px',
-                    color: '#666666'
-                  }}
-                >
-                  홈으로 이동
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
