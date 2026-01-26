@@ -70,6 +70,7 @@ import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 �
 import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
 import { clearUserCaches } from './lib/auth'; // ⭐ 캐시 삭제 함수
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
+import { projectId } from './utils/supabase/info'; // ⚡ Edge Function warm-up용
 
 // ⚡ 프로덕션 환경 체크 - import.meta.env.DEV 오버라이드
 if (!DEV && import.meta.env.DEV) {
@@ -1715,6 +1716,25 @@ export default function App() {
   // 🌐 HTML lang 속성 설정 (브라우저 자동번역 방지)
   useEffect(() => {
     document.documentElement.lang = 'ko';
+  }, []);
+
+  // ⚡ Edge Function Cold Start 방지 - 앱 로드 시 warm-up
+  useEffect(() => {
+    const warmupEdgeFunctions = async () => {
+      try {
+        // /users Edge Function warm-up (카카오 로그인 시 사용됨)
+        // OPTIONS preflight 요청으로 함수만 로드 (실제 로직 실행 안 함)
+        await fetch(`https://${projectId}.supabase.co/functions/v1/users`, {
+          method: 'OPTIONS',
+        });
+        console.log('⚡ Edge Function warm-up 완료');
+      } catch {
+        // warm-up 실패해도 무시 (백그라운드 작업)
+        console.debug('⚡ Edge Function warm-up 실패 (무시됨)');
+      }
+    };
+
+    warmupEdgeFunctions();
   }, []);
 
   // 🔐 세션 만료 감지 및 모든 사용자 캐시 정리
