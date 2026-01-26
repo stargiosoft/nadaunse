@@ -2,18 +2,21 @@
 
 > **이 문서는 나다운세 서비스의 GA4 이벤트 트래킹 구현을 정리한 문서입니다.**
 > **마케팅 퍼널 분석 및 사용자 행동 추적에 활용됩니다.**
+> **최종 업데이트**: 2026-01-26
 
 ---
 
 ## 목차
 
 1. [개요](#개요)
-2. [GA4 전자상거래 표준 이벤트](#ga4-전자상거래-표준-이벤트)
-3. [마케팅 퍼널 이벤트](#마케팅-퍼널-이벤트)
-4. [이벤트 상세 명세](#이벤트-상세-명세)
-5. [파일별 이벤트 호출 위치](#파일별-이벤트-호출-위치)
-6. [GA4 보고서 매핑](#ga4-보고서-매핑)
-7. [디버깅 방법](#디버깅-방법)
+2. [0원 결제 제외 정책](#0원-결제-제외-정책)
+3. [GA4 구매 여정 퍼널](#ga4-구매-여정-퍼널)
+4. [페이지 타이틀 설정](#페이지-타이틀-설정)
+5. [이벤트 목록](#이벤트-목록)
+6. [이벤트 상세 명세](#이벤트-상세-명세)
+7. [파일별 이벤트 호출 위치](#파일별-이벤트-호출-위치)
+8. [GA4 보고서 매핑](#ga4-보고서-매핑)
+9. [디버깅 방법](#디버깅-방법)
 
 ---
 
@@ -23,6 +26,12 @@
 - **이벤트 정의**: `src/utils/analytics.ts`
 - **GA4 측정 ID**: 환경변수 `VITE_GA_MEASUREMENT_ID`
 
+### 주요 특징
+- Safari ITP 대응 (쿠키 만료 2년, SameSite=Lax)
+- 로그인 사용자 `user_id` 자동 설정
+- 개발 환경에서 콘솔 로그 출력
+- **0원 결제(쿠폰 100% 할인)는 구매 관련 이벤트에서 제외**
+
 ### 이벤트 전송 방식
 ```typescript
 // gtag 함수를 통해 GA4로 이벤트 전송
@@ -31,303 +40,260 @@ window.gtag('event', eventName, parameters);
 
 ---
 
-## GA4 전자상거래 표준 이벤트
+## 0원 결제 제외 정책
 
-GA4 "판매 촉진" 및 "구매 여정" 보고서에 데이터가 표시되려면 **표준 이벤트 형식**을 준수해야 합니다.
+### 적용 대상 이벤트
 
-### 필수 이벤트 (구매 여정)
+| 이벤트 | 트리거 시점 | 0원 결제 |
+|--------|-----------|---------|
+| `add_to_cart` | 결제 페이지 진입 | ❌ **제외** |
+| `begin_checkout` | 구매하기 버튼 클릭 | ❌ **제외** |
+| `purchase` | 결제 완료 | ❌ **제외** |
 
-| 단계 | 이벤트 이름 | 필수 파라미터 |
-|------|------------|--------------|
-| 1. 세션 시작 | `session_start` | GA4 자동 수집 |
-| 2. 제품 보기 | `view_item` | `currency`, `value`, `items[]` |
-| 3. 결제 시작 | `begin_checkout` | `currency`, `value`, `items[]` |
-| 4. 결제수단 추가 | `add_payment_info` | `currency`, `value`, `payment_type`, `items[]` |
-| 5. 구매 완료 | `purchase` | `transaction_id`, `currency`, `value`, `items[]` |
+### 제외 이유
+1. **정확한 매출 분석**: 실제 수익이 발생한 구매만 추적
+2. **퍼널 전환율 왜곡 방지**: 무료 전환이 유료 전환율에 영향 주지 않음
+3. **마케팅 ROI 분석**: 실제 결제 사용자 기준 분석 가능
 
-### items 배열 형식 (필수)
-
+### 구현 코드
 ```typescript
-items: [
-  {
-    item_id: string,      // 상품 ID (필수)
-    item_name: string,    // 상품명 (필수)
-    item_category: string,// 카테고리
-    price: number,        // 가격
-    quantity: number,     // 수량
-    discount: number,     // 할인액
-  }
-]
+// PaymentNew.tsx - add_to_cart
+if (finalPrice > 0) {
+  trackAddToCart({ ... });
+}
+
+// PaymentNew.tsx - begin_checkout
+if (totalPrice > 0 && currentProduct) {
+  trackBeginCheckout({ ... });
+}
+
+// analytics.ts - purchase
+if (params.value <= 0) {
+  console.log('📊 Purchase tracking skipped (0원 결제)');
+  return;
+}
 ```
 
 ---
 
-## 마케팅 퍼널 이벤트
+## GA4 구매 여정 퍼널
 
-### 퍼널 구조
+### 표준 전자상거래 퍼널
 
 ```
-[유입] → [무료 체험] → [회원가입] → [유료 전환] → [결제] → [리텐션]
+세션 시작 → 제품 보기 → 장바구니에 추가 → 결제 시작 → 구매
+(자동)      (view_item)   (add_to_cart)    (begin_checkout)  (purchase)
 ```
 
-### 퍼널별 이벤트 목록
+### 나다운세 구매 플로우
 
-| 퍼널 단계 | 이벤트 | 설명 |
-|----------|--------|------|
-| **유입** | `session_start` | 세션 시작 (자동) |
-| **무료 체험** | `free_content_click` | 무료 콘텐츠 클릭 |
-| | `free_birthinfo_submit` | 무료 사주 정보 입력 완료 |
-| | `free_result_view` | 무료 결과 조회 |
-| | `free_result_complete` | 무료 결과 완독 |
-| **회원가입** | `login_click` | 로그인 버튼 클릭 |
-| | `sign_up` | 회원가입 완료 |
-| | `welcome_coupon_issued` | 웰컴 쿠폰 발급 |
-| **유료 전환** | `paid_content_view` | 유료 콘텐츠 상세 조회 |
-| | `purchase_click` | 구매하기 버튼 클릭 |
-| | `view_item` | 상품 상세 조회 (GA4 표준) |
-| **결제** | `begin_checkout` | 결제 시작 (GA4 표준) |
-| | `payment_method_select` | 결제수단 선택 |
-| | `add_payment_info` | 결제정보 입력 (GA4 표준) |
-| | `coupon_apply` | 쿠폰 적용 |
-| | `purchase` | 구매 완료 (GA4 표준) |
-| **결과 조회** | `paid_result_view` | 유료 결과 조회 |
-| | `paid_result_complete` | 유료 결과 완독 |
-| **리텐션** | `revisit_coupon_issued` | 재방문 쿠폰 발급 |
+| 단계 | GA4 이벤트 | 트리거 시점 | 0원 결제 |
+|------|-----------|------------|----------|
+| 1. 콘텐츠 상세 조회 | `view_item` | 상품 페이지 진입 | ✅ 추적 |
+| 2. 장바구니에 추가 | `add_to_cart` | **결제 페이지 진입** | ❌ 제외 |
+| 3. 결제 시작 | `begin_checkout` | **구매하기 버튼 클릭** | ❌ 제외 |
+| 4. 구매 완료 | `purchase` | 결제 완료 | ❌ 제외 |
+
+### 예상 퍼널 지표
+
+| 단계 | 예상 비율 | 비고 |
+|------|----------|------|
+| 세션 시작 | 100% | GA4 자동 수집 |
+| 제품 보기 | ~50% | 콘텐츠 상세 페이지 조회 |
+| 장바구니에 추가 | ~10% | 결제 페이지 진입 (0원 제외) |
+| 결제 시작 | ~8% | 구매 버튼 클릭 (0원 제외) |
+| 구매 | ~5% | 결제 완료 (0원 제외) |
+
+---
+
+## 페이지 타이틀 설정
+
+### 일반 페이지 타이틀 (App.tsx PageTracker)
+
+| 경로 패턴 | 페이지 타이틀 |
+|----------|--------------|
+| `/` | 나다운세 - AI 사주 타로 운세 |
+| `/product/{id}` | 유료 콘텐츠 상세 \| 나다운세 |
+| `/master/content/detail/{id}` | 유료 콘텐츠 상세 \| 나다운세 |
+| `/free/content/{id}` | 무료 콘텐츠 상세 \| 나다운세 |
+| `/product/{id}/result` | 운세 결과 \| 나다운세 |
+| `/product/{id}/result/free` | 무료 운세 결과 \| 나다운세 |
+| `/{id}/payment/new` | 결제 \| 나다운세 |
+| `/login/new` | 로그인 \| 나다운세 |
+| `/profile` | 프로필 \| 나다운세 |
+
+### 개별 콘텐츠 타이틀 (SEO 컴포넌트)
+
+| 콘텐츠 유형 | 타이틀 형식 | 예시 |
+|------------|-----------|------|
+| 유료 | `[유료] {콘텐츠명} \| 나다운세` | [유료] 나는 과연 결혼할 수 있을까? \| 나다운세 |
+| 무료 | `[무료] {콘텐츠명} \| 나다운세` | [무료] 나는 과연 결혼할 수 있을까? \| 나다운세 |
+
+### 설정 위치
+- **일반 타이틀**: `src/App.tsx` (PageTracker 컴포넌트)
+- **개별 콘텐츠 타이틀**:
+  - `src/components/MasterContentDetailPage.tsx` (유료)
+  - `src/components/FreeContentDetail.tsx` (무료)
+
+---
+
+## 이벤트 목록
+
+### 기본 이벤트
+
+| # | 이벤트명 | 함수명 | 설명 |
+|---|---------|--------|------|
+| 1 | `login` | `trackLogin` | 로그인 완료 |
+| 2 | `sign_up` | `trackSignUp` | 회원가입 완료 |
+| 3 | `view_item_list` | `trackViewItemList` | 상품 목록 조회 |
+| 4 | `select_item` | `trackSelectItem` | 상품 카드 클릭 |
+| 5 | `view_item` | `trackViewItem` | 상품 상세 조회 |
+
+### 전자상거래 이벤트 (GA4 표준)
+
+| # | 이벤트명 | 함수명 | 설명 | 0원 제외 |
+|---|---------|--------|------|---------|
+| 6 | `add_to_cart` | `trackAddToCart` | 장바구니 추가 (결제 페이지 진입) | ✅ |
+| 7 | `begin_checkout` | `trackBeginCheckout` | 결제 시작 (구매 버튼 클릭) | ✅ |
+| 8 | `add_payment_info` | `trackAddPaymentInfo` | 결제수단 선택 | - |
+| 9 | `purchase` | `trackPurchase` | 구매 완료 (레거시) | ✅ |
+
+### 사용자 행동 이벤트
+
+| # | 이벤트명 | 함수명 | 설명 |
+|---|---------|--------|------|
+| 10 | `view_result` | `trackViewResult` | 운세 결과 조회 |
+| 11 | `click_banner` | `trackClickBanner` | 배너 클릭 |
+| 12 | `click_product` | `trackClickProduct` | 상품 카드 클릭 |
+| 13 | `filter_change` | `trackFilterChange` | 필터 변경 |
+| 14 | `birth_info_submit` | `trackBirthInfoSubmit` | 생년월일 입력 완료 |
+| 15 | `terms_agreed` | `trackTermsAgreed` | 약관 동의 완료 |
+| 16 | `content_create` | `trackContentCreate` | 콘텐츠 생성 (마스터) |
+| 17 | `logout` | `trackLogout` | 로그아웃 |
+
+### 마케팅 퍼널 이벤트
+
+| # | 이벤트명 | 함수명 | 설명 |
+|---|---------|--------|------|
+| 18 | `login_click` | `trackLoginClick` | 로그인 버튼 클릭 |
+| 19 | `welcome_coupon_issued` | `trackWelcomeCouponIssued` | 웰컴 쿠폰 발급 |
+| 20 | `free_content_click` | `trackFreeContentClick` | 무료 콘텐츠 클릭 |
+| 21 | `free_birthinfo_submit` | `trackFreeBirthInfoSubmit` | 무료 사주 입력 완료 |
+| 22 | `free_result_view` | `trackFreeResultView` | 무료 결과 조회 |
+| 23 | `free_result_complete` | `trackFreeResultComplete` | 무료 결과 끝까지 봄 |
+| 24 | `paid_content_view` | `trackPaidContentView` | 유료 콘텐츠 상세 조회 |
+| 25 | `purchase_click` | `trackPurchaseClick` | 구매 버튼 클릭 |
+| 26 | `checkout_start` | `trackCheckoutStart` | 결제 페이지 진입 |
+| 27 | `coupon_apply` | `trackCouponApply` | 쿠폰 적용 |
+| 28 | `payment_method_select` | `trackPaymentMethodSelect` | 결제 수단 선택 |
+| 29 | `purchase` | `trackPurchaseComplete` | 구매 완료 (상세 버전) ✅ 0원 제외 |
+| 30 | `paid_result_view` | `trackPaidResultView` | 유료 결과 조회 |
+| 31 | `paid_result_complete` | `trackPaidResultComplete` | 유료 결과 끝까지 봄 |
+| 32 | `revisit_coupon_issued` | `trackRevisitCouponIssued` | 재방문 쿠폰 발급 |
 
 ---
 
 ## 이벤트 상세 명세
 
-### 1. free_content_click
-무료 콘텐츠 클릭 시 발생
+### add_to_cart (장바구니 추가) - 2026-01-26 추가
+
+결제 페이지 진입 시 발생 (0원 결제 제외)
 
 ```typescript
-trackFreeContentClick(contentId: string)
+trackAddToCart({
+  id: 'content-123',
+  title: '나는 과연 결혼할 수 있을까?',
+  category: '연애/결혼',
+  type: 'paid',
+  discountPrice: 12900,
+});
 
-// 파라미터
-{
-  content_id: string  // 콘텐츠 ID
-}
-```
-
-**호출 위치**: `HomePage.tsx`
-
----
-
-### 2. free_birthinfo_submit
-무료 사주 정보 입력 완료 시 발생
-
-```typescript
-trackFreeBirthInfoSubmit(contentId: string, isLoggedIn: boolean)
-
-// 파라미터
-{
-  content_id: string,   // 콘텐츠 ID
-  is_logged_in: boolean // 로그인 여부
-}
-```
-
-**호출 위치**: `FreeBirthInfoInput.tsx`
-
----
-
-### 3. login_click
-로그인 버튼 클릭 시 발생
-
-```typescript
-trackLoginClick(method: 'kakao' | 'apple' | 'google', fromPage: string)
-
-// 파라미터
-{
-  method: string,    // 로그인 방식
-  from_page: string  // 진입 페이지
-}
-```
-
-**호출 위치**: `LoginPageNew.tsx`
-
----
-
-### 4. welcome_coupon_issued
-웰컴 쿠폰 발급 시 발생
-
-```typescript
-trackWelcomeCouponIssued(userId: string, couponAmount: number)
-
-// 파라미터
-{
-  user_id: string,      // 사용자 ID
-  coupon_amount: number // 쿠폰 금액
-}
-```
-
-**호출 위치**: `WelcomeCouponPage.tsx`
-
----
-
-### 5. paid_content_view
-유료 콘텐츠 상세 페이지 조회 시 발생
-
-```typescript
-trackPaidContentView(contentId: string, contentTitle: string)
-
-// 파라미터
-{
-  content_id: string,    // 콘텐츠 ID
-  content_title: string  // 콘텐츠 제목
-}
-```
-
-**호출 위치**: `MasterContentDetailPage.tsx`
-
----
-
-### 6. purchase_click
-구매하기 버튼 클릭 시 발생
-
-```typescript
-trackPurchaseClick(contentId: string, price: number)
-
-// 파라미터
-{
-  content_id: string, // 콘텐츠 ID
-  price: number       // 가격
-}
-```
-
-**호출 위치**: `MasterContentDetailPage.tsx`
-
----
-
-### 7. view_item (GA4 표준)
-상품 상세 조회 시 발생
-
-```typescript
-trackViewItem(item: {
-  id: string,
-  title: string,
-  category: string,
-  type: 'paid' | 'free',
-  discountPrice: number
-})
-
-// 파라미터 (GA4 표준)
+// GA4 전송 파라미터
 {
   currency: 'KRW',
-  value: number,
+  value: 12900,
   items: [{
-    item_id: string,
-    item_name: string,
-    item_category: string,
-    item_variant: string,
-    price: number,
-    quantity: 1
-  }]
-}
-```
-
-**호출 위치**: `MasterContentDetailPage.tsx`
-
----
-
-### 8. begin_checkout (GA4 표준)
-결제 시작 시 발생
-
-```typescript
-trackBeginCheckout(item: {
-  id: string,
-  title: string,
-  category: string,
-  discountPrice: number
-})
-
-// 파라미터 (GA4 표준)
-{
-  currency: 'KRW',
-  value: number,
-  items: [{
-    item_id: string,
-    item_name: string,
-    item_category: string,
+    item_id: 'content-123',
+    item_name: '나는 과연 결혼할 수 있을까?',
+    item_category: '연애/결혼',
     item_variant: '심화 해석판',
-    price: number,
+    price: 12900,
     quantity: 1
   }]
 }
 ```
 
-**호출 위치**: `PaymentNew.tsx`
+**호출 위치**: `PaymentNew.tsx` (useEffect)
 
 ---
 
-### 9. payment_method_select
-결제수단 선택 시 발생
+### begin_checkout (결제 시작) - 트리거 시점 변경
+
+구매하기 버튼 클릭 시 발생 (0원 결제 제외)
 
 ```typescript
-trackPaymentMethodSelect(method: 'kakaopay' | 'card')
+trackBeginCheckout({
+  id: 'content-123',
+  title: '나는 과연 결혼할 수 있을까?',
+  category: '연애/결혼',
+  type: 'paid',
+  discountPrice: 12900,
+});
 
-// 파라미터
+// GA4 전송 파라미터
 {
-  method: string  // 결제수단
+  currency: 'KRW',
+  value: 12900,
+  items: [{
+    item_id: 'content-123',
+    item_name: '나는 과연 결혼할 수 있을까?',
+    item_category: '연애/결혼',
+    item_variant: '심화 해석판',
+    price: 12900,
+    quantity: 1
+  }]
 }
 ```
 
-**호출 위치**: `PaymentNew.tsx`
+**호출 위치**: `PaymentNew.tsx` (handlePurchaseClick)
 
 ---
 
-### 10. coupon_apply
-쿠폰 적용 시 발생
+### purchase (구매 완료)
 
-```typescript
-trackCouponApply(contentId: string, couponType: 'welcome' | 'revisit', discountAmount: number)
-
-// 파라미터
-{
-  content_id: string,      // 콘텐츠 ID
-  coupon_type: string,     // 쿠폰 유형 (welcome/revisit)
-  discount_amount: number  // 할인 금액
-}
-```
-
-**호출 위치**: `CouponBottomSheetNew.tsx`
-
----
-
-### 11. purchase (GA4 표준)
-구매 완료 시 발생
+결제 완료 시 발생 (0원 결제 제외)
 
 ```typescript
 trackPurchaseComplete({
-  transactionId: string,
-  contentId: string,
-  contentTitle: string,
-  value: number,
-  originalPrice: number,
-  paymentMethod: string,
-  couponUsed: boolean,
-  couponType?: 'welcome' | 'revisit' | null,
-  couponAmount?: number
-})
+  transactionId: 'order-abc123',
+  contentId: 'content-123',
+  contentTitle: '나는 과연 결혼할 수 있을까?',
+  value: 9900,              // 실제 결제 금액 (쿠폰 적용 후)
+  originalPrice: 12900,     // 정가
+  paymentMethod: 'kakaopay',
+  couponUsed: true,
+  couponType: 'welcome',
+  couponAmount: 3000,
+});
 
-// 파라미터 (GA4 표준)
+// GA4 전송 파라미터
 {
-  transaction_id: string,
-  value: number,
+  transaction_id: 'order-abc123',
+  value: 9900,
   currency: 'KRW',
   items: [{
-    item_id: string,
-    item_name: string,
-    price: number,
-    discount: number,
+    item_id: 'content-123',
+    item_name: '나는 과연 결혼할 수 있을까?',
+    price: 9900,             // 실제 결제 금액
     quantity: 1,
     item_category: '운세 콘텐츠'
   }],
   // 커스텀 파라미터
-  payment_method: string,
-  coupon_used: boolean,
-  coupon_type: string,
-  coupon_amount: number
+  payment_method: 'kakaopay',
+  coupon_used: true,
+  coupon_type: 'welcome',
+  coupon_amount: 3000,
+  original_price: 12900     // 정가 (별도 기록)
 }
 ```
 
@@ -335,54 +301,37 @@ trackPurchaseComplete({
 
 ---
 
-### 12. paid_result_view
-유료 결과 조회 시 발생
+### view_item (상품 상세 조회)
 
 ```typescript
-trackPaidResultView(orderId: string, contentId: string)
-
-// 파라미터
-{
-  order_id: string,   // 주문 ID
-  content_id: string  // 콘텐츠 ID
-}
+trackViewItem({
+  id: 'content-123',
+  title: '나는 과연 결혼할 수 있을까?',
+  category: '연애/결혼',
+  type: 'paid',
+  discountPrice: 12900,
+});
 ```
 
-**호출 위치**: `UnifiedResultPage.tsx`
+**호출 위치**: `MasterContentDetailPage.tsx`
 
 ---
 
-### 13. paid_result_complete
-유료 결과 완독 시 발생
+### 기타 이벤트 (간략)
 
-```typescript
-trackPaidResultComplete(orderId: string, contentId: string)
-
-// 파라미터
-{
-  order_id: string,   // 주문 ID
-  content_id: string  // 콘텐츠 ID
-}
-```
-
-**호출 위치**: `UnifiedResultPage.tsx`
-
----
-
-### 14. revisit_coupon_issued
-재방문 쿠폰 발급 시 발생
-
-```typescript
-trackRevisitCouponIssued(orderId: string, couponAmount: number)
-
-// 파라미터
-{
-  order_id: string,     // 주문 ID
-  coupon_amount: number // 쿠폰 금액
-}
-```
-
-**호출 위치**: `ResultCompletePage.tsx`
+| 이벤트 | 주요 파라미터 | 호출 위치 |
+|--------|-------------|----------|
+| `login_click` | `method` | `LoginPageNew.tsx` |
+| `welcome_coupon_issued` | `coupon_amount` | `WelcomeCouponPage.tsx` |
+| `free_content_click` | `content_id`, `content_title` | `HomePage.tsx` |
+| `free_birthinfo_submit` | `content_id`, `is_logged_in` | `FreeBirthInfoInput.tsx` |
+| `paid_content_view` | `content_id`, `content_title`, `price` | `MasterContentDetailPage.tsx` |
+| `purchase_click` | `content_id`, `content_title`, `price` | `MasterContentDetailPage.tsx` |
+| `coupon_apply` | `content_id`, `coupon_type`, `discount_amount` | `CouponBottomSheetNew.tsx` |
+| `payment_method_select` | `method` | `PaymentNew.tsx` |
+| `paid_result_view` | `order_id`, `content_id` | `UnifiedResultPage.tsx` |
+| `paid_result_complete` | `order_id`, `content_id` | `UnifiedResultPage.tsx` |
+| `revisit_coupon_issued` | `order_id`, `coupon_amount` | `ResultCompletePage.tsx` |
 
 ---
 
@@ -390,14 +339,14 @@ trackRevisitCouponIssued(orderId: string, couponAmount: number)
 
 | 파일 | 이벤트 |
 |------|--------|
-| `HomePage.tsx` | `free_content_click` |
-| `LoginPageNew.tsx` | `login_click` |
+| `HomePage.tsx` | `free_content_click`, `view_item_list` |
+| `LoginPageNew.tsx` | `login_click`, `login`, `sign_up` |
 | `WelcomeCouponPage.tsx` | `welcome_coupon_issued` |
 | `FreeBirthInfoInput.tsx` | `free_birthinfo_submit` |
 | `MasterContentDetailPage.tsx` | `paid_content_view`, `purchase_click`, `view_item` |
-| `PaymentNew.tsx` | `begin_checkout`, `payment_method_select`, `purchase` |
+| `PaymentNew.tsx` | `add_to_cart`, `begin_checkout`, `payment_method_select`, `purchase` |
 | `CouponBottomSheetNew.tsx` | `coupon_apply` |
-| `UnifiedResultPage.tsx` | `paid_result_view`, `paid_result_complete` |
+| `UnifiedResultPage.tsx` | `paid_result_view`, `paid_result_complete`, `free_result_view`, `free_result_complete` |
 | `ResultCompletePage.tsx` | `revisit_coupon_issued` |
 
 ---
@@ -410,67 +359,45 @@ trackRevisitCouponIssued(orderId: string, couponAmount: number)
 - **항목 이름별 구매한 상품**: `items[].item_name`
 
 ### 판매 촉진 > 구매 여정
-| GA4 단계 | 이벤트 |
-|---------|--------|
-| 세션 시작 | `session_start` (자동) |
-| 제품 보기 | `view_item` |
-| 장바구니에 추가 | (해당 없음) |
-| 결제 시작 | `begin_checkout` |
-| 구매 | `purchase` |
+| GA4 단계 | 이벤트 | 트리거 시점 |
+|---------|--------|-----------|
+| 세션 시작 | `session_start` | 자동 수집 |
+| 제품 보기 | `view_item` | 상품 상세 페이지 |
+| 장바구니에 추가 | `add_to_cart` | 결제 페이지 진입 |
+| 결제 시작 | `begin_checkout` | 구매 버튼 클릭 |
+| 구매 | `purchase` | 결제 완료 |
+
+### 페이지 및 화면
+- **유료/무료 구분**: `[유료]`, `[무료]` 접두사로 필터링
+- **콘텐츠별 성과**: 개별 콘텐츠 타이틀로 확인
 
 ### 사용자 > 이벤트
 모든 커스텀 이벤트 확인 가능:
-- `free_content_click`
-- `login_click`
-- `welcome_coupon_issued`
-- `coupon_apply`
-- `revisit_coupon_issued`
-- 등
+- `free_content_click`, `login_click`, `welcome_coupon_issued`
+- `coupon_apply`, `revisit_coupon_issued` 등
 
 ---
 
 ## 디버깅 방법
 
-### 1. 실시간 확인
-GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확인
+### 1. 개발 환경 콘솔 로그
+개발 환경(`import.meta.env.DEV`)에서 자동 출력:
+```
+📊 Event: add_to_cart { currency: 'KRW', value: 12900, items: [...] }
+📊 Event: begin_checkout { currency: 'KRW', value: 12900, items: [...] }
+📊 Purchase tracking skipped (0원 결제): order-abc123
+```
 
-### 2. DebugView
+### 2. GA4 DebugView
 1. Chrome에서 [GA Debugger 확장 프로그램](https://chrome.google.com/webstore/detail/google-analytics-debugger/jnkmfdileelhofjcijamephohjechhna) 설치
 2. 확장 프로그램 활성화
 3. GA4 → **관리** → **DebugView**에서 상세 이벤트 확인
 
-### 3. 브라우저 콘솔
-개발 환경에서 `console.log`로 이벤트 전송 확인:
-```typescript
-// analytics.ts의 trackEvent 함수에 로그 추가
-console.log('📊 GA Event:', eventName, params);
-```
+### 3. GA4 실시간
+GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확인
 
 ### 4. 네트워크 탭
 브라우저 개발자 도구 → Network → `collect?` 필터링하여 GA4 요청 확인
-
----
-
-## 쿠폰 트래킹 상세
-
-### 쿠폰 유형 구분
-- **welcome**: 웰컴 쿠폰 (신규 가입)
-- **revisit**: 재방문 쿠폰 (결과 완독 후)
-
-### 쿠폰 관련 이벤트 흐름
-```
-[신규 가입] → welcome_coupon_issued
-     ↓
-[결제 시] → coupon_apply (coupon_type: 'welcome')
-     ↓
-[구매 완료] → purchase (coupon_used: true, coupon_type: 'welcome')
-     ↓
-[결과 완독] → revisit_coupon_issued
-     ↓
-[재구매 시] → coupon_apply (coupon_type: 'revisit')
-     ↓
-[구매 완료] → purchase (coupon_used: true, coupon_type: 'revisit')
-```
 
 ---
 
@@ -479,8 +406,26 @@ console.log('📊 GA Event:', eventName, params);
 1. **GA4 데이터 지연**: 표준 보고서는 24-48시간 후 반영
 2. **items 배열 필수**: 전자상거래 이벤트는 반드시 `items` 배열 포함
 3. **currency 필수**: 금액 관련 이벤트는 `currency: 'KRW'` 필수
-4. **중복 이벤트 주의**: 페이지 리렌더링 시 중복 발생하지 않도록 조건 체크
+4. **0원 결제 제외**: `add_to_cart`, `begin_checkout`, `purchase`는 0원 결제 시 이벤트 미전송
+5. **중복 이벤트 주의**: 페이지 리렌더링 시 중복 발생하지 않도록 조건 체크
 
 ---
 
-**최종 업데이트**: 2026-01-21
+## 변경 이력
+
+| 날짜 | 변경 내용 |
+|------|----------|
+| 2026-01-21 | 마케팅 퍼널 이벤트 추가 (18-32번) |
+| 2026-01-22 | purchase 이벤트 price 수정 (정가 → 실결제금액) |
+| 2026-01-26 | 0원 결제 GA 트래킹 제외 정책 추가 |
+| 2026-01-26 | `add_to_cart` 이벤트 추가 (구매 여정 퍼널 연결) |
+| 2026-01-26 | `begin_checkout` 트리거 시점 변경 (페이지 진입 → 버튼 클릭) |
+| 2026-01-26 | 페이지 타이틀 유료/무료 구분 추가 (`[유료]`, `[무료]` 접두사) |
+
+---
+
+## 참고 자료
+
+- [GA4 전자상거래 이벤트](https://developers.google.com/analytics/devguides/collection/ga4/ecommerce)
+- [GA4 이벤트 파라미터](https://support.google.com/analytics/answer/9267744)
+- [GA4 DebugView](https://support.google.com/analytics/answer/7201382)
