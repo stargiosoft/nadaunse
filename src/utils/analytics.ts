@@ -169,7 +169,26 @@ export const trackViewItem = (item: any) => {
   });
 };
 
-// 6. 결제 시작
+// 6. 장바구니에 추가 (GA4 표준 전자상거래 이벤트)
+// ⭐ 2026-01-26 추가: 구매 여정 퍼널 연결을 위해 필수
+export const trackAddToCart = (item: any) => {
+  trackEvent('add_to_cart', {
+    currency: 'KRW',
+    value: item.discountPrice || item.price || 0,
+    items: [
+      {
+        item_id: item.id?.toString(),
+        item_name: item.title,
+        item_category: item.category,
+        item_variant: item.type === 'paid' ? '심화 해석판' : '무료 체험판',
+        price: item.discountPrice || item.price || 0,
+        quantity: 1,
+      },
+    ],
+  });
+};
+
+// 7. 결제 시작 (GA4 표준 전자상거래 이벤트)
 export const trackBeginCheckout = (item: any) => {
   trackEvent('begin_checkout', {
     currency: 'KRW',
@@ -187,7 +206,7 @@ export const trackBeginCheckout = (item: any) => {
   });
 };
 
-// 7. 결제수단 선택
+// 8. 결제수단 선택
 export const trackAddPaymentInfo = (paymentType: 'kakaopay' | 'card', item: any) => {
   trackEvent('add_payment_info', {
     currency: 'KRW',
@@ -206,12 +225,21 @@ export const trackAddPaymentInfo = (paymentType: 'kakaopay' | 'card', item: any)
   });
 };
 
-// 8. 구매 완료
+// 9. 구매 완료
+// ⭐ 2026-01-26 수정: 0원 결제 시 GA 트래킹 제외
 export const trackPurchase = (
   transactionId: string,
   item: any,
   paymentMethod: string
 ) => {
+  // 0원 결제는 GA 트래킹 제외
+  if (!item.discountPrice || item.discountPrice <= 0) {
+    if (isDevelopment) {
+      console.log('📊 Purchase tracking skipped (0원 결제):', transactionId);
+    }
+    return;
+  }
+
   trackEvent('purchase', {
     transaction_id: transactionId,
     value: item.discountPrice,
@@ -230,7 +258,7 @@ export const trackPurchase = (
   });
 };
 
-// 9. 사주 결과 조회
+// 10. 사주 결과 조회
 export const trackViewResult = (
   itemId: string,
   resultType: 'paid' | 'free',
@@ -243,7 +271,7 @@ export const trackViewResult = (
   });
 };
 
-// 10. 배너 클릭
+// 11. 배너 클릭
 export const trackClickBanner = (bannerId: string, bannerName: string) => {
   trackEvent('click_banner', {
     banner_id: bannerId,
@@ -251,7 +279,7 @@ export const trackClickBanner = (bannerId: string, bannerName: string) => {
   });
 };
 
-// 11. 상품 카드 클릭
+// 12. 상품 카드 클릭
 export const trackClickProduct = (item: any, listName: string = 'product_list') => {
   trackEvent('click_product', {
     item_id: item.id?.toString(),
@@ -260,7 +288,7 @@ export const trackClickProduct = (item: any, listName: string = 'product_list') 
   });
 };
 
-// 12. 필터 변경
+// 13. 필터 변경
 export const trackFilterChange = (filterType: string, filterValue: string) => {
   trackEvent('filter_change', {
     filter_type: filterType,
@@ -268,7 +296,7 @@ export const trackFilterChange = (filterType: string, filterValue: string) => {
   });
 };
 
-// 13. 생년월일 입력 완료
+// 14. 생년월일 입력 완료
 export const trackBirthInfoSubmit = (itemId: string, itemType: 'paid' | 'free') => {
   trackEvent('birth_info_submit', {
     item_id: itemId,
@@ -276,12 +304,12 @@ export const trackBirthInfoSubmit = (itemId: string, itemType: 'paid' | 'free') 
   });
 };
 
-// 14. 약관 동의 완료
+// 15. 약관 동의 완료
 export const trackTermsAgreed = () => {
   trackEvent('terms_agreed');
 };
 
-// 15. 콘텐츠 생성 (마스터)
+// 16. 콘텐츠 생성 (마스터)
 export const trackContentCreate = (contentType: string, contentId?: string) => {
   trackEvent('content_create', {
     content_type: contentType,
@@ -289,7 +317,7 @@ export const trackContentCreate = (contentType: string, contentId?: string) => {
   });
 };
 
-// 16. 로그아웃
+// 17. 로그아웃
 export const trackLogout = () => {
   trackEvent('logout');
 };
@@ -298,17 +326,17 @@ export const trackLogout = () => {
 // 마케팅 퍼널 이벤트 (2026-01-21 추가)
 // ============================================
 
-// 17. 로그인 버튼 클릭
+// 18. 로그인 버튼 클릭
 export const trackLoginClick = (method: 'kakao' | 'google') => {
   trackEvent('login_click', { method });
 };
 
-// 18. 웰컴 쿠폰 발급
+// 19. 웰컴 쿠폰 발급
 export const trackWelcomeCouponIssued = (couponAmount: number = 3000) => {
   trackEvent('welcome_coupon_issued', { coupon_amount: couponAmount });
 };
 
-// 19. 무료 콘텐츠 클릭
+// 20. 무료 콘텐츠 클릭
 export const trackFreeContentClick = (contentId: string, title: string) => {
   trackEvent('free_content_click', {
     content_id: contentId,
@@ -316,7 +344,7 @@ export const trackFreeContentClick = (contentId: string, title: string) => {
   });
 };
 
-// 20. 무료 사주 입력 완료
+// 21. 무료 사주 입력 완료
 export const trackFreeBirthInfoSubmit = (contentId: string, isLoggedIn: boolean) => {
   trackEvent('free_birthinfo_submit', {
     content_id: contentId,
@@ -324,17 +352,17 @@ export const trackFreeBirthInfoSubmit = (contentId: string, isLoggedIn: boolean)
   });
 };
 
-// 21. 무료 결과 조회
+// 22. 무료 결과 조회
 export const trackFreeResultView = (contentId: string) => {
   trackEvent('free_result_view', { content_id: contentId });
 };
 
-// 22. 무료 결과 끝까지 봄
+// 23. 무료 결과 끝까지 봄
 export const trackFreeResultComplete = (contentId: string) => {
   trackEvent('free_result_complete', { content_id: contentId });
 };
 
-// 23. 유료 콘텐츠 상세 조회
+// 24. 유료 콘텐츠 상세 조회
 export const trackPaidContentView = (contentId: string, title: string, price: number) => {
   trackEvent('paid_content_view', {
     content_id: contentId,
@@ -343,7 +371,7 @@ export const trackPaidContentView = (contentId: string, title: string, price: nu
   });
 };
 
-// 24. 구매 버튼 클릭
+// 25. 구매 버튼 클릭
 export const trackPurchaseClick = (contentId: string, title: string, price: number) => {
   trackEvent('purchase_click', {
     content_id: contentId,
@@ -352,7 +380,7 @@ export const trackPurchaseClick = (contentId: string, title: string, price: numb
   });
 };
 
-// 25. 결제 페이지 진입
+// 26. 결제 페이지 진입
 export const trackCheckoutStart = (contentId: string, title: string, price: number) => {
   trackEvent('checkout_start', {
     content_id: contentId,
@@ -361,7 +389,7 @@ export const trackCheckoutStart = (contentId: string, title: string, price: numb
   });
 };
 
-// 26. 쿠폰 적용
+// 27. 쿠폰 적용
 export const trackCouponApply = (
   contentId: string,
   couponType: 'welcome' | 'revisit',
@@ -374,15 +402,17 @@ export const trackCouponApply = (
   });
 };
 
-// 27. 결제 수단 선택
+// 28. 결제 수단 선택
 export const trackPaymentMethodSelect = (method: 'kakaopay' | 'card') => {
   trackEvent('payment_method_select', { method });
 };
 
-// 28. 구매 완료 (GA4 전자상거래 표준 형식 + 쿠폰 정보)
+// 29. 구매 완료 (GA4 전자상거래 표준 형식 + 쿠폰 정보)
 // ⭐ 2026-01-22 수정: items[0].price에 실제 결제 금액(value) 전송
 // - 이전: originalPrice (정가) → GA에서 잘못된 수익 표시
 // - 수정: value (쿠폰 적용 후 최종 결제 금액) → 실제 수익 반영
+// ⭐ 2026-01-26 수정: 0원 결제(쿠폰 100% 할인) 시 GA 트래킹 제외
+// - 실제 매출이 발생한 구매만 추적하여 정확한 수익 분석
 export const trackPurchaseComplete = (params: {
   transactionId: string;
   contentId: string;
@@ -394,6 +424,14 @@ export const trackPurchaseComplete = (params: {
   couponType?: 'welcome' | 'revisit' | null;
   couponAmount?: number;
 }) => {
+  // 0원 결제(쿠폰 100% 할인)는 GA 트래킹 제외
+  if (params.value <= 0) {
+    if (isDevelopment) {
+      console.log('📊 Purchase tracking skipped (0원 결제):', params.transactionId);
+    }
+    return;
+  }
+
   // GA4 전자상거래 표준: items 배열 필수
   trackEvent('purchase', {
     transaction_id: params.transactionId,
@@ -418,7 +456,7 @@ export const trackPurchaseComplete = (params: {
   });
 };
 
-// 29. 유료 결과 조회
+// 30. 유료 결과 조회
 export const trackPaidResultView = (orderId: string, contentId: string) => {
   trackEvent('paid_result_view', {
     order_id: orderId,
@@ -426,7 +464,7 @@ export const trackPaidResultView = (orderId: string, contentId: string) => {
   });
 };
 
-// 30. 유료 결과 끝까지 봄
+// 31. 유료 결과 끝까지 봄
 export const trackPaidResultComplete = (orderId: string, contentId: string) => {
   trackEvent('paid_result_complete', {
     order_id: orderId,
@@ -434,7 +472,7 @@ export const trackPaidResultComplete = (orderId: string, contentId: string) => {
   });
 };
 
-// 31. 재방문 쿠폰 발급
+// 32. 재방문 쿠폰 발급
 export const trackRevisitCouponIssued = (orderId: string, couponAmount: number = 3000) => {
   trackEvent('revisit_coupon_issued', {
     order_id: orderId,

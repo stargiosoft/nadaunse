@@ -13,7 +13,7 @@ import PaymentSkeleton from "./skeletons/PaymentSkeleton";
 import { DEV } from "../lib/env";
 import { preloadLoadingPageImages } from "../lib/imagePreloader";
 import { PageLoader } from "./ui/PageLoader";
-import { trackBeginCheckout, trackPaymentMethodSelect, trackCheckoutStart, trackPurchaseComplete } from "../utils/analytics";
+import { trackAddToCart, trackBeginCheckout, trackPaymentMethodSelect, trackCheckoutStart, trackPurchaseComplete } from "../utils/analytics";
 
 // 포트원 타입 선언
 declare global {
@@ -537,19 +537,27 @@ export default function PaymentNew({
       : 0,
   );
 
-  // 📊 GA4: 결제 시작 이벤트 (begin_checkout)
+  // 📊 GA4: 장바구니 추가 이벤트 (add_to_cart) - 결제 페이지 유입 시
+  // ⭐ 2026-01-26: 0원 결제(쿠폰 100% 할인)는 GA 트래킹 제외
   useEffect(() => {
     if (currentProduct && !isLoadingContent && !isLoadingCoupons) {
-      trackBeginCheckout({
-        id: currentProduct.id,
-        title: currentProduct.title,
-        category: currentProduct.category,
-        type: currentProduct.type,
-        discountPrice: currentProduct.discountPrice,
-      });
-      console.log('📊 [GA4] begin_checkout 이벤트 전송:', currentProduct.title);
+      // totalPrice 계산 (쿠폰 적용 후 최종 금액)
+      const finalPrice = Math.max(0, currentProduct.discountPrice - couponDiscount);
+
+      if (finalPrice > 0) {
+        trackAddToCart({
+          id: currentProduct.id,
+          title: currentProduct.title,
+          category: currentProduct.category,
+          type: currentProduct.type,
+          discountPrice: finalPrice,
+        });
+        console.log('📊 [GA4] add_to_cart 이벤트 전송:', currentProduct.title, '금액:', finalPrice);
+      } else {
+        console.log('📊 [GA4] add_to_cart 스킵 (0원 결제):', currentProduct.title);
+      }
     }
-  }, [currentProduct?.id, isLoadingContent, isLoadingCoupons]);
+  }, [currentProduct?.id, isLoadingContent, isLoadingCoupons, couponDiscount]);
 
   // 포트원 SDK 로드 및 초기화
   useEffect(() => {
@@ -612,6 +620,19 @@ export default function PaymentNew({
     }
 
     const finalContentId = contentId || productId;
+
+    // 📊 GA4: 결제 시작 이벤트 (begin_checkout) - 구매하기 버튼 클릭 시
+    // ⭐ 2026-01-26: 0원 결제는 GA 트래킹 제외
+    if (totalPrice > 0 && currentProduct) {
+      trackBeginCheckout({
+        id: currentProduct.id,
+        title: currentProduct.title,
+        category: currentProduct.category,
+        type: currentProduct.type,
+        discountPrice: totalPrice,
+      });
+      console.log('📊 [GA4] begin_checkout 이벤트 전송:', currentProduct.title, '금액:', totalPrice);
+    }
 
     // ⭐ 0원 결제 && 캐시 있음 → 로딩 표시 안 함 (즉시 페이지 이동)
     let shouldSkipLoading = false;
