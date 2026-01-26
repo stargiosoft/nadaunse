@@ -14,7 +14,7 @@ import { supabase, saveOrder } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
 import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
-import { trackViewItem, trackPurchaseClick } from '../utils/analytics';
+import { trackViewItem, trackPurchaseClick, trackPageView } from '../utils/analytics';
 import SEO from './SEO';
 
 // Animation Variants
@@ -555,9 +555,16 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     incrementViewCount();
   }, [contentId]);
 
-  // 📊 GA4: 제품 보기 이벤트 (view_item)
+  // 📊 GA4: 제품 보기 이벤트 (view_item) + 페이지뷰 (콘텐츠별 타이틀)
   useEffect(() => {
     if (content && !isLoading) {
+      // 콘텐츠별 타이틀로 페이지뷰 트래킹
+      const pageTitle = `[유료] ${content.title} | 나다운세`;
+      document.title = pageTitle;
+      trackPageView(window.location.pathname + window.location.search, pageTitle);
+      console.log('📊 [GA4] page_view 이벤트 전송:', pageTitle);
+
+      // view_item 이벤트
       trackViewItem({
         id: content.id,
         title: content.title,

@@ -289,7 +289,7 @@ function GAInit() {
         return `무료 운세 결과 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/product/') && pathname.includes('/result')) {
-        return `운세 결과 | ${BASE_TITLE}`;
+        return `유료 운세 결과 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/product/')) {
         return `유료 콘텐츠 상세 | ${BASE_TITLE}`;
@@ -319,7 +319,9 @@ function GAInit() {
     // document.title 업데이트
     document.title = pageTitle;
 
-    // GA 페이지뷰 트래킹
+    // GA 페이지뷰 트래킹 (일반 타이틀 - 퍼널 분석용)
+    // 콘텐츠 상세 페이지는 여기서 "유료/무료 콘텐츠 상세"로 트래킹하고,
+    // 각 컴포넌트에서 "[유료/무료] 콘텐츠명"으로 추가 트래킹 (개별 콘텐츠 분석용)
     trackPageView(location.pathname + location.search, pageTitle);
   }, [location]);
 

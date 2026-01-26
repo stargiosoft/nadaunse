@@ -43,6 +43,7 @@ import {
   BottomButton,
   PaidContentCard
 } from './FreeContentDetailComponents';
+import { trackPageView, trackViewItem } from '../utils/analytics';
 
 /**
  * Props 인터페이스
@@ -147,6 +148,29 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     window.scrollTo(0, 0);
     console.log('🔝 [FreeContentDetail] 스크롤 최상단으로 이동');
   }, [contentId]); // contentId가 바뀔 때마다 최상단으로
+
+  /**
+   * 📊 GA4: 페이지뷰 + 제품 보기 이벤트 (콘텐츠별 타이틀)
+   */
+  useEffect(() => {
+    if (content && !loading) {
+      // 콘텐츠별 타이틀로 페이지뷰 트래킹
+      const pageTitle = `[무료] ${content.title} | 나다운세`;
+      document.title = pageTitle;
+      trackPageView(window.location.pathname + window.location.search, pageTitle);
+      console.log('📊 [GA4] page_view 이벤트 전송:', pageTitle);
+
+      // view_item 이벤트
+      trackViewItem({
+        id: content.id,
+        title: content.title,
+        category: content.category_main,
+        type: 'free',
+        discountPrice: 0,
+      });
+      console.log('📊 [GA4] view_item 이벤트 전송:', content.title);
+    }
+  }, [content?.id, loading]);
 
   /**
    * ⭐ 백그라운드 프리페칭: 사용자가 콘텐츠를 보는 동안 10개 미리 로드
