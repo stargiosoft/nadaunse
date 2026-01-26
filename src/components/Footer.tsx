@@ -42,7 +42,7 @@ export default function Footer({ onNavigateToTerms, onNavigateToPrivacy }: Foote
                     <p className="relative shrink-0 w-full">대표자 서지현 | 사업자등록번호 827-88-01815</p>
                     <p className="relative shrink-0 w-full">통신판매업번호 2024-서울영등포-2084</p>
                     <p className="relative shrink-0 w-full">서울시 영등포구 양평로 149, 1507호</p>
-                    <p className="relative shrink-0 w-full">문의 stargiosoft@gmail.com</p>
+                    <p className="relative shrink-0 w-full">문의 stargiosoft2@gmail.com</p>
                   </div>
                 </div>
               </div>
