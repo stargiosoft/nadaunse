@@ -805,7 +805,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   return (
     <>
       <SEO
-        title={content.title}
+        title={`[유료] ${content.title}`}
         description={content.description || `${content.title} - AI가 분석하는 나만의 운세`}
         canonical={`/product/${contentId}`}
         ogImage={content.thumbnail_url}

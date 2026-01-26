@@ -292,22 +292,22 @@ function GAInit() {
         return `운세 결과 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/product/')) {
-        return `상품 상세 | ${BASE_TITLE}`;
+        return `유료 콘텐츠 상세 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/free/content/')) {
-        return `무료 운세 | ${BASE_TITLE}`;
+        return `무료 콘텐츠 상세 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/master/content/detail/') && pathname.endsWith('/payment')) {
         return `결제 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/master/content/detail/')) {
-        return `콘텐츠 상세 | ${BASE_TITLE}`;
+        return `유료 콘텐츠 상세 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/master/content/') && pathname.includes('/birthinfo')) {
         return `사주 정보 입력 | ${BASE_TITLE}`;
       }
       if (pathname.startsWith('/master/content/')) {
-        return `콘텐츠 상세 | ${BASE_TITLE}`;
+        return `유료 콘텐츠 상세 | ${BASE_TITLE}`;
       }
 
       // 기본값

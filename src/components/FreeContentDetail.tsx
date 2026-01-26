@@ -498,7 +498,7 @@ export default function FreeContentDetail({
   return (
     <>
       <SEO
-        title={content.title}
+        title={`[무료] ${content.title}`}
         description={content.description || `${content.title} - 무료로 보는 AI 운세`}
         canonical={`/product/${contentId}`}
         ogImage={content.thumbnail_url}
