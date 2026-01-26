@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-23
-> **주요 결정**: generate-content-answers 병렬 처리 롤백
+> **최종 업데이트**: 2026-01-26
+> **주요 결정**: Blob URL revoke 완전 제거, 즉시 네비게이션 패턴
 
 ---
 
@@ -13,6 +13,113 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-26
+
+### UnifiedResultPage에서 URL.revokeObjectURL() 완전 제거
+
+**결정**: `UnifiedResultPage.tsx`에서 모든 `URL.revokeObjectURL()` 호출을 제거하고, Blob URL 생명주기를 `blobUrlCache` 모듈에서 전역 관리
+
+**배경**:
+- 유료 결제 후 타로 결과 페이지에서 `GET blob:https://nadaunse.com/xxx net::ERR_FILE_NOT_FOUND` 에러 발생
+- `requestAnimationFrame`으로 revoke 지연 시도했으나 여전히 에러 발생 (스테이징 검증)
+
+**근본 원인**:
+```typescript
+// React의 비동기 상태 업데이트 타이밍 문제
+setCardBackImage(newBlobUrl);  // 1. state 업데이트 "예약"
+URL.revokeObjectURL(oldBlobUrl);  // 2. 즉시 실행 - 이전 URL 해제
+
+// 문제: React가 DOM을 업데이트하기 전에 revoke가 실행됨
+// → 브라우저가 아직 oldBlobUrl을 렌더링 중인데 해당 URL이 이미 무효화됨
+```
+
+**해결 방식**:
+```typescript
+// ❌ 기존 (문제)
+if (previousBlobUrlRef.current?.startsWith('blob:')) {
+  URL.revokeObjectURL(previousBlobUrlRef.current);
+  previousBlobUrlRef.current = null;
+}
+
+// ✅ 변경 (해결)
+// Blob URL은 blobUrlCache에서 전역 관리 - 컴포넌트에서 revoke하지 않음
+previousBlobUrlRef.current = null;
+```
+
+**메모리 영향 분석**:
+- 타로 카드: 78장 × ~100KB = ~7.8MB (최대)
+- 실제 사용: 세션당 ~10장 = ~1MB
+- blobUrlCache에서 캐시 만료 시 자동 정리
+- 모바일 브라우저도 무리 없는 수준
+
+**영향 범위**:
+- `src/components/UnifiedResultPage.tsx`: 모든 `URL.revokeObjectURL()` 호출 제거
+- `src/lib/blobUrlCache.ts`: 기존 전역 관리 유지 (변경 없음)
+
+**커밋**: `22cf0cb9`
+
+---
+
+### TarotShufflePage "선택 완료" 버튼 즉시 네비게이션 패턴
+
+**결정**: 카드 선택 후 "선택 완료" 버튼 클릭 시 DB 업데이트를 기다리지 않고 즉시 결과 페이지로 이동
+
+**배경**:
+- 사용자가 "선택 완료" 버튼을 클릭해도 즉시 반응이 없음
+- Supabase 쿼리(~400ms) 완료 후에야 네비게이션 실행
+
+**기존 방식 (문제)**:
+```typescript
+const handleConfirmCard = async () => {
+  setIsSavingCard(true);
+
+  // ❌ Supabase 쿼리 완료까지 대기 (~400ms)
+  const { data: orderResults } = await supabase
+    .from('order_results')
+    .select('question_order')
+    .eq('order_id', orderId);
+
+  // ❌ 추가 쿼리 및 업데이트...
+  await supabase.from('order_results').update({...});
+
+  // 여기서야 네비게이션 실행
+  navigate(`/result?orderId=${orderId}...`);
+};
+```
+
+**변경 방식 (해결)**:
+```typescript
+const handleConfirmCard = async () => {
+  if (!orderId || isSavingCard) return;
+  setIsSavingCard(true);
+
+  // ✅ 즉시 결과 페이지로 이동 (사용자 체감 즉각 반응)
+  navigate(`/result?orderId=${orderId}&questionOrder=${questionOrder}...`, { replace: true });
+
+  // ✅ 백그라운드에서 DB 업데이트 (실패해도 UX 영향 없음)
+  try {
+    await supabase.from('order_results')
+      .update({ tarot_user_viewed: true })
+      .eq('order_id', orderId)
+      .eq('question_order', questionOrder);
+  } catch (error) {
+    console.error('tarot_user_viewed 업데이트 실패:', error);
+    // 결과 페이지 이동은 이미 완료 - 에러 무시
+  }
+};
+```
+
+**UX 개선**:
+- 버튼 클릭 → 즉시 페이지 전환 (0ms 체감)
+- DB 업데이트는 백그라운드 처리
+
+**영향 범위**:
+- `src/components/TarotShufflePage.tsx`: `handleConfirmCard` 함수 수정
+
+**커밋**: `0933fa43`
 
 ---
 
