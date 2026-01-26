@@ -305,16 +305,9 @@ export default function UnifiedResultPage() {
       if (!currentResult || currentResult.question_type !== 'tarot' || !currentResult.tarot_card_name) {
         setCardImageUrl('');
         setImageLoading(false);
-        // ⭐ 비타로 카드로 전환 시 이전 Blob URL revoke (DOM 업데이트 후 지연 실행)
-        if (previousBlobUrlRef.current?.startsWith('blob:')) {
-          const urlToRevoke = previousBlobUrlRef.current;
-          previousBlobUrlRef.current = null;
-          // React state 업데이트 후 DOM이 갱신된 다음 revoke (ERR_FILE_NOT_FOUND 방지)
-          requestAnimationFrame(() => {
-            console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (비타로, 지연):', urlToRevoke.substring(0, 50));
-            URL.revokeObjectURL(urlToRevoke);
-          });
-        }
+        // ⭐ Blob URL은 blobUrlCache에서 전역 관리 - 컴포넌트에서 revoke하지 않음
+        // (revoke 시 React 비동기 업데이트로 ERR_FILE_NOT_FOUND 발생 가능)
+        previousBlobUrlRef.current = null;
         return;
       }
 
@@ -346,14 +339,7 @@ export default function UnifiedResultPage() {
       if (cachedImage) {
         console.log('⚡ [UnifiedResultPage] 이미지 캐시 히트 (Blob URL):', currentResult.tarot_card_name);
 
-        // ⭐ 새 이미지 설정 전 이전 Blob URL revoke (DOM 업데이트 후 지연 실행)
-        if (previousBlobUrlRef.current?.startsWith('blob:') && previousBlobUrlRef.current !== cachedImage) {
-          const urlToRevoke = previousBlobUrlRef.current;
-          requestAnimationFrame(() => {
-            console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (지연):', urlToRevoke.substring(0, 50));
-            URL.revokeObjectURL(urlToRevoke);
-          });
-        }
+        // ⭐ Blob URL은 blobUrlCache에서 전역 관리 - 컴포넌트에서 revoke하지 않음
 
         // ⭐ 새 Blob URL 저장
         previousBlobUrlRef.current = cachedImage;
@@ -370,15 +356,8 @@ export default function UnifiedResultPage() {
         console.log('🌐 [UnifiedResultPage] 네트워크 로드:', currentResult.tarot_card_name);
         const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
 
-        // ⭐ 네트워크 로드 시에도 이전 Blob URL revoke (DOM 업데이트 후 지연 실행)
-        if (previousBlobUrlRef.current?.startsWith('blob:')) {
-          const urlToRevoke = previousBlobUrlRef.current;
-          previousBlobUrlRef.current = null;
-          requestAnimationFrame(() => {
-            console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (네트워크, 지연):', urlToRevoke.substring(0, 50));
-            URL.revokeObjectURL(urlToRevoke);
-          });
-        }
+        // ⭐ Blob URL은 blobUrlCache에서 전역 관리 - 컴포넌트에서 revoke하지 않음
+        previousBlobUrlRef.current = null;
 
         setCardImageUrl(storageUrl);
         cacheTarotImage(currentResult.tarot_card_name, storageUrl).catch(() => {});
@@ -394,16 +373,9 @@ export default function UnifiedResultPage() {
     };
   }, [currentResult?.question_order, currentResult?.tarot_card_name]);
 
-  // ⭐ 컴포넌트 unmount 시 마지막 Blob URL revoke
-  useEffect(() => {
-    return () => {
-      if (previousBlobUrlRef.current?.startsWith('blob:')) {
-        console.log('🗑️ [UnifiedResultPage] 컴포넌트 unmount - Blob URL revoke:', previousBlobUrlRef.current.substring(0, 50));
-        URL.revokeObjectURL(previousBlobUrlRef.current);
-        previousBlobUrlRef.current = null;
-      }
-    };
-  }, []); // empty dependency = unmount 시에만 cleanup 실행
+  // ⭐ Blob URL은 blobUrlCache에서 전역 관리
+  // 컴포넌트 unmount 시에도 revoke하지 않음 (ERR_FILE_NOT_FOUND 방지)
+  // 페이지 새로고침/앱 종료 시 자동 해제됨
 
   // ⭐ 이미지 로드 실패 시 재시도 + 폴백 처리
   const handleImageError = async () => {
@@ -421,12 +393,8 @@ export default function UnifiedResultPage() {
     for (let i = 0; i < MAX_RETRIES; i++) {
       console.log(`🔄 [UnifiedResultPage] 캐시 재시도 ${i + 1}/${MAX_RETRIES}:`, currentResult.tarot_card_name);
 
-      // 이전 Blob URL revoke (지연 실행)
-      if (previousBlobUrlRef.current?.startsWith('blob:')) {
-        const urlToRevoke = previousBlobUrlRef.current;
-        previousBlobUrlRef.current = null;
-        requestAnimationFrame(() => URL.revokeObjectURL(urlToRevoke));
-      }
+      // ⭐ Blob URL은 blobUrlCache에서 전역 관리 - revoke하지 않음
+      previousBlobUrlRef.current = null;
 
       // 캐시에서 새로운 Blob URL 생성
       const cachedImage = await getCachedTarotImage(currentResult.tarot_card_name);
@@ -445,12 +413,8 @@ export default function UnifiedResultPage() {
     if (!usedFallback) {
       console.log('⚠️ [UnifiedResultPage] 캐시 재시도 모두 실패 → Storage URL 폴백:', currentResult.tarot_card_name);
 
-      // 이전 Blob URL revoke (지연 실행)
-      if (previousBlobUrlRef.current?.startsWith('blob:')) {
-        const urlToRevoke = previousBlobUrlRef.current;
-        previousBlobUrlRef.current = null;
-        requestAnimationFrame(() => URL.revokeObjectURL(urlToRevoke));
-      }
+      // ⭐ Blob URL은 blobUrlCache에서 전역 관리 - revoke하지 않음
+      previousBlobUrlRef.current = null;
 
       const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
       setCardImageUrl(storageUrl);
