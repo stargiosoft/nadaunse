@@ -4,7 +4,7 @@
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-01-26
-> **주요 결정**: Blob URL revoke 완전 제거, 즉시 네비게이션 패턴
+> **주요 결정**: Edge Function Cold Start Warm-up, Blob URL revoke 완전 제거, 즉시 네비게이션 패턴
 
 ---
 
@@ -120,6 +120,46 @@ const handleConfirmCard = async () => {
 - `src/components/TarotShufflePage.tsx`: `handleConfirmCard` 함수 수정
 
 **커밋**: `0933fa43`
+
+---
+
+### Edge Function Cold Start 방지를 위한 Warm-up
+
+**결정**: 앱 로드 시 `/users` Edge Function에 OPTIONS preflight 요청을 보내 Cold Start 방지
+
+**배경**:
+- 프로덕션에서 카카오 로그인 시 3초+ 지연 발생
+- `/users` Edge Function의 Cold Start가 주요 원인
+- Edge Function이 일정 시간 호출되지 않으면 "잠든" 상태가 되어 첫 호출 시 초기화 시간 발생
+
+**해결 방식**:
+```typescript
+// App.tsx - 앱 로드 시 warm-up
+useEffect(() => {
+  const warmupEdgeFunctions = async () => {
+    try {
+      // OPTIONS preflight 요청으로 함수만 로드 (실제 로직 실행 안 함)
+      await fetch(`https://${projectId}.supabase.co/functions/v1/users`, {
+        method: 'OPTIONS',
+      });
+      console.log('⚡ Edge Function warm-up 완료');
+    } catch {
+      console.debug('⚡ Edge Function warm-up 실패 (무시됨)');
+    }
+  };
+  warmupEdgeFunctions();
+}, []);
+```
+
+**장점**:
+- 사용자가 앱에 접속하면 백그라운드로 Edge Function "예열"
+- 카카오 로그인 시 이미 함수가 "따뜻한" 상태이므로 즉시 응답
+- OPTIONS 요청은 실제 비즈니스 로직을 실행하지 않아 안전
+
+**영향 범위**:
+- `src/App.tsx`: warm-up useEffect 추가
+
+**커밋**: `1fcb5433`
 
 ---
 
