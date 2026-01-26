@@ -10,6 +10,7 @@ import { imgGroup, imgGroup1, imgGroup2, imgGroup3 } from "../imports/svg-cp95o"
 import { projectId } from '../utils/supabase/info';
 import { trackLoginClick, setUserId as setGAUserId } from '../utils/analytics';
 import SEO from './SEO';
+import { PageLoader } from './ui/PageLoader';
 
 declare global {
   interface Window {
@@ -502,6 +503,7 @@ export default function LoginPageNew({
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [lastLoginProvider, setLastLoginProviderState] = useState<'kakao' | 'google' | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     const provider = getLastLoginProvider();
@@ -573,22 +575,25 @@ export default function LoginPageNew({
   const handleKakaoLogin = async () => {
     console.log('🔐 카카오 로그인 시도');
     trackLoginClick('kakao'); // 📊 GA 이벤트
-    
+
     // 🔒 다른 제공자로 이미 가입한 경우 체크
     const existingProvider = getLastLoginProvider();
     const existingEmail = getLastLoginEmail();
-    
+
     if (existingProvider && existingProvider !== 'kakao' && existingEmail) {
       console.log(`⚠️ 이미 ${existingProvider}로 가입됨 → 기가입자 페이지로 이동`);
       onNavigateToExistingAccount(existingProvider);
       return;
     }
-    
+
     // SDK 체크
     if (!window.Kakao?.isInitialized()) {
-      alert('카카오 SDK 아직 초기화되지 않았습니다.\\n페이지를 새로고침 후 다시 시도해주세요.');
+      alert('카카오 SDK 아직 초기화되지 않았습니다.\n페이지를 새로고침 후 다시 시도해주세요.');
       return;
     }
+
+    // ⭐ 로딩 상태 시작
+    setIsLoggingIn(true);
 
     try {
       // /lib/auth.ts의 signInWithKakao 사용
@@ -685,13 +690,14 @@ export default function LoginPageNew({
       throw new Error(result.error || 'Edge Function 호출 실패');
     } catch (error: any) {
       console.error('❌ 카카오 로그인 실패:', error);
-      
+      setIsLoggingIn(false); // ⭐ 로딩 상태 해제
+
       // 사용자가 취소한 경우
       if (error?.error === 'access_denied') {
         console.log('ℹ️ 사용자가 로그인을 취소했습니다.');
         return;
       }
-      
+
       console.error('로그인 에러:', error);
       alert('로그인에 실패했습니다. 다시 시도해주세요.');
     }
@@ -728,11 +734,16 @@ export default function LoginPageNew({
     }
   };
 
+  // ⭐ 로그인 진행 중일 때 공통 로딩 화면 표시
+  if (isLoggingIn) {
+    return <PageLoader message="로그인 중..." />;
+  }
+
   return (
     <>
       <SEO title="로그인" noIndex={true} />
-      <div 
-        className="bg-white relative w-full h-[100vh] overflow-y-auto overflow-x-hidden flex justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" 
+      <div
+        className="bg-white relative w-full h-[100vh] overflow-y-auto overflow-x-hidden flex justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         data-name="첫 로그인 (카카오)"
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >

@@ -4,7 +4,8 @@ import { isTestMode, getTestUser, getTestSession } from './testAuth';
 import { logger } from './logger';
 import { fetchWithRetry } from './fetchWithRetry';
 
-const supabaseUrl = `https://${projectId}.supabase.co`;
+// VITE_SUPABASE_URL이 있으면 사용 (로컬 Docker 등), 없으면 projectId 기반 URL 생성
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || `https://${projectId}.supabase.co`;
 const supabaseKey = publicAnonKey;
 
 export { supabaseUrl, supabaseKey };
