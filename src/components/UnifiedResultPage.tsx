@@ -305,22 +305,15 @@ export default function UnifiedResultPage() {
       if (!currentResult || currentResult.question_type !== 'tarot' || !currentResult.tarot_card_name) {
         setCardImageUrl('');
         setImageLoading(false);
-        // ⭐ 비타로 카드로 전환 시 이전 Blob URL revoke
+        // ⭐ 비타로 카드로 전환 시 이전 Blob URL revoke (DOM 업데이트 후 지연 실행)
         if (previousBlobUrlRef.current?.startsWith('blob:')) {
-          console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (비타로):', {
-            blobUrl: previousBlobUrlRef.current.substring(0, 50),
-            reason: !currentResult ? 'currentResult is null/undefined' :
-                    currentResult.question_type !== 'tarot' ? `question_type is ${currentResult.question_type}` :
-                    'tarot_card_name is missing',
-            currentQuestionOrder,
-            currentResult: currentResult ? {
-              question_order: currentResult.question_order,
-              question_type: currentResult.question_type,
-              tarot_card_name: currentResult.tarot_card_name
-            } : null
-          });
-          URL.revokeObjectURL(previousBlobUrlRef.current);
+          const urlToRevoke = previousBlobUrlRef.current;
           previousBlobUrlRef.current = null;
+          // React state 업데이트 후 DOM이 갱신된 다음 revoke (ERR_FILE_NOT_FOUND 방지)
+          requestAnimationFrame(() => {
+            console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (비타로, 지연):', urlToRevoke.substring(0, 50));
+            URL.revokeObjectURL(urlToRevoke);
+          });
         }
         return;
       }
@@ -353,10 +346,13 @@ export default function UnifiedResultPage() {
       if (cachedImage) {
         console.log('⚡ [UnifiedResultPage] 이미지 캐시 히트 (Blob URL):', currentResult.tarot_card_name);
 
-        // ⭐ 새 이미지 설정 전 이전 Blob URL revoke
+        // ⭐ 새 이미지 설정 전 이전 Blob URL revoke (DOM 업데이트 후 지연 실행)
         if (previousBlobUrlRef.current?.startsWith('blob:') && previousBlobUrlRef.current !== cachedImage) {
-          console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke:', previousBlobUrlRef.current.substring(0, 50));
-          URL.revokeObjectURL(previousBlobUrlRef.current);
+          const urlToRevoke = previousBlobUrlRef.current;
+          requestAnimationFrame(() => {
+            console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (지연):', urlToRevoke.substring(0, 50));
+            URL.revokeObjectURL(urlToRevoke);
+          });
         }
 
         // ⭐ 새 Blob URL 저장
@@ -374,11 +370,14 @@ export default function UnifiedResultPage() {
         console.log('🌐 [UnifiedResultPage] 네트워크 로드:', currentResult.tarot_card_name);
         const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
 
-        // ⭐ 네트워크 로드 시에도 이전 Blob URL revoke
+        // ⭐ 네트워크 로드 시에도 이전 Blob URL revoke (DOM 업데이트 후 지연 실행)
         if (previousBlobUrlRef.current?.startsWith('blob:')) {
-          console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (네트워크):', previousBlobUrlRef.current.substring(0, 50));
-          URL.revokeObjectURL(previousBlobUrlRef.current);
+          const urlToRevoke = previousBlobUrlRef.current;
           previousBlobUrlRef.current = null;
+          requestAnimationFrame(() => {
+            console.log('🗑️ [UnifiedResultPage] 이전 Blob URL revoke (네트워크, 지연):', urlToRevoke.substring(0, 50));
+            URL.revokeObjectURL(urlToRevoke);
+          });
         }
 
         setCardImageUrl(storageUrl);
@@ -422,10 +421,11 @@ export default function UnifiedResultPage() {
     for (let i = 0; i < MAX_RETRIES; i++) {
       console.log(`🔄 [UnifiedResultPage] 캐시 재시도 ${i + 1}/${MAX_RETRIES}:`, currentResult.tarot_card_name);
 
-      // 이전 Blob URL revoke
+      // 이전 Blob URL revoke (지연 실행)
       if (previousBlobUrlRef.current?.startsWith('blob:')) {
-        URL.revokeObjectURL(previousBlobUrlRef.current);
+        const urlToRevoke = previousBlobUrlRef.current;
         previousBlobUrlRef.current = null;
+        requestAnimationFrame(() => URL.revokeObjectURL(urlToRevoke));
       }
 
       // 캐시에서 새로운 Blob URL 생성
@@ -445,10 +445,11 @@ export default function UnifiedResultPage() {
     if (!usedFallback) {
       console.log('⚠️ [UnifiedResultPage] 캐시 재시도 모두 실패 → Storage URL 폴백:', currentResult.tarot_card_name);
 
-      // 이전 Blob URL revoke
+      // 이전 Blob URL revoke (지연 실행)
       if (previousBlobUrlRef.current?.startsWith('blob:')) {
-        URL.revokeObjectURL(previousBlobUrlRef.current);
+        const urlToRevoke = previousBlobUrlRef.current;
         previousBlobUrlRef.current = null;
+        requestAnimationFrame(() => URL.revokeObjectURL(urlToRevoke));
       }
 
       const storageUrl = getTarotCardImageUrl(currentResult.tarot_card_name, supabaseUrl);
