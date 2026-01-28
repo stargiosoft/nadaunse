@@ -8,7 +8,7 @@ import TableOfContentsBottomSheet from './TableOfContentsBottomSheet';
 import { BottomNavigation } from './BottomNavigation';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PageLoader } from './ui/PageLoader';
-import { trackPaidResultView, trackPaidResultComplete } from '../utils/analytics';
+import { trackPaidResultView, trackPaidResultComplete, trackPageView } from '../utils/analytics';
 
 interface ResultItem {
   question_order: number;
@@ -230,8 +230,24 @@ export default function UnifiedResultPage() {
           setContentId(orderData.content_id);
         }
 
-        // 📊 GA 이벤트: 유료 결과 조회
+        // 📊 GA 이벤트: 유료 결과 조회 (orderId당 최초 1회만 page_view 전송)
         if (orderId && effectiveContentId) {
+          const viewedOrdersKey = 'viewed_paid_result_orders';
+          const viewedOrders: string[] = JSON.parse(localStorage.getItem(viewedOrdersKey) || '[]');
+
+          if (!viewedOrders.includes(orderId)) {
+            // ⭐ 최초 조회 시에만 page_view 전송 (구매 내역 재조회 시 제외)
+            trackPageView('/result', '운세 결과 | 나다운세');
+            console.log('📊 [UnifiedResultPage] 최초 결과 조회 page_view 전송:', orderId);
+
+            // 본 주문 목록에 추가
+            viewedOrders.push(orderId);
+            localStorage.setItem(viewedOrdersKey, JSON.stringify(viewedOrders));
+          } else {
+            console.log('📊 [UnifiedResultPage] 재조회 - page_view 스킵:', orderId);
+          }
+
+          // paid_result_view 커스텀 이벤트는 항상 전송 (재조회 포함)
           trackPaidResultView(orderId, effectiveContentId);
         }
 
