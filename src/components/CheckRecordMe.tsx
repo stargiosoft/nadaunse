@@ -101,13 +101,48 @@ export default function CheckRecordMe({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // ⭐ 본인 사주 레코드 (phone_number 확인용)
-  const [mySajuRecord, setMySajuRecord] = useState<SajuRecord | null>(null);
-  const [needsPhoneNumber, setNeedsPhoneNumber] = useState(false);
-  const [isCheckingPhone, setIsCheckingPhone] = useState(true);
+  // ⭐ 본인 사주 레코드 (phone_number 확인용) - 캐시 우선 로드
+  // 🚀 동기적 캐시 확인 (로딩 딜레이 방지)
+  const getInitialPhoneCheckState = () => {
+    try {
+      // primary_saju 캐시에서 phone_number 확인
+      const primarySajuJson = localStorage.getItem('primary_saju');
+      if (primarySajuJson) {
+        const primarySaju = JSON.parse(primarySajuJson);
+        // notes가 '본인'인지 확인 (대부분의 경우 primary_saju가 본인)
+        if (primarySaju && primarySaju.notes === '본인') {
+          console.log('🚀 [CheckRecordMe] 캐시에서 phone_number 확인:', primarySaju.phone_number ? '있음' : '없음');
+          return {
+            mySajuRecord: primarySaju,
+            needsPhoneNumber: !primarySaju.phone_number,
+            isCheckingPhone: false // 캐시 있으면 체크 완료
+          };
+        }
+      }
+    } catch (e) {
+      console.error('❌ [CheckRecordMe] 캐시 파싱 실패:', e);
+    }
+    // 캐시 없으면 API 호출 필요
+    return {
+      mySajuRecord: null,
+      needsPhoneNumber: false,
+      isCheckingPhone: true
+    };
+  };
 
-  // ⭐ 마운트 시 saju_records에서 note='본인'인 레코드의 phone_number 확인
+  const initialPhoneState = getInitialPhoneCheckState();
+  const [mySajuRecord, setMySajuRecord] = useState<SajuRecord | null>(initialPhoneState.mySajuRecord);
+  const [needsPhoneNumber, setNeedsPhoneNumber] = useState(initialPhoneState.needsPhoneNumber);
+  const [isCheckingPhone, setIsCheckingPhone] = useState(initialPhoneState.isCheckingPhone);
+
+  // ⭐ 캐시 미스 시에만 API 호출 (백그라운드 검증)
   useEffect(() => {
+    // 캐시에서 이미 확인 완료했으면 스킵
+    if (!initialPhoneState.isCheckingPhone) {
+      console.log('✅ [CheckRecordMe] 캐시에서 phone_number 확인 완료 → API 호출 스킵');
+      return;
+    }
+
     const checkPhoneNumber = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
