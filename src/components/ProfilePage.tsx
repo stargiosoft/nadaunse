@@ -98,6 +98,32 @@ function TextDivider() {
   );
 }
 
+// ⭐ 메뉴 아이콘들 (Figma 디자인 - 이미지 사용)
+function TagIcon() {
+  return <img src="/icon-tag.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+}
+
+function ReceiptIcon() {
+  return <img src="/icon-receipt.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+}
+
+function FolderIcon() {
+  return <img src="/icon-folder.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+}
+
+function LogoutIcon() {
+  return <img src="/icon-logout.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+}
+
+function MessageCircleIcon() {
+  return <img src="/icon-message.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+}
+
+// 메뉴용 Arrow Right 아이콘 (24px, 회색)
+function MenuArrowRightIcon() {
+  return <img src="/icon-arrow-right.svg" alt="" className="block size-full" />;
+}
+
 // 생년월일시 포맷팅 (예: "양력 1991.12.25")
 function formatBirthDate(birthDate: string, calendarType?: string): string {
   // ISO 형식에서 날짜 부분만 추출: "1991-12-25T09:00:00+09:00" -> "1991-12-25"
@@ -130,10 +156,29 @@ export default function ProfilePage({
     try {
       const cachedUserJson = localStorage.getItem('user');
       const cachedSajuJson = localStorage.getItem('primary_saju');
+      const cachedTagsJson = localStorage.getItem('trait_tags_cache');
 
       if (cachedUserJson) {
         const cachedUser = JSON.parse(cachedUserJson);
         const cachedSaju = cachedSajuJson ? JSON.parse(cachedSajuJson) : null;
+
+        // ⭐ 태그 캐시 로드 (만료 시간 체크: 5분, refresh 플래그 체크)
+        let cachedTags: { id: string; tag_name: string }[] = [];
+        let cachedTotalCount = 0;
+        let hasValidTagCache = false;
+
+        // 🚀 refresh 플래그가 있으면 캐시 무효화
+        const needsTagRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+
+        if (cachedTagsJson && !needsTagRefresh) {
+          const tagCache = JSON.parse(cachedTagsJson);
+          const EXPIRY_MS = 5 * 60 * 1000; // 5분
+          if (Date.now() - tagCache.timestamp < EXPIRY_MS) {
+            cachedTags = tagCache.tags || [];
+            cachedTotalCount = tagCache.totalCount || 0;
+            hasValidTagCache = true;
+          }
+        }
 
         // ⭐ 유효성 검사: user 정보와 primary_saju 정보가 모두 있어야 완전한 캐시로 간주
         const hasValidCache = !!(cachedUser && cachedSaju);
@@ -141,6 +186,7 @@ export default function ProfilePage({
         console.log('🚀 [ProfilePage] 초기화 시 캐시 확인');
         console.log('  - User 정보:', cachedUser ? '있음' : '없음');
         console.log('  - Primary Saju:', cachedSaju ? '있음' : '없음');
+        console.log('  - Trait Tags:', hasValidTagCache ? `${cachedTags.length}개 (총 ${cachedTotalCount}개)` : '없음');
         console.log('  - 유효한 캐시:', hasValidCache ? 'YES' : 'NO');
 
         // ⭐ 완전한 캐시가 있으면 → 즉시 렌더링 (로딩 스킵)
@@ -150,7 +196,10 @@ export default function ProfilePage({
           isMaster: cachedUser.role === 'master',
           primarySaju: cachedSaju,
           isLoadingSaju: !hasValidCache, // 유효한 캐시가 없으면 로딩 표시
-          hasCache: hasValidCache // user + primary_saju가 모두 있어야 true
+          hasCache: hasValidCache, // user + primary_saju가 모두 있어야 true
+          traitTags: cachedTags,
+          totalTagCount: cachedTotalCount,
+          isLoadingTags: !hasValidTagCache // 태그 캐시가 없으면 로딩 표시
         };
       }
     } catch (e) {
@@ -161,7 +210,10 @@ export default function ProfilePage({
       isMaster: false,
       primarySaju: null,
       isLoadingSaju: true, // 캐시가 없으면 로딩 표시
-      hasCache: false
+      hasCache: false,
+      traitTags: [],
+      totalTagCount: 0,
+      isLoadingTags: true
     };
   };
 
@@ -182,6 +234,10 @@ export default function ProfilePage({
   const [isLoadingSaju, setIsLoadingSaju] = useState(initialState.isLoadingSaju);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  // 🚀 태그도 캐시에서 초기화 (로딩 플래시 방지)
+  const [traitTags, setTraitTags] = useState<{ id: string; tag_name: string }[]>(initialState.traitTags);
+  const [totalTagCount, setTotalTagCount] = useState(initialState.totalTagCount);
+  const [isLoadingTags, setIsLoadingTags] = useState(initialState.isLoadingTags);
 
   const navigate = useNavigate(); // ⭐ useNavigate 사용
 
@@ -344,7 +400,173 @@ export default function ProfilePage({
 
     loadUser();
   }, []);
-  
+
+  // ⭐ 나다움 태그 로드 (최신 3개) - 캐싱 전략 적용
+  useEffect(() => {
+    const loadTraitTags = async () => {
+      try {
+        // 🚀 캐시가 있고 refresh 불필요하면 API 호출 스킵
+        const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+        if (!initialState.isLoadingTags && !needsRefresh) {
+          console.log('✅ [TraitTags] 유효한 캐시 존재 → API 호출 스킵');
+          return;
+        }
+
+        if (needsRefresh) {
+          localStorage.removeItem('trait_tags_needs_refresh');
+          console.log('🔄 [TraitTags] refresh 플래그 감지 → API 호출');
+        }
+
+        setIsLoadingTags(true);
+
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          setTraitTags([]);
+          setTotalTagCount(0);
+          localStorage.removeItem('trait_tags_cache');
+          return;
+        }
+
+        // 태그 3개 + 전체 개수 병렬 조회 (확정된 태그만)
+        const [tagsResult, countResult] = await Promise.all([
+          supabase
+            .from('user_trait_tags')
+            .select('id, tag_name, created_at')
+            .eq('user_id', authUser.id)
+            .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+            .order('created_at', { ascending: false })
+            .limit(3),
+          supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', authUser.id)
+            .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+        ]);
+
+        if (tagsResult.error) {
+          console.error('❌ 나다움 태그 로드 실패:', tagsResult.error);
+          setTraitTags([]);
+          setTotalTagCount(0);
+          localStorage.removeItem('trait_tags_cache');
+          return;
+        }
+
+        const tags = tagsResult.data || [];
+        const totalCount = countResult.count || 0;
+
+        setTraitTags(tags);
+        setTotalTagCount(totalCount);
+
+        // 🚀 캐시에 저장 (만료 시간 포함)
+        localStorage.setItem('trait_tags_cache', JSON.stringify({
+          tags,
+          totalCount,
+          timestamp: Date.now()
+        }));
+        console.log('✅ 나다움 태그 로드 완료:', tags, '전체:', totalCount);
+      } catch (error) {
+        console.error('❌ 나다움 태그 로드 중 오류:', error);
+        setTraitTags([]);
+        setTotalTagCount(0);
+        localStorage.removeItem('trait_tags_cache');
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    loadTraitTags();
+  }, []);
+
+  // 🔧 태그 리프레시: 페이지 가시성 변경 또는 포커스 시 refresh 플래그 체크
+  useEffect(() => {
+    const checkAndRefreshTags = async () => {
+      const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+      console.log('🔍 [ProfilePage] checkAndRefreshTags 호출 - needsRefresh:', needsRefresh);
+      if (!needsRefresh) return;
+
+      console.log('🔄 [ProfilePage] 태그 refresh 플래그 감지 → 새로고침');
+      localStorage.removeItem('trait_tags_needs_refresh');
+
+      try {
+        setIsLoadingTags(true);
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          setTraitTags([]);
+          setTotalTagCount(0);
+          return;
+        }
+
+        const [tagsResult, countResult] = await Promise.all([
+          supabase
+            .from('user_trait_tags')
+            .select('id, tag_name, created_at')
+            .eq('user_id', authUser.id)
+            .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+            .order('created_at', { ascending: false })
+            .limit(3),
+          supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', authUser.id)
+            .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+        ]);
+
+        if (!tagsResult.error) {
+          const tags = tagsResult.data || [];
+          const totalCount = countResult.count || 0;
+          setTraitTags(tags);
+          setTotalTagCount(totalCount);
+          localStorage.setItem('trait_tags_cache', JSON.stringify({
+            tags,
+            totalCount,
+            timestamp: Date.now()
+          }));
+        }
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndRefreshTags();
+      }
+    };
+
+    const handleFocus = () => {
+      checkAndRefreshTags();
+    };
+
+    // 커스텀 이벤트: NadaumTagsList에서 태그 변경 후 닫힐 때
+    // 🚀 캐시에서 직접 읽어서 즉시 업데이트 (API 호출 없음)
+    const handleTagsModified = () => {
+      console.log('📣 [ProfilePage] tagsModified 이벤트 수신!');
+      try {
+        const cachedJson = localStorage.getItem('trait_tags_cache');
+        if (cachedJson) {
+          const cache = JSON.parse(cachedJson);
+          console.log('🚀 [ProfilePage] 캐시에서 즉시 업데이트:', cache.tags?.length, '개, 총:', cache.totalCount);
+          setTraitTags(cache.tags || []);
+          setTotalTagCount(cache.totalCount || 0);
+        }
+      } catch (e) {
+        console.error('❌ [ProfilePage] 캐시 읽기 실패:', e);
+        // 실패 시 API 호출로 폴백
+        checkAndRefreshTags();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('tagsModified', handleTagsModified);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('tagsModified', handleTagsModified);
+    };
+  }, []);
+
   /**
    * 대표 사주 정보 로드
    * 1. is_primary = true인 사주 우선
@@ -462,6 +684,57 @@ export default function ProfilePage({
             <div className="opacity-0 p-[4px] size-[44px]" />
           </div>
         </div>
+
+        {/* ⭐ Tab Bar - DEV only */}
+        {DEV && (
+          <div
+            className="bg-white shrink-0 w-full"
+            style={{ borderBottom: '1px solid #f8f8f8', padding: '8px 16px' }}
+          >
+            <div className="flex items-center w-full">
+              {/* 프로필 탭 (선택됨) */}
+              <div
+                className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
+                style={{
+                  backgroundColor: '#f8f8f8',
+                  padding: '12px 16px'
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    lineHeight: '20px',
+                    letterSpacing: '-0.45px',
+                    color: '#151515'
+                  }}
+                >
+                  프로필
+                </p>
+              </div>
+              {/* 나의 분석 보고서 탭 (선택 안됨) */}
+              <div
+                className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
+                style={{ padding: '12px 16px' }}
+                onClick={() => navigate('/test/my-report-list')}
+              >
+                <p
+                  style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    lineHeight: '20px',
+                    letterSpacing: '-0.45px',
+                    color: '#999999'
+                  }}
+                >
+                  나의 분석 보고서
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지 */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -614,70 +887,106 @@ export default function ProfilePage({
                 ]
               )}
 
-              {/* 나다운 태그 Section - 프로덕션에서는 숨김 (스테이징/개발 환경에서만 표시) */}
-              {DEV && (
+              {/* 나다움 태그 Section */}
+              {!isLoadingTags && (
                 <>
                   {/* Divider */}
                   <motion.div
                     variants={itemVariants}
-                    className="h-[8px] -mx-[20px] bg-[#f9f9f9] my-[0px]"
+                    className="h-[8px] -mx-[20px]"
+                    style={{ backgroundColor: '#f9f9f9' }}
                   />
 
-                  <motion.div
-                    variants={itemVariants}
-                    className="w-full"
-                  >
-                    <div
-                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                      onClick={() => {
-                        // TODO: 나다운 태그 상세 페이지로 이동
-                        console.log('나다운 태그 클릭');
-                      }}
+                  {traitTags.length > 0 ? (
+                    /* 태그가 있을 때 - 태그 카드 표시 */
+                    <motion.div
+                      variants={itemVariants}
+                      className="w-full -mx-[20px] px-[20px] py-[16px]"
                     >
-                      <div className="flex flex-col gap-[8px] flex-1">
-                        <div className="flex items-center justify-between w-full">
-                          <p className="font-['Pretendard_Variable',sans-serif] font-medium leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">
-                            나다운 태그
-                          </p>
-                          <div className="relative shrink-0 size-[16px]">
-                            <ArrowRightIcon />
+                      <div
+                        className="flex items-center justify-between px-[16px] py-[4px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                        onClick={() => {
+                          navigate('/profile/nadaum-tags');
+                        }}
+                      >
+                        <div className="flex flex-col gap-[8px] flex-1">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-[8px]">
+                              <div className="relative shrink-0 size-[20px]">
+                                <TagIcon />
+                              </div>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                                나의 성향 태그
+                              </p>
+                            </div>
+                            <div className="relative shrink-0 size-[24px]">
+                              <MenuArrowRightIcon />
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-[4px] w-full">
-                          <div className="flex items-center justify-center rounded-[999px]" style={{ backgroundColor: '#f0f8f8', padding: '7px' }}>
-                            <p className="font-['Pretendard_Variable',sans-serif] font-medium leading-[16px] text-[12px] tracking-[-0.24px]" style={{ color: '#368683' }}>
-                              # 설득력 있는
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-center rounded-[999px]" style={{ backgroundColor: '#f0f8f8', padding: '7px' }}>
-                            <p className="font-['Pretendard_Variable',sans-serif] font-medium leading-[16px] text-[12px] tracking-[-0.24px]" style={{ color: '#368683' }}>
-                              # 리더십 있는
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-center rounded-[999px]" style={{ backgroundColor: '#f0f8f8', padding: '7px' }}>
-                            <p className="font-['Pretendard_Variable',sans-serif] font-medium leading-[16px] text-[12px] tracking-[-0.24px]" style={{ color: '#368683' }}>
-                              # 감정 변화가 큰
-                            </p>
+                          {/* Tags - 실제 DB 데이터 */}
+                          <div className="flex flex-wrap gap-[4px] w-full">
+                            {traitTags.map((tag) => (
+                              <div
+                                key={tag.id}
+                                className="flex items-center justify-center rounded-[999px]"
+                                style={{ backgroundColor: '#f0f8f8', padding: '5px 7px' }}
+                              >
+                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683' }}>
+                                  # {tag.tag_name}
+                                </p>
+                              </div>
+                            ))}
+                            {/* +N 텍스트 - 3개 초과 시 표시 (배경 없음) */}
+                            {totalTagCount > 3 && (
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683', padding: '5px 0' }}>
+                                +{totalTagCount - 3}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  ) : (
+                    /* 태그가 없을 때 - 메뉴 아이템만 표시 */
+                    <motion.div
+                      variants={itemVariants}
+                      className="w-full -mx-[20px] px-[20px] py-[16px]"
+                    >
+                      <div
+                        className="flex items-center justify-between px-[16px] py-[4px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                        onClick={() => {
+                          navigate('/profile/nadaum-tags');
+                        }}
+                      >
+                        <div className="flex items-center gap-[8px]">
+                          <div className="relative shrink-0 size-[20px]">
+                            <TagIcon />
+                          </div>
+                          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                            나의 성향 태그
+                          </p>
+                        </div>
+                        <div className="relative shrink-0 size-[24px]">
+                          <MenuArrowRightIcon />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
                   {/* Divider */}
                   <motion.div
                     variants={itemVariants}
-                    className="h-[8px] -mx-[20px] bg-[#f9f9f9] my-[0px]"
+                    className="h-[8px] -mx-[20px]"
+                    style={{ backgroundColor: '#f9f9f9' }}
                   />
                 </>
               )}
 
               {/* Menu List Container */}
-              <motion.div 
+              <motion.div
                 variants={{ hidden: {}, visible: {} }}
-                className="content-stretch flex flex-col flex-1 gap-[0px] items-start w-full mb-[120px] pt-[24px]"
+                className="content-stretch flex flex-col flex-1 gap-[0px] items-start w-full mb-[120px] -mx-[20px] px-[20px] py-[4px]"
               >
                 <motion.div
                   variants={{
@@ -694,19 +1003,22 @@ export default function ProfilePage({
                       onClick={onNavigateToMasterContent}
                     >
                       <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">콘텐츠 만들기</p>
-                      <div className="relative shrink-0 size-[16px]">
-                        <ArrowRightIcon />
+                      <div className="relative shrink-0 size-[24px]">
+                        <MenuArrowRightIcon />
                       </div>
                     </motion.div>
                   )}
-                  {/* 2. 구매 내역 */}
+                  {/* 2. 이용 기록 */}
                   <motion.div
                     variants={itemVariants}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                     onClick={onNavigateToPurchaseHistory}
                   >
                     <div className="flex items-center gap-[8px]">
-                      <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">구매 내역</p>
+                      <div className="relative shrink-0 size-[20px]">
+                        <ReceiptIcon />
+                      </div>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>이용 기록</p>
                       {/* DEV: UI 테스팅용 직접 이동 버튼 */}
                       {DEV && (
                         <button
@@ -891,8 +1203,8 @@ export default function ProfilePage({
                         </button>
                       )}
                     </div>
-                    <div className="relative shrink-0 size-[16px]">
-                      <ArrowRightIcon />
+                    <div className="relative shrink-0 size-[24px]">
+                      <MenuArrowRightIcon />
                     </div>
                   </motion.div>
                   {/* 3. 사주 정보 관리 */}
@@ -902,7 +1214,10 @@ export default function ProfilePage({
                     onClick={handleSajuMenuClick}
                   >
                     <div className="flex items-center gap-[8px]">
-                      <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">사주 정보 관리</p>
+                      <div className="relative shrink-0 size-[20px]">
+                        <FolderIcon />
+                      </div>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>사주 정보 관리</p>
                       {/* DEV: UI 테스팅용 직접 이동 버튼 */}
                       {DEV && (
                         <button
@@ -934,8 +1249,8 @@ export default function ProfilePage({
                         </button>
                       )}
                     </div>
-                    <div className="relative shrink-0 size-[16px]">
-                      <ArrowRightIcon />
+                    <div className="relative shrink-0 size-[24px]">
+                      <MenuArrowRightIcon />
                     </div>
                   </motion.div>
                   {/* 4. 의견 전달하기 */}
@@ -944,9 +1259,14 @@ export default function ProfilePage({
                     onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                   >
-                    <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">의견 전달하기</p>
-                    <div className="relative shrink-0 size-[16px]">
-                      <ArrowRightIcon />
+                    <div className="flex items-center gap-[8px]">
+                      <div className="relative shrink-0 size-[20px]">
+                        <MessageCircleIcon />
+                      </div>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>의견 전달하기</p>
+                    </div>
+                    <div className="relative shrink-0 size-[24px]">
+                      <MenuArrowRightIcon />
                     </div>
                   </motion.div>
                   {/* 5. 로그아웃 */}
@@ -955,9 +1275,14 @@ export default function ProfilePage({
                     onClick={handleLogoutClick}
                     className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                   >
-                    <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">로그아웃</p>
-                    <div className="relative shrink-0 size-[16px]">
-                      <ArrowRightIcon />
+                    <div className="flex items-center gap-[8px]">
+                      <div className="relative shrink-0 size-[20px]">
+                        <LogoutIcon />
+                      </div>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>로그아웃</p>
+                    </div>
+                    <div className="relative shrink-0 size-[24px]">
+                      <MenuArrowRightIcon />
                     </div>
                   </motion.div>
 

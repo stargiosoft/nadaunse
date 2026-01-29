@@ -34,11 +34,58 @@ export default function UnifiedResultPage() {
   const contentIdParam = searchParams.get('contentId');
   const from = searchParams.get('from');
 
+  // ⭐ PurchaseHistoryPage에서 전달받은 캐시 데이터 (즉시 렌더링용)
+  const cachedResultsFromState = (location.state as { cachedResults?: ResultItem[] })?.cachedResults;
+  const cachedContentIdFromState = (location.state as { cachedContentId?: string })?.cachedContentId;
+
+  // ⭐ 초기화 시 캐시 확인 (state 없으면 localStorage 체크)
+  const getInitialCacheData = (): { results: ResultItem[]; contentId: string | null } => {
+    // 1. state에서 전달받은 캐시 우선 (question_order 타입 정규화)
+    if (cachedResultsFromState && cachedResultsFromState.length > 0) {
+      const normalizedResults = cachedResultsFromState.map(r => ({
+        ...r,
+        question_order: Number(r.question_order)
+      }));
+      console.log('💾 [UnifiedResultPage] 초기화 시 state 캐시 히트');
+      return { results: normalizedResults, contentId: cachedContentIdFromState || null };
+    }
+    // 2. localStorage 캐시 확인
+    if (orderId) {
+      try {
+        const cacheKey = `paid_result_${orderId}`;
+        const cachedJson = localStorage.getItem(cacheKey);
+        if (cachedJson) {
+          const cached = JSON.parse(cachedJson);
+          const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+          const isExpired = Date.now() - cached.timestamp > CACHE_EXPIRY_MS;
+          const allTarotViewed = cached.results.every(
+            (r: ResultItem) => r.question_type !== 'tarot' || r.tarot_user_viewed === true
+          );
+          if (!isExpired && allTarotViewed && cached.results.length > 0) {
+            // ⭐ question_order 타입 정규화 (JSON.parse 후 number 보장)
+            const normalizedResults = cached.results.map((r: ResultItem) => ({
+              ...r,
+              question_order: Number(r.question_order)
+            }));
+            console.log('💾 [UnifiedResultPage] 초기화 시 localStorage 캐시 히트');
+            return { results: normalizedResults, contentId: cached.contentId };
+          }
+        }
+      } catch (e) {
+        // 무시
+      }
+    }
+    return { results: [], contentId: null };
+  };
+
+  const initialCache = getInitialCacheData();
+
   // ⭐ 현재 질문 순서 (내부 상태로 관리하여 모든 전환에 애니메이션 적용)
   const [currentQuestionOrder, setCurrentQuestionOrder] = useState(parseInt(questionOrderParam));
-  const [allResults, setAllResults] = useState<ResultItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [contentId, setContentId] = useState<string | null>(contentIdParam);
+  // ⭐ 캐시 데이터가 있으면 즉시 사용 (로딩 없이 렌더링)
+  const [allResults, setAllResults] = useState<ResultItem[]>(initialCache.results);
+  const [loading, setLoading] = useState(initialCache.results.length === 0);
+  const [contentId, setContentId] = useState<string | null>(contentIdParam || initialCache.contentId);
   const [showTableOfContents, setShowTableOfContents] = useState(false);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
 
@@ -47,9 +94,9 @@ export default function UnifiedResultPage() {
   const [hasValidSession, setHasValidSession] = useState(false);
   const [isWrongAccount, setIsWrongAccount] = useState(false);
 
-  // ⭐ 타로 이미지 관련 상태
+  // ⭐ 타로 이미지 관련 상태 (캐시 데이터 있으면 shimmer 스킵)
   const [cardImageUrl, setCardImageUrl] = useState<string>('');
-  const [imageLoading, setImageLoading] = useState(true);
+  const [imageLoading, setImageLoading] = useState(initialCache.results.length === 0);
   const [imageError, setImageError] = useState(false);
   const [usedFallback, setUsedFallback] = useState(false); // 폴백 시도 여부
   const [retryCount, setRetryCount] = useState(0); // 재시도 횟수
@@ -62,6 +109,12 @@ export default function UnifiedResultPage() {
 
   // ⭐ 이전 Blob URL ref (메모리 누수 방지용)
   const previousBlobUrlRef = useRef<string | null>(null);
+
+  // ⭐ 태그 추출 관련 상태 (나다움 기록하기용)
+  const [extractedTags, setExtractedTags] = useState<{ name: string; type: 'positive' | 'negative' | 'neutral' }[]>([]);
+  const [isTagExtracted, setIsTagExtracted] = useState(false);
+  const [isTagLoading, setIsTagLoading] = useState(false);
+  const hasTagExtractionStarted = useRef(false);  // ⭐ 중복 실행 방지
 
   // ⭐ URL 쿼리 파라미터 변경 감지 + 타로 셔플 리다이렉트 체크
   useEffect(() => {
@@ -148,7 +201,7 @@ export default function UnifiedResultPage() {
     });
   }, [currentQuestionOrder]);
 
-  // ⭐ 데이터 로드
+  // ⭐ 데이터 로드 (localStorage 캐싱 적용)
   useEffect(() => {
     const loadData = async () => {
       if (!orderId || isCheckingSession || !hasValidSession) return;
@@ -165,69 +218,126 @@ export default function UnifiedResultPage() {
       try {
         console.log('📥 [UnifiedResultPage] 데이터 로드:', { orderId, currentQuestionOrder });
 
-        // ⭐ 병렬 조회 (RLS 통과를 위해 orders 조인 추가)
-        const [resultsResponse, ordersResponse] = await Promise.all([
-          supabase
-            .from('order_results')
-            .select(`
-              question_order,
-              question_text,
-              gpt_response,
-              question_type,
-              tarot_card_name,
-              tarot_card_image_url,
-              tarot_user_viewed,
-              orders!inner(user_id)
-            `)
-            .eq('order_id', orderId)
-            .order('question_order', { ascending: true }),
-          supabase
-            .from('orders')
-            .select('content_id')
-            .eq('id', orderId)
-            .single()
-        ]);
+        // ⭐ 캐시 키 및 만료 시간 (24시간 - 완료된 결과는 변경되지 않음)
+        const cacheKey = `paid_result_${orderId}`;
+        const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-        const { data: resultsData, error: resultsError } = resultsResponse;
-        const { data: orderData, error: orderError } = ordersResponse;
+        // ⭐ 1단계: localStorage 캐시 확인
+        let normalizedResults: ResultItem[] | null = null;
+        let cachedContentId: string | null = null;
 
-        if (resultsError) throw resultsError;
+        try {
+          const cachedJson = localStorage.getItem(cacheKey);
+          if (cachedJson) {
+            const cached = JSON.parse(cachedJson);
+            const isExpired = Date.now() - cached.timestamp > CACHE_EXPIRY_MS;
 
-        // ⭐ 결과가 없으면 다른 계정 주문 또는 AI 생성 중
-        if (!resultsData || resultsData.length === 0) {
-          if (orderError || !orderData) {
-            console.error('❌ [UnifiedResultPage] 다른 계정의 주문');
-            setIsWrongAccount(true);
-            setLoading(false);
+            // ⭐ 캐시 유효성 검사: 만료되지 않고, 타로 질문이 모두 완료된 경우만 사용
+            const allTarotViewed = cached.results.every(
+              (r: ResultItem) => r.question_type !== 'tarot' || r.tarot_user_viewed === true
+            );
+
+            if (!isExpired && allTarotViewed && cached.results.length > 0) {
+              console.log('💾 [UnifiedResultPage] 캐시에서 로드:', orderId);
+              normalizedResults = cached.results;
+              cachedContentId = cached.contentId;
+            } else {
+              console.log('🔄 [UnifiedResultPage] 캐시 무효화 (만료/타로미완료):', { isExpired, allTarotViewed });
+              localStorage.removeItem(cacheKey);
+            }
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ [UnifiedResultPage] 캐시 읽기 실패:', cacheError);
+        }
+
+        // ⭐ 2단계: 캐시 없으면 DB 조회
+        let effectiveContentId = contentIdParam || cachedContentId || '';
+
+        if (!normalizedResults) {
+          // ⭐ 병렬 조회 (RLS 통과를 위해 orders 조인 추가)
+          const [resultsResponse, ordersResponse] = await Promise.all([
+            supabase
+              .from('order_results')
+              .select(`
+                question_order,
+                question_text,
+                gpt_response,
+                question_type,
+                tarot_card_name,
+                tarot_card_image_url,
+                tarot_user_viewed,
+                orders!inner(user_id)
+              `)
+              .eq('order_id', orderId)
+              .order('question_order', { ascending: true }),
+            supabase
+              .from('orders')
+              .select('content_id')
+              .eq('id', orderId)
+              .single()
+          ]);
+
+          const { data: resultsData, error: resultsError } = resultsResponse;
+          const { data: orderData, error: orderError } = ordersResponse;
+
+          if (resultsError) throw resultsError;
+
+          // ⭐ 결과가 없으면 다른 계정 주문 또는 AI 생성 중
+          if (!resultsData || resultsData.length === 0) {
+            if (orderError || !orderData) {
+              console.error('❌ [UnifiedResultPage] 다른 계정의 주문');
+              setIsWrongAccount(true);
+              setLoading(false);
+              return;
+            }
+
+            const redirectContentId = contentIdParam || orderData.content_id || '';
+            console.log('🔄 [UnifiedResultPage] AI 생성 중 → 로딩 페이지');
+            navigate(`/loading?orderId=${orderId}&contentId=${redirectContentId}`);
             return;
           }
 
-          const redirectContentId = contentIdParam || orderData.content_id || '';
-          console.log('🔄 [UnifiedResultPage] AI 생성 중 → 로딩 페이지');
-          navigate(`/loading?orderId=${orderId}&contentId=${redirectContentId}`);
-          return;
+          console.log('📊 [UnifiedResultPage] DB에서 결과 데이터 로드 완료:', {
+            count: resultsData.length,
+            questionOrders: resultsData.map(r => r.question_order),
+            questionOrderTypes: resultsData.map(r => typeof r.question_order),
+            firstQuestion: resultsData[0]?.question_type,
+            targetQuestionOrder: currentQuestionOrder
+          });
+
+          // ⭐ Type 안전성: question_order를 명시적으로 number로 변환
+          normalizedResults = resultsData.map(r => ({
+            ...r,
+            question_order: Number(r.question_order)
+          })) as ResultItem[];
+
+          effectiveContentId = contentIdParam || orderData?.content_id || '';
+
+          // ⭐ 3단계: 모든 타로 질문이 완료된 경우 캐시 저장
+          const allTarotViewed = normalizedResults.every(
+            r => r.question_type !== 'tarot' || r.tarot_user_viewed === true
+          );
+
+          if (allTarotViewed) {
+            try {
+              const cacheData = {
+                results: normalizedResults,
+                contentId: effectiveContentId,
+                timestamp: Date.now()
+              };
+              localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+              console.log('💾 [UnifiedResultPage] 캐시 저장 완료:', orderId);
+            } catch (saveError) {
+              console.warn('⚠️ [UnifiedResultPage] 캐시 저장 실패:', saveError);
+            }
+          }
         }
-
-        console.log('📊 [UnifiedResultPage] 결과 데이터 로드 완료:', {
-          count: resultsData.length,
-          questionOrders: resultsData.map(r => r.question_order),
-          questionOrderTypes: resultsData.map(r => typeof r.question_order),
-          firstQuestion: resultsData[0]?.question_type,
-          targetQuestionOrder: currentQuestionOrder
-        });
-
-        // ⭐ Type 안전성: question_order를 명시적으로 number로 변환
-        const normalizedResults = resultsData.map(r => ({
-          ...r,
-          question_order: Number(r.question_order)
-        })) as ResultItem[];
 
         setAllResults(normalizedResults);
 
         // ⭐ contentId 설정
-        const effectiveContentId = contentIdParam || orderData?.content_id || '';
-        if (!contentIdParam && orderData?.content_id) {
-          setContentId(orderData.content_id);
+        if (!contentIdParam && effectiveContentId) {
+          setContentId(effectiveContentId);
         }
 
         // 📊 GA 이벤트: 유료 결과 조회 (orderId당 최초 1회만 page_view 전송)
@@ -257,13 +367,13 @@ export default function UnifiedResultPage() {
         if (currentResult?.question_type === 'tarot' && !currentResult?.tarot_user_viewed) {
           console.log('🎴 [UnifiedResultPage] 타로 미선택 → 셔플 페이지');
           const fromParam = from ? `&from=${from}` : '';
-          const contentIdStr = contentIdParam || orderData?.content_id || '';
+          const contentIdStr = effectiveContentId || '';
           navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${currentQuestionOrder}&contentId=${contentIdStr}${fromParam}`, { replace: true });
           return;
         }
 
         // ⭐ 타로 이미지 프리로드
-        preloadTarotImages(resultsData, currentQuestionOrder);
+        preloadTarotImages(normalizedResults, currentQuestionOrder);
 
       } catch (error) {
         console.error('❌ [UnifiedResultPage] 로드 실패:', error);
@@ -276,6 +386,127 @@ export default function UnifiedResultPage() {
   }, [orderId, isCheckingSession, hasValidSession, navigate, contentIdParam, allResults.length]);
 
   // ⭐ (중복 제거됨 - 69-92번째 줄 useEffect에서 처리)
+
+  // ⭐ 데이터 로드 완료 즉시 백그라운드로 태그 추출 (나다움 기록하기용)
+  // - 무료 콘텐츠와 동일하게 결과 진입 시 바로 시작
+  // - 사용자가 빠르게 넘겨도 태그 추출이 미리 완료되도록
+  useEffect(() => {
+    // 🔍 디버깅: 태그 추출 조건 체크
+    console.log('🔍 [UnifiedResultPage] 태그 추출 조건 체크:', {
+      from,
+      isTagExtracted,
+      isTagLoading,
+      allResultsLength: allResults.length,
+      hasStarted: hasTagExtractionStarted.current
+    });
+
+    // from=purchase면 태그 추출 스킵 (다시보기이므로)
+    // 데이터 없거나, 이미 태그 추출 완료/진행 중이면 스킵
+    if (from === 'purchase' || isTagExtracted || isTagLoading || allResults.length === 0) {
+      console.log('⏭️ [UnifiedResultPage] 태그 추출 스킵 - 조건 불충족');
+      return;
+    }
+
+    // ⭐ 중복 실행 방지 (ref 사용)
+    if (hasTagExtractionStarted.current) {
+      console.log('⏭️ [UnifiedResultPage] 태그 추출 이미 시작됨 - 스킵');
+      return;
+    }
+    hasTagExtractionStarted.current = true;
+
+    const extractTags = async () => {
+      setIsTagLoading(true);
+      console.log('🏷️ [UnifiedResultPage] 데이터 로드 완료 → 백그라운드 태그 추출 시작...');
+
+      // order_results에서 질문/답변 추출
+      const contentAnswers = allResults.map(r => ({
+        questionText: r.question_text,
+        answerText: r.gpt_response
+      }));
+
+      try {
+        // ⭐ 사용자의 기존 태그 조회 (중복 방지용)
+        let existingTags: string[] = [];
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) {
+          const { data: existingTagsData } = await supabase
+            .from('user_trait_tags')
+            .select('tag_name')
+            .eq('user_id', userData.user.id);
+
+          if (existingTagsData && existingTagsData.length > 0) {
+            existingTags = existingTagsData.map(t => t.tag_name);
+            console.log('📌 [UnifiedResultPage] 기존 태그 조회:', existingTags.length, '개');
+          }
+        }
+
+        const { data, error } = await supabase.functions.invoke('extract-trait-tags', {
+          body: { contentAnswers, existingTags }
+        });
+
+        if (!error && data?.success && data?.tags) {
+          console.log('✅ [UnifiedResultPage] 태그 추출 완료:', data.tags);
+          setExtractedTags(data.tags);
+
+          // ⭐ 태그를 localStorage에 저장 (폴링용)
+          if (orderId) {
+            localStorage.setItem(`extracted_tags_${orderId}`, JSON.stringify({
+              tags: data.tags,
+              timestamp: Date.now()
+            }));
+            console.log('💾 [UnifiedResultPage] 태그 localStorage 저장 완료');
+          }
+
+          // ⭐ DB에 즉시 저장 (is_confirmed: false) - 나중에 태그 선택 시 확정
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user?.id && orderId) {
+            try {
+              // 해당 주문의 기존 임시 태그 삭제 (중복 방지)
+              await supabase
+                .from('user_trait_tags')
+                .delete()
+                .eq('user_id', userData.user.id)
+                .eq('source_order_id', orderId)
+                .eq('is_confirmed', false);
+
+              // 새 태그 INSERT (is_confirmed: false)
+              const { error: insertError } = await supabase
+                .from('user_trait_tags')
+                .insert(
+                  data.tags.map((tag: { name: string; type: string }) => ({
+                    user_id: userData.user.id,
+                    tag_name: tag.name,
+                    tag_type: tag.type,
+                    source_type: 'paid_content',
+                    source_content_id: contentId || null,
+                    source_order_id: orderId,
+                    is_confirmed: false
+                  }))
+                );
+
+              if (insertError) {
+                console.warn('⚠️ [UnifiedResultPage] 태그 DB 저장 실패:', insertError);
+              } else {
+                console.log('💾 [UnifiedResultPage] 태그 DB 저장 완료 (is_confirmed: false)');
+              }
+            } catch (dbError) {
+              console.warn('⚠️ [UnifiedResultPage] 태그 DB 저장 예외:', dbError);
+            }
+          }
+        } else {
+          console.warn('⚠️ [UnifiedResultPage] 태그 추출 실패:', error || data?.error);
+        }
+      } catch (e) {
+        console.warn('⚠️ [UnifiedResultPage] 태그 추출 예외:', e);
+      } finally {
+        setIsTagExtracted(true);
+        setIsTagLoading(false);
+      }
+    };
+
+    extractTags();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allResults.length, from, isTagExtracted, isTagLoading]);
 
   // ⭐ 타로 이미지 프리로드
   const preloadTarotImages = (data: ResultItem[], currentOrder: number) => {
@@ -472,13 +703,41 @@ export default function UnifiedResultPage() {
   const handleNext = async () => {
     const nextResult = allResults.find(r => r.question_order === currentQuestionOrder + 1);
 
-    // ⭐ 다음 질문이 없으면 완료 페이지
+    // ⭐ 다음 질문이 없으면 마지막 페이지 처리
     if (!nextResult) {
       // 📊 GA 이벤트: 유료 결과 완독
       if (orderId && contentId) {
         trackPaidResultComplete(orderId, contentId);
       }
-      navigate('/result/complete', { state: { orderId, contentId } });
+
+      // ⭐ from=purchase인 경우 (구매내역에서 다시보기) → 구매내역으로 이동
+      if (from === 'purchase') {
+        console.log('🔀 [UnifiedResultPage] 다시보기 완료 → 구매내역으로 이동');
+        navigate('/purchase-history', { replace: true });
+        return;
+      }
+
+      // ⭐ 새로 체험하는 경우 → 나다움 기록하기로 이동
+      if (isTagExtracted) {
+        // 태그 추출 완료 → 바로 나다움 기록하기로 이동
+        console.log('🔀 [UnifiedResultPage] 태그 추출 완료 → 나다움 기록하기로 이동');
+        navigate('/paid/nadaum-record', {
+          state: { orderId, contentId, tags: extractedTags }
+        });
+      } else {
+        // 태그 추출 중 → 로딩 페이지로 이동
+        console.log('⏳ [UnifiedResultPage] 태그 추출 중 → 로딩 페이지로 이동');
+        navigate('/paid/tag-loading', {
+          state: {
+            orderId,
+            contentId,
+            contentAnswers: allResults.map(r => ({
+              questionText: r.question_text,
+              answerText: r.gpt_response
+            }))
+          }
+        });
+      }
       return;
     }
 
@@ -516,8 +775,8 @@ export default function UnifiedResultPage() {
     navigate('/login/new', { replace: true });
   };
 
-  // ⭐ 로딩 중
-  if (isCheckingSession || loading) {
+  // ⭐ 로딩 중 (캐시 데이터가 있으면 로딩 스킵)
+  if ((isCheckingSession || loading) && allResults.length === 0) {
     return <PageLoader />;
   }
 
@@ -828,6 +1087,7 @@ export default function UnifiedResultPage() {
         onNext={handleNext}
         onToggleList={() => setShowTableOfContents(true)}
         disablePrevious={currentQuestionOrder === 1}
+        nextLabel={currentQuestionOrder === totalQuestions && from === 'purchase' ? '완료' : '다음'}
       />
 
       {/* Table of Contents Bottom Sheet */}

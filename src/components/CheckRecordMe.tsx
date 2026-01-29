@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import svgPaths from '@/imports/svg-rr05b2c3l6';
 import Frame427322492 from '@/imports/Frame427322492';
@@ -11,6 +11,14 @@ import ReportWeeklyDetail from '@/components/ReportWeeklyDetail';
 import ReportWeeklyTarot from '@/components/ReportWeeklyTarot';
 import ReportWeeklyTarotResult from '@/components/ReportWeeklyTarotResult';
 import ReportWeeklyMindCare from '@/components/ReportWeeklyMindCare';
+import { supabase } from '@/lib/supabase';
+import { toast } from '@/lib/toast';
+
+interface SajuRecord {
+  id: string;
+  phone_number: string | null;
+  notes: string | null;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -39,20 +47,110 @@ const itemVariants = {
 interface TagOption {
   id: string;
   label: string;
+  type: 'positive' | 'negative' | 'neutral';
   selected: boolean;
 }
 
-export default function CheckRecordMe() {
-  const [tags, setTags] = useState<TagOption[]>([
-    { id: '1', label: '설득력 있는', selected: true },
-    { id: '2', label: '리더십 있는', selected: true },
-    { id: '3', label: '경쟁심 있는', selected: false },
-  ]);
+interface CheckRecordMeProps {
+  contentId?: string; // 콘텐츠 ID (태그 저장 시 source_content_id로 사용)
+  orderId?: string;   // ⭐ 주문 ID (유료 콘텐츠용 - source_order_id로 사용)
+  tags?: { name: string; type: 'positive' | 'negative' | 'neutral' }[]; // API에서 받은 태그
+  sourceType?: 'free_content' | 'paid_content'; // ⭐ 콘텐츠 유형
+  onBack?: () => void;
+  onHome?: () => void;
+  onSkip?: () => void; // 다음에 할래요
+  onComplete?: () => void; // ⭐ 저장 완료 후 콜백 (유료 콘텐츠용)
+}
+
+export default function CheckRecordMe({
+  contentId,
+  orderId,           // ⭐ 추가
+  tags: initialTags,
+  sourceType = 'free_content', // ⭐ 추가
+  onBack: onBackProp,
+  onHome: onHomeProp,
+  onSkip,
+  onComplete         // ⭐ 추가
+}: CheckRecordMeProps = {}) {
+  // 태그 초기화: props에서 받거나 기본값 사용
+  // 첫 번째 장점(positive) 태그만 기본 선택
+  const defaultTags: TagOption[] = [
+    { id: '1', label: '설득력 있는', type: 'positive', selected: true },
+    { id: '2', label: '리더십 있는', type: 'positive', selected: false },
+    { id: '3', label: '경쟁심 있는', type: 'negative', selected: false },
+  ];
+
+  const [tags, setTags] = useState<TagOption[]>(() => {
+    if (initialTags && initialTags.length > 0) {
+      // 첫 번째 positive 태그의 인덱스 찾기
+      const firstPositiveIdx = initialTags.findIndex(tag => tag.type === 'positive');
+
+      return initialTags.map((tag, idx) => ({
+        id: String(idx + 1),
+        label: tag.name,
+        type: tag.type,
+        selected: idx === firstPositiveIdx // 첫 번째 positive 태그만 선택
+      }));
+    }
+    return defaultTags;
+  });
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [view, setView] = useState<'recording' | 'result' | 'mypage' | 'dev-report' | 'dev-tarot-picking' | 'dev-tarot-result' | 'dev-mind-prescription'>('recording');
 
   // 휴대폰 번호를 부모 컴포넌트에서 관리하여 바텀 시트가 닫혀도 유지되도록 함
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // ⭐ 본인 사주 레코드 (phone_number 확인용)
+  const [mySajuRecord, setMySajuRecord] = useState<SajuRecord | null>(null);
+  const [needsPhoneNumber, setNeedsPhoneNumber] = useState(false);
+  const [isCheckingPhone, setIsCheckingPhone] = useState(true);
+
+  // ⭐ 마운트 시 saju_records에서 note='본인'인 레코드의 phone_number 확인
+  useEffect(() => {
+    const checkPhoneNumber = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.user?.id) {
+          console.log('ℹ️ [CheckRecordMe] 비로그인 상태 → phone_number 체크 스킵');
+          setIsCheckingPhone(false);
+          setNeedsPhoneNumber(true); // 비로그인 시에도 바텀시트 표시
+          return;
+        }
+
+        console.log('🔍 [CheckRecordMe] 본인 사주 레코드 조회...');
+        const { data: sajuRecord, error } = await supabase
+          .from('saju_records')
+          .select('id, phone_number, notes')
+          .eq('user_id', session.user.id)
+          .eq('notes', '본인')
+          .maybeSingle();
+
+        if (error) {
+          console.error('❌ [CheckRecordMe] 사주 레코드 조회 실패:', error);
+          setIsCheckingPhone(false);
+          return;
+        }
+
+        if (sajuRecord) {
+          console.log('✅ [CheckRecordMe] 본인 사주 레코드:', sajuRecord);
+          setMySajuRecord(sajuRecord);
+          setNeedsPhoneNumber(!sajuRecord.phone_number);
+          console.log('📌 [CheckRecordMe] phone_number 필요 여부:', !sajuRecord.phone_number);
+        } else {
+          console.log('ℹ️ [CheckRecordMe] 본인 사주 레코드 없음');
+          setNeedsPhoneNumber(true);
+        }
+      } catch (err) {
+        console.error('❌ [CheckRecordMe] phone_number 체크 오류:', err);
+      } finally {
+        setIsCheckingPhone(false);
+      }
+    };
+
+    checkPhoneNumber();
+  }, []);
 
   const toggleTag = (id: string) => {
     setTags(tags.map(tag =>
@@ -60,11 +158,255 @@ export default function CheckRecordMe() {
     ));
   };
 
-  const handleSave = () => {
+  // ⭐ 태그 확정 함수 (임시 태그 → 선택한 것만 확정, 나머지 삭제)
+  const saveTags = async (): Promise<boolean> => {
+    const selectedTagNames = tags
+      .filter(tag => tag.selected)
+      .map(tag => tag.label);
+
+    const unselectedTagNames = tags
+      .filter(tag => !tag.selected)
+      .map(tag => tag.label);
+
+    if (selectedTagNames.length === 0) {
+      toast.error('태그를 1개 이상 선택해주세요.');
+      return false;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        console.log('🏷️ [CheckRecordMe] 태그 확정 시작...');
+        console.log('  - 선택된 태그:', selectedTagNames);
+        console.log('  - 선택 안 된 태그:', unselectedTagNames);
+
+        // ⭐ 1. 선택한 태그: is_confirmed = true로 UPDATE
+        if (selectedTagNames.length > 0) {
+          // 유료 콘텐츠: source_order_id 기준
+          // 무료 콘텐츠: source_content_id + source_type 기준
+          const updateQuery = supabase
+            .from('user_trait_tags')
+            .update({ is_confirmed: true })
+            .eq('user_id', session.user.id)
+            .in('tag_name', selectedTagNames);
+
+          if (orderId) {
+            await updateQuery.eq('source_order_id', orderId);
+          } else if (contentId) {
+            await updateQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+          }
+          console.log('✅ [CheckRecordMe] 선택 태그 확정 완료');
+        }
+
+        // ⭐ 2. 선택 안 한 태그: DELETE
+        if (unselectedTagNames.length > 0) {
+          const deleteQuery = supabase
+            .from('user_trait_tags')
+            .delete()
+            .eq('user_id', session.user.id)
+            .in('tag_name', unselectedTagNames);
+
+          if (orderId) {
+            await deleteQuery.eq('source_order_id', orderId);
+          } else if (contentId) {
+            await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+          }
+          console.log('🗑️ [CheckRecordMe] 미선택 태그 삭제 완료');
+        }
+
+        console.log('✅ [CheckRecordMe] 태그 확정 완료');
+        // 🚀 ProfilePage & NadaumTagsList 캐시 무효화
+        localStorage.setItem('trait_tags_needs_refresh', 'true');
+        localStorage.removeItem('trait_tags_cache');
+        localStorage.removeItem('nadaum_all_tags_cache');
+        // 토스트는 호출하는 쪽에서 처리
+        return true;
+      } else {
+        // 게스트 사용자: localStorage에 임시 저장
+        console.log('ℹ️ [CheckRecordMe] 게스트 모드 → localStorage에 임시 저장');
+        const selectedTags = tags.filter(tag => tag.selected);
+        const guestTags = JSON.parse(localStorage.getItem('guest_trait_tags') || '[]');
+        const newTags = selectedTags.map(tag => ({
+          name: tag.label,
+          type: tag.type,
+          source_content_id: contentId,
+          source_order_id: orderId,
+          source_type: sourceType,
+          created_at: new Date().toISOString()
+        }));
+        localStorage.setItem('guest_trait_tags', JSON.stringify([...guestTags, ...newTags]));
+        toast.success('태그가 임시 저장되었습니다. 로그인하면 자동으로 동기화됩니다.');
+        return true;
+      }
+    } catch (err) {
+      console.error('❌ [CheckRecordMe] 태그 확정 중 오류:', err);
+      toast.error('태그 저장 중 오류가 발생했습니다.');
+      return false;
+    }
+  };
+
+  // ⭐ Primary 버튼 클릭 핸들러 (phone_number 체크 후 바텀시트 or 직접 저장)
+  const handlePrimaryButtonClick = async () => {
+    // 태그 선택 여부 체크
+    if (!tags.some(t => t.selected)) {
+      toast.error('태그를 1개 이상 선택해주세요.');
+      return;
+    }
+
+    // phone_number가 필요하면 바텀시트 열기
+    if (needsPhoneNumber) {
+      console.log('📱 [CheckRecordMe] phone_number 필요 → 바텀시트 열기');
+      setIsBottomSheetOpen(true);
+      return;
+    }
+
+    // phone_number가 이미 있으면 바로 태그 저장
+    console.log('✅ [CheckRecordMe] phone_number 있음 → 바로 태그 저장');
+    setIsSaving(true);
+    const success = await saveTags();
+    setIsSaving(false);
+
+    if (success) {
+      // 토스트 표시 (2줄)
+      toast.success('태그가 저장됐어요!', {
+        subtitle: '프로필에서 확인할 수 있어요.',
+        duration: 2200
+      });
+
+      // ⭐ onComplete 콜백이 있으면 호출 (유료 콘텐츠 → 구매내역으로 이동)
+      if (onComplete) {
+        onComplete();
+      } else if (onHomeProp) {
+        onHomeProp();
+      }
+    }
+  };
+
+  // ⭐ 바텀시트에서 저장 버튼 클릭 (phone_number 저장 + 태그 확정)
+  const handleSave = async () => {
+    const selectedTagNames = tags
+      .filter(tag => tag.selected)
+      .map(tag => tag.label);
+
+    const unselectedTagNames = tags
+      .filter(tag => !tag.selected)
+      .map(tag => tag.label);
+
+    if (selectedTagNames.length === 0) {
+      toast.error('태그를 1개 이상 선택해주세요.');
+      return;
+    }
+
+    // 휴대폰 번호 유효성 검사
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error('올바른 휴대폰 번호를 입력해주세요.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.access_token && mySajuRecord) {
+        // ⭐ 1. phone_number를 saju_records에 업데이트
+        console.log('📱 [CheckRecordMe] phone_number 저장 중...');
+        const { error: phoneError } = await supabase
+          .from('saju_records')
+          .update({ phone_number: cleanPhone })
+          .eq('id', mySajuRecord.id);
+
+        if (phoneError) {
+          console.error('❌ [CheckRecordMe] phone_number 저장 실패:', phoneError);
+          toast.error('휴대폰 번호 저장에 실패했습니다.');
+          setIsSaving(false);
+          return;
+        }
+        console.log('✅ [CheckRecordMe] phone_number 저장 성공');
+
+        // ⭐ 2. 선택한 태그: is_confirmed = true로 UPDATE
+        console.log('🏷️ [CheckRecordMe] 태그 확정 시작...');
+        if (selectedTagNames.length > 0) {
+          const updateQuery = supabase
+            .from('user_trait_tags')
+            .update({ is_confirmed: true })
+            .eq('user_id', session.user.id)
+            .in('tag_name', selectedTagNames);
+
+          if (orderId) {
+            await updateQuery.eq('source_order_id', orderId);
+          } else if (contentId) {
+            await updateQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+          }
+          console.log('✅ [CheckRecordMe] 선택 태그 확정 완료');
+        }
+
+        // ⭐ 3. 선택 안 한 태그: DELETE
+        if (unselectedTagNames.length > 0) {
+          const deleteQuery = supabase
+            .from('user_trait_tags')
+            .delete()
+            .eq('user_id', session.user.id)
+            .in('tag_name', unselectedTagNames);
+
+          if (orderId) {
+            await deleteQuery.eq('source_order_id', orderId);
+          } else if (contentId) {
+            await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+          }
+          console.log('🗑️ [CheckRecordMe] 미선택 태그 삭제 완료');
+        }
+
+        console.log('✅ [CheckRecordMe] 태그 확정 완료');
+
+        // 🚀 ProfilePage & NadaumTagsList 캐시 무효화
+        localStorage.setItem('trait_tags_needs_refresh', 'true');
+        localStorage.removeItem('trait_tags_cache');
+        localStorage.removeItem('nadaum_all_tags_cache');
+      } else {
+        // 게스트 사용자: localStorage에 임시 저장
+        console.log('ℹ️ [CheckRecordMe] 게스트 모드 → localStorage에 임시 저장');
+        const selectedTags = tags.filter(tag => tag.selected);
+        const guestTags = JSON.parse(localStorage.getItem('guest_trait_tags') || '[]');
+        const newTags = selectedTags.map(tag => ({
+          name: tag.label,
+          type: tag.type,
+          source_content_id: contentId,
+          source_order_id: orderId,
+          source_type: sourceType,
+          created_at: new Date().toISOString()
+        }));
+        localStorage.setItem('guest_trait_tags', JSON.stringify([...guestTags, ...newTags]));
+
+        // 게스트 phone_number도 localStorage에 저장
+        localStorage.setItem('guest_phone_number', cleanPhone);
+      }
+    } catch (err) {
+      console.error('❌ [CheckRecordMe] 저장 중 오류:', err);
+      toast.error('저장 중 오류가 발생했습니다.');
+      setIsSaving(false);
+      return;
+    }
+
+    setIsSaving(false);
     setIsBottomSheetOpen(false);
+
+    // 토스트 표시 (2줄)
+    toast.success('태그가 저장됐어요!', {
+      subtitle: '프로필에서 확인할 수 있어요.',
+      duration: 2200
+    });
+
     // 바텀 시트가 닫히는 애니메이션(0.3s)이 끝난 후 화면 전환
     setTimeout(() => {
-      setView('result');
+      // ⭐ onComplete 콜백이 있으면 호출 (유료 콘텐츠 → 구매내역으로 이동)
+      if (onComplete) {
+        onComplete();
+      } else if (onHomeProp) {
+        onHomeProp();
+      }
     }, 300);
   };
 
@@ -89,10 +431,20 @@ export default function CheckRecordMe() {
       setView('dev-tarot-picking');
       return;
     }
+    // recording 상태에서 뒤로가기 → props로 전달받은 핸들러 호출
+    if (view === 'recording' && onBackProp) {
+      onBackProp();
+      return;
+    }
     setView('recording');
   };
 
   const handleHome = () => {
+    // 홈으로 가기 → props로 전달받은 핸들러 호출
+    if (onHomeProp) {
+      onHomeProp();
+      return;
+    }
     // 홈으로 가면 초기화 (선택 사항)
     setView('recording');
     setPhoneNumber("");
@@ -163,6 +515,7 @@ export default function CheckRecordMe() {
             {/* Right Action - Home Button */}
             <button
               type="button"
+              onClick={handleHome}
               className="group flex items-center justify-center shrink-0 transition-colors duration-200 active:bg-gray-100"
               style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}
             >
@@ -391,17 +744,17 @@ export default function CheckRecordMe() {
           <div className="flex flex-col w-full" style={{ gap: '8px' }}>
             {/* Primary Button */}
             <button
-              onClick={() => setIsBottomSheetOpen(true)}
-              disabled={!tags.some(t => t.selected)}
+              onClick={handlePrimaryButtonClick}
+              disabled={!tags.some(t => t.selected) || isSaving || isCheckingPhone}
               className={`w-full flex items-center justify-center transition-all ${
-                tags.some(t => t.selected)
+                tags.some(t => t.selected) && !isSaving && !isCheckingPhone
                   ? 'active:scale-[0.99]'
                   : 'cursor-not-allowed'
               }`}
               style={{
                 borderRadius: '16px',
                 height: '56px',
-                backgroundColor: tags.some(t => t.selected) ? '#48b2af' : '#f8f8f8'
+                backgroundColor: (tags.some(t => t.selected) && !isSaving && !isCheckingPhone) ? '#48b2af' : '#f8f8f8'
               }}
             >
               <p style={{
@@ -409,15 +762,16 @@ export default function CheckRecordMe() {
                 fontWeight: 500,
                 fontSize: '16px',
                 lineHeight: '25px',
-                color: tags.some(t => t.selected) ? '#ffffff' : '#b7b7b7',
+                color: (tags.some(t => t.selected) && !isSaving && !isCheckingPhone) ? '#ffffff' : '#b7b7b7',
                 letterSpacing: '-0.32px'
               }}>
-                태그 저장하고 나의 분석 보고서 받기
+                {isSaving ? '저장 중...' : '태그 저장하고 나의 분석 보고서 받기'}
               </p>
             </button>
 
-            {/* Secondary Button */}
+            {/* Secondary Button - 다음에 할래요 */}
             <button
+              onClick={onSkip}
               className="group flex flex-col items-center justify-center relative self-center transition-colors duration-200 active:bg-gray-100"
               style={{ padding: '0 8px', borderRadius: '12px', height: '34px' }}
             >
@@ -442,10 +796,11 @@ export default function CheckRecordMe() {
       <AnimatePresence>
         {isBottomSheetOpen && (
           <ReceiveMyAnalysis
-            onClose={() => setIsBottomSheetOpen(false)}
+            onClose={() => !isSaving && setIsBottomSheetOpen(false)} // 저장 중에는 닫기 방지
             onSave={handleSave}
             phoneNumber={phoneNumber}
             setPhoneNumber={setPhoneNumber}
+            isLoading={isSaving}
           />
         )}
       </AnimatePresence>

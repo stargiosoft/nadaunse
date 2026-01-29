@@ -1,13 +1,26 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 import FeedbackToast from "@/imports/FeedbackToast-17-10455";
 import svgPathsBase from '@/imports/svg-o5jcc01aog';
 import svgPathsHome from '@/imports/svg-rr05b2c3l6';
 import svgPathsClose from '@/imports/svg-8tqadibmpl';
 import EmptyContent from "@/imports/EmptyContent";
 import imgImage from "@/assets/13545c727434815b8ecda334fd9e453f4a0ea3ac.png";
+import { supabase } from '@/lib/supabase';
+import { COMFORT_QUOTES } from '@/data/comfortQuotes';
+
+// 태그 타입 정의
+interface TraitTag {
+  id: string;
+  user_id: string;
+  tag_name: string;
+  tag_type: 'positive' | 'negative' | 'neutral';
+  source_type: 'free_content' | 'paid_content';
+  source_content_id: string | null;
+  source_order_id: string | null;
+  created_at: string;
+}
 
 // Combine all paths
 const svgPaths = {
@@ -21,32 +34,33 @@ const svgPaths = {
 
 interface NadaumTagsListProps {
   onBack: () => void;
+  onHome: () => void;
 }
 
-function Container() {
+function Container({ quote }: { quote: string }) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '4px' }}>
       <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#6d6d6d', letterSpacing: '-0.24px' }} className="w-full overflow-hidden text-ellipsis whitespace-nowrap">오늘의 한 줄 위로</p>
-      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#000000', letterSpacing: '-0.3px' }} className="w-full">조금 늦어도 괜찮아, 결국 너 답게 피어날 거야</p>
+      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#000000', letterSpacing: '-0.3px' }} className="w-full">{quote}</p>
     </div>
   );
 }
 
-function Container1() {
+function Container1({ quote }: { quote: string }) {
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '12px', background: 'linear-gradient(180deg, #F8FEE9 34.21%, #EAF2D5 100%)' }}>
       <div className="flex flex-col items-start relative w-full" style={{ padding: '16px 20px' }}>
-        <Container />
+        <Container quote={quote} />
       </div>
     </div>
   );
 }
 
-function Image() {
+function ImageSection({ quote }: { quote: string }) {
   return (
     <div className="flex flex-col items-start justify-end relative shrink-0 w-full" style={{ height: '270px', padding: '16px 20px' }}>
       <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none" style={{ width: '100%', height: '100%' }} src={imgImage} />
-      <Container1 />
+      <Container1 quote={quote} />
     </div>
   );
 }
@@ -126,6 +140,7 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
   // Touch handling refs
   const touchStartRef = useRef<{ x: number, y: number } | null>(null);
   const isScrollRef = useRef(false);
+  const touchHandledRef = useRef(false); // 터치 후 중복 클릭 방지
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
@@ -153,9 +168,17 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
       return;
     }
     const target = e.target as HTMLElement;
-    const isDeleteButton = target.closest('button');
+    const isDeleteButton = target.closest('[data-delete-button]');
 
-    if (!isDeleteButton) {
+    // 터치 처리됨 표시 (클릭 이벤트 무시용)
+    touchHandledRef.current = true;
+    setTimeout(() => { touchHandledRef.current = false; }, 300);
+
+    if (isDeleteButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      onDelete();
+    } else {
       e.preventDefault();
       onSelect();
     }
@@ -164,39 +187,39 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
   };
 
   const handleClick = (e: React.MouseEvent) => {
+    // 터치 이벤트 후 발생하는 클릭은 무시
+    if (touchHandledRef.current) return;
     if (e.detail === 0) return;
-    onSelect();
-  };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete();
+    const target = e.target as HTMLElement;
+    const isDeleteButton = target.closest('[data-delete-button]');
+
+    if (isDeleteButton) {
+      e.stopPropagation();
+      onDelete();
+    } else {
+      onSelect();
+    }
   };
 
   return (
-    <motion.div
+    <div
       className="relative shrink-0"
       style={{ zIndex: isSelected ? 20 : 1 }}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div
-        onClick={handleClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className={`
-          flex items-center cursor-pointer relative
-          transition-colors duration-200
-          ${isSelected
-            ? 'ring-1 ring-[#48b2af]'
-            : 'hover:bg-[#F0F0F0]'
-          }
-        `}
+        className="flex items-center cursor-pointer relative transition-all duration-200"
         style={{
           padding: '12px 16px',
           borderRadius: '99px',
           width: 'max-content',
           touchAction: 'pan-y',
-          backgroundColor: '#f9f9f9'
+          backgroundColor: '#f9f9f9',
+          border: isSelected ? '1.5px solid #48b2af' : '1.5px solid transparent'
         }}
       >
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#151515', letterSpacing: '-0.42px' }}>
@@ -204,30 +227,37 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
         </p>
       </div>
 
-      {/* Delete Button - Absolute Positioned to prevent shaking */}
+      {/* X 버튼 - 태그 오른쪽 중앙에 겹쳐서 표시 */}
       <AnimatePresence>
         {isSelected && (
-          <motion.button
+          <motion.div
+            data-delete-button
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={handleDelete}
-            onTouchEnd={(e) => e.stopPropagation()}
-            className="absolute right-[-12px] top-1/2 -translate-y-1/2 z-30 flex items-center justify-center shrink-0"
-            style={{ width: '32px', height: '32px' }}
-            aria-label="Delete tag"
+            transition={{ duration: 0.15 }}
+            className="absolute z-30 flex items-center justify-center cursor-pointer"
+            style={{
+              width: '18px',
+              height: '18px',
+              top: '50%',
+              right: '-6px',
+              marginTop: '-9px'
+            }}
           >
-            <div className="flex items-center justify-center rounded-full shadow-sm pointer-events-none" style={{ width: '20px', height: '20px', backgroundColor: '#ff6678' }}>
+            <div
+              className="flex items-center justify-center rounded-full shadow-sm"
+              style={{ width: '18px', height: '18px', backgroundColor: '#ff6678' }}
+            >
               <svg className="block" style={{ width: '10px', height: '10px' }} fill="none" viewBox="0 0 10 10">
                 <path d="M2.5 2.5L7.5 7.5" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                 <path d="M7.5 2.5L2.5 7.5" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
               </svg>
             </div>
-          </motion.button>
+          </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
@@ -241,29 +271,24 @@ function MoreTagItem({ count }: { count: number }) {
   );
 }
 
-function TagContainer({ isExpanded }: { isExpanded: boolean }) {
-  // Initial tags
-  const [tags, setTags] = useState([
-    "결단력이 있는", "쉽게 흔들리지 않는", "책임감이 강한", "버티는 힘이 있는",
-    "스스로를 잘 지키는", "상황을 주도하는", "위기에도 침착한", "기준이 분명한",
-    "솔직한", "자유로운", "창의적인", "도전적인", "배려심 깊은", "긍정적인",
-    "활기찬", "차분한", "사려 깊은", "열정적인", "성실한", "유머러스한",
-    "감각적인", "논리적인", "직관적인", "포용력 있는", "단호한", "융통성 있는",
-    "겸손한", "용기 있는", "호기심 많은", "끈기 있는", "낙천적인", "신중한",
-    "공감 능력이 뛰어난", "리더십 있는", "협동적인", "독창적인", "분석적인",
-    "계획적인", "모험을 즐기는", "이성적인", "감성적인", "정직한",
-    "신뢰할 수 있는", "따뜻한", "냉철한", "자신감 있는", "섬세한", "대담한",
-    "주체적인", "개방적인", "철저한", "여유로운", "사교적인", "독립적인",
-    "실천하는", "균형 잡힌", "통찰력 있는", "지혜로운", "공정한", "너그러운",
-    "단단한", "유연한", "꿈이 큰", "현실적인", "다재다능한", "집중력 있는",
-    "순수한", "개성 있는", "감동을 주는", "믿음직한", "사랑스러운", "활발한",
-    "치밀한", "예리한", "든든한", "상냥한", "친절한", "매력적인", "세련된",
-    "당당한", "기발한", "진취적인", "헌신적인", "조화로운", "생동감 있는",
-    "안정적인", "강인한", "부드러운", "지적인", "재치 있는", "명랑한"
-  ]);
+interface TagContainerProps {
+  isExpanded: boolean;
+  tagType: 'positive' | 'negative';
+  tags: TraitTag[];
+  onDeleteTag: (tag: TraitTag, index: number) => void;
+  onRestoreTag: (tag: TraitTag, index: number) => void;
+}
 
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: TagContainerProps) {
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const deletingRef = useRef<Set<string>>(new Set()); // 삭제 중인 태그 ID 추적
+
+  // 🔧 Stale closure 방지: 항상 최신 onRestoreTag 호출
+  const onRestoreTagRef = useRef(onRestoreTag);
+  useEffect(() => {
+    onRestoreTagRef.current = onRestoreTag;
+  }, [onRestoreTag]);
 
   // Handle outside click/touch to deselect
   useEffect(() => {
@@ -272,7 +297,7 @@ function TagContainer({ isExpanded }: { isExpanded: boolean }) {
         // Only deselect if we're not clicking on the toast or other critical elements
         const target = event.target as Element;
         if (!target.closest('[data-sonner-toaster]')) {
-             setSelectedTag(null);
+             setSelectedTagId(null);
         }
       }
     }
@@ -285,17 +310,26 @@ function TagContainer({ isExpanded }: { isExpanded: boolean }) {
     };
   }, []);
 
-  const handleDelete = (tagToDelete: string) => {
-    const index = tags.indexOf(tagToDelete);
-    setTags(prev => prev.filter(tag => tag !== tagToDelete));
+  const handleDelete = (tagToDelete: TraitTag) => {
+    // 이미 삭제 중인 태그는 무시 (중복 방지)
+    if (deletingRef.current.has(tagToDelete.id)) {
+      return;
+    }
+    deletingRef.current.add(tagToDelete.id);
 
-    if (selectedTag === tagToDelete) {
-      setSelectedTag(null);
+    const index = tags.findIndex(t => t.id === tagToDelete.id);
+    onDeleteTag(tagToDelete, index);
+
+    if (selectedTagId === tagToDelete.id) {
+      setSelectedTagId(null);
     }
 
-    // Custom toast with Undo
+    // 고유 토스트 ID로 중복 방지
+    const toastId = `delete-tag-${tagToDelete.id}`;
+
+    // Custom toast with Undo (2.2초 = 2200ms)
     toast.custom((t) => (
-      <div className="w-full flex justify-center">
+      <div className="w-full flex justify-center" style={{ pointerEvents: 'auto' }}>
         <div className="w-fit">
           <div className="backdrop-blur-[15px] flex items-center" style={{ padding: '8px 16px 8px 12px', borderRadius: '999px', gap: '8px', backgroundColor: 'rgba(0,0,0,0.8)' }}>
             <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
@@ -308,12 +342,10 @@ function TagContainer({ isExpanded }: { isExpanded: boolean }) {
             </p>
             <button
               onClick={() => {
-                setTags(prev => {
-                  const newTags = [...prev];
-                  newTags.splice(index, 0, tagToDelete);
-                  return newTags;
-                });
+                // 🔧 ref를 통해 항상 최신 함수 호출 (stale closure 방지)
+                onRestoreTagRef.current(tagToDelete, index);
                 toast.dismiss(t);
+                deletingRef.current.delete(tagToDelete.id);
               }}
               style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '13px', color: '#48b2af', marginLeft: '4px', whiteSpace: 'nowrap' }}
               className="active:opacity-70 transition-opacity"
@@ -324,14 +356,19 @@ function TagContainer({ isExpanded }: { isExpanded: boolean }) {
         </div>
       </div>
     ), {
-      duration: 3000,
+      id: toastId,
+      duration: 2200, // 기획서: 2.2초
       unstyled: true,
-      position: 'bottom-center'
+      position: 'bottom-center',
+      onDismiss: () => {
+        // 토스트가 사라지면 삭제 완료로 간주
+        deletingRef.current.delete(tagToDelete.id);
+      }
     });
   };
 
-  const handleSelect = (tag: string) => {
-    setSelectedTag(prev => (prev === tag ? null : tag));
+  const handleSelect = (tagId: string) => {
+    setSelectedTagId(prev => (prev === tagId ? null : tagId));
   };
 
   const visibleTags = tags.slice(0, 7);
@@ -344,10 +381,10 @@ function TagContainer({ isExpanded }: { isExpanded: boolean }) {
         {/* Render visible tags */}
         {visibleTags.map((tag) => (
           <TagItem
-            key={tag}
-            label={tag}
-            isSelected={selectedTag === tag}
-            onSelect={() => handleSelect(tag)}
+            key={tag.id}
+            label={tag.tag_name}
+            isSelected={selectedTagId === tag.id}
+            onSelect={() => handleSelect(tag.id)}
             onDelete={() => handleDelete(tag)}
           />
         ))}
@@ -368,16 +405,16 @@ function TagContainer({ isExpanded }: { isExpanded: boolean }) {
 
           {isExpanded && hiddenTags.map((tag) => (
             <motion.div
-              key={tag}
+              key={tag.id}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
               className="shrink-0"
             >
               <TagItem
-                label={tag}
-                isSelected={selectedTag === tag}
-                onSelect={() => handleSelect(tag)}
+                label={tag.tag_name}
+                isSelected={selectedTagId === tag.id}
+                onSelect={() => handleSelect(tag.id)}
                 onDelete={() => handleDelete(tag)}
               />
             </motion.div>
@@ -423,34 +460,264 @@ function MoreSection({ isExpanded, onToggle }: { isExpanded: boolean; onToggle: 
   );
 }
 
-function NadaumTagsListInternal() {
+interface NadaumTagsListInternalProps {
+  tagType: 'positive' | 'negative';
+  tags: TraitTag[];
+  isLoading: boolean;
+  onDeleteTag: (tag: TraitTag, index: number) => void;
+  onRestoreTag: (tag: TraitTag, index: number) => void;
+}
+
+function NadaumTagsListInternal({ tagType, tags, isLoading, onDeleteTag, onRestoreTag }: NadaumTagsListInternalProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // 태그 타입이 바뀔 때 접힌 상태로 리셋
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [tagType]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center w-full py-10">
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#48b2af] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (tags.length === 0) {
+    return <EmptyContent />;
+  }
 
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full">
       <div className="relative shrink-0 w-full">
         <div className="flex flex-col items-start relative w-full" style={{ padding: '14px 0' }}>
-          <TagContainer isExpanded={isExpanded} />
+          <TagContainer
+            isExpanded={isExpanded}
+            tagType={tagType}
+            tags={tags}
+            onDeleteTag={onDeleteTag}
+            onRestoreTag={onRestoreTag}
+          />
         </div>
       </div>
-      <MoreSection isExpanded={isExpanded} onToggle={() => setIsExpanded(!isExpanded)} />
+      {tags.length > 7 && (
+        <MoreSection isExpanded={isExpanded} onToggle={() => setIsExpanded(!isExpanded)} />
+      )}
     </div>
   );
 }
 
-export default function NadaumTagsList({ onBack }: NadaumTagsListProps) {
+export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) {
+  // 🎯 오늘의 한 줄 위로 - 마운트 시 1회 랜덤 선택
+  const [randomQuote] = useState(() =>
+    COMFORT_QUOTES[Math.floor(Math.random() * COMFORT_QUOTES.length)]
+  );
+
+  // 🚀 동기적 캐시 확인 (초기화 시점) - 로딩 플래시 방지
+  const getInitialState = () => {
+    try {
+      const cachedJson = localStorage.getItem('nadaum_all_tags_cache');
+      if (cachedJson) {
+        const cache = JSON.parse(cachedJson);
+        const EXPIRY_MS = 5 * 60 * 1000; // 5분
+        if (Date.now() - cache.timestamp < EXPIRY_MS) {
+          console.log('🚀 [NadaumTagsList] 캐시에서 로드:', cache.tags?.length, '개');
+          return {
+            tags: cache.tags || [],
+            isLoading: false,
+            hasCache: true
+          };
+        }
+      }
+    } catch (e) {
+      console.error('❌ [NadaumTagsList] 캐시 파싱 실패:', e);
+    }
+    return { tags: [], isLoading: true, hasCache: false };
+  };
+
+  const initialState = getInitialState();
+
   const [activeTab, setActiveTab] = useState('strong');
+  const [allTags, setAllTags] = useState<TraitTag[]>(initialState.tags);
+  const [isLoading, setIsLoading] = useState(initialState.isLoading);
+
+  // 🔧 Stale closure 방지: 항상 최신 allTags에 접근
+  const allTagsRef = useRef(allTags);
+  useEffect(() => {
+    allTagsRef.current = allTags;
+  }, [allTags]);
+
+  // DB에서 태그 데이터 가져오기
+  const fetchTags = useCallback(async () => {
+    try {
+      // 🚀 캐시가 있고 refresh 불필요하면 API 호출 스킵
+      const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+      if (initialState.hasCache && !needsRefresh) {
+        console.log('✅ [NadaumTagsList] 유효한 캐시 존재 → API 호출 스킵');
+        return;
+      }
+
+      if (needsRefresh) {
+        localStorage.removeItem('trait_tags_needs_refresh');
+        console.log('🔄 [NadaumTagsList] refresh 플래그 감지 → API 호출');
+      }
+
+      setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.error('사용자 인증 필요');
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_trait_tags')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('태그 조회 실패:', error);
+        return;
+      }
+
+      setAllTags(data || []);
+
+      // 🚀 캐시에 저장 (만료 시간 포함)
+      localStorage.setItem('nadaum_all_tags_cache', JSON.stringify({
+        tags: data || [],
+        timestamp: Date.now()
+      }));
+      console.log('✅ [NadaumTagsList] 태그 로드 및 캐시 저장:', data?.length, '개');
+    } catch (err) {
+      console.error('태그 조회 중 오류:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [initialState.hasCache]);
+
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
+
+  // 태그 타입에 따른 필터링 (positive = 강한 모습, negative = 섬세한 모습)
+  const currentTagType = activeTab === 'strong' ? 'positive' : 'negative';
+  const filteredTags = allTags.filter(tag => tag.tag_type === currentTagType);
+
+  // 🚀 캐시 업데이트 헬퍼 함수
+  const updateCache = useCallback((newTags: TraitTag[]) => {
+    console.log('🔄 [NadaumTagsList] updateCache 호출 - 태그 수:', newTags.length);
+    const now = Date.now();
+
+    // 🔧 중복 제거 (id 기준)
+    const uniqueTags = newTags.filter((tag, index, self) =>
+      index === self.findIndex(t => t.id === tag.id)
+    );
+
+    // NadaumTagsList 전체 캐시 업데이트
+    localStorage.setItem('nadaum_all_tags_cache', JSON.stringify({
+      tags: uniqueTags,
+      timestamp: now
+    }));
+
+    // 🚀 ProfilePage 캐시도 직접 업데이트 (API 호출 없이 즉시 반영)
+    // ProfilePage는 최신 3개 태그 + 전체 개수를 표시
+    const sortedTags = [...uniqueTags].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const top3Tags = sortedTags.slice(0, 3).map(tag => ({
+      id: tag.id,
+      tag_name: tag.tag_name
+    }));
+
+    localStorage.setItem('trait_tags_cache', JSON.stringify({
+      tags: top3Tags,
+      totalCount: uniqueTags.length,
+      timestamp: now
+    }));
+
+    // refresh 플래그는 이제 불필요 (캐시가 이미 최신)
+    localStorage.removeItem('trait_tags_needs_refresh');
+    console.log('✅ [NadaumTagsList] ProfilePage 캐시 직접 업데이트 완료 - 중복 제거 후:', uniqueTags.length);
+  }, []);
+
+  // 태그 삭제 핸들러
+  const handleDeleteTag = useCallback(async (tagToDelete: TraitTag, index: number) => {
+    // 🔧 ref를 사용하여 항상 최신 allTags 접근
+    const currentTags = allTagsRef.current;
+
+    // Optimistic update - UI에서 먼저 제거
+    const newTags = currentTags.filter(tag => tag.id !== tagToDelete.id);
+    setAllTags(newTags);
+    updateCache(newTags);
+
+    // DB에서 삭제
+    const { error } = await supabase
+      .from('user_trait_tags')
+      .delete()
+      .eq('id', tagToDelete.id);
+
+    if (error) {
+      console.error('태그 삭제 실패:', error);
+      // 실패 시 복원
+      const restoredTags = [...newTags];
+      restoredTags.splice(index, 0, tagToDelete);
+      setAllTags(restoredTags);
+      updateCache(restoredTags);
+    }
+  }, [updateCache]);
+
+  // 태그 복원 핸들러 (실행 취소)
+  const handleRestoreTag = useCallback(async (tagToRestore: TraitTag, _index: number) => {
+    // 🔧 ref를 사용하여 항상 최신 allTags 접근 (stale closure 방지)
+    const currentTags = allTagsRef.current;
+
+    // DB에 다시 삽입 (확정된 상태로)
+    const { data, error } = await supabase
+      .from('user_trait_tags')
+      .insert({
+        user_id: tagToRestore.user_id,
+        tag_name: tagToRestore.tag_name,
+        tag_type: tagToRestore.tag_type,
+        source_type: tagToRestore.source_type,
+        source_content_id: tagToRestore.source_content_id,
+        source_order_id: tagToRestore.source_order_id,
+        is_confirmed: true,  // ⭐ 복원 시 확정 상태로
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('태그 복원 실패:', error);
+      // 원래 태그로 UI 복원 시도 - 배열 앞에 추가 후 정렬에 맡김
+      const restoredTags = [tagToRestore, ...currentTags];
+      setAllTags(restoredTags);
+      updateCache(restoredTags);
+    } else if (data) {
+      // 새로 생성된 태그로 UI 업데이트 - 배열 앞에 추가 (새 created_at이므로 가장 최신)
+      const restoredTags = [data, ...currentTags];
+      setAllTags(restoredTags);
+      updateCache(restoredTags);
+    }
+  }, [updateCache]);
 
   return (
     <div className="bg-white fixed inset-0 z-50 flex flex-col mx-auto w-full" style={{ maxWidth: '440px' }}>
-      <Toaster />
       {/* Top Navigation */}
       <div className="bg-white relative shrink-0 w-full z-10" style={{ height: '52px' }}>
         <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
           <div className="flex items-center justify-between relative" style={{ padding: '4px 12px', width: '100%', height: '100%' }}>
             {/* Left Action (Back) */}
             <button
-              onClick={onBack}
+              onClick={() => {
+                // 태그 변경 시 ProfilePage에 알림
+                console.log('🔙 [NadaumTagsList] 뒤로가기 클릭 - tagsModified 이벤트 발생');
+                window.dispatchEvent(new CustomEvent('tagsModified'));
+                onBack();
+              }}
               className="group flex items-center justify-center relative shrink-0 hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]"
               style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}
             >
@@ -474,7 +741,9 @@ export default function NadaumTagsList({ onBack }: NadaumTagsListProps) {
             </p>
 
             {/* Right Action (Home) */}
-            <button className="group flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]">
+            <button
+              onClick={onHome}
+              className="group flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]">
               <div className="relative shrink-0 transition-transform duration-200 group-active:scale-90" style={{ width: '24px', height: '24px' }}>
                  <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                   <path d={svgPaths.p3d07f180} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
@@ -489,7 +758,7 @@ export default function NadaumTagsList({ onBack }: NadaumTagsListProps) {
       {/* Content */}
       <div className="flex-1 w-full overflow-y-auto overflow-x-hidden" style={{ paddingBottom: '40px' }}>
         <div className="flex flex-col items-start relative w-full" style={{ gap: '32px' }}>
-          <Image />
+          <ImageSection quote={randomQuote} />
           <div className="flex flex-col items-start relative shrink-0 w-full">
             <div className="flex flex-col items-start relative shrink-0 w-full">
               <Container2 />
@@ -497,12 +766,14 @@ export default function NadaumTagsList({ onBack }: NadaumTagsListProps) {
             <div className="sticky top-0 z-40 bg-white w-full">
               <Tab activeTab={activeTab} setActiveTab={setActiveTab} />
             </div>
-            <div className={`flex flex-col items-center justify-start relative shrink-0 w-full ${activeTab === 'delicate' ? 'min-h-[calc(100vh-100px)]' : ''}`}>
-              {activeTab === 'delicate' ? (
-                <EmptyContent />
-              ) : (
-                <NadaumTagsListInternal />
-              )}
+            <div className={`flex flex-col items-center justify-start relative shrink-0 w-full ${filteredTags.length === 0 && !isLoading ? 'min-h-[calc(100vh-100px)]' : ''}`}>
+              <NadaumTagsListInternal
+                tagType={currentTagType}
+                tags={filteredTags}
+                isLoading={isLoading}
+                onDeleteTag={handleDeleteTag}
+                onRestoreTag={handleRestoreTag}
+              />
             </div>
           </div>
         </div>

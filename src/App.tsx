@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { useGoBack } from './hooks/useIOSSafeNavigate';
@@ -40,7 +40,7 @@ import ResultCompletePage from './components/ResultCompletePage'; // ⭐ 추가
 import AlimtalkInfoInputPage from './components/AlimtalkInfoInputPage'; // ⭐ 알림톡 정보 입력 페이지
 import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
-import { PageLoader } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
+import { PageLoader, DotLoading } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import HomePage from './pages/HomePage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
@@ -240,7 +240,7 @@ function GAInit() {
         '/terms-of-service': '이용약관',
         '/privacy-policy': '개인정보처리방침',
         '/profile': '마이페이지',
-        '/purchase-history': '구매 내역',
+        '/purchase-history': '이용 기록',
         '/saju/management': '사주 관리',
         '/saju/input': '내 사주 입력',
         '/saju/add': '사주 추가',
@@ -324,7 +324,9 @@ function GAInit() {
     // 콘텐츠 상세 페이지는 여기서 "유료/무료 콘텐츠 상세"로 트래킹하고,
     // 각 컴포넌트에서 "[유료/무료] 콘텐츠명"으로 추가 트래킹 (개별 콘텐츠 분석용)
     // ⭐ /result 경로는 UnifiedResultPage에서 orderId당 최초 1회만 트래킹 (중복 방지)
-    if (location.pathname !== '/result') {
+    // ⭐ /product/:id/result/free 경로는 FreeResultPage에서 recordId당 최초 1회만 트래킹 (중복 방지)
+    const isFreeResultPage = location.pathname.includes('/result/free');
+    if (location.pathname !== '/result' && !isFreeResultPage) {
       trackPageView(location.pathname + location.search, pageTitle);
     }
   }, [location]);
@@ -952,21 +954,257 @@ function FreeResultPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // ⭐️ resultKey 또는 recordId 둘 다 지원
+  // ⭐️ resultKey (localStorage 키)를 우선 사용
+  // - FreeContentLoading에서 온 경우: resultKey 있음 → localStorage에서 읽기
+  // - 운세 기록에서 진입: resultKey 없음, recordId만 있음 → DB에서 읽기
   const resultKey = location.state?.resultKey;
-  let recordId = location.state?.recordId || resultKey;
+  let recordId = resultKey || location.state?.recordId;
   const userName = location.state?.userName;
   const contentId = location.state?.contentId || id;
   const productFromState = location.state?.product;  // ⭐ FreeContentLoading에서 전달받은 product
+  const contentAnswersFromState = location.state?.contentAnswers;  // ⭐ 백그라운드 태그 추출용
+  const fromPurchaseHistory = location.state?.fromPurchaseHistory === true;  // ⭐ 운세 기록에서 진입 여부
 
-  // ⭐️ resultKey가 없으면 로딩 페이지로 리다이렉트 (Edge Function 호출 필수)
+  // ⭐ 나다움 기록하기용 태그 (백그라운드 추출)
+  const [tags, setTags] = useState<{ name: string; type: 'positive' | 'negative' | 'neutral' }[] | undefined>(undefined);
+  const [isTagLoading, setIsTagLoading] = useState(false);
+  const [isTagExtracted, setIsTagExtracted] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(false);  // ⭐ '다음' 클릭 후 태그 대기 중
+
+  // 📊 GA 이벤트: 무료 결과 조회 (recordId당 최초 1회만 page_view 전송)
   useEffect(() => {
-    if (!recordId && id) {
-      console.log('⚠️ [FreeResultPage] resultKey 없음 → 로딩 페이지로 리다이렉트');
-      console.log('📌 [FreeResultPage] localStorage fallback 제거됨 - Edge Function 필수 호출');
-      navigate(`/product/${id}/loading/free`, { replace: true });
+    // recordId가 없으면 스킵 (DB 조회 모드에서 처리)
+    if (!recordId || !id) return;
+
+    const viewedRecordsKey = 'viewed_free_result_records';
+    const viewedRecords: string[] = JSON.parse(localStorage.getItem(viewedRecordsKey) || '[]');
+    const recordKey = `${id}_${recordId}`;  // contentId + recordId 조합으로 유니크 키 생성
+
+    if (!viewedRecords.includes(recordKey)) {
+      // ⭐ 최초 조회 시에만 page_view 전송 (재조회 시 제외)
+      trackPageView(`/product/${id}/result/free`, '무료 운세 결과 | 나다운세');
+      console.log('📊 [FreeResultPage] GA page_view 전송 (최초 조회):', recordKey);
+
+      // 조회 기록 저장 (최대 100개 유지)
+      const updatedRecords = [...viewedRecords, recordKey].slice(-100);
+      localStorage.setItem(viewedRecordsKey, JSON.stringify(updatedRecords));
+    } else {
+      console.log('📊 [FreeResultPage] GA page_view 스킵 (재조회):', recordKey);
     }
-  }, [recordId, id, navigate]);
+  }, [id, recordId]);
+
+  // ⭐ 백그라운드 태그 추출 (결과 페이지 진입 시 즉시 시작)
+  useEffect(() => {
+    const extractTags = async () => {
+      // contentAnswers가 있을 때만 태그 추출 (새 결과일 때)
+      let contentAnswers = contentAnswersFromState;
+
+      // state에 없으면 localStorage에서 읽기
+      if (!contentAnswers && recordId) {
+        try {
+          const storedResult = localStorage.getItem(recordId);
+          if (storedResult) {
+            const parsed = JSON.parse(storedResult);
+            contentAnswers = parsed.contentAnswers;
+          }
+        } catch (err) {
+          console.error('❌ [FreeResultPage] localStorage contentAnswers 읽기 실패:', err);
+        }
+      }
+
+      if (!contentAnswers || contentAnswers.length === 0) {
+        console.log('ℹ️ [FreeResultPage] contentAnswers 없음 → 태그 추출 스킵');
+        setIsTagExtracted(true);  // 추출 완료로 처리 (빈 태그)
+        return;
+      }
+
+      console.log('🏷️ [FreeResultPage] 백그라운드 태그 추출 시작...');
+      setIsTagLoading(true);
+
+      try {
+        // ⭐ 사용자의 기존 태그 조회 (중복 방지용)
+        let existingTags: string[] = [];
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) {
+          const { data: existingTagsData } = await supabase
+            .from('user_trait_tags')
+            .select('tag_name')
+            .eq('user_id', userData.user.id);
+
+          if (existingTagsData && existingTagsData.length > 0) {
+            existingTags = existingTagsData.map(t => t.tag_name);
+            console.log('📌 [FreeResultPage] 기존 태그 조회:', existingTags.length, '개');
+          }
+        }
+
+        const tagResponse = await supabase.functions.invoke('extract-trait-tags', {
+          body: {
+            contentAnswers: contentAnswers,
+            existingTags
+          }
+        });
+
+        if (tagResponse.error) {
+          console.error('❌ [FreeResultPage] 태그 추출 API 오류:', tagResponse.error);
+        } else if (tagResponse.data?.success && tagResponse.data?.tags) {
+          const extractedTags = tagResponse.data.tags;
+          console.log('✅ [FreeResultPage] 백그라운드 태그 추출 완료:', extractedTags);
+          setTags(extractedTags);
+
+          // localStorage에도 태그 저장
+          if (recordId) {
+            try {
+              const storedResult = localStorage.getItem(recordId);
+              if (storedResult) {
+                const parsed = JSON.parse(storedResult);
+                parsed.tags = extractedTags;
+                localStorage.setItem(recordId, JSON.stringify(parsed));
+                console.log('💾 [FreeResultPage] localStorage에 태그 저장 완료');
+              }
+            } catch (err) {
+              console.error('❌ [FreeResultPage] localStorage 태그 저장 실패:', err);
+            }
+          }
+
+          // ⭐ DB에 즉시 저장 (is_confirmed: false) - 나중에 태그 선택 시 확정
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user?.id && contentId) {
+            try {
+              // 해당 콘텐츠의 기존 임시 태그 삭제 (중복 방지)
+              await supabase
+                .from('user_trait_tags')
+                .delete()
+                .eq('user_id', userData.user.id)
+                .eq('source_content_id', contentId)
+                .eq('source_type', 'free_content')
+                .eq('is_confirmed', false);
+
+              // 새 태그 INSERT (is_confirmed: false)
+              const { error: insertError } = await supabase
+                .from('user_trait_tags')
+                .insert(
+                  extractedTags.map((tag: { name: string; type: string }) => ({
+                    user_id: userData.user.id,
+                    tag_name: tag.name,
+                    tag_type: tag.type,
+                    source_type: 'free_content',
+                    source_content_id: contentId,
+                    source_order_id: null,
+                    is_confirmed: false
+                  }))
+                );
+
+              if (insertError) {
+                console.warn('⚠️ [FreeResultPage] 태그 DB 저장 실패:', insertError);
+              } else {
+                console.log('💾 [FreeResultPage] 태그 DB 저장 완료 (is_confirmed: false)');
+              }
+            } catch (dbError) {
+              console.warn('⚠️ [FreeResultPage] 태그 DB 저장 예외:', dbError);
+            }
+          }
+        }
+      } catch (tagError) {
+        console.error('❌ [FreeResultPage] 태그 추출 실패:', tagError);
+      } finally {
+        setIsTagLoading(false);
+        setIsTagExtracted(true);
+      }
+    };
+
+    extractTags();
+  }, [contentAnswersFromState, recordId]);
+
+  // ⭐ 태그 추출 완료 후 pendingNavigation이 true면 자동 이동
+  useEffect(() => {
+    if (pendingNavigation && isTagExtracted && id) {
+      console.log('🔀 [FreeResultPage] 태그 추출 완료 → 나다움 기록하기로 이동');
+      navigate(`/nadaum-record/${id}`, { state: { tags } });
+    }
+  }, [pendingNavigation, isTagExtracted, id, tags, navigate]);
+
+  // ⭐ '다음' 버튼 클릭 핸들러
+  const handleNext = () => {
+    if (isTagExtracted) {
+      // 태그 추출 완료 → 바로 이동
+      console.log('🔀 [FreeResultPage] 태그 완료됨 → 바로 이동');
+      navigate(`/nadaum-record/${id}`, { state: { tags } });
+    } else {
+      // 태그 추출 중 → 로딩 페이지로 이동
+      console.log('⏳ [FreeResultPage] 태그 추출 중 → 로딩 페이지로 이동');
+      navigate(`/product/${id}/tag-loading`, {
+        state: {
+          contentAnswers: contentAnswersFromState,
+          userName: userName
+        }
+      });
+    }
+  };
+
+  // ⭐️ DB 조회 모드 (운세 기록 페이지에서 진입 시)
+  const fromDB = location.state?.fromDB === true;
+  const dbRecordId = fromDB ? recordId : undefined;  // fromDB 모드에서 recordId는 DB ID
+  const isNewResult = location.state?.isNewResult === true;  // ⭐ 새로 생성된 결과 (나다움 기록하기 버튼 표시)
+
+  // ⭐ resultKey 없이 접근 시 DB에서 최근 결과 조회 (로그인 사용자)
+  const [dbResult, setDbResult] = useState<any>(null);
+  const [isLoadingDbResult, setIsLoadingDbResult] = useState(false);
+
+  useEffect(() => {
+    const fetchDbResult = async () => {
+      // resultKey가 있거나 fromDB 모드면 스킵
+      if (recordId || fromDB || !id) return;
+
+      // 로그인 사용자 확인
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        console.log('⚠️ [FreeResultPage] 비로그인 + resultKey 없음 → 콘텐츠 상세로 이동');
+        navigate(`/product/${id}`, { replace: true });
+        return;
+      }
+
+      // DB에서 최근 결과 조회
+      setIsLoadingDbResult(true);
+      console.log('🔍 [FreeResultPage] DB에서 최근 결과 조회 중...');
+
+      const { data: recentRecord, error } = await supabase
+        .from('free_content_records')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('content_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setIsLoadingDbResult(false);
+
+      if (error || !recentRecord) {
+        console.log('⚠️ [FreeResultPage] DB 결과 없음 → 콘텐츠 상세로 이동');
+        navigate(`/product/${id}`, { replace: true });
+        return;
+      }
+
+      console.log('✅ [FreeResultPage] DB에서 최근 결과 조회 완료:', recentRecord.id);
+      setDbResult(recentRecord);
+
+      // 📊 GA 이벤트: DB 조회 결과도 최초 1회만 page_view 전송
+      const viewedRecordsKey = 'viewed_free_result_records';
+      const viewedRecords: string[] = JSON.parse(localStorage.getItem(viewedRecordsKey) || '[]');
+      const recordKey = `${id}_${recentRecord.id}`;
+
+      if (!viewedRecords.includes(recordKey)) {
+        trackPageView(`/product/${id}/result/free`, '무료 운세 결과 | 나다운세');
+        console.log('📊 [FreeResultPage] GA page_view 전송 (DB 조회 - 최초):', recordKey);
+
+        const updatedRecords = [...viewedRecords, recordKey].slice(-100);
+        localStorage.setItem(viewedRecordsKey, JSON.stringify(updatedRecords));
+      } else {
+        console.log('📊 [FreeResultPage] GA page_view 스킵 (DB 조회 - 재조회):', recordKey);
+      }
+    };
+
+    fetchDbResult();
+  }, [recordId, id, fromDB, navigate]);
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📋 [FreeResultPage] 컴포넌트 마운트');
@@ -1117,17 +1355,31 @@ function FreeResultPage() {
     );
   }
   
-  // ⭐️ recordId 없으면 에러 (localStorage key가 필요함)
-  if (!recordId) {
+  // ⭐️ recordId 없으면 에러 (fromDB 모드 또는 dbResult가 있을 때는 예외)
+  // fromDB 모드에서는 dbRecordId로 DB 조회, dbResult가 있으면 그걸로 조회
+  if (!recordId && !fromDB && !dbResult) {
+    // DB 결과 로딩 중이면 대기
+    if (isLoadingDbResult) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-[#999999]">결과를 불러오는 중...</p>
+          </div>
+        </div>
+      );
+    }
+
     console.error('❌ [FreeResultPage] recordId (resultKey) 없음');
     console.error('  - id:', id);
     console.error('  - recordId:', recordId);
-    
+    console.error('  - fromDB:', fromDB);
+    console.error('  - dbResult:', dbResult);
+
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-[#999999] mb-4">결과를 찾을 수 없습니다</p>
-          <button 
+          <button
             onClick={() => navigate('/')}
             className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
           >
@@ -1138,25 +1390,48 @@ function FreeResultPage() {
     );
   }
 
+  // ⭐ dbResult가 있으면 fromDB 모드처럼 처리
+  const effectiveFromDB = fromDB || !!dbResult;
+  const effectiveDbRecordId = dbRecordId || dbResult?.id;
+
   console.log('✅ [FreeResultPage] FreeSajuDetail 렌더링');
   console.log('📌 [FreeResultPage] recordId 전달:', recordId);
+  console.log('📌 [FreeResultPage] fromDB:', fromDB);
+  console.log('📌 [FreeResultPage] effectiveFromDB:', effectiveFromDB);
+  console.log('📌 [FreeResultPage] dbRecordId:', dbRecordId);
+  console.log('📌 [FreeResultPage] effectiveDbRecordId:', effectiveDbRecordId);
   console.log('📌 [FreeResultPage] productImage:', product.image);
   console.log('📌 [FreeResultPage] product:', product);
 
+  // ⭐ X 버튼 클릭 시 이동 경로 결정
+  const handleClose = () => {
+    if (fromPurchaseHistory) {
+      // 운세 기록에서 진입한 경우 → 운세 기록 무료 체험판 탭으로 복귀
+      navigate('/purchase-history', { state: { activeTab: 'free' } });
+    } else {
+      // 일반 진입 → 홈으로 이동
+      navigate('/');
+    }
+  };
+
   return (
     <FreeSajuDetail
-      recordId={recordId}
-      userName={userName}
+      recordId={recordId || ''}  // fromDB 모드에서도 빈 문자열 전달 (required prop)
+      userName={userName || dbResult?.saju_name}
       productTitle={product.title}
       productImage={product.image}
       contentId={id}
-      onClose={() => navigate('/')}
+      onClose={handleClose}
       recommendedProducts={recommendedContents}
       onProductClick={(productId) => {
         navigate(`/product/${productId}`);
       }}
       onBannerClick={(productId) => navigate(`/product/${productId}`)}
       onUserIconClick={() => navigate('/profile')}
+      fromDB={effectiveFromDB}
+      dbRecordId={effectiveDbRecordId}
+      onNext={isNewResult && id ? handleNext : undefined}  // ⭐ 새 결과일 때만 나다움 기록하기로 이동
+      isNextLoading={false}  // ⭐ 태그 추출 중이면 로딩 페이지로 이동 (버튼 스피너 표시 안 함)
     />
   );
 }
@@ -1221,6 +1496,17 @@ function ProfilePageWrapper() {
       onNavigateToPurchaseHistory={() => navigate('/purchase-history', { state: { canGoBack: true } })}
       onNavigateToSajuInput={() => navigate('/saju/input', { state: { canGoBack: true } })}
       onNavigateToSajuManagement={() => navigate('/saju/management', { state: { canGoBack: true } })}
+    />
+  );
+}
+
+// NadaumTagsList Wrapper
+function NadaumTagsListWrapper() {
+  const navigate = useNavigate();
+  return (
+    <NadaumTagsList
+      onBack={() => window.history.back()}
+      onHome={() => navigate('/')}
     />
   );
 }
@@ -1445,6 +1731,284 @@ function FreeContentDetailWrapper() {
       }}
       onBannerClick={(productId) => navigate(`/product/${productId}`)}
       onPurchase={undefined} // ⭐ handlePurchase fallback 사용
+      onNext={() => navigate(`/nadaum-record/${id}`)} // ⭐ 나다움 기록하기로 이동
+    />
+  );
+}
+
+// ⭐ 태그 추출 로딩 페이지 Wrapper (FreeContentLoading UI 재사용)
+function TagExtractionLoadingWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasStarted = useRef(false);
+
+  // state에서 contentAnswers 전달받음
+  const contentAnswersFromState = location.state?.contentAnswers as Array<{ questionText: string; answerText: string }> | undefined;
+  const userName = location.state?.userName || '회원';
+
+  useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
+    const extractTags = async () => {
+      try {
+        // contentAnswers 가져오기 (state 또는 localStorage)
+        let contentAnswers = contentAnswersFromState;
+
+        if (!contentAnswers) {
+          // localStorage에서 시도
+          const keys = Object.keys(localStorage).filter(k => k.startsWith('free_content_'));
+          for (const key of keys) {
+            try {
+              const data = JSON.parse(localStorage.getItem(key) || '{}');
+              if (data.contentAnswers) {
+                contentAnswers = data.contentAnswers;
+                break;
+              }
+            } catch {}
+          }
+        }
+
+        if (!contentAnswers || contentAnswers.length === 0) {
+          console.warn('⚠️ [TagExtractionLoading] contentAnswers 없음 → 바로 이동');
+          navigate(`/nadaum-record/${id}`, { replace: true });
+          return;
+        }
+
+        console.log('🏷️ [TagExtractionLoading] 태그 추출 API 호출...');
+
+        // ⭐ 사용자의 기존 태그 조회 (중복 방지용)
+        let existingTags: string[] = [];
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) {
+          const { data: existingTagsData } = await supabase
+            .from('user_trait_tags')
+            .select('tag_name')
+            .eq('user_id', userData.user.id);
+
+          if (existingTagsData && existingTagsData.length > 0) {
+            existingTags = existingTagsData.map(t => t.tag_name);
+            console.log('📌 [TagExtractionLoading] 기존 태그 조회:', existingTags.length, '개');
+          }
+        }
+
+        const { data: tagResponse, error: tagError } = await supabase.functions.invoke('extract-trait-tags', {
+          body: { contentAnswers, existingTags }
+        });
+
+        if (tagError || !tagResponse?.success) {
+          console.error('❌ [TagExtractionLoading] 태그 추출 실패:', tagError || tagResponse?.error);
+          navigate(`/nadaum-record/${id}`, { replace: true });
+          return;
+        }
+
+        const extractedTags = tagResponse.tags || [];
+        console.log('✅ [TagExtractionLoading] 태그 추출 완료:', extractedTags);
+
+        // ⭐ DB에 즉시 저장 (is_confirmed: false) - 나중에 태그 선택 시 확정
+        // userData는 위에서 이미 조회함
+        if (userData?.user?.id && id) {
+          try {
+            // 해당 콘텐츠의 기존 임시 태그 삭제 (중복 방지)
+            await supabase
+              .from('user_trait_tags')
+              .delete()
+              .eq('user_id', userData.user.id)
+              .eq('source_content_id', id)
+              .eq('source_type', 'free_content')
+              .eq('is_confirmed', false);
+
+            // 새 태그 INSERT (is_confirmed: false)
+            const { error: insertError } = await supabase
+              .from('user_trait_tags')
+              .insert(
+                extractedTags.map((tag: { name: string; type: string }) => ({
+                  user_id: userData.user.id,
+                  tag_name: tag.name,
+                  tag_type: tag.type,
+                  source_type: 'free_content',
+                  source_content_id: id,
+                  source_order_id: null,
+                  is_confirmed: false
+                }))
+              );
+
+            if (insertError) {
+              console.warn('⚠️ [TagExtractionLoading] 태그 DB 저장 실패:', insertError);
+            } else {
+              console.log('💾 [TagExtractionLoading] 태그 DB 저장 완료 (is_confirmed: false)');
+            }
+          } catch (dbError) {
+            console.warn('⚠️ [TagExtractionLoading] 태그 DB 저장 예외:', dbError);
+          }
+        }
+
+        // 나다움 기록하기 페이지로 이동
+        navigate(`/nadaum-record/${id}`, {
+          replace: true,
+          state: { tags: extractedTags }
+        });
+
+      } catch (err) {
+        console.error('❌ [TagExtractionLoading] 예외:', err);
+        navigate(`/nadaum-record/${id}`, { replace: true });
+      }
+    };
+
+    extractTags();
+  }, [id, contentAnswersFromState, navigate]);
+
+  return (
+    <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
+        <DotLoading />
+        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
+          <div className="flex flex-col justify-center relative shrink-0 w-full">
+            <p className="font-semibold leading-[32.5px]">{userName}님의</p>
+          </div>
+          <div className="flex flex-col justify-center relative shrink-0 w-full">
+            <p className="font-semibold leading-[32.5px]">나다움 태그를 분석중이에요!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 나다움 기록하기 페이지 Wrapper
+function NadaumRecordWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ⭐ 나다움 기록하기용 태그 (navigation state에서 전달받음)
+  const tags = location.state?.tags as { name: string; type: 'positive' | 'negative' | 'neutral' }[] | undefined;
+
+  return (
+    <CheckRecordMe
+      contentId={id}
+      tags={tags}
+      onBack={() => navigate(`/product/${id}/result/free`)} // 무료 운세 결과 페이지로 이동
+      onHome={() => navigate('/')}
+      onSkip={() => navigate('/')} // 다음에 할래요
+    />
+  );
+}
+
+// ⭐ 유료 콘텐츠 태그 추출 로딩 페이지 Wrapper
+function PaidTagExtractionLoadingWrapper() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasStarted = useRef(false);
+
+  const { orderId, contentId } = location.state || {};
+
+  // 사용자 이름 가져오기
+  const [userName, setUserName] = useState<string>('회원');
+  useEffect(() => {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        if (user.full_name) setUserName(user.full_name);
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
+    if (!orderId || !contentId) {
+      console.warn('⚠️ [PaidTagExtractionLoading] orderId 또는 contentId 없음 → 홈으로 이동');
+      navigate('/');
+      return;
+    }
+
+    // ⭐ localStorage 폴링 (UnifiedResultPage에서 태그 추출 완료를 기다림)
+    console.log('🏷️ [PaidTagExtractionLoading] localStorage 폴링 시작 (UnifiedResultPage 태그 추출 대기)...');
+    const cacheKey = `extracted_tags_${orderId}`;
+    let pollCount = 0;
+    const maxPolls = 30; // 최대 15초 대기 (500ms * 30)
+
+    const pollInterval = setInterval(() => {
+      pollCount++;
+      const cached = localStorage.getItem(cacheKey);
+
+      if (cached) {
+        clearInterval(pollInterval);
+        try {
+          const { tags } = JSON.parse(cached);
+          console.log('✅ [PaidTagExtractionLoading] localStorage에서 태그 발견:', tags);
+          // 캐시 삭제 (일회성)
+          localStorage.removeItem(cacheKey);
+          navigate('/paid/nadaum-record', {
+            replace: true,
+            state: { orderId, contentId, tags: tags || [] }
+          });
+        } catch {
+          navigate('/paid/nadaum-record', {
+            replace: true,
+            state: { orderId, contentId, tags: [] }
+          });
+        }
+        return;
+      }
+
+      if (pollCount >= maxPolls) {
+        clearInterval(pollInterval);
+        console.warn('⚠️ [PaidTagExtractionLoading] 폴링 타임아웃 → 빈 태그로 이동');
+        navigate('/paid/nadaum-record', {
+          replace: true,
+          state: { orderId, contentId, tags: [] }
+        });
+      }
+    }, 500);
+
+    return () => clearInterval(pollInterval);
+  }, [orderId, contentId, navigate]);
+
+  return (
+    <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
+        <DotLoading />
+        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
+          <div className="flex flex-col justify-center relative shrink-0 w-full">
+            <p className="font-semibold leading-[32.5px]">{userName}님의</p>
+          </div>
+          <div className="flex flex-col justify-center relative shrink-0 w-full">
+            <p className="font-semibold leading-[32.5px]">나다움 태그를 분석중이에요!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ⭐ 유료 콘텐츠 나다움 기록하기 페이지 Wrapper
+function PaidNadaumRecordWrapper() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const { orderId, contentId, tags } = location.state || {};
+
+  if (!orderId || !contentId) {
+    console.warn('⚠️ [PaidNadaumRecordWrapper] orderId 또는 contentId 없음 → 홈으로 이동');
+    navigate('/');
+    return null;
+  }
+
+  return (
+    <CheckRecordMe
+      contentId={contentId}
+      orderId={orderId}
+      tags={tags}
+      sourceType="paid_content"
+      onBack={() => navigate(-1)}
+      onHome={() => navigate('/')}
+      onSkip={() => navigate('/')}
+      onComplete={() => navigate('/')}  // ⭐ 무료와 동일하게 홈으로 이동 + 토스트 표시
     />
   );
 }
@@ -1791,6 +2355,10 @@ export default function App() {
           <Route path="/master/content/:id/birthinfo" element={<BirthInfoPage />} />
           <Route path="/master/content/:id" element={<MasterContentDetailWrapper />} />
           <Route path="/free/content/:id" element={<FreeContentDetailWrapper />} />
+          <Route path="/product/:id/tag-loading" element={<TagExtractionLoadingWrapper />} /> {/* ⭐ 태그 추출 로딩 페이지 */}
+          <Route path="/nadaum-record/:id" element={<NadaumRecordWrapper />} /> {/* ⭐ 나다움 기록하기 페이지 */}
+          <Route path="/paid/tag-loading" element={<PaidTagExtractionLoadingWrapper />} /> {/* ⭐ 유료 콘텐츠 태그 추출 로딩 페이지 */}
+          <Route path="/paid/nadaum-record" element={<PaidNadaumRecordWrapper />} /> {/* ⭐ 유료 콘텐츠 나다움 기록하기 페이지 */}
           <Route path="/saju/input" element={<SajuInputPageWrapper />} />
           <Route path="/saju/management" element={<SajuManagementPageWrapper />} />
           <Route path="/saju/add" element={<SajuAddPageWrapper />} />
@@ -1807,7 +2375,9 @@ export default function App() {
           <Route path="/test/my-report-weekly" element={<MyReportList />} /> {/* MyReportList가 전체 화면 렌더링 */}
           <Route path="/test/my-report-empty" element={<MyReportList forceEmptyState={true} />} />
           <Route path="/test/nadaum-tags" element={<NadaumTags onBack={() => {}} />} />
-          <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} />} />
+          <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} onHome={() => {}} />} />
+          {/* ⭐ 프로필 > 나다움 태그 전체보기 */}
+          <Route path="/profile/nadaum-tags" element={<NadaumTagsListWrapper />} />
           <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail onBack={() => {}} />} />
           <Route path="/test/report-weekly-tarot" element={<ReportWeeklyTarot />} />
           <Route path="/test/report-weekly-tarot-result" element={<ReportWeeklyTarotResult />} />
@@ -1831,10 +2401,11 @@ export default function App() {
           {/* ⭐ 404 처리: 존재하지 않는 모든 라우트 */}
           <Route path="*" element={<ErrorPage type="404" />} />
         </Routes>
-        <Toaster 
+        <Toaster
           position="bottom-center"
           visibleToasts={1}
           offset={0}
+          style={{ zIndex: 9999 }}
           toastOptions={{
             unstyled: true,
             className: 'toast-viewport-center',
