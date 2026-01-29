@@ -962,7 +962,8 @@ function FreeResultPage() {
   const userName = location.state?.userName;
   const contentId = location.state?.contentId || id;
   const productFromState = location.state?.product;  // ⭐ FreeContentLoading에서 전달받은 product
-  const contentAnswersFromState = location.state?.contentAnswers;  // ⭐ 백그라운드 태그 추출용
+  const contentAnswersFromState = location.state?.contentAnswers;  // ⭐ 태그 폴백용
+  const tagsFromState = location.state?.tags;  // ⭐ AI가 운세 생성과 동시에 추출한 태그 (새로운 방식)
   const fromPurchaseHistory = location.state?.fromPurchaseHistory === true;  // ⭐ 운세 기록에서 진입 여부
 
   // ⭐ 나다움 기록하기용 태그 (백그라운드 추출)
@@ -993,10 +994,76 @@ function FreeResultPage() {
     }
   }, [id, recordId]);
 
-  // ⭐ 백그라운드 태그 추출 (결과 페이지 진입 시 즉시 시작)
+  // ⭐ 태그 처리 (AI 동시 추출 우선, 없으면 폴백으로 extract-trait-tags 호출)
   useEffect(() => {
-    const extractTags = async () => {
-      // contentAnswers가 있을 때만 태그 추출 (새 결과일 때)
+    const processTags = async () => {
+      // ⭐ 1. state에서 받은 태그 확인 (AI가 운세 생성과 동시에 추출)
+      let extractedTagsFromAI = tagsFromState;
+
+      // state에 없으면 localStorage에서 확인
+      if (!extractedTagsFromAI && recordId) {
+        try {
+          const storedResult = localStorage.getItem(recordId);
+          if (storedResult) {
+            const parsed = JSON.parse(storedResult);
+            extractedTagsFromAI = parsed.tags;
+          }
+        } catch (err) {
+          console.error('❌ [FreeResultPage] localStorage tags 읽기 실패:', err);
+        }
+      }
+
+      // ⭐ 태그가 이미 있으면 바로 사용 (응답 시간 단축!)
+      if (extractedTagsFromAI && extractedTagsFromAI.length > 0) {
+        console.log('✅ [FreeResultPage] AI 동시 추출 태그 사용:', extractedTagsFromAI.length, '개');
+        console.log('📌 [FreeResultPage] 태그:', extractedTagsFromAI.map((t: { name: string }) => t.name).join(', '));
+        setTags(extractedTagsFromAI);
+        setIsTagExtracted(true);
+
+        // ⭐ DB에 저장 (is_confirmed: false)
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id && contentId) {
+          try {
+            // 해당 콘텐츠의 기존 임시 태그 삭제 (중복 방지)
+            await supabase
+              .from('user_trait_tags')
+              .delete()
+              .eq('user_id', userData.user.id)
+              .eq('source_content_id', contentId)
+              .eq('source_type', 'free_content')
+              .eq('is_confirmed', false);
+
+            // 새 태그 INSERT (is_confirmed: false)
+            const { error: insertError } = await supabase
+              .from('user_trait_tags')
+              .insert(
+                extractedTagsFromAI.map((tag: { name: string; type: string }) => ({
+                  user_id: userData.user.id,
+                  tag_name: tag.name,
+                  tag_type: tag.type,
+                  source_type: 'free_content',
+                  source_content_id: contentId,
+                  source_order_id: null,
+                  is_confirmed: false
+                }))
+              );
+
+            if (insertError) {
+              console.warn('⚠️ [FreeResultPage] 태그 DB 저장 실패:', insertError);
+            } else {
+              console.log('💾 [FreeResultPage] 태그 DB 저장 완료 (is_confirmed: false)');
+            }
+          } catch (dbError) {
+            console.warn('⚠️ [FreeResultPage] 태그 DB 저장 예외:', dbError);
+          }
+        }
+        return;
+      }
+
+      // ⭐ 2. 태그가 없으면 폴백: extract-trait-tags 호출 (기존 방식)
+      console.log('ℹ️ [FreeResultPage] AI 태그 없음 → 폴백: extract-trait-tags 호출');
+
+      // contentAnswers 확인 (우선순위: state → localStorage → dbResult)
       let contentAnswers = contentAnswersFromState;
 
       // state에 없으면 localStorage에서 읽기
@@ -1012,13 +1079,22 @@ function FreeResultPage() {
         }
       }
 
+      // ⭐ localStorage에도 없으면 dbResult에서 answers 사용 (재조회 시)
+      if (!contentAnswers && dbResult?.answers) {
+        console.log('📌 [FreeResultPage] dbResult.answers 사용 (재조회)');
+        contentAnswers = dbResult.answers.map((a: { question_text: string; answer_text: string }) => ({
+          questionText: a.question_text,
+          answerText: a.answer_text
+        }));
+      }
+
       if (!contentAnswers || contentAnswers.length === 0) {
         console.log('ℹ️ [FreeResultPage] contentAnswers 없음 → 태그 추출 스킵');
         setIsTagExtracted(true);  // 추출 완료로 처리 (빈 태그)
         return;
       }
 
-      console.log('🏷️ [FreeResultPage] 백그라운드 태그 추출 시작...');
+      console.log('🏷️ [FreeResultPage] 폴백 태그 추출 시작 (extract-trait-tags)...');
       setIsTagLoading(true);
 
       try {
@@ -1048,7 +1124,7 @@ function FreeResultPage() {
           console.error('❌ [FreeResultPage] 태그 추출 API 오류:', tagResponse.error);
         } else if (tagResponse.data?.success && tagResponse.data?.tags) {
           const extractedTags = tagResponse.data.tags;
-          console.log('✅ [FreeResultPage] 백그라운드 태그 추출 완료:', extractedTags);
+          console.log('✅ [FreeResultPage] 폴백 태그 추출 완료:', extractedTags);
           setTags(extractedTags);
 
           // localStorage에도 태그 저장
@@ -1105,15 +1181,15 @@ function FreeResultPage() {
           }
         }
       } catch (tagError) {
-        console.error('❌ [FreeResultPage] 태그 추출 실패:', tagError);
+        console.error('❌ [FreeResultPage] 폴백 태그 추출 실패:', tagError);
       } finally {
         setIsTagLoading(false);
         setIsTagExtracted(true);
       }
     };
 
-    extractTags();
-  }, [contentAnswersFromState, recordId]);
+    processTags();
+  }, [tagsFromState, contentAnswersFromState, recordId, contentId, dbResult]);
 
   // ⭐ 태그 추출 완료 후 pendingNavigation이 true면 자동 이동
   useEffect(() => {
@@ -1430,7 +1506,7 @@ function FreeResultPage() {
       onUserIconClick={() => navigate('/profile')}
       fromDB={effectiveFromDB}
       dbRecordId={effectiveDbRecordId}
-      onNext={isNewResult && id ? handleNext : undefined}  // ⭐ 새 결과일 때만 나다움 기록하기로 이동
+      onNext={id ? handleNext : undefined}  // ⭐ 무료 콘텐츠면 항상 나다움 기록하기 버튼 표시 (재조회 시에도)
       isNextLoading={false}  // ⭐ 태그 추출 중이면 로딩 페이지로 이동 (버튼 스피너 표시 안 함)
     />
   );
