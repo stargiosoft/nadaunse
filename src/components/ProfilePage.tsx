@@ -241,6 +241,14 @@ export default function ProfilePage({
 
   const navigate = useNavigate(); // ⭐ useNavigate 사용
 
+  // ⭐ 태그 표시 개수 계산 (1줄에 맞게 2개 또는 3개)
+  // 태그 총 글자 수가 20자 초과하면 2개만 표시
+  const visibleTagCount = (() => {
+    if (traitTags.length <= 2) return traitTags.length;
+    const totalChars = traitTags.slice(0, 3).reduce((sum, tag) => sum + tag.tag_name.length, 0);
+    return totalChars > 20 ? 2 : 3;
+  })();
+
   // 🔍 DEBUG: 컴포넌트 렌더 시점 로깅
   console.log('🔍 [ProfilePage] 컴포넌트 렌더 - initialState.hasCache:', initialState.hasCache);
 
@@ -924,23 +932,23 @@ export default function ProfilePage({
                             </div>
                           </div>
 
-                          {/* Tags - 실제 DB 데이터 */}
-                          <div className="flex flex-wrap gap-[4px] w-full">
-                            {traitTags.map((tag) => (
+                          {/* Tags - 실제 DB 데이터 (1줄 유지: 글자 수에 따라 2~3개) */}
+                          <div className="flex flex-nowrap gap-[4px] w-full">
+                            {traitTags.slice(0, visibleTagCount).map((tag) => (
                               <div
                                 key={tag.id}
-                                className="flex items-center justify-center rounded-[999px]"
+                                className="flex items-center justify-center rounded-[999px] shrink-0"
                                 style={{ backgroundColor: '#f0f8f8', padding: '5px 7px' }}
                               >
-                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683' }}>
+                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683', whiteSpace: 'nowrap' }}>
                                   # {tag.tag_name}
                                 </p>
                               </div>
                             ))}
-                            {/* +N 텍스트 - 3개 초과 시 표시 (배경 없음) */}
-                            {totalTagCount > 3 && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683', padding: '5px 0' }}>
-                                +{totalTagCount - 3}
+                            {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
+                            {totalTagCount > visibleTagCount && (
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683', padding: '5px 0', whiteSpace: 'nowrap' }}>
+                                +{totalTagCount - visibleTagCount}
                               </p>
                             )}
                           </div>
