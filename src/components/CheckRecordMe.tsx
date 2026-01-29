@@ -101,28 +101,36 @@ export default function CheckRecordMe({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // ⭐ 본인 사주 레코드 (phone_number 확인용) - 캐시 우선 로드
-  // 🚀 동기적 캐시 확인 (로딩 딜레이 방지)
+  // ⭐ 본인 사주 레코드 (phone_number 확인용) - 무료 콘텐츠에서만 체크
+  // 🚀 유료 콘텐츠는 이미 앞에서 phone_number를 받으므로 체크 불필요
   const getInitialPhoneCheckState = () => {
+    // ⭐ 유료 콘텐츠면 phone_number 체크 스킵
+    if (sourceType === 'paid_content') {
+      console.log('✅ [CheckRecordMe] 유료 콘텐츠 → phone_number 체크 스킵');
+      return {
+        mySajuRecord: null,
+        needsPhoneNumber: false,
+        isCheckingPhone: false
+      };
+    }
+
+    // 무료 콘텐츠: 캐시에서 phone_number 확인
     try {
-      // primary_saju 캐시에서 phone_number 확인
       const primarySajuJson = localStorage.getItem('primary_saju');
       if (primarySajuJson) {
         const primarySaju = JSON.parse(primarySajuJson);
-        // notes가 '본인'인지 확인 (대부분의 경우 primary_saju가 본인)
         if (primarySaju && primarySaju.notes === '본인') {
           console.log('🚀 [CheckRecordMe] 캐시에서 phone_number 확인:', primarySaju.phone_number ? '있음' : '없음');
           return {
             mySajuRecord: primarySaju,
             needsPhoneNumber: !primarySaju.phone_number,
-            isCheckingPhone: false // 캐시 있으면 체크 완료
+            isCheckingPhone: false
           };
         }
       }
     } catch (e) {
       console.error('❌ [CheckRecordMe] 캐시 파싱 실패:', e);
     }
-    // 캐시 없으면 API 호출 필요
     return {
       mySajuRecord: null,
       needsPhoneNumber: false,
@@ -135,11 +143,10 @@ export default function CheckRecordMe({
   const [needsPhoneNumber, setNeedsPhoneNumber] = useState(initialPhoneState.needsPhoneNumber);
   const [isCheckingPhone, setIsCheckingPhone] = useState(initialPhoneState.isCheckingPhone);
 
-  // ⭐ 캐시 미스 시에만 API 호출 (백그라운드 검증)
+  // ⭐ 무료 콘텐츠 + 캐시 미스 시에만 API 호출
   useEffect(() => {
-    // 캐시에서 이미 확인 완료했으면 스킵
-    if (!initialPhoneState.isCheckingPhone) {
-      console.log('✅ [CheckRecordMe] 캐시에서 phone_number 확인 완료 → API 호출 스킵');
+    // 유료 콘텐츠거나 캐시에서 이미 확인 완료했으면 스킵
+    if (sourceType === 'paid_content' || !initialPhoneState.isCheckingPhone) {
       return;
     }
 
@@ -150,7 +157,7 @@ export default function CheckRecordMe({
         if (!session?.user?.id) {
           console.log('ℹ️ [CheckRecordMe] 비로그인 상태 → phone_number 체크 스킵');
           setIsCheckingPhone(false);
-          setNeedsPhoneNumber(true); // 비로그인 시에도 바텀시트 표시
+          setNeedsPhoneNumber(true);
           return;
         }
 
@@ -172,7 +179,6 @@ export default function CheckRecordMe({
           console.log('✅ [CheckRecordMe] 본인 사주 레코드:', sajuRecord);
           setMySajuRecord(sajuRecord);
           setNeedsPhoneNumber(!sajuRecord.phone_number);
-          console.log('📌 [CheckRecordMe] phone_number 필요 여부:', !sajuRecord.phone_number);
         } else {
           console.log('ℹ️ [CheckRecordMe] 본인 사주 레코드 없음');
           setNeedsPhoneNumber(true);
@@ -185,7 +191,7 @@ export default function CheckRecordMe({
     };
 
     checkPhoneNumber();
-  }, []);
+  }, [sourceType]);
 
   const toggleTag = (id: string) => {
     setTags(tags.map(tag =>
