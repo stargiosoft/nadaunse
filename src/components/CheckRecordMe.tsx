@@ -476,7 +476,7 @@ export default function CheckRecordMe({
   // NOTE: CompletionCoupon 컴포넌트가 삭제되어 임시 placeholder 표시
   if (view === 'result') {
     return (
-      <div className="bg-white relative w-full h-screen flex flex-col items-center justify-center mx-auto" style={{ maxWidth: '440px' }}>
+      <div className="bg-white fixed inset-0 flex flex-col items-center justify-center">
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', color: '#999' }}>
           완료 화면 (CompletionCoupon 컴포넌트 필요)
         </p>
@@ -492,9 +492,10 @@ export default function CheckRecordMe({
   }
 
   return (
-    <div className="bg-white relative w-full h-screen flex flex-col mx-auto" style={{ maxWidth: '440px' }}>
+    <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
       {/* Top Navigation */}
-      <div className="bg-white relative shrink-0 w-full">
+      <div className="bg-white relative shrink-0 w-full z-10">
         <div className="flex flex-col justify-center" style={{ height: '52px' }}>
           <div className="flex items-center justify-between" style={{ padding: '4px 12px' }}>
             {/* Left Action - Back Button */}
@@ -532,8 +533,8 @@ export default function CheckRecordMe({
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: '20px' }}>
+      {/* Main Content - iOS 바운스 방지 */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain" style={{ padding: '20px' }}>
         <motion.div
           className="flex flex-col w-full mx-auto"
           style={{ gap: '64px', maxWidth: '350px' }}
@@ -804,6 +805,7 @@ export default function CheckRecordMe({
           />
         )}
       </AnimatePresence>
+      </div>{/* max-w-[440px] wrapper 닫기 */}
     </div>
   );
 }

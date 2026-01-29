@@ -669,7 +669,7 @@ export default function ProfilePage({
   return (
     <>
       <SEO title="프로필" noIndex={true} />
-      <div className="bg-white fixed inset-0 flex justify-center">
+      <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
         <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
 
         {/* Top Navigation */}
@@ -736,8 +736,8 @@ export default function ProfilePage({
           </div>
         )}
 
-        {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지 */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지, overflow-x-hidden으로 좌우 스와이프 방지 */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
           {/* Min-height wrapper - 스크롤 영역 전체를 채우면서 Footer가 항상 맨 아래에 위치 */}
           <div className="min-h-full flex flex-col">
           {/* Spacer */}
@@ -901,7 +901,7 @@ export default function ProfilePage({
                     /* 태그가 있을 때 - 태그 카드 표시 */
                     <motion.div
                       variants={itemVariants}
-                      className="w-full -mx-[20px] px-[20px] py-[16px]"
+                      style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '16px', paddingBottom: '16px' }}
                     >
                       <div
                         className="flex items-center justify-between px-[16px] py-[4px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
@@ -951,7 +951,7 @@ export default function ProfilePage({
                     /* 태그가 없을 때 - 메뉴 아이템만 표시 */
                     <motion.div
                       variants={itemVariants}
-                      className="w-full -mx-[20px] px-[20px] py-[16px]"
+                      style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '16px', paddingBottom: '16px' }}
                     >
                       <div
                         className="flex items-center justify-between px-[16px] py-[4px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
@@ -986,20 +986,23 @@ export default function ProfilePage({
               {/* Menu List Container */}
               <motion.div
                 variants={{ hidden: {}, visible: {} }}
-                className="content-stretch flex flex-col flex-1 gap-[0px] items-start w-full mb-[120px] -mx-[20px] px-[20px] py-[4px]"
+                className="flex flex-col flex-1 mb-[120px] py-[4px]"
+                style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px' }}
               >
                 <motion.div
                   variants={{
                     hidden: { opacity: 1 },
                     visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0 } }
                   }}
-                  className="w-full flex flex-col flex-1"
+                  className="flex flex-col flex-1"
+                  style={{ width: '100%' }}
                 >
                   {/* 1. 콘텐츠 만들기 (마스터 전용) */}
                   {isMaster && (
                     <motion.div
                       variants={itemVariants}
-                      className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                      style={{ width: '100%' }}
                       onClick={onNavigateToMasterContent}
                     >
                       <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">콘텐츠 만들기</p>
@@ -1011,7 +1014,8 @@ export default function ProfilePage({
                   {/* 2. 이용 기록 */}
                   <motion.div
                     variants={itemVariants}
-                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%' }}
                     onClick={onNavigateToPurchaseHistory}
                   >
                     <div className="flex items-center gap-[8px]">
@@ -1210,7 +1214,8 @@ export default function ProfilePage({
                   {/* 3. 사주 정보 관리 */}
                   <motion.div
                     variants={itemVariants}
-                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%' }}
                     onClick={handleSajuMenuClick}
                   >
                     <div className="flex items-center gap-[8px]">
@@ -1257,7 +1262,8 @@ export default function ProfilePage({
                   <motion.div
                     variants={itemVariants}
                     onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
-                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%' }}
                   >
                     <div className="flex items-center gap-[8px]">
                       <div className="relative shrink-0 size-[20px]">
@@ -1273,7 +1279,8 @@ export default function ProfilePage({
                   <motion.div
                     variants={itemVariants}
                     onClick={handleLogoutClick}
-                    className="content-stretch flex items-center justify-between px-[16px] py-[12px] rounded-[16px] w-full cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%' }}
                   >
                     <div className="flex items-center gap-[8px]">
                       <div className="relative shrink-0 size-[20px]">
