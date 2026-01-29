@@ -4,10 +4,13 @@ import WarningIcon from '../../imports/Icons-517-888';
 import NegativeIcon from '../../imports/Icons-517-917';
 
 export type ToastType = 'positive' | 'warning' | 'negative' | 'info';
+export type ToastVariant = 'dark' | 'light';
 
 interface ToastProps {
   type: ToastType;
   message: string;
+  subtitle?: string;
+  variant?: ToastVariant;
 }
 
 // ⭐ Info 아이콘: Warning 구조 복사 + 파란색 적용
@@ -45,22 +48,91 @@ const toastConfig = {
   },
 };
 
-export function Toast({ type, message }: ToastProps) {
+export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps) {
   const config = toastConfig[type];
   const IconComponent = config.icon;
 
+  // Light variant (밝은 배경, 어두운 텍스트)
+  if (variant === 'light') {
+    return (
+      <div
+        className="rounded-[16px] inline-block shadow-lg pointer-events-auto toast-animate-enter"
+        style={{ backgroundColor: 'rgba(245, 243, 239, 0.95)' }}
+      >
+        <div className="flex flex-row items-center pl-[16px] pr-[20px] py-[12px] gap-[12px]">
+          {/* Icon Container */}
+          <div className="relative shrink-0 size-[32px] flex items-center justify-center">
+            <IconComponent />
+          </div>
+
+          {/* Text */}
+          <div className="flex flex-col gap-[2px]">
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: '#333333'
+            }}>
+              {message}
+            </p>
+            {subtitle && (
+              <p style={{
+                fontFamily: 'Pretendard Variable',
+                fontWeight: 400,
+                fontSize: '13px',
+                lineHeight: '18px',
+                color: '#666666'
+              }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Dark variant (기존 스타일)
   return (
-    <div className="backdrop-blur-[15px] backdrop-filter bg-[rgba(0,0,0,0.5)] rounded-[999px] inline-block shadow-lg pointer-events-auto toast-animate-enter">
-      <div className="flex flex-row items-center pl-[12px] pr-[16px] py-[8px] gap-[8px]">
+    <div
+      className="inline-block shadow-lg pointer-events-auto toast-animate-enter"
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(15px)',
+        WebkitBackdropFilter: 'blur(15px)',
+        borderRadius: '16px'
+      }}
+    >
+      <div className="flex flex-row items-center" style={{ padding: '10px 16px 10px 12px', gap: '10px' }}>
         {/* Icon Container */}
         <div className="relative shrink-0 size-[24px] flex items-center justify-center">
           <IconComponent />
         </div>
-        
+
         {/* Text */}
-        <p className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[22px] text-[13px] text-nowrap text-white">
-          {message}
-        </p>
+        <div className="flex flex-col gap-[2px]">
+          <p style={{
+            fontFamily: 'Pretendard Variable',
+            fontWeight: 500,
+            fontSize: '14px',
+            lineHeight: '20px',
+            color: '#ffffff'
+          }}>
+            {message}
+          </p>
+          {subtitle && (
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 400,
+              fontSize: '13px',
+              lineHeight: '18px',
+              color: 'rgba(255, 255, 255, 0.8)'
+            }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

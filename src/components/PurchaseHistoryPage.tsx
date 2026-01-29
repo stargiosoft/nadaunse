@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import ArrowLeft from './ArrowLeft';
-import svgPathsEmpty from '../imports/svg-q49yf219uv';
-import { preloadTarotImages } from '../lib/tarotImageCache'; // ⭐ 타로 캐시 추가
+import { preloadTarotImages } from '../lib/tarotImageCache';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PageLoader } from './ui/PageLoader';
+import emptyStateSvgPaths from "../imports/svg-297vu4q7h0"; // Empty State 아이콘 (둥지)
 
 interface PurchaseItem {
   id: string;
@@ -15,9 +15,9 @@ interface PurchaseItem {
   paid_amount: number;
   created_at: string;
   pstatus: string;
-  full_name: string | null;    // ⭐ orders 테이블의 직접 컬럼
-  birth_date: string | null;   // ⭐ orders 테이블의 직접 컬럼
-  ai_generation_completed: boolean | null;  // ⭐ AI 생성 완료 여부
+  full_name: string | null;
+  birth_date: string | null;
+  ai_generation_completed: boolean | null;
   master_contents: {
     title: string;
     thumbnail_url: string | null;
@@ -29,6 +29,27 @@ interface PurchaseItem {
   } | null;
 }
 
+// ⭐ 무료 콘텐츠 기록 인터페이스
+interface FreeContentRecord {
+  id: string;
+  content_id: string;
+  full_name: string;
+  birth_date: string;
+  created_at: string;
+  answers: Array<{
+    question_id: string;
+    question_order: number;
+    question_text: string;
+    answer_text: string;
+  }>;
+  master_contents: {
+    title: string;
+    thumbnail_url: string | null;
+  };
+}
+
+type TabType = 'paid' | 'free';
+
 /**
  * ⭐ 생년월일 포맷팅 함수
  * ISO 형식 또는 YYYY-MM-DD 형식을 YYYY.MM.DD 형식으로 변환
@@ -37,9 +58,8 @@ function formatBirthDate(dateString: string | null | undefined): string {
   if (!dateString) return '';
 
   try {
-    // ISO 형식 또는 다양한 날짜 형식 파싱
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; // 파싱 실패 시 원본 반환
+    if (isNaN(date.getTime())) return dateString;
 
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -47,7 +67,7 @@ function formatBirthDate(dateString: string | null | undefined): string {
 
     return `${year}.${month}.${day}`;
   } catch {
-    return dateString; // 에러 시 원본 반환
+    return dateString;
   }
 }
 
@@ -55,17 +75,44 @@ interface GroupedPurchases {
   [date: string]: PurchaseItem[];
 }
 
+interface GroupedFreeRecords {
+  [date: string]: FreeContentRecord[];
+}
+
+// ⭐ 빈 둥지 아이콘 컴포넌트 (52x52px 고정)
+function EmptyNestIcon() {
+  return (
+    <svg width="52" height="52" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d={emptyStateSvgPaths.p3a144140} fill="#E7E7E7" />
+      <path d={emptyStateSvgPaths.p15b23580} fill="#D4D4D4" />
+      <path d={emptyStateSvgPaths.p3b09d000} fill="#D4D4D4" />
+      <path d={emptyStateSvgPaths.p1c433500} fill="#E7E7E7" />
+      <path d={emptyStateSvgPaths.p136e2000} fill="#F3F3F3" />
+      <path d={emptyStateSvgPaths.p15328600} fill="#D4D4D4" />
+      <path d={emptyStateSvgPaths.p1d148980} fill="#E7E7E7" />
+      <path d={emptyStateSvgPaths.p2d904400} fill="#F3F3F3" />
+    </svg>
+  );
+}
+
 export default function PurchaseHistoryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
 
-  // ⭐ 세션 체크 - 로그아웃 상태면 다이얼로그 표시
+  // ⭐ 탭 상태 및 무료 콘텐츠 기록 (운세 기록에서 돌아올 때 탭 상태 유지)
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (location.state as { activeTab?: TabType })?.activeTab || 'paid'
+  );
+  const [freeRecords, setFreeRecords] = useState<FreeContentRecord[]>([]);
+  const [freeLoading, setFreeLoading] = useState(false);
+
+  // ⭐ 세션 체크
   useEffect(() => {
     const checkSession = async () => {
-      // DEV 모드 우회
       if (import.meta.env.DEV) {
         const localUserJson = localStorage.getItem('user');
         if (localUserJson) {
@@ -90,58 +137,46 @@ export default function PurchaseHistoryPage() {
     try {
       setLoading(true);
 
-      // ⭐️ UI TEST 모드 체크 (구매내역 페이지에서만 사용)
+      // UI TEST 모드 체크
       const isUITestMode = localStorage.getItem('ui_test_mode') === 'true';
-      
+
       if (isUITestMode) {
-        console.log('⚡ [UI TEST] UI TEST 모드 감지 → 더미 구매내역 로드');
-        
-        // ⭐️ 플래그 즉시 제거 (일회성 동작)
         localStorage.removeItem('ui_test_mode');
-        
-        // 더미 구매내역 로드
         const devPurchases = localStorage.getItem('dev_purchase_records');
         if (devPurchases) {
           try {
             const parsedData = JSON.parse(devPurchases);
-            console.log('✅ [UI TEST] 더미 구매내역 로드 완료:', parsedData.length, '건');
             setPurchases(parsedData);
             setLoading(false);
-            return; // ⭐ 실제 API 호출 방지
+            return;
           } catch (e) {
             console.error('❌ [UI TEST] 더미 데이터 파싱 실패:', e);
-            // 파싱 실패 시 정상 플로우로 진행
           }
         }
       }
 
-      // 🔍 localStorage 캐시 체크 (5분 유효)
+      // 캐시 체크
       const cacheKey = 'purchase_history_cache';
       const cached = localStorage.getItem(cacheKey);
-      
+
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
 
-        // 캐시가 5분 이내면 즉시 표시 (Optimistic UI)
         if (now - timestamp < fiveMinutes) {
-          console.log('✅ 캐시에서 구매내역 로드');
           setPurchases(data);
           setLoading(false);
         }
       }
 
-      // 🔄 백그라운드에서 최신 데이터 로드
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         setError('로그인이 필요합니다.');
         setLoading(false);
         return;
       }
-
-      console.log('🔍 구매내역 조회 시작 - User ID:', user.id);
 
       const { data, error: fetchError } = await supabase
         .from('orders')
@@ -167,7 +202,7 @@ export default function PurchaseHistoryPage() {
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      
+
       if (fetchError) {
         console.error('❌ 구매내역 조회 실패:', fetchError);
         setError('구매내역을 불러오는데 실패했습니다.');
@@ -175,11 +210,8 @@ export default function PurchaseHistoryPage() {
         return;
       }
 
-      console.log('✅ 구매내역 조회 성공:', data);
-
       setPurchases(data || []);
 
-      // 🔄 캐시 업데이트
       localStorage.setItem(cacheKey, JSON.stringify({
         data: data || [],
         timestamp: Date.now(),
@@ -187,24 +219,15 @@ export default function PurchaseHistoryPage() {
 
       setLoading(false);
 
-      // ⭐ 백그라운드에서 타로 이미지 프리로드 (완료 대기 없음)
+      // 백그라운드 타로 프리로드
       if (data && data.length > 0) {
-        console.log('🎴 [구매내역] 백그라운드 타로 프리로드 시작...');
-
-        // 완료된 주문만 필터링
         const completedOrders = data.filter((order: PurchaseItem) =>
           order.pstatus === 'completed'
         );
-
-        // 최근 10개 주문만 프리로드 (나머지는 클릭 시 로드)
         const recentOrders = completedOrders.slice(0, 10);
         recentOrders.forEach(order => {
-          preloadTarotImages(order.id, supabaseUrl).catch(err => {
-            console.log(`⚠️ [구매내역] ${order.id} 타로 프리로드 실패:`, err);
-          });
+          preloadTarotImages(order.id, supabaseUrl).catch(() => {});
         });
-
-        console.log(`✅ [구매내역] 최근 ${recentOrders.length}개 주문 타로 프리로드 시작 (총 ${completedOrders.length}개 중)`);
       }
     } catch (err) {
       console.error('❌ 구매내역 로드 에러:', err);
@@ -213,12 +236,84 @@ export default function PurchaseHistoryPage() {
     }
   };
 
-  // 날짜별로 그룹핑 (Figma 시안: "2025.9.30" 형식)
+  // ⭐ 무료 콘텐츠 기록 조회 (캐싱 적용)
+  const loadFreeContentHistory = async () => {
+    try {
+      setFreeLoading(true);
+
+      // 캐시 체크 (5분)
+      const cacheKey = 'free_content_history_cache';
+      const cached = localStorage.getItem(cacheKey);
+
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+
+        if (now - timestamp < fiveMinutes) {
+          setFreeRecords(data);
+          setFreeLoading(false);
+          return; // 캐시가 유효하면 DB 조회 생략
+        }
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFreeLoading(false);
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('free_content_records')
+        .select(`
+          id,
+          content_id,
+          full_name,
+          birth_date,
+          created_at,
+          answers,
+          master_contents (
+            title,
+            thumbnail_url
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        console.error('❌ [무료기록] 조회 실패:', fetchError);
+        setFreeLoading(false);
+        return;
+      }
+
+      setFreeRecords((data as FreeContentRecord[]) || []);
+
+      // 캐시 저장
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: data || [],
+        timestamp: Date.now(),
+      }));
+
+      setFreeLoading(false);
+    } catch (err) {
+      console.error('❌ [무료기록] 로드 에러:', err);
+      setFreeLoading(false);
+    }
+  };
+
+  // ⭐ 탭 변경 시 무료 기록 로드
+  useEffect(() => {
+    if (activeTab === 'free' && freeRecords.length === 0) {
+      loadFreeContentHistory();
+    }
+  }, [activeTab]);
+
+  // 날짜별 그룹핑
   const groupByDate = (items: PurchaseItem[]): GroupedPurchases => {
     return items.reduce((acc, item) => {
       const date = new Date(item.created_at);
       const formattedDate = `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
-      
+
       if (!acc[formattedDate]) {
         acc[formattedDate] = [];
       }
@@ -227,27 +322,87 @@ export default function PurchaseHistoryPage() {
     }, {} as GroupedPurchases);
   };
 
-  const groupedPurchases = groupByDate(purchases);
+  const groupFreeByDate = (items: FreeContentRecord[]): GroupedFreeRecords => {
+    return items.reduce((acc, item) => {
+      const date = new Date(item.created_at);
+      const formattedDate = `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
 
-  const handleBackClick = () => {
-    console.log('🔙 [구매내역] 뒤로가기 클릭');
-    navigate('/profile'); // ⭐ 명시적으로 프로필로 이동 (히스토리 스택 문제 방지)
+      if (!acc[formattedDate]) {
+        acc[formattedDate] = [];
+      }
+      acc[formattedDate].push(item);
+      return acc;
+    }, {} as GroupedFreeRecords);
   };
 
+  const groupedPurchases = groupByDate(purchases);
+  const groupedFreeRecords = groupFreeByDate(freeRecords);
+
+  const handleBackClick = () => {
+    navigate('/profile');
+  };
+
+  // ⭐ 유료 콘텐츠 클릭 핸들러
   const handleViewPurchase = async (item: PurchaseItem) => {
-    console.log('📦 운세 보기:', item);
-    
-    // 콘텐츠 타입에 따라 다른 페이지로 이동
     if (item.master_contents.content_type === 'free') {
-      // 무료 콘텐츠는 무료 사주 결과 페이지로
       navigate(`/free-saju/${item.id}`);
     } else {
-      // ⭐ 유료 콘텐츠: order_results 먼저 체크 (사주 정보 삭제 여부와 무관)
-      console.log('🔍 [구매내역] 유료 콘텐츠 상태 체크 시작:', item.id);
+      // ⭐ 1단계: 캐시 확인 (AI 완료 + 캐시 있으면 즉시 이동)
+      const aiCompleted = item.ai_generation_completed === true;
+      if (aiCompleted) {
+        try {
+          const cacheKey = `paid_result_${item.id}`;
+          const cachedJson = localStorage.getItem(cacheKey);
+          if (cachedJson) {
+            const cached = JSON.parse(cachedJson);
+            const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+            const isExpired = Date.now() - cached.timestamp > CACHE_EXPIRY_MS;
 
+            // 캐시 유효 + 타로 모두 완료 → 즉시 이동
+            const allTarotViewed = cached.results.every(
+              (r: { question_type: string; tarot_user_viewed: boolean | null }) =>
+                r.question_type !== 'tarot' || r.tarot_user_viewed === true
+            );
+
+            if (!isExpired && cached.results.length > 0) {
+              // ⭐ 첫 번째 질문이 미선택 타로인지 확인
+              const firstResult = cached.results.find(
+                (r: { question_order: number }) => r.question_order === 1
+              );
+              const isFirstTarotUnviewed = firstResult?.question_type === 'tarot' &&
+                !firstResult?.tarot_user_viewed;
+
+              if (isFirstTarotUnviewed) {
+                // ⭐ 첫 번째 질문이 미선택 타로 → 바로 셔플 페이지로 이동 (로딩 1회만)
+                console.log('🎴 [PurchaseHistoryPage] 첫 타로 미선택 → 바로 셔플 페이지:', item.id);
+                navigate(`/tarot/shuffle?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
+                  replace: true
+                });
+                return;
+              }
+
+              if (allTarotViewed) {
+                // ⭐ 모든 타로 선택됨 → 결과 페이지로 이동
+                console.log('💾 [PurchaseHistoryPage] 캐시 히트 → 즉시 결과 페이지 이동:', item.id);
+                preloadTarotImages(item.id, supabaseUrl).catch(() => {});
+                navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
+                  state: {
+                    cachedResults: cached.results,
+                    cachedContentId: cached.contentId
+                  }
+                });
+                return;
+              }
+            }
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ [PurchaseHistoryPage] 캐시 확인 실패:', cacheError);
+        }
+      }
+
+      // ⭐ 2단계: 캐시 없으면 기존 로직 (DB 조회)
       try {
-        // 1️⃣ 병렬로 질문 개수 & 답변 개수 조회
-        const [questionsResult, resultsResult] = await Promise.all([
+        const [questionsResult, resultsResult, firstQuestionResult] = await Promise.all([
           supabase
             .from('master_content_questions')
             .select('id', { count: 'exact', head: true })
@@ -255,82 +410,58 @@ export default function PurchaseHistoryPage() {
           supabase
             .from('order_results')
             .select('id, orders!inner(user_id)', { count: 'exact', head: true })
+            .eq('order_id', item.id),
+          // ⭐ 첫 번째 질문의 타로 상태 확인
+          supabase
+            .from('order_results')
+            .select('question_type, tarot_user_viewed, orders!inner(user_id)')
             .eq('order_id', item.id)
+            .eq('question_order', 1)
+            .single()
         ]);
 
-        // 에러 핸들링
         if (questionsResult.error) {
-          console.error('❌ [구매내역] 질문 개수 조회 실패:', questionsResult.error);
-          // 에러 시 일단 통합 결과 페이지로 이동 (from=purchase 포함)
           navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
           return;
-        }
-
-        if (resultsResult.error) {
-          console.error('❌ [구매내역] order_results 조회 실패:', resultsResult.error);
         }
 
         const totalQuestions = questionsResult.count || 0;
         const completedAnswers = resultsResult.count || 0;
-        const aiCompleted = (item as any).ai_generation_completed === true;
-        console.log(`📋 [구매내역] 병렬 쿼리 완료 - 전체: ${totalQuestions}, 완료: ${completedAnswers}, AI완료: ${aiCompleted}`);
 
-        // 3️⃣ AI 생성 완료 OR 모든 답변 완료 → 결과 페이지로 즉시 이동
-        // orders 테이블에 사주 스냅샷(full_name, gender, birth_date, birth_time)이 저장되어 있음
-        if (completedAnswers > 0 && (aiCompleted || completedAnswers >= totalQuestions)) {
-          // ✅ AI 생성 완료 → 결과 페이지로 즉시 이동
-          console.log(`✅ [구매내역] AI 생성 완료 (${completedAnswers}/${totalQuestions}) → 결과 페이지로 즉시 이동`);
-
-          // ⭐ 타로 이미지 프리로드 (백그라운드 처리, 완료 대기 안함)
-          preloadTarotImages(item.id, supabaseUrl).catch(err => {
-            console.log('⚠️ [구매내역] 타로 프리로드 실패 (무시):', err);
+        // ⭐ 첫 번째 질문이 미선택 타로면 바로 셔플 페이지로
+        if (firstQuestionResult.data?.question_type === 'tarot' &&
+            !firstQuestionResult.data?.tarot_user_viewed) {
+          console.log('🎴 [PurchaseHistoryPage] 첫 타로 미선택 (DB) → 바로 셔플 페이지:', item.id);
+          navigate(`/tarot/shuffle?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
+            replace: true
           });
+          return;
+        }
 
-          // 즉시 통합 결과 페이지로 이동 (히스토리 유지 - 뒤로가기 시 구매내역으로 이동)
+        if (completedAnswers > 0 && (aiCompleted || completedAnswers >= totalQuestions)) {
+          preloadTarotImages(item.id, supabaseUrl).catch(() => {});
           navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
           return;
         }
 
-        // 4️⃣ AI 생성 중 (ai_generation_completed=false) + 일부 결과 있음 → 로딩 페이지
         if (completedAnswers > 0 && !aiCompleted && completedAnswers < totalQuestions) {
-          console.log(`⚠️ [구매내역] AI 생성 중 (${completedAnswers}/${totalQuestions}) → 로딩 페이지로 이동`);
           navigate(`/loading?orderId=${item.id}&contentId=${item.content_id}&from=purchase`);
           return;
         }
 
-        // 5️⃣ order_results가 없음 → 사주 정보 체크
         if (!item.saju_record_id) {
-          console.log('⚠️ [구매내역] AI 결과 없음 + saju_record_id null → 사주 선택/입력 필요');
-
-          // 등록된 사주 정보가 있는지 확인
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const { data: sajuRecords, error: sajuError } = await supabase
+            const { data: sajuRecords } = await supabase
               .from('saju_records')
               .select('id')
               .eq('user_id', user.id);
 
-            if (sajuError) {
-              console.error('❌ [구매내역] 사주 정보 조회 실패:', sajuError);
-              // 에러 시 사주 입력 페이지로 이동 (canGoBack 상태 추가)
-              navigate(`/product/${item.content_id}/birthinfo?orderId=${item.id}`, {
-                state: { canGoBack: true, fromPath: '/purchase-history' }
-              });
-              return;
-            }
-
-            const hasSajuRecords = sajuRecords && sajuRecords.length > 0;
-            console.log('📊 [구매내역] 등록된 사주 개수:', sajuRecords?.length || 0);
-
-            if (hasSajuRecords) {
-              // 등록된 사주 정보가 있으면 → 사주 선택 페이지로 (canGoBack 상태 추가)
-              console.log('✅ [구매내역] 등록된 사주 있음 → 사주 선택 페이지로 이동');
+            if (sajuRecords && sajuRecords.length > 0) {
               navigate(`/product/${item.content_id}/saju-select?orderId=${item.id}`, {
                 state: { canGoBack: true, fromPath: '/purchase-history' }
               });
             } else {
-              // 등록된 사주 정보가 없으면 → 사주 입력 페이지로 (canGoBack 상태 추가)
-              console.log('✅ [구매내역] 등록된 사주 없음 → 사주 입력 페이지로 이동');
               navigate(`/product/${item.content_id}/birthinfo?orderId=${item.id}`, {
                 state: { canGoBack: true, fromPath: '/purchase-history' }
               });
@@ -339,18 +470,53 @@ export default function PurchaseHistoryPage() {
           return;
         }
 
-        // 6️⃣ order_results 없고 saju_record_id 있음 → 로딩 페이지
-        console.log('⚠️ [구매내역] AI 결과 없음 + saju_record_id 있음 → 로딩 페이지로 이동');
-        navigate(`/loading?orderId=${item.id}&contentId=${item.content_id}&from=purchase`)
+        navigate(`/loading?orderId=${item.id}&contentId=${item.content_id}&from=purchase`);
       } catch (error) {
-        console.error('❌ [구매내역] order_results 체크 에러:', error);
-        // 에러 시 일단 통합 결과 페이지로 이동 (결과 페이지에서 다시 체크)
         navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
       }
     }
   };
 
-  // 날짜 포맷: "2025.09.30 (14:33)"
+  // ⭐ 무료 콘텐츠 클릭 핸들러
+  const handleViewFreeRecord = (record: FreeContentRecord) => {
+    // ⭐ 이미 조회한 데이터를 localStorage에 캐시로 저장 (DB 재조회 방지)
+    const resultKey = `free_content_${record.content_id}_${record.id}`;
+    const cachedData = {
+      contentId: record.content_id,
+      sajuData: {
+        full_name: record.full_name,
+        birth_date: record.birth_date
+      },
+      results: record.answers?.map((a: { question_id: string; question_order: number; question_text: string; answer_text: string }) => ({
+        questionId: a.question_id,
+        questionOrder: a.question_order,
+        questionText: a.question_text,
+        questionType: 'ai',
+        previewText: a.answer_text
+      })) || [],
+      createdAt: record.created_at
+    };
+
+    localStorage.setItem(resultKey, JSON.stringify(cachedData));
+
+    // ⭐ resultKey와 함께 navigate → DB 조회 없이 localStorage에서 바로 읽기
+    navigate(`/product/${record.content_id}/result/free`, {
+      state: {
+        resultKey: resultKey,
+        userName: record.full_name,
+        recordId: record.id,  // 나다움 태그 저장용
+        product: {
+          id: record.content_id,
+          title: record.master_contents.title,
+          type: 'free',
+          image: record.master_contents.thumbnail_url || ''
+        },
+        fromPurchaseHistory: true  // ⭐ X 버튼 클릭 시 운세 기록으로 복귀
+      }
+    });
+  };
+
+  // 날짜/시간 포맷
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     const year = date.getFullYear();
@@ -358,7 +524,7 @@ export default function PurchaseHistoryPage() {
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    
+
     return `${year}.${month}.${day} (${hours}:${minutes})`;
   };
 
@@ -366,16 +532,19 @@ export default function PurchaseHistoryPage() {
     return <PageLoader />;
   }
 
+  const isPaidEmpty = purchases.length === 0;
+  const isFreeEmpty = freeRecords.length === 0;
+
   return (
     <div className="h-[100dvh] bg-white flex flex-col w-full max-w-[440px] mx-auto overflow-hidden">
-      {/* Top Navigation - 스테이터스바 제거 */}
+      {/* ⭐ Top Navigation */}
       <div className="bg-white h-[52px] relative shrink-0 w-full sticky top-0 z-10">
         <div className="flex flex-col justify-center size-full">
           <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] h-[52px] z-50 bg-white flex flex-col items-start justify-center px-[12px] py-[4px]">
             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
               <ArrowLeft onClick={handleBackClick} />
-              <p className="basis-0 font-semibold grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
-                구매 내역
+              <p style={{ fontSize: '18px', fontWeight: 600, lineHeight: '25.5px', letterSpacing: '-0.36px' }} className="basis-0 grow min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-black text-center text-nowrap">
+                운세 기록
               </p>
               <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
             </div>
@@ -383,241 +552,363 @@ export default function PurchaseHistoryPage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className={`flex-1 w-full safe-area-bottom ${purchases.length === 0 ? 'overflow-hidden flex flex-col items-center justify-center' : 'overflow-y-auto pb-[60px]'}`}>
-        {purchases.length === 0 ? (
-          // Empty State - Figma 시안 적용
-          <motion.div 
-            className="flex flex-col gap-[28px] items-center w-full px-[20px]"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              visible: {
-                transition: {
-                  staggerChildren: 0.15
-                }
-              }
-            }}
-          >
-            {/* Icon */}
-            <motion.div 
-              className="relative shrink-0 size-[76px]"
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
-              }}
-            >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 76 76">
-                <g>
-                  <path d={svgPathsEmpty.p17261880} fill="#E4F7F7" />
-                </g>
-              </svg>
-              <div className="absolute aspect-[24/24] left-[13.16%] overflow-clip right-[13.16%] top-[9px]">
-                <div className="absolute inset-[29.5%_21.97%_8.33%_8.33%]">
-                  <div className="absolute inset-0">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 40 35">
-                      <path d={svgPathsEmpty.p2a521a80} fill="#48B2AF" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="absolute inset-[8.33%_8.34%_29.16%_33.33%]">
-                  <div className="absolute inset-0">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 33 35">
-                      <path d={svgPathsEmpty.p58a5d00} fill="#48B2AF" opacity="0.5" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+      {/* ⭐ Tab Bar (화면 너비 꽉 채움, 균등 분할) */}
+      <div className="bg-white border-b border-[#f8f8f8] flex items-center w-full sticky top-[52px] z-40" style={{ padding: '8px 16px' }}>
+        <button
+          onClick={() => setActiveTab('paid')}
+          className={`flex-1 flex items-center justify-center rounded-[12px] transition-colors ${
+            activeTab === 'paid' ? 'bg-[#f8f8f8]' : ''
+          }`}
+          style={{ padding: '8px 16px' }}
+        >
+          <span style={{
+            fontSize: '15px',
+            fontWeight: activeTab === 'paid' ? 600 : 500,
+            lineHeight: '20px',
+            letterSpacing: '-0.45px',
+            color: activeTab === 'paid' ? '#151515' : '#999'
+          }}>
+            심화 해석판
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('free')}
+          className={`flex-1 flex items-center justify-center rounded-[12px] transition-colors ${
+            activeTab === 'free' ? 'bg-[#f8f8f8]' : ''
+          }`}
+          style={{ padding: '8px 16px' }}
+        >
+          <span style={{
+            fontSize: '15px',
+            fontWeight: activeTab === 'free' ? 600 : 500,
+            lineHeight: '20px',
+            letterSpacing: '-0.45px',
+            color: activeTab === 'free' ? '#151515' : '#999'
+          }}>
+            무료 체험판
+          </span>
+        </button>
+      </div>
 
-            {/* Text */}
-            <motion.div 
-              className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full"
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+      {/* ⭐ Content */}
+      <div className={`flex-1 w-full safe-area-bottom ${
+        (activeTab === 'paid' && isPaidEmpty) || (activeTab === 'free' && isFreeEmpty)
+          ? 'overflow-hidden flex flex-col items-center'
+          : 'overflow-y-auto'
+      }`}>
+
+        {/* ===== 심화 해석판 탭 ===== */}
+        {activeTab === 'paid' && isPaidEmpty && (
+          // Empty State - 심화 해석판
+          <motion.div
+            className="flex flex-col gap-[36px] items-center w-full px-[20px]"
+            style={{ paddingTop: '48px' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex flex-col gap-[20px] items-center justify-center w-full">
+              <EmptyNestIcon />
+              <div className="flex flex-col gap-[1px] items-center w-full text-center" style={{ color: '#b7b7b7' }}>
+                <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '28.5px', letterSpacing: '-0.32px' }}>
+                  아직 운세 기록이 없어요
+                </p>
+                <p style={{ fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px' }}>
+                  운세를 보면 여기에서 다시 확인할 수 있어요
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                // ⭐ 홈에서 '심화 해석판' 필터 자동 선택
+                sessionStorage.setItem('homepage_filter_state', JSON.stringify({
+                  category: '전체',
+                  contentType: 'paid'
+                }));
+                navigate('/');
               }}
+              className="w-full h-[48px] rounded-[12px] flex items-center justify-center"
+              style={{ backgroundColor: '#48b2af' }}
             >
-              <div className="flex flex-col font-semibold justify-center leading-[0] relative shrink-0 text-[24px] text-black text-center tracking-[-0.48px] w-full">
-                <p className="leading-[35.5px]">아직 구매한 운세가 없어요</p>
-              </div>
-              <div className="content-stretch flex flex-col items-center justify-center relative shrink-0 w-full">
-                <div className="font-normal leading-[28.5px] relative shrink-0 text-[#6d6d6d] text-[16px] text-center text-nowrap tracking-[-0.32px]">
-                  <p className="mb-0">구매한 운세는 이곳에서</p>
-                  <p>다시 확인할 수 있어요</p>
-                </div>
-              </div>
-            </motion.div>
+              <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.45px', color: 'white' }}>
+                심화 운세 보러 가기
+              </span>
+            </button>
           </motion.div>
-        ) : (
-          // Purchase List - Figma 시안 적용
-          <motion.div 
-            className="flex flex-col pt-[14px]"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              visible: {
-                transition: {
-                  staggerChildren: 0.08
-                }
-              }
-            }}
+        )}
+
+        {activeTab === 'paid' && !isPaidEmpty && (
+          // Purchase List
+          <motion.div
+            className="flex flex-col pt-[16px] pb-[60px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
           >
             {Object.entries(groupedPurchases).map(([date, items], index, arr) => (
               <div key={date}>
-                {/* Date Group with Padding */}
-                <motion.div 
-                  className="px-[20px]"
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    visible: { 
-                      opacity: 1, 
-                      y: 0,
-                      transition: {
-                        duration: 0.5,
-                        ease: "easeOut"
-                      }
-                    }
-                  }}
-                >
-                  <div className="flex flex-col gap-[16px]">
-                    {/* Date Divider */}
-                    <div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full">
-                      <div className="content-stretch flex items-center justify-center relative shrink-0 w-full">
-                        <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[18px] text-black tracking-[-0.34px]">
-                          {date}
-                        </p>
-                      </div>
-                      <div className="h-0 relative shrink-0 w-full">
-                        <div className="absolute inset-[-0.5px_0]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                            <path d="M0 0.5H350" stroke="#F3F3F3" />
-                          </svg>
-                        </div>
-                      </div>
+                {/* Date Section */}
+                <div className="flex flex-col gap-[12px] items-start w-full">
+                  {/* Date Header */}
+                  <div className="flex flex-col gap-[4px] items-center px-[20px] w-full">
+                    <div className="flex items-center justify-between w-full">
+                      <p style={{ fontSize: '17px', fontWeight: 700, lineHeight: '24px', letterSpacing: '-0.34px', color: 'black' }}>
+                        {date}
+                      </p>
                     </div>
+                    <div className="h-0 w-full relative">
+                      <div className="absolute inset-[-0.5px_0] border-t border-[#f3f3f3]" />
+                    </div>
+                  </div>
 
-                    {/* Purchase Cards */}
-                    {items.map((item) => (
-                      <div key={item.id} className="bg-white relative shrink-0 w-full">
-                        <div className="flex flex-col items-end size-full">
-                          <div className="content-stretch flex flex-col items-end relative w-full">
-                            <div className="content-stretch flex gap-[14px] items-start relative shrink-0 w-full pb-[8px]">
-                              {/* Thumbnail */}
-                              <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px] bg-gray-100">
-                                {item.master_contents.thumbnail_url ? (
-                                  <>
-                                    <img
-                                      alt={item.master_contents.title}
-                                      className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full"
-                                      src={item.master_contents.thumbnail_url}
-                                    />
-                                    <div className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-                                  </>
-                                ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center rounded-[12px]">
-                                    <span className="text-[24px]">🔮</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Product Info */}
-                              <div className="basis-0 content-stretch flex flex-col gap-[12px] grow items-start min-h-px min-w-px relative shrink-0">
-                                <div className="relative shrink-0 w-full">
-                                  <div className="size-full">
-                                    <div className="content-stretch flex flex-col gap-[6px] items-start px-[2px] py-0 relative w-full">
-                                      {/* Title & Price */}
-                                      <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                                        <div className="content-stretch flex flex-col gap-[4px] items-end relative shrink-0 w-full">
-                                          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                                            <div className="relative shrink-0 w-full">
-                                              <div className="size-full">
-                                                <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-                                                  <p className="font-medium leading-[22px] relative shrink-0 text-[14px] text-black tracking-[-0.42px] w-full line-clamp-2">
-                                                    {item.master_contents.title}
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <p className="-mt-[4px] pl-[1px] font-semibold leading-[20px] relative shrink-0 text-[15px] text-black tracking-[-0.42px] w-full">
-                                          {item.paid_amount.toLocaleString()}원
-                                        </p>
-                                      </div>
-
-                                      {/* Additional Info */}
-                                      <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                                        {/* ⭐ 풀이 대상: orders 테이블의 full_name 우선 사용, 없으면 saju_records 사용 */}
-                                        {(item.full_name || item.saju_records?.full_name) && (
-                                          <div className="relative shrink-0 w-full">
-                                            <div className="flex flex-row items-center size-full">
-                                              <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
-                                                <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] pl-[1px] text-nowrap tracking-[-0.24px]">
-                                                  풀이 대상 : {item.full_name || item.saju_records?.full_name} ({formatBirthDate(item.birth_date || item.saju_records?.birth_date)})
-                                                </p>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                        <div className="relative shrink-0 w-full">
-                                          <div className="flex flex-row items-center size-full">
-                                            <div className="content-stretch flex items-center px-[2px] py-0 relative w-full">
-                                              <p className="basis-0 font-normal grow leading-[16px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] pl-[1px] text-nowrap tracking-[-0.24px]">
-                                                구매 일시 : {formatDateTime(item.created_at)}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* View Button */}
-                                <div className="content-stretch flex gap-[5px] items-start relative shrink-0 w-full">
-                                  <motion.button
-                                    onClick={() => handleViewPurchase(item)}
-                                    className="basis-0 grow h-[38px] min-h-px min-w-px relative rounded-[12px] shrink-0 border border-[#e7e7e7] border-solid hover:bg-gray-50 transition-colors"
-                                    animate={{ backgroundColor: '#ffffff' }}
-                                    whileTap={{ backgroundColor: '#f3f4f6' }}
-                                    transition={{ duration: 0.15 }}
-                                  >
-                                    <div className="flex flex-row items-center justify-center size-full">
-                                      <motion.div 
-                                        className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full"
-                                        whileTap={{ scale: 0.96 }}
-                                        transition={{ duration: 0.15 }}
-                                      >
-                                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                          <p className="font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px]">
-                                            운세 보기
-                                          </p>
-                                        </div>
-                                      </motion.div>
-                                    </div>
-                                  </motion.button>
-                                </div>
-                              </div>
+                  {/* Cards */}
+                  {items.map((item, cardIndex) => (
+                    <div key={item.id} className="flex flex-col items-start px-[20px] w-full" style={{ paddingTop: '10px' }}>
+                      <div
+                        className={`flex items-start w-full ${cardIndex < items.length - 1 ? 'border-b border-[#f8f8f8]' : ''}`}
+                        style={{ gap: '12px', paddingBottom: '10px' }}
+                      >
+                        {/* Thumbnail */}
+                        <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
+                          {item.master_contents.thumbnail_url ? (
+                            <img
+                              alt={item.master_contents.title}
+                              className="w-full h-full object-cover"
+                              src={item.master_contents.thumbnail_url}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                              <span className="text-[24px]">🔮</span>
                             </div>
+                          )}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="flex flex-col gap-[4px] items-start flex-1 min-w-0">
+                          {/* Title (clickable link) */}
+                          <button
+                            onClick={() => handleViewPurchase(item)}
+                            className="flex items-center p-[2px] rounded-[8px] text-left"
+                          >
+                            <span style={{
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              lineHeight: '22px',
+                              letterSpacing: '-0.42px',
+                              color: '#4da0ee',
+                              textDecoration: 'underline'
+                            }} className="line-clamp-2">
+                              {item.master_contents.title}
+                            </span>
+                          </button>
+
+                          {/* Details */}
+                          <div className="flex flex-col gap-[4px] items-start w-full">
+                            {(item.full_name || item.saju_records?.full_name) && (
+                              <div className="flex items-center px-[2px] w-full">
+                                <p style={{
+                                  fontSize: '12px',
+                                  fontWeight: 400,
+                                  lineHeight: '16px',
+                                  letterSpacing: '-0.24px',
+                                  color: '#848484'
+                                }} className="truncate">
+                                  풀이 대상 : {item.full_name || item.saju_records?.full_name} ({formatBirthDate(item.birth_date || item.saju_records?.birth_date)})
+                                </p>
+                              </div>
+                            )}
+                            <div className="flex items-center px-[2px] w-full">
+                              <p style={{
+                                fontSize: '12px',
+                                fontWeight: 400,
+                                lineHeight: '16px',
+                                letterSpacing: '-0.24px',
+                                color: '#848484'
+                              }} className="truncate">
+                                구매 일시 : {formatDateTime(item.created_at)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Price */}
+                          <div className="flex items-center pl-[2px] w-full">
+                            <p style={{
+                              fontSize: '14px',
+                              fontWeight: 700,
+                              lineHeight: '20px',
+                              letterSpacing: '-0.42px',
+                              color: 'black'
+                            }}>
+                              {item.paid_amount.toLocaleString()}원
+                            </p>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
-                
-                {/* Full-width Divider between date groups (outside padding container) */}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Divider between date groups */}
                 {index < arr.length - 1 && (
-                  <div className="w-full h-[12px] bg-[#F9F9F9] mt-[36px] mb-[32px]" />
+                  <div className="w-full h-[8px] bg-[#f9f9f9] mt-[12px] mb-[20px]" />
+                )}
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* ===== 무료 체험판 탭 ===== */}
+        {activeTab === 'free' && freeLoading && (
+          <div className="flex items-center justify-center h-full">
+            <PageLoader />
+          </div>
+        )}
+
+        {activeTab === 'free' && !freeLoading && isFreeEmpty && (
+          // Empty State - 무료 체험판
+          <motion.div
+            className="flex flex-col gap-[36px] items-center w-full px-[20px]"
+            style={{ paddingTop: '48px' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex flex-col gap-[20px] items-center justify-center w-full">
+              <EmptyNestIcon />
+              <div className="flex flex-col gap-[1px] items-center w-full text-center" style={{ color: '#b7b7b7' }}>
+                <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '28.5px', letterSpacing: '-0.32px' }}>
+                  아직 무료 운세 기록이 없어요
+                </p>
+                <p style={{ fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px' }}>
+                  무료 운세를 보면 여기에서 다시 확인할 수 있어요
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                // ⭐ 홈에서 '무료 체험판' 필터 자동 선택
+                sessionStorage.setItem('homepage_filter_state', JSON.stringify({
+                  category: '전체',
+                  contentType: 'free'
+                }));
+                navigate('/');
+              }}
+              className="w-full h-[48px] rounded-[12px] flex items-center justify-center"
+              style={{ backgroundColor: '#48b2af' }}
+            >
+              <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.45px', color: 'white' }}>
+                무료 운세 보러 가기
+              </span>
+            </button>
+          </motion.div>
+        )}
+
+        {activeTab === 'free' && !freeLoading && !isFreeEmpty && (
+          // Free Content List
+          <motion.div
+            className="flex flex-col pt-[16px] pb-[60px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            {Object.entries(groupedFreeRecords).map(([date, items], index, arr) => (
+              <div key={date}>
+                {/* Date Section */}
+                <div className="flex flex-col gap-[12px] items-start w-full">
+                  {/* Date Header */}
+                  <div className="flex flex-col gap-[4px] items-center px-[20px] w-full">
+                    <div className="flex items-center justify-between w-full">
+                      <p style={{ fontSize: '17px', fontWeight: 700, lineHeight: '24px', letterSpacing: '-0.34px', color: 'black' }}>
+                        {date}
+                      </p>
+                    </div>
+                    <div className="h-0 w-full relative">
+                      <div className="absolute inset-[-0.5px_0] border-t border-[#f3f3f3]" />
+                    </div>
+                  </div>
+
+                  {/* Cards */}
+                  {items.map((record, cardIndex) => (
+                    <div key={record.id} className="flex flex-col items-start px-[20px] w-full" style={{ paddingTop: '10px' }}>
+                      <div
+                        className={`flex items-start w-full ${cardIndex < items.length - 1 ? 'border-b border-[#f8f8f8]' : ''}`}
+                        style={{ gap: '12px', paddingBottom: '10px' }}
+                      >
+                        {/* Thumbnail */}
+                        <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
+                          {record.master_contents.thumbnail_url ? (
+                            <img
+                              alt={record.master_contents.title}
+                              className="w-full h-full object-cover"
+                              src={record.master_contents.thumbnail_url}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                              <span className="text-[24px]">🔮</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="flex flex-col gap-[4px] items-start flex-1 min-w-0">
+                          {/* Title (clickable link) */}
+                          <button
+                            onClick={() => handleViewFreeRecord(record)}
+                            className="flex items-center p-[2px] rounded-[8px] text-left"
+                          >
+                            <span style={{
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              lineHeight: '22px',
+                              letterSpacing: '-0.42px',
+                              color: '#4da0ee',
+                              textDecoration: 'underline'
+                            }} className="line-clamp-2">
+                              {record.master_contents.title}
+                            </span>
+                          </button>
+
+                          {/* Details */}
+                          <div className="flex flex-col gap-[4px] items-start w-full">
+                            <div className="flex items-center px-[2px] w-full">
+                              <p style={{
+                                fontSize: '12px',
+                                fontWeight: 400,
+                                lineHeight: '16px',
+                                letterSpacing: '-0.24px',
+                                color: '#848484'
+                              }} className="truncate">
+                                풀이 대상 : {record.full_name} ({formatBirthDate(record.birth_date)})
+                              </p>
+                            </div>
+                            <div className="flex items-center px-[2px] w-full">
+                              <p style={{
+                                fontSize: '12px',
+                                fontWeight: 400,
+                                lineHeight: '16px',
+                                letterSpacing: '-0.24px',
+                                color: '#848484'
+                              }} className="truncate">
+                                이용 일시 : {formatDateTime(record.created_at)}
+                              </p>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Divider between date groups */}
+                {index < arr.length - 1 && (
+                  <div className="w-full h-[8px] bg-[#f9f9f9] mt-[12px] mb-[20px]" />
                 )}
               </div>
             ))}
           </motion.div>
         )}
       </div>
-
-      {/* Home Indicator */}
 
       <SessionExpiredDialog isOpen={isSessionExpired} />
     </div>

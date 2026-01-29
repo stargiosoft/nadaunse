@@ -96,6 +96,11 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
       try {
         console.log('🚀 [FreeContentLoading] Edge Function 호출 시작...');
 
+        // ⭐ 로그인 사용자 확인 (DB 저장용)
+        const { data: { user } } = await supabase.auth.getUser();
+        const currentUserId = user?.id || null;
+        console.log('📌 [FreeContentLoading] 현재 사용자 ID:', currentUserId || '(게스트)');
+
         // ⭐️ contentId가 숫자(allProducts)인지 UUID(master_contents)인지 확인
         const isNumericId = !isNaN(Number(contentId));
         console.log('📌 [FreeContentLoading] contentId 타입:', isNumericId ? '숫자(allProducts)' : 'UUID(master_contents)');
@@ -327,12 +332,14 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
               birth_date: sajuDataForCache.birthDate || sajuDataForCache.birth_date,
               birth_time: sajuDataForCache.birthTime || sajuDataForCache.birth_time,
               is_guest: true
-            }
+            },
+            userId: currentUserId  // ⭐ 로그인 사용자인 경우 DB 저장용
           };
         } else {
           requestBody = {
             contentId: contentId,
-            sajuRecordId: sajuRecordId
+            sajuRecordId: sajuRecordId,
+            userId: currentUserId  // ⭐ 로그인 사용자인 경우 DB 저장용
           };
         }
 
@@ -458,11 +465,20 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('✅ [FreeContentLoading] 모든 질문 생성 완료:', results);
 
+        // ⭐ 태그 추출은 결과 페이지에서 백그라운드로 처리 (UX 최적화)
+        // → 사용자가 결과를 보는 동안 태그 추출 진행
+        // → '다음' 클릭 시 태그 완료 여부 확인
+
         // ⭐️ 5단계: localStorage에 결과 저장
         const resultData = {
           contentId: contentId,
           sajuData: sajuDataForCache,
           results: results,
+          // ⭐ contentAnswers: 결과 페이지에서 백그라운드 태그 추출에 사용
+          contentAnswers: result.data.answers.map((a: any) => ({
+            questionText: a.question_text,
+            answerText: a.answer_text
+          })),
           createdAt: new Date().toISOString()
         };
 
@@ -476,13 +492,26 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         console.log('🔀 [FreeContentLoading] 결과 페이지로 이동');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+        // ⭐ DB 레코드 ID가 있으면 전달 (운세 기록 페이지에서 사용)
+        const dbRecordId = result.data.record_id || null;
+        console.log('📌 [FreeContentLoading] DB 레코드 ID:', dbRecordId || '(없음)');
+
         navigate(`/product/${contentId}/result/free`, {
           replace: true,
           state: {
             resultKey: resultKey,
             userName: userNameFromUrl,
             contentId: contentId,
-            product: productInfo  // ⭐ FreeResultPage의 DB 조회 스킵용
+            product: productInfo,  // ⭐ FreeResultPage의 DB 조회 스킵용
+            recordId: dbRecordId,  // ⭐ DB 레코드 ID (나다움 태그 저장용)
+            // ⭐ 태그 추출은 결과 페이지에서 백그라운드로 처리
+            contentAnswers: result.data.answers.map((a: any) => ({
+              questionText: a.question_text,
+              answerText: a.answer_text
+            })),
+            // ⭐ fromDB 제거: 이미 localStorage에 결과 저장됨 → DB 재조회 불필요
+            // fromDB: !!dbRecordId 제거 → FreeSajuDetail에서 불필요한 DB 로딩 방지
+            isNewResult: true  // ⭐ 새로 생성된 결과 (나다움 기록하기 버튼 표시)
           }
         });
 

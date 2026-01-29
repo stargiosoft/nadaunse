@@ -44,6 +44,7 @@ import {
   PaidContentCard
 } from './FreeContentDetailComponents';
 import { trackPageView, trackViewItem } from '../utils/analytics';
+import FreeContentResult from './FreeContentResult';
 
 /**
  * Props 인터페이스
@@ -55,6 +56,7 @@ interface FreeContentDetailProps {
   onContentClick?: (contentId: string) => void;
   onBannerClick?: (productId: string) => void;
   onPurchase?: () => void;
+  onNext?: () => void; // 나다움 기록하기로 이동
 }
 
 /**
@@ -448,7 +450,8 @@ export default function FreeContentDetail({
   onHome,
   onContentClick,
   onBannerClick,
-  onPurchase
+  onPurchase,
+  onNext
 }: FreeContentDetailProps) {
   // Custom Hooks
   const {
@@ -511,6 +514,7 @@ export default function FreeContentDetail({
         questions={generatedResults}
         onBack={() => setShowResult(false)}
         onHome={onHome}
+        onNext={onNext}
       />
     );
   }

@@ -211,6 +211,14 @@ export default function TarotShufflePage() {
     setIsSavingCard(true);
     console.log('🎴 [TarotShufflePage] 선택 완료 클릭 → 즉시 결과 페이지로 이동');
 
+    // ⭐ 캐시 무효화 (tarot_user_viewed가 false인 캐시 방지)
+    try {
+      localStorage.removeItem(`paid_result_${orderId}`);
+      console.log('🗑️ [TarotShufflePage] 결과 캐시 무효화:', orderId);
+    } catch (e) {
+      // 무시
+    }
+
     // ⭐ 즉시 결과 페이지로 이동 (사용자 경험 개선)
     const fromParam = from ? `&from=${from}` : '';
     const contentIdParamStr = contentIdState ? `&contentId=${contentIdState}` : '';

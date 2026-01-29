@@ -194,54 +194,62 @@ function ContentContainer({ dragControls, phoneNumber, errors, onChange }: Conte
   );
 }
 
-function Container6({ isActive }: { isActive: boolean }) {
+function Container6({ isActive, isLoading }: { isActive: boolean; isLoading?: boolean }) {
   return (
     <div className="flex items-center justify-center relative shrink-0 w-full" style={{ gap: '4px' }} data-name="Container">
-      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '25px', color: isActive ? '#ffffff' : '#b7b7b7', letterSpacing: '-0.32px' }}>저장</p>
+      {isLoading ? (
+        <div className="flex items-center" style={{ gap: '8px' }}>
+          <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTopColor: 'transparent', borderRadius: '50%' }} className="animate-spin" />
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '25px', color: '#ffffff', letterSpacing: '-0.32px' }}>저장 중...</p>
+        </div>
+      ) : (
+        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '25px', color: isActive ? '#ffffff' : '#b7b7b7', letterSpacing: '-0.32px' }}>저장</p>
+      )}
     </div>
   );
 }
 
-function ButtonSquareButton({ isActive, onClick }: { isActive: boolean, onClick: () => void }) {
+function ButtonSquareButton({ isActive, isLoading, onClick }: { isActive: boolean; isLoading?: boolean; onClick: () => void }) {
+  const isDisabled = !isActive || isLoading;
   return (
     <motion.button
-      whileTap={{ scale: 0.99 }}
+      whileTap={{ scale: isDisabled ? 1 : 0.99 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
         WebkitTapHighlightColor: 'transparent',
         transformOrigin: 'center center',
         willChange: 'transform',
-        backgroundColor: isActive ? '#48b2af' : '#f8f8f8',
+        backgroundColor: isActive || isLoading ? '#48b2af' : '#f8f8f8',
         height: '56px',
         padding: '0 12px',
         borderRadius: '16px'
       }}
-      onClick={isActive ? onClick : undefined}
+      onClick={!isDisabled ? onClick : undefined}
       className="flex items-center justify-center relative shrink-0 w-full transition-colors"
       data-name="Button / Square Button"
-      disabled={!isActive}
+      disabled={isDisabled}
     >
-      <Container6 isActive={isActive} />
+      <Container6 isActive={isActive} isLoading={isLoading} />
     </motion.button>
   );
 }
 
-function ButtonContainer({ isActive, onClick }: { isActive: boolean, onClick: () => void }) {
+function ButtonContainer({ isActive, isLoading, onClick }: { isActive: boolean; isLoading?: boolean; onClick: () => void }) {
   return (
     <div className="bg-white relative shrink-0 w-full" data-name="Button Container">
       <div className="flex flex-col items-center justify-center size-full">
         <div className="flex flex-col items-center justify-center relative w-full" style={{ padding: '12px 20px' }}>
-          <ButtonSquareButton isActive={isActive} onClick={onClick} />
+          <ButtonSquareButton isActive={isActive} isLoading={isLoading} onClick={onClick} />
         </div>
       </div>
     </div>
   );
 }
 
-function CommonBottomButton({ isActive, onClick }: { isActive: boolean, onClick: () => void }) {
+function CommonBottomButton({ isActive, isLoading, onClick }: { isActive: boolean; isLoading?: boolean; onClick: () => void }) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }} data-name="Common / Bottom Button">
-      <ButtonContainer isActive={isActive} onClick={onClick} />
+      <ButtonContainer isActive={isActive} isLoading={isLoading} onClick={onClick} />
     </div>
   );
 }
@@ -251,9 +259,10 @@ interface ReceiveMyAnalysisProps {
   onSave: () => void;
   phoneNumber: string;
   setPhoneNumber: (value: string) => void;
+  isLoading?: boolean; // ⭐ 저장 중 로딩 상태
 }
 
-export default function ReceiveMyAnalysis({ onClose, onSave, phoneNumber, setPhoneNumber }: ReceiveMyAnalysisProps) {
+export default function ReceiveMyAnalysis({ onClose, onSave, phoneNumber, setPhoneNumber, isLoading }: ReceiveMyAnalysisProps) {
   const dragControls = useDragControls();
 
   // 에러 상태는 화면이 유지되는 동안만 필요하므로 여기서 관리 (또는 필요시 상위로 이동 가능)
@@ -344,7 +353,7 @@ export default function ReceiveMyAnalysis({ onClose, onSave, phoneNumber, setPho
         transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
       >
         <ContentContainer dragControls={dragControls} phoneNumber={phoneNumber} errors={errors} onChange={handlePhoneChange} />
-        <CommonBottomButton isActive={isButtonActive} onClick={onSave} />
+        <CommonBottomButton isActive={isButtonActive} isLoading={isLoading} onClick={onSave} />
       </motion.div>
     </div>
   );

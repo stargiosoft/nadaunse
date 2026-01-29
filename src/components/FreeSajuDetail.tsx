@@ -5,9 +5,10 @@ import svgPaths from '../imports/svg-e15u41g853';
 import img from "@/assets/5615ff21216f93eb47cac8ee15adee136174d7be.png";
 import img2 from "@/assets/67f3616aab1dcdea805228bdd4e698e8f57dd487.png";
 import { AdBanner } from './FreeContentDetailComponents';
+import { supabase } from '../lib/supabase';
 
 interface FreeSajuDetailProps {
-  recordId: string;
+  recordId: string;  // localStorage key (resultKey)
   userName: string;
   productTitle: string;
   productImage: string;
@@ -22,6 +23,11 @@ interface FreeSajuDetailProps {
   onProductClick?: (productId: number) => void;
   onBannerClick?: (productId: string) => void;
   onUserIconClick?: () => void;
+  // DB 조회 모드 (운세 기록 페이지에서 진입 시)
+  fromDB?: boolean;
+  dbRecordId?: string;  // free_content_records 테이블의 id
+  onNext?: () => void;  // ⭐ 나다움 기록하기로 이동
+  isNextLoading?: boolean;  // ⭐ 태그 추출 대기 중 로딩 상태
 }
 
 interface ResultItem {
@@ -72,7 +78,11 @@ export default function FreeSajuDetail({
   recommendedProducts = [],
   onProductClick,
   onBannerClick,
-  onUserIconClick
+  onUserIconClick,
+  fromDB = false,
+  dbRecordId,
+  onNext,
+  isNextLoading = false
 }: FreeSajuDetailProps) {
   const navigate = useNavigate();
   const [visibleCount, setVisibleCount] = useState(3); // ⭐️ 표시할 콘텐츠 개수
@@ -103,10 +113,70 @@ export default function FreeSajuDetail({
     }
   };
 
-  // ⭐️ 초기화 시점에 즉시 로드 (useState 초기값으로 함수 실행)
-  const initialLoad = loadCachedData();
+  // ⭐️ 초기화 시점에 즉시 로드 (fromDB 모드가 아닐 때만)
+  const initialLoad = (!fromDB || !dbRecordId) ? loadCachedData() : { data: null, error: false };
   const [cachedData, setCachedData] = useState<CachedData | null>(initialLoad.data);
   const [dataLoadError, setDataLoadError] = useState(initialLoad.error);
+  const [isLoadingFromDB, setIsLoadingFromDB] = useState(fromDB && !!dbRecordId);
+
+  // ⭐️ DB에서 무료 콘텐츠 기록 조회 (운세 기록 페이지에서 진입 시)
+  const loadFromDatabase = async (id: string) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📋 [FreeSajuDetail] DB에서 데이터 로드');
+    console.log('📌 [FreeSajuDetail] dbRecordId:', id);
+
+    setIsLoadingFromDB(true);
+    try {
+      const { data, error } = await supabase
+        .from('free_content_records')
+        .select('*, master_contents(title, thumbnail_url)')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) {
+        console.error('❌ [FreeSajuDetail] DB 조회 실패:', error);
+        setDataLoadError(true);
+        return;
+      }
+
+      console.log('✅ [FreeSajuDetail] DB 조회 성공, answers 개수:', data.answers?.length);
+
+      // DB 응답을 CachedData 형식으로 변환
+      const convertedData: CachedData = {
+        contentId: data.content_id,
+        sajuData: {
+          full_name: data.full_name,
+          gender: data.gender,
+          birth_date: data.birth_date,
+          birth_time: data.birth_time
+        },
+        results: data.answers.map((a: { question_id: string; question_order: number; question_text: string; answer_text: string }) => ({
+          questionId: a.question_id,
+          questionOrder: a.question_order,
+          questionText: a.question_text,
+          questionType: 'ai',
+          previewText: a.answer_text
+        })),
+        createdAt: data.created_at
+      };
+
+      setCachedData(convertedData);
+      setDataLoadError(false);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    } catch (err) {
+      console.error('❌ [FreeSajuDetail] DB 조회 에러:', err);
+      setDataLoadError(true);
+    } finally {
+      setIsLoadingFromDB(false);
+    }
+  };
+
+  // ⭐️ fromDB 모드일 때 DB에서 로드
+  useEffect(() => {
+    if (fromDB && dbRecordId) {
+      loadFromDatabase(dbRecordId);
+    }
+  }, [fromDB, dbRecordId]);
 
   // 🔝 컴포넌트 마운트 시 스크롤을 최상단으로 이동
   useEffect(() => {
@@ -193,8 +263,19 @@ export default function FreeSajuDetail({
     };
   }, [visibleCount, recommendedProducts.length]);
 
+  // ⭐️ DB 로딩 중 화면 (운세 기록에서 진입 시)
+  if (isLoadingFromDB) {
+    return (
+      <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
+        <div className="text-center px-[20px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#48b2af] mx-auto mb-4"></div>
+          <p style={{ fontSize: '15px', color: '#999999' }}>운세 기록을 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   // ⭐️ 데이터 로드 실패 또는 데이터 없음 시 에러 화면
-  // (localStorage 읽기는 동기 작업이므로 로딩 스피너 불필요)
   if (dataLoadError || !cachedData) {
     return (
       <div className="bg-white relative min-h-screen w-full flex justify-center items-center">
@@ -213,7 +294,7 @@ export default function FreeSajuDetail({
 
   return (
     <div className="bg-white fixed inset-0 flex justify-center">
-      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white relative">
         {/* Top Bar */}
         <div className="bg-white h-[52px] shrink-0 w-full z-20">
           <div className="flex items-center justify-between px-[12px] h-full w-full">
@@ -440,6 +521,58 @@ export default function FreeSajuDetail({
           </motion.div>
         </div>
         </div>{/* ⭐ Scrollable Container 닫기 */}
+
+        {/* ⭐ 하단 고정 '다음' 버튼 - 나다움 기록하기로 이동 */}
+        {onNext && (
+          <div
+            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-start"
+            style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}
+          >
+            <div className="flex flex-col items-start relative shrink-0 w-full">
+              <div className="bg-white flex flex-col items-center justify-center relative shrink-0 w-full" style={{ padding: '12px 20px' }}>
+                <button
+                  onClick={onNext}
+                  disabled={isNextLoading}
+                  className="w-full flex items-center justify-center transition-all active:scale-[0.99] disabled:opacity-80"
+                  style={{
+                    height: '56px',
+                    borderRadius: '16px',
+                    backgroundColor: '#48b2af',
+                    padding: '0 12px'
+                  }}
+                >
+                  {isNextLoading ? (
+                    // ⭐ 태그 추출 대기 중 로딩 스피너
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span style={{
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '25px',
+                        color: '#ffffff',
+                        letterSpacing: '-0.32px'
+                      }}>
+                        잠시만요...
+                      </span>
+                    </div>
+                  ) : (
+                    <span style={{
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: 500,
+                      fontSize: '16px',
+                      lineHeight: '25px',
+                      color: '#ffffff',
+                      letterSpacing: '-0.32px'
+                    }}>
+                      다음
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

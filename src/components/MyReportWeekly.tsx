@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
@@ -29,6 +30,14 @@ export interface MonthlyReport {
 }
 
 function WeeklyTagSummary({ count }: { count: number }) {
+  const navigate = useNavigate();
+
+  const handleGoToTags = () => {
+    // 홈으로 이동 시 무료 체험판 필터 자동 선택
+    localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
+    navigate('/');
+  };
+
   return (
     <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '18px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ paddingTop: '48px', padding: '48px 20px 0 20px', gap: '36px' }}>
@@ -54,6 +63,7 @@ function WeeklyTagSummary({ count }: { count: number }) {
         <button
           className="w-full flex items-center justify-center active:scale-[0.98] transition-all"
           style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
+          onClick={handleGoToTags}
         >
           <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
             태그 쌓으러 가기
@@ -66,6 +76,14 @@ function WeeklyTagSummary({ count }: { count: number }) {
 }
 
 function WeeklyEmptySummary() {
+  const navigate = useNavigate();
+
+  const handleGoToTags = () => {
+    // 홈으로 이동 시 무료 체험판 필터 자동 선택
+    localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
+    navigate('/');
+  };
+
   return (
     <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '18px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ paddingTop: '48px', padding: '48px 20px 0 20px', gap: '36px' }}>
@@ -91,6 +109,7 @@ function WeeklyEmptySummary() {
         <button
           className="w-full flex items-center justify-center active:scale-[0.98] transition-all"
           style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
+          onClick={handleGoToTags}
         >
           <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
             태그 쌓으러 가기

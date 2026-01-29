@@ -1,5 +1,6 @@
 import svgPaths from "./svg-pn85us30m9";
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 
 function Group() {
   return (
@@ -48,18 +49,19 @@ function Container2() {
   );
 }
 
-function ButtonSquareButton() {
+function ButtonSquareButton({ onClick }: { onClick?: () => void }) {
   return (
-    <motion.button 
-      className="bg-[#48b2af] h-[48px] relative rounded-[12px] shrink-0 w-full active:bg-[#41A09E] cursor-pointer transition-colors block" 
+    <motion.button
+      className="bg-[#48b2af] h-[48px] relative rounded-[12px] shrink-0 w-full active:bg-[#41A09E] cursor-pointer transition-colors block"
       data-name="Button / Square Button"
       whileTap={{ scale: 0.99 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      style={{ 
+      style={{
         WebkitTapHighlightColor: 'transparent',
         transformOrigin: 'center center',
         willChange: 'transform'
       }}
+      onClick={onClick}
     >
       <div className="flex flex-row items-center justify-center size-full">
         <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
@@ -70,19 +72,27 @@ function ButtonSquareButton() {
   );
 }
 
-function Frame() {
+function Frame({ onButtonClick }: { onButtonClick?: () => void }) {
   return (
     <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" style={{ gap: '36px', paddingTop: '48px' }}>
       <Container1 />
-      <ButtonSquareButton />
+      <ButtonSquareButton onClick={onButtonClick} />
     </div>
   );
 }
 
 export default function EmptyContent() {
+  const navigate = useNavigate();
+
+  const handleGoToTags = () => {
+    // 홈으로 이동 시 무료 체험판 필터 자동 선택
+    localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
+    navigate('/');
+  };
+
   return (
     <div className="content-stretch flex flex-col items-start pb-0 pt-0 px-[20px] relative size-full" data-name="EmptyContent">
-      <Frame />
+      <Frame onButtonClick={handleGoToTags} />
     </div>
   );
 }

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DEV } from '@/lib/env';
+import { supabase } from '@/lib/supabase';
 import svgPaths from "@/imports/svg-o5jcc01aog";
 import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
@@ -279,54 +281,141 @@ interface MyReportListProps {
   forceEmptyState?: boolean; // 테스트용: 빈 상태 강제
 }
 
+/**
+ * 이번 주 범위 계산 (일요일 00:00 ~ 토요일 23:59)
+ * - 주간 보고서 발행 기준: 전주 일~토 태그 7건 이상 → 차주 일요일 발행
+ */
+function getCurrentWeekRange(): { start: Date; end: Date } {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=일요일, 6=토요일
+
+  // 이번 주 일요일 (시작)
+  const start = new Date(now);
+  start.setDate(now.getDate() - dayOfWeek);
+  start.setHours(0, 0, 0, 0);
+
+  // 이번 주 토요일 (끝)
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
 export default function MyReportList({ onBack, onTabChange, onReportClick, forceEmptyState = false }: MyReportListProps) {
-  const [reports, setReports] = useState(forceEmptyState ? [] : reportData);
+  const navigate = useNavigate();
+  const [reports, setReports] = useState<MonthlyReport[]>(forceEmptyState ? [] : reportData);
   const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
+  const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasAnyTags, setHasAnyTags] = useState(false); // 전체 태그 존재 여부
+
+  // ⭐ 실제 데이터 로드
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('📭 [MyReportList] 로그인 안됨');
+          setIsLoading(false);
+          return;
+        }
+
+        // 이번 주 범위 계산
+        const { start, end } = getCurrentWeekRange();
+        console.log('📅 [MyReportList] 이번 주 범위:', start.toISOString(), '~', end.toISOString());
+
+        // 1. 이번 주 태그 개수 조회 (is_confirmed=true)
+        const { count: weeklyTagCount, error: tagError } = await supabase
+          .from('user_trait_tags')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_confirmed', true)
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString());
+
+        if (tagError) {
+          console.error('❌ [MyReportList] 태그 조회 실패:', tagError);
+        } else {
+          console.log('✅ [MyReportList] 이번 주 태그 개수:', weeklyTagCount);
+          setCurrentWeekTagsCount(weeklyTagCount || 0);
+        }
+
+        // 2. 전체 태그 존재 여부 조회
+        const { count: totalTagCount } = await supabase
+          .from('user_trait_tags')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_confirmed', true);
+
+        setHasAnyTags((totalTagCount || 0) > 0);
+        console.log('✅ [MyReportList] 전체 태그 존재:', (totalTagCount || 0) > 0);
+
+        // 3. 보고서 목록 조회 (향후 weekly_reports 테이블 연동)
+        // TODO: 실제 보고서 데이터 연동
+        // const { data: reportsData } = await supabase
+        //   .from('weekly_reports')
+        //   .select('*')
+        //   .eq('user_id', user.id)
+        //   .eq('status', 'completed')
+        //   .order('published_at', { ascending: false });
+
+        // 현재는 더미 데이터 사용 (보고서 테이블 연동 전)
+        // 태그가 하나도 없으면 빈 상태로 표시
+        if ((totalTagCount || 0) === 0) {
+          setReports([]);
+        }
+
+      } catch (error) {
+        console.error('❌ [MyReportList] 데이터 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (!forceEmptyState) {
+      loadData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [forceEmptyState]);
 
   const handleTabChange = (index: number) => {
+    if (index === 0) {
+      // 프로필 탭 클릭 시 마이페이지로 이동
+      navigate('/profile');
+      return;
+    }
     setActiveTab(index);
     onTabChange?.(index);
   };
 
   const handleDevNoTags = () => {
-    const newReports = JSON.parse(JSON.stringify(reportData));
-    if (newReports[0]?.reports[0]) {
-      newReports[0].reports[0].tags = [];
-      newReports[0].reports[0].extraTagsCount = 0;
-      setReports(newReports);
-    }
+    setCurrentWeekTagsCount(0);
+    setHasAnyTags(true); // 전체 태그는 있지만 이번 주 태그만 없음
   };
 
   const handleDevManyTags = () => {
-    const newReports = JSON.parse(JSON.stringify(reportData));
-    if (newReports[0]?.reports[0]) {
-      newReports[0].reports[0].tags = [
-        { label: '# 결단력 있는' },
-        { label: '# 책임감이 강한' },
-        { label: '# 상황을 주도하는' }
-      ];
-      newReports[0].reports[0].extraTagsCount = 5; // Total 8 tags (3 visible + 5 extra)
-      setReports(newReports);
-    }
+    setCurrentWeekTagsCount(6);
+    setHasAnyTags(true);
   };
 
   const handleDevInitialState = () => {
-    // Empty reports to simulate initial user state
+    // 태그 전혀 없는 초기 상태
+    setCurrentWeekTagsCount(0);
+    setHasAnyTags(false);
     setReports([]);
   };
 
-  // Check current week's tags (assuming first report of first month is current week)
-  const currentWeekReport = reports[0]?.reports[0];
-  const currentWeekTagsCount = currentWeekReport
-    ? currentWeekReport.tags.length + (currentWeekReport.extraTagsCount || 0)
-    : 0;
-
-  // Filter for Jan-March reports for the list
+  // Filter for Jan-March reports for the list (더미 데이터용)
   const filteredReports = reports.filter(month =>
     ['2026-01', '2026-02', '2026-03'].includes(month.id)
   );
 
-  const isInitialEmptyState = reports.length === 0;
+  // 초기 빈 상태: 태그가 전혀 없는 경우
+  const isInitialEmptyState = !hasAnyTags && reports.length === 0;
 
   return (
     // iOS Safari 스크롤 바운스 방지 패턴 (fixed inset-0)
@@ -365,7 +454,17 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         {/* Main Content - 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="w-full bg-white flex flex-col min-h-full">
-            {isInitialEmptyState ? (
+            {isLoading ? (
+              // 로딩 상태
+              <div className="flex items-center justify-center w-full" style={{ padding: '80px 20px' }}>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-8 h-8 border-2 border-[#48b2af] border-t-transparent rounded-full animate-spin" />
+                  <p style={{ fontFamily: 'Pretendard Variable', fontSize: '14px', color: '#999' }}>
+                    불러오는 중...
+                  </p>
+                </div>
+              </div>
+            ) : isInitialEmptyState ? (
               <MyReportEmpty />
             ) : (
               <MyReportWeekly
@@ -376,26 +475,26 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
             )}
 
             {/* Dev Controls - only visible in dev/staging environments */}
-            {DEV && (
+            {DEV && !isLoading && (
               <div className="flex items-center justify-center flex-wrap w-full" style={{ gap: '12px', padding: '0 20px', marginTop: '40px', paddingBottom: '20px' }}>
                 <div className="flex items-center justify-center flex-wrap" style={{ gap: '12px' }}>
                   <button
                     onClick={handleDevNoTags}
                     style={{ backgroundColor: '#f5f5f5', fontSize: '12px', color: '#999', fontWeight: 500, padding: '8px 12px', borderRadius: '6px' }}
                   >
-                    dev 이번주 저장 태그 없음
+                    dev 이번주 태그 0개
                   </button>
                   <button
                     onClick={handleDevManyTags}
                     style={{ backgroundColor: '#f5f5f5', fontSize: '12px', color: '#999', fontWeight: 500, padding: '8px 12px', borderRadius: '6px' }}
                   >
-                    dev 이번주 태그 쌓음
+                    dev 이번주 태그 6개
                   </button>
                   <button
                     onClick={handleDevInitialState}
                     style={{ backgroundColor: '#f5f5f5', fontSize: '12px', color: '#999', fontWeight: 500, padding: '8px 12px', borderRadius: '6px' }}
                   >
-                    dev 보고서 없음
+                    dev 태그 없음 (초기)
                   </button>
                 </div>
               </div>
