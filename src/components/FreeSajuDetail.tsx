@@ -26,7 +26,9 @@ interface FreeSajuDetailProps {
   // DB 조회 모드 (운세 기록 페이지에서 진입 시)
   fromDB?: boolean;
   dbRecordId?: string;  // free_content_records 테이블의 id
+  dbData?: any;  // ⭐ App.tsx에서 이미 로드한 DB 데이터 (이중 조회 방지)
   onNext?: () => void;  // ⭐ 나다움 기록하기로 이동
+  nextLabel?: string;  // ⭐ 버튼 레이블 ('다음' 또는 '완료')
   isNextLoading?: boolean;  // ⭐ 태그 추출 대기 중 로딩 상태
 }
 
@@ -81,7 +83,9 @@ export default function FreeSajuDetail({
   onUserIconClick,
   fromDB = false,
   dbRecordId,
+  dbData,
   onNext,
+  nextLabel = '다음',
   isNextLoading = false
 }: FreeSajuDetailProps) {
   const navigate = useNavigate();
@@ -113,11 +117,45 @@ export default function FreeSajuDetail({
     }
   };
 
-  // ⭐️ 초기화 시점에 즉시 로드 (fromDB 모드가 아닐 때만)
-  const initialLoad = (!fromDB || !dbRecordId) ? loadCachedData() : { data: null, error: false };
+  // ⭐ dbData를 CachedData 형식으로 변환하는 헬퍼 함수
+  const convertDbDataToCachedData = (data: any): CachedData => ({
+    contentId: data.content_id,
+    sajuData: {
+      full_name: data.full_name || data.saju_name,
+      gender: data.gender,
+      birth_date: data.birth_date,
+      birth_time: data.birth_time
+    },
+    results: data.answers.map((a: { question_id: string; question_order: number; question_text: string; answer_text: string }) => ({
+      questionId: a.question_id,
+      questionOrder: a.question_order,
+      questionText: a.question_text,
+      questionType: 'ai',
+      previewText: a.answer_text
+    })),
+    createdAt: data.created_at
+  });
+
+  // ⭐️ 초기화 시점에 즉시 로드
+  // - dbData가 이미 있으면 (App.tsx에서 전달됨) 그대로 사용 → DB 조회 불필요!
+  // - fromDB 모드이고 dbRecordId만 있으면 (dbData 없음) → DB 조회 필요
+  // - 그 외 → localStorage에서 로드
+  const getInitialData = (): { data: CachedData | null; error: boolean } => {
+    if (dbData) {
+      console.log('✅ [FreeSajuDetail] dbData 직접 사용 (이중 조회 방지)');
+      return { data: convertDbDataToCachedData(dbData), error: false };
+    }
+    if (fromDB && dbRecordId) {
+      return { data: null, error: false };  // DB 조회 필요
+    }
+    return loadCachedData();  // localStorage에서 로드
+  };
+
+  const initialLoad = getInitialData();
   const [cachedData, setCachedData] = useState<CachedData | null>(initialLoad.data);
   const [dataLoadError, setDataLoadError] = useState(initialLoad.error);
-  const [isLoadingFromDB, setIsLoadingFromDB] = useState(fromDB && !!dbRecordId);
+  // ⭐ dbData가 있으면 이미 로드된 상태이므로 로딩 불필요
+  const [isLoadingFromDB, setIsLoadingFromDB] = useState(fromDB && !!dbRecordId && !dbData);
 
   // ⭐️ DB에서 무료 콘텐츠 기록 조회 (운세 기록 페이지에서 진입 시)
   const loadFromDatabase = async (id: string) => {
@@ -171,12 +209,17 @@ export default function FreeSajuDetail({
     }
   };
 
-  // ⭐️ fromDB 모드일 때 DB에서 로드
+  // ⭐️ fromDB 모드일 때 DB에서 로드 (dbData가 없을 때만!)
   useEffect(() => {
+    // dbData가 이미 있으면 (App.tsx에서 전달됨) 추가 조회 불필요
+    if (dbData) {
+      console.log('📋 [FreeSajuDetail] dbData 이미 있음 → DB 조회 생략');
+      return;
+    }
     if (fromDB && dbRecordId) {
       loadFromDatabase(dbRecordId);
     }
-  }, [fromDB, dbRecordId]);
+  }, [fromDB, dbRecordId, dbData]);
 
   // 🔝 컴포넌트 마운트 시 스크롤을 최상단으로 이동
   useEffect(() => {
@@ -205,11 +248,17 @@ export default function FreeSajuDetail({
   }, [contentId, navigate]);
 
   // ⭐️ recordId가 변경되면 데이터 다시 로드 (페이지 전환 시)
+  // DB 모드(fromDB && dbRecordId)에서는 localStorage 체크 불필요
   useEffect(() => {
+    if (fromDB && dbRecordId) {
+      console.log('📋 [FreeSajuDetail] DB 모드 → localStorage 체크 생략');
+      return;
+    }
+
     const result = loadCachedData();
     setCachedData(result.data);
     setDataLoadError(result.error);
-  }, [recordId]);
+  }, [recordId, fromDB, dbRecordId]);
 
   /**
    * ⭐ 백그라운드 프리페칭: 사용자가 콘텐츠를 보는 동안 10개 미리 로드
@@ -565,7 +614,7 @@ export default function FreeSajuDetail({
                       color: '#ffffff',
                       letterSpacing: '-0.32px'
                     }}>
-                      다음
+                      {nextLabel}
                     </span>
                   )}
                 </button>

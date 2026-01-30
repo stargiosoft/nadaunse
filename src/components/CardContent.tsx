@@ -1,359 +1,237 @@
-import svgPaths from "@/imports/svg-g7inqw5l9h";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import { motion } from 'motion/react';
 import svgPaths1 from "@/imports/svg-ysqoq72gck";
-import imgThumbnail from "@/assets/7b851936315a0976f82b567082641209095748c5.png";
-import { motion } from "motion/react";
 
-function LabelBox() {
-  return (
-    <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center pb-[2.5px] pt-[2px] px-[4px] relative rounded-[4px] shrink-0" data-name="Label Box">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '10px', lineHeight: 'normal', color: '#41a09e' }} className="relative shrink-0">심화 해석판</p>
-    </div>
-  );
+interface FreeContent {
+  id: string;
+  title: string;
+  thumbnail_url: string | null;
 }
 
-function TitleContainer1() {
+function FreeContentCard({ content, onClick }: { content: FreeContent; onClick: () => void }) {
+  const thumbnailUrl = content.thumbnail_url || '/placeholder-thumbnail.jpg';
+
   return (
-    <div className="relative shrink-0 w-full" data-name="Title Container">
-      <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-        <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', letterSpacing: '-0.3px', color: '#000' }} className="relative shrink-0 w-full">혹시 지금 바람 피우고 있을까?</p>
+    <div
+      className="flex flex-col items-start shrink-0 cursor-pointer active:scale-[0.98] transition-transform"
+      style={{ width: '160px' }}
+      onClick={onClick}
+    >
+      {/* Thumbnail */}
+      <div
+        className="relative rounded-[12px] shrink-0 overflow-hidden transform-gpu"
+        style={{ width: '160px', height: '96px' }}
+      >
+        <img
+          alt={content.title}
+          className="absolute inset-0 max-w-none object-cover size-full"
+          src={thumbnailUrl}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]"
+        />
+      </div>
+
+      {/* Content Info */}
+      <div className="flex flex-col gap-[4px] items-start w-full" style={{ paddingTop: '8px' }}>
+        {/* Label */}
+        <div
+          className="flex items-center justify-center rounded-[4px] shrink-0"
+          style={{ backgroundColor: '#f3f3f3', padding: '2px 4px 2.5px 4px' }}
+        >
+          <p
+            style={{
+              fontFamily: "'Pretendard Variable', sans-serif",
+              fontWeight: 500,
+              fontSize: '10px',
+              lineHeight: 'normal',
+              color: '#999999'
+            }}
+          >
+            무료 체험판
+          </p>
+        </div>
+
+        {/* Title */}
+        <p
+          style={{
+            fontFamily: "'Pretendard Variable', sans-serif",
+            fontWeight: 500,
+            fontSize: '14px',
+            lineHeight: '20px',
+            letterSpacing: '-0.28px',
+            color: '#000',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
+          }}
+          className="w-full"
+        >
+          {content.title}
+        </p>
       </div>
     </div>
   );
 }
 
-function TitleContainer2() {
+function MoreButton({ onClick }: { onClick: () => void }) {
   return (
-    <div className="mb-[-2px] relative shrink-0 w-full" data-name="Title Container">
-      <div className="content-stretch flex flex-col items-start px-[2px] py-0 relative w-full">
-        <TitleContainer1 />
+    <div
+      className="flex items-center shrink-0 cursor-pointer"
+      style={{ paddingRight: '20px' }}
+      onClick={onClick}
+    >
+      <div
+        className="flex items-center justify-center rounded-[12px] border border-[#e7e7e7] border-dashed"
+        style={{ width: '160px', height: '96px' }}
+      >
+        <p
+          style={{
+            fontFamily: "'Pretendard Variable', sans-serif",
+            fontWeight: 500,
+            fontSize: '14px',
+            lineHeight: '20px',
+            letterSpacing: '-0.28px',
+            color: '#999999'
+          }}
+        >
+          더 볼래요!
+        </p>
       </div>
-    </div>
-  );
-}
-
-function DiscountPriceContainer() {
-  return (
-    <div className="content-stretch flex gap-[2px] items-center relative shrink-0" style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 700, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px' }} data-name="Discount Price Container">
-      <p className="relative shrink-0" style={{ color: '#ff6678' }}>50%</p>
-      <p className="relative shrink-0" style={{ color: '#000' }}>12,900원</p>
-    </div>
-  );
-}
-
-function DiscountPriceContainer1() {
-  return (
-    <div className="content-stretch flex items-center relative shrink-0" data-name="Discount Price Container">
-      <DiscountPriceContainer />
-    </div>
-  );
-}
-
-function OriginalPriceContainer() {
-  return (
-    <div className="content-stretch flex items-center relative shrink-0" data-name="Original Price Container">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 400, fontSize: '13px', lineHeight: '22px', color: '#999', textDecoration: 'line-through' }} className="relative shrink-0">25,800원</p>
-    </div>
-  );
-}
-
-function OriginalPriceContainer1() {
-  return (
-    <div className="content-stretch flex items-center px-px py-0 relative shrink-0" data-name="Original Price Container">
-      <OriginalPriceContainer />
-    </div>
-  );
-}
-
-function OriginalPriceContainer2() {
-  return (
-    <div className="content-stretch flex items-center relative shrink-0" data-name="Original Price Container">
-      <OriginalPriceContainer1 />
-    </div>
-  );
-}
-
-function Frame() {
-  return (
-    <div className="content-stretch flex gap-[3px] items-center mb-[-2px] relative shrink-0 w-full">
-      <DiscountPriceContainer1 />
-      <OriginalPriceContainer2 />
-    </div>
-  );
-}
-
-function CouponPriceContainer() {
-  return (
-    <div className="content-stretch flex gap-[2px] items-center mb-[-1px] relative shrink-0 w-full" style={{ color: '#48b2af' }} data-name="Coupon Price Container">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '25px', letterSpacing: '-0.32px' }} className="relative shrink-0">9,900원</p>
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '11px', lineHeight: '16px' }} className="relative shrink-0 pl-[2px] pb-[2px]">쿠폰 적용가</p>
-    </div>
-  );
-}
-
-function PriceInfo() {
-  return (
-    <div className="mb-[-2px] relative shrink-0 w-full" data-name="Price Info">
-      <div className="content-stretch flex flex-col items-start pb-[2px] pt-0 px-[2px] relative w-full">
-        <Frame />
-        <CouponPriceContainer />
-      </div>
-    </div>
-  );
-}
-
-function ProductInfo() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Product Info">
-      <div className="content-stretch flex flex-col items-start pb-[2px] pt-0 px-px relative w-full">
-        <TitleContainer2 />
-        <PriceInfo />
-      </div>
-    </div>
-  );
-}
-
-function Container4() {
-  return (
-    <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full" data-name="Container">
-      <LabelBox />
-      <ProductInfo />
-    </div>
-  );
-}
-
-function CardPriceBlock() {
-  return (
-    <div className="content-stretch flex flex-col gap-[8px] items-end relative shrink-0 w-[200px]" data-name="Card / PriceBlock">
-      <Container4 />
-    </div>
-  );
-}
-
-function Container5() {
-  return (
-    <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-name="Container">
-      <div className="h-[120px] pointer-events-none relative rounded-[12px] shrink-0 w-[200px]" data-name="Thumbnail">
-        <img alt="" className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full" src={imgThumbnail} />
-        <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-      </div>
-      <CardPriceBlock />
-    </div>
-  );
-}
-
-function CardDealCard() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0" data-name="Card / Deal Card">
-      <Container5 />
-    </div>
-  );
-}
-
-function LabelBox1() {
-  return (
-    <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center pb-[2.5px] pt-[2px] px-[4px] relative rounded-[4px] shrink-0" data-name="Label Box">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '10px', lineHeight: 'normal', color: '#41a09e' }} className="relative shrink-0">심화 해석판</p>
-    </div>
-  );
-}
-
-function TitleContainer3() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Title Container">
-      <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-        <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', letterSpacing: '-0.3px', color: '#000' }} className="relative shrink-0 w-full">내 연인은 바람기 있을까?</p>
-      </div>
-    </div>
-  );
-}
-
-function TitleContainer4() {
-  return (
-    <div className="mb-[-2px] relative shrink-0 w-full" data-name="Title Container">
-      <div className="content-stretch flex flex-col items-start px-[2px] py-0 relative w-full">
-        <TitleContainer3 />
-      </div>
-    </div>
-  );
-}
-
-function DiscountPriceContainer2() {
-  return (
-    <div className="content-stretch flex gap-[2px] items-center relative shrink-0" style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 700, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px' }} data-name="Discount Price Container">
-      <p className="relative shrink-0" style={{ color: '#ff6678' }}>50%</p>
-      <p className="relative shrink-0" style={{ color: '#000' }}>12,900원</p>
-    </div>
-  );
-}
-
-function DiscountPriceContainer3() {
-  return (
-    <div className="content-stretch flex items-center relative shrink-0" data-name="Discount Price Container">
-      <DiscountPriceContainer2 />
-    </div>
-  );
-}
-
-function OriginalPriceContainer3() {
-  return (
-    <div className="content-stretch flex items-center relative shrink-0" data-name="Original Price Container">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 400, fontSize: '13px', lineHeight: '22px', color: '#999', textDecoration: 'line-through' }} className="relative shrink-0">25,800원</p>
-    </div>
-  );
-}
-
-function OriginalPriceContainer4() {
-  return (
-    <div className="content-stretch flex items-center px-px py-0 relative shrink-0" data-name="Original Price Container">
-      <OriginalPriceContainer3 />
-    </div>
-  );
-}
-
-function OriginalPriceContainer5() {
-  return (
-    <div className="content-stretch flex items-center relative shrink-0" data-name="Original Price Container">
-      <OriginalPriceContainer4 />
-    </div>
-  );
-}
-
-function Frame1() {
-  return (
-    <div className="content-stretch flex gap-[3px] items-center mb-[-2px] relative shrink-0 w-full">
-      <DiscountPriceContainer3 />
-      <OriginalPriceContainer5 />
-    </div>
-  );
-}
-
-function CouponPriceContainer1() {
-  return (
-    <div className="content-stretch flex gap-[2px] items-center mb-[-1px] relative shrink-0 w-full" style={{ color: '#48b2af' }} data-name="Coupon Price Container">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 700, fontSize: '16px', lineHeight: '25px', letterSpacing: '-0.32px' }} className="relative shrink-0">9,900원</p>
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '11px', lineHeight: '16px' }} className="relative shrink-0 pl-[2px] pb-[2px]">쿠폰 적용가</p>
-    </div>
-  );
-}
-
-function PriceInfo1() {
-  return (
-    <div className="mb-[-2px] relative shrink-0 w-full" data-name="Price Info">
-      <div className="content-stretch flex flex-col items-start pb-[2px] pt-0 px-[2px] relative w-full">
-        <Frame1 />
-        <CouponPriceContainer1 />
-      </div>
-    </div>
-  );
-}
-
-function ProductInfo1() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Product Info">
-      <div className="content-stretch flex flex-col items-start pb-[2px] pt-0 px-px relative w-full">
-        <TitleContainer4 />
-        <PriceInfo1 />
-      </div>
-    </div>
-  );
-}
-
-function Container6() {
-  return (
-    <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full" data-name="Container">
-      <LabelBox1 />
-      <ProductInfo1 />
-    </div>
-  );
-}
-
-function CardPriceBlock1() {
-  return (
-    <div className="content-stretch flex flex-col gap-[8px] items-end relative shrink-0 w-[200px]" data-name="Card / PriceBlock">
-      <Container6 />
-    </div>
-  );
-}
-
-function Container7() {
-  return (
-    <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-name="Container">
-      <div className="h-[120px] pointer-events-none relative rounded-[12px] shrink-0 w-[200px]" data-name="Thumbnail">
-        <img alt="" className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full" src={imgThumbnail} />
-        <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-      </div>
-      <CardPriceBlock1 />
-    </div>
-  );
-}
-
-function CardDealCard1() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0" data-name="Card / Deal Card">
-      <Container7 />
-    </div>
-  );
-}
-
-function ButtonContainer1() {
-  return (
-    <div className="content-stretch flex h-full items-center justify-center mr-[-20px] p-[12px] relative rounded-[12px] shrink-0 w-[200px] border border-[#e7e7e7] border-dashed" data-name="Button Container">
-      <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', letterSpacing: '-0.3px', color: '#999999' }} className="relative shrink-0">더 볼래요!</p>
-    </div>
-  );
-}
-
-function Icons1() {
-  return (
-    <div className="relative size-[44px]" data-name="Icons">
-      <div className="absolute inset-0">
-        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
-          <g id="Icons">
-            <rect fill="white" height="44" width="44" />
-            <motion.path
-              initial={{ x: 0 }}
-              animate={{ x: 2 }}
-              transition={{
-                repeat: Infinity,
-                repeatType: "reverse",
-                duration: 0.5,
-                ease: "easeInOut"
-              }}
-              d={svgPaths1.p3bb19300}
-              fill="var(--fill-0, #D4D4D4)"
-              id="Vector"
-            />
-          </g>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-function ButtonMoreViewButton() {
-  return (
-    <div className="content-stretch flex items-center pl-0 py-0 relative self-stretch shrink-0" data-name="Button / More view Button">
-      <ButtonContainer1 />
-      <div className="flex items-center justify-center mr-[-20px] relative shrink-0">
+      <div className="flex items-center justify-center shrink-0" style={{ marginLeft: '-8px' }}>
         <div className="flex-none rotate-[180deg] scale-y-[-100%]">
-          <Icons1 />
+          <div className="relative" style={{ width: '44px', height: '44px' }}>
+            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
+              <rect fill="white" height="44" width="44" />
+              <motion.path
+                initial={{ x: 0 }}
+                animate={{ x: 2 }}
+                transition={{
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  duration: 0.5,
+                  ease: "easeInOut"
+                }}
+                d={svgPaths1.p3bb19300}
+                fill="#D4D4D4"
+              />
+            </svg>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-export default function CardContent() {
+function CardSkeleton() {
   return (
-    <div className="content-stretch flex items-start relative shrink-0 w-full overflow-x-auto scrollbar-hide pb-4" data-name="Card Content">
-      <div className="flex gap-[12px] items-start px-[20px]">
-        <CardDealCard />
-        <CardDealCard1 />
-        <CardDealCard />
-        <CardDealCard1 />
-        <CardDealCard />
-        <CardDealCard1 />
-        <ButtonMoreViewButton />
+    <div className="flex flex-col items-start shrink-0 animate-pulse" style={{ width: '160px' }}>
+      <div
+        className="rounded-[12px] shrink-0"
+        style={{ width: '160px', height: '96px', backgroundColor: '#f3f3f3' }}
+      />
+      <div className="flex flex-col gap-[4px] items-start w-full" style={{ paddingTop: '8px' }}>
+        <div
+          className="rounded-[4px]"
+          style={{ width: '60px', height: '16px', backgroundColor: '#f3f3f3' }}
+        />
+        <div
+          className="rounded-[4px]"
+          style={{ width: '140px', height: '20px', backgroundColor: '#f3f3f3' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function CardContent() {
+  const navigate = useNavigate();
+  const [contents, setContents] = useState<FreeContent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFreeContents = async () => {
+      try {
+        // 무료 콘텐츠를 인기순(weekly_clicks)으로 4개 가져오기
+        const { data, error } = await supabase
+          .from('master_contents')
+          .select('id, title, thumbnail_url')
+          .eq('content_type', 'free')
+          .eq('status', 'deployed')
+          .order('weekly_clicks', { ascending: false })
+          .limit(4);
+
+        if (error) {
+          console.error('❌ [CardContent] 무료 콘텐츠 로드 실패:', error);
+          return;
+        }
+
+        setContents(data || []);
+        console.log('✅ [CardContent] 무료 콘텐츠 로드:', data?.length, '개');
+      } catch (error) {
+        console.error('❌ [CardContent] 로드 중 오류:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFreeContents();
+  }, []);
+
+  const handleContentClick = (contentId: string) => {
+    navigate(`/free/content/${contentId}`);
+  };
+
+  const handleMoreClick = () => {
+    // 홈으로 이동 시 무료 체험판 필터 자동 선택
+    localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
+    navigate('/');
+  };
+
+  return (
+    <div
+      className="flex items-start w-full overflow-x-auto scrollbar-hide"
+      style={{ paddingBottom: '16px' }}
+    >
+      <div className="flex gap-[12px] items-start" style={{ paddingLeft: '20px' }}>
+        {isLoading ? (
+          // 로딩 스켈레톤
+          <>
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </>
+        ) : contents.length > 0 ? (
+          // 실제 콘텐츠
+          <>
+            {contents.map((content) => (
+              <FreeContentCard
+                key={content.id}
+                content={content}
+                onClick={() => handleContentClick(content.id)}
+              />
+            ))}
+            <MoreButton onClick={handleMoreClick} />
+          </>
+        ) : (
+          // 콘텐츠 없음
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: '200px',
+              height: '96px',
+              fontFamily: "'Pretendard Variable', sans-serif",
+              fontSize: '14px',
+              color: '#999'
+            }}
+          >
+            콘텐츠가 없습니다
+          </div>
+        )}
       </div>
     </div>
   );

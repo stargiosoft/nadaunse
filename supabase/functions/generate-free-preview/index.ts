@@ -18,7 +18,7 @@ serve(async (req) => {
     const requestBody = await req.json()
     console.log('📥 [Edge Function] 요청 body:', JSON.stringify(requestBody, null, 2))
 
-    const { contentId, sajuRecordId, sajuData } = requestBody
+    const { contentId, sajuRecordId, sajuData, userId } = requestBody
 
     if (!contentId) {
       console.error('❌ [Edge Function] contentId 누락')
@@ -255,15 +255,14 @@ serve(async (req) => {
       )
     }
 
-    // 5. 각 질문에 대한 답변 생성
-    const generatedAnswers = []
+    // 5. 각 질문에 대한 답변 생성 (⭐ 병렬 처리)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('🚀 [Edge Function] 모든 질문 병렬 처리 시작 (총', questions.length, '개)')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-    for (let i = 0; i < questions.length; i++) {
-      const question = questions[i]
-      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
-      console.log(`🔄 [Edge Function] 질문 ${i + 1}/${questions.length} 처리 중`)
-      console.log(`📌 [Edge Function] question_id: ${question.id}`)
-      console.log(`📌 [Edge Function] question_text: ${question.question_text}`)
+    // ⭐ 병렬로 모든 질문 처리
+    const answerPromises = questions.map(async (question: any, i: number) => {
+      console.log(`🔄 [Edge Function] 질문 ${i + 1} 시작: ${question.question_text.substring(0, 30)}...`)
 
       const prompt = `## **역할**
 고객의 사주 데이터와 현재 상황을 분석하여 통찰력 있는 맞춤 풀이를 완결된 보고서 형태로 제공하는 전문 사주 명리학자
@@ -306,8 +305,6 @@ ${fullQuestionerInfo}
 - 추가 질문이나 다음 상담 언급 금지
 - 마크다운 서식 사용 금지`
 
-      console.log(`🔑 [Edge Function] OpenAI API 호출 (GPT-4.1-nano)...`)
-
       // OpenAI Chat Completions API 호출
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -316,13 +313,8 @@ ${fullQuestionerInfo}
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-nano',  // 
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
+          model: 'gpt-4.1-nano',
+          messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
           max_tokens: 1000
         })
@@ -330,45 +322,88 @@ ${fullQuestionerInfo}
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error(`❌ [Edge Function] OpenAI API 오류:`, response.status, errorText)
+        console.error(`❌ [Edge Function] 질문 ${i + 1} OpenAI API 오류:`, response.status)
         throw new Error(`OpenAI API 오류: ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
-      console.log(`📦 [Edge Function] OpenAI 응답:`, JSON.stringify(data).substring(0, 200) + '...')
-      
-      // Chat Completions API 응답 구조: data.choices[0].message.content
+
       let answerText = ''
-      
       if (data.choices && data.choices[0]?.message?.content) {
         answerText = data.choices[0].message.content.trim()
       } else {
-        console.error(`❌ [Edge Function] 알 수 없는 응답 구조:`, data)
         throw new Error('예상하지 못한 API 응답 형식입니다.')
       }
 
-      if (!answerText) {
-        throw new Error('생성된 텍스트가 비어있습니다.')
-      }
+      console.log(`✅ [Edge Function] 질문 ${i + 1} 완료`)
 
-      console.log(`✅ [Edge Function] 질문 ${i + 1} 답변 생성 완료:`, answerText.substring(0, 100) + '...')
-
-      generatedAnswers.push({
+      return {
         question_id: question.id,
         question_text: question.question_text,
         question_order: question.question_order,
         answer_text: answerText
-      })
-    }
+      }
+    })
+
+    // ⭐ 모든 질문 병렬 완료 대기
+    const generatedAnswers = await Promise.all(answerPromises)
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('✅ [Edge Function] 모든 답변 생성 완료')
+    console.log('✅ [Edge Function] 모든 답변 생성 완료 (병렬)')
     console.log('📌 [Edge Function] 생성된 답변 개수:', generatedAnswers.length)
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-    // 6. 응답 반환 (DB 저장 없이 바로 반환)
+    // 6. 로그인 사용자인 경우 free_content_records 테이블에 저장
+    let recordId: string | null = null
+
+    if (userId) {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log('💾 [Edge Function] 로그인 사용자 → DB에 무료 콘텐츠 기록 저장')
+      console.log('📌 [Edge Function] userId:', userId)
+
+      try {
+        const { data: record, error: insertError } = await supabase
+          .from('free_content_records')
+          .insert({
+            user_id: userId,
+            content_id: contentId,
+            saju_record_id: sajuRecordId || null,
+            full_name: sajuInfo.full_name,
+            gender: sajuInfo.gender,
+            birth_date: sajuInfo.birth_date,
+            birth_time: sajuInfo.birth_time || null,
+            is_guest: false,
+            answers: generatedAnswers.map(a => ({
+              question_id: a.question_id,
+              question_order: a.question_order,
+              question_text: a.question_text,
+              answer_text: a.answer_text
+            }))
+          })
+          .select('id')
+          .single()
+
+        if (insertError) {
+          console.error('❌ [Edge Function] free_content_records 저장 실패:', insertError)
+          // 저장 실패해도 AI 결과는 반환 (localStorage로 fallback 가능)
+        } else {
+          recordId = record?.id || null
+          console.log('✅ [Edge Function] free_content_records 저장 성공, recordId:', recordId)
+        }
+      } catch (dbError) {
+        console.error('❌ [Edge Function] DB 저장 중 예외:', dbError)
+        // 저장 실패해도 계속 진행
+      }
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    } else {
+      console.log('ℹ️ [Edge Function] 게스트 사용자 → DB 저장 스킵')
+    }
+
+    // 7. 응답 반환
     const responseData = {
       success: true,
+      record_id: recordId,  // 로그인 사용자인 경우 DB 레코드 ID
       content: {
         id: content.id,
         title: content.title,
@@ -378,7 +413,13 @@ ${fullQuestionerInfo}
         thumbnail_url: content.thumbnail_url
       },
       saju_info: sajuInfo,
-      answers: generatedAnswers
+      answers: generatedAnswers.map(a => ({
+        question_id: a.question_id,
+        question_text: a.question_text,
+        question_order: a.question_order,
+        answer_text: a.answer_text
+      }))
+      // ⭐ 태그 추출은 extract-trait-tags 함수에서 별도 처리
     }
 
     console.log('📤 [Edge Function] 응답 반환:', JSON.stringify(responseData).substring(0, 200) + '...')

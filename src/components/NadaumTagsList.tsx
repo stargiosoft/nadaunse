@@ -522,9 +522,13 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
         const cache = JSON.parse(cachedJson);
         const EXPIRY_MS = 5 * 60 * 1000; // 5분
         if (Date.now() - cache.timestamp < EXPIRY_MS) {
-          console.log('🚀 [NadaumTagsList] 캐시에서 로드:', cache.tags?.length, '개');
+          // ⭐ __SKIPPED__ 마커 제외
+          const filteredTags = (cache.tags || []).filter(
+            (tag: TraitTag) => tag.tag_name !== '__SKIPPED__'
+          );
+          console.log('🚀 [NadaumTagsList] 캐시에서 로드:', filteredTags.length, '개');
           return {
-            tags: cache.tags || [],
+            tags: filteredTags,
             isLoading: false,
             hasCache: true
           };
@@ -577,6 +581,7 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
         .select('*')
         .eq('user_id', user.id)
         .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+        .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -667,6 +672,9 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
       restoredTags.splice(index, 0, tagToDelete);
       setAllTags(restoredTags);
       updateCache(restoredTags);
+    } else {
+      // 🚀 삭제 성공 시 나의 분석 보고서 캐시도 무효화
+      localStorage.setItem('my_report_needs_refresh', 'true');
     }
   }, [updateCache]);
 
@@ -701,6 +709,8 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
       const restoredTags = [data, ...currentTags];
       setAllTags(restoredTags);
       updateCache(restoredTags);
+      // 🚀 복원 성공 시 나의 분석 보고서 캐시도 무효화
+      localStorage.setItem('my_report_needs_refresh', 'true');
     }
   }, [updateCache]);
 

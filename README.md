@@ -50,7 +50,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 21개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 24개) |
 | AI | OpenAI GPT-4o, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 결제 | PortOne v2 |
 | 알림 | TalkDream API (카카오 알림톡) |
@@ -59,9 +59,9 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ## 📊 주요 통계
 
-- **컴포넌트**: 54개
-- **Edge Functions**: 21개
-- **페이지**: 38개
+- **컴포넌트**: 58개
+- **Edge Functions**: 25개
+- **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 
 ## 📚 문서
@@ -73,7 +73,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
 | [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (54개) |
-| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (21개) |
+| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (24개) |
 
 > **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
 
@@ -100,6 +100,15 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - 썸네일 재생성 시 브라우저 캐시로 인한 표시 문제 해결
 - `imageCacheBuster` 상태로 URL 버전 관리
 
+## 🆕 최근 주요 변경사항 (2026-01-29)
+
+### 나다움 태그 기록 기능 (무료/유료 통합)
+- **기능**: 운세 결과에서 GPT-5-nano로 성향 태그(장점 2개, 단점 1개) 추출
+- **적용 범위**: 무료 콘텐츠 + 유료 콘텐츠(심화 해석판)
+- **Edge Functions**: `extract-trait-tags` (추출), `save-trait-tags` (저장)
+- **DB 테이블**: `user_trait_tags` (사용자별 나다움 태그 저장)
+- **상세**: [DECISIONS.md](./src/DECISIONS.md) → "2026-01-29 무료/유료 콘텐츠 나다움 태그 통합 플로우"
+
 ---
 
-**최종 업데이트**: 2026-01-14
+**최종 업데이트**: 2026-01-29

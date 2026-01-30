@@ -241,11 +241,15 @@ export default function PurchaseHistoryPage() {
     try {
       setFreeLoading(true);
 
+      // ⭐ 캐시 갱신 플래그 확인 (새 콘텐츠 생성 시 설정됨)
+      const needsRefresh = localStorage.getItem('free_content_needs_refresh') === 'true';
+
       // 캐시 체크 (5분)
       const cacheKey = 'free_content_history_cache';
       const cached = localStorage.getItem(cacheKey);
 
-      if (cached) {
+      // ⭐ 갱신 플래그가 없고 캐시가 유효하면 캐시 사용
+      if (!needsRefresh && cached) {
         const { data, timestamp } = JSON.parse(cached);
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
@@ -255,6 +259,12 @@ export default function PurchaseHistoryPage() {
           setFreeLoading(false);
           return; // 캐시가 유효하면 DB 조회 생략
         }
+      }
+
+      // ⭐ 갱신 플래그 제거 (API 호출 전)
+      if (needsRefresh) {
+        localStorage.removeItem('free_content_needs_refresh');
+        console.log('🔄 [운세기록] 캐시 갱신 플래그 감지 → 새로 로드');
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -302,9 +312,14 @@ export default function PurchaseHistoryPage() {
   };
 
   // ⭐ 탭 변경 시 무료 기록 로드
+  // ⭐ 탭 변경 시 무료 기록 로드
   useEffect(() => {
-    if (activeTab === 'free' && freeRecords.length === 0) {
-      loadFreeContentHistory();
+    if (activeTab === 'free') {
+      // ⭐ 갱신 플래그가 있거나 데이터가 없으면 로드
+      const needsRefresh = localStorage.getItem('free_content_needs_refresh') === 'true';
+      if (needsRefresh || freeRecords.length === 0) {
+        loadFreeContentHistory();
+      }
     }
   }, [activeTab]);
 
@@ -347,6 +362,31 @@ export default function PurchaseHistoryPage() {
     if (item.master_contents.content_type === 'free') {
       navigate(`/free-saju/${item.id}`);
     } else {
+      // ⭐ 해당 콘텐츠에 대해 확정된 태그가 있는지 확인 (나다움 기록하기 여부 결정)
+      let hasConfirmedTags = false;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: confirmedTags, error } = await supabase
+            .from('user_trait_tags')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('source_order_id', item.id)
+            .eq('source_type', 'paid_content')
+            .eq('is_confirmed', true)
+            .limit(1);
+
+          if (!error && confirmedTags && confirmedTags.length > 0) {
+            hasConfirmedTags = true;
+            console.log('✅ [PurchaseHistoryPage] 유료 콘텐츠 확정된 태그 있음 → 나다움 기록하기 스킵');
+          } else {
+            console.log('ℹ️ [PurchaseHistoryPage] 유료 콘텐츠 확정된 태그 없음 → 나다움 기록하기 필요');
+          }
+        }
+      } catch (err) {
+        console.error('❌ [PurchaseHistoryPage] 유료 콘텐츠 태그 확인 실패:', err);
+      }
+
       // ⭐ 1단계: 캐시 확인 (AI 완료 + 캐시 있으면 즉시 이동)
       const aiCompleted = item.ai_generation_completed === true;
       if (aiCompleted) {
@@ -388,7 +428,8 @@ export default function PurchaseHistoryPage() {
                 navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
                   state: {
                     cachedResults: cached.results,
-                    cachedContentId: cached.contentId
+                    cachedContentId: cached.contentId,
+                    hasConfirmedTags  // ⭐ 태그 확정 여부 전달
                   }
                 });
                 return;
@@ -421,7 +462,9 @@ export default function PurchaseHistoryPage() {
         ]);
 
         if (questionsResult.error) {
-          navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
+          navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
+            state: { hasConfirmedTags }
+          });
           return;
         }
 
@@ -440,7 +483,9 @@ export default function PurchaseHistoryPage() {
 
         if (completedAnswers > 0 && (aiCompleted || completedAnswers >= totalQuestions)) {
           preloadTarotImages(item.id, supabaseUrl).catch(() => {});
-          navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
+          navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
+            state: { hasConfirmedTags }
+          });
           return;
         }
 
@@ -472,13 +517,15 @@ export default function PurchaseHistoryPage() {
 
         navigate(`/loading?orderId=${item.id}&contentId=${item.content_id}&from=purchase`);
       } catch (error) {
-        navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`);
+        navigate(`/result?orderId=${item.id}&questionOrder=1&contentId=${item.content_id}&from=purchase`, {
+          state: { hasConfirmedTags }
+        });
       }
     }
   };
 
   // ⭐ 무료 콘텐츠 클릭 핸들러
-  const handleViewFreeRecord = (record: FreeContentRecord) => {
+  const handleViewFreeRecord = async (record: FreeContentRecord) => {
     // ⭐ 이미 조회한 데이터를 localStorage에 캐시로 저장 (DB 재조회 방지)
     const resultKey = `free_content_${record.content_id}_${record.id}`;
     const cachedData = {
@@ -499,19 +546,53 @@ export default function PurchaseHistoryPage() {
 
     localStorage.setItem(resultKey, JSON.stringify(cachedData));
 
+    // ⭐ 해당 콘텐츠에 대해 확정된 태그가 있는지 확인
+    let hasConfirmedTags = false;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // ⭐ source_order_id로 각 운세 결과별 태그 확정 여부 확인
+        // (같은 콘텐츠를 여러 번 봐도 각각 별개의 태그)
+        const { data: confirmedTags, error } = await supabase
+          .from('user_trait_tags')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('source_order_id', record.id)  // ⭐ 각 운세 결과별 구분
+          .eq('source_type', 'free_content')
+          .eq('is_confirmed', true)
+          .limit(1);
+
+        if (!error && confirmedTags && confirmedTags.length > 0) {
+          hasConfirmedTags = true;
+          console.log('✅ [PurchaseHistoryPage] 확정된 태그 있음 → 나다움 기록하기 스킵 (recordId:', record.id, ')');
+        } else {
+          console.log('ℹ️ [PurchaseHistoryPage] 확정된 태그 없음 → 나다움 기록하기 필요 (recordId:', record.id, ')');
+        }
+      }
+    } catch (err) {
+      console.error('❌ [PurchaseHistoryPage] 태그 확인 실패:', err);
+    }
+
     // ⭐ resultKey와 함께 navigate → DB 조회 없이 localStorage에서 바로 읽기
+    console.log('📌 [PurchaseHistoryPage] 무료 콘텐츠 이동 시 전달 state:');
+    console.log('  - resultKey:', resultKey);
+    console.log('  - contentId:', record.content_id);
+    console.log('  - hasConfirmedTags:', hasConfirmedTags);
+
     navigate(`/product/${record.content_id}/result/free`, {
       state: {
         resultKey: resultKey,
         userName: record.full_name,
         recordId: record.id,  // 나다움 태그 저장용
+        contentId: record.content_id,  // ⭐ contentId 명시적 전달 (태그 조회용)
         product: {
           id: record.content_id,
           title: record.master_contents.title,
           type: 'free',
           image: record.master_contents.thumbnail_url || ''
         },
-        fromPurchaseHistory: true  // ⭐ X 버튼 클릭 시 운세 기록으로 복귀
+        fromPurchaseHistory: true,  // ⭐ X 버튼 클릭 시 운세 기록으로 복귀
+        hasConfirmedTags  // ⭐ 태그 확정 여부 (true면 나다움 기록하기 스킵)
       }
     });
   };

@@ -281,6 +281,10 @@ interface MyReportListProps {
   forceEmptyState?: boolean; // 테스트용: 빈 상태 강제
 }
 
+// ⭐ 캐시 키 & 만료 시간 (CLAUDE.md 캐싱 전략 준수)
+const MY_REPORT_CACHE_KEY = 'my_report_cache';
+const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5분
+
 /**
  * 이번 주 범위 계산 (일요일 00:00 ~ 토요일 23:59)
  * - 주간 보고서 발행 기준: 전주 일~토 태그 7건 이상 → 차주 일요일 발행
@@ -302,19 +306,75 @@ function getCurrentWeekRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
+/**
+ * 🚀 동기적 캐시 초기화 (스켈레톤/로딩 플래시 방지)
+ * - localStorage에서 캐시 데이터 즉시 로드
+ * - 유효한 캐시가 있으면 isLoading: false로 시작
+ */
+function getInitialCacheState(): {
+  currentWeekTagsCount: number;
+  hasAnyTags: boolean;
+  isLoading: boolean;
+  hasValidCache: boolean;
+} {
+  try {
+    const cachedJson = localStorage.getItem(MY_REPORT_CACHE_KEY);
+    if (cachedJson) {
+      const cache = JSON.parse(cachedJson);
+      const isExpired = Date.now() - cache.timestamp > CACHE_EXPIRY_MS;
+
+      if (!isExpired) {
+        console.log('🚀 [MyReportList] 캐시 히트! 즉시 렌더링');
+        return {
+          currentWeekTagsCount: cache.currentWeekTagsCount || 0,
+          hasAnyTags: cache.hasAnyTags || false,
+          isLoading: false, // 캐시 있으면 로딩 스킵
+          hasValidCache: true
+        };
+      }
+      console.log('⏰ [MyReportList] 캐시 만료 (5분 초과)');
+    }
+  } catch (e) {
+    console.error('❌ [MyReportList] 캐시 파싱 실패:', e);
+  }
+
+  return {
+    currentWeekTagsCount: 0,
+    hasAnyTags: false,
+    isLoading: true, // 캐시 없으면 로딩 표시
+    hasValidCache: false
+  };
+}
+
 export default function MyReportList({ onBack, onTabChange, onReportClick, forceEmptyState = false }: MyReportListProps) {
   const navigate = useNavigate();
-  const [reports, setReports] = useState<MonthlyReport[]>(forceEmptyState ? [] : reportData);
-  const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
-  const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasAnyTags, setHasAnyTags] = useState(false); // 전체 태그 존재 여부
 
-  // ⭐ 실제 데이터 로드
+  // 🚀 동기적 캐시 초기화 (useState 초기화 시점에 캐시 로드)
+  const initialState = getInitialCacheState();
+
+  const [reports, setReports] = useState<MonthlyReport[]>(
+    forceEmptyState ? [] : (initialState.hasAnyTags ? reportData : [])
+  );
+  const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
+  const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(initialState.currentWeekTagsCount);
+  const [isLoading, setIsLoading] = useState(forceEmptyState ? false : initialState.isLoading);
+  const [hasAnyTags, setHasAnyTags] = useState(initialState.hasAnyTags);
+
+  // ⭐ 실제 데이터 로드 (캐시 미스 또는 백그라운드 갱신)
   useEffect(() => {
     const loadData = async () => {
       try {
-        setIsLoading(true);
+        // 🚀 캐시가 유효하면 API 호출 스킵 (백그라운드 갱신만)
+        const needsRefresh = localStorage.getItem('my_report_needs_refresh') === 'true';
+        if (initialState.hasValidCache && !needsRefresh) {
+          console.log('✅ [MyReportList] 유효한 캐시 존재 → API 호출 스킵');
+          return;
+        }
+
+        if (needsRefresh) {
+          localStorage.removeItem('my_report_needs_refresh');
+          console.log('🔄 [MyReportList] refresh 플래그 감지 → API 호출');
+        }
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -327,46 +387,45 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         const { start, end } = getCurrentWeekRange();
         console.log('📅 [MyReportList] 이번 주 범위:', start.toISOString(), '~', end.toISOString());
 
-        // 1. 이번 주 태그 개수 조회 (is_confirmed=true)
-        const { count: weeklyTagCount, error: tagError } = await supabase
-          .from('user_trait_tags')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_confirmed', true)
-          .gte('created_at', start.toISOString())
-          .lte('created_at', end.toISOString());
+        // 🚀 API 병렬화: 이번 주 태그 + 전체 태그 동시 조회
+        const [weeklyResult, totalResult] = await Promise.all([
+          supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_confirmed', true)
+            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
+            .gte('created_at', start.toISOString())
+            .lte('created_at', end.toISOString()),
+          supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_confirmed', true)
+            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
+        ]);
 
-        if (tagError) {
-          console.error('❌ [MyReportList] 태그 조회 실패:', tagError);
-        } else {
-          console.log('✅ [MyReportList] 이번 주 태그 개수:', weeklyTagCount);
-          setCurrentWeekTagsCount(weeklyTagCount || 0);
-        }
+        const weeklyTagCount = weeklyResult.count || 0;
+        const totalTagCount = totalResult.count || 0;
+        const hasAnyTagsNow = totalTagCount > 0;
 
-        // 2. 전체 태그 존재 여부 조회
-        const { count: totalTagCount } = await supabase
-          .from('user_trait_tags')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_confirmed', true);
+        console.log('✅ [MyReportList] 이번 주 태그:', weeklyTagCount, '/ 전체:', totalTagCount);
 
-        setHasAnyTags((totalTagCount || 0) > 0);
-        console.log('✅ [MyReportList] 전체 태그 존재:', (totalTagCount || 0) > 0);
+        // 상태 업데이트
+        setCurrentWeekTagsCount(weeklyTagCount);
+        setHasAnyTags(hasAnyTagsNow);
 
-        // 3. 보고서 목록 조회 (향후 weekly_reports 테이블 연동)
-        // TODO: 실제 보고서 데이터 연동
-        // const { data: reportsData } = await supabase
-        //   .from('weekly_reports')
-        //   .select('*')
-        //   .eq('user_id', user.id)
-        //   .eq('status', 'completed')
-        //   .order('published_at', { ascending: false });
-
-        // 현재는 더미 데이터 사용 (보고서 테이블 연동 전)
-        // 태그가 하나도 없으면 빈 상태로 표시
-        if ((totalTagCount || 0) === 0) {
+        if (!hasAnyTagsNow) {
           setReports([]);
         }
+
+        // 🚀 캐시에 저장 (만료 시간 포함)
+        localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+          currentWeekTagsCount: weeklyTagCount,
+          hasAnyTags: hasAnyTagsNow,
+          timestamp: Date.now()
+        }));
+        console.log('💾 [MyReportList] 캐시 저장 완료');
 
       } catch (error) {
         console.error('❌ [MyReportList] 데이터 로드 실패:', error);
@@ -382,6 +441,71 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     }
   }, [forceEmptyState]);
 
+  // 🚀 visibility/focus 변경 시 refresh 플래그 체크
+  useEffect(() => {
+    const checkAndRefresh = async () => {
+      const needsRefresh = localStorage.getItem('my_report_needs_refresh') === 'true';
+      if (!needsRefresh) return;
+
+      console.log('🔄 [MyReportList] visibility 변경 → refresh 플래그 감지');
+      localStorage.removeItem('my_report_needs_refresh');
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { start, end } = getCurrentWeekRange();
+        const [weeklyResult, totalResult] = await Promise.all([
+          supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_confirmed', true)
+            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
+            .gte('created_at', start.toISOString())
+            .lte('created_at', end.toISOString()),
+          supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_confirmed', true)
+            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
+        ]);
+
+        const weeklyTagCount = weeklyResult.count || 0;
+        const totalTagCount = totalResult.count || 0;
+        const hasAnyTagsNow = totalTagCount > 0;
+
+        setCurrentWeekTagsCount(weeklyTagCount);
+        setHasAnyTags(hasAnyTagsNow);
+        console.log('✅ [MyReportList] 태그 개수 갱신:', weeklyTagCount, '/', totalTagCount);
+
+        // 캐시 업데이트
+        localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+          currentWeekTagsCount: weeklyTagCount,
+          hasAnyTags: hasAnyTagsNow,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error('❌ [MyReportList] refresh 실패:', error);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndRefresh();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', checkAndRefresh);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', checkAndRefresh);
+    };
+  }, []);
+
   const handleTabChange = (index: number) => {
     if (index === 0) {
       // 프로필 탭 클릭 시 마이페이지로 이동
@@ -395,11 +519,25 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   const handleDevNoTags = () => {
     setCurrentWeekTagsCount(0);
     setHasAnyTags(true); // 전체 태그는 있지만 이번 주 태그만 없음
+    setReports(reportData);
+    // 캐시도 업데이트
+    localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+      currentWeekTagsCount: 0,
+      hasAnyTags: true,
+      timestamp: Date.now()
+    }));
   };
 
   const handleDevManyTags = () => {
     setCurrentWeekTagsCount(6);
     setHasAnyTags(true);
+    setReports(reportData);
+    // 캐시도 업데이트
+    localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+      currentWeekTagsCount: 6,
+      hasAnyTags: true,
+      timestamp: Date.now()
+    }));
   };
 
   const handleDevInitialState = () => {
@@ -407,6 +545,81 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     setCurrentWeekTagsCount(0);
     setHasAnyTags(false);
     setReports([]);
+    // 캐시 삭제
+    localStorage.removeItem(MY_REPORT_CACHE_KEY);
+  };
+
+  // ⭐ DEV: 알림톡 발송 테스트 (보고서 알림톡)
+  const [isSendingAlimtalk, setIsSendingAlimtalk] = useState(false);
+  const handleDevSendAlimtalk = async () => {
+    if (isSendingAlimtalk) return;
+
+    try {
+      setIsSendingAlimtalk(true);
+      console.log('📱 [DEV] 알림톡 발송 시작...');
+
+      // 1. 현재 로그인한 사용자 확인
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      // 2. 사주 정보에서 '본인' 레코드의 전화번호 조회
+      const { data: sajuRecords, error: sajuError } = await supabase
+        .from('saju_records')
+        .select('id, full_name, phone_number, notes')
+        .eq('user_id', user.id)
+        .eq('notes', '본인')
+        .single();
+
+      if (sajuError || !sajuRecords) {
+        console.error('❌ [DEV] 사주 정보 조회 실패:', sajuError);
+        alert('본인 사주 정보를 찾을 수 없습니다.\n사주 정보를 먼저 등록해주세요.');
+        return;
+      }
+
+      const phoneNumber = sajuRecords.phone_number;
+      if (!phoneNumber) {
+        alert('전화번호가 등록되지 않았습니다.\n사주 정보에서 전화번호를 등록해주세요.');
+        return;
+      }
+
+      console.log('📱 [DEV] 전화번호:', phoneNumber);
+      console.log('📱 [DEV] 사용자 이름:', sajuRecords.full_name);
+
+      // 3. send-alimtalk Edge Function 호출 (테스트용)
+      // ⚠️ 실제 보고서 알림톡은 별도 템플릿 필요 (현재는 구매 완료 템플릿 사용)
+      const { data, error } = await supabase.functions.invoke('send-alimtalk', {
+        body: {
+          orderId: `dev_report_${Date.now()}`, // 테스트용 더미 orderId
+          userId: user.id,
+          mobile: phoneNumber,
+          customerName: sajuRecords.full_name,
+          contentId: 'weekly_report_test' // 테스트용 더미 contentId
+        }
+      });
+
+      if (error) {
+        console.error('❌ [DEV] 알림톡 발송 실패:', error);
+        alert(`알림톡 발송 실패: ${error.message}`);
+        return;
+      }
+
+      console.log('✅ [DEV] 알림톡 발송 결과:', data);
+
+      if (data?.success) {
+        alert(`✅ 알림톡 발송 성공!\n\n수신번호: ${phoneNumber}\n이름: ${sajuRecords.full_name}`);
+      } else {
+        alert(`알림톡 발송 실패: ${data?.error || '알 수 없는 오류'}`);
+      }
+
+    } catch (error) {
+      console.error('❌ [DEV] 알림톡 발송 오류:', error);
+      alert(`알림톡 발송 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    } finally {
+      setIsSendingAlimtalk(false);
+    }
   };
 
   // Filter for Jan-March reports for the list (더미 데이터용)
@@ -476,7 +689,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
             {/* Dev Controls - only visible in dev/staging environments */}
             {DEV && !isLoading && (
-              <div className="flex items-center justify-center flex-wrap w-full" style={{ gap: '12px', padding: '0 20px', marginTop: '40px', paddingBottom: '20px' }}>
+              <div className="flex flex-col items-center w-full" style={{ gap: '16px', padding: '0 20px', marginTop: '40px', paddingBottom: '20px' }}>
                 <div className="flex items-center justify-center flex-wrap" style={{ gap: '12px' }}>
                   <button
                     onClick={handleDevNoTags}
@@ -497,6 +710,24 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                     dev 태그 없음 (초기)
                   </button>
                 </div>
+                {/* ⭐ 알림톡 발송 DEV 버튼 */}
+                <button
+                  onClick={handleDevSendAlimtalk}
+                  disabled={isSendingAlimtalk}
+                  style={{
+                    backgroundColor: isSendingAlimtalk ? '#d4d4d4' : '#48b2af',
+                    fontSize: '13px',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    cursor: isSendingAlimtalk ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: isSendingAlimtalk ? 0.7 : 1
+                  }}
+                >
+                  {isSendingAlimtalk ? '발송 중...' : '📱 알림톡 발송 (DEV)'}
+                </button>
               </div>
             )}
 

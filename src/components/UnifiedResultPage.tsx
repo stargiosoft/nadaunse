@@ -37,6 +37,8 @@ export default function UnifiedResultPage() {
   // ⭐ PurchaseHistoryPage에서 전달받은 캐시 데이터 (즉시 렌더링용)
   const cachedResultsFromState = (location.state as { cachedResults?: ResultItem[] })?.cachedResults;
   const cachedContentIdFromState = (location.state as { cachedContentId?: string })?.cachedContentId;
+  // ⭐ 이미 태그 확정됨 (나다움 기록하기 스킵 여부)
+  const hasConfirmedTags = (location.state as { hasConfirmedTags?: boolean })?.hasConfirmedTags === true;
 
   // ⭐ 초기화 시 캐시 확인 (state 없으면 localStorage 체크)
   const getInitialCacheData = (): { results: ResultItem[]; contentId: string | null } => {
@@ -115,6 +117,7 @@ export default function UnifiedResultPage() {
   const [isTagExtracted, setIsTagExtracted] = useState(false);
   const [isTagLoading, setIsTagLoading] = useState(false);
   const hasTagExtractionStarted = useRef(false);  // ⭐ 중복 실행 방지
+  const [hasConfirmedTagsFromDB, setHasConfirmedTagsFromDB] = useState(false);  // ⭐ DB에서 확인된 태그 여부 (스킵 포함)
 
   // ⭐ URL 쿼리 파라미터 변경 감지 + 타로 셔플 리다이렉트 체크
   useEffect(() => {
@@ -394,15 +397,17 @@ export default function UnifiedResultPage() {
     // 🔍 디버깅: 태그 추출 조건 체크
     console.log('🔍 [UnifiedResultPage] 태그 추출 조건 체크:', {
       from,
+      hasConfirmedTags,
       isTagExtracted,
       isTagLoading,
       allResultsLength: allResults.length,
       hasStarted: hasTagExtractionStarted.current
     });
 
-    // from=purchase면 태그 추출 스킵 (다시보기이므로)
+    // ⭐ from=purchase + 이미 태그 확정됨 → 태그 추출 스킵 (다시보기이므로)
+    // ⭐ from=purchase + 태그 미확정 → 태그 추출 진행 (나다움 기록하기 필요)
     // 데이터 없거나, 이미 태그 추출 완료/진행 중이면 스킵
-    if (from === 'purchase' || isTagExtracted || isTagLoading || allResults.length === 0) {
+    if ((from === 'purchase' && hasConfirmedTags) || isTagExtracted || isTagLoading || allResults.length === 0) {
       console.log('⏭️ [UnifiedResultPage] 태그 추출 스킵 - 조건 불충족');
       return;
     }
@@ -418,16 +423,59 @@ export default function UnifiedResultPage() {
       setIsTagLoading(true);
       console.log('🏷️ [UnifiedResultPage] 데이터 로드 완료 → 백그라운드 태그 추출 시작...');
 
-      // order_results에서 질문/답변 추출
-      const contentAnswers = allResults.map(r => ({
-        questionText: r.question_text,
-        answerText: r.gpt_response
-      }));
-
       try {
-        // ⭐ 사용자의 기존 태그 조회 (중복 방지용)
-        let existingTags: string[] = [];
         const { data: userData } = await supabase.auth.getUser();
+
+        // ⭐ [중요] 이 콘텐츠/주문에 대해 이미 태그가 추출되었는지 DB 확인
+        // - 한 번 추출된 태그는 다시 추출하지 않음 (API 비용 절약)
+        // - __SKIPPED__ 마커가 있으면 이미 나다움 기록하기를 스킵한 것
+        if (userData?.user?.id && (orderId || contentId)) {
+          let checkQuery = supabase
+            .from('user_trait_tags')
+            .select('tag_name, tag_type, is_confirmed')
+            .eq('user_id', userData.user.id);
+
+          if (orderId) {
+            checkQuery = checkQuery.eq('source_order_id', orderId);
+          } else if (contentId) {
+            checkQuery = checkQuery.eq('source_content_id', contentId).eq('source_type', 'free_content');
+          }
+
+          const { data: existingTagsForContent } = await checkQuery;
+
+          if (existingTagsForContent && existingTagsForContent.length > 0) {
+            // ⭐ __SKIPPED__ 마커 또는 is_confirmed=true 태그가 있으면 이미 나다움 기록하기 완료/스킵
+            const hasSkippedOrConfirmed = existingTagsForContent.some(
+              t => t.tag_name === '__SKIPPED__' || t.is_confirmed === true
+            );
+
+            if (hasSkippedOrConfirmed) {
+              console.log('✅ [UnifiedResultPage] 이미 나다움 기록하기 완료/스킵됨 → 버튼 "완료"로 변경');
+              setHasConfirmedTagsFromDB(true);
+            }
+
+            // ⭐ __SKIPPED__ 필터링 후 태그 설정
+            const filteredTags = existingTagsForContent.filter(t => t.tag_name !== '__SKIPPED__');
+
+            console.log('✅ [UnifiedResultPage] 이미 추출된 태그 발견 → API 호출 스킵:', filteredTags.length, '개');
+            setExtractedTags(filteredTags.map(t => ({
+              name: t.tag_name,
+              type: t.tag_type
+            })));
+            setIsTagExtracted(true);
+            setIsTagLoading(false);
+            return; // 여기서 종료 - API 호출 안 함
+          }
+        }
+
+        // order_results에서 질문/답변 추출
+        const contentAnswers = allResults.map(r => ({
+          questionText: r.question_text,
+          answerText: r.gpt_response
+        }));
+
+        // ⭐ 사용자의 기존 태그 조회 (중복 방지용 - 다른 콘텐츠에서 추출된 태그)
+        let existingTags: string[] = [];
         if (userData?.user?.id) {
           const { data: existingTagsData } = await supabase
             .from('user_trait_tags')
@@ -440,6 +488,7 @@ export default function UnifiedResultPage() {
           }
         }
 
+        console.log('🔄 [UnifiedResultPage] extract-trait-tags API 호출...');
         const { data, error } = await supabase.functions.invoke('extract-trait-tags', {
           body: { contentAnswers, existingTags }
         });
@@ -449,8 +498,9 @@ export default function UnifiedResultPage() {
           setExtractedTags(data.tags);
 
           // ⭐ 태그를 localStorage에 저장 (폴링용)
-          if (orderId) {
-            localStorage.setItem(`extracted_tags_${orderId}`, JSON.stringify({
+          const storageKey = orderId ? `extracted_tags_${orderId}` : `extracted_tags_${contentId}`;
+          if (orderId || contentId) {
+            localStorage.setItem(storageKey, JSON.stringify({
               tags: data.tags,
               timestamp: Date.now()
             }));
@@ -458,18 +508,30 @@ export default function UnifiedResultPage() {
           }
 
           // ⭐ DB에 즉시 저장 (is_confirmed: false) - 나중에 태그 선택 시 확정
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData?.user?.id && orderId) {
+          // 무료/유료 콘텐츠 모두 저장 (userData는 위에서 이미 조회함)
+          console.log('🔍 [UnifiedResultPage] 태그 DB 저장 조건 체크:', {
+            userId: userData?.user?.id ? '있음' : '없음',
+            orderId: orderId || '없음',
+            contentId: contentId || '없음'
+          });
+          if (userData?.user?.id && (orderId || contentId)) {
             try {
-              // 해당 주문의 기존 임시 태그 삭제 (중복 방지)
-              await supabase
+              // 해당 콘텐츠/주문의 기존 임시 태그 삭제 (중복 방지)
+              let deleteQuery = supabase
                 .from('user_trait_tags')
                 .delete()
                 .eq('user_id', userData.user.id)
-                .eq('source_order_id', orderId)
                 .eq('is_confirmed', false);
 
+              if (orderId) {
+                deleteQuery = deleteQuery.eq('source_order_id', orderId);
+              } else if (contentId) {
+                deleteQuery = deleteQuery.eq('source_content_id', contentId).eq('source_type', 'free_content');
+              }
+              await deleteQuery;
+
               // 새 태그 INSERT (is_confirmed: false)
+              const sourceType = orderId ? 'paid_content' : 'free_content';
               const { error: insertError } = await supabase
                 .from('user_trait_tags')
                 .insert(
@@ -477,9 +539,9 @@ export default function UnifiedResultPage() {
                     user_id: userData.user.id,
                     tag_name: tag.name,
                     tag_type: tag.type,
-                    source_type: 'paid_content',
+                    source_type: sourceType,
                     source_content_id: contentId || null,
-                    source_order_id: orderId,
+                    source_order_id: orderId || null,
                     is_confirmed: false
                   }))
                 );
@@ -487,11 +549,13 @@ export default function UnifiedResultPage() {
               if (insertError) {
                 console.warn('⚠️ [UnifiedResultPage] 태그 DB 저장 실패:', insertError);
               } else {
-                console.log('💾 [UnifiedResultPage] 태그 DB 저장 완료 (is_confirmed: false)');
+                console.log(`💾 [UnifiedResultPage] 태그 DB 저장 완료 (${sourceType}, is_confirmed: false)`);
               }
             } catch (dbError) {
               console.warn('⚠️ [UnifiedResultPage] 태그 DB 저장 예외:', dbError);
             }
+          } else {
+            console.warn('⚠️ [UnifiedResultPage] 태그 DB 저장 스킵 - 조건 미충족 (userId 또는 orderId/contentId 없음)');
           }
         } else {
           console.warn('⚠️ [UnifiedResultPage] 태그 추출 실패:', error || data?.error);
@@ -506,7 +570,7 @@ export default function UnifiedResultPage() {
 
     extractTags();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allResults.length, from, isTagExtracted, isTagLoading]);
+  }, [allResults.length, from, hasConfirmedTags, isTagExtracted, isTagLoading]);
 
   // ⭐ 타로 이미지 프리로드
   const preloadTarotImages = (data: ResultItem[], currentOrder: number) => {
@@ -710,14 +774,21 @@ export default function UnifiedResultPage() {
         trackPaidResultComplete(orderId, contentId);
       }
 
-      // ⭐ from=purchase인 경우 (구매내역에서 다시보기) → 구매내역으로 이동
-      if (from === 'purchase') {
-        console.log('🔀 [UnifiedResultPage] 다시보기 완료 → 구매내역으로 이동');
-        navigate('/purchase-history', { replace: true });
+      // ⭐ 이미 태그 확정됨 (선택 완료 또는 SKIPPED) → 나다움 기록하기 스킵
+      // hasConfirmedTags: PurchaseHistoryPage에서 전달받은 값
+      // hasConfirmedTagsFromDB: DB에서 직접 확인한 값 (__SKIPPED__ 또는 is_confirmed=true)
+      if (hasConfirmedTags || hasConfirmedTagsFromDB) {
+        if (from === 'purchase') {
+          console.log('🔀 [UnifiedResultPage] 다시보기 완료 (태그 이미 확정) → 구매내역으로 이동');
+          navigate('/purchase-history', { replace: true });
+        } else {
+          console.log('🔀 [UnifiedResultPage] 완료 (태그 이미 확정) → 홈으로 이동');
+          navigate('/', { replace: true });
+        }
         return;
       }
 
-      // ⭐ 새로 체험하는 경우 → 나다움 기록하기로 이동
+      // ⭐ 새로 체험하는 경우 또는 태그 미확정 다시보기 → 나다움 기록하기로 이동
       if (isTagExtracted) {
         // 태그 추출 완료 → 바로 나다움 기록하기로 이동
         console.log('🔀 [UnifiedResultPage] 태그 추출 완료 → 나다움 기록하기로 이동');
@@ -1087,7 +1158,7 @@ export default function UnifiedResultPage() {
         onNext={handleNext}
         onToggleList={() => setShowTableOfContents(true)}
         disablePrevious={currentQuestionOrder === 1}
-        nextLabel={currentQuestionOrder === totalQuestions && from === 'purchase' ? '완료' : '다음'}
+        nextLabel={currentQuestionOrder === totalQuestions && (hasConfirmedTags || hasConfirmedTagsFromDB) ? '완료' : '다음'}
       />
 
       {/* Table of Contents Bottom Sheet */}

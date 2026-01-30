@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 22개
-> **최종 업데이트**: 2026-01-23
+> **총 함수 수**: 25개
+> **최종 업데이트**: 2026-01-29
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -30,7 +30,7 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 8개 | 36% | OpenAI GPT, Gemini |
+| 🤖 **AI 생성** | 9개 | 39% | OpenAI GPT, Gemini |
 | 🎟️ **쿠폰 관리** | 4개 | 18% | Supabase DB |
 | 👤 **사용자/콘텐츠 관리** | 2개 | 9% | JWT 인증, RLS |
 | 📨 **알림** | 1개 | 5% | TalkDream API (카카오 알림톡) |
@@ -71,6 +71,10 @@
 #### 썸네일/이미지 (2개)
 11. `generate-image-prompt` - 이미지 프롬프트 생성 (GPT-5-nano)
 12. `generate-thumbnail` - 썸네일 이미지 생성 (Gemini 2.5 Flash Image)
+
+#### 나다움 태그 (1개)
+13. `extract-trait-tags` - 운세 답변에서 성향 태그 추출 (GPT-5-nano)
+    - 태그 저장은 클라이언트에서 직접 `user_trait_tags` 테이블에 INSERT
 
 ---
 
@@ -527,6 +531,77 @@ MasterContentDetail → generate-image-prompt
 **AI 모델**: Google Gemini 2.5 Flash Image (이미지 생성)
 
 **레퍼런스**: `assets/ref.png.png` (아기 백조 일러스트)
+
+---
+
+### 10. `extract-trait-tags`
+
+**역할**: 운세 콘텐츠 답변에서 나다움 성향 태그 추출 (GPT-5-nano)
+
+**호출 시점**:
+- 무료 콘텐츠: FreeResultPage 마지막 페이지 진입 시 백그라운드 호출
+- 유료 콘텐츠: UnifiedResultPage에서 데이터 로드 완료 시 백그라운드 호출
+
+**입력**:
+```typescript
+{
+  contentAnswers: Array<{
+    questionText: string,     // 질문 내용
+    answerText: string        // AI 생성 답변
+  }>,
+  existingTags?: string[]     // 기존 저장된 태그 (중복 방지용)
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  tags?: Array<{
+    name: string,             // 태그 이름 (예: "창의적인", "문제 해결력이 있는")
+    type: 'positive' | 'negative' | 'neutral'
+  }>,
+  rawResponse?: Array<{
+    type: '장점' | '단점',
+    keywords: string[]
+  }>,
+  error?: string
+}
+```
+
+**AI 모델**: OpenAI GPT-5-nano (빠르고 저렴)
+
+**프롬프트 핵심**:
+- 장점 2개, 단점 1개 추출 (총 3개)
+- 형용사 형태로 출력 (예: "창의적인", "질투심이 많은")
+- 기존 태그와 의미 중복 방지
+- '나다움'을 느낄 수 있는 구체적이고 개인화된 키워드
+
+**플로우** (무료 콘텐츠):
+```
+FreeResultPage (마지막 페이지)
+    ↓ 백그라운드로 extract-trait-tags 호출
+    ↓ '다음' 버튼 클릭
+┌─────────────────────────────────────────────┐
+│ 태그 추출 완료?                             │
+│   ├─ YES → /nadaum-record/:id (state: tags) │
+│   └─ NO  → /product/:id/tag-loading         │
+│            (로딩 후 자동 이동)              │
+└─────────────────────────────────────────────┘
+```
+
+**플로우** (유료 콘텐츠):
+```
+UnifiedResultPage (데이터 로드 완료 시)
+    ↓ 백그라운드로 extract-trait-tags 호출
+    ↓ 마지막 페이지에서 '다음' 버튼 클릭
+┌─────────────────────────────────────────────────┐
+│ 태그 추출 완료?                                 │
+│   ├─ YES → /paid/nadaum-record (state: tags)   │
+│   └─ NO  → /paid/tag-loading                   │
+│            (로딩 후 자동 이동)                  │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -1347,6 +1422,7 @@ npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjku
 | `process-payment` | 💳 결제 | POST | - | 결제 완료 후 |
 | `process-refund` | 💳 환불 | POST | - | 환불 요청 시 |
 | `generate-sitemap` | 🔍 SEO | GET | - | /sitemap.xml 요청 시 |
+| `extract-trait-tags` | 🤖 AI 생성 | POST | GPT-5-nano | 운세 결과 페이지 진입 시 |
 
 ---
 
@@ -1394,13 +1470,15 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.4.0
+**문서 버전**: 1.5.1
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-01-22
+**최종 업데이트**: 2026-01-29
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 1.5.1 | 2026-01-29 | `save-trait-tags` 함수 삭제 (클라이언트 직접 INSERT로 변경), 총 23개 |
+| 1.5.0 | 2026-01-29 | `extract-trait-tags`, `save-trait-tags` 함수 추가 (나다움 태그 추출/저장) |
 | 1.4.0 | 2026-01-22 | `generate-sitemap` 함수 추가 (동적 sitemap.xml 생성, SEO 카테고리 신설) |
 | 1.3.0 | 2026-01-13 | 사주 API 백엔드 서버 직접 호출 (SAJU_API_KEY 사용), IP 화이트리스트 + 키 인증 방식 |
 | 1.2.0 | 2026-01-08 | 알림톡 템플릿 10002 검수 완료, 버튼 URL `/result/saju`로 변경, `server` 함수 제거 |

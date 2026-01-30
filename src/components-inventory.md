@@ -1,7 +1,7 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-01-21
-> **총 컴포넌트 수**: 55개 (활성화)
+> **최종 업데이트**: 2026-01-29
+> **총 컴포넌트 수**: 58개 (활성화)
 > **UI 컴포넌트 (shadcn/ui)**: 48개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -17,6 +17,7 @@
 - [마스터 콘텐츠 관리 (6개)](#마스터-콘텐츠-관리)
 - [사주 정보 관리 (10개)](#사주-정보-관리)
 - [타로 콘텐츠 (5개)](#타로-콘텐츠)
+- [나다움 태그 (3개)](#나다움-태그-3개)
 - [프로필 및 구매 내역 (4개)](#프로필-및-구매-내역)
 - [유틸리티 컴포넌트 (2개)](#유틸리티-컴포넌트)
 - [약관 페이지 (3개)](#약관-페이지)
@@ -510,6 +511,45 @@
 
 ---
 
+## 🏷️ 나다움 태그 (3개)
+
+### NadaumTags.tsx
+- **역할**: 나다움 태그 빈 상태 페이지
+- **사용처**: 프로필 → 나다움 태그 (태그 없을 때)
+- **타입**: Page Component
+- **주요 기능**:
+  - 빈 상태 안내 (EmptyContentSection)
+  - "태그 쌓기 좋은 운세" 추천 섹션 (가로 스크롤)
+  - 상단 네비게이션 (뒤로가기, 홈)
+- **파일 경로**: `/components/NadaumTags.tsx`
+- **추가일**: 2026-01-29
+
+### NadaumTagsList.tsx
+- **역할**: 나다움 태그 목록 페이지 (메인)
+- **사용처**: `/profile/nadaum-tags` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - "오늘의 한 줄 위로" 랜덤 문구 (92개 중 1개)
+  - 태그 탭 전환 (강한 모습/섬세한 모습)
+  - 태그 삭제/복원 (Optimistic UI + Toast 2.2초)
+  - 캐싱 시스템 (localStorage, 5분 만료)
+  - 동기적 캐시 초기화 (로딩 플래시 방지)
+- **파일 경로**: `/components/NadaumTagsList.tsx`
+- **추가일**: 2026-01-29
+- **관련 데이터**: `src/data/comfortQuotes.ts` (92개 위로 문구)
+
+### comfortQuotes.ts (데이터)
+- **역할**: "오늘의 한 줄 위로" 92개 문구 상수 배열
+- **사용처**: NadaumTagsList.tsx
+- **타입**: Data Constant
+- **주요 기능**:
+  - 로딩 0ms (번들 포함)
+  - `as const` 타입 안전성
+- **파일 경로**: `/data/comfortQuotes.ts`
+- **추가일**: 2026-01-29
+
+---
+
 ## 👥 프로필 및 구매 내역
 
 ### ProfilePage.tsx
@@ -530,14 +570,15 @@
 - **최근 업데이트**: 2026-01-15 - 디버그 버튼 제거, Footer 레이아웃 개선 (min-height wrapper + flexible spacer)
 
 ### PurchaseHistoryPage.tsx
-- **역할**: 구매 내역 조회 페이지
-- **사용처**: `/profile/purchase-history` 라우트
+- **역할**: 운세 기록 조회 페이지 (유료 + 무료)
+- **사용처**: `/purchase-history` 라우트
 - **타입**: Page Component
-- **주요 기능**: 
-  - 결제 내역 조회
-  - 쿠폰 내역 조회
+- **주요 기능**:
+  - 심화 해석판 탭: 유료 콘텐츠 구매 내역 (orders 테이블)
+  - 무료 체험판 탭: 무료 콘텐츠 이용 기록 (free_content_records 테이블)
   - 주문 상세 정보
 - **파일 경로**: `/components/PurchaseHistoryPage.tsx`
+- **최근 업데이트**: 2026-01-28 - 무료 체험판 탭 추가, 퍼블리싱 수정 (탭-아이콘 간격 48px, 카드 간격 10px inline style)
 
 ### ResultCompletePage.tsx
 - **역할**: 운세 풀이 완료 페이지 ("풀이는 여기까지예요")
@@ -578,11 +619,32 @@
 - **역할**: 목차 바텀시트 (콘텐츠 내비게이션)
 - **사용처**: 콘텐츠 상세 페이지 (SajuResultPage)
 - **타입**: Modal Component
-- **주요 기능**: 
+- **주요 기능**:
   - 긴 콘텐츠의 목차 네비게이션
   - 질문별 스크롤 이동
   - **버그 수정**: 하드코딩 더미 데이터 제거 (2025-12-31)
 - **파일 경로**: `/components/TableOfContentsBottomSheet.tsx`
+
+### CheckRecordMe.tsx
+- **역할**: 나다움 태그 기록하기 페이지
+- **사용처**: 무료/유료 콘텐츠 결과 후 나다움 기록
+- **타입**: Page Component
+- **주요 기능**:
+  - GPT-5-nano가 추출한 태그 표시 (장점 2개, 단점 1개)
+  - 사용자 태그 선택 UI
+  - 전화번호 입력 바텀시트 (미등록 시)
+  - `save-trait-tags` Edge Function 호출하여 DB 저장
+- **Props**:
+  - `contentId?: string` - 콘텐츠 ID
+  - `orderId?: string` - 주문 ID (유료 콘텐츠용)
+  - `tags?: { name: string; type: 'positive' | 'negative' | 'neutral' }[]` - 추출된 태그
+  - `sourceType?: 'free_content' | 'paid_content'` - 출처 유형
+  - `onBack?: () => void` - 뒤로가기 콜백
+  - `onHome?: () => void` - 홈으로 이동 콜백
+  - `onSkip?: () => void` - 건너뛰기 콜백
+  - `onComplete?: () => void` - 저장 완료 콜백
+- **파일 경로**: `/components/CheckRecordMe.tsx`
+- **최근 업데이트**: 2026-01-29 - orderId, sourceType, onComplete props 추가 (유료 콘텐츠 지원)
 
 
 ---
@@ -766,6 +828,20 @@
 ---
 
 ## 🔄 업데이트 이력
+
+### 2026-01-29
+- **CheckRecordMe.tsx props 확장**
+  - `orderId`, `sourceType`, `onComplete` props 추가 (유료 콘텐츠 지원)
+  - 무료/유료 콘텐츠 모두 동일한 태그 저장 로직 사용
+  - 저장 완료 후 `onComplete` 콜백으로 홈 이동
+- **App.tsx 유료 콘텐츠 태그 기록 라우트 추가**
+  - `PaidTagExtractionLoadingWrapper`: `/paid/tag-loading` 라우트
+  - `PaidNadaumRecordWrapper`: `/paid/nadaum-record` 라우트
+- **UnifiedResultPage.tsx 태그 추출 로직 추가**
+  - 데이터 로드 완료 시 백그라운드로 `extract-trait-tags` 호출
+  - 마지막 페이지에서 태그 추출 완료 여부에 따라 분기 이동
+- **통계 업데이트**
+  - 유틸리티 컴포넌트: 2개 → 3개 (CheckRecordMe 추가)
 
 ### 2026-01-19
 - **AlimtalkInfoInputPage.tsx 컴포넌트 추가**

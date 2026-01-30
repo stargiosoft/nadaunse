@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-26
-> **주요 결정**: Edge Function Cold Start Warm-up, Blob URL revoke 완전 제거, 즉시 네비게이션 패턴
+> **최종 업데이트**: 2026-01-30
+> **주요 결정**: 유료 콘텐츠 나다움 스킵 상태 처리, 무료/유료 콘텐츠 나다움 태그 통합 플로우, 무료 콘텐츠 결과 페이지 이중 로딩 수정, 무료 콘텐츠 DB 저장 구조, Edge Function Cold Start Warm-up
 
 ---
 
@@ -13,6 +13,290 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-01-30
+
+### 유료 콘텐츠 나다움 스킵 상태 처리
+
+**결정**: `UnifiedResultPage`에서 DB 조회를 통해 `__SKIPPED__` 태그 또는 `is_confirmed=true` 태그를 감지하여 나다움 기록하기 스킵 여부 결정
+
+**배경**:
+- 문제: 유료 콘텐츠에서 "다음에 할래요" 클릭 후 재진입 시 마지막 질문에서 "완료" 대신 "다음" 표시
+- 원인: `hasConfirmedTags`가 `PurchaseHistoryPage`에서만 전달되어, 다른 경로로 진입 시 감지 불가
+- 영향: "다음" 클릭 시 `__SKIPPED__` 태그가 나다움 기록하기에 노출
+
+**구현 방식**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           유료 콘텐츠 마지막 질문 버튼 상태 결정                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. hasConfirmedTags (from PurchaseHistoryPage)                 │
+│     └── 이용기록에서 진입 시 state로 전달받음                     │
+│                                                                 │
+│  2. hasConfirmedTagsFromDB (DB 직접 조회)                        │
+│     └── 태그 추출 시 DB에서 __SKIPPED__ 또는 is_confirmed 확인    │
+│                                                                 │
+│  버튼 레이블 = (hasConfirmedTags || hasConfirmedTagsFromDB)      │
+│               ? "완료" : "다음"                                  │
+│                                                                 │
+│  "완료" 클릭 시: 홈으로 이동 (나다움 기록하기 스킵)                │
+│  "다음" 클릭 시: /paid/nadaum-record로 이동                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**핵심 변경사항 (UnifiedResultPage.tsx)**:
+
+1. **상태 추가**:
+   ```typescript
+   const [hasConfirmedTagsFromDB, setHasConfirmedTagsFromDB] = useState(false);
+   ```
+
+2. **태그 조회 시 `is_confirmed` 포함**:
+   ```typescript
+   let checkQuery = supabase
+     .from('user_trait_tags')
+     .select('tag_name, tag_type, is_confirmed')  // is_confirmed 추가
+     .eq('user_id', userData.user.id);
+   ```
+
+3. **스킵/확정 여부 감지**:
+   ```typescript
+   const hasSkippedOrConfirmed = existingTagsForContent.some(
+     t => t.tag_name === '__SKIPPED__' || t.is_confirmed === true
+   );
+
+   if (hasSkippedOrConfirmed) {
+     setHasConfirmedTagsFromDB(true);
+   }
+   ```
+
+4. **`__SKIPPED__` 필터링**:
+   ```typescript
+   const filteredTags = existingTagsForContent.filter(t => t.tag_name !== '__SKIPPED__');
+   setExtractedTags(filteredTags.map(t => ({ name: t.tag_name, type: t.tag_type })));
+   ```
+
+5. **버튼 레이블 및 동작 수정**:
+   ```typescript
+   // BottomNavigation
+   nextLabel={currentQuestionOrder === totalQuestions && (hasConfirmedTags || hasConfirmedTagsFromDB) ? '완료' : '다음'}
+
+   // handleNext
+   if (hasConfirmedTags || hasConfirmedTagsFromDB) {
+     navigate('/');  // 나다움 기록하기 스킵
+   }
+   ```
+
+**영향 범위**:
+- `UnifiedResultPage.tsx`: 상태 추가, 조건부 로직 수정
+- 사용자 경험: 스킵 후 재진입 시 "완료" 버튼 표시, `__SKIPPED__` 태그 UI 미노출
+
+---
+
+## 2026-01-29
+
+### 무료/유료 콘텐츠 나다움 태그 통합 플로우
+
+**결정**: 무료/유료 콘텐츠 모두 동일한 나다움 태그 추출 및 저장 플로우 적용
+
+**배경**:
+- 기존: 무료 콘텐츠만 나다움 태그 기록 기능 존재
+- 요구사항: 유료 콘텐츠(심화 해석판)에서도 동일하게 나다움 태그 기록
+
+**구현 방식**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  나다움 태그 추출/저장 플로우                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │                  무료 콘텐츠                          │       │
+│  │  FreeResultPage (마지막 페이지)                       │       │
+│  │       ↓ 백그라운드로 extract-trait-tags 호출          │       │
+│  │       ↓ '다음' 버튼 클릭                              │       │
+│  │  ┌──────────────────────────────────────┐            │       │
+│  │  │ 태그 추출 완료?                       │            │       │
+│  │  │  ├─ YES → /nadaum-record/:id         │            │       │
+│  │  │  └─ NO  → /product/:id/tag-loading   │            │       │
+│  │  └──────────────────────────────────────┘            │       │
+│  └──────────────────────────────────────────────────────┘       │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │                  유료 콘텐츠                          │       │
+│  │  UnifiedResultPage (데이터 로드 시)                   │       │
+│  │       ↓ 백그라운드로 extract-trait-tags 호출          │       │
+│  │       ↓ 마지막 페이지에서 '다음' 버튼 클릭             │       │
+│  │  ┌──────────────────────────────────────┐            │       │
+│  │  │ 태그 추출 완료?                       │            │       │
+│  │  │  ├─ YES → /paid/nadaum-record        │            │       │
+│  │  │  └─ NO  → /paid/tag-loading          │            │       │
+│  │  └──────────────────────────────────────┘            │       │
+│  │  ※ from=purchase(다시보기)면 태그 추출 스킵           │       │
+│  └──────────────────────────────────────────────────────┘       │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │                  공통: CheckRecordMe                  │       │
+│  │  - 추출된 태그 표시 (장점 2개, 단점 1개)               │       │
+│  │  - 사용자 태그 선택                                   │       │
+│  │  - save-trait-tags 호출 → user_trait_tags 저장        │       │
+│  │  - 완료 후 홈(/)으로 이동 + 토스트 표시               │       │
+│  └──────────────────────────────────────────────────────┘       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**핵심 변경사항**:
+
+1. **UnifiedResultPage.tsx**:
+   - 태그 추출 상태 추가: `extractedTags`, `isTagExtracted`, `isTagLoading`
+   - 데이터 로드 완료 시 백그라운드로 `extract-trait-tags` 호출
+   - `from=purchase`(다시보기)면 태그 추출 스킵
+   - 마지막 페이지에서 태그 추출 완료 여부에 따라 분기 이동
+
+2. **App.tsx 라우트 추가**:
+   ```typescript
+   <Route path="/paid/tag-loading" element={<PaidTagExtractionLoadingWrapper />} />
+   <Route path="/paid/nadaum-record" element={<PaidNadaumRecordWrapper />} />
+   ```
+
+3. **CheckRecordMe.tsx props 확장**:
+   ```typescript
+   interface CheckRecordMeProps {
+     contentId?: string;
+     orderId?: string;           // NEW: 유료 콘텐츠용
+     tags?: { name: string; type: 'positive' | 'negative' | 'neutral' }[];
+     sourceType?: 'free_content' | 'paid_content';  // NEW
+     onBack?: () => void;
+     onHome?: () => void;
+     onSkip?: () => void;
+     onComplete?: () => void;    // NEW: 저장 완료 콜백
+   }
+   ```
+
+4. **save-trait-tags 호출 시 source_order_id 추가**:
+   ```typescript
+   const { data, error } = await supabase.functions.invoke('save-trait-tags', {
+     body: {
+       tags: selectedTags,
+       source_content_id: contentId || null,
+       source_order_id: orderId || null,    // ⭐ 유료 콘텐츠용
+       source_type: sourceType              // ⭐ 동적으로 전달
+     }
+   });
+   ```
+
+**영향 범위**:
+- `src/components/UnifiedResultPage.tsx`: 태그 추출 상태 및 분기 로직 추가
+- `src/App.tsx`: 유료 콘텐츠용 Wrapper 컴포넌트 및 라우트 추가
+- `src/components/CheckRecordMe.tsx`: props 확장 및 onComplete 콜백 추가
+- `supabase/functions/extract-trait-tags/index.ts`: GPT-5-nano 태그 추출
+- `supabase/functions/save-trait-tags/index.ts`: user_trait_tags 테이블 저장
+
+---
+
+### 무료 콘텐츠 결과 페이지 이중 로딩 수정
+
+**결정**: App.tsx에서 이미 로드한 DB 데이터를 FreeSajuDetail에 직접 전달하여 이중 조회 방지
+
+**배경**:
+- 문제: "나다움 기록하기 → 뒤로가기" 시 로딩이 2번 표시됨
+  - 1차: App.tsx `PageLoader` (DB에서 `dbResult` 조회)
+  - 2차: FreeSajuDetail "운세 기록을 불러오는 중..." (동일한 데이터 재조회)
+- 원인: App.tsx가 `dbResult`를 이미 로드했는데, FreeSajuDetail에 `dbRecordId`만 전달하여 동일한 `free_content_records` 데이터를 다시 DB에서 조회
+
+**해결 방식**:
+
+```
+[기존 - 이중 로딩]
+App.tsx: DB 조회 (dbResult) → PageLoader 표시
+    ↓
+FreeSajuDetail: dbRecordId만 받음 → 다시 DB 조회 → "운세 기록을 불러오는 중..." 표시
+
+[수정 후 - 단일 로딩]
+App.tsx: DB 조회 (dbResult) → PageLoader 표시
+    ↓
+FreeSajuDetail: dbData={dbResult} 직접 전달 → 즉시 렌더링 (추가 로딩 없음)
+```
+
+**영향 범위**:
+- `src/App.tsx`: `dbData={dbResult}` prop 전달 추가
+- `src/components/FreeSajuDetail.tsx`:
+  - `dbData` prop 추가
+  - `getInitialData()`: dbData가 있으면 바로 CachedData 형식으로 변환하여 사용
+  - `isLoadingFromDB` 초기값: dbData가 있으면 `false`로 설정
+  - useEffect: dbData가 있으면 `loadFromDatabase()` 호출 생략
+
+---
+
+## 2026-01-28
+
+### 무료 콘텐츠 DB 저장 구조 도입
+
+**결정**: 로그인 사용자의 무료 콘텐츠 이용 기록을 `free_content_records` 테이블에 저장
+
+**배경**:
+- 기존: 무료 콘텐츠 결과는 localStorage에만 저장 → "운세 기록" 페이지에서 조회 불가
+- 요구사항: 로그인 사용자는 무료 콘텐츠도 "운세 기록"에서 다시 볼 수 있어야 함
+
+**구현 방식**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    무료 콘텐츠 저장 흐름                          │
+├─────────────────────────────────────────────────────────────────┤
+│  [FreeContentLoading.tsx]                                       │
+│       ↓                                                         │
+│  Edge Function: generate-free-preview 호출                       │
+│       ↓                                                         │
+│  ┌──────────────────┬──────────────────────────────┐           │
+│  │ 로그인 사용자     │ 비로그인 사용자               │           │
+│  ├──────────────────┼──────────────────────────────┤           │
+│  │ free_content_    │ DB 저장 스킵                  │           │
+│  │ records INSERT   │ localStorage만 사용           │           │
+│  │ record_id 반환   │ record_id: null              │           │
+│  └──────────────────┴──────────────────────────────┘           │
+│       ↓                                                         │
+│  navigate 시 fromDB: !!dbRecordId 전달                          │
+│       ↓                                                         │
+│  [FreeSajuDetail.tsx]                                           │
+│  ┌──────────────────┬──────────────────────────────┐           │
+│  │ fromDB: true     │ fromDB: false                │           │
+│  │ DB에서 조회      │ localStorage에서 조회         │           │
+│  └──────────────────┴──────────────────────────────┘           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**테이블 스키마** (`free_content_records`):
+```sql
+id              uuid PRIMARY KEY
+user_id         uuid REFERENCES users(id)
+content_id      uuid REFERENCES master_contents(id)
+saju_record_id  uuid REFERENCES saju_records(id)
+full_name       text NOT NULL
+gender          text NOT NULL
+birth_date      timestamptz NOT NULL
+birth_time      text
+is_guest        boolean DEFAULT false
+answers         jsonb NOT NULL  -- AI 생성 답변 배열
+created_at      timestamptz DEFAULT now()
+```
+
+**RLS 정책**:
+- SELECT: `auth.uid() = user_id` (본인 기록만 조회)
+- INSERT: `auth.uid() = user_id` (본인 기록만 생성)
+
+**영향 범위**:
+- `supabase/migrations/20260128_create_free_content_records.sql`: 테이블 생성
+- `supabase/functions/generate-free-preview/index.ts`: DB INSERT 로직 추가
+- `src/components/FreeContentLoading.tsx`: `fromDB` 플래그 전달
+- `src/components/FreeSajuDetail.tsx`: DB 조회 로직 (기존 존재)
+- `src/components/PurchaseHistoryPage.tsx`: 무료 체험판 탭 조회
 
 ---
 

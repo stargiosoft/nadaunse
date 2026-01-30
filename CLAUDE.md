@@ -15,7 +15,7 @@
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 20개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 24개) |
 | AI | OpenAI GPT-4o, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 결제 | PortOne (구 아임포트) v2 |
 | 알림 | TalkDream API (카카오 알림톡) |
@@ -23,8 +23,8 @@
 | 배포 | Vercel |
 
 ### 주요 통계
-- **컴포넌트**: 55개
-- **Edge Functions**: 21개
+- **컴포넌트**: 58개
+- **Edge Functions**: 25개 (extract-trait-tags 포함)
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **타로 카드 덱**: 78장
@@ -117,7 +117,7 @@ const bgImage = "/background.jpg";
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
-- **총 21개**: AI 생성(8), 쿠폰 관리(4), 사용자 관리(2), 알림(1), 결제/환불(3), 모니터링(1), 기타(2)
+- **총 24개**: AI 생성(10), 쿠폰 관리(4), 사용자 관리(2), 알림(1), 결제/환불(3), 모니터링(1), SEO(1), 기타(2)
 
 **배포 명령어 예시**:
 ```bash
@@ -747,7 +747,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 | 문서 | 언제 읽나요? | 주요 내용 |
 |------|-------------|----------|
-| **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | Edge Function 작업 시 | 20개 함수 목록, 입력/출력 형식, 배포 방법 |
+| **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | Edge Function 작업 시 | 24개 함수 목록, 입력/출력 형식, 배포 방법 |
 
 ### 🎨 컴포넌트 & UI
 
@@ -801,4 +801,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-01-26
+**최종 업데이트**: 2026-01-29

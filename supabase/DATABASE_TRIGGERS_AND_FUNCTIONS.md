@@ -2,7 +2,7 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-01-07
+> **최종 업데이트**: 2026-01-29
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -486,3 +486,16 @@ CREATE TRIGGER on_auth_user_created
 - [Edge Functions 가이드](/supabase/EDGE_FUNCTIONS_GUIDE.md)
 - [데이터베이스 스키마](/DATABASE_SCHEMA.md)
 - [마이그레이션 가이드](/supabase/migrations/README.md)
+
+---
+
+## 나다움 태그 관련 (2026-01-29 추가)
+
+`user_trait_tags` 테이블은 Trigger 없이 Edge Function에서 직접 INSERT됩니다.
+
+| Edge Function | 테이블 | 작업 |
+|--------------|--------|------|
+| `extract-trait-tags` | - | GPT-5-nano로 태그 추출 (DB 저장 안 함) |
+| `save-trait-tags` | `user_trait_tags` | 사용자가 선택한 태그 INSERT |
+
+자세한 내용은 [EDGE_FUNCTIONS_GUIDE.md](./EDGE_FUNCTIONS_GUIDE.md) 참조.

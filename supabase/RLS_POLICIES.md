@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-01-07
+> **최종 업데이트**: 2026-01-29
 
 ## 개요
 
@@ -127,12 +127,44 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
+### 10. `free_content_records` (무료 콘텐츠 기록)
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| Users can view own free content records | SELECT | authenticated | `auth.uid() = user_id` |
+| Users can insert own free content records | INSERT | authenticated | `auth.uid() = user_id` |
+
+**RLS 상태**: Enabled
+
+**용도**: 로그인 사용자의 무료 콘텐츠 이용 기록 저장 (운세 기록 페이지에서 조회)
+
+---
+
+### 11. `user_trait_tags` (나다움 태그)
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| Users can view own trait tags | SELECT | authenticated | `auth.uid() = user_id` |
+| Users can insert own trait tags | INSERT | authenticated | `auth.uid() = user_id` |
+| Users can delete own trait tags | DELETE | authenticated | `auth.uid() = user_id` |
+
+**RLS 상태**: Enabled
+
+**용도**:
+- 무료/유료 콘텐츠에서 GPT-5-nano로 추출한 나다움 성향 태그 저장
+- `extract-trait-tags` Edge Function으로 추출 → `save-trait-tags` Edge Function으로 저장
+- 프로필에서 나다움 태그 목록 표시
+
+---
+
 ## 정책 요약
 
 | 테이블 | 정책 수 | RLS 상태 |
 |--------|---------|----------|
 | alimtalk_logs | 2 | Enabled |
 | coupons | 1 | Enabled |
+| free_content_records | 2 | Enabled |
+| user_trait_tags | 3 | Enabled |
 | master_content_questions | 2 | Disabled |
 | master_contents | 2 | Disabled |
 | order_results | 2 | Enabled |
@@ -140,7 +172,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | saju_records | 5 | Enabled |
 | user_coupons | 3 | Enabled |
 | users | 4 | Enabled |
-| **총계** | **26** | - |
+| **총계** | **31** | - |
 
 ---
 

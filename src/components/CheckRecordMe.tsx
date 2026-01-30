@@ -226,18 +226,31 @@ export default function CheckRecordMe({
         if (selectedTagNames.length > 0) {
           // 유료 콘텐츠: source_order_id 기준
           // 무료 콘텐츠: source_content_id + source_type 기준
-          const updateQuery = supabase
-            .from('user_trait_tags')
-            .update({ is_confirmed: true })
-            .eq('user_id', session.user.id)
-            .in('tag_name', selectedTagNames);
-
+          let updateResult;
           if (orderId) {
-            await updateQuery.eq('source_order_id', orderId);
+            updateResult = await supabase
+              .from('user_trait_tags')
+              .update({ is_confirmed: true })
+              .eq('user_id', session.user.id)
+              .in('tag_name', selectedTagNames)
+              .eq('source_order_id', orderId)
+              .select();
           } else if (contentId) {
-            await updateQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+            updateResult = await supabase
+              .from('user_trait_tags')
+              .update({ is_confirmed: true })
+              .eq('user_id', session.user.id)
+              .in('tag_name', selectedTagNames)
+              .eq('source_content_id', contentId)
+              .eq('source_type', sourceType)
+              .select();
           }
-          console.log('✅ [CheckRecordMe] 선택 태그 확정 완료');
+
+          if (updateResult?.error) {
+            console.error('❌ [CheckRecordMe] 태그 확정 실패:', updateResult.error);
+          } else {
+            console.log('✅ [CheckRecordMe] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+          }
         }
 
         // ⭐ 2. 선택 안 한 태그: DELETE
@@ -257,8 +270,9 @@ export default function CheckRecordMe({
         }
 
         console.log('✅ [CheckRecordMe] 태그 확정 완료');
-        // 🚀 ProfilePage & NadaumTagsList 캐시 무효화
+        // 🚀 ProfilePage & NadaumTagsList & MyReportList 캐시 무효화
         localStorage.setItem('trait_tags_needs_refresh', 'true');
+        localStorage.setItem('my_report_needs_refresh', 'true');
         localStorage.removeItem('trait_tags_cache');
         localStorage.removeItem('nadaum_all_tags_cache');
         // 토스트는 호출하는 쪽에서 처리
@@ -370,18 +384,31 @@ export default function CheckRecordMe({
         // ⭐ 2. 선택한 태그: is_confirmed = true로 UPDATE
         console.log('🏷️ [CheckRecordMe] 태그 확정 시작...');
         if (selectedTagNames.length > 0) {
-          const updateQuery = supabase
-            .from('user_trait_tags')
-            .update({ is_confirmed: true })
-            .eq('user_id', session.user.id)
-            .in('tag_name', selectedTagNames);
-
+          let updateResult;
           if (orderId) {
-            await updateQuery.eq('source_order_id', orderId);
+            updateResult = await supabase
+              .from('user_trait_tags')
+              .update({ is_confirmed: true })
+              .eq('user_id', session.user.id)
+              .in('tag_name', selectedTagNames)
+              .eq('source_order_id', orderId)
+              .select();
           } else if (contentId) {
-            await updateQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+            updateResult = await supabase
+              .from('user_trait_tags')
+              .update({ is_confirmed: true })
+              .eq('user_id', session.user.id)
+              .in('tag_name', selectedTagNames)
+              .eq('source_content_id', contentId)
+              .eq('source_type', sourceType)
+              .select();
           }
-          console.log('✅ [CheckRecordMe] 선택 태그 확정 완료');
+
+          if (updateResult?.error) {
+            console.error('❌ [CheckRecordMe] 태그 확정 실패:', updateResult.error);
+          } else {
+            console.log('✅ [CheckRecordMe] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+          }
         }
 
         // ⭐ 3. 선택 안 한 태그: DELETE
@@ -402,8 +429,9 @@ export default function CheckRecordMe({
 
         console.log('✅ [CheckRecordMe] 태그 확정 완료');
 
-        // 🚀 ProfilePage & NadaumTagsList 캐시 무효화
+        // 🚀 ProfilePage & NadaumTagsList & MyReportList 캐시 무효화
         localStorage.setItem('trait_tags_needs_refresh', 'true');
+        localStorage.setItem('my_report_needs_refresh', 'true');
         localStorage.removeItem('trait_tags_cache');
         localStorage.removeItem('nadaum_all_tags_cache');
       } else {
@@ -813,7 +841,87 @@ export default function CheckRecordMe({
 
             {/* Secondary Button - 다음에 할래요 */}
             <button
-              onClick={onSkip}
+              onClick={async () => {
+                // ⭐ "다음에 할래요" 클릭 시:
+                // 1. 미확정 태그 삭제
+                // 2. __SKIPPED__ 마커 태그 삽입 (is_confirmed=true)
+                //    → 이용기록에서 다시 들어와도 나다움 기록하기 스킵
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (session?.user?.id) {
+                    console.log('🗑️ [CheckRecordMe] "다음에 할래요" 클릭 → 스킵 처리 시작...');
+
+                    // 1. 해당 콘텐츠/주문의 미확정 태그 삭제
+                    const deleteQuery = supabase
+                      .from('user_trait_tags')
+                      .delete()
+                      .eq('user_id', session.user.id)
+                      .eq('is_confirmed', false);
+
+                    if (orderId) {
+                      await deleteQuery.eq('source_order_id', orderId);
+                    } else if (contentId) {
+                      await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+                    }
+
+                    console.log('✅ [CheckRecordMe] 미확정 태그 삭제 완료');
+
+                    // 2. __SKIPPED__ 마커 태그 삽입 (이미 있으면 스킵)
+                    // 먼저 기존 마커 확인
+                    let existingMarkerQuery = supabase
+                      .from('user_trait_tags')
+                      .select('id')
+                      .eq('user_id', session.user.id)
+                      .eq('tag_name', '__SKIPPED__');
+
+                    if (orderId) {
+                      existingMarkerQuery = existingMarkerQuery.eq('source_order_id', orderId);
+                    } else if (contentId) {
+                      existingMarkerQuery = existingMarkerQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+                    }
+
+                    const { data: existingMarker } = await existingMarkerQuery.maybeSingle();
+
+                    if (!existingMarker) {
+                      // 마커가 없으면 삽입
+                      const skippedTag = {
+                        user_id: session.user.id,
+                        tag_name: '__SKIPPED__',
+                        tag_type: 'neutral',
+                        source_type: sourceType,
+                        source_content_id: contentId || null,
+                        source_order_id: orderId || null,
+                        is_confirmed: true  // ⭐ 확정 상태로 저장하여 나다움 기록하기 스킵
+                      };
+
+                      const { error: insertError } = await supabase
+                        .from('user_trait_tags')
+                        .insert(skippedTag);
+
+                      if (insertError) {
+                        console.warn('⚠️ [CheckRecordMe] __SKIPPED__ 마커 삽입 실패:', insertError);
+                      } else {
+                        console.log('✅ [CheckRecordMe] __SKIPPED__ 마커 삽입 완료');
+                      }
+                    } else {
+                      console.log('ℹ️ [CheckRecordMe] __SKIPPED__ 마커 이미 존재');
+                    }
+
+                    // 캐시 무효화
+                    localStorage.setItem('trait_tags_needs_refresh', 'true');
+                    localStorage.setItem('my_report_needs_refresh', 'true');
+                    localStorage.removeItem('trait_tags_cache');
+                    localStorage.removeItem('nadaum_all_tags_cache');
+                  }
+                } catch (err) {
+                  console.error('❌ [CheckRecordMe] 스킵 처리 실패:', err);
+                }
+
+                // onSkip 콜백 호출
+                if (onSkip) {
+                  onSkip();
+                }
+              }}
               className="group flex flex-col items-center justify-center relative self-center transition-colors duration-200 active:bg-gray-100"
               style={{ padding: '0 8px', borderRadius: '12px', height: '34px' }}
             >

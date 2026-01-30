@@ -423,7 +423,8 @@ GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확�
 3. **currency 필수**: 금액 관련 이벤트는 `currency: 'KRW'` 필수
 4. **0원 결제 제외**: `add_to_cart`, `begin_checkout`, `purchase`는 0원 결제 시 이벤트 미전송
 5. **중복 이벤트 주의**: 페이지 리렌더링 시 중복 발생하지 않도록 조건 체크
-6. **`/result` page_view 최초 1회 전송**: orderId당 최초 조회 시에만 page_view 전송 (구매 내역 재조회 시 제외, localStorage `viewed_paid_result_orders` 키로 관리)
+6. **유료 `/result` page_view 최초 1회 전송**: orderId당 최초 조회 시에만 page_view 전송 (구매 내역 재조회 시 제외, localStorage `viewed_paid_result_orders` 키로 관리)
+7. **무료 `/product/:id/result/free` page_view 최초 1회 전송**: recordId당 최초 조회 시에만 page_view 전송 (재조회 시 제외, localStorage `viewed_free_result_records` 키로 관리)
 
 ---
 
@@ -440,6 +441,7 @@ GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확�
 | 2026-01-26 | 유료 운세 결과 타이틀 명확화 (`운세 결과` → `유료 운세 결과`) |
 | 2026-01-26 | 콘텐츠 상세 이중 page_view - 일반 타이틀(퍼널용) + 콘텐츠별 타이틀(성과분석용) |
 | 2026-01-28 | `/result` page_view orderId당 최초 1회만 전송 (구매 내역 재조회 제외) |
+| 2026-01-29 | 무료 `/product/:id/result/free` page_view recordId당 최초 1회만 전송 (재조회 시 제외) |
 
 ---
 

@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-23 (v2.3.0 - 문서 중복 제거)
+> **최종 업데이트**: 2026-01-29 (v2.4.0 - 나다움 태그 플로우 추가)
 
 ---
 
@@ -17,7 +17,7 @@
     - Google: Supabase OAuth (`signInWithOAuth`)
     - Kakao: Kakao SDK (커스텀 구현, `signInWithPassword` 기반)
   - Database: PostgreSQL + RLS
-  - Edge Functions: Deno runtime (20개)
+  - Edge Functions: Deno runtime (24개)
 - **AI**:
   - OpenAI GPT-4o
   - Anthropic Claude-3.5-Sonnet
@@ -46,8 +46,8 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 55개 (활성화, backup 제외)
-- **Edge Functions**: 21개
+- **컴포넌트**: 58개 (활성화, backup 제외)
+- **Edge Functions**: 25개
 - **페이지 컴포넌트**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
@@ -98,13 +98,15 @@
 │  ┌─────────────────────┐      ┌─────────────────────────────────────────┐  │
 │  │   Supabase Auth     │      │         Edge Functions (Deno)           │  │
 │  │   ───────────────   │      │         ─────────────────────           │  │
-│  │   • Google OAuth    │      │   AI 생성 (8개)                          │  │
+│  │   • Google OAuth    │      │   AI 생성 (10개)                         │  │
 │  │   • Kakao OAuth     │      │   ├── generate-free-preview             │  │
 │  │   • Session 관리    │      │   ├── generate-master-content           │  │
 │  │   • JWT 토큰        │      │   ├── generate-saju-answer/preview      │  │
 │  └─────────────────────┘      │   ├── generate-tarot-answer/preview     │  │
 │            ↓                  │   ├── generate-image-prompt             │  │
-│  ┌─────────────────────┐      │   └── generate-thumbnail                │  │
+│  ┌─────────────────────┐      │   ├── generate-thumbnail                │
+│   ├── extract-trait-tags (나다움 태그)   │
+│   └── save-trait-tags                   │  │
 │  │   PostgreSQL (RLS)  │      │                                         │  │
 │  │   ───────────────   │      │   쿠폰 관리 (4개)                        │  │
 │  │   • users           │←────→│   ├── get-available-coupons             │  │
@@ -114,6 +116,7 @@
 │  │   • order_results   │      │                                         │  │
 │  │   • coupons         │      │   결제/환불 (3개)                        │  │
 │  │   • user_coupons    │      │   ├── payment-webhook                   │  │
+│  │   • user_trait_tags │      │   ├── process-payment                   │  │
 │  │   ───────────────   │      │   ├── process-payment                   │  │
 │  │   Triggers (5개)    │      │   └── process-refund                    │  │
 │  │   Functions (5개)   │      │                                         │  │

@@ -178,7 +178,8 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             createdAt: new Date().toISOString()
           };
           
-          const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}`;
+          // ⭐ 타임스탬프 추가: 동일 콘텐츠+사주로 다시 볼 때도 새로운 키 생성 (이전 태그 재사용 방지)
+          const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
           localStorage.setItem(resultKey, JSON.stringify(resultData));
           console.log('💾 [FreeContentLoading] localStorage 저장 완료 (allProducts)');
           
@@ -431,7 +432,8 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             createdAt: new Date().toISOString()
           };
 
-          const fallbackResultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}`;
+          // ⭐ 타임스탬프 추가: 동일 콘텐츠+사주로 다시 볼 때도 새로운 키 생성 (이전 태그 재사용 방지)
+          const fallbackResultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
           localStorage.setItem(fallbackResultKey, JSON.stringify(fallbackResultData));
           console.log('💾 [FreeContentLoading] localStorage 저장 완료 (mock fallback)');
 
@@ -482,10 +484,18 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           createdAt: new Date().toISOString()
         };
 
-        const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}`;
+        // ⭐ 타임스탬프 추가: 동일 콘텐츠+사주로 다시 볼 때도 새로운 키 생성 (이전 태그 재사용 방지)
+        const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
         localStorage.setItem(resultKey, JSON.stringify(resultData));
         console.log('💾 [FreeContentLoading] localStorage 저장 완료');
         console.log('📌 [FreeContentLoading] resultKey:', resultKey);
+
+        // ⭐ 운세 기록 캐시 갱신 플래그 설정 (로그인 사용자만)
+        // → PurchaseHistoryPage에서 무료 탭 진입 시 새 데이터 반영
+        if (currentUserId) {
+          localStorage.setItem('free_content_needs_refresh', 'true');
+          console.log('🔄 [FreeContentLoading] 운세 기록 캐시 갱신 플래그 설정');
+        }
 
         // ⭐️ 6단계: 결과 페이지로 이동
         // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체

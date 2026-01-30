@@ -306,15 +306,20 @@ export default function ProfilePage({
       // ⭐ 최초 로그인 플래그: 로그인 직후 한 번만 강제 API 호출
       const forceReload = sessionStorage.getItem('force_profile_reload') === 'true';
 
+      // 🚀 태그 refresh 플래그도 미리 체크
+      const needsTagRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+
       console.log('🔍 [ProfilePage] 캐시 & 플래그 체크');
       console.log('  - hasCache:', initialState.hasCache);
+      console.log('  - hasTagCache:', !initialState.isLoadingTags);
       console.log('  - needsRefresh:', needsRefresh);
+      console.log('  - needsTagRefresh:', needsTagRefresh);
       console.log('  - forceReload:', forceReload);
 
-      // 🚀 초기화 시점에 이미 유효한 캐시가 로드되었고, refresh가 필요 없고, 강제 리로드도 아니면 API 호출 스킵
+      // 🚀 모든 캐시가 유효할 때만 API 호출 스킵 (user + saju + tags)
       // → iOS 스와이프 뒤로가기 시 불필요한 리로드 완전 방지
-      if (initialState.hasCache && !needsRefresh && !forceReload) {
-        console.log('✅ [ProfilePage] 유효한 캐시 존재 + refresh 불필요 + 강제 리로드 아님');
+      if (initialState.hasCache && !initialState.isLoadingTags && !needsRefresh && !needsTagRefresh && !forceReload) {
+        console.log('✅ [ProfilePage] 모든 캐시 유효 + refresh 불필요 + 강제 리로드 아님');
         console.log('   → API 호출 완전 스킵 (캐시만 사용)');
         return;
       }
@@ -345,8 +350,14 @@ export default function ProfilePage({
       const { data: { user: authUser } } = await supabase.auth.getUser();
 
       if (authUser) {
-        // 🚀 API 병렬화: users 조회 + saju_records 조회 동시 실행
-        const [userResult, sajuResult] = await Promise.all([
+        // 🚀 API 병렬화: users + saju_records + trait_tags 동시 실행
+        const shouldLoadTags = initialState.isLoadingTags || needsTagRefresh;
+
+        if (needsTagRefresh) {
+          localStorage.removeItem('trait_tags_needs_refresh');
+        }
+
+        const [userResult, sajuResult, tagsResult, tagsCountResult] = await Promise.all([
           supabase
             .from('users')
             .select('*')
@@ -356,7 +367,26 @@ export default function ProfilePage({
             .from('saju_records')
             .select('*')
             .eq('user_id', authUser.id)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: true }),
+          // 🚀 태그도 병렬로 로드 (캐시 없거나 refresh 필요 시)
+          shouldLoadTags
+            ? supabase
+                .from('user_trait_tags')
+                .select('id, tag_name, created_at')
+                .eq('user_id', authUser.id)
+                .eq('is_confirmed', true)
+                .neq('tag_name', '__SKIPPED__')
+                .order('created_at', { ascending: false })
+                .limit(3)
+            : Promise.resolve({ data: null, error: null }),
+          shouldLoadTags
+            ? supabase
+                .from('user_trait_tags')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', authUser.id)
+                .eq('is_confirmed', true)
+                .neq('tag_name', '__SKIPPED__')
+            : Promise.resolve({ count: null, error: null })
         ]);
 
         const { data: userData, error: userError } = userResult;
@@ -389,6 +419,22 @@ export default function ProfilePage({
           console.log('📭 등록된 사주 없음');
         }
 
+        // 🚀 trait_tags 처리 (병렬 로드 결과)
+        if (shouldLoadTags && tagsResult.data !== null) {
+          const tags = tagsResult.data || [];
+          const totalCount = (tagsCountResult as { count: number | null }).count || 0;
+          setTraitTags(tags);
+          setTotalTagCount(totalCount);
+          setIsLoadingTags(false);
+          // 캐시 저장
+          localStorage.setItem('trait_tags_cache', JSON.stringify({
+            tags,
+            totalCount,
+            timestamp: Date.now()
+          }));
+          console.log('✅ 나다움 태그 로드 완료 (병렬):', tags.length, '개, 총:', totalCount);
+        }
+
         setIsLoadingSaju(false);
 
         // ⭐ 강제 리로드 플래그 제거 (한 번만 API 호출)
@@ -409,81 +455,8 @@ export default function ProfilePage({
     loadUser();
   }, []);
 
-  // ⭐ 나다움 태그 로드 (최신 3개) - 캐싱 전략 적용
-  useEffect(() => {
-    const loadTraitTags = async () => {
-      try {
-        // 🚀 캐시가 있고 refresh 불필요하면 API 호출 스킵
-        const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
-        if (!initialState.isLoadingTags && !needsRefresh) {
-          console.log('✅ [TraitTags] 유효한 캐시 존재 → API 호출 스킵');
-          return;
-        }
-
-        if (needsRefresh) {
-          localStorage.removeItem('trait_tags_needs_refresh');
-          console.log('🔄 [TraitTags] refresh 플래그 감지 → API 호출');
-        }
-
-        setIsLoadingTags(true);
-
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          setTraitTags([]);
-          setTotalTagCount(0);
-          localStorage.removeItem('trait_tags_cache');
-          return;
-        }
-
-        // 태그 3개 + 전체 개수 병렬 조회 (확정된 태그만)
-        const [tagsResult, countResult] = await Promise.all([
-          supabase
-            .from('user_trait_tags')
-            .select('id, tag_name, created_at')
-            .eq('user_id', authUser.id)
-            .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
-            .order('created_at', { ascending: false })
-            .limit(3),
-          supabase
-            .from('user_trait_tags')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', authUser.id)
-            .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
-        ]);
-
-        if (tagsResult.error) {
-          console.error('❌ 나다움 태그 로드 실패:', tagsResult.error);
-          setTraitTags([]);
-          setTotalTagCount(0);
-          localStorage.removeItem('trait_tags_cache');
-          return;
-        }
-
-        const tags = tagsResult.data || [];
-        const totalCount = countResult.count || 0;
-
-        setTraitTags(tags);
-        setTotalTagCount(totalCount);
-
-        // 🚀 캐시에 저장 (만료 시간 포함)
-        localStorage.setItem('trait_tags_cache', JSON.stringify({
-          tags,
-          totalCount,
-          timestamp: Date.now()
-        }));
-        console.log('✅ 나다움 태그 로드 완료:', tags, '전체:', totalCount);
-      } catch (error) {
-        console.error('❌ 나다움 태그 로드 중 오류:', error);
-        setTraitTags([]);
-        setTotalTagCount(0);
-        localStorage.removeItem('trait_tags_cache');
-      } finally {
-        setIsLoadingTags(false);
-      }
-    };
-
-    loadTraitTags();
-  }, []);
+  // ⭐ 나다움 태그 초기 로드: loadUser()에서 병렬 처리로 통합됨
+  // (별도 useEffect 제거 - 중복 API 호출 방지)
 
   // 🔧 태그 리프레시: 페이지 가시성 변경 또는 포커스 시 refresh 플래그 체크
   useEffect(() => {
@@ -510,6 +483,7 @@ export default function ProfilePage({
             .select('id, tag_name, created_at')
             .eq('user_id', authUser.id)
             .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
             .order('created_at', { ascending: false })
             .limit(3),
           supabase
@@ -517,6 +491,7 @@ export default function ProfilePage({
             .select('*', { count: 'exact', head: true })
             .eq('user_id', authUser.id)
             .eq('is_confirmed', true)  // ⭐ 확정된 태그만 조회
+            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
         ]);
 
         if (!tagsResult.error) {

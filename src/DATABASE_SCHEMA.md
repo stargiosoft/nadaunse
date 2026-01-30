@@ -1,8 +1,8 @@
 # 데이터베이스 스키마 문서
 
 > **작성일**: 2024-12-17
-> **버전**: 1.4.0
-> **최종 업데이트**: 2026-01-21
+> **버전**: 1.5.0
+> **최종 업데이트**: 2026-01-28
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -15,9 +15,10 @@
 3. [콘텐츠 관련 테이블](#콘텐츠-관련-테이블)
 4. [주문 및 결제 테이블](#주문-및-결제-테이블)
 5. [쿠폰 관련 테이블](#쿠폰-관련-테이블)
-6. [알림톡 로그 테이블](#알림톡-로그-테이블)
-7. [백업 테이블](#백업-테이블)
-8. [테이블 관계도](#테이블-관계도)
+6. [무료 콘텐츠 기록 테이블](#무료-콘텐츠-기록-테이블)
+7. [알림톡 로그 테이블](#알림톡-로그-테이블)
+8. [백업 테이블](#백업-테이블)
+9. [테이블 관계도](#테이블-관계도)
 
 ---
 
@@ -241,6 +242,82 @@
 
 ---
 
+## 무료 콘텐츠 기록 테이블
+
+### `free_content_records`
+
+로그인 사용자의 무료 콘텐츠 이용 기록 (운세 기록 페이지에서 조회용)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 레코드 고유 ID |
+| `user_id` | uuid | FOREIGN KEY | - | 사용자 ID (users.id) |
+| `content_id` | uuid | FOREIGN KEY, NOT NULL | - | 콘텐츠 ID (master_contents.id) |
+| `saju_record_id` | uuid | FOREIGN KEY | - | 사주 정보 ID (saju_records.id) |
+| `full_name` | text | NOT NULL | - | 이름 |
+| `gender` | text | NOT NULL | - | 성별 (male, female) |
+| `birth_date` | timestamptz | NOT NULL | - | 생년월일 |
+| `birth_time` | text | - | - | 출생 시간 |
+| `is_guest` | boolean | - | `false` | 게스트 여부 |
+| `answers` | jsonb | NOT NULL | - | AI 생성 답변 배열 |
+| `created_at` | timestamptz | - | `now()` | 생성 일시 |
+
+**외래키**:
+- `user_id` → `users(id)` ON DELETE SET NULL
+- `content_id` → `master_contents(id)` ON DELETE CASCADE
+- `saju_record_id` → `saju_records(id)` ON DELETE SET NULL
+
+**인덱스**:
+- `idx_free_content_records_user_created`: (user_id, created_at DESC) WHERE user_id IS NOT NULL
+- `idx_free_content_records_content`: (content_id)
+
+**answers JSONB 구조**:
+```json
+[
+  {
+    "question_id": "uuid",
+    "question_order": 1,
+    "question_text": "질문 내용",
+    "answer_text": "AI 생성 답변"
+  }
+]
+```
+
+---
+
+## 나다움 태그 테이블
+
+### `user_trait_tags`
+
+사용자별 나다움 성향 태그를 저장하는 테이블 (GPT-5-nano로 추출)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 태그 고유 ID |
+| `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (users.id) |
+| `name` | text | NOT NULL | - | 태그 이름 (예: "창의적인", "문제 해결력이 있는") |
+| `type` | text | NOT NULL | - | 태그 유형 (positive, negative, neutral) |
+| `source_content_id` | uuid | FOREIGN KEY | - | 태그 출처 콘텐츠 ID (master_contents.id) |
+| `source_order_id` | uuid | FOREIGN KEY | - | 태그 출처 주문 ID (orders.id) - 유료 콘텐츠용 |
+| `source_type` | text | NOT NULL | - | 출처 유형 (free_content, paid_content) |
+| `created_at` | timestamptz | - | `now()` | 생성 일시 |
+
+**외래키**:
+- `user_id` → `users(id)` ON DELETE CASCADE
+- `source_content_id` → `master_contents(id)` ON DELETE SET NULL
+- `source_order_id` → `orders(id)` ON DELETE SET NULL
+
+**인덱스**:
+- `idx_user_trait_tags_user`: (user_id)
+- `idx_user_trait_tags_user_created`: (user_id, created_at DESC)
+
+**용도**:
+- 무료/유료 운세 콘텐츠 결과에서 GPT-5-nano로 장점 2개, 단점 1개 성향 키워드 추출
+- 사용자 프로필에서 나다움 태그 목록 표시
+- `extract-trait-tags` Edge Function으로 추출 → `save-trait-tags` Edge Function으로 저장
+
+---
+
 ## 알림톡 로그 테이블
 
 ### `alimtalk_logs`
@@ -307,6 +384,9 @@ master_content_questions (질문)
 
 coupons (쿠폰 마스터)
   └─→ user_coupons (1:N) - 발급된 쿠폰들
+
+users (사용자)
+  └─→ user_trait_tags (1:N) - 나다움 성향 태그
 ```
 
 ---
@@ -348,6 +428,7 @@ coupons (쿠폰 마스터)
 | 1.3.1 | 2026-01-13 | 스키마 검토 완료 (변경 없음) - 사주 API/캐시 버스팅은 클라이언트 측 변경 | AI Assistant |
 | 1.3.2 | 2026-01-13 | 스테이징 스키마를 프로덕션 기준으로 되돌림 (orders.content_id nullable, refund_amount DEFAULT 제거) | AI Assistant |
 | 1.4.0 | 2026-01-21 | users 테이블에 visit_count 컬럼 추가 (일일 방문 횟수 추적) | AI Assistant |
+| 1.5.0 | 2026-01-29 | user_trait_tags 테이블 추가 (나다움 성향 태그 저장) | AI Assistant |
 
 ---
 

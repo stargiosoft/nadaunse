@@ -1,7 +1,7 @@
 # 나다움 찾기 기능 개발 계획
 
-> **상태**: Phase 2-3 완료 - 태그 추출/저장 + 프로필 태그 표시 구현됨
-> **최종 업데이트**: 2026-01-29
+> **상태**: Phase 2-3 완료 + 버그 수정 완료 (각 운세 결과별 태그 구분 + 유료 콘텐츠 스킵 상태 처리)
+> **최종 업데이트**: 2026-01-30
 
 ---
 
@@ -499,3 +499,205 @@ npx supabase db push --project-ref kcthtpmxffppfbkjjkub
 | 2026-01-28 | Phase 1 완료: DB 스키마 생성, 스테이징 적용 |
 | 2026-01-29 | Phase 2 완료: extract-trait-tags Edge Function, 무료/유료 태그 추출 연동 |
 | 2026-01-29 | Phase 3 완료: NadaumTagsList 구현, 캐싱, 태그 삭제/복원, "오늘의 한 줄 위로" 랜덤 노출 |
+| 2026-01-30 | 버그 수정: 각 운세 결과별 태그 구분 로직 추가 (source_order_id 활용) |
+| 2026-01-30 | 버그 수정: 유료 콘텐츠 "다음에 할래요" 스킵 후 재진입 시 버튼 상태 처리 |
+
+---
+
+## 12. 프로덕션 배포 TODO 🚀
+
+> **스테이징에서 모두 테스트 완료 후 프로덕션에 순서대로 적용**
+
+### 12.1 DB 마이그레이션 (프로덕션)
+
+**1. source_order_id 외래키 제약 제거**
+```sql
+-- 무료 콘텐츠의 free_content_records.id를 source_order_id에 저장할 수 있도록
+-- 외래키 제약 제거 (기존: orders.id만 참조 가능)
+ALTER TABLE user_trait_tags
+DROP CONSTRAINT IF EXISTS user_trait_tags_source_order_id_fkey;
+```
+
+**적용 방법**:
+```bash
+# Supabase MCP 또는 대시보드에서 실행
+# Project ID: kcthtpmxffppfbkjjkub (프로덕션)
+```
+
+**배경**:
+- 기존: `source_order_id`가 `orders.id`만 참조 → 무료 콘텐츠의 `free_content_records.id` 저장 불가
+- 변경 후: 외래키 제약 없음 → 무료/유료 모두 `source_order_id`로 각 운세 결과 구분 가능
+
+---
+
+### 12.2 코드 변경 내역 (2026-01-30)
+
+#### 수정된 파일 목록
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/components/FreeContentLoading.tsx` | resultKey에 timestamp 추가 (동일 콘텐츠/사주 구분) |
+| `src/components/CheckRecordMe.tsx` | UPDATE 쿼리에 `.select()` 추가하여 결과 확인 |
+| `src/components/PurchaseHistoryPage.tsx` | 태그 확정 여부 조회 시 `source_order_id` 사용 |
+| `src/components/UnifiedResultPage.tsx` | `__SKIPPED__` 태그 감지 및 버튼 상태 처리 추가 |
+| `src/App.tsx` | FreeResultPage, TagExtractionLoadingWrapper, NadaumRecordWrapper 수정 |
+
+#### 상세 변경 내용
+
+**1. FreeContentLoading.tsx (Lines 181, 434, 485)**
+```javascript
+// Before
+const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}`;
+
+// After - timestamp 추가로 동일 콘텐츠/사주도 별개 결과로 구분
+const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
+```
+
+**2. CheckRecordMe.tsx (Lines 225-253)**
+```javascript
+// Before - UPDATE 결과 확인 안 함
+const updateQuery = supabase.from('user_trait_tags').update({ is_confirmed: true })...
+await updateQuery.eq(...);
+
+// After - .select()로 결과 확인
+let updateResult;
+if (orderId) {
+  updateResult = await supabase
+    .from('user_trait_tags')
+    .update({ is_confirmed: true })
+    .eq('user_id', session.user.id)
+    .in('tag_name', selectedTagNames)
+    .eq('source_order_id', orderId)
+    .select();
+} else if (contentId) {
+  updateResult = await supabase
+    .from('user_trait_tags')
+    .update({ is_confirmed: true })
+    .eq('user_id', session.user.id)
+    .in('tag_name', selectedTagNames)
+    .eq('source_content_id', contentId)
+    .eq('source_type', sourceType)
+    .select();
+}
+console.log('✅ [CheckRecordMe] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+```
+
+**3. App.tsx - FreeResultPage**
+- `freeRecordId` 변수 추가 (location.state?.recordId)
+- 태그 조회: `source_content_id` → `source_order_id` + `freeRecordId`로 변경
+- 태그 저장: `source_order_id: freeRecordId` 추가
+- navigate 시 `freeRecordId` state 전달
+
+**4. App.tsx - TagExtractionLoadingWrapper (DB 폴링 방식으로 변경)**
+- ❌ API 직접 호출 제거 (중복 호출 방지)
+- ✅ DB 폴링으로 FreeResultPage 태그 추출 완료 대기
+- 500ms 간격으로 최대 15초(30회) 폴링
+- 태그 발견 시 nadaum-record로 이동
+
+**5. App.tsx - NadaumRecordWrapper**
+- `freeRecordId` 변수 추가 (location.state?.freeRecordId)
+- CheckRecordMe에 `orderId={freeRecordId}` 전달
+
+**6. PurchaseHistoryPage.tsx (Lines 554-561)**
+```javascript
+// Before - source_content_id로 조회 → 같은 콘텐츠의 다른 결과까지 "확정됨"으로 표시
+.eq('source_content_id', record.content_id)
+
+// After - source_order_id로 각 운세 결과별 확정 여부 확인
+.eq('source_order_id', record.id)  // ⭐ 각 운세 결과별 구분
+```
+
+**7. UnifiedResultPage.tsx - 유료 콘텐츠 스킵 상태 처리**
+
+**문제**: 유료 콘텐츠에서 "다음에 할래요" 클릭 후 재진입 시:
+- 마지막 질문에서 "완료" 대신 "다음" 버튼 표시됨
+- "다음" 클릭 시 `__SKIPPED__` 태그가 나다움 기록하기에 노출됨
+
+**원인**: `hasConfirmedTags`는 `PurchaseHistoryPage`에서만 전달되어, 다른 경로로 진입 시 감지 불가
+
+**수정 내용**:
+```javascript
+// 1. hasConfirmedTagsFromDB 상태 추가 (Line 120)
+const [hasConfirmedTagsFromDB, setHasConfirmedTagsFromDB] = useState(false);
+
+// 2. 기존 태그 로드 시 __SKIPPED__ 또는 is_confirmed 체크 (Lines 429-466)
+const { data: existingTagsForContent } = await checkQuery;
+
+if (existingTagsForContent && existingTagsForContent.length > 0) {
+  // __SKIPPED__ 마커 또는 is_confirmed=true 태그가 있으면 이미 완료/스킵
+  const hasSkippedOrConfirmed = existingTagsForContent.some(
+    t => t.tag_name === '__SKIPPED__' || t.is_confirmed === true
+  );
+
+  if (hasSkippedOrConfirmed) {
+    setHasConfirmedTagsFromDB(true);
+  }
+
+  // __SKIPPED__ 필터링 후 태그 설정
+  const filteredTags = existingTagsForContent.filter(t => t.tag_name !== '__SKIPPED__');
+  setExtractedTags(filteredTags.map(t => ({ name: t.tag_name, type: t.tag_type })));
+}
+
+// 3. 버튼 레이블 변경 (Line 1159)
+nextLabel={currentQuestionOrder === totalQuestions && (hasConfirmedTags || hasConfirmedTagsFromDB) ? '완료' : '다음'}
+
+// 4. handleNext에서도 체크 (Lines 777-790)
+if (hasConfirmedTags || hasConfirmedTagsFromDB) {
+  navigate('/'); // 나다움 기록하기 스킵
+}
+```
+
+**결과**:
+- "다음에 할래요" 후 재진입 시 마지막 질문에서 "완료" 버튼 표시
+- "완료" 클릭 시 홈으로 이동 (나다움 기록하기 스킵)
+- `__SKIPPED__` 태그 UI 노출 방지
+
+---
+
+### 12.3 배포 순서
+
+1. **DB 마이그레이션 먼저 적용** (프로덕션)
+   - `source_order_id` 외래키 제약 제거
+   - 코드 배포 전에 반드시 실행 (그렇지 않으면 INSERT 실패)
+
+2. **코드 배포** (Vercel)
+   - 마이그레이션 적용 후 코드 배포
+   - 자동 배포 또는 수동 트리거
+
+3. **검증**
+   - 무료 콘텐츠 새로 보기 → 태그 추출 확인
+   - 동일 콘텐츠 2번 보기 → 각각 태그 추출되는지 확인
+   - 이용 기록에서 재진입 → 기존 태그 표시되는지 확인
+
+---
+
+### 12.4 배포 체크리스트
+
+- [ ] DB 마이그레이션 실행 (source_order_id 외래키 제거)
+- [ ] 코드 배포 (Vercel)
+- [ ] 무료 콘텐츠 태그 추출 테스트
+- [ ] 동일 콘텐츠 2번 보기 → 각각 태그 추출 확인
+- [ ] 이용 기록 재진입 → 기존 태그 표시 확인
+- [ ] 동일 콘텐츠 A만 태그 확정 → B는 "나다움 기록하기" 버튼 표시 확인
+- [ ] 나다움 기록하기 → 태그 확정 확인
+- [ ] 프로필 페이지 → 태그 표시 확인
+- [ ] 유료 콘텐츠 "다음에 할래요" 클릭 후 재진입 → "완료" 버튼 표시 확인
+- [ ] 스킵 후 재진입 시 `__SKIPPED__` 태그 UI 미노출 확인
+
+---
+
+### 12.5 롤백 계획
+
+문제 발생 시:
+
+**코드 롤백**: Vercel에서 이전 배포로 롤백
+
+**DB 롤백** (필요한 경우):
+```sql
+-- 외래키 제약 다시 추가 (롤백)
+ALTER TABLE user_trait_tags
+ADD CONSTRAINT user_trait_tags_source_order_id_fkey
+FOREIGN KEY (source_order_id) REFERENCES orders(id) ON DELETE SET NULL;
+```
+
+**주의**: DB 롤백 시 이미 저장된 `free_content_records.id` 값들이 `orders` 테이블에 없으므로 제약 추가 실패할 수 있음. 해당 데이터 정리 필요.
