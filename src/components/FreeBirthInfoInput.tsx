@@ -385,8 +385,21 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       console.log('📌 [FreeBirthInfoInput] user:', user);
       console.log('📌 [FreeBirthInfoInput] userError:', userError);
 
-      // ⭐️ 로그아웃 상태인 경우: localStorage에 캐시만 저장
-      if (userError || !user) {
+      // ⭐️ users 테이블에 실제로 존재하는지 확인 (회원가입 완료 여부)
+      let isRegisteredUser = false;
+      if (user && !userError) {
+        const { data: userData, error: usersError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        isRegisteredUser = !usersError && !!userData;
+        console.log('📌 [FreeBirthInfoInput] users 테이블 확인:', isRegisteredUser ? '회원가입 완료' : '회원가입 미완료');
+      }
+
+      // ⭐️ 로그아웃 상태 또는 회원가입 미완료인 경우: localStorage에 캐시만 저장
+      if (userError || !user || !isRegisteredUser) {
         console.log('🔓 [FreeBirthInfoInput] 로그아웃 상태 → localStorage에 캐시 저장');
 
         const cachedSajuData = {
