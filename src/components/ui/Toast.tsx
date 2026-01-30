@@ -56,7 +56,7 @@ export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps)
   if (variant === 'light') {
     return (
       <div
-        className="rounded-[16px] inline-block shadow-lg pointer-events-auto toast-animate-enter"
+        className="rounded-full inline-block shadow-lg pointer-events-auto toast-animate-enter"
         style={{ backgroundColor: 'rgba(245, 243, 239, 0.95)' }}
       >
         <div className="flex flex-row items-center pl-[16px] pr-[20px] py-[12px] gap-[12px]">
@@ -101,7 +101,7 @@ export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps)
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         backdropFilter: 'blur(15px)',
         WebkitBackdropFilter: 'blur(15px)',
-        borderRadius: '16px'
+        borderRadius: '9999px'
       }}
     >
       <div className="flex flex-row items-center" style={{ padding: '10px 16px 10px 12px', gap: '10px' }}>
