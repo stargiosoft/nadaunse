@@ -420,7 +420,7 @@ export default function ProfilePage({
         }
 
         // 🚀 trait_tags 처리 (병렬 로드 결과)
-        if (shouldLoadTags && tagsResult.data !== null) {
+        if (shouldLoadTags) {
           const tags = tagsResult.data || [];
           const totalCount = (tagsCountResult as { count: number | null }).count || 0;
           setTraitTags(tags);
@@ -433,6 +433,9 @@ export default function ProfilePage({
             timestamp: Date.now()
           }));
           console.log('✅ 나다움 태그 로드 완료 (병렬):', tags.length, '개, 총:', totalCount);
+          if (tagsResult.error) {
+            console.error('⚠️ 태그 로드 에러 (테이블 미생성 가능):', tagsResult.error.message);
+          }
         }
 
         setIsLoadingSaju(false);
