@@ -4,7 +4,7 @@
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-01-30
-> **주요 결정**: 프로덕션 배포 스크립트 작성 (--no-verify-jwt 누락 방지), 유료 콘텐츠 나다움 스킵 상태 처리, 무료/유료 콘텐츠 나다움 태그 통합 플로우, 무료 콘텐츠 결과 페이지 이중 로딩 수정
+> **주요 결정**: 회원가입 후 사주 정보/태그 저장 플로우 개선, 프로덕션 배포 스크립트 작성 (--no-verify-jwt 누락 방지), 유료 콘텐츠 나다움 스킵 상태 처리, 무료/유료 콘텐츠 나다움 태그 통합 플로우, 무료 콘텐츠 결과 페이지 이중 로딩 수정
 
 ---
 
@@ -17,6 +17,118 @@
 ---
 
 ## 2026-01-30
+
+### 회원가입 후 사주 정보/태그 저장 플로우 개선
+
+**결정**: `clearUserCaches()`에서 `pending_trait_tags`가 있으면 `cached_saju_info`를 보존
+
+**배경**:
+- 문제: 로그아웃 상태에서 무료 콘텐츠 → 회원가입 시 사주 정보와 나다움 태그가 저장되지 않음
+- 원인: `AuthCallback`에서 `clearUserCaches()` 호출 시 `cached_saju_info`가 삭제됨
+- 영향: `PendingTagsCheck`에서 DB 저장에 필요한 사주 정보가 없어 저장 실패
+
+**구현 방식**:
+
+```
+로그아웃 상태 무료 콘텐츠 이용
+    ↓
+CheckRecordMe: pending_trait_tags 저장 → 로그인 페이지
+    ↓
+로그인/회원가입 완료
+    ↓
+AuthCallback: clearUserCaches() 호출
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ clearUserCaches() 개선:                                       │
+│                                                               │
+│ const hasPendingTags = !!localStorage.getItem('pending_trait_tags'); │
+│                                                               │
+│ if (hasPendingTags) {                                         │
+│   // cached_saju_info 보존 (PendingTagsCheck에서 DB 저장 필요) │
+│   fixedCacheKeys = fixedCacheKeys.filter(                     │
+│     key => key !== 'cached_saju_info'                         │
+│   );                                                          │
+│ }                                                             │
+└─────────────────────────────────────────────────────────────┘
+    ↓
+/pending-tags-check 리다이렉트
+    ↓
+PendingTagsCheck: cached_saju_info로 사주 정보 DB 저장 ✅
+```
+
+**영향 범위**:
+- `src/lib/auth.ts`: `clearUserCaches()` 로직 수정
+- 사용자 경험: 회원가입 후 사주 정보와 나다움 태그가 정상 저장됨
+
+---
+
+### 무료 콘텐츠 answers 필드 포맷 개선
+
+**결정**: `PendingTagsCheck`에서 저장하는 `answers` JSONB에 `question_id`, `question_order` 필드 포함
+
+**배경**:
+- 문제: 회원가입 후 이용 기록에서 무료 콘텐츠 타이틀만 표시되고 내용이 보이지 않음
+- 원인: `PurchaseHistoryPage`가 `answers` 배열의 `question_id`, `question_order`로 정렬/표시하는데 해당 필드가 없음
+- 영향: 무료 콘텐츠 상세 보기 시 빈 화면 표시
+
+**구현 방식**:
+
+```typescript
+// PendingTagsCheck (App.tsx)
+const answersForDb = freeResult.contentAnswers?.map((a, index) => ({
+  question_id: `q${index + 1}`,      // ⭐ 추가
+  question_order: index + 1,          // ⭐ 추가
+  question_text: a.questionText,
+  answer_text: a.answerText
+})) || freeResult.results?.map((r, index) => ({
+  question_id: r.questionId || `q${index + 1}`,
+  question_order: r.questionOrder || (index + 1),
+  question_text: r.questionText,
+  answer_text: r.previewText
+})) || [];
+
+// PurchaseHistoryPage - 기존 레코드 호환용 fallback
+results: record.answers?.map((a, index) => ({
+  questionId: a.question_id || `q${index + 1}`,        // ⭐ fallback
+  questionOrder: a.question_order ?? (index + 1),      // ⭐ fallback
+  questionText: a.question_text,
+  questionType: 'ai',
+  previewText: a.answer_text
+})) || [],
+```
+
+**영향 범위**:
+- `src/App.tsx`: `PendingTagsCheck` 함수의 `answersForDb` 생성 로직
+- `src/components/PurchaseHistoryPage.tsx`: `FreeContentRecord` 인터페이스, fallback 로직
+- 사용자 경험: 이용 기록에서 무료 콘텐츠 상세 내용 정상 표시
+
+---
+
+### PendingTagsCheckPage 공통 로딩 UI 적용
+
+**결정**: `PendingTagsCheckPage`의 로딩 화면을 `FreeContentLoading`과 동일한 공통 스타일로 변경
+
+**배경**:
+- 문제: 회원가입 후 나다움 기록 처리 중 단순한 스피너와 "처리 중..." 텍스트 표시
+- 개선: 앱 전체 로딩 UI 일관성 유지
+
+**구현 방식**:
+```tsx
+// Before
+<div className="w-8 h-8 border-2 border-[#48b2af] border-t-transparent rounded-full animate-spin" />
+<p>처리 중...</p>
+
+// After (FreeContentLoading 공통 스타일)
+<DotLoading />
+<p>나다움 기록을</p>
+<p>준비중이에요!</p>
+```
+
+**영향 범위**:
+- `src/App.tsx`: `PendingTagsCheckPage` 컴포넌트의 return JSX
+- 사용자 경험: 일관된 로딩 UI 제공
+
+---
 
 ### 유료 콘텐츠 나다움 스킵 상태 처리
 

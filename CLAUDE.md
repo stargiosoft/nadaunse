@@ -23,7 +23,7 @@
 | 배포 | Vercel |
 
 ### 주요 통계
-- **컴포넌트**: 58개
+- **컴포넌트**: 60개
 - **Edge Functions**: 25개 (extract-trait-tags 포함)
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개

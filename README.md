@@ -59,7 +59,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ## 📊 주요 통계
 
-- **컴포넌트**: 58개
+- **컴포넌트**: 60개
 - **Edge Functions**: 25개
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
@@ -72,7 +72,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) | 프로젝트 전체 컨텍스트 |
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
-| [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (54개) |
+| [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (60개) |
 | [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (24개) |
 
 > **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
@@ -111,4 +111,4 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ---
 
-**최종 업데이트**: 2026-01-29
+**최종 업데이트**: 2026-01-30

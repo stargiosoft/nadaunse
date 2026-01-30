@@ -165,9 +165,21 @@
 │      ↓                              ↓                                        │
 │  [AuthCallback.tsx] ← ─ ─ ─ ─ [리다이렉트 + 토큰]                            │
 │      ↓                                                                       │
+│  [clearUserCaches()] → pending_trait_tags 있으면 cached_saju_info 보존      │
+│      ↓                                                                       │
 │  [Supabase Auth] → [Session 생성] → [users 테이블 upsert]                   │
 │      ↓                                                                       │
-│  [약관 동의 체크] → [TermsPage] → [WelcomeCouponPage] → [홈]                │
+│  [약관 동의 체크] → [TermsPage] → [WelcomeCouponPage]                        │
+│      ↓                                                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ pending_trait_tags 있으면 → [PendingTagsCheckPage]                   │    │
+│  │   1. cached_saju_info → saju_records 저장                           │    │
+│  │   2. localStorage 무료 콘텐츠 결과 → free_content_records 저장       │    │
+│  │   3. phone_number 있으면 → 태그 저장 → 홈                           │    │
+│  │      phone_number 없으면 → 나다움 기록하기 페이지 → 바텀시트 오픈    │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│      ↓ (pending_trait_tags 없으면)                                          │
+│  [홈]                                                                       │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -697,7 +709,7 @@ interface TarotGameProps {
 
 ### 🔐 인증 & 회원가입
 ```
-/lib/auth.ts                    → Supabase Auth 헬퍼 함수
+/lib/auth.ts                    → Supabase Auth 헬퍼 함수 (clearUserCaches 포함)
 /lib/supabase.ts                → Supabase 클라이언트 설정
 /pages/AuthCallback.tsx         → OAuth 콜백 처리
 /components/LoginPageNew.tsx    → 로그인 페이지
@@ -705,6 +717,7 @@ interface TarotGameProps {
 /components/WelcomeCouponPage.tsx → 회원가입 완료 (웰컴 쿠폰 안내)
 /components/ExistingAccountPageNew.tsx  → 기존 계정 연동
 /components/SessionExpiredDialog.tsx    → 세션 만료 다이얼로그
+App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태그 저장
 ```
 
 ### 🎨 UI 컴포넌트

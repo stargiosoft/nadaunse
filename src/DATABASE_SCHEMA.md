@@ -2,7 +2,7 @@
 
 > **작성일**: 2024-12-17
 > **버전**: 1.5.0
-> **최종 업데이트**: 2026-01-28
+> **최종 업데이트**: 2026-01-30
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -275,13 +275,16 @@
 ```json
 [
   {
-    "question_id": "uuid",
-    "question_order": 1,
+    "question_id": "q1",           // ⭐ PurchaseHistoryPage 정렬용 (필수)
+    "question_order": 1,           // ⭐ PurchaseHistoryPage 정렬용 (필수)
     "question_text": "질문 내용",
     "answer_text": "AI 생성 답변"
   }
 ]
 ```
+
+**참고**: 2026-01-30 이전 레코드는 `question_id`, `question_order`가 없을 수 있음.
+`PurchaseHistoryPage`에서 fallback 처리 (`q${index + 1}`, `index + 1`).
 
 ---
 

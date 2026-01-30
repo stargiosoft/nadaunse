@@ -1,7 +1,7 @@
 # Components Inventory
 
 > **최종 업데이트**: 2026-01-30
-> **총 컴포넌트 수**: 59개 (활성화)
+> **총 컴포넌트 수**: 60개 (활성화)
 > **UI 컴포넌트 (shadcn/ui)**: 48개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -11,7 +11,7 @@
 ## 📋 목차
 
 - [UI 컴포넌트 (7개)](#ui-컴포넌트)
-- [인증 관련 (3개)](#인증-관련)
+- [인증 관련 (4개)](#인증-관련)
 - [결제 관련 (4개)](#결제-관련)
 - [무료 콘텐츠 관련 (9개)](#무료-콘텐츠-관련)
 - [마스터 콘텐츠 관리 (6개)](#마스터-콘텐츠-관리)
@@ -105,6 +105,19 @@
 - **타입**: Modal Component
 - **주요 기능**: 자동 로그아웃 안내 및 재로그인 유도
 - **파일 경로**: `/components/SessionExpiredDialog.tsx`
+
+### PendingTagsCheckPage (App.tsx 내부)
+- **역할**: 회원가입 후 사주/무료콘텐츠/태그 자동 저장 처리
+- **사용처**: `/pending-tags-check` 라우트 (AuthCallback에서 리다이렉트)
+- **타입**: Page Component (App.tsx 내부 정의)
+- **주요 기능**:
+  - `cached_saju_info` → `saju_records` 테이블 저장
+  - localStorage 무료 콘텐츠 결과 → `free_content_records` 테이블 저장
+  - `phone_number` 있으면 태그 저장 후 홈 이동
+  - `phone_number` 없으면 나다움 기록하기 페이지로 이동 (바텀시트 오픈)
+- **관련 함수**: `clearUserCaches()` (pending_trait_tags 있으면 cached_saju_info 보존)
+- **파일 경로**: `/App.tsx` (내부 함수 컴포넌트)
+- **추가 날짜**: 2026-01-30
 
 ---
 
