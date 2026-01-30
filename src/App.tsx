@@ -63,7 +63,8 @@ import AuthCallback from './pages/AuthCallback';
 import { allProducts } from './data/products';
 import { initGA, trackPageView } from './utils/analytics';
 import { supabase } from './lib/supabase';
-import { Toaster, toast } from 'sonner';
+import { Toaster, toast as sonnerToast } from 'sonner';
+import { toast } from './lib/toast'; // ⭐ 커스텀 토스트 (subtitle 지원)
 import { Toast } from './components/ui/Toast';
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
 import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 페이지 이미지 프리로드
@@ -115,7 +116,7 @@ function LoginToast() {
         sessionStorage.removeItem('show_login_toast');
 
         // 토스트 표시 (2.2초간)
-        toast.custom(
+        sonnerToast.custom(
           () => <Toast type="positive" message="로그인 되었어요, 반가워요" />,
           { duration: 2200 }
         );
@@ -1589,6 +1590,292 @@ function NadaumTagsListWrapper() {
   );
 }
 
+// ⭐ 로그인 후 pending_trait_tags 처리 페이지
+// - 사주 정보 저장 (cached_saju_info → saju_records)
+// - 무료 콘텐츠 결과 저장 (localStorage → free_content_records)
+// - 태그 저장 또는 phone_number 입력 요청
+function PendingTagsCheckPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const processPendingTags = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.user?.id) {
+          console.log('❌ [PendingTagsCheck] 세션 없음 → 홈으로 이동');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        // pending_trait_tags 확인
+        const pendingTagsJson = localStorage.getItem('pending_trait_tags');
+        if (!pendingTagsJson) {
+          console.log('❌ [PendingTagsCheck] pending_trait_tags 없음 → 홈으로 이동');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        const pendingData = JSON.parse(pendingTagsJson);
+        console.log('📦 [PendingTagsCheck] pending_trait_tags 발견:', pendingData);
+
+        // ========================================
+        // 1️⃣ 사주 정보 저장 (cached_saju_info → saju_records)
+        // ========================================
+        const cachedSajuJson = localStorage.getItem('cached_saju_info');
+        let savedSajuRecordId: string | null = null;
+
+        if (cachedSajuJson) {
+          try {
+            const cachedSaju = JSON.parse(cachedSajuJson);
+            console.log('📋 [PendingTagsCheck] cached_saju_info 발견:', cachedSaju);
+
+            // 기존 사주 개수 확인 (최초 사주면 is_primary: true)
+            const { data: existingSaju } = await supabase
+              .from('saju_records')
+              .select('id')
+              .eq('user_id', session.user.id);
+
+            const isFirstSaju = !existingSaju || existingSaju.length === 0;
+            const genderKorean = cachedSaju.gender === 'female' ? '여' : '남';
+
+            // 사주 레코드 INSERT
+            const { data: newSajuRecord, error: sajuInsertError } = await supabase
+              .from('saju_records')
+              .insert({
+                user_id: session.user.id,
+                full_name: cachedSaju.name,
+                gender: genderKorean,
+                birth_date: new Date(cachedSaju.birthDate).toISOString(),
+                birth_time: cachedSaju.birthTime || '12:00',
+                notes: '본인',
+                is_primary: isFirstSaju
+              })
+              .select()
+              .single();
+
+            if (sajuInsertError) {
+              console.error('❌ [PendingTagsCheck] 사주 정보 저장 실패:', sajuInsertError);
+            } else {
+              savedSajuRecordId = newSajuRecord.id;
+              console.log('✅ [PendingTagsCheck] 사주 정보 저장 완료:', newSajuRecord.id);
+
+              // primary_saju 캐시 업데이트
+              localStorage.setItem('primary_saju', JSON.stringify(newSajuRecord));
+              localStorage.setItem('profile_needs_refresh', 'true');
+            }
+
+            // cached_saju_info 삭제
+            localStorage.removeItem('cached_saju_info');
+          } catch (sajuErr) {
+            console.error('❌ [PendingTagsCheck] 사주 정보 처리 오류:', sajuErr);
+          }
+        }
+
+        // ========================================
+        // 2️⃣ 무료 콘텐츠 결과 저장 (localStorage → free_content_records)
+        // ========================================
+        let freeResultKey = pendingData.orderId; // free_content_xxx_guest_xxx 형식
+        let newFreeRecordId: string | null = null;
+
+        // orderId가 없거나 free_content_ 형식이 아니면 localStorage에서 패턴 매칭으로 찾기
+        if (!freeResultKey || (!freeResultKey.startsWith('free_content_') && !freeResultKey.startsWith('temp_'))) {
+          const contentId = pendingData.contentId;
+          if (contentId) {
+            // localStorage에서 free_content_{contentId}_guest_ 패턴 찾기
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith(`free_content_${contentId}_guest_`)) {
+                freeResultKey = key;
+                console.log('🔍 [PendingTagsCheck] localStorage에서 무료 콘텐츠 키 발견:', key);
+                break;
+              }
+            }
+          }
+        }
+
+        // cached_free_result에서도 확인
+        if (!freeResultKey) {
+          const cachedFreeResult = localStorage.getItem('cached_free_result');
+          if (cachedFreeResult) {
+            try {
+              const cached = JSON.parse(cachedFreeResult);
+              if (cached.contentId === pendingData.contentId && cached.resultKey) {
+                freeResultKey = cached.resultKey;
+                console.log('🔍 [PendingTagsCheck] cached_free_result에서 키 발견:', freeResultKey);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+
+        console.log('📌 [PendingTagsCheck] freeResultKey:', freeResultKey);
+
+        if (freeResultKey) {
+          const freeResultJson = localStorage.getItem(freeResultKey);
+          console.log('📌 [PendingTagsCheck] freeResultJson 존재:', !!freeResultJson);
+
+          if (freeResultJson) {
+            try {
+              const freeResult = JSON.parse(freeResultJson);
+              console.log('📋 [PendingTagsCheck] 무료 콘텐츠 결과 발견:', Object.keys(freeResult));
+
+              // free_content_records에 INSERT
+              const { data: newFreeRecord, error: freeInsertError } = await supabase
+                .from('free_content_records')
+                .insert({
+                  user_id: session.user.id,
+                  content_id: pendingData.contentId,
+                  saju_record_id: savedSajuRecordId,
+                  full_name: freeResult.sajuData?.name || freeResult.userName || '회원',
+                  gender: freeResult.sajuData?.gender || '여',
+                  birth_date: freeResult.sajuData?.birthDate
+                    ? new Date(freeResult.sajuData.birthDate).toISOString()
+                    : new Date().toISOString(),
+                  birth_time: freeResult.sajuData?.birthTime || '12:00',
+                  is_guest: false,
+                  answers: freeResult.contentAnswers || freeResult.results?.map((r: { questionText: string; previewText: string }) => ({
+                    question_text: r.questionText,
+                    answer_text: r.previewText
+                  })) || []
+                })
+                .select()
+                .single();
+
+              if (freeInsertError) {
+                console.error('❌ [PendingTagsCheck] 무료 콘텐츠 결과 저장 실패:', freeInsertError);
+              } else {
+                newFreeRecordId = newFreeRecord.id;
+                console.log('✅ [PendingTagsCheck] 무료 콘텐츠 결과 저장 완료:', newFreeRecord.id);
+
+                // 임시 localStorage 데이터는 삭제하지 않음 (결과 페이지에서 사용)
+                // 대신 새 recordId로 업데이트
+                const updatedResult = { ...freeResult, dbRecordId: newFreeRecordId };
+                localStorage.setItem(freeResultKey, JSON.stringify(updatedResult));
+
+                // ⭐ 이용 기록 페이지 캐시 갱신 플래그 설정
+                localStorage.setItem('free_content_needs_refresh', 'true');
+                console.log('🔄 [PendingTagsCheck] free_content_needs_refresh 플래그 설정');
+              }
+            } catch (freeErr) {
+              console.error('❌ [PendingTagsCheck] 무료 콘텐츠 결과 처리 오류:', freeErr);
+            }
+          }
+        }
+
+        // pendingData.orderId를 새 DB recordId로 업데이트
+        const finalOrderId = newFreeRecordId || pendingData.orderId;
+
+        // ========================================
+        // 3️⃣ DB에서 본인 사주의 phone_number 확인
+        // ========================================
+        const { data: sajuRecord, error: sajuError } = await supabase
+          .from('saju_records')
+          .select('id, phone_number')
+          .eq('user_id', session.user.id)
+          .eq('notes', '본인')
+          .maybeSingle();
+
+        if (sajuError) {
+          console.error('❌ [PendingTagsCheck] 사주 레코드 조회 실패:', sajuError);
+        }
+
+        console.log('📱 [PendingTagsCheck] 사주 레코드:', sajuRecord);
+
+        if (sajuRecord?.phone_number) {
+          // ✅ phone_number 있음 → 태그 저장 후 홈으로 이동
+          console.log('✅ [PendingTagsCheck] phone_number 있음 → 태그 저장 시작');
+
+          // 태그 저장 로직
+          for (const tag of pendingData.tags) {
+            await supabase
+              .from('user_trait_tags')
+              .insert({
+                user_id: session.user.id,
+                tag_name: tag.label,
+                tag_type: tag.type,
+                source_type: pendingData.sourceType || 'free_content',
+                source_content_id: pendingData.contentId || null,
+                source_order_id: finalOrderId || null,
+                is_confirmed: true
+              });
+          }
+
+          console.log('✅ [PendingTagsCheck] 태그 저장 완료');
+
+          // 캐시 무효화
+          localStorage.setItem('trait_tags_needs_refresh', 'true');
+          localStorage.setItem('my_report_needs_refresh', 'true');
+          localStorage.removeItem('trait_tags_cache');
+          localStorage.removeItem('nadaum_all_tags_cache');
+          localStorage.removeItem('pending_trait_tags');
+
+          // 토스트 표시 + 홈으로 이동
+          toast.success('태그가 저장됐어요!', {
+            subtitle: '프로필에서 확인할 수 있어요.',
+            duration: 2200
+          });
+
+          navigate('/', { replace: true });
+        } else {
+          // ❌ phone_number 없음 → 나다움 기록하기 페이지로 리다이렉트 (바텀시트 오픈)
+          console.log('📱 [PendingTagsCheck] phone_number 없음 → 나다움 기록하기로 이동');
+
+          // pending_trait_tags의 orderId를 새 DB recordId로 업데이트
+          if (newFreeRecordId) {
+            const updatedPendingData = { ...pendingData, orderId: newFreeRecordId };
+            localStorage.setItem('pending_trait_tags', JSON.stringify(updatedPendingData));
+          }
+
+          // 바텀시트 오픈 플래그 저장
+          localStorage.setItem('open_phone_bottomsheet', 'true');
+
+          // 나다움 기록하기 페이지로 이동 (/nadaum-record/:id 라우트 사용)
+          const contentId = pendingData.contentId;
+          if (contentId) {
+            // pending_trait_tags에서 태그 정보를 state로 전달
+            const tagsForState = pendingData.tags.map((t: { label: string; type: string }) => ({
+              name: t.label,
+              type: t.type
+            }));
+
+            navigate(`/nadaum-record/${contentId}`, {
+              replace: true,
+              state: {
+                freeRecordId: newFreeRecordId || pendingData.orderId,
+                tags: tagsForState
+              }
+            });
+          } else {
+            // contentId가 없으면 홈으로
+            localStorage.removeItem('pending_trait_tags');
+            navigate('/', { replace: true });
+          }
+        }
+      } catch (err) {
+        console.error('❌ [PendingTagsCheck] 처리 중 오류:', err);
+        localStorage.removeItem('pending_trait_tags');
+        navigate('/', { replace: true });
+      }
+    };
+
+    processPendingTags();
+  }, [navigate]);
+
+  // 처리 중 로딩 화면
+  return (
+    <div className="bg-white fixed inset-0 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-[#48b2af] border-t-transparent rounded-full animate-spin" />
+        <p style={{ fontFamily: 'Pretendard Variable', fontSize: '14px', color: '#666' }}>
+          처리 중...
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // Login Page New Wrapper
 function LoginPageNewWrapper() {
   const navigate = useNavigate();
@@ -1680,6 +1967,10 @@ function TermsPageWrapper() {
   const handleComplete = () => {
     // ⭐️ 가입 축하 쿠폰 페이지로 이동
     console.log('✅ 회원가입 완료 → 가입 축하 쿠폰 페이지로 이동');
+
+    // ⭐ 환영 페이지 플래그 초기화 (새 회원가입이므로 환영 페이지를 봐야 함)
+    sessionStorage.removeItem('welcomePageViewed');
+
     navigate('/welcome-coupon', { replace: true });
   };
 
@@ -2367,6 +2658,7 @@ export default function App() {
           <Route path="/login" element={<LoginPageNewWrapper />} />
           <Route path="/login/new" element={<LoginPageNewWrapper />} />
           <Route path="/login/existing/new" element={<ExistingAccountPageNewWrapper />} />
+          <Route path="/pending-tags-check" element={<PendingTagsCheckPage />} />
           <Route path="/terms" element={<TermsPageWrapper />} />
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

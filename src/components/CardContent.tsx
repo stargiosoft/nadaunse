@@ -78,10 +78,10 @@ function FreeContentCard({ content, onClick }: { content: FreeContent; onClick: 
   );
 }
 
-function MoreButton({ onClick }: { onClick: () => void }) {
+function MoreButton({ onClick, isLoading }: { onClick: () => void; isLoading?: boolean }) {
   return (
     <div
-      className="flex items-center shrink-0 cursor-pointer"
+      className={`flex items-center shrink-0 ${isLoading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
       style={{ paddingRight: '20px' }}
       onClick={onClick}
     >
@@ -99,7 +99,7 @@ function MoreButton({ onClick }: { onClick: () => void }) {
             color: '#999999'
           }}
         >
-          더 볼래요!
+          {isLoading ? '로딩 중...' : '더 볼래요!'}
         </p>
       </div>
       <div className="flex items-center justify-center shrink-0" style={{ marginLeft: '-8px' }}>
@@ -148,22 +148,26 @@ function CardSkeleton() {
   );
 }
 
+const PAGE_SIZE = 6;
+
 export default function CardContent() {
   const navigate = useNavigate();
   const [contents, setContents] = useState<FreeContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     const loadFreeContents = async () => {
       try {
-        // 무료 콘텐츠를 인기순(weekly_clicks)으로 4개 가져오기
+        // 무료 콘텐츠를 인기순(weekly_clicks)으로 6개 가져오기
         const { data, error } = await supabase
           .from('master_contents')
           .select('id, title, thumbnail_url')
           .eq('content_type', 'free')
           .eq('status', 'deployed')
           .order('weekly_clicks', { ascending: false })
-          .limit(4);
+          .limit(PAGE_SIZE);
 
         if (error) {
           console.error('❌ [CardContent] 무료 콘텐츠 로드 실패:', error);
@@ -171,6 +175,7 @@ export default function CardContent() {
         }
 
         setContents(data || []);
+        setHasMore((data?.length || 0) >= PAGE_SIZE);
         console.log('✅ [CardContent] 무료 콘텐츠 로드:', data?.length, '개');
       } catch (error) {
         console.error('❌ [CardContent] 로드 중 오류:', error);
@@ -186,10 +191,41 @@ export default function CardContent() {
     navigate(`/free/content/${contentId}`);
   };
 
-  const handleMoreClick = () => {
-    // 홈으로 이동 시 무료 체험판 필터 자동 선택
-    localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
-    navigate('/');
+  const handleMoreClick = async () => {
+    if (isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      // 현재 로드된 콘텐츠 ID 목록 (중복 방지)
+      const loadedIds = contents.map(c => c.id);
+
+      const { data, error } = await supabase
+        .from('master_contents')
+        .select('id, title, thumbnail_url')
+        .eq('content_type', 'free')
+        .eq('status', 'deployed')
+        .not('id', 'in', `(${loadedIds.join(',')})`)
+        .order('weekly_clicks', { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (error) {
+        console.error('❌ [CardContent] 추가 콘텐츠 로드 실패:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setContents(prev => [...prev, ...data]);
+        setHasMore(data.length >= PAGE_SIZE);
+        console.log('✅ [CardContent] 추가 콘텐츠 로드:', data.length, '개');
+      } else {
+        setHasMore(false);
+        console.log('ℹ️ [CardContent] 더 이상 콘텐츠 없음');
+      }
+    } catch (error) {
+      console.error('❌ [CardContent] 추가 로드 중 오류:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   return (
@@ -199,8 +235,11 @@ export default function CardContent() {
     >
       <div className="flex gap-[12px] items-start" style={{ paddingLeft: '20px' }}>
         {isLoading ? (
-          // 로딩 스켈레톤
+          // 로딩 스켈레톤 (6개)
           <>
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
@@ -215,7 +254,7 @@ export default function CardContent() {
                 onClick={() => handleContentClick(content.id)}
               />
             ))}
-            <MoreButton onClick={handleMoreClick} />
+            {hasMore && <MoreButton onClick={handleMoreClick} isLoading={isLoadingMore} />}
           </>
         ) : (
           // 콘텐츠 없음

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import svgPaths from '@/imports/svg-rr05b2c3l6';
 import Frame427322492 from '@/imports/Frame427322492';
@@ -96,6 +97,7 @@ export default function CheckRecordMe({
   });
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [view, setView] = useState<'recording' | 'result' | 'mypage' | 'dev-report' | 'dev-tarot-picking' | 'dev-tarot-result' | 'dev-mind-prescription'>('recording');
+  const navigate = useNavigate();
 
   // 휴대폰 번호를 부모 컴포넌트에서 관리하여 바텀 시트가 닫혀도 유지되도록 함
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -193,6 +195,60 @@ export default function CheckRecordMe({
     checkPhoneNumber();
   }, [sourceType]);
 
+  // ⭐ 로그인 후 바텀시트 자동 오픈 처리
+  useEffect(() => {
+    const checkAndOpenBottomSheet = async () => {
+      const shouldOpenBottomSheet = localStorage.getItem('open_phone_bottomsheet');
+      const pendingTagsJson = localStorage.getItem('pending_trait_tags');
+
+      if (shouldOpenBottomSheet === 'true' && pendingTagsJson) {
+        console.log('📱 [CheckRecordMe] 바텀시트 자동 오픈 플래그 감지');
+
+        // ⭐ 로그인 상태 체크 먼저!
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) {
+          console.log('⚠️ [CheckRecordMe] 비로그인 상태 → 바텀시트 오픈 취소 (로그인 후 처리)');
+          // 플래그는 유지하고 바텀시트는 열지 않음 (로그인 후 다시 처리)
+          return;
+        }
+
+        try {
+          const pendingData = JSON.parse(pendingTagsJson);
+          console.log('📋 [CheckRecordMe] pending_trait_tags 데이터:', pendingData);
+          console.log('📋 [CheckRecordMe] pendingData.tags:', pendingData.tags);
+
+          // 저장된 태그로 선택 상태 복원
+          if (pendingData.tags && pendingData.tags.length > 0) {
+            setTags(prevTags => {
+              console.log('📋 [CheckRecordMe] prevTags (복원 전):', prevTags.map(t => ({ label: t.label, selected: t.selected })));
+              const pendingLabels = pendingData.tags.map((t: { label: string }) => t.label);
+              console.log('📋 [CheckRecordMe] pendingLabels:', pendingLabels);
+
+              const updatedTags = prevTags.map(tag => ({
+                ...tag,
+                selected: pendingData.tags.some((pt: { label: string }) => pt.label === tag.label)
+              }));
+              console.log('📋 [CheckRecordMe] updatedTags (복원 후):', updatedTags.map(t => ({ label: t.label, selected: t.selected })));
+              return updatedTags;
+            });
+          }
+
+          // 바텀시트 열기
+          setIsBottomSheetOpen(true);
+          setNeedsPhoneNumber(true);
+
+          // 플래그 제거
+          localStorage.removeItem('open_phone_bottomsheet');
+        } catch (e) {
+          console.error('❌ [CheckRecordMe] 바텀시트 자동 오픈 실패:', e);
+          localStorage.removeItem('open_phone_bottomsheet');
+        }
+      }
+    };
+
+    checkAndOpenBottomSheet();
+  }, []);
+
   const toggleTag = (id: string) => {
     setTags(tags.map(tag =>
       tag.id === id ? { ...tag, selected: !tag.selected } : tag
@@ -222,39 +278,87 @@ export default function CheckRecordMe({
         console.log('  - 선택된 태그:', selectedTagNames);
         console.log('  - 선택 안 된 태그:', unselectedTagNames);
 
-        // ⭐ 1. 선택한 태그: is_confirmed = true로 UPDATE
-        if (selectedTagNames.length > 0) {
-          // 유료 콘텐츠: source_order_id 기준
-          // 무료 콘텐츠: source_content_id + source_type 기준
-          let updateResult;
-          if (orderId) {
-            updateResult = await supabase
-              .from('user_trait_tags')
-              .update({ is_confirmed: true })
-              .eq('user_id', session.user.id)
-              .in('tag_name', selectedTagNames)
-              .eq('source_order_id', orderId)
-              .select();
-          } else if (contentId) {
-            updateResult = await supabase
-              .from('user_trait_tags')
-              .update({ is_confirmed: true })
-              .eq('user_id', session.user.id)
-              .in('tag_name', selectedTagNames)
-              .eq('source_content_id', contentId)
-              .eq('source_type', sourceType)
-              .select();
-          }
+        // ⭐ 먼저 기존 태그가 DB에 있는지 확인
+        let existingTagsQuery = supabase
+          .from('user_trait_tags')
+          .select('tag_name')
+          .eq('user_id', session.user.id);
 
-          if (updateResult?.error) {
-            console.error('❌ [CheckRecordMe] 태그 확정 실패:', updateResult.error);
+        if (orderId) {
+          existingTagsQuery = existingTagsQuery.eq('source_order_id', orderId);
+        } else if (contentId) {
+          existingTagsQuery = existingTagsQuery
+            .eq('source_content_id', contentId)
+            .eq('source_type', sourceType);
+        }
+
+        const { data: existingTags } = await existingTagsQuery;
+        const hasExistingTags = existingTags && existingTags.length > 0;
+        console.log('📌 [CheckRecordMe] 기존 태그 존재 여부:', hasExistingTags, '개수:', existingTags?.length || 0);
+
+        if (selectedTagNames.length > 0) {
+          if (!hasExistingTags) {
+            // ⭐ DB에 태그가 없으면 INSERT (로그인 후 첫 저장인 경우)
+            console.log('📝 [CheckRecordMe] DB에 태그 없음 → INSERT 수행');
+
+            const tagsToInsert = tags
+              .filter(tag => tag.selected)
+              .map(tag => ({
+                user_id: session.user.id,
+                tag_name: tag.label,
+                tag_type: tag.type,
+                source_type: sourceType,
+                source_content_id: contentId || null,
+                source_order_id: orderId || null,
+                is_confirmed: true
+              }));
+
+            const { data: insertedTags, error: insertError } = await supabase
+              .from('user_trait_tags')
+              .insert(tagsToInsert)
+              .select();
+
+            if (insertError) {
+              console.error('❌ [CheckRecordMe] 태그 INSERT 실패:', insertError);
+            } else {
+              console.log('✅ [CheckRecordMe] 태그 INSERT 완료:', insertedTags?.length || 0, '개');
+            }
           } else {
-            console.log('✅ [CheckRecordMe] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+            // ⭐ DB에 태그가 있으면 UPDATE
+            console.log('📝 [CheckRecordMe] DB에 태그 있음 → UPDATE 수행');
+
+            // 유료 콘텐츠: source_order_id 기준
+            // 무료 콘텐츠: source_content_id + source_type 기준
+            let updateResult;
+            if (orderId) {
+              updateResult = await supabase
+                .from('user_trait_tags')
+                .update({ is_confirmed: true })
+                .eq('user_id', session.user.id)
+                .in('tag_name', selectedTagNames)
+                .eq('source_order_id', orderId)
+                .select();
+            } else if (contentId) {
+              updateResult = await supabase
+                .from('user_trait_tags')
+                .update({ is_confirmed: true })
+                .eq('user_id', session.user.id)
+                .in('tag_name', selectedTagNames)
+                .eq('source_content_id', contentId)
+                .eq('source_type', sourceType)
+                .select();
+            }
+
+            if (updateResult?.error) {
+              console.error('❌ [CheckRecordMe] 태그 확정 실패:', updateResult.error);
+            } else {
+              console.log('✅ [CheckRecordMe] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+            }
           }
         }
 
-        // ⭐ 2. 선택 안 한 태그: DELETE
-        if (unselectedTagNames.length > 0) {
+        // ⭐ 2. 선택 안 한 태그: DELETE (기존 태그가 있을 때만)
+        if (unselectedTagNames.length > 0 && hasExistingTags) {
           const deleteQuery = supabase
             .from('user_trait_tags')
             .delete()
@@ -275,6 +379,7 @@ export default function CheckRecordMe({
         localStorage.setItem('my_report_needs_refresh', 'true');
         localStorage.removeItem('trait_tags_cache');
         localStorage.removeItem('nadaum_all_tags_cache');
+        localStorage.removeItem('pending_trait_tags'); // 로그인 후 임시 저장 태그 삭제
         // 토스트는 호출하는 쪽에서 처리
         return true;
       } else {
@@ -301,11 +406,39 @@ export default function CheckRecordMe({
     }
   };
 
-  // ⭐ Primary 버튼 클릭 핸들러 (phone_number 체크 후 바텀시트 or 직접 저장)
+  // ⭐ Primary 버튼 클릭 핸들러 (로그인 체크 → phone_number 체크 후 바텀시트 or 직접 저장)
   const handlePrimaryButtonClick = async () => {
     // 태그 선택 여부 체크
     if (!tags.some(t => t.selected)) {
       toast.error('태그를 1개 이상 선택해주세요.');
+      return;
+    }
+
+    // ⭐ 로그인 상태 체크
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.user?.id) {
+      // 🔐 로그아웃 상태 → 태그 임시 저장 후 로그인 페이지로 이동
+      console.log('🔐 [CheckRecordMe] 로그아웃 상태 → 로그인 페이지로 이동');
+
+      // 선택된 태그 임시 저장
+      const selectedTags = tags.filter(t => t.selected).map(t => ({
+        label: t.label,
+        type: t.type
+      }));
+
+      localStorage.setItem('pending_trait_tags', JSON.stringify({
+        tags: selectedTags,
+        contentId: contentId,
+        orderId: orderId,
+        sourceType: sourceType
+      }));
+
+      // 로그인 후 돌아올 URL 저장 (특별 플래그와 함께)
+      localStorage.setItem('redirectAfterLogin', '/pending-tags-check');
+
+      // 로그인 페이지로 이동
+      navigate('/login/new', { state: { canGoBack: true } });
       return;
     }
 
@@ -381,38 +514,87 @@ export default function CheckRecordMe({
         }
         console.log('✅ [CheckRecordMe] phone_number 저장 성공');
 
-        // ⭐ 2. 선택한 태그: is_confirmed = true로 UPDATE
+        // ⭐ 2. 먼저 기존 태그가 DB에 있는지 확인
         console.log('🏷️ [CheckRecordMe] 태그 확정 시작...');
-        if (selectedTagNames.length > 0) {
-          let updateResult;
-          if (orderId) {
-            updateResult = await supabase
-              .from('user_trait_tags')
-              .update({ is_confirmed: true })
-              .eq('user_id', session.user.id)
-              .in('tag_name', selectedTagNames)
-              .eq('source_order_id', orderId)
-              .select();
-          } else if (contentId) {
-            updateResult = await supabase
-              .from('user_trait_tags')
-              .update({ is_confirmed: true })
-              .eq('user_id', session.user.id)
-              .in('tag_name', selectedTagNames)
-              .eq('source_content_id', contentId)
-              .eq('source_type', sourceType)
-              .select();
-          }
 
-          if (updateResult?.error) {
-            console.error('❌ [CheckRecordMe] 태그 확정 실패:', updateResult.error);
+        let existingTagsQuery = supabase
+          .from('user_trait_tags')
+          .select('tag_name')
+          .eq('user_id', session.user.id);
+
+        if (orderId) {
+          existingTagsQuery = existingTagsQuery.eq('source_order_id', orderId);
+        } else if (contentId) {
+          existingTagsQuery = existingTagsQuery
+            .eq('source_content_id', contentId)
+            .eq('source_type', sourceType);
+        }
+
+        const { data: existingTags } = await existingTagsQuery;
+        const hasExistingTags = existingTags && existingTags.length > 0;
+        console.log('📌 [CheckRecordMe/handleSave] 기존 태그 존재 여부:', hasExistingTags, '개수:', existingTags?.length || 0);
+
+        if (selectedTagNames.length > 0) {
+          if (!hasExistingTags) {
+            // ⭐ DB에 태그가 없으면 INSERT (로그인 후 첫 저장인 경우)
+            console.log('📝 [CheckRecordMe/handleSave] DB에 태그 없음 → INSERT 수행');
+
+            const tagsToInsert = tags
+              .filter(tag => tag.selected)
+              .map(tag => ({
+                user_id: session.user.id,
+                tag_name: tag.label,
+                tag_type: tag.type,
+                source_type: sourceType,
+                source_content_id: contentId || null,
+                source_order_id: orderId || null,
+                is_confirmed: true
+              }));
+
+            const { data: insertedTags, error: insertError } = await supabase
+              .from('user_trait_tags')
+              .insert(tagsToInsert)
+              .select();
+
+            if (insertError) {
+              console.error('❌ [CheckRecordMe/handleSave] 태그 INSERT 실패:', insertError);
+            } else {
+              console.log('✅ [CheckRecordMe/handleSave] 태그 INSERT 완료:', insertedTags?.length || 0, '개');
+            }
           } else {
-            console.log('✅ [CheckRecordMe] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+            // ⭐ DB에 태그가 있으면 UPDATE
+            console.log('📝 [CheckRecordMe/handleSave] DB에 태그 있음 → UPDATE 수행');
+
+            let updateResult;
+            if (orderId) {
+              updateResult = await supabase
+                .from('user_trait_tags')
+                .update({ is_confirmed: true })
+                .eq('user_id', session.user.id)
+                .in('tag_name', selectedTagNames)
+                .eq('source_order_id', orderId)
+                .select();
+            } else if (contentId) {
+              updateResult = await supabase
+                .from('user_trait_tags')
+                .update({ is_confirmed: true })
+                .eq('user_id', session.user.id)
+                .in('tag_name', selectedTagNames)
+                .eq('source_content_id', contentId)
+                .eq('source_type', sourceType)
+                .select();
+            }
+
+            if (updateResult?.error) {
+              console.error('❌ [CheckRecordMe/handleSave] 태그 확정 실패:', updateResult.error);
+            } else {
+              console.log('✅ [CheckRecordMe/handleSave] 선택 태그 확정 완료:', updateResult?.data?.length || 0, '개');
+            }
           }
         }
 
-        // ⭐ 3. 선택 안 한 태그: DELETE
-        if (unselectedTagNames.length > 0) {
+        // ⭐ 3. 선택 안 한 태그: DELETE (기존 태그가 있을 때만)
+        if (unselectedTagNames.length > 0 && hasExistingTags) {
           const deleteQuery = supabase
             .from('user_trait_tags')
             .delete()
@@ -424,16 +606,17 @@ export default function CheckRecordMe({
           } else if (contentId) {
             await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
           }
-          console.log('🗑️ [CheckRecordMe] 미선택 태그 삭제 완료');
+          console.log('🗑️ [CheckRecordMe/handleSave] 미선택 태그 삭제 완료');
         }
 
-        console.log('✅ [CheckRecordMe] 태그 확정 완료');
+        console.log('✅ [CheckRecordMe/handleSave] 태그 확정 완료');
 
         // 🚀 ProfilePage & NadaumTagsList & MyReportList 캐시 무효화
         localStorage.setItem('trait_tags_needs_refresh', 'true');
         localStorage.setItem('my_report_needs_refresh', 'true');
         localStorage.removeItem('trait_tags_cache');
         localStorage.removeItem('nadaum_all_tags_cache');
+        localStorage.removeItem('pending_trait_tags'); // 로그인 후 임시 저장 태그 삭제
       } else {
         // 게스트 사용자: localStorage에 임시 저장
         console.log('ℹ️ [CheckRecordMe] 게스트 모드 → localStorage에 임시 저장');
