@@ -162,22 +162,27 @@ export default function ProfilePage({
         const cachedUser = JSON.parse(cachedUserJson);
         const cachedSaju = cachedSajuJson ? JSON.parse(cachedSajuJson) : null;
 
-        // ⭐ 태그 캐시 로드 (만료 시간 체크: 5분, refresh 플래그 체크)
+        // ⭐ 태그 캐시 로드 (Stale-While-Revalidate 패턴)
+        // refresh 플래그가 있어도 이전 캐시 데이터를 먼저 보여주고, 새 데이터가 오면 업데이트
         let cachedTags: { id: string; tag_name: string }[] = [];
         let cachedTotalCount = 0;
         let hasValidTagCache = false;
+        let needsTagRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
 
-        // 🚀 refresh 플래그가 있으면 캐시 무효화
-        const needsTagRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
-
-        if (cachedTagsJson && !needsTagRefresh) {
+        if (cachedTagsJson) {
           const tagCache = JSON.parse(cachedTagsJson);
           const EXPIRY_MS = 5 * 60 * 1000; // 5분
-          if (Date.now() - tagCache.timestamp < EXPIRY_MS) {
-            cachedTags = tagCache.tags || [];
-            cachedTotalCount = tagCache.totalCount || 0;
+          const isExpired = Date.now() - tagCache.timestamp >= EXPIRY_MS;
+
+          // 🚀 캐시 데이터가 있으면 일단 로드 (stale 데이터라도 표시)
+          cachedTags = tagCache.tags || [];
+          cachedTotalCount = tagCache.totalCount || 0;
+
+          // 캐시가 만료되지 않고 refresh 플래그도 없으면 완전히 유효
+          if (!isExpired && !needsTagRefresh) {
             hasValidTagCache = true;
           }
+          // 캐시 데이터는 있으니 로딩 상태는 false (API는 백그라운드에서 호출)
         }
 
         // ⭐ 유효성 검사: user 정보와 primary_saju 정보가 모두 있어야 완전한 캐시로 간주
@@ -199,7 +204,9 @@ export default function ProfilePage({
           hasCache: hasValidCache, // user + primary_saju가 모두 있어야 true
           traitTags: cachedTags,
           totalTagCount: cachedTotalCount,
-          isLoadingTags: !hasValidTagCache // 태그 캐시가 없으면 로딩 표시
+          // 🚀 Stale-While-Revalidate: 캐시 데이터가 있으면 로딩 없이 바로 표시
+          isLoadingTags: cachedTags.length === 0 && !cachedTagsJson, // 캐시가 아예 없을 때만 로딩
+          needsTagRefresh // API 호출 필요 여부 전달
         };
       }
     } catch (e) {
@@ -213,7 +220,8 @@ export default function ProfilePage({
       hasCache: false,
       traitTags: [],
       totalTagCount: 0,
-      isLoadingTags: true
+      isLoadingTags: true,
+      needsTagRefresh: false
     };
   };
 
@@ -311,14 +319,15 @@ export default function ProfilePage({
 
       console.log('🔍 [ProfilePage] 캐시 & 플래그 체크');
       console.log('  - hasCache:', initialState.hasCache);
-      console.log('  - hasTagCache:', !initialState.isLoadingTags);
+      console.log('  - hasTagData:', initialState.traitTags.length > 0);
       console.log('  - needsRefresh:', needsRefresh);
       console.log('  - needsTagRefresh:', needsTagRefresh);
       console.log('  - forceReload:', forceReload);
 
       // 🚀 모든 캐시가 유효할 때만 API 호출 스킵 (user + saju + tags)
       // → iOS 스와이프 뒤로가기 시 불필요한 리로드 완전 방지
-      if (initialState.hasCache && !initialState.isLoadingTags && !needsRefresh && !needsTagRefresh && !forceReload) {
+      // 🚀 태그는 Stale-While-Revalidate: 캐시 데이터가 있으면 API 호출해도 UI는 즉시 표시
+      if (initialState.hasCache && !initialState.needsTagRefresh && !needsRefresh && !needsTagRefresh && !forceReload) {
         console.log('✅ [ProfilePage] 모든 캐시 유효 + refresh 불필요 + 강제 리로드 아님');
         console.log('   → API 호출 완전 스킵 (캐시만 사용)');
         return;
