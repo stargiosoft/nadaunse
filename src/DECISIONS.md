@@ -98,6 +98,83 @@
 
 ---
 
+### 로그아웃 사용자 태그 저장 플로우 개선
+
+**결정**: 로그아웃 상태에서 태그 저장 시 phone_number 바텀시트 대신 로그인 페이지로 리다이렉트, 로그인 후 자동 저장
+
+**배경**:
+- 문제: 로그아웃 사용자가 태그 저장 시 phone_number 바텀시트가 표시되지만, 로그인 없이는 저장 불가
+- 원인: phone_number 바텀시트는 로그인 사용자 대상 기능
+- 영향: 로그아웃 사용자의 태그/무료콘텐츠 결과가 손실됨
+
+**구현 방식**:
+
+```
+로그아웃 상태에서 태그 저장 클릭
+    ↓
+┌─────────────────────────────────────────────────┐
+│ CheckRecordMe.handlePrimaryButtonClick:          │
+│ 1. pending_trait_tags → localStorage            │
+│ 2. redirectAfterLogin = '/pending-tags-check'   │
+│ 3. 로그인 페이지로 이동                           │
+└─────────────────────────────────────────────────┘
+    ↓
+로그인/회원가입 완료
+    ↓
+┌─────────────────────────────────────────────────┐
+│ PendingTagsCheckPage:                           │
+│ 1. 사주 정보 저장 (cached_saju_info → DB)       │
+│ 2. 무료 콘텐츠 결과 저장 (localStorage → DB)    │
+│ 3. phone_number 확인                            │
+│    - 있으면: 태그 저장 → 홈 이동                │
+│    - 없으면: 바텀시트 오픈 → 태그 저장           │
+└─────────────────────────────────────────────────┘
+```
+
+**영향 범위**:
+- `App.tsx`: PendingTagsCheckPage 추가, WelcomeCoupon 플래그 초기화
+- `CheckRecordMe.tsx`: 로그인 체크, saveTags/handleSave INSERT 로직 추가
+- `PurchaseHistoryPage.tsx`: free_content_needs_refresh 플래그 확인
+
+**주요 localStorage 키**:
+- `pending_trait_tags`: 임시 태그 정보
+- `redirectAfterLogin`: 로그인 후 리다이렉트 URL
+- `open_phone_bottomsheet`: 바텀시트 자동 오픈 플래그
+- `free_content_needs_refresh`: 이용기록 캐시 갱신 플래그
+
+---
+
+### CardContent 페이지네이션 및 UI 개선
+
+**결정**: CardContent 컴포넌트 기본 노출 6개 + 페이지네이션, 태그 색상 변경
+
+**배경**:
+- 기존: 4개 노출, 더보기 클릭 시 홈으로 이동
+- 변경: 6개 노출, 더보기 클릭 시 6개씩 추가 로드
+
+**구현 방식**:
+```typescript
+const PAGE_SIZE = 6;
+const handleMoreClick = async () => {
+  const loadedIds = contents.map(c => c.id);
+  const { data } = await supabase
+    .from('master_contents')
+    .not('id', 'in', `(${loadedIds.join(',')})`)
+    .order('weekly_clicks', { ascending: false })
+    .limit(PAGE_SIZE);
+  // ...
+};
+```
+
+**UI 변경**:
+- 태그 배경색: #f0f8f8 (민트) → #f3f3f3 (회색)
+- 태그 글자색: #41a09e (민트) → #999999 (회색)
+- 정렬 기준: order_count → weekly_clicks
+
+**영향 범위**: `CardContent.tsx`
+
+---
+
 ## 2026-01-29
 
 ### 무료/유료 콘텐츠 나다움 태그 통합 플로우
