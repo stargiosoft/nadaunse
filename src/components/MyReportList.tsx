@@ -549,14 +549,14 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     localStorage.removeItem(MY_REPORT_CACHE_KEY);
   };
 
-  // ⭐ DEV: 알림톡 발송 테스트 (보고서 알림톡)
+  // ⭐ DEV: 주간 보고서 배치 실행 (보고서 생성 + 알림톡 발송)
   const [isSendingAlimtalk, setIsSendingAlimtalk] = useState(false);
   const handleDevSendAlimtalk = async () => {
     if (isSendingAlimtalk) return;
 
     try {
       setIsSendingAlimtalk(true);
-      console.log('📱 [DEV] 알림톡 발송 시작...');
+      console.log('🚀 [DEV] 주간 보고서 배치 시작...');
 
       // 1. 현재 로그인한 사용자 확인
       const { data: { user } } = await supabase.auth.getUser();
@@ -565,58 +565,60 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         return;
       }
 
-      // 2. 사주 정보에서 '본인' 레코드의 전화번호 조회
-      const { data: sajuRecords, error: sajuError } = await supabase
-        .from('saju_records')
-        .select('id, full_name, phone_number, notes')
-        .eq('user_id', user.id)
-        .eq('notes', '본인')
-        .single();
+      console.log('👤 [DEV] 사용자 ID:', user.id);
 
-      if (sajuError || !sajuRecords) {
-        console.error('❌ [DEV] 사주 정보 조회 실패:', sajuError);
-        alert('본인 사주 정보를 찾을 수 없습니다.\n사주 정보를 먼저 등록해주세요.');
-        return;
-      }
-
-      const phoneNumber = sajuRecords.phone_number;
-      if (!phoneNumber) {
-        alert('전화번호가 등록되지 않았습니다.\n사주 정보에서 전화번호를 등록해주세요.');
-        return;
-      }
-
-      console.log('📱 [DEV] 전화번호:', phoneNumber);
-      console.log('📱 [DEV] 사용자 이름:', sajuRecords.full_name);
-
-      // 3. send-alimtalk Edge Function 호출 (테스트용)
-      // ⚠️ 실제 보고서 알림톡은 별도 템플릿 필요 (현재는 구매 완료 템플릿 사용)
-      const { data, error } = await supabase.functions.invoke('send-alimtalk', {
+      // 2. generate-weekly-reports-batch Edge Function 호출 (테스트 모드)
+      // 현재 로그인한 사용자만 대상으로 실행
+      const { data, error } = await supabase.functions.invoke('generate-weekly-reports-batch', {
         body: {
-          orderId: `dev_report_${Date.now()}`, // 테스트용 더미 orderId
-          userId: user.id,
-          mobile: phoneNumber,
-          customerName: sajuRecords.full_name,
-          contentId: 'weekly_report_test' // 테스트용 더미 contentId
+          testMode: true,
+          testUserIds: [user.id]
         }
       });
 
       if (error) {
-        console.error('❌ [DEV] 알림톡 발송 실패:', error);
-        alert(`알림톡 발송 실패: ${error.message}`);
+        console.error('❌ [DEV] 배치 실행 실패:', error);
+        alert(`배치 실행 실패: ${error.message}`);
         return;
       }
 
-      console.log('✅ [DEV] 알림톡 발송 결과:', data);
+      console.log('✅ [DEV] 배치 실행 결과:', data);
 
       if (data?.success) {
-        alert(`✅ 알림톡 발송 성공!\n\n수신번호: ${phoneNumber}\n이름: ${sajuRecords.full_name}`);
+        const summary = data.summary;
+        const results = data.results || [];
+        const successResults = results.filter((r: { success: boolean }) => r.success);
+        const failResults = results.filter((r: { success: boolean }) => !r.success);
+
+        let message = `✅ 주간 보고서 배치 완료!\n\n`;
+        message += `📊 결과:\n`;
+        message += `• 대상: ${summary?.targetCount || 0}명\n`;
+        message += `• 성공: ${summary?.successCount || 0}명\n`;
+        message += `• 실패: ${summary?.failCount || 0}명\n`;
+        message += `• 소요 시간: ${summary?.elapsedSeconds || 0}초\n`;
+
+        if (successResults.length > 0) {
+          message += `\n🎉 생성된 보고서 ID:\n`;
+          successResults.forEach((r: { reportId?: string }) => {
+            message += `• ${r.reportId}\n`;
+          });
+        }
+
+        if (failResults.length > 0) {
+          message += `\n❌ 실패 사유:\n`;
+          failResults.forEach((r: { error?: string }) => {
+            message += `• ${r.error}\n`;
+          });
+        }
+
+        alert(message);
       } else {
-        alert(`알림톡 발송 실패: ${data?.error || '알 수 없는 오류'}`);
+        alert(`배치 실행 실패: ${data?.error || '알 수 없는 오류'}`);
       }
 
     } catch (error) {
-      console.error('❌ [DEV] 알림톡 발송 오류:', error);
-      alert(`알림톡 발송 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      console.error('❌ [DEV] 배치 실행 오류:', error);
+      alert(`배치 실행 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     } finally {
       setIsSendingAlimtalk(false);
     }
@@ -640,7 +642,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
           <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
             <div className="flex items-center justify-between" style={{ padding: '4px 12px', width: '100%' }}>
-              <ArrowLeft onClick={onBack || (() => window.history.back())} />
+              <ArrowLeft onClick={onBack || (() => navigate('/'))} />
               <p style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
                 fontSize: '18px',
@@ -726,7 +728,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                     opacity: isSendingAlimtalk ? 0.7 : 1
                   }}
                 >
-                  {isSendingAlimtalk ? '발송 중...' : '📱 알림톡 발송 (DEV)'}
+                  {isSendingAlimtalk ? '생성 중...' : '📊 보고서 생성 (DEV)'}
                 </button>
               </div>
             )}
