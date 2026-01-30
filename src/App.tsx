@@ -1872,14 +1872,19 @@ function PendingTagsCheckPage() {
     processPendingTags();
   }, [navigate]);
 
-  // 처리 중 로딩 화면
+  // 처리 중 로딩 화면 (FreeContentLoading 공통 스타일)
   return (
-    <div className="bg-white fixed inset-0 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-2 border-[#48b2af] border-t-transparent rounded-full animate-spin" />
-        <p style={{ fontFamily: 'Pretendard Variable', fontSize: '14px', color: '#666' }}>
-          처리 중...
-        </p>
+    <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
+      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
+        <DotLoading />
+        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
+          <div className="flex flex-col justify-center relative shrink-0 w-full">
+            <p className="font-semibold leading-[32.5px]">나다움 기록을</p>
+          </div>
+          <div className="flex flex-col justify-center relative shrink-0 w-full">
+            <p className="font-semibold leading-[32.5px]">준비중이에요!</p>
+          </div>
+        </div>
       </div>
     </div>
   );
