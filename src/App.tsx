@@ -1637,7 +1637,6 @@ function PendingTagsCheckPage() {
               .eq('user_id', session.user.id);
 
             const isFirstSaju = !existingSaju || existingSaju.length === 0;
-            const genderKorean = cachedSaju.gender === 'female' ? '여' : '남';
 
             // 사주 레코드 INSERT
             const { data: newSajuRecord, error: sajuInsertError } = await supabase
@@ -1645,7 +1644,7 @@ function PendingTagsCheckPage() {
               .insert({
                 user_id: session.user.id,
                 full_name: cachedSaju.name,
-                gender: genderKorean,
+                gender: cachedSaju.gender === 'female' ? 'female' : 'male', // 'female' 또는 'male'로 저장
                 birth_date: new Date(cachedSaju.birthDate).toISOString(),
                 birth_time: cachedSaju.birthTime || '12:00',
                 notes: '본인',
@@ -1729,7 +1728,7 @@ function PendingTagsCheckPage() {
                   content_id: pendingData.contentId,
                   saju_record_id: savedSajuRecordId,
                   full_name: freeResult.sajuData?.name || freeResult.userName || '회원',
-                  gender: freeResult.sajuData?.gender || '여',
+                  gender: freeResult.sajuData?.gender || 'female', // 기본값 'female'로 저장
                   birth_date: freeResult.sajuData?.birthDate
                     ? new Date(freeResult.sajuData.birthDate).toISOString()
                     : new Date().toISOString(),

@@ -158,8 +158,6 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       throw new Error('로그인이 필요합니다.');
     }
 
-    const genderKorean = data.gender === 'female' ? '여' : '남';
-
     // ⭐ 기존 사주 개수 확인 (최초 사주면 is_primary: true)
     const { data: existingSaju, error: existingError } = await supabase
       .from('saju_records')
@@ -178,7 +176,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       .insert({
         user_id: user.id,
         full_name: data.name,
-        gender: genderKorean,
+        gender: data.gender, // 'female' 또는 'male'로 저장
         birth_date: new Date(data.birthDate).toISOString(),
         birth_time: data.birthTime,
         notes: '본인',
