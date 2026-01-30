@@ -107,6 +107,8 @@ serve(async (req) => {
         console.error('❌ SAJU_API_KEY 환경변수가 설정되지 않았습니다.')
         throw new Error('사주 API 키가 설정되지 않았습니다.')
       }
+      // 디버깅: API 키 정보 (앞 4자리, 길이만 표시)
+      console.log('🔑 SAJU_API_KEY 확인:', `시작=${sajuApiKey.substring(0, 4)}***, 길이=${sajuApiKey.length}`)
 
       // 날짜 포맷 변환
       const birthDateStr = sajuRecord.birth_date as string
@@ -115,7 +117,13 @@ serve(async (req) => {
       const timeOnly = (sajuRecord.birth_time as string).replace(/:/g, '')
       const birthday = dateOnly + timeOnly
 
-      const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=false&gender=${sajuRecord.gender}&apiKey=${sajuApiKey}`
+      // 성별 변환 (남/여 → male/female)
+      let genderForApi = sajuRecord.gender as string
+      if (genderForApi === '남') genderForApi = 'male'
+      else if (genderForApi === '여') genderForApi = 'female'
+      console.log('👤 성별 변환:', sajuRecord.gender, '→', genderForApi)
+
+      const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=false&gender=${genderForApi}&apiKey=${sajuApiKey}`
       console.log('📞 사주 API URL:', sajuApiUrl.replace(sajuApiKey, '***'))  // 키는 로그에서 마스킹
 
       // 최대 3번 재시도
@@ -141,11 +149,12 @@ serve(async (req) => {
 
           console.log('📡 사주 API 응답 상태:', sajuResponse.status)
 
-          if (!sajuResponse.ok) {
-            throw new Error(`사주 API HTTP 오류: ${sajuResponse.status}`)
-          }
-
           const rawText = await sajuResponse.text()
+
+          if (!sajuResponse.ok) {
+            console.error('❌ 사주 API HTTP 오류 응답 본문:', rawText.substring(0, 1000))
+            throw new Error(`사주 API HTTP 오류: ${sajuResponse.status} - ${rawText.substring(0, 200)}`)
+          }
           console.log('📡 응답 길이:', rawText.length)
           console.log('📡 응답 원문 (처음 500자):', rawText.substring(0, 500))
 

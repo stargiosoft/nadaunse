@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import svgPaths from "@/imports/svg-nx753fhzfr";
-import imgSwords11Png from "@/assets/2ced5a86877d398cd3930c1ef08e032cadaa48d4.png";
+import { useWeeklyReport, TarotSelection, markTarotAsViewed } from '@/hooks/useWeeklyReport';
 
 function Box() {
   return (
@@ -67,21 +67,40 @@ function NavigationTopBar({ onBack }: { onBack?: () => void }) {
   );
 }
 
-function Swords11Png() {
+interface TarotCardImageProps {
+  imageUrl: string;
+  cardName: string;
+}
+
+function TarotCardImage({ imageUrl, cardName }: TarotCardImageProps) {
   return (
     <div className="relative shadow-sm shrink-0" style={{ height: '260px', width: '150px', borderRadius: '16px', boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)' }}>
       <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: '16px' }}>
-        <img alt="Tarot Card" className="absolute left-0 max-w-none size-full top-0 object-cover" src={imgSwords11Png} />
+        <img
+          alt={cardName}
+          className="absolute left-0 max-w-none size-full top-0 object-cover"
+          src={imageUrl}
+          onError={(e) => {
+            // 이미지 로드 실패 시 기본 이미지 표시
+            (e.target as HTMLImageElement).src = '/tarot-back.png';
+          }}
+        />
       </div>
     </div>
   );
 }
 
-function CardTextContainer({ title, description }: { title: string, description: string }) {
+interface CardTextContainerProps {
+  title: string;
+  description: string;
+  imageUrl: string;
+}
+
+function CardTextContainer({ title, description, imageUrl }: CardTextContainerProps) {
   return (
     <div className="flex flex-col items-center relative shrink-0 w-full" style={{ padding: '0 20px' }} data-name="Container">
         <div className="flex flex-col items-center w-full" style={{ gap: '18px', marginBottom: '10px' }}>
-            <Swords11Png />
+            <TarotCardImage imageUrl={imageUrl} cardName={title} />
             <p style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 600,
@@ -106,31 +125,61 @@ function CardTextContainer({ title, description }: { title: string, description:
   );
 }
 
-function CardInterpretationCard() {
-  const title = "Page of swords";
-  const description = "이 카드는 호기심과 탐구심, 그리고 진실을 알고자 하는 열망을 상징합니다. 상대방을 향한 당신의 관심이 깊어지고 있으며, 마음속에 질문이 많아지는 시기일 수 있습니다. 다만, 모든 것을 성급히 판단하기보다 관찰하고 배워가야 할 때입니다. 말과 행동에서 솔직함이 중요하며, 작은 오해를 바로잡는 데 힘쓰면 관계가 훨씬 안정될 수 있습니다.";
+interface CardInterpretationCardProps {
+  tarot: TarotSelection;
+  cardLabel: string;
+}
+
+function CardInterpretationCard({ tarot, cardLabel }: CardInterpretationCardProps) {
+  // 카드 순서에 따른 라벨
+  const labels = ['나를 채워줄 감정', '내가 다독일 감정', '다음 주 마음 날씨'];
+  const label = labels[tarot.card_order - 1] || cardLabel;
 
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }} data-name="Card / Interpretation Card">
       <div className="flex flex-row justify-center size-full">
         <div className="flex items-start justify-center relative w-full" style={{ padding: '32px 0 28px 0' }}>
-          <CardTextContainer title={title} description={description} />
+          <div className="flex flex-col items-center w-full">
+            {/* 카드 라벨 */}
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: '#48b2af',
+              letterSpacing: '-0.28px',
+              marginBottom: '16px'
+            }}>{label}</p>
+            <CardTextContainer
+              title={tarot.card_name}
+              description={tarot.interpretation || '해석 정보가 없습니다.'}
+              imageUrl={tarot.card_image_url}
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function CardContainer() {
+interface CardContainerProps {
+  tarotSelections: TarotSelection[];
+}
+
+function CardContainer({ tarotSelections }: CardContainerProps) {
   return (
     <div
       className="flex flex-col gap-4 items-start w-full px-5 pt-3"
       style={{ paddingBottom: '230px' }}
       data-name="Card Container"
     >
-      <CardInterpretationCard />
-      <CardInterpretationCard />
-      <CardInterpretationCard />
+      {tarotSelections.map((tarot, index) => (
+        <CardInterpretationCard
+          key={tarot.id}
+          tarot={tarot}
+          cardLabel={`카드 ${index + 1}`}
+        />
+      ))}
     </div>
   );
 }
@@ -171,17 +220,94 @@ function BottomButton({ onNext }: { onNext?: () => void }) {
   );
 }
 
+// 로딩 스켈레톤
+function LoadingSkeleton() {
+  return (
+    <div className="animate-pulse p-5 space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-gray-200 rounded-2xl p-7">
+          <div className="flex flex-col items-center">
+            <div className="h-[260px] w-[150px] bg-gray-300 rounded-2xl mb-4" />
+            <div className="h-6 bg-gray-300 rounded w-32 mb-4" />
+            <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+            <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+            <div className="h-4 bg-gray-300 rounded w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface ReportWeeklyTarotResultProps {
   onBack?: () => void;
   onNext?: () => void;
+  reportId?: string;
+  // 외부에서 데이터 직접 주입 가능
+  tarotData?: TarotSelection[];
 }
 
-export default function ReportWeeklyTarotResult({ onBack, onNext }: ReportWeeklyTarotResultProps) {
+export default function ReportWeeklyTarotResult({
+  onBack,
+  onNext,
+  reportId,
+  tarotData: externalTarotData
+}: ReportWeeklyTarotResultProps) {
+  const { tarotSelections: fetchedTarot, loading, error } = useWeeklyReport(
+    externalTarotData ? undefined : reportId
+  );
+
+  const tarotSelections = externalTarotData || fetchedTarot;
+
+  // 타로 카드 열람 상태 업데이트
+  useEffect(() => {
+    if (tarotSelections.length > 0) {
+      tarotSelections.forEach(tarot => {
+        if (!tarot.user_viewed) {
+          markTarotAsViewed(tarot.id);
+        }
+      });
+    }
+  }, [tarotSelections]);
+
+  if (loading && !externalTarotData) {
+    return (
+      <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
+        <NavigationTopBar onBack={onBack} />
+        <div className="flex-1 overflow-y-auto w-full relative">
+          <LoadingSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !externalTarotData) {
+    return (
+      <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
+        <NavigationTopBar onBack={onBack} />
+        <div className="flex-1 flex items-center justify-center p-5">
+          <p style={{ color: '#999', fontSize: '15px' }}>타로 결과를 불러올 수 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (tarotSelections.length === 0 && !externalTarotData) {
+    return (
+      <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
+        <NavigationTopBar onBack={onBack} />
+        <div className="flex-1 flex items-center justify-center p-5">
+          <p style={{ color: '#999', fontSize: '15px' }}>타로 결과가 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (타로 풀이)">
       <NavigationTopBar onBack={onBack} />
       <div className="flex-1 overflow-y-auto w-full relative">
-        <CardContainer />
+        <CardContainer tarotSelections={tarotSelections} />
       </div>
       <BottomButton onNext={onNext} />
     </div>

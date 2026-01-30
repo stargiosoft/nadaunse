@@ -447,13 +447,20 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
         const result = await response.json()
         console.log('📬 OpenAI 응답 수신')
 
-        // 응답에서 텍스트 추출
-        const outputText = result.output?.[0]?.content?.[0]?.text ||
-                          result.output_text ||
-                          result.choices?.[0]?.message?.content ||
-                          ''
+        // 응답에서 텍스트 추출 (GPT-5.1 Responses API 형식)
+        let outputText = ''
+        const messageOutput = result.output?.find((o: any) => o.type === 'message')
+        if (messageOutput?.content?.[0]?.text) {
+          outputText = messageOutput.content[0].text.trim()
+        } else if (result.output_text) {
+          outputText = result.output_text.trim()
+        } else if (result.choices?.[0]?.message?.content) {
+          // Chat Completions API 폴백
+          outputText = result.choices[0].message.content.trim()
+        }
 
         if (!outputText) {
+          console.error('❌ OpenAI 응답 구조:', JSON.stringify(result, null, 2).substring(0, 500))
           throw new Error('OpenAI 응답에 텍스트가 없습니다.')
         }
 

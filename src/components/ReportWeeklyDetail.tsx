@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import svgPaths from "@/imports/svg-g7inqw5l9h";
 import svgPathsDove from "@/imports/svg-d6wqnyhzay";
 import ArrowLeft from './ArrowLeft';
+import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, ReportSection, UserTraitTag } from '@/hooks/useWeeklyReport';
 
 function Icon() {
   return (
@@ -32,7 +32,12 @@ function NotoDove() {
   );
 }
 
-function TitleContainer() {
+interface TitleContainerProps {
+  title: string;
+  dateRange: string;
+}
+
+function TitleContainer({ title, dateRange }: TitleContainerProps) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Title Container">
       <div className="flex items-center w-full" style={{ gap: '8px' }}>
@@ -44,7 +49,7 @@ function TitleContainer() {
           fontSize: '18px',
           letterSpacing: '-0.36px'
         }}>
-          26년 5월 4주차 보고서
+          {title}
         </span>
         <span style={{
           fontFamily: 'Pretendard Variable',
@@ -56,17 +61,23 @@ function TitleContainer() {
           paddingTop: '2px',
           paddingBottom: '3px'
         }}>
-          01.25 ~ 01.31
+          {dateRange}
         </span>
       </div>
     </div>
   );
 }
 
-function TextContainer() {
+interface TextContainerProps {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+}
+
+function TextContainer({ title, dateRange, paragraphs }: TextContainerProps) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '8px' }} data-name="Text Container">
-      <TitleContainer />
+      <TitleContainer title={title} dateRange={dateRange} />
       <div style={{
         fontFamily: 'Pretendard Variable',
         fontWeight: 400,
@@ -76,17 +87,24 @@ function TextContainer() {
         letterSpacing: '-0.32px',
         width: '100%'
       }}>
-        <p className="mb-0">이번 주 당신은 겉으론 또렷하고 논리적인데 속마음은 관계 걱정으로 몽글몽글 불안이 떠 있는 사람에 가까워요.</p>
-        <p className="mb-0">&nbsp;</p>
-        <p className="mb-0">당신 사주는 머리가 빠르게 회전하고 말과 표현이 뛰어난 형이에요. 재물과 현실 감각도 좋아서 일과 돈 문제는 어느 정도 스스로 길을 찾아가요. 대신 에너지가 바깥으로 치우쳐 관계와 평가에 민감해지기 쉬워요. 그래서 요즘처럼 연애와 인간관계에 시선이 집중되면 '왜 나만 이렇게 비껴가나'라는 마음이 더 커질 수 있어요.</p>
-        <p className="mb-0">&nbsp;</p>
-        <p>또 당신은 애초에 책임감과 자존심이 강한 사람이라 무리 없이 섞이기보다 '내가 괜찮은 사람으로 보이는가'를 기준으로 사람을 바라봐요. 이 기질과 지금의 관계 갈증이 부딪히니 사소한 말 한마디에도 상처받고 조급해진 거예요. 덜 사랑받아서가 아니라 사랑과 인정에 예민한 구조라서 더 크게 느껴지는 것뿐이에요.</p>
+        {paragraphs.map((paragraph, index) => (
+          <p key={index} className={index < paragraphs.length - 1 ? "mb-0" : ""}>
+            {paragraph}
+            {index < paragraphs.length - 1 && <><br />&nbsp;<br /></>}
+          </p>
+        ))}
       </div>
     </div>
   );
 }
 
-function ContentContainer() {
+interface ContentContainerProps {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+}
+
+function ContentContainer({ title, dateRange, paragraphs }: ContentContainerProps) {
   return (
     <div className="flex flex-col items-start relative self-stretch shrink-0 w-full" style={{ gap: '20px' }} data-name="Content Container">
       <div className="flex items-center justify-center relative shrink-0">
@@ -94,43 +112,67 @@ function ContentContainer() {
           <NotoDove />
         </div>
       </div>
-      <TextContainer />
+      <TextContainer title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
 }
 
-function Container() {
+interface ContainerProps {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+}
+
+function Container({ title, dateRange, paragraphs }: ContainerProps) {
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }} data-name="Container">
       <div className="flex flex-row justify-center" style={{ width: '100%', height: '100%' }}>
         <div className="flex items-start justify-center relative w-full" style={{ padding: '28px 20px' }}>
-          <ContentContainer />
+          <ContentContainer title={title} dateRange={dateRange} paragraphs={paragraphs} />
         </div>
       </div>
     </div>
   );
 }
 
-function CardInterpretationCard() {
+interface CardInterpretationCardProps {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+}
+
+function CardInterpretationCard({ title, dateRange, paragraphs }: CardInterpretationCardProps) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Card / Interpretation Card">
-      <Container />
+      <Container title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
 }
 
-function ContentContainer1() {
+interface ContentContainer1Props {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+}
+
+function ContentContainer1({ title, dateRange, paragraphs }: ContentContainer1Props) {
   return (
     <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '12px 20px 40px 20px' }} data-name="Content Container">
-      <CardInterpretationCard />
+      <CardInterpretationCard title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
 }
 
-function ContentContainer2() {
+interface ContentContainer2Props {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+}
+
+function ContentContainer2({ title, dateRange, paragraphs }: ContentContainer2Props) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Content Container">
-      <ContentContainer1 />
+      <ContentContainer1 title={title} dateRange={dateRange} paragraphs={paragraphs} />
       <div className="shrink-0 w-full" style={{ height: '12px', backgroundColor: '#f9f9f9' }} data-name="Divider" />
     </div>
   );
@@ -201,41 +243,42 @@ function TagLabel({ text }: { text: string }) {
   );
 }
 
-function Frame1() {
-  const tags = [
-    "배려심 많은", "성실한", "책임감 있는", "리더십 있는", "감정 변화가 큰",
-    "관찰력 있는", "섬세한", "결단력 있는", "쉽게 흔들리지 않는", "버티는 힘이 있는",
-    "스스로를 잘 지키는", "상황을 주도하는", "위기에도 침착한", "기준이 분명한", "솔직한",
-    "자유로운", "창의적인", "도전적인", "긍정적인", "활기찬",
-    "차분한", "사려 깊은", "열정적인", "유머러스한", "감각적인",
-    "논리적인", "직관적인", "포용력 있는", "단호한", "융통성 있는",
-    "겸손한", "용기 있는", "호기심 많은", "끈기 있는", "낙천적인",
-    "신중한", "공감 능력이 뛰어난", "협동적인", "독창적인", "분석적인",
-    "계획적인", "모험을 즐기는", "이성적인", "감성적인", "정직한",
-    "신뢰할 수 있는", "따뜻한", "자신감 있는", "대담한", "주체적인"
-  ];
+interface Frame1Props {
+  tags: UserTraitTag[];
+}
 
+function Frame1({ tags }: Frame1Props) {
   return (
     <div className="flex items-center justify-start relative shrink-0 w-full content-start" style={{ flexWrap: 'wrap', gap: '6px' }}>
-      {tags.map((tag, i) => (
-        <TagLabel key={i} text={tag} />
+      {tags.map((tag) => (
+        <TagLabel key={tag.id} text={tag.tag_name} />
       ))}
     </div>
   );
 }
 
-function Frame2() {
+interface Frame2Props {
+  tags: UserTraitTag[];
+}
+
+function Frame2({ tags }: Frame2Props) {
   return (
     <div className="relative shrink-0 w-full">
       <div className="flex flex-col items-start relative w-full" style={{ padding: '0 20px' }}>
-        <Frame1 />
+        <Frame1 tags={tags} />
       </div>
     </div>
   );
 }
 
-function TagListAccordion() {
+interface TagListAccordionProps {
+  tags: UserTraitTag[];
+}
+
+function TagListAccordion({ tags }: TagListAccordionProps) {
   const [isOpen, setIsOpen] = useState(true);
+
+  if (tags.length === 0) return null;
 
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Tag List Accordion">
@@ -249,7 +292,7 @@ function TagListAccordion() {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             style={{ overflow: "hidden", width: "100%" }}
           >
-            <Frame2 />
+            <Frame2 tags={tags} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -257,11 +300,18 @@ function TagListAccordion() {
   );
 }
 
-function ContentContainer3() {
+interface ContentContainer3Props {
+  title: string;
+  dateRange: string;
+  paragraphs: string[];
+  tags: UserTraitTag[];
+}
+
+function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContainer3Props) {
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '16px', paddingBottom: '230px' }} data-name="Content Container">
-      <ContentContainer2 />
-      <TagListAccordion />
+      <ContentContainer2 title={title} dateRange={dateRange} paragraphs={paragraphs} />
+      <TagListAccordion tags={tags} />
     </div>
   );
 }
@@ -347,17 +397,94 @@ function CommonBottomButton({ onTarotStart }: { onTarotStart?: () => void }) {
   );
 }
 
+// 로딩 스켈레톤
+function LoadingSkeleton() {
+  return (
+    <div className="animate-pulse p-5">
+      <div className="bg-gray-200 rounded-2xl p-7">
+        <div className="h-10 w-10 bg-gray-300 rounded-full mb-5" />
+        <div className="h-6 bg-gray-300 rounded w-3/4 mb-2" />
+        <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+        <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+        <div className="h-4 bg-gray-300 rounded w-2/3" />
+      </div>
+    </div>
+  );
+}
+
 interface ReportWeeklyDetailProps {
   onBack: () => void;
   onTarotStart?: () => void;
+  reportId?: string;
+  // 외부에서 데이터 직접 주입 가능
+  reportData?: WeeklyReport;
+  sectionData?: ReportSection;
+  tagsData?: UserTraitTag[];
 }
 
-export default function ReportWeeklyDetail({ onBack, onTarotStart }: ReportWeeklyDetailProps) {
+export default function ReportWeeklyDetail({
+  onBack,
+  onTarotStart,
+  reportId,
+  reportData: externalReport,
+  sectionData: externalSection,
+  tagsData: externalTags
+}: ReportWeeklyDetailProps) {
+  // 외부 데이터가 없으면 훅으로 조회
+  const { report: fetchedReport, sections, weeklyTags, loading, error } = useWeeklyReport(
+    externalReport ? undefined : reportId
+  );
+
+  const report = externalReport || fetchedReport;
+  const myStorySection = externalSection || sections.find(s => s.section_type === 'my_story');
+  const tags = externalTags || weeklyTags;
+
+  // 데이터 추출
+  const title = report ? formatReportTitle(report) : '보고서';
+  const dateRange = report ? formatWeekRange(report) : '';
+  const paragraphs = myStorySection?.content?.content_paragraphs || [];
+
+  if (loading && !externalReport) {
+    return (
+      <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
+        <NavigationTopNavigationWidget onBack={onBack} />
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
+  if (error && !externalReport) {
+    return (
+      <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
+        <NavigationTopNavigationWidget onBack={onBack} />
+        <div className="flex-1 flex items-center justify-center p-5">
+          <p style={{ color: '#999', fontSize: '15px' }}>보고서를 불러올 수 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!report && !externalReport) {
+    return (
+      <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
+        <NavigationTopNavigationWidget onBack={onBack} />
+        <div className="flex-1 flex items-center justify-center p-5">
+          <p style={{ color: '#999', fontSize: '15px' }}>보고서가 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }} data-name="나의 보고서 (보고서 상세)">
       <NavigationTopNavigationWidget onBack={onBack} />
       <div className="flex-1 overflow-y-auto w-full">
-        <ContentContainer3 />
+        <ContentContainer3
+          title={title}
+          dateRange={dateRange}
+          paragraphs={paragraphs}
+          tags={tags}
+        />
       </div>
       <CommonBottomButton onTarotStart={onTarotStart} />
     </div>

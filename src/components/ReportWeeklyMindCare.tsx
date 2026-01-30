@@ -3,6 +3,7 @@ import svgPaths from "@/imports/svg-cxwdyqr8rc";
 import cloverSvgPaths from "@/imports/svg-8dky997t82";
 import { motion } from 'motion/react';
 import ReportWeeklyMemo from '@/components/ReportWeeklyMemo';
+import { useWeeklyReport, WeeklyReport, ReportSection } from '@/hooks/useWeeklyReport';
 
 // --- Icons & Graphics ---
 
@@ -109,7 +110,11 @@ function TopBar({ onBack }: { onBack?: () => void }) {
   );
 }
 
-function PrescriptionCard() {
+interface PrescriptionCardProps {
+  paragraphs: string[];
+}
+
+function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }}>
       <div className="flex justify-center w-full" style={{ padding: '28px 20px' }}>
@@ -140,13 +145,12 @@ function PrescriptionCard() {
                letterSpacing: '-0.32px',
                width: '100%'
              }}>
-                <p className="mb-0">지금 힘든 건 당신이 덜 난 사람이어서가 아니라 타고난 예민함과 관계에 민감한 시기가 겹쳤기 때문이에요. 일과 재물 쪽 에너지는 강한데 정작 내 마음을 돌보는 시간은 부족해서 쉽게 소진되기 쉬운 구조예요. 그래서 작은 말에도 '나만 빼고 친한가'라는 생각이 과장되어 느껴지는 거예요.</p>
-                <p className="mb-0">&nbsp;</p>
-                <p className="mb-0">당신다움은 빠른 이해력과 말로 풀어내는 능력, 그리고 상황을 냉정하게 읽는 분별력이에요. 이 힘 덕분에 일에서는 성과를 내고 돈 흐름도 잘 볼 수 있어요. 조급함과 갈등은 이 강점의 부작용일 뿐이에요. 스스로에게 적용하는 기준을 조금만 느슨하게 하면 같은 기질이 '민감한 문제 해결가'라는 장점으로 바뀔 수 있어요.</p>
-                <p className="mb-0">&nbsp;</p>
-                <p className="mb-0">올해와 내년 흐름은 일과 연애 운이 함께 살아나는 시기예요. 특히 2025년과 2026년에는 능력 인정과 관계 확장의 기회가 커져요. '나는 맨날 겉돈다'는 생각보다 '이제 내 자리를 찾아가는 중'이라고 보는 편이 실제 운세와도 더 잘 맞아요.</p>
-                <p className="mb-0">&nbsp;</p>
-                <p>앞으로는 타인의 기준을 따라붙는 삶보다 '나는 어떤 관계에서 편안한가'를 먼저 묻는 태도가 중요해요. 당신 사주는 안정적이면서도 서로를 존중해 주는 성숙한 관계에서 가장 빛나요. 조급하게 아무 관계나 붙잡기보다 나를 지키는 선을 연습할수록 곧 들어올 좋은 흐름을 더 편안하게 맞이할 수 있어요.</p>
+               {paragraphs.map((paragraph, index) => (
+                 <p key={index} className={index < paragraphs.length - 1 ? "mb-0" : ""}>
+                   {paragraph}
+                   {index < paragraphs.length - 1 && <><br />&nbsp;<br /></>}
+                 </p>
+               ))}
              </div>
           </div>
 
@@ -171,12 +175,12 @@ function GoalItem({ text }: { text: string }) {
   );
 }
 
-function GoalsSection() {
-  const goals = [
-    "오늘 있었던 서운함을 한 줄로 적어보기",
-    "카톡 보내기 전 숨 고르고 3초 세기",
-    "하루 5분, 내 마음 상태를 단어로 쓰기"
-  ];
+interface GoalsSectionProps {
+  goals: Array<{ id: number; text: string }>;
+}
+
+function GoalsSection({ goals }: GoalsSectionProps) {
+  if (goals.length === 0) return null;
 
   return (
     <div className="flex flex-col items-center w-full pb-0" style={{ paddingTop: '32px' }}>
@@ -209,9 +213,9 @@ function GoalsSection() {
              }
            }}
          >
-           {goals.map((goal, i) => (
+           {goals.map((goal) => (
              <motion.div
-               key={i}
+               key={goal.id}
                variants={{
                  hidden: { opacity: 0, y: 30 },
                  visible: {
@@ -224,7 +228,7 @@ function GoalsSection() {
                  }
                }}
              >
-               <GoalItem text={goal} />
+               <GoalItem text={goal.text} />
              </motion.div>
            ))}
          </motion.div>
@@ -275,17 +279,96 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void, onNext?: () =>
   );
 }
 
+// 로딩 스켈레톤
+function LoadingSkeleton() {
+  return (
+    <div className="animate-pulse p-5">
+      <div className="bg-gray-200 rounded-2xl p-7">
+        <div className="h-10 w-10 bg-gray-300 rounded-full mb-5" />
+        <div className="h-6 bg-gray-300 rounded w-24 mb-4" />
+        <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+        <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+        <div className="h-4 bg-gray-300 rounded w-full mb-2" />
+        <div className="h-4 bg-gray-300 rounded w-2/3" />
+      </div>
+      <div className="mt-8 px-7">
+        <div className="h-6 bg-gray-300 rounded w-48 mx-auto mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-gray-200 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface ReportWeeklyMindCareProps {
   onBack?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
+  reportId?: string;
+  // 외부에서 데이터 직접 주입 가능
+  reportData?: WeeklyReport;
+  sectionData?: ReportSection;
 }
 
-export default function ReportWeeklyMindCare({ onBack, onPrev, onNext }: ReportWeeklyMindCareProps) {
+export default function ReportWeeklyMindCare({
+  onBack,
+  onPrev,
+  onNext,
+  reportId,
+  reportData: externalReport,
+  sectionData: externalSection
+}: ReportWeeklyMindCareProps) {
   const [showReport, setShowReport] = useState(false);
+
+  const { report: fetchedReport, sections, loading, error } = useWeeklyReport(
+    externalReport ? undefined : reportId
+  );
+
+  const report = externalReport || fetchedReport;
+  const mindCareSection = externalSection || sections.find(s => s.section_type === 'soul_prescription');
+
+  // 데이터 추출
+  const paragraphs = mindCareSection?.content?.content_paragraphs || [];
+  const toDoList = report?.to_do_list || [];
 
   if (showReport) {
     return <ReportWeeklyMemo onBack={() => setShowReport(false)} onNext={onNext} />;
+  }
+
+  if (loading && !externalReport) {
+    return (
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+        <TopBar onBack={onBack} />
+        <div className="flex-1 overflow-y-auto w-full relative">
+          <LoadingSkeleton />
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !externalReport) {
+    return (
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+        <TopBar onBack={onBack} />
+        <div className="flex-1 flex items-center justify-center p-5">
+          <p style={{ color: '#999', fontSize: '15px' }}>마음 처방을 불러올 수 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!mindCareSection && !externalSection) {
+    return (
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+        <TopBar onBack={onBack} />
+        <div className="flex-1 flex items-center justify-center p-5">
+          <p style={{ color: '#999', fontSize: '15px' }}>마음 처방 정보가 없습니다.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -296,14 +379,14 @@ export default function ReportWeeklyMindCare({ onBack, onPrev, onNext }: ReportW
       <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '230px' }}>
         {/* Card Section */}
         <div className="flex items-center justify-center pt-[12px] px-[20px] pb-[40px] w-full">
-           <PrescriptionCard />
+           <PrescriptionCard paragraphs={paragraphs} />
         </div>
 
         {/* Divider */}
         <div className="w-full shrink-0" style={{ height: '12px', backgroundColor: '#f9f9f9' }} />
 
         {/* Goals Section */}
-        <GoalsSection />
+        <GoalsSection goals={toDoList} />
       </div>
 
       <BottomButtons onPrev={onPrev} onNext={() => setShowReport(true)} />
