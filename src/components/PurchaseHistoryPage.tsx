@@ -36,9 +36,10 @@ interface FreeContentRecord {
   full_name: string;
   birth_date: string;
   created_at: string;
+  // ⭐ question_id, question_order는 optional (구버전 레코드 호환)
   answers: Array<{
-    question_id: string;
-    question_order: number;
+    question_id?: string;
+    question_order?: number;
     question_text: string;
     answer_text: string;
   }>;
@@ -534,9 +535,10 @@ export default function PurchaseHistoryPage() {
         full_name: record.full_name,
         birth_date: record.birth_date
       },
-      results: record.answers?.map((a: { question_id: string; question_order: number; question_text: string; answer_text: string }) => ({
-        questionId: a.question_id,
-        questionOrder: a.question_order,
+      // ⭐ question_id, question_order가 없는 기존 레코드도 호환되도록 fallback 추가
+      results: record.answers?.map((a: { question_id?: string; question_order?: number; question_text: string; answer_text: string }, index: number) => ({
+        questionId: a.question_id || `q${index + 1}`,
+        questionOrder: a.question_order ?? (index + 1),
         questionText: a.question_text,
         questionType: 'ai',
         previewText: a.answer_text

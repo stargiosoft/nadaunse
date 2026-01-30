@@ -1721,6 +1721,19 @@ function PendingTagsCheckPage() {
               console.log('📋 [PendingTagsCheck] 무료 콘텐츠 결과 발견:', Object.keys(freeResult));
 
               // free_content_records에 INSERT
+              // ⭐ answers에 question_id, question_order도 포함 (PurchaseHistoryPage에서 필요)
+              const answersForDb = freeResult.contentAnswers?.map((a: { questionText: string; answerText: string }, index: number) => ({
+                question_id: `q${index + 1}`,
+                question_order: index + 1,
+                question_text: a.questionText,
+                answer_text: a.answerText
+              })) || freeResult.results?.map((r: { questionId?: string; questionOrder?: number; questionText: string; previewText: string }, index: number) => ({
+                question_id: r.questionId || `q${index + 1}`,
+                question_order: r.questionOrder || (index + 1),
+                question_text: r.questionText,
+                answer_text: r.previewText
+              })) || [];
+
               const { data: newFreeRecord, error: freeInsertError } = await supabase
                 .from('free_content_records')
                 .insert({
@@ -1734,10 +1747,7 @@ function PendingTagsCheckPage() {
                     : new Date().toISOString(),
                   birth_time: freeResult.sajuData?.birthTime || '12:00',
                   is_guest: false,
-                  answers: freeResult.contentAnswers || freeResult.results?.map((r: { questionText: string; previewText: string }) => ({
-                    question_text: r.questionText,
-                    answer_text: r.previewText
-                  })) || []
+                  answers: answersForDb
                 })
                 .select()
                 .single();

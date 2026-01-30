@@ -220,9 +220,13 @@ export default function TarotShufflePage() {
     }
 
     // ⭐ 즉시 결과 페이지로 이동 (사용자 경험 개선)
+    // ⭐ state로 tarotJustSelected 전달 → UnifiedResultPage에서 타로 미선택 체크 스킵
     const fromParam = from ? `&from=${from}` : '';
     const contentIdParamStr = contentIdState ? `&contentId=${contentIdState}` : '';
-    navigate(`/result?orderId=${orderId}&questionOrder=${questionOrder}${contentIdParamStr}${fromParam}`, { replace: true });
+    navigate(`/result?orderId=${orderId}&questionOrder=${questionOrder}${contentIdParamStr}${fromParam}`, {
+      replace: true,
+      state: { tarotJustSelected: true, selectedQuestionOrder: questionOrder }
+    });
 
     // ⭐ 백그라운드에서 tarot_user_viewed 업데이트 (결과 페이지에서 카드 정보는 이미 DB에 있음)
     try {

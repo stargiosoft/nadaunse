@@ -60,11 +60,18 @@
             "@playwright/test": "^1.57.0",
             "@types/node": "^20.10.0",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "mightymeld": "^0.2.12",
+            "tailwindcss": "^4.1.18",
             "ts-node": "^10.9.2",
-            "vite": "^6.4.1"
+            "vite": "^6.4.1",
+            "vite-plugin-react-click-to-component": "^3.1.1"
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build"
+            "build": "vite build",
+            "deploy:prod": "scripts\\deploy-production.bat",
+            "deploy:staging": "scripts\\deploy-staging.bat",
+            "deploy:core": "scripts\\deploy-core.bat",
+            "deploy:prod:core": "npx supabase functions deploy generate-content-answers --project-ref kcthtpmxffppfbkjjkub && npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub && npx supabase functions deploy generate-tarot-answer --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub && npx supabase functions deploy send-alimtalk --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub"
       }
 }

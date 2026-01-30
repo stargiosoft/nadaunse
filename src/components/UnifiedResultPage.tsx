@@ -39,6 +39,9 @@ export default function UnifiedResultPage() {
   const cachedContentIdFromState = (location.state as { cachedContentId?: string })?.cachedContentId;
   // ⭐ 이미 태그 확정됨 (나다움 기록하기 스킵 여부)
   const hasConfirmedTags = (location.state as { hasConfirmedTags?: boolean })?.hasConfirmedTags === true;
+  // ⭐ TarotShufflePage에서 방금 선택 완료한 경우 (DB 업데이트 타이밍 이슈 해결)
+  const tarotJustSelected = (location.state as { tarotJustSelected?: boolean })?.tarotJustSelected === true;
+  const selectedQuestionOrder = (location.state as { selectedQuestionOrder?: number })?.selectedQuestionOrder;
 
   // ⭐ 초기화 시 캐시 확인 (state 없으면 localStorage 체크)
   const getInitialCacheData = (): { results: ResultItem[]; contentId: string | null } => {
@@ -127,9 +130,11 @@ export default function UnifiedResultPage() {
       setCurrentQuestionOrder(newQuestionOrder);
 
       // ⭐ allResults가 있을 때만 타로 셔플 체크
+      // ⭐ tarotJustSelected: TarotShufflePage에서 방금 선택 완료한 경우 스킵
       if (allResults.length > 0) {
         const targetResult = allResults.find(r => r.question_order === newQuestionOrder);
-        if (targetResult?.question_type === 'tarot' && !targetResult?.tarot_user_viewed) {
+        const justSelectedThisQuestion = tarotJustSelected && selectedQuestionOrder === newQuestionOrder;
+        if (targetResult?.question_type === 'tarot' && !targetResult?.tarot_user_viewed && !justSelectedThisQuestion) {
           console.log('🎴 [UnifiedResultPage] URL 파라미터 변경 → 타로 미선택 → 셔플 페이지');
           const fromParam = from ? `&from=${from}` : '';
           const contentIdStr = contentId ? `&contentId=${contentId}` : '';
@@ -137,7 +142,7 @@ export default function UnifiedResultPage() {
         }
       }
     }
-  }, [questionOrderParam, allResults, contentId, from, orderId, navigate]);
+  }, [questionOrderParam, allResults, contentId, from, orderId, navigate, tarotJustSelected, selectedQuestionOrder]);
 
   // ⭐ 세션 체크
   useEffect(() => {
@@ -366,13 +371,18 @@ export default function UnifiedResultPage() {
 
         // ⭐ 현재 질문이 타로이고 아직 선택 안 했으면 셔플 페이지로
         // ⚠️ normalizedResults 사용 (question_order가 number로 변환됨)
+        // ⭐ tarotJustSelected: TarotShufflePage에서 방금 선택 완료한 경우 스킵 (DB 업데이트 타이밍 이슈)
         const currentResult = normalizedResults.find(r => r.question_order === currentQuestionOrder);
-        if (currentResult?.question_type === 'tarot' && !currentResult?.tarot_user_viewed) {
+        const justSelectedThisQuestion = tarotJustSelected && selectedQuestionOrder === currentQuestionOrder;
+        if (currentResult?.question_type === 'tarot' && !currentResult?.tarot_user_viewed && !justSelectedThisQuestion) {
           console.log('🎴 [UnifiedResultPage] 타로 미선택 → 셔플 페이지');
           const fromParam = from ? `&from=${from}` : '';
           const contentIdStr = effectiveContentId || '';
           navigate(`/tarot/shuffle?orderId=${orderId}&questionOrder=${currentQuestionOrder}&contentId=${contentIdStr}${fromParam}`, { replace: true });
           return;
+        }
+        if (justSelectedThisQuestion) {
+          console.log('✅ [UnifiedResultPage] 타로 방금 선택 완료 → 셔플 스킵 (state 전달)');
         }
 
         // ⭐ 타로 이미지 프리로드

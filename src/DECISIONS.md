@@ -4,7 +4,7 @@
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-01-30
-> **주요 결정**: 유료 콘텐츠 나다움 스킵 상태 처리, 무료/유료 콘텐츠 나다움 태그 통합 플로우, 무료 콘텐츠 결과 페이지 이중 로딩 수정, 무료 콘텐츠 DB 저장 구조, Edge Function Cold Start Warm-up
+> **주요 결정**: 프로덕션 배포 스크립트 작성 (--no-verify-jwt 누락 방지), 유료 콘텐츠 나다움 스킵 상태 처리, 무료/유료 콘텐츠 나다움 태그 통합 플로우, 무료 콘텐츠 결과 페이지 이중 로딩 수정
 
 ---
 
@@ -172,6 +172,88 @@ const handleMoreClick = async () => {
 - 정렬 기준: order_count → weekly_clicks
 
 **영향 범위**: `CardContent.tsx`
+
+---
+
+### 프로덕션 배포 시 "Invalid JWT" 에러 재발 및 배포 스크립트 작성
+
+**결정**: Edge Functions 배포 스크립트 작성하여 `--no-verify-jwt` 플래그 누락 방지
+
+**배경**:
+- 프로덕션 배포 후 유료 콘텐츠 결제 시 "Invalid JWT" 401 에러 발생
+- `generate-content-answers` → `generate-saju-answer` / `generate-tarot-answer` / `send-alimtalk` 내부 호출 시 실패
+- 스테이징에서는 정상 작동, 프로덕션에서만 실패
+- 원인: 프로덕션에 `--no-verify-jwt` 플래그 없이 배포되어 있었음
+
+**근본 원인 분석**:
+```
+generate-content-answers (프론트엔드에서 호출)
+    │
+    ├── 사용자 JWT로 인증 (정상)
+    │
+    └── 내부 함수 호출 시
+        │
+        └── Authorization: Bearer {SERVICE_ROLE_KEY}
+            │
+            └── ❌ Service Role Key는 JWT가 아님 → 검증 실패
+```
+
+**왜 매번 프로덕션 배포 시 발생하는가**:
+| 원인 | 설명 |
+|------|------|
+| 수동 배포 | 매번 명령어 입력 시 `--no-verify-jwt` 플래그 누락 |
+| 스테이징/프로덕션 분리 | 스테이징만 배포하고 프로덕션 배포 누락 |
+| 함수별 의존성 미인지 | 어떤 함수가 내부 호출되는지 기억 못함 |
+
+**해결: 배포 스크립트 작성**:
+
+```
+scripts/
+├── deploy-production.bat   # 프로덕션 전체 배포 (24개 함수)
+├── deploy-staging.bat      # 스테이징 전체 배포 (24개 함수)
+├── deploy-core.bat         # 핵심 함수만 배포 (4개, 환경 선택)
+└── README.md               # 사용 방법 문서
+```
+
+**npm scripts 추가 (package.json)**:
+```json
+{
+  "scripts": {
+    "deploy:prod": "scripts\\deploy-production.bat",
+    "deploy:staging": "scripts\\deploy-staging.bat",
+    "deploy:core": "scripts\\deploy-core.bat",
+    "deploy:prod:core": "npx supabase functions deploy generate-content-answers --project-ref kcthtpmxffppfbkjjkub && ..."
+  }
+}
+```
+
+**--no-verify-jwt 필수 함수 목록**:
+| 함수 | 이유 |
+|------|------|
+| `generate-saju-answer` | `generate-content-answers`에서 내부 호출 |
+| `generate-tarot-answer` | `generate-content-answers`에서 내부 호출 |
+| `send-alimtalk` | `generate-content-answers`에서 내부 호출 |
+
+**사용 방법**:
+```bash
+# 프로덕션 전체 배포 (권장)
+npm run deploy:prod
+
+# 또는 핵심 함수만 빠르게 배포
+npm run deploy:prod:core
+```
+
+**영향 범위**:
+- `scripts/deploy-production.bat`: 프로덕션 배포 스크립트 신규 생성
+- `scripts/deploy-staging.bat`: 스테이징 배포 스크립트 신규 생성
+- `scripts/deploy-core.bat`: 핵심 함수 배포 스크립트 신규 생성
+- `scripts/README.md`: 배포 가이드 문서 신규 생성
+- `package.json`: npm scripts 추가
+
+**교훈**:
+- Edge Function 간 내부 호출이 있는 경우 `--no-verify-jwt` 플래그 필수
+- 수동 배포는 실수가 발생하기 쉬움 → 배포 스크립트로 자동화
+- 프로덕션 배포 전 스테이징 테스트 후 동일한 방식으로 배포
 
 ---
 

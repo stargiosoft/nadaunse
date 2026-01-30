@@ -113,19 +113,50 @@ const bgImage = "/background.jpg";
 
 ### 8. Edge Functions
 - **소스 코드 위치**: `/supabase/functions/` (Supabase CLI 기본 경로)
-- **배포 시**: `npx supabase functions deploy <함수명> --project-ref <project-id>`
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
 - **총 24개**: AI 생성(10), 쿠폰 관리(4), 사용자 관리(2), 알림(1), 결제/환불(3), 모니터링(1), SEO(1), 기타(2)
 
-**배포 명령어 예시**:
+**⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
 ```bash
-# 스테이징 배포
-npx supabase functions deploy generate-thumbnail --project-ref hyltbeewxaqashyivilu
+# 프로덕션 전체 배포 (권장)
+npm run deploy:prod
 
-# 프로덕션 배포
-npx supabase functions deploy generate-thumbnail --project-ref kcthtpmxffppfbkjjkub
+# 또는 핵심 함수만 빠르게 배포
+npm run deploy:prod:core
+
+# 스테이징 전체 배포
+npm run deploy:staging
+```
+
+**🚨 --no-verify-jwt 필수 함수 (내부 호출용)**:
+| 함수 | 이유 |
+|------|------|
+| `generate-saju-answer` | `generate-content-answers`에서 내부 호출 |
+| `generate-tarot-answer` | `generate-content-answers`에서 내부 호출 |
+| `send-alimtalk` | `generate-content-answers`에서 내부 호출 |
+
+- 위 함수들은 Service Role Key로 호출되므로 JWT 검증 비활성화 필수
+- **수동 배포 시 `--no-verify-jwt` 누락하면 "Invalid JWT" 401 에러 발생**
+- 배포 스크립트 사용하면 자동으로 플래그 적용됨
+
+**배포 스크립트 위치**: `/scripts/`
+```
+scripts/
+├── deploy-production.bat   # 프로덕션 전체 배포 (24개)
+├── deploy-staging.bat      # 스테이징 전체 배포 (24개)
+├── deploy-core.bat         # 핵심 함수만 배포 (4개)
+└── README.md               # 상세 가이드
+```
+
+**특정 함수만 배포해야 할 때**:
+```bash
+# 프로덕션 (일반 함수)
+npx supabase functions deploy <함수명> --project-ref kcthtpmxffppfbkjjkub
+
+# 프로덕션 (내부 호출 함수 - --no-verify-jwt 필수!)
+npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 ```
 
 ### 9. 사주 API 호출 (중요!)
@@ -801,4 +832,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-01-29
+**최종 업데이트**: 2026-01-30
