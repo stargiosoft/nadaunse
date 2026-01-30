@@ -1,6 +1,6 @@
 # 나다움 찾기 기능 개발 계획
 
-> **상태**: Phase 2-3 완료 + 버그 수정 완료 (각 운세 결과별 태그 구분 + 유료 콘텐츠 스킵 상태 처리)
+> **상태**: Phase 2-3 완료 + 로그아웃 사용자 플로우 개선 완료
 > **최종 업데이트**: 2026-01-30
 
 ---
@@ -501,14 +501,204 @@ npx supabase db push --project-ref kcthtpmxffppfbkjjkub
 | 2026-01-29 | Phase 3 완료: NadaumTagsList 구현, 캐싱, 태그 삭제/복원, "오늘의 한 줄 위로" 랜덤 노출 |
 | 2026-01-30 | 버그 수정: 각 운세 결과별 태그 구분 로직 추가 (source_order_id 활용) |
 | 2026-01-30 | 버그 수정: 유료 콘텐츠 "다음에 할래요" 스킵 후 재진입 시 버튼 상태 처리 |
+| 2026-01-30 | 기능 추가: 로그아웃 사용자 태그 저장 플로우 개선 (로그인 리다이렉트 + 자동 저장) |
+| 2026-01-30 | 기능 추가: CardContent 6개 기본 노출 + 페이지네이션, 태그 색상 변경 |
+| 2026-01-30 | 버그 수정: WelcomeCoupon welcomePageViewed 플래그 초기화 |
+| 2026-01-30 | 버그 수정: 이용기록 캐시 갱신 (free_content_needs_refresh 플래그) |
 
 ---
 
-## 12. 프로덕션 배포 TODO 🚀
+## 12. 로그아웃 사용자 태그 저장 플로우 (2026-01-30 추가)
+
+### 12.1 플로우 개요
+
+로그아웃 상태에서 무료 콘텐츠 → 나다움 기록하기 → 태그 저장 시:
+- **기존**: phone_number 바텀시트 표시 → 저장 불가
+- **개선**: 로그인 페이지로 리다이렉트 → 로그인/회원가입 후 자동 저장
+
+### 12.2 상세 플로우
+
+```
+로그아웃 상태에서 무료 콘텐츠 결과 확인
+    ↓
+"나다움 기록하기" 버튼 클릭
+    ↓
+CheckRecordMe 페이지 진입
+    ↓
+태그 선택 후 "저장" 버튼 클릭
+    ↓
+로그인 상태 체크 (supabase.auth.getSession)
+    ↓
+❌ 로그인 안 됨
+    ↓
+┌─────────────────────────────────────────────────┐
+│ 1. pending_trait_tags localStorage 저장          │
+│    - tags: 선택한 태그 배열                       │
+│    - contentId: 콘텐츠 ID                        │
+│    - orderId: null (아직 DB 저장 전)              │
+│    - sourceType: 'free_content'                  │
+│                                                  │
+│ 2. redirectAfterLogin = '/pending-tags-check'   │
+│                                                  │
+│ 3. 로그인 페이지로 이동                            │
+└─────────────────────────────────────────────────┘
+    ↓
+로그인 또는 회원가입 진행
+    ↓
+회원가입 시: 약관 동의 → WelcomeCoupon 페이지
+    ↓
+WelcomeCoupon 닫기 → redirectAfterLogin 확인
+    ↓
+/pending-tags-check 페이지로 이동
+    ↓
+┌─────────────────────────────────────────────────┐
+│ PendingTagsCheckPage 실행:                       │
+│                                                  │
+│ 1️⃣ 사주 정보 저장 (cached_saju_info → DB)        │
+│    - saju_records 테이블에 INSERT                │
+│    - notes: '본인'                               │
+│    - is_primary: true (첫 사주인 경우)           │
+│                                                  │
+│ 2️⃣ 무료 콘텐츠 결과 저장 (localStorage → DB)     │
+│    - localStorage에서 free_content_xxx 키 검색   │
+│    - free_content_records 테이블에 INSERT        │
+│    - free_content_needs_refresh 플래그 설정      │
+│                                                  │
+│ 3️⃣ phone_number 확인                             │
+│    - DB에서 본인 사주의 phone_number 조회         │
+└─────────────────────────────────────────────────┘
+    ↓
+phone_number 있음? ─Yes→ 태그 바로 저장 → 홈으로 이동
+    │
+    No
+    ↓
+/nadaum-record/:id 페이지로 이동
+    ↓
+┌─────────────────────────────────────────────────┐
+│ CheckRecordMe 바텀시트 자동 오픈:                 │
+│ - open_phone_bottomsheet 플래그 감지             │
+│ - pending_trait_tags에서 태그 선택 상태 복원      │
+│ - 로그인 상태 체크 (비로그인이면 오픈 안 함)       │
+└─────────────────────────────────────────────────┘
+    ↓
+전화번호 입력 → 저장 버튼 클릭
+    ↓
+┌─────────────────────────────────────────────────┐
+│ handleSave 실행:                                 │
+│ 1. phone_number를 saju_records에 UPDATE         │
+│ 2. 기존 태그 존재 여부 확인                       │
+│    - 없으면: INSERT (새로 저장)                  │
+│    - 있으면: UPDATE (is_confirmed = true)       │
+│ 3. 캐시 무효화 플래그 설정                        │
+└─────────────────────────────────────────────────┘
+    ↓
+토스트 표시 → 홈으로 이동
+```
+
+### 12.3 관련 파일
+
+| 파일 | 역할 |
+|------|------|
+| `src/App.tsx` | PendingTagsCheckPage 컴포넌트, WelcomeCoupon 플래그 초기화 |
+| `src/components/CheckRecordMe.tsx` | 로그인 체크, 바텀시트 자동 오픈, saveTags/handleSave INSERT 로직 |
+
+### 12.4 주요 localStorage 키
+
+| 키 | 용도 | 설정 시점 | 제거 시점 |
+|----|------|----------|----------|
+| `pending_trait_tags` | 임시 태그 정보 | 로그아웃 상태 저장 클릭 | 태그 저장 완료 |
+| `redirectAfterLogin` | 로그인 후 리다이렉트 URL | 로그인 필요 시 | 리다이렉트 후 |
+| `open_phone_bottomsheet` | 바텀시트 자동 오픈 | phone_number 없을 때 | 바텀시트 오픈 후 |
+| `cached_saju_info` | 임시 사주 정보 | 무료 콘텐츠 사주 입력 | DB 저장 후 |
+| `free_content_needs_refresh` | 이용기록 캐시 갱신 | 무료 콘텐츠 저장 후 | 이용기록 로드 시 |
+| `welcomePageViewed` | 환영 페이지 중복 방지 | 환영 페이지 닫기 | 회원가입 완료 시 |
+
+### 12.5 saveTags/handleSave INSERT 로직
+
+기존에는 태그가 이미 DB에 있다고 가정하고 UPDATE만 수행했으나, 로그인 후 첫 저장인 경우 태그가 없으므로 INSERT가 필요:
+
+```typescript
+// 기존 태그 존재 여부 확인
+const { data: existingTags } = await existingTagsQuery;
+const hasExistingTags = existingTags && existingTags.length > 0;
+
+if (selectedTagNames.length > 0) {
+  if (!hasExistingTags) {
+    // ⭐ DB에 태그 없으면 INSERT
+    const tagsToInsert = tags.filter(tag => tag.selected).map(tag => ({
+      user_id: session.user.id,
+      tag_name: tag.label,
+      tag_type: tag.type,
+      source_type: sourceType,
+      source_content_id: contentId || null,
+      source_order_id: orderId || null,
+      is_confirmed: true
+    }));
+    await supabase.from('user_trait_tags').insert(tagsToInsert);
+  } else {
+    // ⭐ DB에 태그 있으면 UPDATE
+    await supabase.from('user_trait_tags')
+      .update({ is_confirmed: true })
+      .eq('user_id', session.user.id)
+      .in('tag_name', selectedTagNames)
+      ...
+  }
+}
+```
+
+---
+
+## 13. CardContent 개선 (2026-01-30 추가)
+
+### 13.1 변경 내용
+
+| 항목 | 기존 | 변경 |
+|------|------|------|
+| 기본 노출 개수 | 4개 | 6개 |
+| 더보기 동작 | 홈으로 이동 | 6개씩 추가 로드 (페이지네이션) |
+| 태그 배경색 | 민트 (#f0f8f8) | 회색 (#f3f3f3) |
+| 태그 글자색 | 민트 (#41a09e) | 회색 (#999999) |
+| 정렬 기준 | order_count | weekly_clicks |
+
+### 13.2 구현 상세
+
+```typescript
+const PAGE_SIZE = 6;
+const [isLoadingMore, setIsLoadingMore] = useState(false);
+const [hasMore, setHasMore] = useState(true);
+
+const handleMoreClick = async () => {
+  if (isLoadingMore || !hasMore) return;
+  setIsLoadingMore(true);
+
+  // 이미 로드된 ID 제외하고 추가 로드
+  const loadedIds = contents.map(c => c.id);
+  const { data } = await supabase
+    .from('master_contents')
+    .select('id, title, thumbnail_url')
+    .eq('content_type', 'free')
+    .eq('status', 'deployed')
+    .not('id', 'in', `(${loadedIds.join(',')})`)
+    .order('weekly_clicks', { ascending: false })
+    .limit(PAGE_SIZE);
+
+  if (data && data.length > 0) {
+    setContents(prev => [...prev, ...data]);
+    setHasMore(data.length >= PAGE_SIZE);
+  } else {
+    setHasMore(false);
+  }
+  setIsLoadingMore(false);
+};
+```
+
+---
+
+## 14. 프로덕션 배포 TODO 🚀
 
 > **스테이징에서 모두 테스트 완료 후 프로덕션에 순서대로 적용**
 
-### 12.1 DB 마이그레이션 (프로덕션)
+### 14.1 DB 마이그레이션 (프로덕션)
 
 **1. source_order_id 외래키 제약 제거**
 ```sql
@@ -530,17 +720,18 @@ DROP CONSTRAINT IF EXISTS user_trait_tags_source_order_id_fkey;
 
 ---
 
-### 12.2 코드 변경 내역 (2026-01-30)
+### 14.2 코드 변경 내역 (2026-01-30)
 
 #### 수정된 파일 목록
 
 | 파일 | 변경 내용 |
 |------|----------|
 | `src/components/FreeContentLoading.tsx` | resultKey에 timestamp 추가 (동일 콘텐츠/사주 구분) |
-| `src/components/CheckRecordMe.tsx` | UPDATE 쿼리에 `.select()` 추가하여 결과 확인 |
+| `src/components/CheckRecordMe.tsx` | UPDATE 쿼리에 `.select()` 추가, **로그인 체크 + INSERT 로직 추가** |
 | `src/components/PurchaseHistoryPage.tsx` | 태그 확정 여부 조회 시 `source_order_id` 사용 |
 | `src/components/UnifiedResultPage.tsx` | `__SKIPPED__` 태그 감지 및 버튼 상태 처리 추가 |
-| `src/App.tsx` | FreeResultPage, TagExtractionLoadingWrapper, NadaumRecordWrapper 수정 |
+| `src/components/CardContent.tsx` | **6개 기본 노출 + 페이지네이션, 태그 색상 변경** |
+| `src/App.tsx` | FreeResultPage, TagExtractionLoadingWrapper, NadaumRecordWrapper, **PendingTagsCheckPage, WelcomeCoupon 플래그 초기화** |
 
 #### 상세 변경 내용
 
@@ -654,7 +845,7 @@ if (hasConfirmedTags || hasConfirmedTagsFromDB) {
 
 ---
 
-### 12.3 배포 순서
+### 14.3 배포 순서
 
 1. **DB 마이그레이션 먼저 적용** (프로덕션)
    - `source_order_id` 외래키 제약 제거
@@ -671,7 +862,7 @@ if (hasConfirmedTags || hasConfirmedTagsFromDB) {
 
 ---
 
-### 12.4 배포 체크리스트
+### 14.4 배포 체크리스트
 
 - [ ] DB 마이그레이션 실행 (source_order_id 외래키 제거)
 - [ ] 코드 배포 (Vercel)
@@ -683,10 +874,15 @@ if (hasConfirmedTags || hasConfirmedTagsFromDB) {
 - [ ] 프로필 페이지 → 태그 표시 확인
 - [ ] 유료 콘텐츠 "다음에 할래요" 클릭 후 재진입 → "완료" 버튼 표시 확인
 - [ ] 스킵 후 재진입 시 `__SKIPPED__` 태그 UI 미노출 확인
+- [ ] **[신규] 로그아웃 상태 태그 저장 → 로그인 리다이렉트 확인**
+- [ ] **[신규] 회원가입 후 WelcomeCoupon → PendingTagsCheck 자동 이동 확인**
+- [ ] **[신규] 사주 정보 + 무료 콘텐츠 결과 자동 DB 저장 확인**
+- [ ] **[신규] 이용 기록에 무료 콘텐츠 표시 확인**
+- [ ] **[신규] CardContent 6개 노출 + 페이지네이션 동작 확인**
 
 ---
 
-### 12.5 롤백 계획
+### 14.5 롤백 계획
 
 문제 발생 시:
 
