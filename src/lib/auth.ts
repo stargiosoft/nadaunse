@@ -159,8 +159,11 @@ export const signInWithGoogle = async () => {
  * 로그아웃, 세션 종료, 계정 전환 시 호출
  */
 export const clearUserCaches = () => {
+  // ⭐ pending_trait_tags가 있으면 사주 정보 보존 (나다움 태그 저장 플로우 진행 중)
+  const hasPendingTags = !!localStorage.getItem('pending_trait_tags');
+
   // 고정 키 캐시 삭제
-  const fixedCacheKeys = [
+  let fixedCacheKeys = [
     'user',
     'primary_saju',              // 대표 사주 정보 (ProfilePage에서 사용)
     'cached_saju_info',
@@ -169,6 +172,12 @@ export const clearUserCaches = () => {
     'homepage_contents_cache',
     'homepage_categories_cache_v2',
   ];
+
+  // ⭐ pending_trait_tags가 있으면 cached_saju_info 보존 (PendingTagsCheck에서 DB 저장에 필요)
+  if (hasPendingTags) {
+    fixedCacheKeys = fixedCacheKeys.filter(key => key !== 'cached_saju_info');
+    logger.debug('pending_trait_tags 발견 → cached_saju_info 보존');
+  }
 
   fixedCacheKeys.forEach(key => {
     localStorage.removeItem(key);
@@ -188,7 +197,8 @@ export const clearUserCaches = () => {
 
   logger.debug('사용자 캐시 삭제 완료', {
     fixedKeys: fixedCacheKeys.length,
-    patternKeys: keysToRemove.length
+    patternKeys: keysToRemove.length,
+    preservedSaju: hasPendingTags
   });
 };
 
