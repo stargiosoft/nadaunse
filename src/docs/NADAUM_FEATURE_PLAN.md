@@ -505,6 +505,9 @@ npx supabase db push --project-ref kcthtpmxffppfbkjjkub
 | 2026-01-30 | 기능 추가: CardContent 6개 기본 노출 + 페이지네이션, 태그 색상 변경 |
 | 2026-01-30 | 버그 수정: WelcomeCoupon welcomePageViewed 플래그 초기화 |
 | 2026-01-30 | 버그 수정: 이용기록 캐시 갱신 (free_content_needs_refresh 플래그) |
+| 2026-01-30 | 버그 수정: clearUserCaches()에서 pending_trait_tags 있으면 cached_saju_info 보존 |
+| 2026-01-30 | 버그 수정: PendingTagsCheck answers에 question_id, question_order 포함 (이용기록 표시) |
+| 2026-01-30 | 개선: PendingTagsCheckPage 공통 로딩 UI 적용 (DotLoading) |
 
 ---
 
@@ -547,9 +550,19 @@ CheckRecordMe 페이지 진입
     ↓
 회원가입 시: 약관 동의 → WelcomeCoupon 페이지
     ↓
-WelcomeCoupon 닫기 → redirectAfterLogin 확인
+WelcomeCoupon 닫기 → AuthCallback
     ↓
-/pending-tags-check 페이지로 이동
+┌─────────────────────────────────────────────────┐
+│ AuthCallback에서 clearUserCaches() 호출:          │
+│                                                  │
+│ ⭐ pending_trait_tags가 있으면:                    │
+│    - cached_saju_info 보존 (삭제하지 않음)         │
+│    - PendingTagsCheck에서 DB 저장에 필요          │
+│                                                  │
+│ (이 로직이 없으면 사주 정보 손실됨!)               │
+└─────────────────────────────────────────────────┘
+    ↓
+redirectAfterLogin 확인 → /pending-tags-check 페이지로 이동
     ↓
 ┌─────────────────────────────────────────────────┐
 │ PendingTagsCheckPage 실행:                       │
@@ -562,6 +575,8 @@ WelcomeCoupon 닫기 → redirectAfterLogin 확인
 │ 2️⃣ 무료 콘텐츠 결과 저장 (localStorage → DB)     │
 │    - localStorage에서 free_content_xxx 키 검색   │
 │    - free_content_records 테이블에 INSERT        │
+│    - ⭐ answers에 question_id, question_order 포함│
+│      (PurchaseHistoryPage 정렬/표시용)           │
 │    - free_content_needs_refresh 플래그 설정      │
 │                                                  │
 │ 3️⃣ phone_number 확인                             │
@@ -599,8 +614,10 @@ phone_number 있음? ─Yes→ 태그 바로 저장 → 홈으로 이동
 
 | 파일 | 역할 |
 |------|------|
-| `src/App.tsx` | PendingTagsCheckPage 컴포넌트, WelcomeCoupon 플래그 초기화 |
+| `src/App.tsx` | PendingTagsCheckPage 컴포넌트 (사주/무료콘텐츠 저장, 공통 로딩 UI) |
+| `src/lib/auth.ts` | clearUserCaches() - pending_trait_tags 있으면 cached_saju_info 보존 |
 | `src/components/CheckRecordMe.tsx` | 로그인 체크, 바텀시트 자동 오픈, saveTags/handleSave INSERT 로직 |
+| `src/components/PurchaseHistoryPage.tsx` | answers fallback 처리 (question_id, question_order 없는 기존 레코드 호환) |
 
 ### 12.4 주요 localStorage 키
 
@@ -875,9 +892,11 @@ if (hasConfirmedTags || hasConfirmedTagsFromDB) {
 - [ ] 유료 콘텐츠 "다음에 할래요" 클릭 후 재진입 → "완료" 버튼 표시 확인
 - [ ] 스킵 후 재진입 시 `__SKIPPED__` 태그 UI 미노출 확인
 - [ ] **[신규] 로그아웃 상태 태그 저장 → 로그인 리다이렉트 확인**
-- [ ] **[신규] 회원가입 후 WelcomeCoupon → PendingTagsCheck 자동 이동 확인**
-- [ ] **[신규] 사주 정보 + 무료 콘텐츠 결과 자동 DB 저장 확인**
-- [ ] **[신규] 이용 기록에 무료 콘텐츠 표시 확인**
+- [x] **[신규] 회원가입 후 WelcomeCoupon → PendingTagsCheck 자동 이동 확인**
+- [x] **[신규] 사주 정보 + 무료 콘텐츠 결과 자동 DB 저장 확인**
+- [x] **[신규] 이용 기록에 무료 콘텐츠 표시 확인**
+- [x] **[신규] clearUserCaches()에서 cached_saju_info 보존 확인 (pending_trait_tags 있을 때)**
+- [x] **[신규] 이용 기록 상세에서 question_id/question_order 없는 기존 레코드도 정상 표시 확인**
 - [ ] **[신규] CardContent 6개 노출 + 페이지네이션 동작 확인**
 
 ---
