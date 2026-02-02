@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 25개
-> **최종 업데이트**: 2026-01-29
+> **총 함수 수**: 26개
+> **최종 업데이트**: 2026-02-02
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -30,14 +30,14 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 9개 | 39% | OpenAI GPT, Gemini |
-| 🎟️ **쿠폰 관리** | 4개 | 18% | Supabase DB |
-| 👤 **사용자/콘텐츠 관리** | 2개 | 9% | JWT 인증, RLS |
-| 📨 **알림** | 1개 | 5% | TalkDream API (카카오 알림톡) |
-| 💳 **결제/환불** | 3개 | 14% | PortOne API, PostgreSQL Function |
-| 📊 **모니터링** | 1개 | 5% | Sentry, Slack Webhook |
-| 🔧 **콘텐츠 생성 관리** | 2개 | 9% | OpenAI, Gemini 통합 |
-| 🔍 **SEO** | 1개 | 5% | 동적 Sitemap 생성 |
+| 🤖 **AI 생성** | 9개 | 35% | OpenAI GPT, Gemini |
+| 🎟️ **쿠폰 관리** | 4개 | 15% | Supabase DB |
+| 👤 **사용자/콘텐츠 관리** | 2개 | 8% | JWT 인증, RLS |
+| 📨 **알림** | 1개 | 4% | TalkDream API (카카오 알림톡) |
+| 💳 **결제/환불** | 3개 | 12% | PortOne API, PostgreSQL Function |
+| 📊 **모니터링/통계** | 2개 | 8% | Sentry, Slack, Google Analytics |
+| 🔧 **콘텐츠 생성 관리** | 2개 | 8% | OpenAI, Gemini 통합 |
+| 🔍 **SEO** | 1개 | 4% | 동적 Sitemap 생성 |
 
 ---
 
@@ -1158,9 +1158,65 @@ COMMIT;
 
 ---
 
-## 📊 모니터링 Functions (1개)
+## 📊 모니터링/통계 Functions (2개)
 
-### 1. `sentry-slack-webhook`
+### 1. `get-ga-stats`
+
+**역할**: Google Analytics 4 통계 조회 (실시간/기간별)
+
+**호출 시점**:
+- 통계 대시보드 (`StatsDashboard.tsx`) 진입 시
+- Master 계정 전용 페이지
+
+**메서드**: `GET`
+
+**입력**:
+```typescript
+// Query Parameters
+?type=realtime    // 실시간 활성 사용자
+?type=period&startDate=2026-01-01&endDate=2026-01-31  // 기간별 통계
+```
+
+**출력**:
+```typescript
+// 실시간
+{
+  success: true,
+  type: 'realtime',
+  realtimeActiveUsers: 42
+}
+
+// 기간별
+{
+  success: true,
+  type: 'period',
+  startDate: '2026-01-01',
+  endDate: '2026-01-31',
+  activeUsers: 2000,
+  newUsers: 500
+}
+```
+
+**환경 변수**:
+- `GA_SERVICE_ACCOUNT_JSON`: Google 서비스 계정 JSON 키 (Supabase Secrets)
+- `GA_PROPERTY_ID`: GA4 속성 ID (기본값: 520025356)
+
+**인증 방식**:
+- JWT 기반 OAuth 2.0 토큰 발급
+- RS256 서명으로 Google OAuth API 호출
+- 토큰 유효시간: 1시간
+
+**API 엔드포인트**:
+- 실시간: `analyticsdata.googleapis.com/v1beta/properties/{id}:runRealtimeReport`
+- 기간별: `analyticsdata.googleapis.com/v1beta/properties/{id}:runReport`
+
+**특이사항**:
+- GA API는 endDate가 inclusive이므로, 프론트엔드에서 전달받은 날짜에서 1일 빼서 호출
+- 서비스 시작일(2026-01-11) 이전 데이터는 조회 불가
+
+---
+
+### 2. `sentry-slack-webhook`
 
 **역할**: Sentry 에러 이벤트를 Slack으로 중계
 
@@ -1459,6 +1515,7 @@ npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjku
 | `process-refund` | 💳 환불 | POST | - | 환불 요청 시 |
 | `generate-sitemap` | 🔍 SEO | GET | - | /sitemap.xml 요청 시 |
 | `extract-trait-tags` | 🤖 AI 생성 | POST | GPT-5-nano | 운세 결과 페이지 진입 시 |
+| `get-ga-stats` | 📊 통계 | GET | GA Data API | 통계 대시보드 진입 시 |
 
 ---
 
@@ -1513,6 +1570,7 @@ supabase functions deploy generate-master-content
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 1.7.0 | 2026-02-02 | `get-ga-stats` 함수 추가 (Google Analytics 통계 조회), 모니터링/통계 카테고리 통합 |
 | 1.6.0 | 2026-02-02 | 나다움 보고서 (주간 보고서) 플로우 추가, 캐시 무효화 및 user_viewed 패턴 문서화 |
 | 1.5.1 | 2026-01-29 | `save-trait-tags` 함수 삭제 (클라이언트 직접 INSERT로 변경), 총 23개 |
 | 1.5.0 | 2026-01-29 | `extract-trait-tags`, `save-trait-tags` 함수 추가 (나다움 태그 추출/저장) |
