@@ -287,8 +287,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </header>
 
-          {/* 메인 콘텐츠 - flex-1 overflow-auto로 스크롤 영역 */}
-          <main className="flex-1 overflow-auto px-4 py-5">
+          {/* 메인 콘텐츠 - flex-1 min-h-0 overflow-auto로 스크롤 영역 */}
+          <main className="flex-1 min-h-0 overflow-auto px-4 py-5" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* 기간 선택 */}
         <div style={{ marginBottom: '20px' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
