@@ -429,14 +429,24 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     subValue="GA 활성 사용자"
                   />
                   {gaStats.newUsers !== undefined && (
-                    <StatCard
-                      icon={UserPlus}
-                      label="신규 방문자"
-                      value={gaStats.newUsers}
-                      unit="명"
-                      color="#8B5CF6"
-                      subValue="GA 신규 사용자"
-                    />
+                    <>
+                      <StatCard
+                        icon={UserPlus}
+                        label="신규 방문자"
+                        value={gaStats.newUsers}
+                        unit="명"
+                        color="#8B5CF6"
+                        subValue="GA 신규 사용자"
+                      />
+                      <StatCard
+                        icon={UserCheck}
+                        label="재방문자"
+                        value={gaStats.activeUsers - gaStats.newUsers}
+                        unit="명"
+                        color="#368683"
+                        subValue={`재방문율 ${gaStats.activeUsers > 0 ? Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10 : 0}%`}
+                      />
+                    </>
                   )}
                 </div>
               </section>
