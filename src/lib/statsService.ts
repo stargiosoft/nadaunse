@@ -138,11 +138,11 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('무료 콘텐츠 이용 횟수 조회에 실패했습니다.');
   }
 
-  // 4. 유료 콘텐츠 이용 횟수 (completed만, 관리자 제외)
+  // 4. 유료 콘텐츠 이용 횟수 (paid만, 관리자 제외)
   let paidContentQuery = supabase
     .from('orders')
     .select('*', { count: 'exact', head: true })
-    .eq('pstatus', 'completed')
+    .eq('pstatus', 'paid')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -159,11 +159,11 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('유료 콘텐츠 이용 횟수 조회에 실패했습니다.');
   }
 
-  // 5. 총 매출 조회 (completed만, 관리자 제외)
+  // 5. 총 매출 조회 (paid만, 관리자 제외)
   let revenueQuery = supabase
     .from('orders')
     .select('paid_amount')
-    .eq('pstatus', 'completed')
+    .eq('pstatus', 'paid')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -185,7 +185,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   // 6. 태그 통계 조회 (source_type별)
   let tagQuery = supabase
     .from('user_trait_tags')
-    .select('source_type, is_confirmed')
+    .select('source_type, type')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -202,38 +202,38 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('태그 통계 조회에 실패했습니다.');
   }
 
-  // source_type별 그룹화
-  const tagGrouped: Record<string, { total: number; confirmed: number }> = {};
+  // source_type별 그룹화 (positive 태그를 confirmed로 간주)
+  const tagGrouped: Record<string, { total: number; positive: number }> = {};
   let totalTags = 0;
-  let totalConfirmed = 0;
+  let totalPositive = 0;
 
   tagData?.forEach(tag => {
     const sourceType = tag.source_type || 'unknown';
     if (!tagGrouped[sourceType]) {
-      tagGrouped[sourceType] = { total: 0, confirmed: 0 };
+      tagGrouped[sourceType] = { total: 0, positive: 0 };
     }
     tagGrouped[sourceType].total++;
     totalTags++;
-    if (tag.is_confirmed) {
-      tagGrouped[sourceType].confirmed++;
-      totalConfirmed++;
+    if (tag.type === 'positive') {
+      tagGrouped[sourceType].positive++;
+      totalPositive++;
     }
   });
 
-  // TagStat 배열로 변환
+  // TagStat 배열로 변환 (긍정 태그 비율 표시)
   const tagStats: TagStat[] = Object.entries(tagGrouped).map(([sourceType, stats]) => ({
     sourceType,
     total: stats.total,
-    confirmed: stats.confirmed,
-    confirmRate: stats.total > 0 ? Math.round((stats.confirmed / stats.total) * 1000) / 10 : 0
+    confirmed: stats.positive,
+    confirmRate: stats.total > 0 ? Math.round((stats.positive / stats.total) * 1000) / 10 : 0
   }));
 
-  // 확인율 높은 순으로 정렬
-  tagStats.sort((a, b) => b.confirmRate - a.confirmRate);
+  // 총 태그 수 높은 순으로 정렬
+  tagStats.sort((a, b) => b.total - a.total);
 
-  // 전체 확인율 계산
+  // 전체 긍정 태그 비율 계산
   const overallTagConfirmRate = totalTags > 0
-    ? Math.round((totalConfirmed / totalTags) * 1000) / 10
+    ? Math.round((totalPositive / totalTags) * 1000) / 10
     : 0;
 
   return {
