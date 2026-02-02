@@ -2,7 +2,7 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-01-29
+> **최종 업데이트**: 2026-02-02
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -499,3 +499,66 @@ CREATE TRIGGER on_auth_user_created
 | `save-trait-tags` | `user_trait_tags` | 사용자가 선택한 태그 INSERT |
 
 자세한 내용은 [EDGE_FUNCTIONS_GUIDE.md](./EDGE_FUNCTIONS_GUIDE.md) 참조.
+
+---
+
+## 나다움 보고서 (주간 보고서) 관련 (2026-02-02 추가)
+
+주간 보고서 관련 테이블은 별도의 Trigger 없이 클라이언트에서 직접 CRUD 작업을 수행합니다.
+
+### 관련 테이블
+
+| 테이블 | 설명 | Trigger |
+|--------|------|---------|
+| `weekly_reports` | 주간 보고서 메타데이터 + 응원글 | 없음 |
+| `weekly_report_sections` | 섹션별 태그 분석 결과 (JSONB) | 없음 |
+| `report_tarot_selections` | 보고서별 타로 선택 기록 | 없음 |
+
+### 주요 데이터 흐름
+
+```
+1. 보고서 생성 (시스템)
+   └─ weekly_reports INSERT
+   └─ weekly_report_sections INSERT (섹션별 데이터)
+
+2. 타로 카드 뽑기 (사용자)
+   └─ report_tarot_selections UPDATE (user_viewed = true)
+
+3. 응원글 저장 (사용자)
+   └─ weekly_reports UPDATE (self_encouragement 필드)
+
+4. 쿠폰 발급
+   └─ user_coupons INSERT (coupon_type = 'weekly_report')
+```
+
+### user_viewed 패턴
+
+`report_tarot_selections` 테이블의 `user_viewed` 컬럼은 실제 사용자 상호작용을 추적하는 패턴입니다:
+
+| user_viewed | 의미 |
+|-------------|------|
+| `false` | 시스템이 미리 생성한 데이터 (pre-generated) |
+| `true` | 사용자가 실제로 카드를 뽑음 |
+
+**사용 예시** (ReportWeeklyDetailWrapper):
+```typescript
+// 타로 1회 제한 체크
+const { count } = await supabase
+  .from('report_tarot_selections')
+  .select('id', { count: 'exact', head: true })
+  .eq('report_id', id)
+  .eq('user_viewed', true);  // 실제 뽑기 여부만 확인
+
+const hasTarotDrawn = count && count > 0;
+```
+
+### ON DELETE CASCADE 설정
+
+보고서 삭제 시 관련 데이터 자동 삭제:
+
+```sql
+-- weekly_report_sections: report_id FK에 ON DELETE CASCADE
+-- report_tarot_selections: report_id FK에 ON DELETE CASCADE
+```
+
+**주의사항**: 쿠폰 테이블의 `source_order_id` FK는 제거됨 (보고서 ID를 저장하기 위해)

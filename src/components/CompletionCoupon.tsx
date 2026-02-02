@@ -5,6 +5,7 @@ import animationData from '@/data/report-animation.json';
 import { motion } from 'motion/react';
 import { supabase } from '@/lib/supabase';
 import { issueRevisitCoupon } from '@/lib/coupon';
+import { DotLoading } from './ui/PageLoader';
 
 // --- SVGs ---
 
@@ -290,10 +291,7 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
   if (isLoading) {
     return (
       <div className="flex justify-center items-center w-full bg-white min-h-screen">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-32 h-32 bg-gray-200 rounded-full" />
-          <div className="w-48 h-6 bg-gray-200 rounded" />
-        </div>
+        <DotLoading />
       </div>
     );
   }

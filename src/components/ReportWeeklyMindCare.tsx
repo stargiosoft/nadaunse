@@ -331,8 +331,8 @@ export default function ReportWeeklyMindCare({
     return (
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
         <TopBar onClose={onClose} />
-        <div className="flex-1 overflow-y-auto w-full relative">
-          <LoadingSkeleton />
+        <div className="flex-1 flex items-center justify-center">
+          <DotLoading />
         </div>
       </div>
     );

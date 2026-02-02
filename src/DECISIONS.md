@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-30
-> **주요 결정**: 회원가입 후 사주 정보/태그 저장 플로우 개선, 프로덕션 배포 스크립트 작성 (--no-verify-jwt 누락 방지), 유료 콘텐츠 나다움 스킵 상태 처리, 무료/유료 콘텐츠 나다움 태그 통합 플로우, 무료 콘텐츠 결과 페이지 이중 로딩 수정
+> **최종 업데이트**: 2026-02-02
+> **주요 결정**: 나다움 보고서(주간 보고서) 플로우 설계, 타로 1회 제한 및 user_viewed 플래그 패턴, 응원글 캐시 무효화 전략
 
 ---
 
@@ -13,6 +13,174 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-02
+
+### 나다움 보고서 (주간 보고서) 아키텍처 설계
+
+**결정**: 주간 보고서 기능을 다단계 플로우로 구현 (보고서 상세 → 타로 → 마음챙김 → 응원글 → 쿠폰)
+
+**배경**:
+- 목표: 1주간 쌓인 나다움 태그를 분석하여 사용자에게 유의미한 인사이트 제공
+- 요구사항: 보고서 열람 → 타로 카드 뽑기 → 마음 챙김 메시지 → 나에게 응원 한마디 → 쿠폰 발급
+
+**구현 방식**:
+
+```
+[프로필 나의분석보고서 탭]
+    ↓
+MyReportList: weekly_reports 목록 조회 (캐시 5분)
+    ↓
+MyReportWeekly: 보고서 상세 (섹션별 태그 분석)
+    ↓
+ReportWeeklyDetail: 핵심 인사이트 + 보충 설명
+    ↓
+ReportWeeklyTarot: 타로 카드 셔플 + 뽑기 (user_viewed로 1회 제한)
+    ↓
+ReportWeeklyTarotResult: 선택한 타로 카드 결과
+    ↓
+ReportWeeklyMindCare: AI 생성 마음 챙김 메시지
+    ↓
+ReportWeeklyMemo: 나에게 응원 한마디 입력
+    ↓
+CompletionCoupon: 10% 할인 쿠폰 발급
+```
+
+**DB 스키마**:
+- `weekly_reports`: 주간 보고서 메타데이터 + 응원글(self_encouragement)
+- `weekly_report_sections`: 섹션별 태그 분석 결과 (JSONB)
+- `report_tarot_selections`: 보고서별 타로 선택 기록 (user_viewed 플래그)
+
+**영향 범위**:
+- 컴포넌트: 9개 신규 추가 (주간 보고서 전용)
+- DB: 3개 테이블 추가
+- 라우팅: `/test/report-weekly-*` 경로 7개 추가
+
+---
+
+### 타로 1회 제한: user_viewed 플래그 패턴
+
+**결정**: `user_viewed` 불리언 플래그로 실제 사용자 상호작용 추적
+
+**배경**:
+- 문제: 보고서 2회 이상 열람 시 타로가 다시 뽑힘
+- 원인: `report_tarot_selections` 레코드 존재 여부만 체크 (pre-generated 포함)
+- 요구사항: 사용자가 실제로 카드를 뽑은 경우에만 스킵
+
+**구현 방식**:
+
+```typescript
+// ReportWeeklyDetailWrapper (App.tsx)
+const { count, error } = await supabase
+  .from('report_tarot_selections')
+  .select('id', { count: 'exact', head: true })
+  .eq('report_id', id)
+  .eq('user_viewed', true);  // ⭐ 핵심: 실제 뽑기 여부 확인
+
+const hasTarotDrawn = count && count > 0;
+
+if (hasTarotDrawn) {
+  // 타로 건너뛰고 결과 페이지로
+  navigate(`/test/report-weekly-tarot-result/${id}`);
+} else {
+  // 타로 뽑기 페이지로
+  navigate(`/test/report-weekly-tarot/${id}`);
+}
+```
+
+**user_viewed 플래그 용도**:
+- `false`: 시스템이 미리 생성한 데이터 (pre-generated)
+- `true`: 사용자가 실제로 상호작용한 데이터
+
+**영향 범위**: `App.tsx` (ReportWeeklyDetailWrapper), `report_tarot_selections` 테이블
+
+---
+
+### 응원글 저장 시 캐시 무효화 전략
+
+**결정**: 응원글 저장/수정 시 `my_report_cache` localStorage 즉시 삭제
+
+**배경**:
+- 문제: 응원글 저장 후 프로필 돌아가면 이전 캐시 데이터 표시
+- 원인: MyReportList가 5분 TTL 캐시 사용, 저장 시 무효화 안 됨
+
+**구현 방식**:
+
+```typescript
+// ReportWeeklyMemo.tsx - 신규 저장
+const handleComplete = async () => {
+  // ... 저장 로직
+
+  localStorage.removeItem('my_report_cache');
+  console.log('🗑️ [응원글] 보고서 목록 캐시 삭제');
+
+  onNext();  // 쿠폰 페이지로 이동
+};
+
+// ReportWeeklyMemoEditWrapper (App.tsx) - 수정
+const handleSave = async (text: string) => {
+  // ... 업데이트 로직
+
+  localStorage.removeItem('my_report_cache');
+  console.log('🗑️ [응원글 수정] 보고서 목록 캐시 삭제');
+
+  navigate(`/test/profile/나의분석보고서`);
+};
+```
+
+**캐시 무효화 지점**:
+1. `ReportWeeklyMemo.tsx`: 최초 응원글 저장 시
+2. `App.tsx` (ReportWeeklyMemoEditWrapper): 응원글 수정 시
+
+**영향 범위**: `ReportWeeklyMemo.tsx`, `App.tsx`
+
+---
+
+### 반복 방문 시 쿠폰 페이지 스킵
+
+**결정**: 응원글이 이미 존재하면 쿠폰 발급 건너뛰고 프로필로 이동
+
+**배경**:
+- 문제: 보고서 2회 방문 시 또 쿠폰 발급 페이지 표시
+- 원인: ReportWeeklyMemoWrapper가 응원글 존재 여부 체크 안 함
+
+**구현 방식**:
+
+```typescript
+// ReportWeeklyMemoWrapper (App.tsx)
+const ReportWeeklyMemoWrapper = () => {
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const fromEdit = location.state?.fromEdit;
+
+  // 응원글 존재 여부 확인
+  const { data, error } = await supabase
+    .from('weekly_reports')
+    .select('self_encouragement')
+    .eq('id', id)
+    .single();
+
+  const hasEncouragement = !!data?.self_encouragement;
+  const shouldGoToProfile = fromEdit || hasEncouragement;
+
+  return (
+    <ReportWeeklyMemo
+      reportId={id}
+      onNext={() => {
+        if (shouldGoToProfile) {
+          navigate('/test/my-report-list');  // 프로필로
+        } else {
+          navigate(`/test/completion-coupon/${id}`);  // 쿠폰 발급
+        }
+      }}
+    />
+  );
+};
+```
+
+**영향 범위**: `App.tsx` (ReportWeeklyMemoWrapper)
 
 ---
 

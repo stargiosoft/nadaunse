@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-01-29
+> **최종 업데이트**: 2026-02-02
 
 ## 개요
 
@@ -157,6 +157,65 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
+### 12. `weekly_reports` (주간 보고서) - NEW 2026-02-02
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| Users can view own weekly reports | SELECT | authenticated | `auth.uid() = user_id` |
+| Users can update own weekly reports | UPDATE | authenticated | `auth.uid() = user_id` |
+| Service role can manage weekly reports | ALL | service_role | `true` |
+
+**RLS 상태**: Enabled
+
+**용도**:
+- 주간 보고서 메타데이터 및 응원글(self_encouragement) 저장
+- 사용자는 본인 보고서만 조회/수정 가능
+- 시스템(Service Role)은 보고서 생성 담당
+
+---
+
+### 13. `weekly_report_sections` (주간 보고서 섹션) - NEW 2026-02-02
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| Users can view own report sections | SELECT | authenticated | `auth.uid() = weekly_reports.user_id` (조인) |
+| Service role can manage report sections | ALL | service_role | `true` |
+
+**RLS 상태**: Enabled
+
+**용도**:
+- 섹션별 태그 분석 결과 저장 (JSONB)
+- `report_id`를 통해 `weekly_reports`와 조인하여 소유권 확인
+
+---
+
+### 14. `report_tarot_selections` (보고서 타로 선택) - NEW 2026-02-02
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| Users can view own tarot selections | SELECT | authenticated | `auth.uid() = weekly_reports.user_id` (조인) |
+| Users can update own tarot selections | UPDATE | authenticated | `auth.uid() = weekly_reports.user_id` (조인) |
+| Service role can manage tarot selections | ALL | service_role | `true` |
+
+**RLS 상태**: Enabled
+
+**용도**:
+- 보고서별 타로 카드 선택 기록
+- `user_viewed` 플래그로 실제 사용자 상호작용 추적
+- 사용자는 본인 보고서의 타로 선택만 조회/수정 가능
+
+**user_viewed 패턴**:
+```typescript
+// 타로 1회 제한 체크 (user_viewed = true인 경우만 뽑기 완료로 간주)
+const { count } = await supabase
+  .from('report_tarot_selections')
+  .select('id', { count: 'exact', head: true })
+  .eq('report_id', id)
+  .eq('user_viewed', true);
+```
+
+---
+
 ## 정책 요약
 
 | 테이블 | 정책 수 | RLS 상태 |
@@ -172,7 +231,10 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | saju_records | 5 | Enabled |
 | user_coupons | 3 | Enabled |
 | users | 4 | Enabled |
-| **총계** | **31** | - |
+| weekly_reports | 3 | Enabled |
+| weekly_report_sections | 2 | Enabled |
+| report_tarot_selections | 3 | Enabled |
+| **총계** | **39** | - |
 
 ---
 

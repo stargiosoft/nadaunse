@@ -377,24 +377,46 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
     : 0;
 
-  // 9. 회원 태그 저장율: 확정 태그 1개 이상 보유한 유저 비율
-  // 간소화: 태그 테이블에서 직접 고유 유저 수 조회 (관리자 제외)
-  let tagUserQuery = supabase
-    .from('user_trait_tags')
-    .select('user_id')
-    .eq('is_confirmed', true)
-    .neq('tag_type', 'neutral')
-    .not('user_id', 'in', `(${adminFilter})`);
+  // 9. 회원 태그 저장율: 기간 내 활동 회원 중 확정 태그 1개 이상 보유 비율
+  // Step 1: 기간 내 활동한 회원 ID 목록 조회
+  let activeUsersQuery = supabase
+    .from('users')
+    .select('id')
+    .not('id', 'in', `(${adminFilter})`);
 
-  const { data: tagUsersData, error: tagUserError } = await tagUserQuery;
-  if (tagUserError) {
-    console.error('태그 유저 조회 오류:', tagUserError);
+  if (!isAllPeriod && dateRange?.startDate && dateRange?.endDate) {
+    // 기간 내 생성 OR 마지막 방문한 유저
+    activeUsersQuery = activeUsersQuery.or(
+      `and(created_at.gte.${dateRange.startDate},created_at.lt.${dateRange.endDate}),and(last_login_at.gte.${dateRange.startDate},last_login_at.lt.${dateRange.endDate})`
+    );
   }
 
-  const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
-  const tagUserRate = totalCustomers > 0
-    ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
-    : 0;
+  const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
+  if (activeUsersError) {
+    console.error('활동 유저 조회 오류:', activeUsersError);
+  }
+  const activeUserIds = activeUsersData?.map(u => u.id) || [];
+
+  // Step 2: 활동 회원 중 확정 태그 보유자 수 조회
+  let tagUserRate = 0;
+  if (activeUserIds.length > 0 && activeUserIds.length <= 1000) {
+    // 유저 수가 적당할 때만 .in() 사용
+    const { data: tagUsersData, error: tagUserError } = await supabase
+      .from('user_trait_tags')
+      .select('user_id')
+      .eq('is_confirmed', true)
+      .neq('tag_type', 'neutral')
+      .in('user_id', activeUserIds);
+
+    if (tagUserError) {
+      console.error('태그 유저 조회 오류:', tagUserError);
+    }
+
+    const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+    tagUserRate = activeUserIds.length > 0
+      ? Math.round(uniqueTagUsers / activeUserIds.length * 1000) / 10
+      : 0;
+  }
 
   return {
     totalCustomers,

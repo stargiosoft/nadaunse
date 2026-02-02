@@ -169,6 +169,42 @@ get-available-coupons (쿠폰 조회)
 apply-coupon-to-order (쿠폰 적용)
 ```
 
+### 나다움 보고서 (주간 보고서) 플로우 (NEW!)
+
+```
+프로필 → 나의분석보고서 탭
+    ↓
+MyReportList: weekly_reports 목록 조회 (localStorage 캐시 5분)
+    ↓
+MyReportWeekly: 보고서 상세 보기
+    ↓
+ReportWeeklyDetail: 핵심 인사이트
+    ↓
+ReportWeeklyTarot: 타로 카드 뽑기
+    │  ├─ user_viewed=false: 셔플 → 뽑기
+    │  └─ user_viewed=true: 스킵 → 결과 페이지로
+    ↓
+ReportWeeklyTarotResult: 타로 결과
+    ↓
+ReportWeeklyMindCare: 마음 챙김 메시지
+    ↓
+ReportWeeklyMemo: 나에게 응원 한마디
+    │  └─ 저장 시 my_report_cache 삭제 (캐시 무효화)
+    ↓
+CompletionCoupon: 10% 할인 쿠폰 발급
+    │  └─ coupon_type: 'weekly_report'
+    ↓
+user_coupons 테이블에 쿠폰 INSERT
+```
+
+**캐시 무효화 지점**:
+- `ReportWeeklyMemo.tsx`: 응원글 저장 시
+- `ReportWeeklyMemoEdit` (App.tsx): 응원글 수정 시
+
+**user_viewed 플래그**:
+- `report_tarot_selections.user_viewed = true`: 실제 사용자가 카드를 뽑음
+- `report_tarot_selections.user_viewed = false`: 시스템이 미리 생성한 데이터
+
 ### 결제/환불 플로우 (NEW!)
 
 ```
@@ -1470,13 +1506,14 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.5.1
+**문서 버전**: 1.6.0
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-01-29
+**최종 업데이트**: 2026-02-02
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 1.6.0 | 2026-02-02 | 나다움 보고서 (주간 보고서) 플로우 추가, 캐시 무효화 및 user_viewed 패턴 문서화 |
 | 1.5.1 | 2026-01-29 | `save-trait-tags` 함수 삭제 (클라이언트 직접 INSERT로 변경), 총 23개 |
 | 1.5.0 | 2026-01-29 | `extract-trait-tags`, `save-trait-tags` 함수 추가 (나다움 태그 추출/저장) |
 | 1.4.0 | 2026-01-22 | `generate-sitemap` 함수 추가 (동적 sitemap.xml 생성, SEO 카테고리 신설) |
