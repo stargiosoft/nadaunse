@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useWeeklyReport, TarotSelection, markTarotAsViewed } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
+import WeeklyReportLoading from './WeeklyReportLoading';
 
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
@@ -43,19 +44,53 @@ interface TarotCardImageProps {
 }
 
 function TarotCardImage({ imageUrl, cardName }: TarotCardImageProps) {
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
   return (
-    <div className="relative shadow-sm shrink-0" style={{ height: '260px', width: '150px', borderRadius: '16px', boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)' }}>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: '16px' }}>
-        <img
-          alt={cardName}
-          className="absolute left-0 max-w-none size-full top-0 object-cover"
-          src={imageUrl}
-          onError={(e) => {
-            // 이미지 로드 실패 시 기본 이미지 표시
-            (e.target as HTMLImageElement).src = '/tarot-back.png';
-          }}
-        />
-      </div>
+    <div
+      className="relative shadow-sm shrink-0 overflow-hidden"
+      style={{
+        height: '260px',
+        width: '150px',
+        borderRadius: '16px',
+        backgroundColor: '#f0f0f0',
+        boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)'
+      }}
+    >
+      <img
+        alt={cardName}
+        className="w-full h-full object-cover"
+        src={imageUrl}
+        onLoad={() => setImageLoading(false)}
+        onError={(e) => {
+          setImageLoading(false);
+          setImageError(true);
+          // 이미지 로드 실패 시 기본 이미지 표시
+          (e.target as HTMLImageElement).src = '/tarot-back.png';
+        }}
+      />
+      {/* Shimmer 로딩 애니메이션 */}
+      {imageLoading && !imageError && (
+        <div className="absolute top-0 left-0 w-full h-full bg-gray-100 overflow-hidden">
+          <style>{`
+            @keyframes shimmer {
+              0% { transform: translateX(-100%) skewX(-12deg); }
+              100% { transform: translateX(200%) skewX(-12deg); }
+            }
+          `}</style>
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+            style={{ animation: 'shimmer 1.5s infinite linear' }}
+          />
+        </div>
+      )}
+      {/* 이미지 로드 실패 */}
+      {imageError && (
+        <div className="absolute top-0 left-0 w-full h-full bg-gray-100 flex items-center justify-center">
+          <p className="text-gray-500 text-center px-2" style={{ fontSize: '13px' }}>이미지<br/>로드 실패</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -249,14 +284,7 @@ export default function ReportWeeklyTarotResult({
   }, [tarotSelections]);
 
   if (loading && !externalTarotData) {
-    return (
-      <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
-        <NavigationTopBar onClose={onClose} />
-        <div className="flex-1 flex items-center justify-center">
-          <DotLoading />
-        </div>
-      </div>
-    );
+    return <WeeklyReportLoading />;
   }
 
   if (error && !externalTarotData) {

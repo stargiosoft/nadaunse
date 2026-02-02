@@ -11,6 +11,7 @@ import { Check, Pencil, X } from "lucide-react";
 import { supabase } from '@/lib/supabase';
 import { invalidateWeeklyReportCache } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
+import WeeklyReportLoading from './WeeklyReportLoading';
 
 // --- Icons ---
 
@@ -433,13 +434,9 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
     setMode('view'); // 다시보기로 복귀
   };
 
-  // 로딩 중 - DotLoading 사용 (FreeContentLoading과 동일)
+  // 로딩 중 - WeeklyReportLoading 사용 (FreeContentLoading과 동일)
   if (mode === 'loading') {
-    return (
-      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden items-center justify-center" style={{ maxWidth: '440px' }}>
-        <DotLoading />
-      </div>
-    );
+    return <WeeklyReportLoading />;
   }
 
   // 수정 모드 - ReportWeeklyMemoEdit 사용

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import svgPathsDove from "@/imports/svg-d6wqnyhzay";
 import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, ReportSection, UserTraitTag } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
+import WeeklyReportLoading from './WeeklyReportLoading';
 
 function Icon() {
   return (
@@ -451,14 +452,7 @@ export default function ReportWeeklyDetail({
   const paragraphs = myStorySection?.content?.content_paragraphs || [];
 
   if (loading && !externalReport) {
-    return (
-      <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
-        <NavigationTopNavigationWidget onClose={onClose} />
-        <div className="flex-1 flex items-center justify-center">
-          <DotLoading />
-        </div>
-      </div>
-    );
+    return <WeeklyReportLoading />;
   }
 
   if (error && !externalReport) {

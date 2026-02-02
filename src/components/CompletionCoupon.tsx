@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { supabase } from '@/lib/supabase';
 import { issueRevisitCoupon } from '@/lib/coupon';
 import { DotLoading } from './ui/PageLoader';
+import WeeklyReportLoading from './WeeklyReportLoading';
 
 // --- SVGs ---
 
@@ -289,11 +290,7 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
 
   // 로딩 중
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center w-full bg-white min-h-screen">
-        <DotLoading />
-      </div>
-    );
+    return <WeeklyReportLoading message="쿠폰을 발급하는 중이에요!" />;
   }
 
   return (

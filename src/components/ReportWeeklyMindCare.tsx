@@ -5,6 +5,7 @@ import cloverSvgPaths from "@/imports/svg-8dky997t82";
 import { motion } from 'motion/react';
 import { useWeeklyReport, WeeklyReport, ReportSection } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
+import WeeklyReportLoading from './WeeklyReportLoading';
 
 // --- Icons & Graphics ---
 
@@ -328,14 +329,7 @@ export default function ReportWeeklyMindCare({
   const toDoList = report?.to_do_list || [];
 
   if (loading && !externalReport) {
-    return (
-      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
-        <TopBar onClose={onClose} />
-        <div className="flex-1 flex items-center justify-center">
-          <DotLoading />
-        </div>
-      </div>
-    );
+    return <WeeklyReportLoading />;
   }
 
   if (error && !externalReport) {
