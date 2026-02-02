@@ -398,23 +398,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             animate={{ opacity: 1 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
           >
-            {/* 실시간 통계 섹션 */}
-            {gaStats && gaStats.realtimeActiveUsers !== undefined && (
-              <section>
-                <SectionHeader icon="🔴" title="실시간 현황" />
-                <div className="grid grid-cols-1 gap-3">
-                  <StatCard
-                    icon={Activity}
-                    label="현재 접속자"
-                    value={gaStats.realtimeActiveUsers}
-                    unit="명"
-                    color="#EF4444"
-                    subValue="Google Analytics 실시간 데이터"
-                  />
-                </div>
-              </section>
-            )}
-
             {/* GA 전체 고객 통계 섹션 */}
             {gaStats?.activeUsers !== undefined && (
               <section>
@@ -477,6 +460,16 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   color="#368683"
                   subValue={`재방문율 ${stats.returnRate}%`}
                 />
+                {gaStats?.activeUsers && gaStats.activeUsers > 0 && (
+                  <StatCard
+                    icon={UserPlus}
+                    label="회원가입율"
+                    value={Math.round(stats.newCustomers / gaStats.activeUsers * 1000) / 10}
+                    unit="%"
+                    color="#6366F1"
+                    subValue={`GA 방문자 대비 가입`}
+                  />
+                )}
                 <StatCard
                   icon={Eye}
                   label="총 방문횟수"
