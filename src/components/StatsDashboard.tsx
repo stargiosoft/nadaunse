@@ -501,7 +501,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
                   <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, color: '#666666' }}>
-                    태그 저장율
+                    회원 태그 저장율
                   </span>
                   <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '20px', fontWeight: 600, color: '#6366F1' }}>
                     {stats.tagUserRate}%

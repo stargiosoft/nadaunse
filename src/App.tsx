@@ -2852,7 +2852,7 @@ function ReportCompletionWrapper() {
   return (
     <CompletionCoupon
       reportId={id}
-      onClose={() => navigate('/')}
+      onClose={() => navigate('/test/my-report-list')}
       onHome={() => navigate('/')}
     />
   );
