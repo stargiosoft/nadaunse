@@ -9,6 +9,7 @@ import BirthInfoInput from './components/BirthInfoInput';
 import SajuDetail from './components/SajuDetail';
 import FreeSajuDetail from './components/FreeSajuDetail';
 import ProfilePage from './components/ProfilePage';
+import StatsDashboard from './components/StatsDashboard'; // ⭐ 통계 대시보드
 import PurchaseHistoryPage from './components/PurchaseHistoryPage';
 import LoginPageNew from './components/LoginPageNew';
 import ExistingAccountPageNew from './components/ExistingAccountPageNew';
@@ -310,6 +311,13 @@ function GAInit() {
       }
       if (pathname.startsWith('/master/content/')) {
         return `유료 콘텐츠 상세 | ${BASE_TITLE}`;
+      }
+      // 나다움 기록하기 페이지 (유료/무료 구분)
+      if (pathname === '/paid/nadaum-record') {
+        return `[유료] 나다움 기록하기 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/nadaum-record/')) {
+        return `[무료] 나다움 기록하기 | ${BASE_TITLE}`;
       }
 
       // 기본값
@@ -1570,6 +1578,7 @@ function ProfilePageWrapper() {
       onBack={goBack}
       onLogout={handleLogout}
       onNavigateToMasterContent={() => navigate('/master/content', { state: { canGoBack: true } })}
+      onNavigateToStatsDashboard={() => navigate('/master/stats', { state: { canGoBack: true } })} // ⭐ 통계 대시보드
       onNavigateToTermsOfService={() => navigate('/terms-of-service', { state: { canGoBack: true } })}
       onNavigateToPrivacyPolicy={() => navigate('/privacy-policy', { state: { canGoBack: true } })}
       onNavigateToPurchaseHistory={() => navigate('/purchase-history', { state: { canGoBack: true } })}
@@ -1585,6 +1594,17 @@ function NadaumTagsListWrapper() {
   return (
     <NadaumTagsList
       onBack={() => window.history.back()}
+      onHome={() => navigate('/')}
+    />
+  );
+}
+
+// ⭐ 통계 대시보드 Wrapper (마스터 전용)
+function StatsDashboardWrapper() {
+  const navigate = useNavigate();
+  return (
+    <StatsDashboard
+      onBack={() => navigate(-1)}
       onHome={() => navigate('/')}
     />
   );
@@ -2689,6 +2709,7 @@ export default function App() {
           <Route path="/profile" element={<ProfilePageWrapper />} />
           <Route path="/purchase-history" element={<PurchaseHistoryPage />} />
           <Route path="/master/content" element={<MasterContentListWrapper />} />
+          <Route path="/master/stats" element={<StatsDashboardWrapper />} /> {/* ⭐ 통계 대시보드 */}
           <Route path="/master/content/create" element={<MasterContentCreateFlowWrapper />} />
           <Route path="/master/content/create/questions" element={<MasterContentCreateFlowWrapper />} />
           <Route path="/master/content/detail/:id/payment" element={<MasterContentPaymentPageWrapper />} />

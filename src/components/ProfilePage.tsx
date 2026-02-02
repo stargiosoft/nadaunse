@@ -13,11 +13,13 @@ import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { ProfileSkeletonWithSaju } from './skeletons/ProfileSkeleton';
 import { ProfileImage } from './ProfileImage';
 import { DEV } from '../lib/env';
+import { BarChart3, PenSquare } from 'lucide-react'; // ⭐ 통계 대시보드, 콘텐츠 만들기 아이콘
 
 interface ProfilePageProps {
   onBack: () => void;
   onLogout: () => void;
   onNavigateToMasterContent?: () => void;
+  onNavigateToStatsDashboard?: () => void; // ⭐ 통계 대시보드
   onNavigateToTermsOfService?: () => void;
   onNavigateToPrivacyPolicy?: () => void;
   onNavigateToPurchaseHistory?: () => void;
@@ -145,6 +147,7 @@ export default function ProfilePage({
   onBack,
   onLogout,
   onNavigateToMasterContent,
+  onNavigateToStatsDashboard, // ⭐ 통계 대시보드
   onNavigateToTermsOfService,
   onNavigateToPrivacyPolicy,
   onNavigateToPurchaseHistory,
@@ -1000,7 +1003,31 @@ export default function ProfilePage({
                       style={{ width: '100%' }}
                       onClick={onNavigateToMasterContent}
                     >
-                      <p className="font-['Pretendard_Variable:Medium',sans-serif] leading-[28.5px] text-[16px] text-black tracking-[-0.32px]">콘텐츠 만들기</p>
+                      <div className="flex items-center gap-[8px]">
+                        <PenSquare size={20} className="text-black" />
+                        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                          콘텐츠 만들기
+                        </p>
+                      </div>
+                      <div className="relative shrink-0 size-[24px]">
+                        <MenuArrowRightIcon />
+                      </div>
+                    </motion.div>
+                  )}
+                  {/* 1-2. 통계 대시보드 (마스터 전용) */}
+                  {isMaster && (
+                    <motion.div
+                      variants={itemVariants}
+                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                      style={{ width: '100%' }}
+                      onClick={onNavigateToStatsDashboard}
+                    >
+                      <div className="flex items-center gap-[8px]">
+                        <BarChart3 size={20} className="text-black" />
+                        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                          통계 대시보드
+                        </p>
+                      </div>
                       <div className="relative shrink-0 size-[24px]">
                         <MenuArrowRightIcon />
                       </div>
