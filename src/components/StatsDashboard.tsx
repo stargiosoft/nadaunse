@@ -415,12 +415,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               </section>
             )}
 
-            {/* 고객 통계 섹션 */}
-            <section>
-              <SectionHeader icon="📊" title="고객 통계" />
-              <div className="grid grid-cols-2 gap-3">
-                {/* GA 총 방문자수 - 첫 번째 카드 */}
-                {gaStats?.activeUsers !== undefined && (
+            {/* GA 전체 고객 통계 섹션 */}
+            {gaStats?.activeUsers !== undefined && (
+              <section>
+                <SectionHeader icon="📈" title="GA 전체 고객 통계" />
+                <div className="grid grid-cols-2 gap-3">
                   <StatCard
                     icon={Users}
                     label="총 방문자수"
@@ -429,7 +428,24 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     color="#6366F1"
                     subValue="GA 활성 사용자"
                   />
-                )}
+                  {gaStats.newUsers !== undefined && (
+                    <StatCard
+                      icon={UserPlus}
+                      label="신규 방문자"
+                      value={gaStats.newUsers}
+                      unit="명"
+                      color="#8B5CF6"
+                      subValue="GA 신규 사용자"
+                    />
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* 회원가입 고객 통계 섹션 */}
+            <section>
+              <SectionHeader icon="📊" title="회원가입 고객 통계" />
+              <div className="grid grid-cols-2 gap-3">
                 <StatCard
                   icon={Users}
                   label="총 가입 고객"
