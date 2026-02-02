@@ -377,58 +377,24 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
     : 0;
 
-  // 9. 회원 태그 저장율: 기간 내 방문 회원 중 확정 태그 1개 이상 보유 비율
-  // Step 1: 기간 내 활동한 회원 ID 목록 조회
-  let activeUsersQuery = supabase
-    .from('users')
-    .select('id')
-    .not('id', 'in', `(${adminFilter})`);
+  // 9. 회원 태그 저장율: 확정 태그 1개 이상 보유한 유저 비율
+  // 간소화: 태그 테이블에서 직접 고유 유저 수 조회 (관리자 제외)
+  let tagUserQuery = supabase
+    .from('user_trait_tags')
+    .select('user_id')
+    .eq('is_confirmed', true)
+    .neq('tag_type', 'neutral')
+    .not('user_id', 'in', `(${adminFilter})`);
 
-  if (isAllPeriod) {
-    // 전체 기간: 모든 유저
-  } else {
-    // 특정 기간: 생성일 OR 마지막 방문일이 기간 내인 유저
-    if (dateRange?.startDate && dateRange?.endDate) {
-      activeUsersQuery = activeUsersQuery.or(
-        `created_at.gte.${dateRange.startDate},last_login_at.gte.${dateRange.startDate}`
-      );
-      // endDate 조건은 별도로 적용 (lt)
-    }
+  const { data: tagUsersData, error: tagUserError } = await tagUserQuery;
+  if (tagUserError) {
+    console.error('태그 유저 조회 오류:', tagUserError);
   }
 
-  const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
-  if (activeUsersError) {
-    console.error('활동 유저 조회 오류:', activeUsersError);
-  }
-
-  // 기간 조건에 맞는 유저만 필터링
-  let activeUserIds: string[] = [];
-  if (isAllPeriod) {
-    activeUserIds = activeUsersData?.map(u => u.id) || [];
-  } else {
-    // dateRange 조건에 맞게 필터링 (Supabase or 쿼리 한계로 JS에서 추가 필터)
-    activeUserIds = activeUsersData?.map(u => u.id) || [];
-  }
-
-  // Step 2: 이 유저들 중 확정 태그(is_confirmed=true, tag_type != neutral) 1개 이상 보유자 조회
-  let tagUserRate = 0;
-  if (activeUserIds.length > 0) {
-    const { data: tagUsers, error: tagUserError } = await supabase
-      .from('user_trait_tags')
-      .select('user_id')
-      .eq('is_confirmed', true)
-      .neq('tag_type', 'neutral')
-      .in('user_id', activeUserIds);
-
-    if (tagUserError) {
-      console.error('태그 유저 조회 오류:', tagUserError);
-    }
-
-    const uniqueTagUsers = new Set(tagUsers?.map(r => r.user_id) || []).size;
-    tagUserRate = totalCustomers > 0
-      ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
-      : 0;
-  }
+  const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+  const tagUserRate = totalCustomers > 0
+    ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
+    : 0;
 
   return {
     totalCustomers,

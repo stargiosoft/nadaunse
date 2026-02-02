@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import svgPathsDove from "@/imports/svg-d6wqnyhzay";
 import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, ReportSection, UserTraitTag } from '@/hooks/useWeeklyReport';
+import { DotLoading } from './ui/PageLoader';
 
 function Icon() {
   return (
@@ -453,7 +454,9 @@ export default function ReportWeeklyDetail({
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
         <NavigationTopNavigationWidget onClose={onClose} />
-        <LoadingSkeleton />
+        <div className="flex-1 flex items-center justify-center">
+          <DotLoading />
+        </div>
       </div>
     );
   }

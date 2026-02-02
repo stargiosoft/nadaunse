@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useWeeklyReport, TarotSelection, markTarotAsViewed } from '@/hooks/useWeeklyReport';
+import { DotLoading } from './ui/PageLoader';
 
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
@@ -251,8 +252,8 @@ export default function ReportWeeklyTarotResult({
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
         <NavigationTopBar onClose={onClose} />
-        <div className="flex-1 overflow-y-auto w-full relative">
-          <LoadingSkeleton />
+        <div className="flex-1 flex items-center justify-center">
+          <DotLoading />
         </div>
       </div>
     );

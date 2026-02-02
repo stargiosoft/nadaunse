@@ -4,6 +4,7 @@ import svgPaths from "@/imports/svg-cxwdyqr8rc";
 import cloverSvgPaths from "@/imports/svg-8dky997t82";
 import { motion } from 'motion/react';
 import { useWeeklyReport, WeeklyReport, ReportSection } from '@/hooks/useWeeklyReport';
+import { DotLoading } from './ui/PageLoader';
 
 // --- Icons & Graphics ---
 

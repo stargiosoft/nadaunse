@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-01-30 (v2.4.1 - 로그아웃 사용자 태그/무료콘텐츠 자동저장 플로우)
+> **최종 업데이트**: 2026-02-02 (v2.5.0 - 나다움 보고서 플로우 추가)
 
 ---
 
@@ -312,6 +312,81 @@
 │  • /components/MasterContentDetailPage.tsx → 상세 (사용자)                  │
 │  • /components/MasterContentList.tsx       → 목록 관리                      │
 │  • /components/MasterContentLoadingPage.tsx → AI 썸네일 로딩                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      6. 나다움 보고서 플로우 (주간 보고서)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ※ 로그인 사용자가 무료/유료 콘텐츠에서 모은 태그로 주간 보고서 생성          │
+│                                                                              │
+│  [태그 수집 단계] ────────────────────────────────────────────────────────  │
+│       │ 무료/유료 콘텐츠 결과 페이지에서 태그 선택                            │
+│       │ → user_trait_tags 테이블에 저장 (is_confirmed = true)               │
+│       ↓                                                                      │
+│  [보고서 생성 단계] (일요일 자동 또는 수동 트리거)                            │
+│       │ generate-weekly-report Edge Function 호출                            │
+│       │ → OpenAI API로 보고서 콘텐츠 생성                                    │
+│       │ → weekly_reports + weekly_report_sections 저장                       │
+│       │ → report_tarot_selections에 타로 카드 사전 선택                      │
+│       ↓                                                                      │
+│  [MyReportList] ─────────────────────────────────────────────────────────  │
+│       │ 프로필 > "나의 분석 보고서" 탭                                        │
+│       │ 이번 주 태그 수 + 월별 보고서 목록 표시                               │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  보고서 열람 플로우 (최초 1회)                                        │   │
+│  │                                                                       │   │
+│  │  [ReportWeeklyDetail] → 주간 운세 요약                                │   │
+│  │       ↓                                                               │   │
+│  │  [ReportWeeklyTarot] → 타로 카드 셔플 & 뽑기 (1회만)                  │   │
+│  │       ↓ (user_viewed = true로 업데이트)                               │   │
+│  │  [ReportWeeklyTarotResult] → 타로 카드 해석 결과                      │   │
+│  │       ↓                                                               │   │
+│  │  [ReportWeeklyMindCare] → 마음 처방 + 다음주 목표                     │   │
+│  │       ↓                                                               │   │
+│  │  [ReportWeeklyMemo] → "나 응원하기" 작성 (write 모드)                 │   │
+│  │       ↓                                                               │   │
+│  │  [CompletionCoupon] → 쿠폰 발급 (재구매 쿠폰 3,000원)                 │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  보고서 다시보기 플로우                                               │   │
+│  │                                                                       │   │
+│  │  [ReportWeeklyDetail] → 주간 운세 요약                                │   │
+│  │       ↓ (타로 이미 뽑음 - user_viewed = true)                         │   │
+│  │  [ReportWeeklyTarotResult] → 타로 결과 바로 표시 (셔플 스킵)          │   │
+│  │       ↓                                                               │   │
+│  │  [ReportWeeklyMindCare] → 마음 처방                                   │   │
+│  │       ↓                                                               │   │
+│  │  [ReportWeeklyMemo] → 응원글 보기 (view 모드) → 프로필로 이동         │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│       ↓                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  응원글 수정 플로우 (프로필에서 연필 아이콘 클릭)                      │   │
+│  │                                                                       │   │
+│  │  [ReportWeeklyMemoEdit] → 응원글 수정                                 │   │
+│  │       ↓ (저장 시 my_report_cache 삭제)                                │   │
+│  │  [ReportWeeklyMemo] → 수정된 응원글 확인 (view 모드)                  │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  **관련 파일**:                                                              │
+│  • /components/MyReportList.tsx          → 보고서 목록 (프로필 탭)          │
+│  • /components/MyReportWeekly.tsx        → 월별 보고서 UI                   │
+│  • /components/ReportWeeklyDetail.tsx    → 주간 운세 요약                   │
+│  • /components/ReportWeeklyTarot.tsx     → 타로 셔플 & 뽑기                 │
+│  • /components/ReportWeeklyTarotResult.tsx → 타로 결과                      │
+│  • /components/ReportWeeklyMindCare.tsx  → 마음 처방                        │
+│  • /components/ReportWeeklyMemo.tsx      → 나 응원하기                      │
+│  • /components/ReportWeeklyMemoEdit.tsx  → 응원글 수정                      │
+│  • /components/CompletionCoupon.tsx      → 쿠폰 발급                        │
+│                                                                              │
+│  **관련 테이블**:                                                            │
+│  • weekly_reports          → 주간 보고서 메타 정보                          │
+│  • weekly_report_sections  → 보고서 섹션 (my_story, tarot, prescription)   │
+│  • report_tarot_selections → 타로 카드 선택 정보                            │
+│  • user_trait_tags         → 사용자 나다움 태그                             │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1474,6 +1549,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.5.0 | 2026-02-02 | **나다움 보고서 플로우 추가** - System Map에 6번째 데이터 흐름 추가 (태그 수집 → 보고서 생성 → 열람/다시보기/수정 플로우), 9개 컴포넌트 문서화, 4개 테이블 참조 | AI Assistant |
 | 2.3.0 | 2026-01-23 | **문서 중복 제거** - Database Schema, Edge Functions 섹션 간소화 (상세 문서 참조로 변경), 관리 포인트 감소 | AI Assistant |
 | 2.2.0 | 2026-01-23 | **마스터 콘텐츠 관리 플로우 추가** - System Map에 5번째 데이터 흐름 추가 (콘텐츠 생성/질문지 작성/AI 썸네일 생성/배포 플로우), 관련 6개 컴포넌트 문서화 | AI Assistant |
 | 2.1.0 | 2026-01-23 | **System Map 대폭 보강** - 전체 시스템 아키텍처 다이어그램, 데이터 흐름 (인증/무료/유료/타로 플로우), 프론트엔드 레이어 구조, 환경별 배포 구조 추가 | AI Assistant |

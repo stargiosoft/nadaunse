@@ -59,7 +59,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ## 📊 주요 통계
 
-- **컴포넌트**: 60개
+- **컴포넌트**: 69개 (주간 보고서 9개 포함)
 - **Edge Functions**: 25개
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
@@ -72,7 +72,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) | 프로젝트 전체 컨텍스트 |
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
-| [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (60개) |
+| [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (69개) |
 | [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (24개) |
 
 > **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
@@ -109,6 +109,19 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **DB 테이블**: `user_trait_tags` (사용자별 나다움 태그 저장)
 - **상세**: [DECISIONS.md](./src/DECISIONS.md) → "2026-01-29 무료/유료 콘텐츠 나다움 태그 통합 플로우"
 
+## 🆕 최근 주요 변경사항 (2026-02-02)
+
+### 나다움 보고서 (주간 보고서) 기능
+- **기능**: 1주간 쌓인 나다움 태그를 분석하여 주간 성향 보고서 생성
+- **핵심 플로우**: 보고서 생성 → 타로 카드 뽑기 → 마음 챙김 메시지 → 나에게 응원 한마디 → 쿠폰 발급
+- **DB 테이블**: `weekly_reports`, `weekly_report_sections`, `report_tarot_selections`
+- **컴포넌트**: 9개 (MyReportList, MyReportWeekly, ReportWeeklyDetail, ReportWeeklyTarot, ReportWeeklyTarotResult, ReportWeeklyMindCare, ReportWeeklyMemo, ReportWeeklyMemoEdit, CompletionCoupon)
+- **주요 패턴**:
+  - `user_viewed` 플래그로 실제 사용자 상호작용 추적
+  - 보고서별 1회 타로 뽑기 제한
+  - 응원글 저장 시 보고서 목록 캐시 무효화
+- **상세**: [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) → "6. 나다움 보고서 플로우"
+
 ---
 
-**최종 업데이트**: 2026-01-30
+**최종 업데이트**: 2026-02-02

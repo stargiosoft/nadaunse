@@ -9,6 +9,8 @@ import ReportWeeklyMindCare from '@/components/ReportWeeklyMindCare';
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Pencil, X } from "lucide-react";
 import { supabase } from '@/lib/supabase';
+import { invalidateWeeklyReportCache } from '@/hooks/useWeeklyReport';
+import { DotLoading } from './ui/PageLoader';
 
 // --- Icons ---
 
@@ -384,9 +386,10 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
           console.error('❌ [응원글] 저장 실패:', error);
         } else {
           console.log('✅ [응원글] 저장 완료');
-          // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
+          // ⭐ 캐시 무효화 (보고서 목록 + 상세 캐시)
           localStorage.removeItem('my_report_cache');
-          console.log('🗑️ [응원글] 보고서 목록 캐시 삭제');
+          invalidateWeeklyReportCache(reportId);
+          console.log('🗑️ [응원글] 보고서 캐시 삭제');
         }
       } catch (err) {
         console.error('❌ [응원글] 저장 중 예외:', err);
@@ -415,9 +418,10 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
       } else {
         console.log('✅ [응원글] 수정 저장 완료');
         setSavedText(newText.trim());
-        // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
+        // ⭐ 캐시 무효화 (보고서 목록 + 상세 캐시)
         localStorage.removeItem('my_report_cache');
-        console.log('🗑️ [응원글] 보고서 목록 캐시 삭제');
+        invalidateWeeklyReportCache(reportId);
+        console.log('🗑️ [응원글] 보고서 캐시 삭제');
         setText(newText.trim());
         setToastMessage("수정이 반영됐어요.");
         setShowToast(true);
@@ -429,14 +433,11 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
     setMode('view'); // 다시보기로 복귀
   };
 
-  // 로딩 중
+  // 로딩 중 - DotLoading 사용 (FreeContentLoading과 동일)
   if (mode === 'loading') {
     return (
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden items-center justify-center" style={{ maxWidth: '440px' }}>
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-24 h-24 bg-gray-200 rounded-full" />
-          <div className="w-32 h-4 bg-gray-200 rounded" />
-        </div>
+        <DotLoading />
       </div>
     );
   }

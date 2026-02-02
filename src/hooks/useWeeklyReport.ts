@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
+// ⭐ 캐시 설정 (CLAUDE.md 캐싱 전략 준수)
+const CACHE_KEY_PREFIX = 'weekly_report_detail_cache_';
+const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5분
+
 // 타입 정의
 export interface WeeklyReport {
   id: string;
@@ -60,17 +64,94 @@ export interface WeeklyReportData {
   error: string | null;
 }
 
+// ⭐ 캐시 데이터 타입
+interface CachedReportData {
+  report: WeeklyReport | null;
+  sections: ReportSection[];
+  tarotSelections: TarotSelection[];
+  weeklyTags: UserTraitTag[];
+  timestamp: number;
+}
+
+/**
+ * 🚀 동기적 캐시 초기화 (로딩 플래시 방지)
+ * - localStorage에서 캐시 데이터 즉시 로드
+ * - 유효한 캐시가 있으면 loading: false로 시작
+ */
+function getInitialCacheState(reportId?: string): {
+  report: WeeklyReport | null;
+  sections: ReportSection[];
+  tarotSelections: TarotSelection[];
+  weeklyTags: UserTraitTag[];
+  loading: boolean;
+  hasValidCache: boolean;
+} {
+  if (!reportId) {
+    return {
+      report: null,
+      sections: [],
+      tarotSelections: [],
+      weeklyTags: [],
+      loading: true,
+      hasValidCache: false
+    };
+  }
+
+  try {
+    const cacheKey = `${CACHE_KEY_PREFIX}${reportId}`;
+    const cachedJson = localStorage.getItem(cacheKey);
+
+    if (cachedJson) {
+      const cache: CachedReportData = JSON.parse(cachedJson);
+      const isExpired = Date.now() - cache.timestamp > CACHE_EXPIRY_MS;
+
+      if (!isExpired && cache.report) {
+        console.log('🚀 [useWeeklyReport] 캐시 히트! 즉시 렌더링 (reportId:', reportId, ')');
+        return {
+          report: cache.report,
+          sections: cache.sections || [],
+          tarotSelections: cache.tarotSelections || [],
+          weeklyTags: cache.weeklyTags || [],
+          loading: false,
+          hasValidCache: true
+        };
+      }
+      console.log('⏰ [useWeeklyReport] 캐시 만료 (5분 초과)');
+    }
+  } catch (e) {
+    console.error('❌ [useWeeklyReport] 캐시 파싱 실패:', e);
+  }
+
+  return {
+    report: null,
+    sections: [],
+    tarotSelections: [],
+    weeklyTags: [],
+    loading: true,
+    hasValidCache: false
+  };
+}
+
 /**
  * 주간 보고서 데이터를 가져오는 훅
  * @param reportId - 특정 보고서 ID (없으면 최신 보고서 조회)
+ *
+ * ⭐ 캐싱 전략 (CLAUDE.md 준수):
+ * - localStorage 캐시 (5분 만료)
+ * - 동기적 초기화로 로딩 플래시 방지
+ * - 캐시 키: weekly_report_detail_cache_{reportId}
  */
 export function useWeeklyReport(reportId?: string): WeeklyReportData {
   const [user, setUser] = useState<User | null>(null);
-  const [report, setReport] = useState<WeeklyReport | null>(null);
-  const [sections, setSections] = useState<ReportSection[]>([]);
-  const [tarotSelections, setTarotSelections] = useState<TarotSelection[]>([]);
-  const [weeklyTags, setWeeklyTags] = useState<UserTraitTag[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // 🚀 동기적 캐시 초기화 (useState 초기화 시점에 캐시 로드)
+  const initialState = getInitialCacheState(reportId);
+
+  const [report, setReport] = useState<WeeklyReport | null>(initialState.report);
+  const [sections, setSections] = useState<ReportSection[]>(initialState.sections);
+  const [tarotSelections, setTarotSelections] = useState<TarotSelection[]>(initialState.tarotSelections);
+  const [weeklyTags, setWeeklyTags] = useState<UserTraitTag[]>(initialState.weeklyTags);
+  const [loading, setLoading] = useState(!initialState.hasValidCache);
   const [error, setError] = useState<string | null>(null);
 
   // 사용자 세션 가져오기
@@ -87,9 +168,17 @@ export function useWeeklyReport(reportId?: string): WeeklyReportData {
         return;
       }
 
+      // 🚀 캐시가 유효하면 API 호출 스킵
+      const cachedState = getInitialCacheState(reportId);
+      if (cachedState.hasValidCache) {
+        console.log('✅ [useWeeklyReport] 유효한 캐시 존재 → API 호출 스킵');
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
+        console.log('📊 [useWeeklyReport] API 호출 시작 (reportId:', reportId, ')');
 
         // 1. 보고서 조회 (reportId가 있으면 특정 보고서, 없으면 최신 보고서)
         let reportQuery = supabase
@@ -156,6 +245,20 @@ export function useWeeklyReport(reportId?: string): WeeklyReportData {
         if (tagsError) throw tagsError;
         setWeeklyTags(tagsData || []);
 
+        // 🚀 캐시에 저장 (만료 시간 포함)
+        if (reportId) {
+          const cacheKey = `${CACHE_KEY_PREFIX}${reportId}`;
+          const cacheData: CachedReportData = {
+            report: reportData,
+            sections: sectionsData || [],
+            tarotSelections: tarotData || [],
+            weeklyTags: tagsData || [],
+            timestamp: Date.now()
+          };
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          console.log('💾 [useWeeklyReport] 캐시 저장 완료 (reportId:', reportId, ')');
+        }
+
       } catch (err) {
         console.error('주간 보고서 조회 실패:', err);
         setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.');
@@ -168,6 +271,29 @@ export function useWeeklyReport(reportId?: string): WeeklyReportData {
   }, [user?.id, reportId]);
 
   return { report, sections, tarotSelections, weeklyTags, loading, error };
+}
+
+/**
+ * 주간 보고서 캐시 무효화
+ * - 응원글 저장, 보고서 생성 등 데이터 변경 시 호출
+ */
+export function invalidateWeeklyReportCache(reportId?: string): void {
+  if (reportId) {
+    const cacheKey = `${CACHE_KEY_PREFIX}${reportId}`;
+    localStorage.removeItem(cacheKey);
+    console.log('🗑️ [useWeeklyReport] 캐시 삭제 (reportId:', reportId, ')');
+  } else {
+    // 모든 주간 보고서 캐시 삭제
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log('🗑️ [useWeeklyReport] 모든 캐시 삭제 (', keysToRemove.length, '개)');
+  }
 }
 
 /**

@@ -575,6 +575,112 @@
 
 ---
 
+## 📊 주간 보고서 (9개)
+
+### MyReportList.tsx
+- **역할**: 주간 보고서 목록 페이지 (프로필 > 나의 분석 보고서 탭)
+- **사용처**: `/test/my-report-list` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 이번 주 태그 수 요약 (WeeklyTagSummary)
+  - 월별 보고서 목록 (아코디언)
+  - 응원글 표시 및 수정 링크
+  - 캐싱 시스템 (localStorage, 5분 만료)
+  - 동기적 캐시 초기화 (로딩 플래시 방지)
+- **파일 경로**: `/components/MyReportList.tsx`
+- **추가일**: 2026-01-29
+
+### MyReportWeekly.tsx
+- **역할**: 월별 보고서 아코디언 UI 컴포넌트
+- **사용처**: MyReportList.tsx
+- **타입**: Presentational Component
+- **주요 기능**:
+  - MonthlySection (월별 그룹)
+  - ReportCard (주차별 카드)
+  - 태그 뱃지 + 응원글 박스
+- **파일 경로**: `/components/MyReportWeekly.tsx`
+- **추가일**: 2026-01-29
+
+### ReportWeeklyDetail.tsx
+- **역할**: 주간 운세 요약 페이지
+- **사용처**: `/report-weekly-detail/:id` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 운세 요약 카드 (AI 생성)
+  - 이전/다음 네비게이션
+  - 타로 뽑기 여부에 따른 다음 페이지 분기
+- **파일 경로**: `/components/ReportWeeklyDetail.tsx`
+- **추가일**: 2026-01-29
+
+### ReportWeeklyTarot.tsx
+- **역할**: 타로 카드 셔플 & 뽑기 페이지
+- **사용처**: `/report-weekly-tarot/:id` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - TarotGame 컴포넌트 사용 (slotCount: 3)
+  - 3장 카드 선택 후 결과 페이지로 이동
+  - 보고서당 1회만 뽑기 가능
+- **파일 경로**: `/components/ReportWeeklyTarot.tsx`
+- **추가일**: 2026-01-29
+
+### ReportWeeklyTarotResult.tsx
+- **역할**: 타로 카드 해석 결과 페이지
+- **사용처**: `/report-weekly-tarot-result/:id` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 선택된 3장 카드 표시
+  - 카드별 AI 해석 (flip 애니메이션)
+  - user_viewed = true로 업데이트
+- **파일 경로**: `/components/ReportWeeklyTarotResult.tsx`
+- **추가일**: 2026-01-29
+
+### ReportWeeklyMindCare.tsx
+- **역할**: 마음 처방 페이지
+- **사용처**: `/report-weekly-mind-care/:id` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 마음 처방 카드 (AI 생성)
+  - 다음 주 목표 리스트 (GoalsSection)
+  - Framer Motion 애니메이션
+- **파일 경로**: `/components/ReportWeeklyMindCare.tsx`
+- **추가일**: 2026-01-29
+
+### ReportWeeklyMemo.tsx
+- **역할**: 나 응원하기 페이지 (작성/보기)
+- **사용처**: `/report-weekly-memo/:id` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - write 모드: 응원글 작성 (최초)
+  - view 모드: 응원글 보기 (다시보기)
+  - 저장 시 my_report_cache 무효화
+  - 120자 제한
+- **파일 경로**: `/components/ReportWeeklyMemo.tsx`
+- **추가일**: 2026-01-29
+
+### ReportWeeklyMemoEdit.tsx
+- **역할**: 응원글 수정 페이지
+- **사용처**: `/report-weekly/:id/cheer-edit` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 기존 응원글 수정
+  - 저장/취소 버튼
+  - 저장 시 토스트 표시 + 캐시 무효화
+- **파일 경로**: `/components/ReportWeeklyMemoEdit.tsx`
+- **추가일**: 2026-01-29
+
+### CompletionCoupon.tsx
+- **역할**: 보고서 완료 & 쿠폰 발급 페이지
+- **사용처**: `/report-completion/:id` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 재구매 쿠폰 발급 (3,000원)
+  - 중복 발급 방지 (source_order_id 체크)
+  - 발급 완료 애니메이션
+- **파일 경로**: `/components/CompletionCoupon.tsx`
+- **추가일**: 2026-01-29
+
+---
+
 ## 👥 프로필 및 구매 내역
 
 ### ProfilePage.tsx
