@@ -262,9 +262,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         description="나다운세 서비스 통계 대시보드"
       />
       {/* 외부 컨테이너: 전체 화면 + 중앙 정렬 */}
-      <div className="bg-white fixed inset-0 flex justify-center">
-        {/* 내부 컨테이너: 440px 제한 + iOS Safari 바운스 방지 */}
-        <div className="w-full max-w-[440px] h-full flex flex-col" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="bg-white fixed inset-0 flex justify-center overflow-hidden">
+        {/* 내부 컨테이너: 440px 제한 */}
+        <div className="w-full max-w-[440px] flex flex-col overflow-hidden" style={{ backgroundColor: '#f5f5f5', height: '100%' }}>
 
           {/* 헤더 - shrink-0으로 고정 높이 */}
           <header className="shrink-0 z-10 bg-white" style={{ borderBottom: '1px solid #f0f0f0' }}>
@@ -287,8 +287,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </header>
 
-          {/* 메인 콘텐츠 - flex-1 min-h-0 overflow-auto로 스크롤 영역 */}
-          <main className="flex-1 min-h-0 overflow-auto px-4 py-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* 메인 콘텐츠 - 스크롤 영역 */}
+          <main className="flex-1 min-h-0 overflow-y-scroll px-4 py-5" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* 기간 선택 */}
         <div style={{ marginBottom: '20px' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
