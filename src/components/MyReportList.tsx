@@ -594,6 +594,26 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         }
 
         alert(message);
+
+        // ⭐ 보고서 생성 성공 시 캐시 삭제 & 목록 새로고침
+        if (successResults.length > 0) {
+          console.log('🔄 [DEV] 캐시 삭제 & 보고서 목록 새로고침...');
+          localStorage.removeItem(MY_REPORT_CACHE_KEY);
+
+          // 보고서 목록 다시 조회
+          const monthlyReports = await fetchWeeklyReports(user.id);
+          setReports(monthlyReports);
+          setHasAnyTags(true);
+
+          // 새 캐시 저장
+          localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+            currentWeekTagsCount,
+            hasAnyTags: true,
+            reports: monthlyReports,
+            timestamp: Date.now()
+          }));
+          console.log('✅ [DEV] 보고서 목록 새로고침 완료:', monthlyReports.length, '개');
+        }
       } else {
         alert(`배치 실행 실패: ${data?.error || '알 수 없는 오류'}`);
       }
