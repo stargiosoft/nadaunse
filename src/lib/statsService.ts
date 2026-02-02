@@ -53,27 +53,32 @@ export interface DateRangeFilter {
 export function getDateRangeFromPreset(preset: DateRangePreset): DateRangeFilter {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
 
   switch (preset) {
     case 'today':
+      // 오늘만 (오늘 00:00 ~ 내일 00:00)
       return {
         startDate: today.toISOString(),
         endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
       };
     case '7days':
+      // 지난 7일 (오늘 제외): 어제 기준 -6일 ~ 어제
       return {
-        startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
+        startDate: new Date(yesterday.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()  // lt 연산자용 (어제까지 포함)
       };
     case '30days':
+      // 지난 30일 (오늘 제외): 어제 기준 -29일 ~ 어제
       return {
-        startDate: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
+        startDate: new Date(yesterday.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
       };
     case '90days':
+      // 지난 90일 (오늘 제외): 어제 기준 -89일 ~ 어제
       return {
-        startDate: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
+        startDate: new Date(yesterday.getTime() - 89 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
       };
     case 'all':
     default:
