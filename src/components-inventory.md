@@ -598,31 +598,22 @@
 
 ---
 
-## 📊 주간 보고서 (9개)
+## 📊 주간 보고서 (8개)
 
 ### MyReportList.tsx
-- **역할**: 주간 보고서 목록 페이지 (프로필 > 나의 분석 보고서 탭)
+- **역할**: 주간 보고서 목록 페이지 + UI (병합됨)
 - **사용처**: `/test/my-report-list` 라우트
 - **타입**: Page Component
 - **주요 기능**:
   - 이번 주 태그 수 요약 (WeeklyTagSummary)
-  - 월별 보고서 목록 (아코디언)
+  - 월별 보고서 목록 (MonthlySection 아코디언)
+  - 주차별 카드 (ReportCard)
   - 응원글 표시 및 수정 링크
   - 캐싱 시스템 (localStorage, 5분 만료)
   - 동기적 캐시 초기화 (로딩 플래시 방지)
 - **파일 경로**: `/components/MyReportList.tsx`
 - **추가일**: 2026-01-29
-
-### MyReportWeekly.tsx
-- **역할**: 월별 보고서 아코디언 UI 컴포넌트
-- **사용처**: MyReportList.tsx
-- **타입**: Presentational Component
-- **주요 기능**:
-  - MonthlySection (월별 그룹)
-  - ReportCard (주차별 카드)
-  - 태그 뱃지 + 응원글 박스
-- **파일 경로**: `/components/MyReportWeekly.tsx`
-- **추가일**: 2026-01-29
+- **최근 업데이트**: 2026-02-02 - MyReportWeekly 병합 (UI 컴포넌트 통합)
 
 ### ReportWeeklyDetail.tsx
 - **역할**: 주간 운세 요약 페이지
@@ -734,18 +725,19 @@
 - **파일 경로**: `/components/PurchaseHistoryPage.tsx`
 - **최근 업데이트**: 2026-01-28 - 무료 체험판 탭 추가, 퍼블리싱 수정 (탭-아이콘 간격 48px, 카드 간격 10px inline style)
 
-### ResultCompletePage.tsx
-- **역할**: 운세 풀이 완료 페이지 ("풀이는 여기까지예요")
-- **사용처**: `/result/complete` 라우트 (SajuResultPage, TarotResultPage 등 결과 페이지 이후)
+### StatsDashboard.tsx
+- **역할**: 통계 대시보드 (Master 전용)
+- **사용처**: `/test/stats-dashboard` 라우트
 - **타입**: Page Component
 - **주요 기능**:
-  - 운세 풀이 완료 안내 ("풀이는 여기까지예요" 타이틀)
-  - 재방문 쿠폰 발급 카드 (3,000원 - 운세 구매 고객 전용)
-  - "홈으로 가기", "다른 운세 보기" CTA 버튼
-  - "이런 운세는 어때요?" 추천 콘텐츠 섹션 (다른 운세 상품 노출)
-  - 쿠폰 발급 토스트 메시지 (PositiveIcon 사용 - 초록색 tick-circle)
-- **파일 경로**: `/components/ResultCompletePage.tsx`
-- **최근 업데이트**: 2026-01-15 - 토스트 아이콘을 lucide-react Check에서 PositiveIcon (tick-circle)으로 변경
+  - Google Analytics 4 실시간 활성 사용자 수 조회
+  - 기간별 통계 조회 (활성 사용자, 신규 사용자)
+  - 날짜 범위 선택 (시작일, 종료일)
+  - statsService.ts를 통한 Edge Function 호출
+- **파일 경로**: `/components/StatsDashboard.tsx`
+- **관련 서비스**: `/lib/statsService.ts`
+- **Edge Function**: `get-ga-stats`
+- **최근 업데이트**: 2026-02-02 - 신규 생성
 
 ### PurchaseFailure.tsx
 - **역할**: 결제 실패 페이지

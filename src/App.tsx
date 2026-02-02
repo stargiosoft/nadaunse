@@ -37,7 +37,6 @@ import FreeBirthInfoInput from './components/FreeBirthInfoInput';
 import UnifiedResultPage from './components/UnifiedResultPage'; // ⭐ 통합 결과 페이지
 import TarotShufflePage from './components/TarotShufflePage'; // ⭐ 타로 셔플 페이지
 import WelcomeCouponPage from './components/WelcomeCouponPage'; // ⭐ 추가
-import ResultCompletePage from './components/ResultCompletePage'; // ⭐ 추가
 import AlimtalkInfoInputPage from './components/AlimtalkInfoInputPage'; // ⭐ 알림톡 정보 입력 페이지
 import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
@@ -3033,7 +3032,6 @@ export default function App() {
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-          <Route path="/result/complete" element={<ResultCompletePage />} />
           <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
           {/* TarotDemo 백업됨 */}
 

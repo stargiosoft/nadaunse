@@ -46,7 +46,7 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 70개 (활성화, backup 제외) - 주간 보고서 8개 + 통계 대시보드 2개 추가
+- **컴포넌트**: 69개 (활성화, backup 제외) - 주간 보고서 8개 + 통계 대시보드 2개 추가
 - **Edge Functions**: 26개 (get-ga-stats 추가)
 - **페이지 컴포넌트**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
@@ -230,7 +230,7 @@
 │  │  [orders.ai_generation_completed = true]                          │       │
 │  └──────────────────────────────────────────────────────────────────┘       │
 │         ↓                                                                   │
-│  [UnifiedResultPage] → [TableOfContents] → [ResultCompletePage]             │
+│  [UnifiedResultPage] → [TableOfContents] → [CheckRecordMe (나다움 기록)]    │
 │         ↓                                                                   │
 │  [send-alimtalk] → [카카오 알림톡 발송]                                      │
 │                                                                              │
@@ -372,8 +372,7 @@
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                              │
 │  **관련 파일**:                                                              │
-│  • /components/MyReportList.tsx          → 보고서 목록 (프로필 탭)          │
-│  • /components/MyReportWeekly.tsx        → 월별 보고서 UI                   │
+│  • /components/MyReportList.tsx          → 보고서 목록 (프로필 탭)            
 │  • /components/ReportWeeklyDetail.tsx    → 주간 운세 요약                   │
 │  • /components/ReportWeeklyTarot.tsx     → 타로 셔플 & 뽑기                 │
 │  • /components/ReportWeeklyTarotResult.tsx → 타로 결과                      │
@@ -879,7 +878,6 @@ App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태�
 /components/SajuSelectPage.tsx          → 유료 사주 선택
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 /components/TableOfContentsBottomSheet.tsx → 목차 바텀시트
-/components/ResultCompletePage.tsx      → 풀이 완료
 
 # 타로 콘텐츠
 /components/TarotShufflePage.tsx        → 타로 셔플 페이지 (라우트: /tarot/shuffle)
@@ -1096,10 +1094,9 @@ AI 생성 요청 (Edge Function)
           ↓
     목차 바텀시트 (TableOfContentsBottomSheet)
           ↓
-    풀이 완료 페이지 (ResultCompletePage)
-    - "풀이는 여기까지예요" 타이틀
-    - 재방문 쿠폰 발급 (3,000원)
-    - 추천 콘텐츠 ("이런 운세는 어때요?")
+    나다움 기록하기 (CheckRecordMe)
+    - 태그 선택/저장
+    - 전화번호 입력 바텀시트
 ```
 
 **주요 파일**:
@@ -1111,7 +1108,7 @@ AI 생성 요청 (Edge Function)
 - `/components/LoadingPage.tsx` - 로딩 (프로그레스 바)
 - `/components/SajuResultPage.tsx` - 사주 결과
 - `/components/TableOfContentsBottomSheet.tsx` - 목차 (질문 리스트)
-- `/components/ResultCompletePage.tsx` - 풀이 완료 ("풀이는 여기까지예요")
+- `/components/CheckRecordMe.tsx` - 나다움 기록하기 (태그 선택/저장)
 
 **Edge Functions**: 
 - `/generate-master-content` - 유료 콘텐츠 생성
@@ -1169,7 +1166,7 @@ TarotGame (카드 섞기 + 선택 - **UI 연출용**, 458줄)
     │ - AI 해석 텍스트 표시
     │ (다음 질문이 있으면 다시 /tarot/shuffle로)
     ↓
-모든 질문 완료 → ResultCompletePage
+모든 질문 완료 → CheckRecordMe (나다움 기록)
 ```
 
 **주요 파일**:

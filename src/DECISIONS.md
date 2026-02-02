@@ -109,8 +109,6 @@ const confirmRate = confirmedContents / totalContents * 100;
     ↓
 MyReportList: weekly_reports 목록 조회 (캐시 5분)
     ↓
-MyReportWeekly: 보고서 상세 (섹션별 태그 분석)
-    ↓
 ReportWeeklyDetail: 핵심 인사이트 + 보충 설명
     ↓
 ReportWeeklyTarot: 타로 카드 셔플 + 뽑기 (user_viewed로 1회 제한)

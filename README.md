@@ -59,8 +59,8 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ## 📊 주요 통계
 
-- **컴포넌트**: 69개 (주간 보고서 9개 포함)
-- **Edge Functions**: 25개
+- **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
+- **Edge Functions**: 26개
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 
@@ -121,6 +121,15 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
   - 보고서별 1회 타로 뽑기 제한
   - 응원글 저장 시 보고서 목록 캐시 무효화
 - **상세**: [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) → "6. 나다움 보고서 플로우"
+
+### 통계 대시보드 (Master 전용)
+- **기능**: Google Analytics 4 실시간/기간별 통계 조회
+- **Edge Function**: `get-ga-stats` (GA Data API 연동)
+- **컴포넌트**: `StatsDashboard.tsx`, `statsService.ts`
+- **주요 기능**:
+  - 실시간 활성 사용자 수
+  - 기간별 활성 사용자, 신규 사용자 통계
+  - 날짜 범위 선택
 
 ---
 
