@@ -2888,6 +2888,10 @@ function ReportWeeklyMemoEditWrapper() {
         return;
       }
 
+      // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
+      localStorage.removeItem('my_report_cache');
+      console.log('🗑️ [응원글 수정] 보고서 목록 캐시 삭제');
+
       // 토스트 표시 (2.2초)
       sonnerToast.custom(
         () => <Toast type="positive" message="수정이 반영됐어요." />,

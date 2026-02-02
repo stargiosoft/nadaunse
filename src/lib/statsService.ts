@@ -271,11 +271,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
 
   const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.paid_amount || 0), 0) || 0;
 
-  // 6. 태그 통계 조회 (source_type별)
+  // 6. 태그 통계 조회 (source_type별, neutral 제외)
   let tagQuery = supabase
     .from('user_trait_tags')
     .select('source_type, is_confirmed')
-    .not('user_id', 'in', `(${adminFilter})`);
+    .not('user_id', 'in', `(${adminFilter})`)
+    .neq('tag_type', 'neutral');
 
   if (dateRange?.startDate) {
     tagQuery = tagQuery.gte('created_at', dateRange.startDate);
