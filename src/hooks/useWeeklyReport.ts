@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/lib/AuthContext';
+import type { User } from '@supabase/supabase-js';
 
 // 타입 정의
 export interface WeeklyReport {
@@ -65,13 +65,20 @@ export interface WeeklyReportData {
  * @param reportId - 특정 보고서 ID (없으면 최신 보고서 조회)
  */
 export function useWeeklyReport(reportId?: string): WeeklyReportData {
-  const { user } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [tarotSelections, setTarotSelections] = useState<TarotSelection[]>([]);
   const [weeklyTags, setWeeklyTags] = useState<UserTraitTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 사용자 세션 가져오기
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     async function fetchReportData() {
