@@ -358,16 +358,17 @@ export async function fetchGAStats(
     // Edge Function URL 구성
     const params = new URLSearchParams({ type });
 
-    if (type === 'period' && dateRange) {
-      if (dateRange.startDate) {
-        // ISO 날짜를 GA 형식으로 변환 (YYYY-MM-DD)
-        const start = dateRange.startDate.split('T')[0];
-        params.append('startDate', start);
-      }
-      if (dateRange.endDate) {
-        const end = dateRange.endDate.split('T')[0];
-        params.append('endDate', end);
-      }
+    if (type === 'period') {
+      // 전체 기간이면 서비스 시작일부터 조회 (2026-01-11)
+      const startDate = dateRange?.startDate
+        ? dateRange.startDate.split('T')[0]
+        : '2026-01-11';  // 서비스 시작일
+      const endDate = dateRange?.endDate
+        ? dateRange.endDate.split('T')[0]
+        : 'today';
+
+      params.append('startDate', startDate);
+      params.append('endDate', endDate);
     }
 
     const { data, error } = await supabase.functions.invoke('get-ga-stats', {
