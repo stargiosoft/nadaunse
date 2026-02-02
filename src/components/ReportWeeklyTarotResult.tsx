@@ -184,36 +184,42 @@ function CardContainer({ tarotSelections }: CardContainerProps) {
   );
 }
 
-function ButtonSquareButton({ onClick }: { onClick?: () => void }) {
+function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () => void }) {
   return (
-    <div
-      onClick={onClick}
-      className="flex items-center justify-center relative w-full shrink-0 cursor-pointer transition duration-200 ease-in-out active:scale-[0.99] active:bg-[#41A09E] select-none"
-      style={{ height: '56px', padding: '0 12px', borderRadius: '16px', backgroundColor: '#48b2af' }}
-      data-name="Button / Square Button"
-    >
-      <p style={{
-        fontFamily: 'Pretendard Variable',
-        fontWeight: 500,
-        fontSize: '16px',
-        lineHeight: '25px',
-        color: '#ffffff',
-        letterSpacing: '-0.32px'
-      }}>이번 주 마음 처방 보기</p>
-    </div>
-  );
-}
+    <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
+      <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
+        <div className="flex w-full" style={{ gap: '12px' }}>
+          {/* 이전 버튼 */}
+          <button
+            onClick={onPrev}
+            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
+            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+          >
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '25px',
+              color: '#48b2af',
+              letterSpacing: '-0.32px'
+            }}>이전</p>
+          </button>
 
-function BottomButton({ onNext }: { onNext?: () => void }) {
-  return (
-    <div className="absolute bottom-0 left-0 right-0 w-full flex flex-col items-start z-20" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }} data-name="Common / Bottom Button">
-      <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-        <div className="bg-white relative shrink-0 w-full" data-name="Button Container">
-          <div className="flex flex-col items-center justify-center size-full">
-            <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
-              <ButtonSquareButton onClick={onNext} />
-            </div>
-          </div>
+          {/* 다음 버튼 */}
+          <button
+            onClick={onNext}
+            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
+            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+          >
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '25px',
+              color: '#ffffff',
+              letterSpacing: '-0.32px'
+            }}>다음</p>
+          </button>
         </div>
       </div>
     </div>
@@ -241,6 +247,7 @@ function LoadingSkeleton() {
 
 interface ReportWeeklyTarotResultProps {
   onBack?: () => void;
+  onPrev?: () => void;
   onNext?: () => void;
   reportId?: string;
   // 외부에서 데이터 직접 주입 가능
@@ -249,6 +256,7 @@ interface ReportWeeklyTarotResultProps {
 
 export default function ReportWeeklyTarotResult({
   onBack,
+  onPrev,
   onNext,
   reportId,
   tarotData: externalTarotData
@@ -309,7 +317,7 @@ export default function ReportWeeklyTarotResult({
       <div className="flex-1 overflow-y-auto w-full relative">
         <CardContainer tarotSelections={tarotSelections} />
       </div>
-      <BottomButton onNext={onNext} />
+      <BottomButtons onPrev={onPrev} onNext={onNext} />
     </div>
   );
 }

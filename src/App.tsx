@@ -2690,6 +2690,7 @@ function ReportWeeklyTarotResultWrapper() {
     <ReportWeeklyTarotResult
       reportId={id}
       onBack={goBack}
+      onPrev={() => navigate(`/report-weekly-tarot/${id}`)}
       onNext={() => navigate(`/report-weekly-mind-care/${id}`)}
     />
   );
