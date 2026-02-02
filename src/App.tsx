@@ -2653,6 +2653,24 @@ function ReportWeeklyDetailWrapper() {
     <ReportWeeklyDetail
       reportId={id}
       onBack={goBack}
+      onTarotStart={() => navigate(`/report-weekly-tarot/${id}`)}
+    />
+  );
+}
+
+// ⭐ 주간 보고서 타로 뽑기 페이지 Wrapper
+function ReportWeeklyTarotWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const goBack = useGoBack(`/report-weekly-detail/${id}`);
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <ReportWeeklyTarot
+      onBack={goBack}
       onNext={() => navigate(`/report-weekly-tarot-result/${id}`)}
     />
   );
@@ -2805,6 +2823,7 @@ export default function App() {
           <Route path="/test/report-weekly-memo" element={<ReportWeeklyMemo />} />
           {/* ⭐ 주간 보고서 페이지 (알림톡에서 접근) */}
           <Route path="/report-weekly-detail/:id" element={<ReportWeeklyDetailWrapper />} />
+          <Route path="/report-weekly-tarot/:id" element={<ReportWeeklyTarotWrapper />} />
           <Route path="/report-weekly-tarot-result/:id" element={<ReportWeeklyTarotResultWrapper />} />
           <Route path="/report-weekly-mind-care/:id" element={<ReportWeeklyMindCareWrapper />} />
           <Route path="/test/report-weekly-memo-edit" element={<ReportWeeklyMemoEdit initialText="" onCancel={() => {}} onSave={() => {}} />} />
