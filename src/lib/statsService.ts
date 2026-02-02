@@ -385,10 +385,10 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     .not('id', 'in', `(${adminFilter})`);
 
   if (!isAllPeriod && dateRange?.startDate && dateRange?.endDate) {
-    // 기간 내 생성 OR 마지막 방문한 유저
-    activeUsersQuery = activeUsersQuery.or(
-      `and(created_at.gte.${dateRange.startDate},created_at.lt.${dateRange.endDate}),and(last_login_at.gte.${dateRange.startDate},last_login_at.lt.${dateRange.endDate})`
-    );
+    // 기간 내 마지막 방문한 유저
+    activeUsersQuery = activeUsersQuery
+      .gte('last_login_at', dateRange.startDate)
+      .lt('last_login_at', dateRange.endDate);
   }
 
   const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
