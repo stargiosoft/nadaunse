@@ -46,8 +46,8 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 58개 (활성화, backup 제외)
-- **Edge Functions**: 25개
+- **컴포넌트**: 70개 (활성화, backup 제외) - 주간 보고서 8개 + 통계 대시보드 2개 추가
+- **Edge Functions**: 26개 (get-ga-stats 추가)
 - **페이지 컴포넌트**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
@@ -648,6 +648,8 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/FreeSajuSelectPage.tsx      → 사주 선택
 /components/FreeContentLoading.tsx      → 무료 로딩 (공통 로딩으로도 사용)
 /components/FreeSajuDetail.tsx          → 사주 결과 (전체)
+/components/CheckRecordMe.tsx           → 나다움 기록하기 (태그 선택/저장)
+/components/RecordMePhoneBottomSheet.tsx → 전화번호 입력 바텀시트
 /lib/freeContentService.ts              → 비즈니스 로직
 ```
 </details>
@@ -666,7 +668,7 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/LoadingPage.tsx             → 유료 로딩 (주문 완료 폴링)
 /components/UnifiedResultPage.tsx       → 사주/타로 통합 결과 (/result 라우트)
 /components/TableOfContentsBottomSheet.tsx → 목차 바텀시트
-/components/ResultCompletePage.tsx      → 풀이 완료 ("풀이는 여기까지예요")
+/components/CheckRecordMe.tsx           → 나다움 기록하기 (태그 선택/저장)
 ```
 </details>
 
@@ -704,6 +706,26 @@ interface TarotGameProps {
 </details>
 
 <details>
+<summary><b>나다움 보고서 (주간 보고서) - 8개</b></summary>
+
+```
+/components/MyReportList.tsx            → 나의 분석 보고서 목록 + UI (병합됨)
+/components/ReportWeeklyDetail.tsx      → 핵심 인사이트 + 보충 설명
+/components/ReportWeeklyTarot.tsx       → 타로 카드 셔플 + 뽑기 (3장)
+/components/ReportWeeklyTarotResult.tsx → 타로 카드 결과 표시
+/components/ReportWeeklyMindCare.tsx    → 마음 챙김 메시지 (AI 생성)
+/components/ReportWeeklyMemo.tsx        → 나에게 응원 한마디 입력
+/components/ReportWeeklyMemoEdit.tsx    → 응원글 수정
+/components/CompletionCoupon.tsx        → 쿠폰 발급 완료 페이지
+```
+
+**주요 패턴**:
+- `user_viewed` 플래그: 타로 1회 제한 (실제 뽑기 여부 추적)
+- 캐시 무효화: 응원글 저장/수정 시 `my_report_cache` 삭제
+- 라우팅: `/test/report-weekly-*` 경로 (App.tsx)
+</details>
+
+<details>
 <summary><b>사주 정보 관리</b></summary>
 
 ```
@@ -725,6 +747,31 @@ interface TarotGameProps {
 /components/ProfilePage.tsx             → 프로필 메인
 /components/PurchaseHistoryPage.tsx     → 구매 내역
 ```
+</details>
+
+<details>
+<summary><b>통계 대시보드 (Master 전용)</b></summary>
+
+```
+/components/StatsDashboard.tsx          → 통계 대시보드 메인
+/lib/statsService.ts                    → 통계 데이터 조회 서비스
+/supabase/functions/get-ga-stats/       → GA4 API 연동 Edge Function
+```
+
+**주요 기능**:
+| 섹션 | 데이터 소스 | 설명 |
+|------|------------|------|
+| GA 전체 고객 통계 | Google Analytics 4 | 전체 사용자, 신규, 재방문, 재방문율 |
+| 회원가입 고객 통계 | Supabase (users) | 신규/재방문 고객, 회원가입율 |
+| 콘텐츠 이용 통계 | Supabase (orders, free_content_records) | 무료/유료 이용율 |
+| 태그 통계 | Supabase (user_trait_tags) | 태그 저장율, 확인율 (콘텐츠 건 기준) |
+
+**기간 필터**: 오늘, 7일, 30일, 90일, 전체 (GA 기준 오늘 제외)
+
+**태그 확인율 계산 방식**:
+- 콘텐츠 건 기준 (태그 3개 = 1건)
+- `user_id + source_type + created_at(초 단위)`로 그룹핑
+- 1개라도 확인(is_confirmed=true)하면 "확인된 건"
 </details>
 
 <details>
