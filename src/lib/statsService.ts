@@ -29,6 +29,7 @@ export interface TagStat {
 
 // 대시보드 통계 타입
 export interface DashboardStats {
+  totalCustomers: number;      // 총 가입 고객
   newCustomers: number;        // 신규 고객 (기간 내 가입)
   returningCustomers: number;  // 재방문 고객 (기간 내 방문, 기간 전 가입)
   returnRate: number;          // 재방문율 (%)
@@ -323,6 +324,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     : 0;
 
   return {
+    totalCustomers,
     newCustomers: newCustomers || 0,
     returningCustomers: returningCustomers || 0,
     returnRate,
