@@ -142,7 +142,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   let paidContentQuery = supabase
     .from('orders')
     .select('*', { count: 'exact', head: true })
-    .eq('pstatus', 'paid')
+    .eq('pstatus', 'completed')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -163,7 +163,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   let revenueQuery = supabase
     .from('orders')
     .select('paid_amount')
-    .eq('pstatus', 'paid')
+    .eq('pstatus', 'completed')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
