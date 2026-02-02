@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEV } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
@@ -6,7 +6,7 @@ import svgPaths from "@/imports/svg-o5jcc01aog";
 import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
-import MyReportWeekly, { MonthlyReport } from './MyReportWeekly';
+import MyReportWeekly, { MonthlyReport, WeeklyReport } from './MyReportWeekly';
 
 function CommonLogo() {
   return (
@@ -29,224 +29,111 @@ function CommonLogo() {
   );
 }
 
-const reportData: MonthlyReport[] = [
-  {
-    id: '2026-05',
-    title: '26년 5월 보고서',
-    reports: [
-      {
-        id: '2026-05-04',
-        title: '4주차 보고서',
-        period: '2026.05.25 ~ 05.31',
-        tags: [
-          { label: '# 결단력 있는' },
-          { label: '# 책임감이 강한' },
-          { label: '# 상황을 주도하는' }
-        ],
-        extraTagsCount: 3,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '이번 주도 고생했어. 혼자 애쓴 부분들, 내가 다 알고 있어\n괜찮다고 더 버텨보자고 애썼다고 칭찬해주고 싶어'
-        }
-      }
-    ]
-  },
-  {
-    id: '2026-04',
-    title: '26년 4월 보고서',
-    reports: [
-      {
-        id: '2026-04-03',
-        title: '3주차 보고서',
-        period: '2026.04.14 ~ 04.20',
-        tags: [
-          { label: '# 결단력 있는' },
-          { label: '# 책임감이 강한' },
-          { label: '# 상황을 주도하는' }
-        ],
-        extraTagsCount: 8,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '봄바람처럼 설레는 일이 생길지도 몰라.\n작은 변화를 즐기면서 너만의 속도로 나아가면 돼.'
-        }
-      }
-    ]
-  },
-  {
-    id: '2026-03',
-    title: '26년 3월 보고서',
-    reports: [
-      {
-        id: '2026-03-04',
-        title: '4주차 보고서',
-        period: '2026.03.25 ~ 03.31',
-        tags: [
-          { label: '# 섬세한' },
-          { label: '# 감각적인' },
-          { label: '# 창의적인' }
-        ],
-        extraTagsCount: 5,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '따뜻한 햇살처럼 기분 좋은 소식이 기다리고 있어.\n긍정적인 마음으로 주변을 둘러봐.'
-        }
-      },
-      {
-        id: '2026-03-03',
-        title: '3주차 보고서',
-        period: '2026.03.18 ~ 03.24',
-        tags: [
-          { label: '# 침착한' },
-          { label: '# 꾸준한' },
-          { label: '# 노력하는' }
-        ],
-        extraTagsCount: 2
-      },
-      {
-        id: '2026-03-02',
-        title: '2주차 보고서',
-        period: '2026.03.11 ~ 03.17',
-        tags: [
-          { label: '# 열정적인' },
-          { label: '# 긍정적인' },
-          { label: '# 활기찬' }
-        ],
-        extraTagsCount: 4,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '작은 성취들이 모여 큰 꿈을 이룰 거야.\n지금처럼 꾸준히 나아가면 돼.'
-        }
-      },
-      {
-        id: '2026-03-01',
-        title: '1주차 보고서',
-        period: '2026.03.04 ~ 03.10',
-        tags: [
-          { label: '# 새로운' },
-          { label: '# 도전적인' },
-          { label: '# 용기있는' }
-        ],
-        extraTagsCount: 1
-      }
-    ]
-  },
-  {
-    id: '2026-02',
-    title: '26년 2월 보고서',
-    reports: [
-      {
-        id: '2026-02-04',
-        title: '4주차 보고서',
-        period: '2026.02.22 ~ 02.28',
-        tags: [
-          { label: '# 성실한' },
-          { label: '# 끈기있는' },
-          { label: '# 노력하는' }
-        ],
-        extraTagsCount: 2,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '겨울의 끝자락에서 너의 노력이 결실을 맺고 있어.\n조금만 더 힘내면 원하던 목표에 닿을 수 있을 거야.'
-        }
-      },
-      {
-        id: '2026-02-03',
-        title: '3주차 보고서',
-        period: '2026.02.15 ~ 02.21',
-        tags: [
-          { label: '# 차분한' },
-          { label: '# 사려깊은' },
-          { label: '# 이해심 많은' }
-        ],
-        extraTagsCount: 3
-      },
-      {
-        id: '2026-02-02',
-        title: '2주차 보고서',
-        period: '2026.02.08 ~ 02.14',
-        tags: [
-          { label: '# 명랑한' },
-          { label: '# 쾌활한' },
-          { label: '# 즐거운' }
-        ],
-        extraTagsCount: 0,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '너의 밝은 에너지가 주변 사람들에게 힘이 되고 있어.\n너 스스로도 그 에너지를 즐겨봐.'
-        }
-      },
-      {
-        id: '2026-02-01',
-        title: '1주차 보고서',
-        period: '2026.02.01 ~ 02.07',
-        tags: [
-          { label: '# 단호한' },
-          { label: '# 확실한' },
-          { label: '# 믿음직한' }
-        ],
-        extraTagsCount: 5
-      }
-    ]
-  },
-  {
-    id: '2026-01',
-    title: '26년 1월 보고서',
-    reports: [
-      {
-        id: '2026-01-04',
-        title: '4주차 보고서',
-        period: '2026.01.25 ~ 01.31',
-        tags: [
-          { label: '# 새로운' },
-          { label: '# 희망찬' },
-          { label: '# 열정적인' }
-        ],
-        extraTagsCount: 4,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '새해의 다짐들이 작심삼일이 되지 않도록,\n오늘 하루도 알차게 보낸 너를 칭찬해.'
-        }
-      },
-      {
-        id: '2026-01-03',
-        title: '3주차 보고서',
-        period: '2026.01.18 ~ 01.24',
-        tags: [
-          { label: '# 계획적인' },
-          { label: '# 치밀한' },
-          { label: '# 꼼꼼한' }
-        ],
-        extraTagsCount: 2
-      },
-      {
-        id: '2026-01-02',
-        title: '2주차 보고서',
-        period: '2026.01.11 ~ 01.17',
-        tags: [
-          { label: '# 창의적인' },
-          { label: '# 독창적인' },
-          { label: '# 기발한' }
-        ],
-        extraTagsCount: 6,
-        message: {
-          label: '이번 주 나에게 :',
-          content: '너의 새로운 아이디어들이 빛을 발할 거야.\n자신감을 가지고 도전해봐.'
-        }
-      },
-      {
-        id: '2026-01-01',
-        title: '1주차 보고서',
-        period: '2026.01.04 ~ 01.10',
-        tags: [
-          { label: '# 시작하는' },
-          { label: '# 설레는' },
-          { label: '# 기대되는' }
-        ],
-        extraTagsCount: 1
-      }
-    ]
+// DB에서 주간 보고서 데이터 타입
+interface DBWeeklyReport {
+  id: string;
+  year: number;
+  month: number;
+  week: number;
+  week_start_date: string;
+  week_end_date: string;
+  tag_count: number;
+  situation_summary: string | null;
+  published_at: string;
+}
+
+interface DBReportSection {
+  id: string;
+  report_id: string;
+  section_type: string;
+  content: {
+    content_paragraphs?: string[];
+  };
+}
+
+interface DBUserTag {
+  tag_name: string;
+  tag_type: 'positive' | 'negative';
+}
+
+/**
+ * 날짜 포맷: MM.DD
+ */
+function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * DB 데이터를 UI용 MonthlyReport 형식으로 변환
+ */
+function transformToMonthlyReports(
+  dbReports: DBWeeklyReport[],
+  sections: Map<string, DBReportSection>,
+  tags: Map<string, DBUserTag[]>
+): MonthlyReport[] {
+  // 연-월별로 그룹핑
+  const grouped = new Map<string, WeeklyReport[]>();
+
+  for (const report of dbReports) {
+    const monthKey = `${report.year}-${String(report.month).padStart(2, '0')}`;
+
+    // 해당 주의 태그 가져오기
+    const weekTags = tags.get(report.id) || [];
+    const displayTags = weekTags.slice(0, 3).map(t => ({ label: `# ${t.tag_name}` }));
+    const extraCount = Math.max(0, weekTags.length - 3);
+
+    // soul_prescription 섹션에서 메시지 추출
+    const soulSection = sections.get(report.id);
+    let message: { label: string; content: string } | undefined;
+    if (soulSection?.content?.content_paragraphs?.length) {
+      message = {
+        label: '이번 주 나에게 :',
+        content: soulSection.content.content_paragraphs[0] || ''
+      };
+    }
+
+    // 기간 포맷
+    const startDate = formatDateShort(report.week_start_date);
+    const endDate = formatDateShort(report.week_end_date);
+    const period = `${report.year}.${startDate} ~ ${endDate}`;
+
+    const weeklyReport: WeeklyReport = {
+      id: report.id,
+      title: `${report.week}주차 보고서`,
+      period,
+      tags: displayTags,
+      extraTagsCount: extraCount,
+      message
+    };
+
+    if (!grouped.has(monthKey)) {
+      grouped.set(monthKey, []);
+    }
+    grouped.get(monthKey)!.push(weeklyReport);
   }
-];
+
+  // MonthlyReport 배열로 변환 (최신순 정렬)
+  const result: MonthlyReport[] = [];
+  const sortedKeys = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a));
+
+  for (const key of sortedKeys) {
+    const [year, month] = key.split('-');
+    const yearShort = year.slice(-2);
+    result.push({
+      id: key,
+      title: `${yearShort}년 ${parseInt(month)}월 보고서`,
+      reports: grouped.get(key)!.sort((a, b) => {
+        // 주차 내림차순 (최신순)
+        const weekA = parseInt(a.title.match(/(\d+)주차/)?.[1] || '0');
+        const weekB = parseInt(b.title.match(/(\d+)주차/)?.[1] || '0');
+        return weekB - weekA;
+      })
+    });
+  }
+
+  return result;
+}
 
 function Footer() {
   return (
@@ -316,6 +203,7 @@ function getInitialCacheState(): {
   hasAnyTags: boolean;
   isLoading: boolean;
   hasValidCache: boolean;
+  reports: MonthlyReport[];
 } {
   try {
     const cachedJson = localStorage.getItem(MY_REPORT_CACHE_KEY);
@@ -329,7 +217,8 @@ function getInitialCacheState(): {
           currentWeekTagsCount: cache.currentWeekTagsCount || 0,
           hasAnyTags: cache.hasAnyTags || false,
           isLoading: false, // 캐시 있으면 로딩 스킵
-          hasValidCache: true
+          hasValidCache: true,
+          reports: cache.reports || []
         };
       }
       console.log('⏰ [MyReportList] 캐시 만료 (5분 초과)');
@@ -342,7 +231,8 @@ function getInitialCacheState(): {
     currentWeekTagsCount: 0,
     hasAnyTags: false,
     isLoading: true, // 캐시 없으면 로딩 표시
-    hasValidCache: false
+    hasValidCache: false,
+    reports: []
   };
 }
 
@@ -352,13 +242,79 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   // 🚀 동기적 캐시 초기화 (useState 초기화 시점에 캐시 로드)
   const initialState = getInitialCacheState();
 
-  const [reports, setReports] = useState<MonthlyReport[]>(
-    forceEmptyState ? [] : (initialState.hasAnyTags ? reportData : [])
-  );
+  const [reports, setReports] = useState<MonthlyReport[]>(initialState.reports);
   const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
   const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(initialState.currentWeekTagsCount);
-  const [isLoading, setIsLoading] = useState(forceEmptyState ? false : initialState.isLoading);
+  const [isLoading, setIsLoading] = useState(forceEmptyState ? false : !initialState.hasValidCache);
   const [hasAnyTags, setHasAnyTags] = useState(initialState.hasAnyTags);
+
+  // ⭐ 주간 보고서 목록 조회 함수
+  const fetchWeeklyReports = useCallback(async (userId: string) => {
+    try {
+      console.log('📊 [MyReportList] 주간 보고서 조회 시작...');
+
+      // 1. 완료된 주간 보고서 목록 조회
+      const { data: dbReports, error: reportsError } = await supabase
+        .from('weekly_reports')
+        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .order('published_at', { ascending: false });
+
+      if (reportsError) {
+        console.error('❌ [MyReportList] 보고서 조회 실패:', reportsError);
+        return [];
+      }
+
+      if (!dbReports || dbReports.length === 0) {
+        console.log('📭 [MyReportList] 보고서 없음');
+        return [];
+      }
+
+      console.log(`✅ [MyReportList] 보고서 ${dbReports.length}개 조회됨`);
+
+      // 2. 각 보고서의 soul_prescription 섹션 조회 (메시지용)
+      const reportIds = dbReports.map(r => r.id);
+      const { data: sectionsData } = await supabase
+        .from('weekly_report_sections')
+        .select('id, report_id, section_type, content')
+        .in('report_id', reportIds)
+        .eq('section_type', 'soul_prescription');
+
+      const sectionsMap = new Map<string, DBReportSection>();
+      if (sectionsData) {
+        for (const section of sectionsData) {
+          sectionsMap.set(section.report_id, section as DBReportSection);
+        }
+      }
+
+      // 3. 각 보고서 기간의 태그 조회
+      const tagsMap = new Map<string, DBUserTag[]>();
+      for (const report of dbReports) {
+        const { data: tagsData } = await supabase
+          .from('user_trait_tags')
+          .select('tag_name, tag_type')
+          .eq('user_id', userId)
+          .eq('is_confirmed', true)
+          .neq('tag_name', '__SKIPPED__')
+          .gte('created_at', report.week_start_date)
+          .lte('created_at', report.week_end_date + 'T23:59:59.999Z')
+          .limit(10);
+
+        if (tagsData && tagsData.length > 0) {
+          tagsMap.set(report.id, tagsData as DBUserTag[]);
+        }
+      }
+
+      // 4. UI 형식으로 변환
+      const monthlyReports = transformToMonthlyReports(dbReports as DBWeeklyReport[], sectionsMap, tagsMap);
+      return monthlyReports;
+
+    } catch (error) {
+      console.error('❌ [MyReportList] 보고서 조회 오류:', error);
+      return [];
+    }
+  }, []);
 
   // ⭐ 실제 데이터 로드 (캐시 미스 또는 백그라운드 갱신)
   useEffect(() => {
@@ -415,17 +371,24 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         setCurrentWeekTagsCount(weeklyTagCount);
         setHasAnyTags(hasAnyTagsNow);
 
+        let monthlyReports: MonthlyReport[] = [];
         if (!hasAnyTagsNow) {
           setReports([]);
+        } else {
+          // ⭐ 주간 보고서 목록 조회
+          monthlyReports = await fetchWeeklyReports(user.id);
+          setReports(monthlyReports);
+          console.log(`📋 [MyReportList] 월별 보고서 ${monthlyReports.length}개 로드됨`);
         }
 
-        // 🚀 캐시에 저장 (만료 시간 포함)
+        // 🚀 캐시에 저장 (만료 시간 포함) - reports 데이터 포함!
         localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
           currentWeekTagsCount: weeklyTagCount,
           hasAnyTags: hasAnyTagsNow,
+          reports: monthlyReports,
           timestamp: Date.now()
         }));
-        console.log('💾 [MyReportList] 캐시 저장 완료');
+        console.log('💾 [MyReportList] 캐시 저장 완료 (보고서 포함)');
 
       } catch (error) {
         console.error('❌ [MyReportList] 데이터 로드 실패:', error);
@@ -439,7 +402,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     } else {
       setIsLoading(false);
     }
-  }, [forceEmptyState]);
+  }, [forceEmptyState, fetchWeeklyReports]);
 
   // 🚀 visibility/focus 변경 시 refresh 플래그 체크
   useEffect(() => {
@@ -480,10 +443,19 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         setHasAnyTags(hasAnyTagsNow);
         console.log('✅ [MyReportList] 태그 개수 갱신:', weeklyTagCount, '/', totalTagCount);
 
-        // 캐시 업데이트
+        // 주간 보고서 목록도 갱신
+        let monthlyReports: MonthlyReport[] = [];
+        if (hasAnyTagsNow) {
+          monthlyReports = await fetchWeeklyReports(user.id);
+          setReports(monthlyReports);
+          console.log(`📋 [MyReportList] visibility 변경 → 보고서 ${monthlyReports.length}개 갱신`);
+        }
+
+        // 캐시 업데이트 (reports 포함)
         localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
           currentWeekTagsCount: weeklyTagCount,
           hasAnyTags: hasAnyTagsNow,
+          reports: monthlyReports,
           timestamp: Date.now()
         }));
       } catch (error) {
@@ -504,7 +476,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', checkAndRefresh);
     };
-  }, []);
+  }, [fetchWeeklyReports]);
 
   const handleTabChange = (index: number) => {
     if (index === 0) {
@@ -516,14 +488,24 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     onTabChange?.(index);
   };
 
+  // ⭐ 보고서 클릭 시 상세 페이지로 이동
+  const handleReportClick = (reportId: string) => {
+    if (onReportClick) {
+      onReportClick(reportId);
+    } else {
+      // 기본 동작: 주간 보고서 상세 페이지로 이동
+      navigate(`/report-weekly-detail/${reportId}`);
+    }
+  };
+
   const handleDevNoTags = () => {
     setCurrentWeekTagsCount(0);
     setHasAnyTags(true); // 전체 태그는 있지만 이번 주 태그만 없음
-    setReports(reportData);
-    // 캐시도 업데이트
+    // 캐시도 업데이트 (현재 reports 유지)
     localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
       currentWeekTagsCount: 0,
       hasAnyTags: true,
+      reports,
       timestamp: Date.now()
     }));
   };
@@ -531,11 +513,11 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   const handleDevManyTags = () => {
     setCurrentWeekTagsCount(6);
     setHasAnyTags(true);
-    setReports(reportData);
-    // 캐시도 업데이트
+    // 캐시도 업데이트 (현재 reports 유지)
     localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
       currentWeekTagsCount: 6,
       hasAnyTags: true,
+      reports,
       timestamp: Date.now()
     }));
   };
@@ -624,10 +606,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     }
   };
 
-  // Filter for Jan-March reports for the list (더미 데이터용)
-  const filteredReports = reports.filter(month =>
-    ['2026-01', '2026-02', '2026-03'].includes(month.id)
-  );
+  // 실제 DB에서 조회한 보고서 목록 (더 이상 필터링 불필요)
+  const filteredReports = reports;
 
   // 초기 빈 상태: 태그가 전혀 없는 경우
   const isInitialEmptyState = !hasAnyTags && reports.length === 0;
@@ -685,7 +665,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
               <MyReportWeekly
                 currentWeekTagsCount={currentWeekTagsCount}
                 filteredReports={filteredReports}
-                onReportClick={onReportClick}
+                onReportClick={handleReportClick}
               />
             )}
 
