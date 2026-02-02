@@ -29,8 +29,9 @@ export interface TagStat {
 
 // 대시보드 통계 타입
 export interface DashboardStats {
-  totalCustomers: number;
-  totalVisits: number;
+  newCustomers: number;        // 신규 고객 (기간 내 가입)
+  returningCustomers: number;  // 재방문 고객 (기간 내 방문, 기간 전 가입)
+  totalVisits: number;         // 기간 내 방문 고객의 총 방문 횟수
   freeContentUsage: number;
   paidContentUsage: number;
   totalRevenue: number;
@@ -85,31 +86,63 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   // 관리자 ID 필터 문자열 생성 (Supabase는 따옴표 없이 전달)
   const adminFilter = ADMIN_IDS.join(',');
 
-  // 1. 총 고객수 조회 (관리자 제외)
-  let customersQuery = supabase
+  // 1. 신규 고객 조회 (기간 내 가입, 관리자 제외)
+  let newCustomersQuery = supabase
     .from('users')
     .select('*', { count: 'exact', head: true })
     .not('id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
-    customersQuery = customersQuery.gte('created_at', dateRange.startDate);
+    newCustomersQuery = newCustomersQuery.gte('created_at', dateRange.startDate);
   }
   if (dateRange?.endDate) {
-    customersQuery = customersQuery.lt('created_at', dateRange.endDate);
+    newCustomersQuery = newCustomersQuery.lt('created_at', dateRange.endDate);
   }
 
-  const { count: totalCustomers, error: customersError } = await customersQuery;
+  const { count: newCustomers, error: newCustomersError } = await newCustomersQuery;
 
-  if (customersError) {
-    console.error('고객수 조회 오류:', customersError);
-    throw new Error('고객수 조회에 실패했습니다.');
+  if (newCustomersError) {
+    console.error('신규 고객수 조회 오류:', newCustomersError);
+    throw new Error('신규 고객수 조회에 실패했습니다.');
   }
 
-  // 2. 총 방문횟수 조회 (관리자 제외) - 기간 필터 없음 (누적)
-  const { data: visitData, error: visitError } = await supabase
+  // 2. 재방문 고객 조회 (기간 내 방문했지만 기간 전에 가입한 고객)
+  let returningCustomersQuery = supabase
+    .from('users')
+    .select('*', { count: 'exact', head: true })
+    .not('id', 'in', `(${adminFilter})`);
+
+  if (dateRange?.startDate) {
+    // 기간 내 방문 (last_login_at >= startDate)
+    returningCustomersQuery = returningCustomersQuery.gte('last_login_at', dateRange.startDate);
+    // 기간 전 가입 (created_at < startDate)
+    returningCustomersQuery = returningCustomersQuery.lt('created_at', dateRange.startDate);
+  }
+  if (dateRange?.endDate) {
+    returningCustomersQuery = returningCustomersQuery.lt('last_login_at', dateRange.endDate);
+  }
+
+  const { count: returningCustomers, error: returningCustomersError } = await returningCustomersQuery;
+
+  if (returningCustomersError) {
+    console.error('재방문 고객수 조회 오류:', returningCustomersError);
+    throw new Error('재방문 고객수 조회에 실패했습니다.');
+  }
+
+  // 3. 총 방문횟수 조회 (기간 내 방문한 고객의 visit_count 합계)
+  let visitQuery = supabase
     .from('users')
     .select('visit_count')
     .not('id', 'in', `(${adminFilter})`);
+
+  if (dateRange?.startDate) {
+    visitQuery = visitQuery.gte('last_login_at', dateRange.startDate);
+  }
+  if (dateRange?.endDate) {
+    visitQuery = visitQuery.lt('last_login_at', dateRange.endDate);
+  }
+
+  const { data: visitData, error: visitError } = await visitQuery;
 
   if (visitError) {
     console.error('방문횟수 조회 오류:', visitError);
@@ -237,7 +270,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     : 0;
 
   return {
-    totalCustomers: totalCustomers || 0,
+    newCustomers: newCustomers || 0,
+    returningCustomers: returningCustomers || 0,
     totalVisits,
     freeContentUsage: freeContentUsage || 0,
     paidContentUsage: paidContentUsage || 0,

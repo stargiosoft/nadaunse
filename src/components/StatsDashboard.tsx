@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Home, Users, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Home, Users, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -383,9 +383,16 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               <div className="grid grid-cols-2 gap-3">
                 <StatCard
                   icon={Users}
-                  label={selectedPreset === 'all' ? '총 고객수' : '신규 고객'}
-                  value={stats.totalCustomers}
+                  label="신규 고객"
+                  value={stats.newCustomers}
                   unit="명"
+                />
+                <StatCard
+                  icon={UserCheck}
+                  label="재방문 고객"
+                  value={stats.returningCustomers}
+                  unit="명"
+                  color="#368683"
                 />
                 <StatCard
                   icon={Eye}
