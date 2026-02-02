@@ -5,13 +5,13 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Home, Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Home, Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, getDateRangeFromPreset, DashboardStats, TagStat, DateRangePreset, DateRangeFilter } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -102,6 +102,7 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
 
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [gaStats, setGaStats] = useState<GAStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<DateRangePreset>('all');
@@ -177,8 +178,21 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       } else {
         dateRangeFilter = getDateRangeFromPreset(preset);
       }
-      const data = await fetchDashboardStats(dateRangeFilter);
-      setStats(data);
+
+      // 대시보드 통계와 GA 통계 병렬 로드
+      const [dashboardData, gaRealtimeData, gaPeriodData] = await Promise.all([
+        fetchDashboardStats(dateRangeFilter),
+        fetchGAStats('realtime'), // 실시간 활성 사용자
+        fetchGAStats('period', dateRangeFilter), // 기간별 방문자수
+      ]);
+
+      setStats(dashboardData);
+      // GA 데이터 병합: 실시간 + 기간별
+      setGaStats({
+        ...gaRealtimeData,
+        activeUsers: gaPeriodData?.activeUsers,
+        newUsers: gaPeriodData?.newUsers,
+      } as GAStats);
     } catch (err) {
       console.error('통계 로드 오류:', err);
       setError('통계 데이터를 불러오는데 실패했습니다.');
@@ -384,10 +398,38 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             animate={{ opacity: 1 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
           >
+            {/* 실시간 통계 섹션 */}
+            {gaStats && gaStats.realtimeActiveUsers !== undefined && (
+              <section>
+                <SectionHeader icon="🔴" title="실시간 현황" />
+                <div className="grid grid-cols-1 gap-3">
+                  <StatCard
+                    icon={Activity}
+                    label="현재 접속자"
+                    value={gaStats.realtimeActiveUsers}
+                    unit="명"
+                    color="#EF4444"
+                    subValue="Google Analytics 실시간 데이터"
+                  />
+                </div>
+              </section>
+            )}
+
             {/* 고객 통계 섹션 */}
             <section>
               <SectionHeader icon="📊" title="고객 통계" />
               <div className="grid grid-cols-2 gap-3">
+                {/* GA 총 방문자수 - 첫 번째 카드 */}
+                {gaStats?.activeUsers !== undefined && (
+                  <StatCard
+                    icon={Users}
+                    label="총 방문자수"
+                    value={gaStats.activeUsers}
+                    unit="명"
+                    color="#6366F1"
+                    subValue="GA 활성 사용자"
+                  />
+                )}
                 <StatCard
                   icon={Users}
                   label="총 가입 고객"

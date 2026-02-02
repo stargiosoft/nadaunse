@@ -1,0 +1,244 @@
+/**
+ * GA API 통계 조회 Edge Function
+ * Google Analytics Data API를 통해 활성 사용자 수 조회
+ *
+ * 환경변수:
+ * - GA_SERVICE_ACCOUNT_JSON: 서비스 계정 JSON 키 (Supabase Secrets에 저장)
+ * - GA_PROPERTY_ID: GA4 속성 ID (예: 520025356)
+ */
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import {
+  getCorsHeaders,
+  handleCorsPreflightRequest,
+  jsonResponse,
+  errorResponse,
+} from '../server/cors.ts';
+
+// JWT 생성을 위한 base64url 인코딩
+function base64urlEncode(data: Uint8Array): string {
+  return btoa(String.fromCharCode(...data))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+// 텍스트를 base64url로 인코딩
+function textToBase64url(text: string): string {
+  return base64urlEncode(new TextEncoder().encode(text));
+}
+
+// PEM 형식 개인키에서 바이너리 추출
+function pemToBinary(pem: string): Uint8Array {
+  const lines = pem.split('\n');
+  const base64 = lines
+    .filter(line => !line.startsWith('-----'))
+    .join('');
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// JWT 서명 생성
+async function signJwt(
+  header: object,
+  payload: object,
+  privateKeyPem: string
+): Promise<string> {
+  const headerB64 = textToBase64url(JSON.stringify(header));
+  const payloadB64 = textToBase64url(JSON.stringify(payload));
+  const signInput = `${headerB64}.${payloadB64}`;
+
+  // PEM에서 개인키 추출 및 임포트
+  const keyData = pemToBinary(privateKeyPem);
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyData,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  // 서명
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(signInput)
+  );
+
+  const signatureB64 = base64urlEncode(new Uint8Array(signature));
+  return `${signInput}.${signatureB64}`;
+}
+
+// Google OAuth 토큰 발급
+async function getAccessToken(serviceAccountJson: string): Promise<string> {
+  const credentials = JSON.parse(serviceAccountJson);
+  const now = Math.floor(Date.now() / 1000);
+
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+  };
+
+  const payload = {
+    iss: credentials.client_email,
+    scope: 'https://www.googleapis.com/auth/analytics.readonly',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600, // 1시간 유효
+  };
+
+  const jwt = await signJwt(header, payload, credentials.private_key);
+
+  // 토큰 요청
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    throw new Error(`토큰 발급 실패: ${tokenResponse.status} - ${errorText}`);
+  }
+
+  const tokenData = await tokenResponse.json();
+  return tokenData.access_token;
+}
+
+// GA Data API 호출 - 실시간 활성 사용자
+async function getRealtimeActiveUsers(
+  accessToken: string,
+  propertyId: string
+): Promise<number> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runRealtimeReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        metrics: [{ name: 'activeUsers' }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  // 응답에서 활성 사용자 수 추출
+  if (data.rows && data.rows.length > 0) {
+    return parseInt(data.rows[0].metricValues[0].value, 10);
+  }
+
+  return 0;
+}
+
+// GA Data API 호출 - 기간별 활성 사용자
+async function getActiveUsers(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ activeUsers: number; newUsers: number }> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: 'activeUsers' },
+          { name: 'newUsers' },
+        ],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.rows && data.rows.length > 0) {
+    return {
+      activeUsers: parseInt(data.rows[0].metricValues[0].value, 10),
+      newUsers: parseInt(data.rows[0].metricValues[1].value, 10),
+    };
+  }
+
+  return { activeUsers: 0, newUsers: 0 };
+}
+
+serve(async (req: Request) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    return handleCorsPreflightRequest(req);
+  }
+
+  try {
+    // 환경변수에서 자격 증명 가져오기
+    const serviceAccountJson = Deno.env.get('GA_SERVICE_ACCOUNT_JSON');
+    const propertyId = Deno.env.get('GA_PROPERTY_ID') || '520025356';
+
+    if (!serviceAccountJson) {
+      console.error('GA_SERVICE_ACCOUNT_JSON 환경변수가 설정되지 않음');
+      return errorResponse(req, 'GA 연동이 설정되지 않았습니다.', 500);
+    }
+
+    // 요청 파라미터 파싱
+    const url = new URL(req.url);
+    const type = url.searchParams.get('type') || 'realtime'; // realtime | period
+    const startDate = url.searchParams.get('startDate') || '7daysAgo';
+    const endDate = url.searchParams.get('endDate') || 'today';
+
+    // OAuth 토큰 발급
+    const accessToken = await getAccessToken(serviceAccountJson);
+
+    let result;
+    if (type === 'realtime') {
+      const realtimeUsers = await getRealtimeActiveUsers(accessToken, propertyId);
+      result = {
+        success: true,
+        type: 'realtime',
+        realtimeActiveUsers: realtimeUsers,
+      };
+    } else {
+      const periodData = await getActiveUsers(accessToken, propertyId, startDate, endDate);
+      result = {
+        success: true,
+        type: 'period',
+        startDate,
+        endDate,
+        ...periodData,
+      };
+    }
+
+    return jsonResponse(req, result);
+  } catch (error) {
+    console.error('GA 통계 조회 오류:', error);
+    return errorResponse(
+      req,
+      error instanceof Error ? error.message : 'GA 통계 조회에 실패했습니다.',
+      500
+    );
+  }
+});

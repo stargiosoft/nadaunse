@@ -336,3 +336,76 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     overallTagConfirmRate
   };
 }
+
+// GA 통계 타입
+export interface GAStats {
+  realtimeActiveUsers?: number;
+  activeUsers?: number;
+  newUsers?: number;
+  type: 'realtime' | 'period';
+}
+
+/**
+ * GA 활성 사용자 통계 조회
+ * @param type - 'realtime' (실시간) 또는 'period' (기간별)
+ * @param dateRange - 기간별 조회 시 날짜 범위
+ */
+export async function fetchGAStats(
+  type: 'realtime' | 'period' = 'realtime',
+  dateRange?: DateRangeFilter
+): Promise<GAStats | null> {
+  try {
+    // Edge Function URL 구성
+    const params = new URLSearchParams({ type });
+
+    if (type === 'period' && dateRange) {
+      if (dateRange.startDate) {
+        // ISO 날짜를 GA 형식으로 변환 (YYYY-MM-DD)
+        const start = dateRange.startDate.split('T')[0];
+        params.append('startDate', start);
+      }
+      if (dateRange.endDate) {
+        const end = dateRange.endDate.split('T')[0];
+        params.append('endDate', end);
+      }
+    }
+
+    const { data, error } = await supabase.functions.invoke('get-ga-stats', {
+      body: null,
+      headers: {},
+    });
+
+    // URL 파라미터를 사용하는 방식으로 변경
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ga-stats?${params.toString()}`;
+
+    const response = await fetch(functionUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('GA 통계 조회 실패:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error('GA 통계 조회 오류:', result.error);
+      return null;
+    }
+
+    return {
+      type: result.type,
+      realtimeActiveUsers: result.realtimeActiveUsers,
+      activeUsers: result.activeUsers,
+      newUsers: result.newUsers,
+    };
+  } catch (error) {
+    console.error('GA 통계 조회 예외:', error);
+    return null;
+  }
+}
