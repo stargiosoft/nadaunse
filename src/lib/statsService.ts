@@ -409,13 +409,14 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     activeUserIds = activeUsersData?.map(u => u.id) || [];
   }
 
-  // Step 2: 이 유저들 중 확정 태그(is_confirmed=true) 1개 이상 보유자 조회
+  // Step 2: 이 유저들 중 확정 태그(is_confirmed=true, tag_type != neutral) 1개 이상 보유자 조회
   let tagUserRate = 0;
   if (activeUserIds.length > 0) {
     const { data: tagUsers, error: tagUserError } = await supabase
       .from('user_trait_tags')
       .select('user_id')
       .eq('is_confirmed', true)
+      .neq('tag_type', 'neutral')
       .in('user_id', activeUserIds);
 
     if (tagUserError) {

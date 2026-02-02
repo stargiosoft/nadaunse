@@ -384,6 +384,9 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
           console.error('❌ [응원글] 저장 실패:', error);
         } else {
           console.log('✅ [응원글] 저장 완료');
+          // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
+          localStorage.removeItem('my_report_cache');
+          console.log('🗑️ [응원글] 보고서 목록 캐시 삭제');
         }
       } catch (err) {
         console.error('❌ [응원글] 저장 중 예외:', err);
@@ -412,6 +415,9 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
       } else {
         console.log('✅ [응원글] 수정 저장 완료');
         setSavedText(newText.trim());
+        // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
+        localStorage.removeItem('my_report_cache');
+        console.log('🗑️ [응원글] 보고서 목록 캐시 삭제');
         setText(newText.trim());
         setToastMessage("수정이 반영됐어요.");
         setShowToast(true);
