@@ -2639,6 +2639,64 @@ function PortOneInit() {
   return null;
 }
 
+// ⭐ 주간 보고서 상세 페이지 Wrapper (알림톡에서 접근)
+function ReportWeeklyDetailWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const goBack = useGoBack('/profile');
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <ReportWeeklyDetail
+      reportId={id}
+      onBack={goBack}
+      onNext={() => navigate(`/report-weekly-tarot-result/${id}`)}
+    />
+  );
+}
+
+// ⭐ 주간 보고서 타로 결과 페이지 Wrapper
+function ReportWeeklyTarotResultWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const goBack = useGoBack(`/report-weekly-detail/${id}`);
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <ReportWeeklyTarotResult
+      reportId={id}
+      onBack={goBack}
+      onNext={() => navigate(`/report-weekly-mind-care/${id}`)}
+    />
+  );
+}
+
+// ⭐ 주간 보고서 마음 처방 페이지 Wrapper
+function ReportWeeklyMindCareWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const goBack = useGoBack(`/report-weekly-tarot-result/${id}`);
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <ReportWeeklyMindCare
+      reportId={id}
+      onBack={goBack}
+      onPrev={() => navigate(`/report-weekly-tarot-result/${id}`)}
+      onNext={() => navigate('/profile')}
+    />
+  );
+}
+
 export default function App() {
   // 🌐 HTML lang 속성 설정 (브라우저 자동번역 방지)
   useEffect(() => {
@@ -2745,6 +2803,10 @@ export default function App() {
           <Route path="/test/report-weekly-tarot-result" element={<ReportWeeklyTarotResult />} />
           <Route path="/test/report-weekly-mind-care" element={<ReportWeeklyMindCare />} />
           <Route path="/test/report-weekly-memo" element={<ReportWeeklyMemo />} />
+          {/* ⭐ 주간 보고서 페이지 (알림톡에서 접근) */}
+          <Route path="/report-weekly-detail/:id" element={<ReportWeeklyDetailWrapper />} />
+          <Route path="/report-weekly-tarot-result/:id" element={<ReportWeeklyTarotResultWrapper />} />
+          <Route path="/report-weekly-mind-care/:id" element={<ReportWeeklyMindCareWrapper />} />
           <Route path="/test/report-weekly-memo-edit" element={<ReportWeeklyMemoEdit initialText="" onCancel={() => {}} onSave={() => {}} />} />
           <Route path="/test/completion-coupon" element={<CompletionCoupon />} />
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
