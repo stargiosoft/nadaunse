@@ -86,72 +86,118 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   // 관리자 ID 필터 문자열 생성 (Supabase는 따옴표 없이 전달)
   const adminFilter = ADMIN_IDS.join(',');
 
-  // 1. 신규 고객 조회 (기간 내 가입, 관리자 제외)
-  let newCustomersQuery = supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .not('id', 'in', `(${adminFilter})`);
+  // 전체 기간 여부 확인
+  const isAllPeriod = !dateRange?.startDate && !dateRange?.endDate;
 
-  if (dateRange?.startDate) {
-    newCustomersQuery = newCustomersQuery.gte('created_at', dateRange.startDate);
+  let newCustomers = 0;
+  let returningCustomers = 0;
+  let totalVisits = 0;
+
+  if (isAllPeriod) {
+    // 전체 기간: visit_count 기준으로 구분
+    // 신규 고객: visit_count = 1
+    const { count: newCount, error: newError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('id', 'in', `(${adminFilter})`)
+      .eq('visit_count', 1);
+
+    if (newError) {
+      console.error('신규 고객수 조회 오류:', newError);
+      throw new Error('신규 고객수 조회에 실패했습니다.');
+    }
+    newCustomers = newCount || 0;
+
+    // 재방문 고객: visit_count >= 2
+    const { count: returnCount, error: returnError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('id', 'in', `(${adminFilter})`)
+      .gte('visit_count', 2);
+
+    if (returnError) {
+      console.error('재방문 고객수 조회 오류:', returnError);
+      throw new Error('재방문 고객수 조회에 실패했습니다.');
+    }
+    returningCustomers = returnCount || 0;
+
+    // 총 방문횟수: 전체 visit_count 합계
+    const { data: visitData, error: visitError } = await supabase
+      .from('users')
+      .select('visit_count')
+      .not('id', 'in', `(${adminFilter})`);
+
+    if (visitError) {
+      console.error('방문횟수 조회 오류:', visitError);
+      throw new Error('방문횟수 조회에 실패했습니다.');
+    }
+    totalVisits = visitData?.reduce((sum, user) => sum + (user.visit_count || 0), 0) || 0;
+
+  } else {
+    // 특정 기간: 기간 기준으로 구분
+    // 1. 신규 고객 (기간 내 가입)
+    let newCustomersQuery = supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('id', 'in', `(${adminFilter})`);
+
+    if (dateRange?.startDate) {
+      newCustomersQuery = newCustomersQuery.gte('created_at', dateRange.startDate);
+    }
+    if (dateRange?.endDate) {
+      newCustomersQuery = newCustomersQuery.lt('created_at', dateRange.endDate);
+    }
+
+    const { count: newCount, error: newError } = await newCustomersQuery;
+    if (newError) {
+      console.error('신규 고객수 조회 오류:', newError);
+      throw new Error('신규 고객수 조회에 실패했습니다.');
+    }
+    newCustomers = newCount || 0;
+
+    // 2. 재방문 고객 (기간 내 방문했지만 기간 전에 가입)
+    let returningCustomersQuery = supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('id', 'in', `(${adminFilter})`);
+
+    if (dateRange?.startDate) {
+      returningCustomersQuery = returningCustomersQuery.gte('last_login_at', dateRange.startDate);
+      returningCustomersQuery = returningCustomersQuery.lt('created_at', dateRange.startDate);
+    }
+    if (dateRange?.endDate) {
+      returningCustomersQuery = returningCustomersQuery.lt('last_login_at', dateRange.endDate);
+    }
+
+    const { count: returnCount, error: returnError } = await returningCustomersQuery;
+    if (returnError) {
+      console.error('재방문 고객수 조회 오류:', returnError);
+      throw new Error('재방문 고객수 조회에 실패했습니다.');
+    }
+    returningCustomers = returnCount || 0;
+
+    // 3. 총 방문횟수 (기간 내 방문한 고객의 visit_count 합계)
+    let visitQuery = supabase
+      .from('users')
+      .select('visit_count')
+      .not('id', 'in', `(${adminFilter})`);
+
+    if (dateRange?.startDate) {
+      visitQuery = visitQuery.gte('last_login_at', dateRange.startDate);
+    }
+    if (dateRange?.endDate) {
+      visitQuery = visitQuery.lt('last_login_at', dateRange.endDate);
+    }
+
+    const { data: visitData, error: visitError } = await visitQuery;
+    if (visitError) {
+      console.error('방문횟수 조회 오류:', visitError);
+      throw new Error('방문횟수 조회에 실패했습니다.');
+    }
+    totalVisits = visitData?.reduce((sum, user) => sum + (user.visit_count || 0), 0) || 0;
   }
-  if (dateRange?.endDate) {
-    newCustomersQuery = newCustomersQuery.lt('created_at', dateRange.endDate);
-  }
 
-  const { count: newCustomers, error: newCustomersError } = await newCustomersQuery;
-
-  if (newCustomersError) {
-    console.error('신규 고객수 조회 오류:', newCustomersError);
-    throw new Error('신규 고객수 조회에 실패했습니다.');
-  }
-
-  // 2. 재방문 고객 조회 (기간 내 방문했지만 기간 전에 가입한 고객)
-  let returningCustomersQuery = supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .not('id', 'in', `(${adminFilter})`);
-
-  if (dateRange?.startDate) {
-    // 기간 내 방문 (last_login_at >= startDate)
-    returningCustomersQuery = returningCustomersQuery.gte('last_login_at', dateRange.startDate);
-    // 기간 전 가입 (created_at < startDate)
-    returningCustomersQuery = returningCustomersQuery.lt('created_at', dateRange.startDate);
-  }
-  if (dateRange?.endDate) {
-    returningCustomersQuery = returningCustomersQuery.lt('last_login_at', dateRange.endDate);
-  }
-
-  const { count: returningCustomers, error: returningCustomersError } = await returningCustomersQuery;
-
-  if (returningCustomersError) {
-    console.error('재방문 고객수 조회 오류:', returningCustomersError);
-    throw new Error('재방문 고객수 조회에 실패했습니다.');
-  }
-
-  // 3. 총 방문횟수 조회 (기간 내 방문한 고객의 visit_count 합계)
-  let visitQuery = supabase
-    .from('users')
-    .select('visit_count')
-    .not('id', 'in', `(${adminFilter})`);
-
-  if (dateRange?.startDate) {
-    visitQuery = visitQuery.gte('last_login_at', dateRange.startDate);
-  }
-  if (dateRange?.endDate) {
-    visitQuery = visitQuery.lt('last_login_at', dateRange.endDate);
-  }
-
-  const { data: visitData, error: visitError } = await visitQuery;
-
-  if (visitError) {
-    console.error('방문횟수 조회 오류:', visitError);
-    throw new Error('방문횟수 조회에 실패했습니다.');
-  }
-
-  const totalVisits = visitData?.reduce((sum, user) => sum + (user.visit_count || 0), 0) || 0;
-
-  // 3. 무료 콘텐츠 이용 횟수 (관리자 제외)
+  // 4. 무료 콘텐츠 이용 횟수 (관리자 제외)
   let freeContentQuery = supabase
     .from('free_content_records')
     .select('*', { count: 'exact', head: true })
