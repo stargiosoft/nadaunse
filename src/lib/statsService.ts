@@ -272,6 +272,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.paid_amount || 0), 0) || 0;
 
   // 6. 태그 통계 조회 (source_type별, neutral 제외)
+  // 콘텐츠 건 기준으로 계산 (태그 3개 = 1건, 1개라도 확인하면 확인된 건)
   // 기간 내 방문 회원의 태그만 조회
   let periodUserIds: string[] = [];
 
@@ -290,14 +291,15 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     periodUserIds = periodUsers?.map(u => u.id) || [];
   }
 
-  let tagData: { source_type: string; is_confirmed: boolean }[] | null = null;
+  // 태그 데이터 조회 (그룹핑을 위해 user_id, created_at도 포함)
+  let tagData: { user_id: string; source_type: string; is_confirmed: boolean; created_at: string }[] | null = null;
   let tagError: Error | null = null;
 
   if (isAllPeriod) {
     // 전체 기간: 모든 태그 조회
     const result = await supabase
       .from('user_trait_tags')
-      .select('source_type, is_confirmed')
+      .select('user_id, source_type, is_confirmed, created_at')
       .not('user_id', 'in', `(${adminFilter})`)
       .neq('tag_type', 'neutral');
     tagData = result.data;
@@ -306,7 +308,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     // 기간 내 방문 회원의 태그만 조회
     const result = await supabase
       .from('user_trait_tags')
-      .select('source_type, is_confirmed')
+      .select('user_id, source_type, is_confirmed, created_at')
       .neq('tag_type', 'neutral')
       .in('user_id', periodUserIds);
     tagData = result.data;
@@ -321,21 +323,40 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('태그 통계 조회에 실패했습니다.');
   }
 
-  // source_type별 그룹화
-  const tagGrouped: Record<string, { total: number; confirmed: number }> = {};
-  let totalTags = 0;
-  let totalConfirmed = 0;
+  // 콘텐츠 이용 건 기준으로 그룹핑 (user_id + source_type + 초 단위 created_at)
+  // 같은 시점에 생성된 태그들을 하나의 콘텐츠 이용 건으로 처리
+  const contentGroups: Record<string, { sourceType: string; hasConfirmed: boolean }> = {};
 
   tagData?.forEach(tag => {
     const sourceType = tag.source_type || 'unknown';
+    // 초 단위까지만 사용하여 그룹 키 생성 (밀리초 차이 무시)
+    const createdAtSec = tag.created_at?.substring(0, 19) || '';
+    const groupKey = `${tag.user_id}_${sourceType}_${createdAtSec}`;
+
+    if (!contentGroups[groupKey]) {
+      contentGroups[groupKey] = { sourceType, hasConfirmed: false };
+    }
+    // 1개라도 확인했으면 해당 콘텐츠 건은 확인된 것으로 처리
+    if (tag.is_confirmed) {
+      contentGroups[groupKey].hasConfirmed = true;
+    }
+  });
+
+  // source_type별 콘텐츠 건 통계 계산
+  const tagGrouped: Record<string, { total: number; confirmed: number }> = {};
+  let totalContents = 0;
+  let totalConfirmedContents = 0;
+
+  Object.values(contentGroups).forEach(group => {
+    const sourceType = group.sourceType;
     if (!tagGrouped[sourceType]) {
       tagGrouped[sourceType] = { total: 0, confirmed: 0 };
     }
     tagGrouped[sourceType].total++;
-    totalTags++;
-    if (tag.is_confirmed) {
+    totalContents++;
+    if (group.hasConfirmed) {
       tagGrouped[sourceType].confirmed++;
-      totalConfirmed++;
+      totalConfirmedContents++;
     }
   });
 
@@ -347,12 +368,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     confirmRate: stats.total > 0 ? Math.round((stats.confirmed / stats.total) * 1000) / 10 : 0
   }));
 
-  // 총 태그 수 높은 순으로 정렬
+  // 총 콘텐츠 건 수 높은 순으로 정렬
   tagStats.sort((a, b) => b.total - a.total);
 
-  // 전체 확인율 계산
-  const overallTagConfirmRate = totalTags > 0
-    ? Math.round((totalConfirmed / totalTags) * 1000) / 10
+  // 전체 확인율 계산 (콘텐츠 건 기준)
+  const overallTagConfirmRate = totalContents > 0
+    ? Math.round((totalConfirmedContents / totalContents) * 1000) / 10
     : 0;
 
   // 재방문율 계산 (재방문 고객 / 전체 고객)
