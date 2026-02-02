@@ -272,20 +272,49 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.paid_amount || 0), 0) || 0;
 
   // 6. 태그 통계 조회 (source_type별, neutral 제외)
-  let tagQuery = supabase
-    .from('user_trait_tags')
-    .select('source_type, is_confirmed')
-    .not('user_id', 'in', `(${adminFilter})`)
-    .neq('tag_type', 'neutral');
+  // 기간 내 방문 회원의 태그만 조회
+  let periodUserIds: string[] = [];
 
-  if (dateRange?.startDate) {
-    tagQuery = tagQuery.gte('created_at', dateRange.startDate);
-  }
-  if (dateRange?.endDate) {
-    tagQuery = tagQuery.lt('created_at', dateRange.endDate);
+  if (!isAllPeriod && dateRange?.startDate && dateRange?.endDate) {
+    // 기간 내 방문 회원 ID 조회
+    const { data: periodUsers, error: periodUsersError } = await supabase
+      .from('users')
+      .select('id')
+      .not('id', 'in', `(${adminFilter})`)
+      .gte('last_login_at', dateRange.startDate)
+      .lt('last_login_at', dateRange.endDate);
+
+    if (periodUsersError) {
+      console.error('기간 내 방문 유저 조회 오류:', periodUsersError);
+    }
+    periodUserIds = periodUsers?.map(u => u.id) || [];
   }
 
-  const { data: tagData, error: tagError } = await tagQuery;
+  let tagData: { source_type: string; is_confirmed: boolean }[] | null = null;
+  let tagError: Error | null = null;
+
+  if (isAllPeriod) {
+    // 전체 기간: 모든 태그 조회
+    const result = await supabase
+      .from('user_trait_tags')
+      .select('source_type, is_confirmed')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .neq('tag_type', 'neutral');
+    tagData = result.data;
+    tagError = result.error;
+  } else if (periodUserIds.length > 0 && periodUserIds.length <= 1000) {
+    // 기간 내 방문 회원의 태그만 조회
+    const result = await supabase
+      .from('user_trait_tags')
+      .select('source_type, is_confirmed')
+      .neq('tag_type', 'neutral')
+      .in('user_id', periodUserIds);
+    tagData = result.data;
+    tagError = result.error;
+  } else {
+    // 유저가 없거나 너무 많으면 빈 결과
+    tagData = [];
+  }
 
   if (tagError) {
     console.error('태그 통계 조회 오류:', tagError);
