@@ -363,9 +363,14 @@ export async function fetchGAStats(
       const startDate = dateRange?.startDate
         ? dateRange.startDate.split('T')[0]
         : '2026-01-11';  // 서비스 시작일
-      const endDate = dateRange?.endDate
-        ? dateRange.endDate.split('T')[0]
-        : 'today';
+
+      // GA API는 endDate를 포함하므로, Supabase용 endDate(+1일)에서 1일 빼기
+      let endDate = 'today';
+      if (dateRange?.endDate) {
+        const endDateObj = new Date(dateRange.endDate);
+        endDateObj.setDate(endDateObj.getDate() - 1);  // 1일 빼기
+        endDate = endDateObj.toISOString().split('T')[0];
+      }
 
       params.append('startDate', startDate);
       params.append('endDate', endDate);
