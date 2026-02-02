@@ -31,6 +31,7 @@ export interface TagStat {
 export interface DashboardStats {
   newCustomers: number;        // 신규 고객 (기간 내 가입)
   returningCustomers: number;  // 재방문 고객 (기간 내 방문, 기간 전 가입)
+  returnRate: number;          // 재방문율 (%)
   totalVisits: number;         // 기간 내 방문 고객의 총 방문 횟수
   freeContentUsage: number;
   paidContentUsage: number;
@@ -315,9 +316,16 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round((totalConfirmed / totalTags) * 1000) / 10
     : 0;
 
+  // 재방문율 계산 (재방문 고객 / 전체 고객)
+  const totalCustomers = (newCustomers || 0) + (returningCustomers || 0);
+  const returnRate = totalCustomers > 0
+    ? Math.round((returningCustomers || 0) / totalCustomers * 1000) / 10
+    : 0;
+
   return {
     newCustomers: newCustomers || 0,
     returningCustomers: returningCustomers || 0,
+    returnRate,
     totalVisits,
     freeContentUsage: freeContentUsage || 0,
     paidContentUsage: paidContentUsage || 0,

@@ -44,13 +44,15 @@ function StatCard({
   label,
   value,
   unit = '',
-  color = '#3FB5B3'
+  color = '#3FB5B3',
+  subValue
 }: {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   label: string;
   value: number | string;
   unit?: string;
   color?: string;
+  subValue?: string;
 }) {
   return (
     <motion.div
@@ -65,6 +67,11 @@ function StatCard({
       <div style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1a1a1a' }}>
         {typeof value === 'number' ? value.toLocaleString() : value}{unit}
       </div>
+      {subValue && (
+        <div style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 400, color: color, marginTop: '4px' }}>
+          {subValue}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -393,6 +400,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.returningCustomers}
                   unit="명"
                   color="#368683"
+                  subValue={`재방문율 ${stats.returnRate}%`}
                 />
                 <StatCard
                   icon={Eye}
