@@ -297,12 +297,14 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   let tagError: Error | null = null;
 
   if (isAllPeriod) {
-    // 전체 기간: 모든 태그 조회
+    // 전체 기간: 최근 5000개 태그만 조회 (성능 최적화)
     const result = await supabase
       .from('user_trait_tags')
       .select('user_id, source_type, is_confirmed, created_at')
       .not('user_id', 'in', `(${adminFilter})`)
-      .neq('tag_type', 'neutral');
+      .neq('tag_type', 'neutral')
+      .order('created_at', { ascending: false })
+      .limit(5000);
     tagData = result.data;
     tagError = result.error;
   } else if (periodUserIds.length > 0 && periodUserIds.length <= 1000) {
@@ -429,44 +431,67 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     : 0;
 
   // 9. 회원 태그 저장율: 기간 내 활동 회원 중 확정 태그 1개 이상 보유 비율
-  // Step 1: 기간 내 활동한 회원 ID 목록 조회
-  let activeUsersQuery = supabase
-    .from('users')
-    .select('id')
-    .not('id', 'in', `(${adminFilter})`);
-
-  if (!isAllPeriod && dateRange?.startDate && dateRange?.endDate) {
-    // 기간 내 마지막 방문한 유저
-    activeUsersQuery = activeUsersQuery
-      .gte('last_login_at', dateRange.startDate)
-      .lt('last_login_at', dateRange.endDate);
-  }
-
-  const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
-  if (activeUsersError) {
-    console.error('활동 유저 조회 오류:', activeUsersError);
-  }
-  const activeUserIds = activeUsersData?.map(u => u.id) || [];
-
-  // Step 2: 활동 회원 중 확정 태그 보유자 수 조회
   let tagUserRate = 0;
-  if (activeUserIds.length > 0 && activeUserIds.length <= 1000) {
-    // 유저 수가 적당할 때만 .in() 사용
+
+  if (isAllPeriod) {
+    // 전체 기간: 전체 회원 대비 태그 보유자 비율 (간소화된 쿼리)
+    const { count: totalUserCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('id', 'in', `(${adminFilter})`);
+
+    // 확정 태그 보유자 수 (고유 user_id)
     const { data: tagUsersData, error: tagUserError } = await supabase
       .from('user_trait_tags')
       .select('user_id')
       .eq('is_confirmed', true)
       .neq('tag_type', 'neutral')
-      .in('user_id', activeUserIds);
+      .not('user_id', 'in', `(${adminFilter})`);
 
     if (tagUserError) {
       console.error('태그 유저 조회 오류:', tagUserError);
     }
 
     const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
-    tagUserRate = activeUserIds.length > 0
-      ? Math.round(uniqueTagUsers / activeUserIds.length * 1000) / 10
+    tagUserRate = (totalUserCount || 0) > 0
+      ? Math.round(uniqueTagUsers / (totalUserCount || 1) * 1000) / 10
       : 0;
+  } else {
+    // 기간 필터: 기간 내 활동한 회원 ID 목록 조회
+    let activeUsersQuery = supabase
+      .from('users')
+      .select('id')
+      .not('id', 'in', `(${adminFilter})`);
+
+    if (dateRange?.startDate && dateRange?.endDate) {
+      activeUsersQuery = activeUsersQuery
+        .gte('last_login_at', dateRange.startDate)
+        .lt('last_login_at', dateRange.endDate);
+    }
+
+    const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
+    if (activeUsersError) {
+      console.error('활동 유저 조회 오류:', activeUsersError);
+    }
+    const activeUserIds = activeUsersData?.map(u => u.id) || [];
+
+    if (activeUserIds.length > 0 && activeUserIds.length <= 1000) {
+      const { data: tagUsersData, error: tagUserError } = await supabase
+        .from('user_trait_tags')
+        .select('user_id')
+        .eq('is_confirmed', true)
+        .neq('tag_type', 'neutral')
+        .in('user_id', activeUserIds);
+
+      if (tagUserError) {
+        console.error('태그 유저 조회 오류:', tagUserError);
+      }
+
+      const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+      tagUserRate = activeUserIds.length > 0
+        ? Math.round(uniqueTagUsers / activeUserIds.length * 1000) / 10
+        : 0;
+    }
   }
 
   return {
