@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import svgPaths from '@/imports/svg-5teuf2oi3d';
 import Lottie from 'lottie-react';
 import animationData from '@/data/report-animation.json';
 import { motion } from 'motion/react';
-import ArrowLeft from './ArrowLeft';
+import { supabase } from '@/lib/supabase';
+import { issueRevisitCoupon } from '@/lib/coupon';
 
 // --- SVGs ---
 
@@ -72,28 +73,6 @@ function CouponSvg() {
 }
 
 // --- Components ---
-
-function TopBar({ onBack, onClose }: { onBack?: () => void; onClose?: () => void }) {
-  return (
-    <div className="bg-white flex items-center justify-center relative shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between relative w-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        {/* Left Action */}
-        <ArrowLeft onClick={onBack || (() => {})} />
-
-        {/* Right Action */}
-        <div
-          onClick={onClose}
-          className="flex items-center justify-center relative shrink-0 cursor-pointer transition-colors active:bg-[#f3f4f6]"
-          style={{ width: '44px', height: '44px', padding: '4px', borderRadius: '12px' }}
-        >
-          <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
-            <CloseIcon />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Memoize Lottie to prevent re-renders or interruptions during parent updates
 const MemoizedLottie = React.memo(function LottieWrapper({ data }: { data: any }) {
@@ -235,72 +214,90 @@ function ContentArea() {
   );
 }
 
-function BottomButtons({ onHome, onOtherFortune }: { onHome?: () => void; onOtherFortune?: () => void }) {
+function BottomButton({ onHome }: { onHome?: () => void }) {
   return (
     <div className="bg-white w-full">
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px 20px 20px' }}>
-        <div className="flex items-start w-full gap-3">
-          {/* Home Button */}
-          <button
-            onClick={onHome}
-            className="flex-1 flex items-center justify-center cursor-pointer transition-all active:scale-[0.98]"
-            style={{
-              backgroundColor: '#f0f8f8',
-              height: '56px',
-              borderRadius: '16px',
-              border: 'none',
-              padding: 0
-            }}
-          >
-            <span style={{
-              fontFamily: 'Pretendard Variable',
-              fontSize: '16px',
-              fontWeight: 500,
-              color: '#48b2af',
-              letterSpacing: '-0.32px',
-              lineHeight: '25px'
-            }}>
-              홈으로 가기
-            </span>
-          </button>
-
-          {/* Other Fortune Button */}
-          <button
-            onClick={onOtherFortune}
-            className="flex-1 flex items-center justify-center cursor-pointer transition-all active:scale-[0.98]"
-            style={{
-              backgroundColor: '#48b2af',
-              height: '56px',
-              borderRadius: '16px',
-              border: 'none',
-              padding: 0
-            }}
-          >
-            <span style={{
-              fontFamily: 'Pretendard Variable',
-              fontSize: '16px',
-              fontWeight: 500,
-              color: '#ffffff',
-              letterSpacing: '-0.32px',
-              lineHeight: '25px'
-            }}>
-              다른 운세 보기
-            </span>
-          </button>
-        </div>
+        {/* 홈으로 가기 버튼 (기획서 기준 단일 버튼) */}
+        <button
+          onClick={onHome}
+          className="flex items-center justify-center cursor-pointer transition-all active:scale-[0.98] w-full"
+          style={{
+            backgroundColor: '#48b2af',
+            height: '56px',
+            borderRadius: '16px',
+            border: 'none',
+            padding: 0
+          }}
+        >
+          <span style={{
+            fontFamily: 'Pretendard Variable',
+            fontSize: '16px',
+            fontWeight: 500,
+            color: '#ffffff',
+            letterSpacing: '-0.32px',
+            lineHeight: '25px'
+          }}>
+            홈으로 가기
+          </span>
+        </button>
       </div>
     </div>
   );
 }
 
 interface CompletionCouponProps {
-  onBack?: () => void;
+  reportId?: string;
   onClose?: () => void;
   onHome?: () => void;
-  onOtherFortune?: () => void;
 }
 
-export default function CompletionCoupon({ onBack, onClose, onHome, onOtherFortune }: CompletionCouponProps) {
+export default function CompletionCoupon({ reportId, onClose, onHome }: CompletionCouponProps) {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function issueCouponOnFirstVisit() {
+      try {
+        // 사용자 세션 확인
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          console.log('🎟️ [쿠폰] 로그인 필요');
+          setIsLoading(false);
+          return;
+        }
+
+        // 재구매 쿠폰 발급 시도 (API에서 중복 발급 방지 처리)
+        console.log('🎟️ [쿠폰] 재구매 쿠폰 발급 시도...');
+        const result = await issueRevisitCoupon(session.user.id, reportId);
+
+        if (result.success) {
+          console.log('✅ [쿠폰] 재구매 쿠폰 발급 성공:', result.coupon);
+        } else {
+          // 이미 발급됐거나 다른 이유로 실패 - 에러가 아님
+          console.log('ℹ️ [쿠폰] 쿠폰 발급 스킵:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ [쿠폰] 쿠폰 처리 중 오류:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    issueCouponOnFirstVisit();
+  }, [reportId]);
+
+  // 로딩 중
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center w-full bg-white min-h-screen">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-32 h-32 bg-gray-200 rounded-full" />
+          <div className="w-48 h-6 bg-gray-200 rounded" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-center w-full bg-gray-100 min-h-screen overflow-x-hidden">
       <div
@@ -311,19 +308,28 @@ export default function CompletionCoupon({ onBack, onClose, onHome, onOtherFortu
           width: '100%'
         }}
       >
-        {/* Top Navigation */}
-        <TopBar onBack={onBack} onClose={onClose} />
-        
+        {/* Top Navigation - X 버튼만 (기획서 기준) */}
+        <div className="bg-white flex items-center justify-end relative shrink-0 w-full z-20" style={{ height: '52px', paddingRight: '12px' }}>
+          <div
+            onClick={onClose || onHome}
+            className="flex items-center justify-center relative shrink-0 cursor-pointer transition-colors active:bg-[#f3f4f6]"
+            style={{ width: '44px', height: '44px', padding: '4px', borderRadius: '12px' }}
+          >
+            <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
+              <CloseIcon />
+            </div>
+          </div>
+        </div>
+
         {/* Main Content (Scrollable) */}
         <div className="flex-1 overflow-y-auto w-full no-scrollbar">
           <ContentArea />
         </div>
-        
+
         {/* Fixed Bottom Area */}
         <div className="w-full relative shrink-0 z-20">
-           {/* Shadow gradient or border could go here if needed, Figma showed shadow on button container */}
            <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white/10 to-transparent pointer-events-none" />
-           <BottomButtons onHome={onHome} onOtherFortune={onOtherFortune} />
+           <BottomButton onHome={onHome} />
         </div>
       </div>
     </div>

@@ -159,7 +159,7 @@ function ViewReportArrowIcon() {
   );
 }
 
-function ReportCard({ report, onReportClick }: { report: WeeklyReport; onReportClick?: (id: string) => void }) {
+function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
   return (
     <div className="flex flex-col w-full" style={{ gap: '8px', padding: '0 2px' }}>
       {/* Title & Period */}
@@ -184,7 +184,11 @@ function ReportCard({ report, onReportClick }: { report: WeeklyReport; onReportC
                 {report.message.content}
               </div>
             </div>
-            <div className="flex items-center justify-center relative shrink-0 cursor-pointer transition-colors active:bg-[#F3F3F3]" style={{ padding: '11px 4px 10px 4px', borderRadius: '8px', width: '36px', marginTop: '-8px' }}>
+            <div
+              className="flex items-center justify-center relative shrink-0 cursor-pointer transition-colors active:bg-[#F3F3F3]"
+              style={{ padding: '11px 4px 10px 4px', borderRadius: '8px', width: '36px', marginTop: '-8px' }}
+              onClick={() => onEditClick?.(report.id, report.message?.content || '')}
+            >
                <EditIcon />
             </div>
           </div>
@@ -237,7 +241,7 @@ function ReportCard({ report, onReportClick }: { report: WeeklyReport; onReportC
   );
 }
 
-function MonthlySection({ month, defaultExpanded = false, onReportClick }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void }) {
+function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
 
   return (
@@ -271,7 +275,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick }: { mon
               {month.reports.map((report, index) => (
                 <div key={report.id} className="flex flex-col">
                   {index > 0 && <div className="w-full" style={{ height: '1px', backgroundColor: '#F8F8F8', margin: '12px 0' }} />}
-                  <ReportCard report={report} onReportClick={onReportClick} />
+                  <ReportCard report={report} onReportClick={onReportClick} onEditClick={onEditClick} />
                 </div>
               ))}
             </div>
@@ -285,11 +289,13 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick }: { mon
 export default function MyReportWeekly({
   currentWeekTagsCount,
   filteredReports,
-  onReportClick
+  onReportClick,
+  onEditClick
 }: {
   currentWeekTagsCount: number;
   filteredReports: MonthlyReport[];
   onReportClick?: (id: string) => void;
+  onEditClick?: (reportId: string, currentMessage: string) => void;
 }) {
   return (
     <>
@@ -302,7 +308,7 @@ export default function MyReportWeekly({
 
       <div className="flex flex-col w-full" style={{ paddingBottom: '130px' }}>
         {filteredReports.map((month) => (
-          <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} />
+          <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} />
         ))}
       </div>
     </>

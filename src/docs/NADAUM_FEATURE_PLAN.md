@@ -1,7 +1,7 @@
 # 나다움 찾기 기능 개발 계획
 
-> **상태**: Phase 2-3 완료 + 로그아웃 사용자 플로우 개선 완료
-> **최종 업데이트**: 2026-01-30
+> **상태**: Phase 2-3 완료 + 로그아웃 사용자 플로우 개선 완료 + 주간 보고서 메모/쿠폰 기능 개발 중
+> **최종 업데이트**: 2026-02-02
 
 ---
 
@@ -47,6 +47,7 @@
 | week_end_date | date | 주 종료일 (일요일) |
 | status | text | pending/generating/completed/failed |
 | tag_count | integer | 해당 주 태그 수 |
+| **self_encouragement** | **text** | **나에게 응원하기 글 (2026-02-02 추가)** |
 | created_at | timestamptz | 생성 일시 |
 | published_at | timestamptz | 발행 일시 |
 
@@ -103,9 +104,17 @@
 - [x] "오늘의 한 줄 위로" 랜덤 문구 기능 (2026-01-29 완료)
 - [x] 라우팅 설정
 
-### Phase 4: 주간 보고서
+### Phase 4: 주간 보고서 (진행 중) 🚧
 - [ ] generate-weekly-report Edge Function
-- [ ] 보고서 페이지 연결
+- [x] 보고서 메모 페이지 (ReportWeeklyMemo.tsx) - 다중 모드 지원
+  - [x] write 모드: 최초 작성 (이전/완료 버튼)
+  - [x] view 모드: 다시보기 (X 닫기 버튼, 이전/닫기 버튼, 수정 연필 아이콘)
+  - [x] edit 모드: 수정하기 (ReportWeeklyMemoEdit 사용)
+- [x] self_encouragement 필드 추가 (weekly_reports 테이블)
+- [x] UPDATE RLS 정책 추가 (스테이징)
+- [x] 보고서 완료 → 쿠폰 페이지 연결 (CompletionCoupon.tsx)
+- [x] 재구매 쿠폰 발급 로직 (issueRevisitCoupon)
+- [x] MyReportList에 응원글 표시
 
 ### Phase 5: 알림톡 & 마무리
 - [ ] send-report-alimtalk Edge Function
@@ -508,6 +517,14 @@ npx supabase db push --project-ref kcthtpmxffppfbkjjkub
 | 2026-01-30 | 버그 수정: clearUserCaches()에서 pending_trait_tags 있으면 cached_saju_info 보존 |
 | 2026-01-30 | 버그 수정: PendingTagsCheck answers에 question_id, question_order 포함 (이용기록 표시) |
 | 2026-01-30 | 개선: PendingTagsCheckPage 공통 로딩 UI 적용 (DotLoading) |
+| 2026-02-02 | **Phase 4 진행: 주간 보고서 메모/쿠폰 기능** |
+| 2026-02-02 | DB: weekly_reports 테이블에 self_encouragement 컬럼 추가 (스테이징) |
+| 2026-02-02 | DB: weekly_reports UPDATE RLS 정책 추가 (스테이징) |
+| 2026-02-02 | 기능: ReportWeeklyMemo.tsx 다중 모드 지원 (write/view/edit) |
+| 2026-02-02 | 기능: CompletionCoupon.tsx 재구매 쿠폰 발급 연동 |
+| 2026-02-02 | 기능: MyReportList.tsx 응원글(self_encouragement) 표시 |
+| 2026-02-02 | 버그 수정: coupon.ts source_order_id 파라미터명 수정 |
+| 2026-02-02 | 라우팅: /report-weekly-memo/:id, /report-completion/:id 추가 |
 
 ---
 
@@ -916,3 +933,205 @@ FOREIGN KEY (source_order_id) REFERENCES orders(id) ON DELETE SET NULL;
 ```
 
 **주의**: DB 롤백 시 이미 저장된 `free_content_records.id` 값들이 `orders` 테이블에 없으므로 제약 추가 실패할 수 있음. 해당 데이터 정리 필요.
+
+---
+
+## 15. 주간 보고서 메모/쿠폰 기능 (2026-02-02 추가)
+
+### 15.1 기능 개요
+
+주간 보고서 마지막 단계에서 "나에게 응원하기" 글을 작성하고, 완료 시 재구매 쿠폰(3,000원)을 발급하는 기능.
+
+**네비게이션 플로우**:
+```
+보고서 상세(Detail) → 타로(Tarot) → 타로결과(TarotResult) → 마음처방(MindCare) → 메모(Memo) → 쿠폰완료(Completion) → 홈
+```
+
+### 15.2 ReportWeeklyMemo.tsx 다중 모드
+
+| 모드 | 조건 | 상단바 | 하단 버튼 | 설명 |
+|------|------|-------|----------|------|
+| **loading** | 초기 로딩 중 | - | - | 스켈레톤 UI |
+| **write** | self_encouragement 없음 (최초) | 뒤로가기 화살표 | 이전/완료 | 응원글 작성 |
+| **view** | self_encouragement 있음 (재방문) | X 닫기 버튼 | 이전/닫기 | 읽기 전용 + 수정 아이콘 |
+| **edit** | view에서 연필 아이콘 클릭 | ReportWeeklyMemoEdit | 취소/저장 | 응원글 수정 |
+
+**모드 결정 로직**:
+```typescript
+useEffect(() => {
+  async function fetchSelfEncouragement() {
+    if (!reportId) { setMode('write'); return; }
+
+    const { data } = await supabase
+      .from('weekly_reports')
+      .select('self_encouragement')
+      .eq('id', reportId)
+      .single();
+
+    if (data?.self_encouragement) {
+      setSavedText(data.self_encouragement);
+      setText(data.self_encouragement);
+      setMode('view'); // 다시보기 모드
+    } else {
+      setMode('write'); // 작성 모드
+    }
+  }
+  fetchSelfEncouragement();
+}, [reportId]);
+```
+
+### 15.3 컴포넌트 구조
+
+```
+ReportWeeklyMemo
+├── TopBar (write 모드: 뒤로가기 화살표)
+├── TopBarWithClose (view 모드: X 닫기 버튼)
+├── TextAreaSection (write 모드: 입력 필드)
+├── 읽기 전용 박스 (view 모드: savedText 표시 + 연필 아이콘)
+├── BottomButtons (write 모드: 이전/완료)
+├── BottomButtonsView (view 모드: 이전/닫기)
+└── ReportWeeklyMemoEdit (edit 모드: 취소/저장)
+```
+
+### 15.4 CompletionCoupon.tsx 쿠폰 발급
+
+**발급 시점**: 보고서 완료 페이지 진입 시 자동 발급
+
+```typescript
+useEffect(() => {
+  async function issueCouponOnFirstVisit() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) { setIsLoading(false); return; }
+
+    // 재구매 쿠폰 발급 (중복 발급 방지는 API에서 처리)
+    const result = await issueRevisitCoupon(session.user.id, reportId);
+
+    if (result.success) {
+      console.log('✅ [쿠폰] 재구매 쿠폰 발급 성공:', result.coupon);
+    } else {
+      console.log('ℹ️ [쿠폰] 쿠폰 발급 스킵:', result.error);
+    }
+    setIsLoading(false);
+  }
+  issueCouponOnFirstVisit();
+}, [reportId]);
+```
+
+**UI**: 단일 "홈으로 가기" 버튼
+
+### 15.5 MyReportList.tsx 응원글 표시
+
+**변경 사항**:
+- `DBWeeklyReport` 인터페이스에 `self_encouragement: string | null` 추가
+- 쿼리에 `self_encouragement` 컬럼 포함
+- 표시 로직: `report.self_encouragement` 사용
+
+```typescript
+interface DBWeeklyReport {
+  // ... 기존 필드
+  self_encouragement: string | null;
+}
+
+// 쿼리
+const { data } = await supabase
+  .from('weekly_reports')
+  .select('..., self_encouragement')
+  .eq('user_id', userId);
+
+// 표시
+<p>{report.self_encouragement || '응원글 없음'}</p>
+```
+
+### 15.6 coupon.ts 수정
+
+**문제**: Edge Function이 `source_order_id` 파라미터를 기대하는데 `order_id`로 전송
+
+**수정**:
+```typescript
+// Before
+body: JSON.stringify({ user_id: userId, order_id: orderId })
+
+// After
+body: JSON.stringify({ user_id: userId, source_order_id: sourceOrderId })
+```
+
+### 15.7 라우팅 (App.tsx)
+
+```typescript
+// ReportWeeklyMemoWrapper
+function ReportWeeklyMemoWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  return (
+    <ReportWeeklyMemo
+      reportId={id}
+      onBack={() => navigate(-1)}
+      onPrev={() => navigate(-1)}
+      onNext={() => navigate(`/report-completion/${id}`)}
+    />
+  );
+}
+
+// ReportCompletionWrapper
+function ReportCompletionWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  return (
+    <CompletionCoupon
+      reportId={id}
+      onClose={() => navigate('/')}
+      onHome={() => navigate('/')}
+    />
+  );
+}
+
+// 라우트 정의
+<Route path="/report-weekly-memo/:id" element={<ReportWeeklyMemoWrapper />} />
+<Route path="/report-completion/:id" element={<ReportCompletionWrapper />} />
+```
+
+### 15.8 DB 마이그레이션 (스테이징 적용 완료)
+
+**1. self_encouragement 컬럼 추가**:
+```sql
+ALTER TABLE weekly_reports
+ADD COLUMN self_encouragement text;
+
+COMMENT ON COLUMN weekly_reports.self_encouragement IS '나에게 응원하기 글';
+```
+
+**2. UPDATE RLS 정책 추가**:
+```sql
+CREATE POLICY "Users can update own reports"
+ON weekly_reports
+FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+```
+
+### 15.9 관련 파일 목록
+
+| 파일 | 역할 |
+|------|------|
+| `src/components/ReportWeeklyMemo.tsx` | 메모 페이지 (다중 모드) |
+| `src/components/ReportWeeklyMemoEdit.tsx` | 수정 모드 컴포넌트 |
+| `src/components/CompletionCoupon.tsx` | 쿠폰 발급 페이지 |
+| `src/components/MyReportList.tsx` | 보고서 목록 (응원글 표시) |
+| `src/lib/coupon.ts` | 쿠폰 API 헬퍼 |
+| `src/App.tsx` | 라우팅 + Wrapper 컴포넌트 |
+
+### 15.10 테스트 체크리스트
+
+**스테이징 테스트**:
+- [x] write 모드: 응원글 작성 → DB 저장 확인
+- [x] view 모드: 재방문 시 저장된 응원글 표시 확인
+- [x] edit 모드: 연필 아이콘 → 수정 → 저장 확인
+- [x] 쿠폰 발급: 완료 페이지 진입 → 3,000원 쿠폰 발급 확인
+- [x] MyReportList: 응원글 표시 확인
+- [ ] 홈으로 가기 버튼 동작 확인
+
+**프로덕션 배포 TODO**:
+- [ ] weekly_reports 테이블에 self_encouragement 컬럼 추가
+- [ ] UPDATE RLS 정책 추가
+- [ ] 코드 배포 (Vercel)

@@ -1,66 +1,37 @@
 import React, { useState } from 'react';
-import svgPaths from "@/imports/svg-z33txjknpb";
-
-// --- Icons ---
-
-function ArrowLeftIcon() {
-  return (
-    <div className="absolute inset-0">
-      <svg className="block size-full" fill="none" viewBox="0 0 24 24">
-        <path d={svgPaths.p2a5cd480} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-      </svg>
-    </div>
-  );
-}
-
-function SettingsIcon() {
-  return (
-     <div className="absolute inset-0">
-      <svg className="block size-full" fill="none" viewBox="0 0 24 24">
-        <path d={svgPaths.p3cccb600} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-        <path d={svgPaths.p185ecc80} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-      </svg>
-    </div>
-  );
-}
+import { X } from 'lucide-react';
 
 // --- Components ---
 
-function TopBar({ onBack }: { onBack?: () => void }) {
+function TopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white relative shrink-0 w-full" style={{ height: '52px' }}>
-      <div className="flex flex-col justify-center size-full">
-        <div className="flex items-center justify-between relative size-full" style={{ padding: '4px 12px' }}>
-           {/* Left Action */}
-           <button
-             onClick={onBack}
-             className="flex items-center justify-center relative shrink-0 active:bg-gray-100 transition-colors"
-             style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}
-           >
-             <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
-               <ArrowLeftIcon />
-             </div>
-           </button>
-
-           {/* Title */}
-           <p className="flex-1 text-center truncate" style={{
-             fontFamily: 'Pretendard Variable',
-             fontWeight: 600,
-             fontSize: '18px',
-             lineHeight: '25.5px',
-             color: '#000000',
-             letterSpacing: '-0.36px'
-           }}>
-             이번 주 보고서
-           </p>
-
-           {/* Right Action (Placeholder) */}
-           <div className="flex items-center justify-center relative shrink-0 opacity-0" style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}>
-             <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
-               <SettingsIcon />
-             </div>
-           </div>
-        </div>
+    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
+        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+        <h1
+          className="text-center flex-1"
+          style={{
+            fontFamily: 'Pretendard Variable, sans-serif',
+            fontWeight: 600,
+            fontSize: '18px',
+            lineHeight: '25.5px',
+            letterSpacing: '-0.36px',
+            color: '#000000'
+          }}
+        >
+          이번 주 보고서
+        </h1>
+        <button
+          onClick={onClose}
+          className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+          style={{ width: '44px', height: '44px', borderRadius: '12px' }}
+        >
+          <X
+            className="transition-transform duration-200 group-active:scale-90"
+            style={{ width: '24px', height: '24px', color: '#848484' }}
+            strokeWidth={1.8}
+          />
+        </button>
       </div>
     </div>
   );
@@ -204,7 +175,7 @@ export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: 
 
   return (
     <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (이번 주 나에게-수정하기)">
-      <TopBar onBack={onCancel} />
+      <TopBar onClose={onCancel} />
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '100px' }}>

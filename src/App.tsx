@@ -2643,17 +2643,67 @@ function PortOneInit() {
 function ReportWeeklyDetailWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const goBack = useGoBack('/profile');
+  const [hasTarot, setHasTarot] = useState<boolean | null>(null);
+
+  // 타로가 이미 뽑혔는지 확인 (user_viewed = true인 카드가 있는지)
+  useEffect(() => {
+    async function checkTarotSelections() {
+      if (!id) return;
+
+      try {
+        // user_viewed = true인 카드가 있는지 확인 (실제로 사용자가 뽑은 카드)
+        const { count, error } = await supabase
+          .from('report_tarot_selections')
+          .select('id', { count: 'exact', head: true })
+          .eq('report_id', id)
+          .eq('user_viewed', true);
+
+        if (error) {
+          console.error('타로 선택 확인 실패:', error);
+          setHasTarot(false);
+          return;
+        }
+
+        setHasTarot((count ?? 0) > 0);
+        console.log(`🎴 [타로] 보고서 ${id} - 타로 뽑힘 여부 (user_viewed):`, (count ?? 0) > 0);
+      } catch (err) {
+        console.error('타로 선택 확인 중 오류:', err);
+        setHasTarot(false);
+      }
+    }
+
+    checkTarotSelections();
+  }, [id]);
 
   if (!id) {
     return <Navigate to="/" replace />;
   }
 
+  // 타로 뽑힘 여부 확인 중이면 로딩
+  if (hasTarot === null) {
+    return (
+      <ReportWeeklyDetail
+        reportId={id}
+        onClose={() => navigate('/test/my-report-list')}
+        onPrev={() => navigate('/test/my-report-list')}
+        onNext={() => {}} // 로딩 중에는 비활성화
+      />
+    );
+  }
+
   return (
     <ReportWeeklyDetail
       reportId={id}
-      onBack={goBack}
-      onTarotStart={() => navigate(`/report-weekly-tarot/${id}`)}
+      onClose={() => navigate('/test/my-report-list')}
+      onPrev={() => navigate('/test/my-report-list')}
+      onNext={() => {
+        // 타로가 이미 뽑혔으면 타로 결과 페이지로, 아니면 타로 뽑기 페이지로
+        if (hasTarot) {
+          navigate(`/report-weekly-tarot-result/${id}`);
+        } else {
+          navigate(`/report-weekly-tarot/${id}`);
+        }
+      }}
     />
   );
 }
@@ -2662,7 +2712,6 @@ function ReportWeeklyDetailWrapper() {
 function ReportWeeklyTarotWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const goBack = useGoBack(`/report-weekly-detail/${id}`);
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -2670,7 +2719,7 @@ function ReportWeeklyTarotWrapper() {
 
   return (
     <ReportWeeklyTarot
-      onBack={goBack}
+      onClose={() => navigate('/test/my-report-list')}
       onNext={() => navigate(`/report-weekly-tarot-result/${id}`)}
     />
   );
@@ -2680,7 +2729,6 @@ function ReportWeeklyTarotWrapper() {
 function ReportWeeklyTarotResultWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const goBack = useGoBack(`/report-weekly-detail/${id}`);
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -2689,8 +2737,8 @@ function ReportWeeklyTarotResultWrapper() {
   return (
     <ReportWeeklyTarotResult
       reportId={id}
-      onBack={goBack}
-      onPrev={() => navigate(`/report-weekly-tarot/${id}`)}
+      onClose={() => navigate('/test/my-report-list')}
+      onPrev={() => navigate(`/report-weekly-detail/${id}`)}
       onNext={() => navigate(`/report-weekly-mind-care/${id}`)}
     />
   );
@@ -2700,7 +2748,6 @@ function ReportWeeklyTarotResultWrapper() {
 function ReportWeeklyMindCareWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const goBack = useGoBack(`/report-weekly-tarot-result/${id}`);
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -2709,9 +2756,156 @@ function ReportWeeklyMindCareWrapper() {
   return (
     <ReportWeeklyMindCare
       reportId={id}
-      onBack={goBack}
+      onClose={() => navigate('/test/my-report-list')}
       onPrev={() => navigate(`/report-weekly-tarot-result/${id}`)}
-      onNext={() => navigate('/profile')}
+      onNext={() => navigate(`/report-weekly-memo/${id}`)}
+    />
+  );
+}
+
+// ⭐ 주간 보고서 나 응원하기 페이지 Wrapper
+function ReportWeeklyMemoWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [hasEncouragement, setHasEncouragement] = useState<boolean | null>(null);
+
+  // 응원글이 이미 존재하는지 확인 (view 모드 vs write 모드)
+  useEffect(() => {
+    async function checkEncouragement() {
+      if (!id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('weekly_reports')
+          .select('self_encouragement')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          console.error('응원글 확인 실패:', error);
+          setHasEncouragement(false);
+          return;
+        }
+
+        const exists = !!data?.self_encouragement;
+        setHasEncouragement(exists);
+        console.log(`📝 [응원글] 보고서 ${id} - 응원글 존재 여부:`, exists);
+      } catch (err) {
+        console.error('응원글 확인 중 오류:', err);
+        setHasEncouragement(false);
+      }
+    }
+
+    checkEncouragement();
+  }, [id]);
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  // 수정 페이지에서 왔으면 닫기 시 나의 분석 보고서 페이지로 이동
+  const fromEdit = (location.state as { fromEdit?: boolean })?.fromEdit;
+
+  // 응원글 확인 중이면 로딩 상태로 렌더링
+  if (hasEncouragement === null) {
+    return (
+      <ReportWeeklyMemo
+        reportId={id}
+        onClose={() => navigate('/test/my-report-list')}
+        onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
+        onNext={() => {}} // 로딩 중에는 비활성화
+      />
+    );
+  }
+
+  // 응원글이 이미 있으면 (view 모드) → 프로필로 이동
+  // 응원글이 없으면 (write 모드) → 쿠폰 페이지로 이동
+  // 수정 페이지에서 왔으면 → 프로필로 이동
+  const shouldGoToProfile = fromEdit || hasEncouragement;
+
+  return (
+    <ReportWeeklyMemo
+      reportId={id}
+      onClose={() => navigate('/test/my-report-list')}
+      onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
+      onNext={() => {
+        if (shouldGoToProfile) {
+          navigate('/test/my-report-list');
+        } else {
+          navigate(`/report-completion/${id}`);
+        }
+      }}
+    />
+  );
+}
+
+// ⭐ 보고서 완료 & 쿠폰 증정 페이지 Wrapper
+function ReportCompletionWrapper() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+    <CompletionCoupon
+      reportId={id}
+      onClose={() => navigate('/')}
+      onHome={() => navigate('/')}
+    />
+  );
+}
+
+// ⭐ 나 응원하기 수정 페이지 Wrapper (프로필 > 이번주 나에게에서 연필 아이콘 클릭 시)
+function ReportWeeklyMemoEditWrapper() {
+  const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  if (!id) {
+    return <Navigate to="/" replace />;
+  }
+
+  const initialText = (location.state as { initialText?: string })?.initialText || '';
+
+  // 취소: 변경 없이 나 응원하기 다시보기 페이지로 이동 (fromEdit 플래그로 닫기 시 프로필로 이동하도록)
+  const handleCancel = () => {
+    navigate(`/report-weekly-memo/${id}`, { replace: true, state: { fromEdit: true } });
+  };
+
+  // 저장: DB 저장 → 토스트 표시 (2.2초) → 나 응원하기 다시보기 페이지로 이동
+  const handleSave = async (newText: string) => {
+    try {
+      const { error } = await supabase
+        .from('weekly_reports')
+        .update({ self_encouragement: newText })
+        .eq('id', id);
+
+      if (error) {
+        console.error('응원글 수정 실패:', error);
+        return;
+      }
+
+      // 토스트 표시 (2.2초)
+      sonnerToast.custom(
+        () => <Toast type="positive" message="수정이 반영됐어요." />,
+        { duration: 2200 }
+      );
+
+      // 나 응원하기 다시보기 페이지로 이동 (fromEdit 플래그로 닫기 시 프로필로 이동하도록)
+      navigate(`/report-weekly-memo/${id}`, { replace: true, state: { fromEdit: true } });
+    } catch (err) {
+      console.error('응원글 수정 중 오류:', err);
+    }
+  };
+
+  return (
+    <ReportWeeklyMemoEdit
+      initialText={initialText}
+      onCancel={handleCancel}
+      onSave={handleSave}
     />
   );
 }
@@ -2817,7 +3011,7 @@ export default function App() {
           <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} onHome={() => {}} />} />
           {/* ⭐ 프로필 > 나다움 태그 전체보기 */}
           <Route path="/profile/nadaum-tags" element={<NadaumTagsListWrapper />} />
-          <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail onBack={() => {}} />} />
+          <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail />} />
           <Route path="/test/report-weekly-tarot" element={<ReportWeeklyTarot />} />
           <Route path="/test/report-weekly-tarot-result" element={<ReportWeeklyTarotResult />} />
           <Route path="/test/report-weekly-mind-care" element={<ReportWeeklyMindCare />} />
@@ -2827,6 +3021,9 @@ export default function App() {
           <Route path="/report-weekly-tarot/:id" element={<ReportWeeklyTarotWrapper />} />
           <Route path="/report-weekly-tarot-result/:id" element={<ReportWeeklyTarotResultWrapper />} />
           <Route path="/report-weekly-mind-care/:id" element={<ReportWeeklyMindCareWrapper />} />
+          <Route path="/report-weekly-memo/:id" element={<ReportWeeklyMemoWrapper />} />
+          <Route path="/report-completion/:id" element={<ReportCompletionWrapper />} />
+          <Route path="/report-weekly/:id/cheer-edit" element={<ReportWeeklyMemoEditWrapper />} />
           <Route path="/test/report-weekly-memo-edit" element={<ReportWeeklyMemoEdit initialText="" onCancel={() => {}} onSave={() => {}} />} />
           <Route path="/test/completion-coupon" element={<CompletionCoupon />} />
           <Route path="/signup/terms" element={<TermsPageWrapper />} />

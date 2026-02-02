@@ -710,19 +710,19 @@ export default function CheckRecordMe({
   }
 
   if (view === 'dev-report') {
-    return <ReportWeeklyDetail onBack={handleBack} onTarotStart={() => setView('dev-tarot-picking')} />;
+    return <ReportWeeklyDetail onClose={handleBack} onPrev={handleBack} onNext={() => setView('dev-tarot-picking')} />;
   }
 
   if (view === 'dev-tarot-picking') {
-    return <ReportWeeklyTarot onBack={handleBack} onNext={() => setView('dev-tarot-result')} />;
+    return <ReportWeeklyTarot onClose={handleBack} onNext={() => setView('dev-tarot-result')} />;
   }
 
   if (view === 'dev-tarot-result') {
-    return <ReportWeeklyTarotResult onBack={handleBack} onNext={() => setView('dev-mind-prescription')} />;
+    return <ReportWeeklyTarotResult onClose={handleBack} onNext={() => setView('dev-mind-prescription')} />;
   }
 
   if (view === 'dev-mind-prescription') {
-    return <ReportWeeklyMindCare onBack={handleBack} onPrev={handleBack} />;
+    return <ReportWeeklyMindCare onClose={handleBack} onPrev={handleBack} />;
   }
 
   // NOTE: CompletionCoupon 컴포넌트가 삭제되어 임시 placeholder 표시

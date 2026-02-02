@@ -1,67 +1,36 @@
 import React, { useEffect } from 'react';
-import svgPaths from "@/imports/svg-nx753fhzfr";
+import { X } from 'lucide-react';
 import { useWeeklyReport, TarotSelection, markTarotAsViewed } from '@/hooks/useWeeklyReport';
 
-function Box() {
+function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="absolute contents inset-0" data-name="Box">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-        <g id="arrow-left">
-          <path d={svgPaths.p2a5cd480} id="Vector" stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-          <path d={svgPaths.p1a4bb100} id="Vector_2" opacity="0" stroke="var(--stroke-0, #848484)" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function Icons() {
-  return (
-    <div className="relative shrink-0" style={{ width: '24px', height: '24px' }} data-name="Icons">
-      <Box />
-    </div>
-  );
-}
-
-function LeftAction({ onBack }: { onBack?: () => void }) {
-  return (
-    <button
-      onClick={onBack}
-      className="flex items-center justify-center relative shrink-0 transition-colors active:bg-gray-100 group"
-      style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}
-      data-name="Left Action"
-    >
-      <div className="transition-transform group-active:scale-90">
-        <Icons />
-      </div>
-    </button>
-  );
-}
-
-function Icon({ onBack }: { onBack?: () => void }) {
-  return (
-    <div className="flex items-center justify-between relative shrink-0 w-full" data-name="Icon">
-      <LeftAction onBack={onBack} />
-      <p className="flex-[1_0_0] overflow-hidden text-center text-ellipsis" style={{
-        fontFamily: 'Pretendard Variable',
-        fontWeight: 600,
-        fontSize: '18px',
-        lineHeight: '25.5px',
-        color: '#000000',
-        letterSpacing: '-0.36px'
-      }}>이번 주 보고서</p>
-      <div style={{ width: '44px' }} /> {/* Right Action Spacer */}
-    </div>
-  );
-}
-
-function NavigationTopBar({ onBack }: { onBack?: () => void }) {
-  return (
-    <div className="bg-white relative shrink-0 w-full z-10" style={{ height: '52px' }} data-name="Navigation / Top Bar">
-      <div className="flex flex-col justify-center size-full">
-        <div className="flex flex-col items-start justify-center relative size-full" style={{ padding: '4px 12px' }}>
-          <Icon onBack={onBack} />
-        </div>
+    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
+        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+        <h1
+          className="text-center flex-1"
+          style={{
+            fontFamily: 'Pretendard Variable, sans-serif',
+            fontWeight: 600,
+            fontSize: '18px',
+            lineHeight: '25.5px',
+            letterSpacing: '-0.36px',
+            color: '#000000'
+          }}
+        >
+          이번 주 보고서
+        </h1>
+        <button
+          onClick={onClose}
+          className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+          style={{ width: '44px', height: '44px', borderRadius: '12px' }}
+        >
+          <X
+            className="transition-transform duration-200 group-active:scale-90"
+            style={{ width: '24px', height: '24px', color: '#848484' }}
+            strokeWidth={1.8}
+          />
+        </button>
       </div>
     </div>
   );
@@ -246,7 +215,7 @@ function LoadingSkeleton() {
 }
 
 interface ReportWeeklyTarotResultProps {
-  onBack?: () => void;
+  onClose?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
   reportId?: string;
@@ -255,7 +224,7 @@ interface ReportWeeklyTarotResultProps {
 }
 
 export default function ReportWeeklyTarotResult({
-  onBack,
+  onClose,
   onPrev,
   onNext,
   reportId,
@@ -281,7 +250,7 @@ export default function ReportWeeklyTarotResult({
   if (loading && !externalTarotData) {
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
-        <NavigationTopBar onBack={onBack} />
+        <NavigationTopBar onClose={onClose} />
         <div className="flex-1 overflow-y-auto w-full relative">
           <LoadingSkeleton />
         </div>
@@ -292,7 +261,7 @@ export default function ReportWeeklyTarotResult({
   if (error && !externalTarotData) {
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
-        <NavigationTopBar onBack={onBack} />
+        <NavigationTopBar onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>타로 결과를 불러올 수 없습니다.</p>
         </div>
@@ -303,7 +272,7 @@ export default function ReportWeeklyTarotResult({
   if (tarotSelections.length === 0 && !externalTarotData) {
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }}>
-        <NavigationTopBar onBack={onBack} />
+        <NavigationTopBar onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>타로 결과가 없습니다.</p>
         </div>
@@ -313,7 +282,7 @@ export default function ReportWeeklyTarotResult({
 
   return (
     <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (타로 풀이)">
-      <NavigationTopBar onBack={onBack} />
+      <NavigationTopBar onClose={onClose} />
       <div className="flex-1 overflow-y-auto w-full relative">
         <CardContainer tarotSelections={tarotSelections} />
       </div>

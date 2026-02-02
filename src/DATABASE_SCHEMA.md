@@ -1,8 +1,8 @@
 # 데이터베이스 스키마 문서
 
 > **작성일**: 2024-12-17
-> **버전**: 1.5.0
-> **최종 업데이트**: 2026-01-30
+> **버전**: 1.6.0
+> **최종 업데이트**: 2026-02-02
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -16,9 +16,11 @@
 4. [주문 및 결제 테이블](#주문-및-결제-테이블)
 5. [쿠폰 관련 테이블](#쿠폰-관련-테이블)
 6. [무료 콘텐츠 기록 테이블](#무료-콘텐츠-기록-테이블)
-7. [알림톡 로그 테이블](#알림톡-로그-테이블)
-8. [백업 테이블](#백업-테이블)
-9. [테이블 관계도](#테이블-관계도)
+7. [나다움 태그 테이블](#나다움-태그-테이블)
+8. [주간 보고서 테이블](#주간-보고서-테이블)
+9. [알림톡 로그 테이블](#알림톡-로그-테이블)
+10. [백업 테이블](#백업-테이블)
+11. [테이블 관계도](#테이블-관계도)
 
 ---
 
@@ -208,7 +210,7 @@
 |--------|------|----------|--------|------|
 | `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 쿠폰 고유 ID |
 | `name` | text | NOT NULL | - | 쿠폰 이름 |
-| `coupon_type` | text | NOT NULL | - | 쿠폰 타입 (amount, percent 등) |
+| `coupon_type` | text | NOT NULL | - | 쿠폰 타입 (welcome: 가입축하, revisit: 재구매) |
 | `discount_amount` | integer | NOT NULL | - | 할인 금액 (원 또는 %) |
 | `description` | text | - | - | 쿠폰 설명 |
 | `is_active` | boolean | - | `true` | 활성화 여부 |
@@ -226,7 +228,7 @@
 | `is_used` | boolean | - | `false` | 사용 여부 |
 | `used_at` | timestamptz | - | - | 사용 일시 |
 | `used_order_id` | uuid | FOREIGN KEY | - | 사용된 주문 ID (orders.id) |
-| `source_order_id` | uuid | FOREIGN KEY | - | 쿠폰 발급 원인 주문 ID (orders.id) |
+| `source_order_id` | uuid | - | - | 쿠폰 발급 원인 ID (주문 ID 또는 보고서 ID) |
 | `issued_at` | timestamptz | - | `now()` | 발급 일시 |
 | `expired_at` | timestamptz | - | - | 만료 일시 |
 
@@ -234,11 +236,10 @@
 - `user_id` → `users(id)`
 - `coupon_id` → `coupons(id)`
 - `used_order_id` → `orders(id)`
-- `source_order_id` → `orders(id)`
 
 **주요 컬럼 설명**:
 - `used_order_id`: 이 쿠폰을 **사용해서 결제한** 주문 ID
-- `source_order_id`: 이 쿠폰이 **발급된 원인이 된** 주문 ID (재방문 쿠폰용)
+- `source_order_id`: 이 쿠폰이 **발급된 원인이 된** ID (주문 ID 또는 보고서 ID - 외래키 제약 없음)
 
 ---
 
@@ -298,17 +299,22 @@
 |--------|------|----------|--------|------|
 | `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 태그 고유 ID |
 | `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (users.id) |
-| `name` | text | NOT NULL | - | 태그 이름 (예: "창의적인", "문제 해결력이 있는") |
-| `type` | text | NOT NULL | - | 태그 유형 (positive, negative, neutral) |
+| `tag_name` | text | NOT NULL | - | 태그 이름 (예: "창의적인", "문제 해결력이 있는") |
+| `tag_type` | text | NOT NULL, CHECK | - | 태그 유형 (positive, negative, neutral) |
 | `source_content_id` | uuid | FOREIGN KEY | - | 태그 출처 콘텐츠 ID (master_contents.id) |
 | `source_order_id` | uuid | FOREIGN KEY | - | 태그 출처 주문 ID (orders.id) - 유료 콘텐츠용 |
-| `source_type` | text | NOT NULL | - | 출처 유형 (free_content, paid_content) |
+| `source_type` | text | NOT NULL, CHECK | - | 출처 유형 (free_content, paid_content) |
+| `is_confirmed` | boolean | NOT NULL | `false` | 사용자가 태그를 확인/승인했는지 여부 |
 | `created_at` | timestamptz | - | `now()` | 생성 일시 |
 
 **외래키**:
 - `user_id` → `users(id)` ON DELETE CASCADE
 - `source_content_id` → `master_contents(id)` ON DELETE SET NULL
 - `source_order_id` → `orders(id)` ON DELETE SET NULL
+
+**제약조건**:
+- `tag_type` CHECK: 'positive', 'negative', 'neutral' 중 하나만 허용
+- `source_type` CHECK: 'free_content', 'paid_content' 중 하나만 허용
 
 **인덱스**:
 - `idx_user_trait_tags_user`: (user_id)
@@ -318,6 +324,109 @@
 - 무료/유료 운세 콘텐츠 결과에서 GPT-5-nano로 장점 2개, 단점 1개 성향 키워드 추출
 - 사용자 프로필에서 나다움 태그 목록 표시
 - `extract-trait-tags` Edge Function으로 추출 → `save-trait-tags` Edge Function으로 저장
+
+---
+
+## 주간 보고서 테이블
+
+### `weekly_reports`
+
+사용자별 주간 보고서 정보
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 보고서 고유 ID |
+| `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (users.id) |
+| `year` | integer | NOT NULL | - | 연도 (예: 2026) |
+| `month` | integer | NOT NULL, CHECK | - | 월 (1~12) |
+| `week` | integer | NOT NULL, CHECK | - | 주차 (1~5) |
+| `week_start_date` | date | NOT NULL | - | 주간 시작일 |
+| `week_end_date` | date | NOT NULL | - | 주간 종료일 |
+| `status` | text | NOT NULL, CHECK | `'pending'` | 상태 (pending, generating, completed, failed) |
+| `tag_count` | integer | NOT NULL | `0` | 해당 주간 태그 수 |
+| `situation_summary` | text | - | - | 상황 요약 (AI 생성) |
+| `to_do_list` | jsonb | - | - | 다음주 목표 리스트 |
+| `self_encouragement` | text | - | - | 사용자가 작성한 응원글 |
+| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
+| `published_at` | timestamptz | - | - | 발행 일시 |
+
+**외래키**:
+- `user_id` → `users(id)`
+
+**제약조건**:
+- `month` CHECK: 1~12 사이
+- `week` CHECK: 1~5 사이
+- `status` CHECK: 'pending', 'generating', 'completed', 'failed' 중 하나
+
+**to_do_list JSONB 구조**:
+```json
+[
+  { "id": 1, "text": "목표 1" },
+  { "id": 2, "text": "목표 2" },
+  { "id": 3, "text": "목표 3" }
+]
+```
+
+### `weekly_report_sections`
+
+주간 보고서의 섹션별 콘텐츠
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 섹션 고유 ID |
+| `report_id` | uuid | FOREIGN KEY, NOT NULL | - | 보고서 ID (weekly_reports.id) |
+| `section_type` | text | NOT NULL, CHECK | - | 섹션 타입 (my_story, emotion_diagnosis, tarot_reading, soul_prescription) |
+| `section_order` | integer | NOT NULL, CHECK | - | 섹션 순서 (1~4) |
+| `title` | text | NOT NULL | - | 섹션 제목 |
+| `content` | jsonb | - | - | 섹션 콘텐츠 (AI 생성) |
+| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
+
+**외래키**:
+- `report_id` → `weekly_reports(id)`
+
+**제약조건**:
+- `section_type` CHECK: 'my_story', 'emotion_diagnosis', 'tarot_reading', 'soul_prescription' 중 하나
+- `section_order` CHECK: 1~4 사이
+
+**content JSONB 구조** (타입별로 다름):
+```json
+// my_story, soul_prescription
+{
+  "section_id": 1,
+  "title": "섹션 제목",
+  "content_paragraphs": ["문단1", "문단2", "문단3"]
+}
+
+// tarot_reading
+{
+  "section_id": 2,
+  "title": "타로 리딩",
+  "card_1_interpretation": "첫 번째 카드 해석",
+  "card_2_interpretation": "두 번째 카드 해석",
+  "card_3_interpretation": "세 번째 카드 해석"
+}
+```
+
+### `report_tarot_selections`
+
+주간 보고서의 타로 카드 선택 정보
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 선택 고유 ID |
+| `report_id` | uuid | FOREIGN KEY, NOT NULL | - | 보고서 ID (weekly_reports.id) |
+| `card_order` | integer | NOT NULL, CHECK | - | 카드 순서 (1~3) |
+| `card_name` | text | NOT NULL | - | 타로 카드 이름 |
+| `card_image_url` | text | - | - | 타로 카드 이미지 URL |
+| `interpretation` | text | - | - | 카드 해석 (AI 생성) |
+| `user_viewed` | boolean | NOT NULL | `false` | 사용자가 카드를 확인했는지 여부 |
+| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
+
+**외래키**:
+- `report_id` → `weekly_reports(id)`
+
+**제약조건**:
+- `card_order` CHECK: 1~3 사이
 
 ---
 
@@ -368,7 +477,9 @@ users (사용자)
   ├─→ saju_records (1:N) - 사용자의 사주 정보
   ├─→ orders (1:N) - 사용자의 주문 내역
   ├─→ user_coupons (1:N) - 사용자의 쿠폰
-  └─→ alimtalk_logs (1:N) - 사용자의 알림톡 로그
+  ├─→ alimtalk_logs (1:N) - 사용자의 알림톡 로그
+  ├─→ user_trait_tags (1:N) - 나다움 성향 태그
+  └─→ weekly_reports (1:N) - 사용자의 주간 보고서
 
 master_contents (콘텐츠)
   ├─→ master_content_questions (1:N) - 콘텐츠의 질문들
@@ -388,8 +499,9 @@ master_content_questions (질문)
 coupons (쿠폰 마스터)
   └─→ user_coupons (1:N) - 발급된 쿠폰들
 
-users (사용자)
-  └─→ user_trait_tags (1:N) - 나다움 성향 태그
+weekly_reports (주간 보고서)
+  ├─→ weekly_report_sections (1:N) - 보고서 섹션들
+  └─→ report_tarot_selections (1:N) - 보고서 타로 선택
 ```
 
 ---
@@ -432,6 +544,7 @@ users (사용자)
 | 1.3.2 | 2026-01-13 | 스테이징 스키마를 프로덕션 기준으로 되돌림 (orders.content_id nullable, refund_amount DEFAULT 제거) | AI Assistant |
 | 1.4.0 | 2026-01-21 | users 테이블에 visit_count 컬럼 추가 (일일 방문 횟수 추적) | AI Assistant |
 | 1.5.0 | 2026-01-29 | user_trait_tags 테이블 추가 (나다움 성향 태그 저장) | AI Assistant |
+| 1.6.0 | 2026-02-02 | weekly_reports, weekly_report_sections, report_tarot_selections 테이블 추가, user_trait_tags 컬럼명 수정 (name→tag_name, type→tag_type), is_confirmed 컬럼 추가, coupons.coupon_type 설명 수정 | AI Assistant |
 
 ---
 

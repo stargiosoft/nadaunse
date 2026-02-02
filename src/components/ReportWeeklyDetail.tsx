@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import svgPathsDove from "@/imports/svg-d6wqnyhzay";
-import ArrowLeft from './ArrowLeft';
 import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, ReportSection, UserTraitTag } from '@/hooks/useWeeklyReport';
 
 function Icon() {
@@ -317,81 +316,85 @@ function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContai
 }
 
 
-function RightAction() {
+function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="flex items-center justify-center opacity-0 relative shrink-0" style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }} data-name="Right Action">
-      <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
-         <Settings className="size-full text-[#848484]" strokeWidth={1.5} />
+    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
+        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+        <h1
+          className="text-center flex-1"
+          style={{
+            fontFamily: 'Pretendard Variable, sans-serif',
+            fontWeight: 600,
+            fontSize: '18px',
+            lineHeight: '25.5px',
+            letterSpacing: '-0.36px',
+            color: '#000000'
+          }}
+        >
+          이번 주 보고서
+        </h1>
+        <button
+          onClick={onClose}
+          className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+          style={{ width: '44px', height: '44px', borderRadius: '12px' }}
+        >
+          <X
+            className="transition-transform duration-200 group-active:scale-90"
+            style={{ width: '24px', height: '24px', color: '#848484' }}
+            strokeWidth={1.8}
+          />
+        </button>
       </div>
     </div>
   );
 }
 
-function Icon1({ onBack }: { onBack?: () => void }) {
-  return (
-    <div className="flex items-center justify-between relative shrink-0 w-full" data-name="Icon">
-      <ArrowLeft onClick={onBack || (() => {})} />
-      <p className="flex-[1_0_0] overflow-hidden text-center text-ellipsis" style={{
-        fontFamily: 'Pretendard Variable',
-        fontWeight: 600,
-        lineHeight: '25.5px',
-        color: '#000000',
-        fontSize: '18px',
-        letterSpacing: '-0.36px'
-      }}>이번 주 보고서</p>
-      <RightAction />
-    </div>
-  );
-}
-
-function NavigationTopBar({ onBack }: { onBack?: () => void }) {
-  return (
-    <div className="bg-white relative shrink-0 w-full" style={{ height: '52px' }} data-name="Navigation / Top Bar">
-      <div className="flex flex-col justify-center size-full">
-        <div className="flex flex-col items-start justify-center relative size-full" style={{ padding: '4px 12px' }}>
-          <Icon1 onBack={onBack} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NavigationTopNavigationWidget({ onBack }: { onBack?: () => void }) {
+function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
   return (
     <div className="sticky top-0 z-50 bg-white w-full" data-name="Navigation / Top Navigation (Widget)">
-      <NavigationTopBar onBack={onBack} />
+      <NavigationTopBar onClose={onClose} />
     </div>
   );
 }
 
-function ButtonContainer() {
+function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () => void }) {
   return (
-    <div className="flex items-center relative shrink-0" style={{ gap: '4px' }} data-name="Button Container">
-      <p style={{
-        fontFamily: 'Pretendard Variable',
-        fontWeight: 500,
-        lineHeight: '25px',
-        color: '#ffffff',
-        fontSize: '16px',
-        letterSpacing: '-0.32px'
-      }}>이번 주 타로 뽑기</p>
-    </div>
-  );
-}
-
-function ButtonSquareButton({ onClick }: { onClick?: () => void }) {
-  return (
-    <div onClick={onClick} className="flex items-center justify-center relative shrink-0 w-full cursor-pointer transition-all duration-200 ease-in-out active:scale-[0.99] active:bg-[#41A09E]" style={{ height: '56px', padding: '0 12px', borderRadius: '16px', backgroundColor: '#48b2af' }} data-name="Button / Square Button">
-      <ButtonContainer />
-    </div>
-  );
-}
-
-function CommonBottomButton({ onTarotStart }: { onTarotStart?: () => void }) {
-  return (
-    <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }} data-name="Common / Bottom Button">
+    <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
-        <ButtonSquareButton onClick={onTarotStart} />
+        <div className="flex w-full" style={{ gap: '12px' }}>
+          {/* 이전 버튼 */}
+          <button
+            onClick={onPrev}
+            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
+            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+          >
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '25px',
+              color: '#48b2af',
+              letterSpacing: '-0.32px'
+            }}>이전</p>
+          </button>
+
+          {/* 다음 버튼 */}
+          <button
+            onClick={onNext}
+            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
+            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+          >
+            <p style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '25px',
+              color: '#ffffff',
+              letterSpacing: '-0.32px'
+            }}>다음</p>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -413,8 +416,9 @@ function LoadingSkeleton() {
 }
 
 interface ReportWeeklyDetailProps {
-  onBack: () => void;
-  onTarotStart?: () => void;
+  onClose?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
   reportId?: string;
   // 외부에서 데이터 직접 주입 가능
   reportData?: WeeklyReport;
@@ -423,8 +427,9 @@ interface ReportWeeklyDetailProps {
 }
 
 export default function ReportWeeklyDetail({
-  onBack,
-  onTarotStart,
+  onClose,
+  onPrev,
+  onNext,
   reportId,
   reportData: externalReport,
   sectionData: externalSection,
@@ -447,7 +452,7 @@ export default function ReportWeeklyDetail({
   if (loading && !externalReport) {
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
-        <NavigationTopNavigationWidget onBack={onBack} />
+        <NavigationTopNavigationWidget onClose={onClose} />
         <LoadingSkeleton />
       </div>
     );
@@ -456,7 +461,7 @@ export default function ReportWeeklyDetail({
   if (error && !externalReport) {
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
-        <NavigationTopNavigationWidget onBack={onBack} />
+        <NavigationTopNavigationWidget onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>보고서를 불러올 수 없습니다.</p>
         </div>
@@ -467,7 +472,7 @@ export default function ReportWeeklyDetail({
   if (!report && !externalReport) {
     return (
       <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
-        <NavigationTopNavigationWidget onBack={onBack} />
+        <NavigationTopNavigationWidget onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>보고서가 없습니다.</p>
         </div>
@@ -477,7 +482,7 @@ export default function ReportWeeklyDetail({
 
   return (
     <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }} data-name="나의 보고서 (보고서 상세)">
-      <NavigationTopNavigationWidget onBack={onBack} />
+      <NavigationTopNavigationWidget onClose={onClose} />
       <div className="flex-1 overflow-y-auto w-full">
         <ContentContainer3
           title={title}
@@ -486,7 +491,7 @@ export default function ReportWeeklyDetail({
           tags={tags}
         />
       </div>
-      <CommonBottomButton onTarotStart={onTarotStart} />
+      <BottomButtons onPrev={onPrev} onNext={onNext} />
     </div>
   );
 }

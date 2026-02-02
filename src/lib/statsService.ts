@@ -36,9 +36,12 @@ export interface DashboardStats {
   totalVisits: number;         // 기간 내 방문 고객의 총 방문 횟수
   freeContentUsage: number;
   paidContentUsage: number;
+  freeContentUserRate: number;  // 무료 콘텐츠 이용 유저 비율 (%)
+  paidContentUserRate: number;  // 유료 콘텐츠 이용 유저 비율 (%)
   totalRevenue: number;
   tagStats: TagStat[];
   overallTagConfirmRate: number;
+  tagUserRate: number;          // 태그 저장 유저 비율 (%)
 }
 
 // 기간 필터 옵션
@@ -328,6 +331,73 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round((returningCustomers || 0) / totalCustomers * 1000) / 10
     : 0;
 
+  // 7. 무료 콘텐츠 이용 유저 수 (고유 user_id 수)
+  let freeContentUserQuery = supabase
+    .from('free_content_records')
+    .select('user_id')
+    .not('user_id', 'in', `(${adminFilter})`);
+
+  if (dateRange?.startDate) {
+    freeContentUserQuery = freeContentUserQuery.gte('created_at', dateRange.startDate);
+  }
+  if (dateRange?.endDate) {
+    freeContentUserQuery = freeContentUserQuery.lt('created_at', dateRange.endDate);
+  }
+
+  const { data: freeContentUsers, error: freeContentUserError } = await freeContentUserQuery;
+  if (freeContentUserError) {
+    console.error('무료 콘텐츠 유저 조회 오류:', freeContentUserError);
+  }
+  const uniqueFreeContentUsers = new Set(freeContentUsers?.map(r => r.user_id) || []).size;
+  const freeContentUserRate = totalCustomers > 0
+    ? Math.round(uniqueFreeContentUsers / totalCustomers * 1000) / 10
+    : 0;
+
+  // 8. 유료 콘텐츠 이용 유저 수 (고유 user_id 수)
+  let paidContentUserQuery = supabase
+    .from('orders')
+    .select('user_id')
+    .eq('pstatus', 'completed')
+    .not('user_id', 'in', `(${adminFilter})`);
+
+  if (dateRange?.startDate) {
+    paidContentUserQuery = paidContentUserQuery.gte('created_at', dateRange.startDate);
+  }
+  if (dateRange?.endDate) {
+    paidContentUserQuery = paidContentUserQuery.lt('created_at', dateRange.endDate);
+  }
+
+  const { data: paidContentUsers, error: paidContentUserError } = await paidContentUserQuery;
+  if (paidContentUserError) {
+    console.error('유료 콘텐츠 유저 조회 오류:', paidContentUserError);
+  }
+  const uniquePaidContentUsers = new Set(paidContentUsers?.map(r => r.user_id) || []).size;
+  const paidContentUserRate = totalCustomers > 0
+    ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
+    : 0;
+
+  // 9. 태그 저장 유저 수 (고유 user_id 수)
+  let tagUserQuery = supabase
+    .from('user_trait_tags')
+    .select('user_id')
+    .not('user_id', 'in', `(${adminFilter})`);
+
+  if (dateRange?.startDate) {
+    tagUserQuery = tagUserQuery.gte('created_at', dateRange.startDate);
+  }
+  if (dateRange?.endDate) {
+    tagUserQuery = tagUserQuery.lt('created_at', dateRange.endDate);
+  }
+
+  const { data: tagUsers, error: tagUserError } = await tagUserQuery;
+  if (tagUserError) {
+    console.error('태그 유저 조회 오류:', tagUserError);
+  }
+  const uniqueTagUsers = new Set(tagUsers?.map(r => r.user_id) || []).size;
+  const tagUserRate = totalCustomers > 0
+    ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
+    : 0;
+
   return {
     totalCustomers,
     newCustomers: newCustomers || 0,
@@ -336,9 +406,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     totalVisits,
     freeContentUsage: freeContentUsage || 0,
     paidContentUsage: paidContentUsage || 0,
+    freeContentUserRate,
+    paidContentUserRate,
     totalRevenue,
     tagStats,
-    overallTagConfirmRate
+    overallTagConfirmRate,
+    tagUserRate
   };
 }
 

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { X } from 'lucide-react';
 import svgPaths from "@/imports/svg-cxwdyqr8rc";
 import cloverSvgPaths from "@/imports/svg-8dky997t82";
 import { motion } from 'motion/react';
-import ReportWeeklyMemo from '@/components/ReportWeeklyMemo';
 import { useWeeklyReport, WeeklyReport, ReportSection } from '@/hooks/useWeeklyReport';
 
 // --- Icons & Graphics ---
@@ -70,41 +70,35 @@ function SettingsIcon() {
 
 // --- Components ---
 
-function TopBar({ onBack }: { onBack?: () => void }) {
+function TopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white relative shrink-0 w-full z-10" style={{ height: '52px' }}>
-      <div className="flex flex-col justify-center size-full">
-        <div className="flex items-center justify-between relative size-full" style={{ padding: '4px 12px' }}>
-           {/* Left Action */}
-           <button
-             onClick={onBack}
-             className="flex items-center justify-center relative shrink-0 active:bg-gray-100 transition-colors"
-             style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}
-           >
-             <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
-               <ArrowLeftIcon />
-             </div>
-           </button>
-
-           {/* Title */}
-           <p className="flex-1 text-center truncate" style={{
-             fontFamily: 'Pretendard Variable',
-             fontWeight: 600,
-             fontSize: '18px',
-             lineHeight: '25.5px',
-             color: '#000000',
-             letterSpacing: '-0.36px'
-           }}>
-             이번 주 보고서
-           </p>
-
-           {/* Right Action (Placeholder) */}
-           <div className="flex items-center justify-center relative shrink-0 opacity-0" style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}>
-             <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
-               <SettingsIcon />
-             </div>
-           </div>
-        </div>
+    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
+        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+        <h1
+          className="text-center flex-1"
+          style={{
+            fontFamily: 'Pretendard Variable, sans-serif',
+            fontWeight: 600,
+            fontSize: '18px',
+            lineHeight: '25.5px',
+            letterSpacing: '-0.36px',
+            color: '#000000'
+          }}
+        >
+          이번 주 보고서
+        </h1>
+        <button
+          onClick={onClose}
+          className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+          style={{ width: '44px', height: '44px', borderRadius: '12px' }}
+        >
+          <X
+            className="transition-transform duration-200 group-active:scale-90"
+            style={{ width: '24px', height: '24px', color: '#848484' }}
+            strokeWidth={1.8}
+          />
+        </button>
       </div>
     </div>
   );
@@ -304,7 +298,7 @@ function LoadingSkeleton() {
 }
 
 interface ReportWeeklyMindCareProps {
-  onBack?: () => void;
+  onClose?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
   reportId?: string;
@@ -314,15 +308,13 @@ interface ReportWeeklyMindCareProps {
 }
 
 export default function ReportWeeklyMindCare({
-  onBack,
+  onClose,
   onPrev,
   onNext,
   reportId,
   reportData: externalReport,
   sectionData: externalSection
 }: ReportWeeklyMindCareProps) {
-  const [showReport, setShowReport] = useState(false);
-
   const { report: fetchedReport, sections, loading, error } = useWeeklyReport(
     externalReport ? undefined : reportId
   );
@@ -334,14 +326,10 @@ export default function ReportWeeklyMindCare({
   const paragraphs = mindCareSection?.content?.content_paragraphs || [];
   const toDoList = report?.to_do_list || [];
 
-  if (showReport) {
-    return <ReportWeeklyMemo onBack={() => setShowReport(false)} onNext={onNext} />;
-  }
-
   if (loading && !externalReport) {
     return (
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
-        <TopBar onBack={onBack} />
+        <TopBar onClose={onClose} />
         <div className="flex-1 overflow-y-auto w-full relative">
           <LoadingSkeleton />
         </div>
@@ -352,7 +340,7 @@ export default function ReportWeeklyMindCare({
   if (error && !externalReport) {
     return (
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
-        <TopBar onBack={onBack} />
+        <TopBar onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>마음 처방을 불러올 수 없습니다.</p>
         </div>
@@ -363,7 +351,7 @@ export default function ReportWeeklyMindCare({
   if (!mindCareSection && !externalSection) {
     return (
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
-        <TopBar onBack={onBack} />
+        <TopBar onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>마음 처방 정보가 없습니다.</p>
         </div>
@@ -373,7 +361,7 @@ export default function ReportWeeklyMindCare({
 
   return (
     <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (마음 처방)">
-      <TopBar onBack={onBack} />
+      <TopBar onClose={onClose} />
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '230px' }}>
@@ -389,7 +377,7 @@ export default function ReportWeeklyMindCare({
         <GoalsSection goals={toDoList} />
       </div>
 
-      <BottomButtons onPrev={onPrev} onNext={() => setShowReport(true)} />
+      <BottomButtons onPrev={onPrev} onNext={onNext} />
     </div>
   );
 }

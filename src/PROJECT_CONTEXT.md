@@ -720,6 +720,13 @@ interface TarotGameProps {
 App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태그 저장
 ```
 
+**세션 설정** (Supabase Auth):
+| 항목 | 값 | 설명 |
+|------|-----|------|
+| Access Token 만료 | 7일 (604,800초) | JWT 토큰 유효 기간 |
+| Refresh Token | 만료 없음 | 1회 사용 후 자동 갱신 |
+| 세션 유지 | 무제한 | 로그아웃 전까지 자동 로그인 |
+
 ### 🎨 UI 컴포넌트
 ```
 /components/ui/                 → shadcn/ui 기반 재사용 컴포넌트 (26개)

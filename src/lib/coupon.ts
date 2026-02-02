@@ -60,10 +60,12 @@ export async function issueWelcomeCoupon(userId: string): Promise<{ success: boo
 
 /**
  * 재구매 쿠폰 발급
+ * @param userId - 사용자 ID
+ * @param sourceOrderId - 출처 ID (주문 ID 또는 보고서 ID) - 중복 발급 방지용
  */
-export async function issueRevisitCoupon(userId: string, orderId?: string): Promise<{ success: boolean; coupon?: UserCoupon; error?: string }> {
+export async function issueRevisitCoupon(userId: string, sourceOrderId?: string): Promise<{ success: boolean; coupon?: UserCoupon; error?: string }> {
   try {
-    console.log('🎟️ [쿠폰API] 재구매 쿠폰 발급 시작:', { userId, orderId });
+    console.log('🎟️ [쿠폰API] 재구매 쿠폰 발급 시작:', { userId, sourceOrderId });
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -76,7 +78,7 @@ export async function issueRevisitCoupon(userId: string, orderId?: string): Prom
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ user_id: userId, order_id: orderId }),
+      body: JSON.stringify({ user_id: userId, source_order_id: sourceOrderId }),
     });
 
     const result = await response.json();

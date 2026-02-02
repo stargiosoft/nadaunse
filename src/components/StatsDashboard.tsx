@@ -482,6 +482,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.freeContentUsage}
                   unit="건"
                   color="#48B2AF"
+                  subValue={`이용율 ${stats.freeContentUserRate}%`}
                 />
                 <StatCard
                   icon={CreditCard}
@@ -489,6 +490,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.paidContentUsage}
                   unit="건"
                   color="#368683"
+                  subValue={`이용율 ${stats.paidContentUserRate}%`}
                 />
               </div>
             </section>
@@ -497,6 +499,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             <section>
               <SectionHeader icon="🏷️" title="태그 통계" />
               <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+                  <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, color: '#666666' }}>
+                    태그 저장율
+                  </span>
+                  <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '20px', fontWeight: 600, color: '#6366F1' }}>
+                    {stats.tagUserRate}%
+                  </span>
+                </div>
                 <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                   <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, color: '#666666' }}>
                     전체 확인율

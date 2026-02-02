@@ -7,6 +7,7 @@ import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
 import MyReportWeekly, { MonthlyReport, WeeklyReport } from './MyReportWeekly';
+import { DotLoading } from './ui/PageLoader';
 
 function CommonLogo() {
   return (
@@ -40,6 +41,7 @@ interface DBWeeklyReport {
   tag_count: number;
   situation_summary: string | null;
   published_at: string;
+  self_encouragement: string | null; // 사용자 작성 응원글
 }
 
 interface DBReportSection {
@@ -83,13 +85,12 @@ function transformToMonthlyReports(
     const displayTags = weekTags.slice(0, 3).map(t => ({ label: `# ${t.tag_name}` }));
     const extraCount = Math.max(0, weekTags.length - 3);
 
-    // soul_prescription 섹션에서 메시지 추출
-    const soulSection = sections.get(report.id);
+    // self_encouragement (사용자 작성 응원글) 사용
     let message: { label: string; content: string } | undefined;
-    if (soulSection?.content?.content_paragraphs?.length) {
+    if (report.self_encouragement) {
       message = {
         label: '이번 주 나에게 :',
-        content: soulSection.content.content_paragraphs[0] || ''
+        content: report.self_encouragement
       };
     }
 
@@ -256,7 +257,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       // 1. 완료된 주간 보고서 목록 조회
       const { data: dbReports, error: reportsError } = await supabase
         .from('weekly_reports')
-        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at')
+        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at, self_encouragement')
         .eq('user_id', userId)
         .eq('status', 'completed')
         .order('published_at', { ascending: false });
@@ -498,6 +499,13 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     }
   };
 
+  // ⭐ 나 응원하기 수정 클릭 시 수정 페이지로 이동
+  const handleEditClick = (reportId: string, currentMessage: string) => {
+    navigate(`/report-weekly/${reportId}/cheer-edit`, {
+      state: { initialText: currentMessage }
+    });
+  };
+
   const handleDevNoTags = () => {
     setCurrentWeekTagsCount(0);
     setHasAnyTags(true); // 전체 태그는 있지만 이번 주 태그만 없음
@@ -670,14 +678,9 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         <div className="flex-1 overflow-y-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="w-full bg-white flex flex-col min-h-full">
             {isLoading ? (
-              // 로딩 상태
+              // 로딩 상태 - DotLoading 사용 (FreeContentLoading과 동일)
               <div className="flex items-center justify-center w-full" style={{ padding: '80px 20px' }}>
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-8 h-8 border-2 border-[#48b2af] border-t-transparent rounded-full animate-spin" />
-                  <p style={{ fontFamily: 'Pretendard Variable', fontSize: '14px', color: '#999' }}>
-                    불러오는 중...
-                  </p>
-                </div>
+                <DotLoading />
               </div>
             ) : isInitialEmptyState ? (
               <MyReportEmpty />
@@ -686,6 +689,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                 currentWeekTagsCount={currentWeekTagsCount}
                 filteredReports={filteredReports}
                 onReportClick={handleReportClick}
+                onEditClick={handleEditClick}
               />
             )}
 
