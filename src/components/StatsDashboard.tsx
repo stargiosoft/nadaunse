@@ -263,11 +263,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       />
       {/* 외부 컨테이너: 전체 화면 + 중앙 정렬 */}
       <div className="bg-white fixed inset-0 flex justify-center">
-        {/* 내부 컨테이너: 440px 제한, dvh 사용 */}
-        <div className="w-full max-w-[440px] flex flex-col" style={{ backgroundColor: '#f5f5f5', height: '100dvh' }}>
+        {/* 내부 컨테이너: 440px 제한 */}
+        <div className="w-full max-w-[440px] h-full flex flex-col" style={{ backgroundColor: '#f5f5f5' }}>
 
-          {/* 헤더 - shrink-0으로 고정 높이 */}
-          <header className="shrink-0 z-10 bg-white" style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+          {/* 헤더 - 고정 */}
+          <header className="shrink-0 z-10 bg-white" style={{ borderBottom: '1px solid #f0f0f0' }}>
             <div className="flex items-center justify-between px-3 h-[52px]">
               <button
                 onClick={onBack}
@@ -287,16 +287,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </header>
 
-          {/* 메인 콘텐츠 - 스크롤 영역 */}
-          <main
-            className="flex-1 px-4 py-5"
-            style={{
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              minHeight: 0,
-              touchAction: 'pan-y'
-            }}
-          >
+          {/* 메인 콘텐츠 - 스크롤 영역 (HomePage 패턴) */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5">
         {/* 기간 선택 */}
         <div style={{ marginBottom: '20px' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
@@ -626,7 +618,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </motion.div>
         )}
-      </main>
+      </div>{/* 스크롤 영역 닫기 */}
 
         </div>{/* 내부 컨테이너 닫기 */}
       </div>{/* 외부 컨테이너 닫기 */}
