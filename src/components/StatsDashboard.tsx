@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Home, Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
+import { ArrowLeft, Home, Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -192,6 +192,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         ...gaRealtimeData,
         activeUsers: gaPeriodData?.activeUsers,
         newUsers: gaPeriodData?.newUsers,
+        averageEngagementTime: gaPeriodData?.averageEngagementTime,
       } as GAStats);
     } catch (err) {
       console.error('통계 로드 오류:', err);
@@ -429,6 +430,15 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         color="#368683"
                         subValue={`재방문율 ${gaStats.activeUsers > 0 ? Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10 : 0}%`}
                       />
+                      {gaStats.averageEngagementTime !== undefined && (
+                        <StatCard
+                          icon={Clock}
+                          label="평균 참여 시간"
+                          value={`${Math.floor(gaStats.averageEngagementTime / 60)}:${String(gaStats.averageEngagementTime % 60).padStart(2, '0')}`}
+                          color="#EC4899"
+                          subValue="사용자당 평균"
+                        />
+                      )}
                     </>
                   )}
                 </div>
@@ -475,6 +485,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   label="총 방문횟수"
                   value={stats.totalVisits}
                   unit="회"
+                />
+                <StatCard
+                  icon={Activity}
+                  label="콘텐츠 이용율"
+                  value={stats.contentUsageRate}
+                  unit="%"
+                  color="#6366F1"
+                  subValue="무료/유료 1개 이상 이용"
                 />
                 <StatCard
                   icon={Gift}

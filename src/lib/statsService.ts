@@ -39,6 +39,7 @@ export interface DashboardStats {
   paidContentUsage: number;
   freeContentUserRate: number;  // 무료 콘텐츠 이용 유저 비율 (%)
   paidContentUserRate: number;  // 유료 콘텐츠 이용 유저 비율 (%)
+  contentUsageRate: number;     // 콘텐츠 이용율 (무료 또는 유료 1개라도 이용한 유저 비율 %)
   totalRevenue: number;
   tagStats: TagStat[];
   overallTagConfirmRate: number;
@@ -430,6 +431,15 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
     : 0;
 
+  // 8-1. 콘텐츠 이용율: 무료 또는 유료 1개라도 이용한 고유 유저 수
+  const freeUserSet = new Set(freeContentUsers?.map(r => r.user_id) || []);
+  const paidUserSet = new Set(paidContentUsers?.map(r => r.user_id) || []);
+  const contentUserSet = new Set([...freeUserSet, ...paidUserSet]);
+  const uniqueContentUsers = contentUserSet.size;
+  const contentUsageRate = totalCustomers > 0
+    ? Math.round(uniqueContentUsers / totalCustomers * 1000) / 10
+    : 0;
+
   // 9. 회원 태그 저장율: 기간 내 활동 회원 중 확정 태그 1개 이상 보유 비율
   let tagUserRate = 0;
 
@@ -504,6 +514,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     paidContentUsage: paidContentUsage || 0,
     freeContentUserRate,
     paidContentUserRate,
+    contentUsageRate,
     totalRevenue,
     tagStats,
     overallTagConfirmRate,
@@ -516,6 +527,7 @@ export interface GAStats {
   realtimeActiveUsers?: number;
   activeUsers?: number;
   newUsers?: number;
+  averageEngagementTime?: number;  // 활성 사용자당 평균 참여 시간 (초)
   type: 'realtime' | 'period';
 }
 
@@ -599,6 +611,7 @@ export async function fetchGAStats(
       realtimeActiveUsers: result.realtimeActiveUsers,
       activeUsers: result.activeUsers,
       newUsers: result.newUsers,
+      averageEngagementTime: result.averageEngagementTime,
     };
   } catch (error) {
     console.error('GA 통계 조회 예외:', error);
