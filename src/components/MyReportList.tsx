@@ -935,6 +935,53 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     }
   };
 
+  // ⭐ DEV: 미확인 태그 즉시 정리
+  const [isCleaningTags, setIsCleaningTags] = useState(false);
+  const handleDevCleanupTags = async () => {
+    if (isCleaningTags) return;
+
+    try {
+      setIsCleaningTags(true);
+      console.log('🧹 [DEV] 미확인 태그 정리 시작...');
+
+      // cleanup-unconfirmed-tags Edge Function 호출
+      const { data, error } = await supabase.functions.invoke('cleanup-unconfirmed-tags');
+
+      if (error) {
+        console.error('❌ [DEV] 태그 정리 실패:', error);
+        alert(`태그 정리 실패: ${error.message}`);
+        return;
+      }
+
+      console.log('✅ [DEV] 태그 정리 결과:', data);
+
+      if (data?.success) {
+        let message = `✅ 미확인 태그 정리 완료!\n\n`;
+        message += `📊 결과:\n`;
+        message += `• 처리 그룹: ${data.processedGroups || 0}개\n`;
+        message += `• 삭제 태그: ${data.deletedTags || 0}개\n`;
+        message += `• SKIPPED 마커: ${data.insertedSkipMarkers || 0}개\n`;
+
+        if (data.errors && data.errors.length > 0) {
+          message += `\n⚠️ 오류:\n`;
+          data.errors.forEach((err: string) => {
+            message += `• ${err}\n`;
+          });
+        }
+
+        alert(message);
+      } else {
+        alert(`태그 정리 실패: ${data?.error || '알 수 없는 오류'}`);
+      }
+
+    } catch (error) {
+      console.error('❌ [DEV] 태그 정리 오류:', error);
+      alert(`태그 정리 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    } finally {
+      setIsCleaningTags(false);
+    }
+  };
+
   // 실제 DB에서 조회한 보고서 목록 (더 이상 필터링 불필요)
   const filteredReports = reports;
 
@@ -1017,24 +1064,43 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                     dev 태그 없음 (초기)
                   </button>
                 </div>
-                {/* ⭐ 알림톡 발송 DEV 버튼 */}
-                <button
-                  onClick={handleDevSendAlimtalk}
-                  disabled={isSendingAlimtalk}
-                  style={{
-                    backgroundColor: isSendingAlimtalk ? '#d4d4d4' : '#48b2af',
-                    fontSize: '13px',
-                    color: '#ffffff',
-                    fontWeight: 600,
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    cursor: isSendingAlimtalk ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s',
-                    opacity: isSendingAlimtalk ? 0.7 : 1
-                  }}
-                >
-                  {isSendingAlimtalk ? '생성 중...' : '📊 보고서 생성 (DEV)'}
-                </button>
+                {/* ⭐ DEV 버튼들 (보고서 생성 + 태그 정리) */}
+                <div className="flex items-center justify-center flex-wrap" style={{ gap: '12px' }}>
+                  <button
+                    onClick={handleDevSendAlimtalk}
+                    disabled={isSendingAlimtalk}
+                    style={{
+                      backgroundColor: isSendingAlimtalk ? '#d4d4d4' : '#48b2af',
+                      fontSize: '13px',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      cursor: isSendingAlimtalk ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isSendingAlimtalk ? 0.7 : 1
+                    }}
+                  >
+                    {isSendingAlimtalk ? '생성 중...' : '📊 보고서 생성 (DEV)'}
+                  </button>
+                  <button
+                    onClick={handleDevCleanupTags}
+                    disabled={isCleaningTags}
+                    style={{
+                      backgroundColor: isCleaningTags ? '#d4d4d4' : '#ff9800',
+                      fontSize: '13px',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      cursor: isCleaningTags ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isCleaningTags ? 0.7 : 1
+                    }}
+                  >
+                    {isCleaningTags ? '정리 중...' : '🧹 태그 즉시 정리 (DEV)'}
+                  </button>
+                </div>
               </div>
             )}
 
