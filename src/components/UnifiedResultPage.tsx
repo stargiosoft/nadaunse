@@ -303,12 +303,17 @@ export default function UnifiedResultPage() {
 
               // 소유자 정보 조회
               try {
-                const { data: ownerData } = await supabase.functions.invoke('get-order-owner', {
+                const { data: ownerData, error: ownerError } = await supabase.functions.invoke('get-order-owner', {
                   body: { orderId }
                 });
-                if (ownerData?.success && ownerData?.exists && ownerData?.owner) {
-                  setOwnerInfo(ownerData.owner);
-                  console.log('🔐 [UnifiedResultPage] 주문 소유자 정보:', ownerData.owner);
+                console.log('📦 [UnifiedResultPage] 소유자 조회 응답:', ownerData, ownerError);
+                if (ownerData?.success && ownerData?.exists) {
+                  if (ownerData.owner) {
+                    setOwnerInfo(ownerData.owner);
+                    console.log('🔐 [UnifiedResultPage] 주문 소유자 정보:', ownerData.owner);
+                  } else {
+                    console.log('📭 [UnifiedResultPage] 소유자 정보 없음 (owner: null)');
+                  }
                 }
               } catch (e) {
                 console.error('❌ [UnifiedResultPage] 소유자 정보 조회 실패:', e);
