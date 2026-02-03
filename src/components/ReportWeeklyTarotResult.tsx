@@ -174,8 +174,8 @@ interface CardContainerProps {
 function CardContainer({ tarotSelections }: CardContainerProps) {
   return (
     <div
-      className="flex flex-col gap-4 items-start w-full pt-3"
-      style={{ paddingBottom: '230px', paddingLeft: '20px', paddingRight: '20px' }}
+      className="flex flex-col gap-4 items-start w-full"
+      style={{ padding: '12px 20px 230px 20px' }}
       data-name="Card Container"
     >
       {tarotSelections.map((tarot, index) => (
