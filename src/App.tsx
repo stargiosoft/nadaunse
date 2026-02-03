@@ -2768,35 +2768,54 @@ function ReportWeeklyMemoWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const [hasEncouragement, setHasEncouragement] = useState<boolean | null>(null);
+  const [hasCoupon, setHasCoupon] = useState<boolean | null>(null);
 
-  // 응원글이 이미 존재하는지 확인 (view 모드 vs write 모드)
+  // 응원글 존재 여부 + 쿠폰 발급 여부 확인
   useEffect(() => {
-    async function checkEncouragement() {
+    async function checkStatus() {
       if (!id) return;
 
       try {
-        const { data, error } = await supabase
+        // 1. 응원글 존재 여부 확인
+        const { data: reportData, error: reportError } = await supabase
           .from('weekly_reports')
           .select('self_encouragement')
           .eq('id', id)
           .single();
 
-        if (error) {
-          console.error('응원글 확인 실패:', error);
+        if (reportError) {
+          console.error('응원글 확인 실패:', reportError);
           setHasEncouragement(false);
-          return;
+        } else {
+          const exists = !!reportData?.self_encouragement;
+          setHasEncouragement(exists);
+          console.log(`📝 [응원글] 보고서 ${id} - 응원글 존재 여부:`, exists);
         }
 
-        const exists = !!data?.self_encouragement;
-        setHasEncouragement(exists);
-        console.log(`📝 [응원글] 보고서 ${id} - 응원글 존재 여부:`, exists);
+        // 2. 쿠폰 발급 여부 확인
+        const { data: session } = await supabase.auth.getSession();
+        if (session?.session?.user) {
+          const { data: couponData } = await supabase
+            .from('user_coupons')
+            .select('id')
+            .eq('user_id', session.session.user.id)
+            .eq('source_order_id', id)
+            .limit(1);
+
+          const couponExists = !!(couponData && couponData.length > 0);
+          setHasCoupon(couponExists);
+          console.log(`🎟️ [쿠폰] 보고서 ${id} - 쿠폰 발급 여부:`, couponExists);
+        } else {
+          setHasCoupon(false);
+        }
       } catch (err) {
-        console.error('응원글 확인 중 오류:', err);
+        console.error('상태 확인 중 오류:', err);
         setHasEncouragement(false);
+        setHasCoupon(false);
       }
     }
 
-    checkEncouragement();
+    checkStatus();
   }, [id]);
 
   if (!id) {
@@ -2806,8 +2825,8 @@ function ReportWeeklyMemoWrapper() {
   // 수정 페이지에서 왔으면 닫기 시 나의 분석 보고서 페이지로 이동
   const fromEdit = (location.state as { fromEdit?: boolean })?.fromEdit;
 
-  // 응원글 확인 중이면 로딩 상태로 렌더링
-  if (hasEncouragement === null) {
+  // 상태 확인 중이면 로딩 상태로 렌더링
+  if (hasEncouragement === null || hasCoupon === null) {
     return (
       <ReportWeeklyMemo
         reportId={id}
@@ -2818,10 +2837,11 @@ function ReportWeeklyMemoWrapper() {
     );
   }
 
-  // 응원글이 이미 있으면 (view 모드) → 프로필로 이동
-  // 응원글이 없으면 (write 모드) → 쿠폰 페이지로 이동
-  // 수정 페이지에서 왔으면 → 프로필로 이동
-  const shouldGoToProfile = fromEdit || hasEncouragement;
+  // 프로필로 바로 이동해야 하는 경우:
+  // 1. 수정 페이지에서 왔으면
+  // 2. 응원글이 이미 있으면 (view 모드)
+  // 3. 쿠폰이 이미 발급되었으면 (두 번째 방문)
+  const shouldGoToProfile = fromEdit || hasEncouragement || hasCoupon;
 
   return (
     <ReportWeeklyMemo
@@ -2830,8 +2850,10 @@ function ReportWeeklyMemoWrapper() {
       onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
       onNext={() => {
         if (shouldGoToProfile) {
+          console.log('✅ [응원글] 프로필로 이동 (fromEdit:', fromEdit, ', hasEncouragement:', hasEncouragement, ', hasCoupon:', hasCoupon, ')');
           navigate('/my-report-list');
         } else {
+          console.log('🎟️ [응원글] 쿠폰 페이지로 이동');
           navigate(`/report-completion/${id}`);
         }
       }}
