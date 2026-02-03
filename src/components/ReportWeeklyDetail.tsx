@@ -561,12 +561,15 @@ export default function ReportWeeklyDetail({
           return;
         }
 
-        if (data?.success && data?.exists && data?.owner) {
+        if (data?.success && data?.exists) {
+          // 보고서가 존재하지만 내 것이 아님 → 계정 불일치
           console.log('🔐 [ReportWeeklyDetail] 다른 계정의 보고서:', data.owner);
-          setOwnerInfo(data.owner);
+          if (data.owner) {
+            setOwnerInfo(data.owner);
+          }
           setIsWrongAccount(true);
         } else {
-          console.log('📭 [ReportWeeklyDetail] 보고서 없음 또는 소유자 정보 없음');
+          console.log('📭 [ReportWeeklyDetail] 보고서 없음');
         }
       } catch (e) {
         console.error('❌ [ReportWeeklyDetail] 소유자 확인 오류:', e);
@@ -609,10 +612,10 @@ export default function ReportWeeklyDetail({
   }
 
   // ⭐ 계정 불일치 - 다이얼로그 표시
-  if (isWrongAccount && ownerInfo) {
-    const providerName = ownerInfo.loginProvider === 'kakao' ? '카카오' :
-                         ownerInfo.loginProvider === 'google' ? '구글' : '다른';
-    const accountHint = ownerInfo.maskedEmail || ownerInfo.maskedPhone || '';
+  if (isWrongAccount) {
+    const providerName = ownerInfo?.loginProvider === 'kakao' ? '카카오' :
+                         ownerInfo?.loginProvider === 'google' ? '구글' : '다른';
+    const accountHint = ownerInfo?.maskedEmail || ownerInfo?.maskedPhone || '';
 
     return (
       <div className="bg-white fixed inset-0 flex justify-center">
