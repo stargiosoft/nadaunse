@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { TarotGame } from "@/components/TarotGame";
 import { X } from 'lucide-react';
 
@@ -7,13 +8,24 @@ interface ReportWeeklyTarotProps {
 }
 
 export default function ReportWeeklyTarot({ onClose, onNext }: ReportWeeklyTarotProps) {
+  // iOS Safari viewport height 처리 (TarotShufflePage와 동일)
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    return () => window.removeEventListener('resize', setVh);
+  }, []);
+
   return (
     // TarotShufflePage와 동일한 레이아웃 패턴 사용
     <div
       className="w-full max-w-[440px] mx-auto relative overflow-hidden"
       style={{
-        minHeight: '100vh',
-        height: '100vh',
+        minHeight: 'calc(var(--vh, 1vh) * 100)',
+        height: 'calc(var(--vh, 1vh) * 100)',
         backgroundColor: '#41a09e'
       }}
       data-name="나의 보고서 (타로 뽑기)"
