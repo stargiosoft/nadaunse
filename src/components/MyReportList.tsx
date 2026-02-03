@@ -697,18 +697,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 🚀 캐시가 유효하면 API 호출 스킵 (백그라운드 갱신만)
-        const needsRefresh = localStorage.getItem('my_report_needs_refresh') === 'true';
-        if (initialState.hasValidCache && !needsRefresh) {
-          console.log('✅ [MyReportList] 유효한 캐시 존재 → API 호출 스킵');
-          return;
-        }
-
-        if (needsRefresh) {
-          localStorage.removeItem('my_report_needs_refresh');
-          console.log('🔄 [MyReportList] refresh 플래그 감지 → API 호출');
-        }
-
+        // ⭐ 마스터 계정 여부 확인 (캐시 유무와 상관없이 항상 실행)
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           console.log('📭 [MyReportList] 로그인 안됨');
@@ -716,7 +705,6 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           return;
         }
 
-        // ⭐ 마스터 계정 여부 확인
         const { data: userData } = await supabase
           .from('users')
           .select('role')
@@ -726,6 +714,19 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         if (userData?.role === 'master') {
           setIsMaster(true);
           console.log('👑 [MyReportList] 마스터 계정 확인됨');
+        }
+
+        // 🚀 캐시가 유효하면 API 호출 스킵 (백그라운드 갱신만)
+        const needsRefresh = localStorage.getItem('my_report_needs_refresh') === 'true';
+        if (initialState.hasValidCache && !needsRefresh) {
+          console.log('✅ [MyReportList] 유효한 캐시 존재 → API 호출 스킵');
+          setIsLoading(false);
+          return;
+        }
+
+        if (needsRefresh) {
+          localStorage.removeItem('my_report_needs_refresh');
+          console.log('🔄 [MyReportList] refresh 플래그 감지 → API 호출');
         }
 
         // 이번 주 범위 계산
