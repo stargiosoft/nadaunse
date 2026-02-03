@@ -1477,6 +1477,60 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                     )}
                   </div>
                 )}
+
+                {/* 구분선 */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '1px',
+                    backgroundColor: '#e7e7e7',
+                    margin: '20px 0 16px 0'
+                  }}
+                />
+
+                {/* 태그 즉시 정리 버튼 */}
+                <div className="flex flex-col" style={{ gap: '8px' }}>
+                  <span style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#151515',
+                    letterSpacing: '-0.28px'
+                  }}>
+                    태그 관리
+                  </span>
+                  <button
+                    onClick={handleDevCleanupTags}
+                    disabled={isCleaningTags}
+                    className="w-full flex items-center justify-center transition-all active:scale-[0.98]"
+                    style={{
+                      height: '44px',
+                      borderRadius: '10px',
+                      backgroundColor: isCleaningTags ? '#d4d4d4' : '#ff9800',
+                      cursor: isCleaningTags ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <span style={{
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: 500,
+                      fontSize: '14px',
+                      color: '#ffffff',
+                      letterSpacing: '-0.28px'
+                    }}>
+                      {isCleaningTags ? '정리 중...' : '🧹 미확인 태그 즉시 정리'}
+                    </span>
+                  </button>
+                  <span style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '12px',
+                    fontWeight: 400,
+                    color: '#848484',
+                    letterSpacing: '-0.24px',
+                    lineHeight: '18px'
+                  }}>
+                    24시간 이상 지난 미확인 태그를 정리합니다
+                  </span>
+                </div>
               </div>
             )}
 
