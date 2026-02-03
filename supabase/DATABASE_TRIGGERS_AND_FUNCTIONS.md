@@ -2,7 +2,7 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-02-02
+> **최종 업데이트**: 2026-02-03
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -12,6 +12,7 @@
 
 - [Database Triggers](#database-triggers)
 - [Database Functions](#database-functions)
+- [pg_cron 스케줄 작업](#pg_cron-스케줄-작업)
 - [Trigger-Function 매핑](#trigger-function-매핑)
 
 ---
@@ -408,6 +409,68 @@ SELECT process_refund(
 );
 -- 결과: {"success": true, "order_id": "...", "refund_amount": 15000, "coupon_restored": true}
 ```
+
+---
+
+## pg_cron 스케줄 작업
+
+PostgreSQL 스케줄링 확장을 사용한 자동화 작업입니다.
+
+### 1. `weekly-report-batch` (주간 보고서 자동 발송)
+
+- **스케줄**: `30 6 * * 2` (매주 화요일 06:30 UTC = 15:30 KST)
+- **용도**: 주간 보고서 일괄 생성 및 알림톡 발송
+- **호출 대상**: `generate-weekly-reports-batch` Edge Function
+- **인증**: Vault에 저장된 `service_role_key` 사용
+
+```sql
+-- 스케줄 등록
+SELECT cron.schedule(
+  'weekly-report-batch',
+  '30 6 * * 2',
+  $$
+  SELECT net.http_post(
+    url := 'https://hyltbeewxaqashyivilu.supabase.co/functions/v1/generate-weekly-reports-batch',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key' LIMIT 1)
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 300000
+  );
+  $$
+);
+```
+
+**모니터링**:
+```sql
+-- 실행 로그 확인
+SELECT * FROM cron.job_run_details
+WHERE jobid = (SELECT jobid FROM cron.job WHERE jobname = 'weekly-report-batch')
+ORDER BY start_time DESC
+LIMIT 10;
+
+-- 스케줄 확인
+SELECT * FROM cron.job WHERE jobname = 'weekly-report-batch';
+```
+
+**수동 실행**:
+```sql
+SELECT trigger_weekly_report_batch();
+```
+
+### pg_cron 관련 테이블
+
+| 테이블 | 설명 |
+|--------|------|
+| `cron.job` | 등록된 스케줄 작업 목록 |
+| `cron.job_run_details` | 실행 이력 및 결과 |
+
+### Vault 시크릿
+
+| 시크릿 이름 | 용도 | 설정 방법 |
+|-------------|------|----------|
+| `service_role_key` | Edge Function 인증 | `vault.create_secret('key', 'service_role_key', 'description')` |
 
 ---
 
