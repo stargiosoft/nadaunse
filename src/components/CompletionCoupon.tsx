@@ -274,19 +274,25 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
 
         if (result.success) {
           console.log('✅ [쿠폰] 재구매 쿠폰 발급 성공:', result.coupon);
+          setIsLoading(false);
+        } else if (result.alreadyIssued) {
+          // ⭐ 이미 발급됨 → 바로 '나의 분석 보고서'로 이동
+          console.log('ℹ️ [쿠폰] 이미 발급됨 → 나의 분석 보고서로 이동');
+          onClose?.();
+          return; // setIsLoading(false) 호출 안 함 (이미 이동했으므로)
         } else {
-          // 이미 발급됐거나 다른 이유로 실패 - 에러가 아님
+          // 다른 이유로 실패 - 에러가 아님, 쿠폰 페이지 표시
           console.log('ℹ️ [쿠폰] 쿠폰 발급 스킵:', result.error);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('❌ [쿠폰] 쿠폰 처리 중 오류:', error);
-      } finally {
         setIsLoading(false);
       }
     }
 
     issueCouponOnFirstVisit();
-  }, [reportId]);
+  }, [reportId, onClose]);
 
   // 로딩 중
   if (isLoading) {
