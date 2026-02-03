@@ -503,6 +503,43 @@ export default function ReportWeeklyDetail({
   const myStorySection = externalSection || sections.find(s => s.section_type === 'my_story');
   const tags = externalTags || weeklyTags;
 
+  // ⭐ 보고서가 로드되면 캐시에 없는 경우 refresh 플래그 설정
+  useEffect(() => {
+    if (!report || externalReport) return;
+
+    try {
+      const cachedJson = localStorage.getItem('my_report_cache_v2');
+      if (!cachedJson) {
+        // 캐시가 없으면 refresh 필요
+        localStorage.setItem('my_report_needs_refresh', 'true');
+        console.log('🔄 [ReportWeeklyDetail] 캐시 없음 → refresh 플래그 설정');
+        return;
+      }
+
+      const cache = JSON.parse(cachedJson);
+      const cachedReportIds = new Set<string>();
+
+      // 캐시된 모든 보고서 ID 수집
+      if (cache.reports && Array.isArray(cache.reports)) {
+        for (const monthly of cache.reports) {
+          if (monthly.reports && Array.isArray(monthly.reports)) {
+            for (const r of monthly.reports) {
+              if (r.id) cachedReportIds.add(r.id);
+            }
+          }
+        }
+      }
+
+      // 현재 보고서가 캐시에 없으면 refresh 플래그 설정
+      if (!cachedReportIds.has(report.id)) {
+        localStorage.setItem('my_report_needs_refresh', 'true');
+        console.log('🔄 [ReportWeeklyDetail] 새 보고서 감지 → refresh 플래그 설정:', report.id);
+      }
+    } catch (e) {
+      console.error('❌ [ReportWeeklyDetail] 캐시 체크 실패:', e);
+    }
+  }, [report, externalReport]);
+
   // ⭐ 보고서가 없을 때 소유자 정보 확인 (계정 불일치 체크)
   useEffect(() => {
     async function checkReportOwner() {
