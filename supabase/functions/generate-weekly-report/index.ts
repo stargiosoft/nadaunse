@@ -109,7 +109,9 @@ serve(async (req) => {
   try {
     const {
       userId,
-      sendAlimtalk = false // 알림톡 발송 여부
+      sendAlimtalk = false, // 알림톡 발송 여부
+      weekStartDate,        // 커스텀 주 시작일 (YYYY-MM-DD) - 재발송용
+      weekEndDate           // 커스텀 주 종료일 (YYYY-MM-DD) - 재발송용
     } = await req.json()
 
     if (!userId) {
@@ -121,6 +123,9 @@ serve(async (req) => {
 
     console.log('📊 [주간 보고서] 생성 시작')
     console.log('👤 사용자 ID:', userId)
+    if (weekStartDate && weekEndDate) {
+      console.log('📅 커스텀 주차 지정:', weekStartDate, '~', weekEndDate)
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -157,9 +162,31 @@ serve(async (req) => {
       )
     }
 
-    // 3. 전주 일~토 날짜 범위 계산
-    const weekRange = getLastWeekRange()
-    console.log('📅 전주 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    // 3. 전주 일~토 날짜 범위 계산 (커스텀 날짜 지원)
+    let weekRange: { start: Date; end: Date; year: number; month: number; week: number }
+
+    if (weekStartDate && weekEndDate) {
+      // 커스텀 날짜가 제공된 경우 (재발송용)
+      const customStart = new Date(weekStartDate + 'T00:00:00.000Z')
+      const customEnd = new Date(weekEndDate + 'T23:59:59.999Z')
+
+      // 주차 계산
+      const firstDayOfMonth = new Date(customStart.getFullYear(), customStart.getMonth(), 1)
+      const week = Math.ceil((customStart.getDate() + firstDayOfMonth.getDay()) / 7)
+
+      weekRange = {
+        start: customStart,
+        end: customEnd,
+        year: customStart.getFullYear(),
+        month: customStart.getMonth() + 1,
+        week
+      }
+      console.log('📅 커스텀 주차 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    } else {
+      // 기본: 전주 일~토
+      weekRange = getLastWeekRange()
+      console.log('📅 전주 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    }
 
     // 4. 전주 태그 조회 (일~토)
     const { data: weeklyTags, error: tagsError } = await supabase

@@ -563,6 +563,42 @@ function getInitialCacheState(): {
   };
 }
 
+// ⭐ 최근 N주 목록 생성 (주차 선택용)
+interface WeekOption {
+  label: string;
+  weekStartDate: string;
+  weekEndDate: string;
+}
+
+function getRecentWeeks(count: number): WeekOption[] {
+  const weeks: WeekOption[] = [];
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+
+  for (let i = 1; i <= count; i++) {
+    // i주 전 일요일
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - dayOfWeek - 7 * i);
+    weekStart.setHours(0, 0, 0, 0);
+
+    // i주 전 토요일
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    const label = `${i}주 전 (${formatDate(weekStart)} ~ ${formatDate(weekEnd)})`;
+
+    weeks.push({
+      label,
+      weekStartDate: weekStart.toISOString().split('T')[0],
+      weekEndDate: weekEnd.toISOString().split('T')[0]
+    });
+  }
+
+  return weeks;
+}
+
 export default function MyReportList({ onBack, onTabChange, onReportClick, forceEmptyState = false }: MyReportListProps) {
   const navigate = useNavigate();
 
@@ -574,6 +610,20 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(initialState.currentWeekTagsCount);
   const [isLoading, setIsLoading] = useState(forceEmptyState ? false : !initialState.hasValidCache);
   const [hasAnyTags, setHasAnyTags] = useState(initialState.hasAnyTags);
+
+  // ⭐ 관리자 패널용 상태
+  const [isMaster, setIsMaster] = useState(false);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+  const [failedReportInfo, setFailedReportInfo] = useState<{
+    totalUsersWithTags: number;
+    usersWithReports: number;
+    failedCount: number;
+    failedUserIds: string[];
+  } | null>(null);
+  const [isLoadingFailedReports, setIsLoadingFailedReports] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendProgress, setResendProgress] = useState({ current: 0, total: 0 });
+  const weekOptions = getRecentWeeks(8);
 
   // ⭐ 주간 보고서 목록 조회 함수
   const fetchWeeklyReports = useCallback(async (userId: string) => {
@@ -664,6 +714,18 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           console.log('📭 [MyReportList] 로그인 안됨');
           setIsLoading(false);
           return;
+        }
+
+        // ⭐ 마스터 계정 여부 확인
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (userData?.role === 'master') {
+          setIsMaster(true);
+          console.log('👑 [MyReportList] 마스터 계정 확인됨');
         }
 
         // 이번 주 범위 계산
@@ -830,6 +892,132 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     navigate(`/report-weekly/${reportId}/cheer-edit`, {
       state: { initialText: currentMessage }
     });
+  };
+
+  // ⭐ 관리자: 실패 보고서 조회
+  const handleFetchFailedReports = async () => {
+    if (isLoadingFailedReports) return;
+
+    try {
+      setIsLoadingFailedReports(true);
+      setFailedReportInfo(null);
+
+      const selectedWeek = weekOptions[selectedWeekIndex];
+      console.log('📊 [Admin] 실패 보고서 조회:', selectedWeek);
+
+      const { data, error } = await supabase.functions.invoke('get-failed-reports', {
+        body: {
+          weekStartDate: selectedWeek.weekStartDate,
+          weekEndDate: selectedWeek.weekEndDate
+        }
+      });
+
+      if (error) {
+        console.error('❌ [Admin] 조회 실패:', error);
+        alert(`조회 실패: ${error.message}`);
+        return;
+      }
+
+      if (data?.success) {
+        setFailedReportInfo({
+          totalUsersWithTags: data.totalUsersWithTags,
+          usersWithReports: data.usersWithReports,
+          failedCount: data.failedCount,
+          failedUserIds: data.failedUserIds
+        });
+        console.log('✅ [Admin] 실패 보고서 조회 완료:', data);
+      } else {
+        alert(`조회 실패: ${data?.error || '알 수 없는 오류'}`);
+      }
+
+    } catch (error) {
+      console.error('❌ [Admin] 조회 오류:', error);
+      alert(`조회 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    } finally {
+      setIsLoadingFailedReports(false);
+    }
+  };
+
+  // ⭐ 관리자: 실패 보고서 재발송
+  const handleResendFailedReports = async () => {
+    if (!failedReportInfo || failedReportInfo.failedCount === 0) {
+      alert('재발송할 대상이 없습니다.');
+      return;
+    }
+
+    if (isResending) return;
+
+    const confirmed = window.confirm(
+      `${failedReportInfo.failedCount}명의 사용자에게 보고서를 재발송하시겠습니까?\n\n` +
+      `⚠️ 주의: 이미 보고서가 있는 사용자는 제외됩니다.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsResending(true);
+      const selectedWeek = weekOptions[selectedWeekIndex];
+      const failedUserIds = failedReportInfo.failedUserIds;
+      const total = failedUserIds.length;
+      setResendProgress({ current: 0, total });
+
+      console.log('🚀 [Admin] 보고서 재발송 시작:', total, '명');
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // 순차적으로 재발송 (동시에 너무 많이 호출하면 과부하)
+      for (let i = 0; i < failedUserIds.length; i++) {
+        const userId = failedUserIds[i];
+        setResendProgress({ current: i + 1, total });
+
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-weekly-report', {
+            body: {
+              userId,
+              sendAlimtalk: true,
+              weekStartDate: selectedWeek.weekStartDate,
+              weekEndDate: selectedWeek.weekEndDate
+            }
+          });
+
+          if (error || !data?.success) {
+            console.error(`❌ [Admin] ${userId} 실패:`, error || data?.error);
+            failCount++;
+          } else {
+            console.log(`✅ [Admin] ${userId} 성공:`, data.reportId);
+            successCount++;
+          }
+
+          // 각 요청 사이에 1초 대기 (API 부하 방지)
+          if (i < failedUserIds.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+
+        } catch (e) {
+          console.error(`❌ [Admin] ${userId} 오류:`, e);
+          failCount++;
+        }
+      }
+
+      alert(
+        `📊 재발송 완료!\n\n` +
+        `• 성공: ${successCount}명\n` +
+        `• 실패: ${failCount}명`
+      );
+
+      // 결과 새로고침
+      if (successCount > 0) {
+        handleFetchFailedReports();
+      }
+
+    } catch (error) {
+      console.error('❌ [Admin] 재발송 오류:', error);
+      alert(`재발송 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    } finally {
+      setIsResending(false);
+      setResendProgress({ current: 0, total: 0 });
+    }
   };
 
   const handleDevNoTags = () => {
@@ -1064,6 +1252,224 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                 onReportClick={handleReportClick}
                 onEditClick={handleEditClick}
               />
+            )}
+
+            {/* ⭐ 관리자 패널 - master 계정만 표시 */}
+            {isMaster && !isLoading && (
+              <div
+                className="flex flex-col w-full"
+                style={{
+                  margin: '20px',
+                  marginTop: '40px',
+                  padding: '20px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '16px',
+                  border: '1.5px solid #41a09e',
+                  width: 'calc(100% - 40px)'
+                }}
+              >
+                {/* 헤더 */}
+                <div className="flex items-center" style={{ gap: '8px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '20px' }}>👑</span>
+                  <span style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#41a09e',
+                    letterSpacing: '-0.32px'
+                  }}>
+                    관리자 패널
+                  </span>
+                </div>
+
+                {/* 주차 선택 */}
+                <div className="flex flex-col" style={{ gap: '8px', marginBottom: '16px' }}>
+                  <span style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#151515',
+                    letterSpacing: '-0.28px'
+                  }}>
+                    주차 선택
+                  </span>
+                  <select
+                    value={selectedWeekIndex}
+                    onChange={(e) => {
+                      setSelectedWeekIndex(Number(e.target.value));
+                      setFailedReportInfo(null);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      border: '1px solid #e7e7e7',
+                      backgroundColor: '#ffffff',
+                      fontFamily: 'Pretendard Variable',
+                      fontSize: '14px',
+                      color: '#151515',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    {weekOptions.map((option, index) => (
+                      <option key={index} value={index}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 조회 버튼 */}
+                <button
+                  onClick={handleFetchFailedReports}
+                  disabled={isLoadingFailedReports}
+                  className="w-full flex items-center justify-center transition-all active:scale-[0.98]"
+                  style={{
+                    height: '44px',
+                    borderRadius: '10px',
+                    backgroundColor: isLoadingFailedReports ? '#b7b7b7' : '#368683',
+                    marginBottom: failedReportInfo ? '16px' : '0'
+                  }}
+                >
+                  <span style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    color: '#ffffff',
+                    letterSpacing: '-0.28px'
+                  }}>
+                    {isLoadingFailedReports ? '조회 중...' : '실패 보고서 조회'}
+                  </span>
+                </button>
+
+                {/* 조회 결과 */}
+                {failedReportInfo && (
+                  <div className="flex flex-col" style={{ gap: '12px' }}>
+                    {/* 통계 */}
+                    <div
+                      className="flex flex-col"
+                      style={{
+                        padding: '16px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '12px',
+                        border: '1px solid #e7e7e7',
+                        gap: '8px'
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '13px',
+                          color: '#848484',
+                          letterSpacing: '-0.26px'
+                        }}>
+                          태그 있는 사용자
+                        </span>
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: '#151515',
+                          letterSpacing: '-0.28px'
+                        }}>
+                          {failedReportInfo.totalUsersWithTags}명
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '13px',
+                          color: '#848484',
+                          letterSpacing: '-0.26px'
+                        }}>
+                          보고서 발송 완료
+                        </span>
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: '#41a09e',
+                          letterSpacing: '-0.28px'
+                        }}>
+                          {failedReportInfo.usersWithReports}명
+                        </span>
+                      </div>
+                      <div
+                        className="flex justify-between items-center"
+                        style={{ paddingTop: '8px', borderTop: '1px solid #f3f3f3' }}
+                      >
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          color: '#151515',
+                          letterSpacing: '-0.28px'
+                        }}>
+                          발송 실패
+                        </span>
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          color: failedReportInfo.failedCount > 0 ? '#FF6678' : '#41a09e',
+                          letterSpacing: '-0.32px'
+                        }}>
+                          {failedReportInfo.failedCount}명
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 재발송 버튼 */}
+                    {failedReportInfo.failedCount > 0 && (
+                      <button
+                        onClick={handleResendFailedReports}
+                        disabled={isResending}
+                        className="w-full flex items-center justify-center transition-all active:scale-[0.98]"
+                        style={{
+                          height: '48px',
+                          borderRadius: '12px',
+                          backgroundColor: isResending ? '#d4d4d4' : '#41a09e'
+                        }}
+                      >
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontWeight: 600,
+                          fontSize: '15px',
+                          color: '#ffffff',
+                          letterSpacing: '-0.3px'
+                        }}>
+                          {isResending
+                            ? `재발송 중... (${resendProgress.current}/${resendProgress.total})`
+                            : `보고서 다시 보내기 (${failedReportInfo.failedCount}명)`
+                          }
+                        </span>
+                      </button>
+                    )}
+
+                    {/* 실패 없음 메시지 */}
+                    {failedReportInfo.failedCount === 0 && (
+                      <div
+                        className="flex items-center justify-center"
+                        style={{
+                          padding: '16px',
+                          backgroundColor: '#e8f5f5',
+                          borderRadius: '12px'
+                        }}
+                      >
+                        <span style={{
+                          fontFamily: 'Pretendard Variable',
+                          fontSize: '14px',
+                          color: '#41a09e',
+                          letterSpacing: '-0.28px'
+                        }}>
+                          ✅ 모든 보고서가 정상 발송되었습니다
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Dev Controls - only visible in dev/staging environments */}
