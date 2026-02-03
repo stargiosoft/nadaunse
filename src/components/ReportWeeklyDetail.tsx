@@ -450,6 +450,38 @@ export default function ReportWeeklyDetail({
     maskedPhone: string;
   } | null>(null);
   const [isCheckingOwner, setIsCheckingOwner] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  // ⭐ 로그아웃 상태 체크 → 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    async function checkSession() {
+      // 외부 데이터가 있으면 세션 체크 불필요
+      if (externalReport) {
+        setIsCheckingSession(false);
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          console.log('🔐 [ReportWeeklyDetail] 로그아웃 상태 → 로그인 페이지로 이동');
+          // 현재 URL 저장 (로그인 후 리다이렉트용)
+          const currentUrl = `${location.pathname}${location.search}`;
+          localStorage.setItem('redirectAfterLogin', currentUrl);
+          navigate('/login/new', { replace: true });
+          return;
+        }
+
+        setIsCheckingSession(false);
+      } catch (e) {
+        console.error('❌ [ReportWeeklyDetail] 세션 체크 오류:', e);
+        setIsCheckingSession(false);
+      }
+    }
+
+    checkSession();
+  }, [externalReport, location.pathname, location.search, navigate]);
 
   // iOS Safari viewport height 처리
   useEffect(() => {
@@ -520,7 +552,7 @@ export default function ReportWeeklyDetail({
   const dateRange = report ? formatWeekRange(report) : '';
   const paragraphs = myStorySection?.content?.content_paragraphs || [];
 
-  if (loading && !externalReport) {
+  if ((loading || isCheckingSession) && !externalReport) {
     return <WeeklyReportLoading />;
   }
 
