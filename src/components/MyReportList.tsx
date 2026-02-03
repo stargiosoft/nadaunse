@@ -485,7 +485,7 @@ interface MyReportListProps {
 }
 
 // ⭐ 캐시 키 & 만료 시간 (CLAUDE.md 캐싱 전략 준수)
-const MY_REPORT_CACHE_KEY = 'my_report_cache';
+const MY_REPORT_CACHE_KEY = 'my_report_cache_v2'; // v2: self_encouragement 컬럼 제거
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5분
 
 /**
