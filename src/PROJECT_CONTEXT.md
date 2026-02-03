@@ -1127,6 +1127,50 @@ AI 생성 요청 (Edge Function)
 
 ---
 
+### 2-1. 계정 불일치 처리 플로우 (알림톡 링크 접속)
+
+```
+알림톡 링크 클릭 (유료 콘텐츠 또는 주간 보고서)
+    ↓
+UnifiedResultPage / ReportWeeklyDetail
+    ↓
+세션 체크 (로그인 여부)
+    ├─ 로그아웃 상태 → 로그인 페이지로 이동
+    └─ 로그인 상태 → 데이터 조회
+           ↓
+       RLS로 orders/weekly_reports 조회
+           ├─ 성공 (본인 데이터) → 결과 표시
+           └─ 실패 (다른 계정 데이터) → 계정 불일치 감지
+                  ↓
+              Edge Function 호출
+              (get-order-owner / get-report-owner)
+                  ↓
+              Service Role Key로 RLS 우회
+                  ↓
+              auth.admin.getUserById()로 소유자 조회
+                  ↓
+              이메일/전화번호 마스킹
+              (gksruf813 → gksruf***)
+                  ↓
+              다이얼로그 표시:
+              ┌─────────────────────────────┐
+              │ 다른 계정으로 구매한 운세예요  │
+              │                             │
+              │ gksruf***@gmail.com으로      │
+              │ 다시 로그인해 주세요.         │
+              │                             │
+              │ [다른 계정으로 로그인] [홈]   │
+              └─────────────────────────────┘
+```
+
+**관련 파일**:
+- `src/components/UnifiedResultPage.tsx` - 유료 콘텐츠 결과 페이지
+- `src/components/ReportWeeklyDetail.tsx` - 주간 보고서 상세 페이지
+- `supabase/functions/get-order-owner/` - 주문 소유자 조회
+- `supabase/functions/get-report-owner/` - 보고서 소유자 조회
+
+---
+
 ### 3. 타로 서비스 플로우
 
 ```
@@ -1594,6 +1638,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.6.0 | 2026-02-03 | **계정 불일치 처리 플로우 추가** - 알림톡 링크 접속 시 다른 계정이면 소유자 마스킹 이메일 표시, get-order-owner/get-report-owner Edge Function 추가 | AI Assistant |
 | 2.5.0 | 2026-02-02 | **나다움 보고서 플로우 추가** - System Map에 6번째 데이터 흐름 추가 (태그 수집 → 보고서 생성 → 열람/다시보기/수정 플로우), 9개 컴포넌트 문서화, 4개 테이블 참조 | AI Assistant |
 | 2.3.0 | 2026-01-23 | **문서 중복 제거** - Database Schema, Edge Functions 섹션 간소화 (상세 문서 참조로 변경), 관리 포인트 감소 | AI Assistant |
 | 2.2.0 | 2026-01-23 | **마스터 콘텐츠 관리 플로우 추가** - System Map에 5번째 데이터 흐름 추가 (콘텐츠 생성/질문지 작성/AI 썸네일 생성/배포 플로우), 관련 6개 컴포넌트 문서화 | AI Assistant |

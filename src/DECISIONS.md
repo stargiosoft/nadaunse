@@ -120,6 +120,48 @@ users.role === 'master' 체크
 
 ---
 
+### 계정 불일치 시 소유자 정보 마스킹 표시
+
+**결정**: 알림톡 링크로 접속 시 다른 계정이면 소유자의 마스킹된 이메일을 표시
+
+**배경**:
+- 문제: 사용자가 알림톡 링크(유료 콘텐츠, 주간 보고서)를 클릭했을 때 다른 계정으로 로그인되어 있으면 "주문이 없습니다" 또는 "보고서가 없습니다"라는 모호한 메시지만 표시
+- 요구사항: 어떤 계정으로 구매했는지 힌트를 제공하여 사용자가 올바른 계정으로 재로그인하도록 유도
+
+**구현 방식**:
+```
+1. 프론트엔드: RLS로 데이터 조회 실패 → "다른 계정의 주문" 감지
+2. Edge Function 호출: get-order-owner / get-report-owner
+3. Service Role Key로 RLS 우회하여 소유자 정보 조회
+4. auth.admin.getUserById()로 Auth 테이블에서 이메일/전화번호 조회
+5. 마스킹 후 반환: gksruf813@gmail.com → gksruf***@gmail.com
+```
+
+**마스킹 규칙**:
+- 이메일: 뒤 3글자 마스킹 (localPart.length - 3)
+  - `gksruf813` → `gksruf***`
+  - 3글자 이하면 첫 글자만 표시: `abc` → `a***`
+- 전화번호: 중간 4자리 마스킹
+  - `010-1234-5678` → `010-****-5678`
+
+**다이얼로그 메시지**:
+```
+다른 계정으로 구매한 운세예요
+
+{maskedEmail}으로
+다시 로그인해 주세요.
+
+[다른 계정으로 로그인] [홈으로 이동]
+```
+
+**영향 범위**:
+- `supabase/functions/get-order-owner/` (NEW)
+- `supabase/functions/get-report-owner/` (NEW)
+- `src/components/UnifiedResultPage.tsx`
+- `src/components/ReportWeeklyDetail.tsx`
+
+---
+
 ## 2026-02-02
 
 ### 통계 대시보드 Google Analytics 통합
