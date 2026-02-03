@@ -950,7 +950,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
     const confirmed = window.confirm(
       `${failedReportInfo.failedCount}명의 사용자에게 보고서를 재발송하시겠습니까?\n\n` +
-      `⚠️ 주의: 이미 보고서가 있는 사용자는 제외됩니다.`
+      `⚠️ 주의: 이미 보고서가 있는 사용자는 제외됩니다.\n` +
+      `📦 5명씩 병렬 처리됩니다.`
     );
 
     if (!confirmed) return;
@@ -962,50 +963,74 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       const total = failedUserIds.length;
       setResendProgress({ current: 0, total });
 
-      console.log('🚀 [Admin] 보고서 재발송 시작:', total, '명');
+      console.log('🚀 [Admin] 보고서 재발송 시작:', total, '명 (5명씩 병렬 처리)');
 
       let successCount = 0;
       let failCount = 0;
+      let processedCount = 0;
 
-      // 순차적으로 재발송 (동시에 너무 많이 호출하면 과부하)
-      for (let i = 0; i < failedUserIds.length; i++) {
-        const userId = failedUserIds[i];
-        setResendProgress({ current: i + 1, total });
+      // ⭐ 5명씩 병렬 처리 (batch 함수와 동일한 방식)
+      const BATCH_SIZE = 5;
+      const DELAY_BETWEEN_BATCHES = 2000; // 배치 간 2초 대기
 
-        try {
-          // ⭐ 타임아웃 3분 설정 (OpenAI API 호출 시간 고려)
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 180000); // 3분
+      for (let i = 0; i < failedUserIds.length; i += BATCH_SIZE) {
+        const batch = failedUserIds.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(failedUserIds.length / BATCH_SIZE);
 
-          const { data, error } = await supabase.functions.invoke('generate-weekly-report', {
-            body: {
-              userId,
-              sendAlimtalk: true,
-              weekStartDate: selectedWeek.weekStartDate,
-              weekEndDate: selectedWeek.weekEndDate
-            },
-            // @ts-expect-error - supabase-js의 FunctionInvokeOptions에 signal 지원
-            signal: controller.signal
-          });
+        console.log(`📦 [Admin] 배치 ${batchNum}/${totalBatches} 처리 중... (${batch.length}명)`);
 
-          clearTimeout(timeoutId);
+        // 배치 내 병렬 처리
+        const batchPromises = batch.map(async (userId) => {
+          try {
+            // 타임아웃 5분 설정 (OpenAI API 호출 시간 고려)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5분
 
-          if (error || !data?.success) {
-            console.error(`❌ [Admin] ${userId} 실패:`, error || data?.error);
-            failCount++;
-          } else {
-            console.log(`✅ [Admin] ${userId} 성공:`, data.reportId);
+            const { data, error } = await supabase.functions.invoke('generate-weekly-report', {
+              body: {
+                userId,
+                sendAlimtalk: true,
+                weekStartDate: selectedWeek.weekStartDate,
+                weekEndDate: selectedWeek.weekEndDate
+              },
+              // @ts-expect-error - supabase-js의 FunctionInvokeOptions에 signal 지원
+              signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (error || !data?.success) {
+              console.error(`❌ [Admin] ${userId} 실패:`, error || data?.error);
+              return { success: false };
+            } else {
+              console.log(`✅ [Admin] ${userId} 성공:`, data.reportId);
+              return { success: true };
+            }
+          } catch (e) {
+            console.error(`❌ [Admin] ${userId} 오류:`, e);
+            return { success: false };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+
+        // 결과 집계
+        batchResults.forEach(result => {
+          if (result.success) {
             successCount++;
+          } else {
+            failCount++;
           }
+          processedCount++;
+        });
 
-          // 각 요청 사이에 2초 대기 (API 부하 방지)
-          if (i < failedUserIds.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
+        setResendProgress({ current: processedCount, total });
 
-        } catch (e) {
-          console.error(`❌ [Admin] ${userId} 오류:`, e);
-          failCount++;
+        // 다음 배치 전 딜레이 (마지막 배치 제외)
+        if (i + BATCH_SIZE < failedUserIds.length) {
+          console.log(`⏳ [Admin] ${DELAY_BETWEEN_BATCHES / 1000}초 대기...`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
         }
       }
 
