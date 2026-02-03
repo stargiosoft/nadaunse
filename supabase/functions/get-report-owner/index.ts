@@ -56,15 +56,11 @@ serve(async (req) => {
       )
     }
 
-    // 2. 소유자 정보 조회
-    const { data: owner, error: ownerError } = await supabase
-      .from('users')
-      .select('id, email, phone_number, login_provider')
-      .eq('id', report.user_id)
-      .single()
+    // 2. Auth에서 소유자 정보 조회 (auth.admin.getUserById 사용)
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(report.user_id)
 
-    if (ownerError || !owner) {
-      console.log('❌ [get-report-owner] 소유자 정보 없음:', report.user_id)
+    if (authError || !authUser?.user) {
+      console.log('❌ [get-report-owner] Auth 소유자 정보 없음:', report.user_id, authError)
       return new Response(
         JSON.stringify({
           success: true,
@@ -75,10 +71,13 @@ serve(async (req) => {
       )
     }
 
+    const user = authUser.user
+    const loginProvider = user.app_metadata?.provider || 'unknown'
+
     // 3. 소유자 정보 마스킹
     let maskedEmail = ''
-    if (owner.email) {
-      const [localPart, domain] = owner.email.split('@')
+    if (user.email) {
+      const [localPart, domain] = user.email.split('@')
       if (localPart.length > 2) {
         maskedEmail = localPart.substring(0, 2) + '***@' + domain
       } else {
@@ -87,9 +86,9 @@ serve(async (req) => {
     }
 
     let maskedPhone = ''
-    if (owner.phone_number) {
+    if (user.phone) {
       // 010-1234-5678 → 010-****-5678
-      const phone = owner.phone_number.replace(/-/g, '')
+      const phone = user.phone.replace(/-/g, '')
       if (phone.length >= 7) {
         maskedPhone = phone.substring(0, 3) + '-****-' + phone.substring(phone.length - 4)
       }
@@ -97,7 +96,7 @@ serve(async (req) => {
 
     console.log('✅ [get-report-owner] 소유자 정보 반환:', {
       reportId,
-      loginProvider: owner.login_provider,
+      loginProvider,
       hasMaskedEmail: !!maskedEmail,
       hasMaskedPhone: !!maskedPhone
     })
@@ -107,7 +106,7 @@ serve(async (req) => {
         success: true,
         exists: true,
         owner: {
-          loginProvider: owner.login_provider || 'unknown',
+          loginProvider,
           maskedEmail,
           maskedPhone
         }
