@@ -98,6 +98,11 @@ export default function UnifiedResultPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [hasValidSession, setHasValidSession] = useState(false);
   const [isWrongAccount, setIsWrongAccount] = useState(false);
+  const [ownerInfo, setOwnerInfo] = useState<{
+    loginProvider: string;
+    maskedEmail: string;
+    maskedPhone: string;
+  } | null>(null);
 
   // ⭐ 타로 이미지 관련 상태 (캐시 데이터 있으면 shimmer 스킵)
   const [cardImageUrl, setCardImageUrl] = useState<string>('');
@@ -295,6 +300,20 @@ export default function UnifiedResultPage() {
             if (orderError || !orderData) {
               console.error('❌ [UnifiedResultPage] 다른 계정의 주문');
               setIsWrongAccount(true);
+
+              // 소유자 정보 조회
+              try {
+                const { data: ownerData } = await supabase.functions.invoke('get-order-owner', {
+                  body: { orderId }
+                });
+                if (ownerData?.success && ownerData?.exists && ownerData?.owner) {
+                  setOwnerInfo(ownerData.owner);
+                  console.log('🔐 [UnifiedResultPage] 주문 소유자 정보:', ownerData.owner);
+                }
+              } catch (e) {
+                console.error('❌ [UnifiedResultPage] 소유자 정보 조회 실패:', e);
+              }
+
               setLoading(false);
               return;
             }
@@ -885,7 +904,7 @@ export default function UnifiedResultPage() {
                 >
                   다른 계정으로 구매한 운세예요
                 </p>
-                <p 
+                <p
                   style={{
                     fontFamily: 'Pretendard Variable, sans-serif',
                     fontWeight: 500,
@@ -895,7 +914,14 @@ export default function UnifiedResultPage() {
                     color: '#868686'
                   }}
                 >
-                  운세를 구매한 계정으로<br />다시 로그인해 주세요.
+                  {ownerInfo?.maskedEmail || ownerInfo?.maskedPhone ? (
+                    <>
+                      <span style={{ color: '#48b2af', fontWeight: 600 }}>{ownerInfo.maskedEmail || ownerInfo.maskedPhone}</span>
+                      (으)로<br />다시 로그인해 주세요.
+                    </>
+                  ) : (
+                    <>운세를 구매한 계정으로<br />다시 로그인해 주세요.</>
+                  )}
                 </p>
               </div>
             </div>
