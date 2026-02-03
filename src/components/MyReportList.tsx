@@ -12,6 +12,7 @@ import svgArrowPaths from "@/imports/svg-nh8ftbb7rx";
 import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
+import CardContent from './CardContent';
 import { DotLoading } from './ui/PageLoader';
 
 // ============================================
@@ -279,6 +280,22 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
   );
 }
 
+function RecommendationCardList() {
+  return (
+    <div className="flex flex-col w-full" style={{ padding: '36px 0 40px 0', gap: '12px' }}>
+      <div className="flex items-center w-full" style={{ padding: '0 20px' }}>
+        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '17px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#000000' }}>
+          태그 쌓기 좋은 운세
+        </p>
+      </div>
+
+      <div className="w-full">
+        <CardContent />
+      </div>
+    </div>
+  );
+}
+
 function MyReportWeeklyContent({
   currentWeekTagsCount,
   filteredReports,
@@ -290,6 +307,8 @@ function MyReportWeeklyContent({
   onReportClick?: (id: string) => void;
   onEditClick?: (reportId: string, currentMessage: string) => void;
 }) {
+  const hasNoReports = filteredReports.length === 0;
+
   return (
     <>
       {currentWeekTagsCount > 0 ? (
@@ -297,11 +316,17 @@ function MyReportWeeklyContent({
       ) : (
         <WeeklyEmptySummary />
       )}
-      <div className="flex flex-col w-full" style={{ paddingBottom: '130px' }}>
-        {filteredReports.map((month) => (
-          <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} />
-        ))}
-      </div>
+      {hasNoReports ? (
+        // 보고서가 없을 때: 태그 쌓기 좋은 운세 섹션 표시
+        <RecommendationCardList />
+      ) : (
+        // 보고서가 있을 때: 월별 보고서 목록 표시
+        <div className="flex flex-col w-full" style={{ paddingBottom: '130px' }}>
+          {filteredReports.map((month) => (
+            <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} />
+          ))}
+        </div>
+      )}
     </>
   );
 }
