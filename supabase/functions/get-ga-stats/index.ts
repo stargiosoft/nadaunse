@@ -152,7 +152,7 @@ async function getActiveUsers(
   propertyId: string,
   startDate: string,
   endDate: string
-): Promise<{ activeUsers: number; newUsers: number }> {
+): Promise<{ activeUsers: number; newUsers: number; averageEngagementTime: number }> {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
     {
@@ -166,6 +166,7 @@ async function getActiveUsers(
         metrics: [
           { name: 'activeUsers' },
           { name: 'newUsers' },
+          { name: 'userEngagementDuration' },
         ],
       }),
     }
@@ -179,13 +180,15 @@ async function getActiveUsers(
   const data = await response.json();
 
   if (data.rows && data.rows.length > 0) {
-    return {
-      activeUsers: parseInt(data.rows[0].metricValues[0].value, 10),
-      newUsers: parseInt(data.rows[0].metricValues[1].value, 10),
-    };
+    const activeUsers = parseInt(data.rows[0].metricValues[0].value, 10);
+    const newUsers = parseInt(data.rows[0].metricValues[1].value, 10);
+    const totalEngagementSeconds = parseFloat(data.rows[0].metricValues[2].value);
+    // 활성 사용자당 평균 참여 시간 (초)
+    const averageEngagementTime = activeUsers > 0 ? Math.round(totalEngagementSeconds / activeUsers) : 0;
+    return { activeUsers, newUsers, averageEngagementTime };
   }
 
-  return { activeUsers: 0, newUsers: 0 };
+  return { activeUsers: 0, newUsers: 0, averageEngagementTime: 0 };
 }
 
 serve(async (req: Request) => {

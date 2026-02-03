@@ -13,7 +13,8 @@ const ADMIN_IDS = [
   '7ca0c25e-3064-4dbf-b1e1-e7ad0c64c8cd',
   '48f1d43e-b1fa-4e1d-a1d0-01d8511947e0',
   'cc331c7d-feb4-4119-8a3f-3717e1effffd',
-  'bb20c4d4-9f8e-4952-9452-a38df762b45a'
+  'bb20c4d4-9f8e-4952-9452-a38df762b45a',
+  '9fb0b23b-b65b-4fb5-a356-b9969a842c55'
 ];
 
 // 기간 프리셋 타입
@@ -38,6 +39,7 @@ export interface DashboardStats {
   paidContentUsage: number;
   freeContentUserRate: number;  // 무료 콘텐츠 이용 유저 비율 (%)
   paidContentUserRate: number;  // 유료 콘텐츠 이용 유저 비율 (%)
+  contentUsageRate: number;     // 콘텐츠 이용율 (무료 또는 유료 1개라도 이용한 유저 비율 %)
   totalRevenue: number;
   tagStats: TagStat[];
   overallTagConfirmRate: number;
@@ -296,12 +298,14 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   let tagError: Error | null = null;
 
   if (isAllPeriod) {
-    // 전체 기간: 모든 태그 조회
+    // 전체 기간: 최근 5000개 태그만 조회 (성능 최적화)
     const result = await supabase
       .from('user_trait_tags')
       .select('user_id, source_type, is_confirmed, created_at')
       .not('user_id', 'in', `(${adminFilter})`)
-      .neq('tag_type', 'neutral');
+      .neq('tag_type', 'neutral')
+      .order('created_at', { ascending: false })
+      .limit(5000);
     tagData = result.data;
     tagError = result.error;
   } else if (periodUserIds.length > 0 && periodUserIds.length <= 1000) {
@@ -427,45 +431,77 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
     : 0;
 
+  // 8-1. 콘텐츠 이용율: 무료 또는 유료 1개라도 이용한 고유 유저 수
+  const freeUserSet = new Set(freeContentUsers?.map(r => r.user_id) || []);
+  const paidUserSet = new Set(paidContentUsers?.map(r => r.user_id) || []);
+  const contentUserSet = new Set([...freeUserSet, ...paidUserSet]);
+  const uniqueContentUsers = contentUserSet.size;
+  const contentUsageRate = totalCustomers > 0
+    ? Math.round(uniqueContentUsers / totalCustomers * 1000) / 10
+    : 0;
+
   // 9. 회원 태그 저장율: 기간 내 활동 회원 중 확정 태그 1개 이상 보유 비율
-  // Step 1: 기간 내 활동한 회원 ID 목록 조회
-  let activeUsersQuery = supabase
-    .from('users')
-    .select('id')
-    .not('id', 'in', `(${adminFilter})`);
-
-  if (!isAllPeriod && dateRange?.startDate && dateRange?.endDate) {
-    // 기간 내 마지막 방문한 유저
-    activeUsersQuery = activeUsersQuery
-      .gte('last_login_at', dateRange.startDate)
-      .lt('last_login_at', dateRange.endDate);
-  }
-
-  const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
-  if (activeUsersError) {
-    console.error('활동 유저 조회 오류:', activeUsersError);
-  }
-  const activeUserIds = activeUsersData?.map(u => u.id) || [];
-
-  // Step 2: 활동 회원 중 확정 태그 보유자 수 조회
   let tagUserRate = 0;
-  if (activeUserIds.length > 0 && activeUserIds.length <= 1000) {
-    // 유저 수가 적당할 때만 .in() 사용
+
+  if (isAllPeriod) {
+    // 전체 기간: 전체 회원 대비 태그 보유자 비율 (간소화된 쿼리)
+    const { count: totalUserCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('id', 'in', `(${adminFilter})`);
+
+    // 확정 태그 보유자 수 (고유 user_id)
     const { data: tagUsersData, error: tagUserError } = await supabase
       .from('user_trait_tags')
       .select('user_id')
       .eq('is_confirmed', true)
       .neq('tag_type', 'neutral')
-      .in('user_id', activeUserIds);
+      .not('user_id', 'in', `(${adminFilter})`);
 
     if (tagUserError) {
       console.error('태그 유저 조회 오류:', tagUserError);
     }
 
     const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
-    tagUserRate = activeUserIds.length > 0
-      ? Math.round(uniqueTagUsers / activeUserIds.length * 1000) / 10
+    tagUserRate = (totalUserCount || 0) > 0
+      ? Math.round(uniqueTagUsers / (totalUserCount || 1) * 1000) / 10
       : 0;
+  } else {
+    // 기간 필터: 기간 내 활동한 회원 ID 목록 조회
+    let activeUsersQuery = supabase
+      .from('users')
+      .select('id')
+      .not('id', 'in', `(${adminFilter})`);
+
+    if (dateRange?.startDate && dateRange?.endDate) {
+      activeUsersQuery = activeUsersQuery
+        .gte('last_login_at', dateRange.startDate)
+        .lt('last_login_at', dateRange.endDate);
+    }
+
+    const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
+    if (activeUsersError) {
+      console.error('활동 유저 조회 오류:', activeUsersError);
+    }
+    const activeUserIds = activeUsersData?.map(u => u.id) || [];
+
+    if (activeUserIds.length > 0 && activeUserIds.length <= 1000) {
+      const { data: tagUsersData, error: tagUserError } = await supabase
+        .from('user_trait_tags')
+        .select('user_id')
+        .eq('is_confirmed', true)
+        .neq('tag_type', 'neutral')
+        .in('user_id', activeUserIds);
+
+      if (tagUserError) {
+        console.error('태그 유저 조회 오류:', tagUserError);
+      }
+
+      const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+      tagUserRate = activeUserIds.length > 0
+        ? Math.round(uniqueTagUsers / activeUserIds.length * 1000) / 10
+        : 0;
+    }
   }
 
   return {
@@ -478,6 +514,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     paidContentUsage: paidContentUsage || 0,
     freeContentUserRate,
     paidContentUserRate,
+    contentUsageRate,
     totalRevenue,
     tagStats,
     overallTagConfirmRate,
@@ -490,6 +527,7 @@ export interface GAStats {
   realtimeActiveUsers?: number;
   activeUsers?: number;
   newUsers?: number;
+  averageEngagementTime?: number;  // 활성 사용자당 평균 참여 시간 (초)
   type: 'realtime' | 'period';
 }
 
@@ -507,21 +545,37 @@ export async function fetchGAStats(
     const params = new URLSearchParams({ type });
 
     if (type === 'period') {
-      // 전체 기간이면 서비스 시작일부터 조회 (2026-01-11)
-      const startDate = dateRange?.startDate
-        ? dateRange.startDate.split('T')[0]
-        : '2026-01-11';  // 서비스 시작일
+      // 로컬 날짜 형식 변환 함수 (UTC 시간대 문제 방지)
+      const formatLocalDate = (date: Date): string => {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      };
 
-      // GA API는 endDate를 포함하므로, Supabase용 endDate(+1일)에서 1일 빼기
-      let endDate = 'today';
-      if (dateRange?.endDate) {
-        const endDateObj = new Date(dateRange.endDate);
-        endDateObj.setDate(endDateObj.getDate() - 1);  // 1일 빼기
-        endDate = endDateObj.toISOString().split('T')[0];
+      // 전체 기간이면 서비스 시작일부터 조회 (2026-01-11)
+      let startDateStr = '2026-01-11';  // 서비스 시작일
+      if (dateRange?.startDate) {
+        const startDateObj = new Date(dateRange.startDate);
+        startDateStr = formatLocalDate(startDateObj);
       }
 
-      params.append('startDate', startDate);
-      params.append('endDate', endDate);
+      // endDate 처리
+      let endDateStr = 'today';
+      if (dateRange?.endDate) {
+        const endDateObj = new Date(dateRange.endDate);
+        const startDateObj = dateRange?.startDate ? new Date(dateRange.startDate) : null;
+
+        // '오늘' 필터 체크: startDate와 endDate가 정확히 1일(24시간) 차이
+        const isTodayFilter = startDateObj &&
+          Math.abs(endDateObj.getTime() - startDateObj.getTime() - 24 * 60 * 60 * 1000) < 1000;
+
+        if (!isTodayFilter) {
+          // 7일, 30일 등: GA API는 endDate를 포함하므로 1일 빼기 (오늘 제외)
+          endDateObj.setDate(endDateObj.getDate() - 1);
+        }
+        endDateStr = formatLocalDate(endDateObj);
+      }
+
+      params.append('startDate', startDateStr);
+      params.append('endDate', endDateStr);
     }
 
     const { data, error } = await supabase.functions.invoke('get-ga-stats', {
@@ -557,6 +611,7 @@ export async function fetchGAStats(
       realtimeActiveUsers: result.realtimeActiveUsers,
       activeUsers: result.activeUsers,
       newUsers: result.newUsers,
+      averageEngagementTime: result.averageEngagementTime,
     };
   } catch (error) {
     console.error('GA 통계 조회 예외:', error);

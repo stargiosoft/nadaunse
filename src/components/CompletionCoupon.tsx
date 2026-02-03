@@ -322,8 +322,8 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
         </div>
 
         {/* Fixed Bottom Area */}
-        <div className="w-full relative shrink-0 z-20">
-           <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white/10 to-transparent pointer-events-none" />
+        <div className="sticky bottom-0 w-full shrink-0 z-20 bg-white">
+           <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
            <BottomButton onHome={onHome} />
         </div>
       </div>
