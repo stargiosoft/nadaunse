@@ -388,7 +388,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
         } else {
           console.log('✅ [응원글] 저장 완료');
           // ⭐ 캐시 무효화 (보고서 목록 + 상세 캐시)
-          localStorage.removeItem('my_report_cache_v2');
+          localStorage.removeItem('my_report_cache_v3');
           invalidateWeeklyReportCache(reportId);
           console.log('🗑️ [응원글] 보고서 캐시 삭제');
         }
@@ -420,7 +420,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
         console.log('✅ [응원글] 수정 저장 완료');
         setSavedText(newText.trim());
         // ⭐ 캐시 무효화 (보고서 목록 + 상세 캐시)
-        localStorage.removeItem('my_report_cache_v2');
+        localStorage.removeItem('my_report_cache_v3');
         invalidateWeeklyReportCache(reportId);
         console.log('🗑️ [응원글] 보고서 캐시 삭제');
         setText(newText.trim());
