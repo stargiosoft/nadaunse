@@ -711,11 +711,11 @@ export default function ProfilePage({
                   프로필
                 </p>
               </div>
-              {/* 나의 분석 보고서 탭 (선택 안됨) */}
+              {/* 나의 분석 보고서 탭 (선택 안됨) - ⭐ replace: true로 히스토리 교체 (iOS 스와이프 뒤로가기 → 홈) */}
               <div
                 className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
                 style={{ padding: '12px 16px' }}
-                onClick={() => navigate('/test/my-report-list')}
+                onClick={() => navigate('/test/my-report-list', { replace: true })}
               >
                 <p
                   style={{

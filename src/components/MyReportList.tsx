@@ -807,8 +807,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
   const handleTabChange = (index: number) => {
     if (index === 0) {
-      // 프로필 탭 클릭 시 마이페이지로 이동
-      navigate('/profile');
+      // 프로필 탭 클릭 시 마이페이지로 이동 - ⭐ replace: true로 히스토리 교체 (iOS 스와이프 뒤로가기 → 홈)
+      navigate('/profile', { replace: true });
       return;
     }
     setActiveTab(index);
