@@ -40,12 +40,12 @@ serve(async (req) => {
     // 1. 주문 조회 (Service Role로 RLS 우회)
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id')
       .eq('id', orderId)
       .single()
 
     if (orderError || !order) {
-      console.log('📭 [get-order-owner] 주문 없음:', orderId)
+      console.log('📭 [get-order-owner] 주문 없음:', orderId, 'error:', orderError?.message, 'code:', orderError?.code)
       return new Response(
         JSON.stringify({
           success: true,
@@ -78,8 +78,9 @@ serve(async (req) => {
     let maskedEmail = ''
     if (user.email) {
       const [localPart, domain] = user.email.split('@')
-      if (localPart.length > 2) {
-        maskedEmail = localPart.substring(0, 2) + '***@' + domain
+      if (localPart.length > 3) {
+        // 뒤 3글자 마스킹: gksruf813 → gksruf***
+        maskedEmail = localPart.substring(0, localPart.length - 3) + '***@' + domain
       } else {
         maskedEmail = localPart[0] + '***@' + domain
       }

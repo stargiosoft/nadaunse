@@ -1,7 +1,7 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 30개
+> **총 함수 수**: 32개
 > **최종 업데이트**: 2026-02-03
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -30,16 +30,17 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 9개 | 30% | OpenAI GPT, Gemini |
+| 🤖 **AI 생성** | 9개 | 28% | OpenAI GPT, Gemini |
 | 📊 **주간 보고서** | 4개 | 13% | GPT-5.1, pg_cron, TalkDream |
 | 🎟️ **쿠폰 관리** | 4개 | 13% | Supabase DB |
-| 👤 **사용자/콘텐츠 관리** | 2개 | 7% | JWT 인증, RLS |
-| 📨 **알림** | 2개 | 7% | TalkDream API (카카오 알림톡) |
-| 💳 **결제/환불** | 3개 | 10% | PortOne API, PostgreSQL Function |
-| 📊 **모니터링/통계** | 2개 | 7% | Sentry, Slack, Google Analytics |
-| 🔧 **콘텐츠 생성 관리** | 2개 | 7% | OpenAI, Gemini 통합 |
+| 👤 **사용자/콘텐츠 관리** | 2개 | 6% | JWT 인증, RLS |
+| 📨 **알림** | 2개 | 6% | TalkDream API (카카오 알림톡) |
+| 💳 **결제/환불** | 3개 | 9% | PortOne API, PostgreSQL Function |
+| 📊 **모니터링/통계** | 2개 | 6% | Sentry, Slack, Google Analytics |
+| 🔧 **콘텐츠 생성 관리** | 2개 | 6% | OpenAI, Gemini 통합 |
 | 🔍 **SEO** | 1개 | 3% | 동적 Sitemap 생성 |
 | 🧹 **유틸리티** | 1개 | 3% | 태그 정리 |
+| 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
 
 ---
 
@@ -1297,6 +1298,80 @@ COMMIT;
 
 ---
 
+## 🔐 소유자 확인 Functions (2개)
+
+### 1. `get-order-owner`
+
+**역할**: 주문 소유자 정보 조회 (계정 불일치 확인용)
+
+**호출 시점**:
+- 알림톡 링크로 유료 콘텐츠 결과 페이지 접속 시
+- 현재 로그인 계정과 주문 소유자가 다를 때
+- `UnifiedResultPage.tsx`에서 호출
+
+**입력**:
+```typescript
+{
+  orderId: string              // 주문 UUID
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  exists: boolean,             // 주문 존재 여부
+  owner: {
+    loginProvider: string,     // 'kakao' | 'google' | 'unknown'
+    maskedEmail: string,       // 'gksruf***@gmail.com'
+    maskedPhone: string        // '010-****-5678'
+  } | null
+}
+```
+
+**마스킹 규칙**:
+- 이메일: 뒤 3글자 마스킹 (`gksruf813` → `gksruf***`)
+- 전화번호: 중간 4자리 마스킹 (`010-1234-5678` → `010-****-5678`)
+
+**RLS 우회**: Service Role Key 사용 (다른 사용자 주문 조회 필요)
+
+---
+
+### 2. `get-report-owner`
+
+**역할**: 주간 보고서 소유자 정보 조회 (계정 불일치 확인용)
+
+**호출 시점**:
+- 알림톡 링크로 주간 보고서 페이지 접속 시
+- 현재 로그인 계정과 보고서 소유자가 다를 때
+- `ReportWeeklyDetail.tsx`에서 호출
+
+**입력**:
+```typescript
+{
+  reportId: string             // 보고서 UUID
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  exists: boolean,             // 보고서 존재 여부
+  owner: {
+    loginProvider: string,     // 'kakao' | 'google' | 'unknown'
+    maskedEmail: string,       // 'gksruf***@gmail.com'
+    maskedPhone: string        // '010-****-5678'
+  } | null
+}
+```
+
+**마스킹 규칙**: `get-order-owner`와 동일
+
+**RLS 우회**: Service Role Key 사용
+
+---
+
 ## 🔍 SEO Functions (1개)
 
 ### 1. `generate-sitemap`
@@ -1541,6 +1616,8 @@ npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjku
 | `generate-sitemap` | 🔍 SEO | GET | - | /sitemap.xml 요청 시 |
 | `extract-trait-tags` | 🤖 AI 생성 | POST | GPT-5-nano | 운세 결과 페이지 진입 시 |
 | `get-ga-stats` | 📊 통계 | GET | GA Data API | 통계 대시보드 진입 시 |
+| `get-order-owner` | 🔐 소유자 확인 | POST | - | 유료 콘텐츠 계정 불일치 시 |
+| `get-report-owner` | 🔐 소유자 확인 | POST | - | 주간 보고서 계정 불일치 시 |
 
 ---
 
@@ -1588,13 +1665,14 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.6.0
+**문서 버전**: 1.8.0
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-02-02
+**최종 업데이트**: 2026-02-03
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 1.8.0 | 2026-02-03 | `get-order-owner`, `get-report-owner` 함수 추가 (계정 불일치 시 소유자 정보 마스킹 표시), 총 32개 |
 | 1.7.0 | 2026-02-02 | `get-ga-stats` 함수 추가 (Google Analytics 통계 조회), 모니터링/통계 카테고리 통합 |
 | 1.6.0 | 2026-02-02 | 나다움 보고서 (주간 보고서) 플로우 추가, 캐시 무효화 및 user_viewed 패턴 문서화 |
 | 1.5.1 | 2026-01-29 | `save-trait-tags` 함수 삭제 (클라이언트 직접 INSERT로 변경), 총 23개 |

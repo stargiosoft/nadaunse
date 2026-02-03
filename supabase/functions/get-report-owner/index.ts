@@ -78,8 +78,9 @@ serve(async (req) => {
     let maskedEmail = ''
     if (user.email) {
       const [localPart, domain] = user.email.split('@')
-      if (localPart.length > 2) {
-        maskedEmail = localPart.substring(0, 2) + '***@' + domain
+      if (localPart.length > 3) {
+        // 뒤 3글자 마스킹: gksruf813 → gksruf***
+        maskedEmail = localPart.substring(0, localPart.length - 3) + '***@' + domain
       } else {
         maskedEmail = localPart[0] + '***@' + domain
       }
