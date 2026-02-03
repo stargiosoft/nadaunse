@@ -367,7 +367,6 @@ interface DBWeeklyReport {
   tag_count: number;
   situation_summary: string | null;
   published_at: string;
-  self_encouragement: string | null; // 사용자 작성 응원글
 }
 
 interface DBReportSection {
@@ -411,15 +410,6 @@ function transformToMonthlyReports(
     const displayTags = weekTags.slice(0, 3).map(t => ({ label: `# ${t.tag_name}` }));
     const extraCount = Math.max(0, weekTags.length - 3);
 
-    // self_encouragement (사용자 작성 응원글) 사용
-    let message: { label: string; content: string } | undefined;
-    if (report.self_encouragement) {
-      message = {
-        label: '이번 주 나에게 :',
-        content: report.self_encouragement
-      };
-    }
-
     // 기간 포맷
     const startDate = formatDateShort(report.week_start_date);
     const endDate = formatDateShort(report.week_end_date);
@@ -430,8 +420,7 @@ function transformToMonthlyReports(
       title: `${report.week}주차 보고서`,
       period,
       tags: displayTags,
-      extraTagsCount: extraCount,
-      message
+      extraTagsCount: extraCount
     };
 
     if (!grouped.has(monthKey)) {
@@ -633,7 +622,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       // 1. 완료된 주간 보고서 목록 조회
       const { data: dbReports, error: reportsError } = await supabase
         .from('weekly_reports')
-        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at, self_encouragement')
+        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at')
         .eq('user_id', userId)
         .eq('status', 'completed')
         .order('published_at', { ascending: false });
