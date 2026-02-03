@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import svgPathsDove from "@/imports/svg-d6wqnyhzay";
 import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, ReportSection, UserTraitTag } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
+import { supabase } from '@/lib/supabase';
 
 function Icon() {
   return (
@@ -437,6 +439,18 @@ export default function ReportWeeklyDetail({
   sectionData: externalSection,
   tagsData: externalTags
 }: ReportWeeklyDetailProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ⭐ 계정 불일치 상태
+  const [isWrongAccount, setIsWrongAccount] = useState(false);
+  const [ownerInfo, setOwnerInfo] = useState<{
+    loginProvider: string;
+    maskedEmail: string;
+    maskedPhone: string;
+  } | null>(null);
+  const [isCheckingOwner, setIsCheckingOwner] = useState(false);
+
   // iOS Safari viewport height 처리
   useEffect(() => {
     const setVh = () => {
@@ -456,6 +470,50 @@ export default function ReportWeeklyDetail({
   const report = externalReport || fetchedReport;
   const myStorySection = externalSection || sections.find(s => s.section_type === 'my_story');
   const tags = externalTags || weeklyTags;
+
+  // ⭐ 보고서가 없을 때 소유자 정보 확인 (계정 불일치 체크)
+  useEffect(() => {
+    async function checkReportOwner() {
+      // 보고서가 있거나, 로딩 중이거나, 외부 데이터가 있으면 스킵
+      if (report || loading || externalReport || !reportId || isCheckingOwner) return;
+
+      try {
+        setIsCheckingOwner(true);
+        console.log('🔍 [ReportWeeklyDetail] 보고서 소유자 확인 중...', reportId);
+
+        const { data, error: fnError } = await supabase.functions.invoke('get-report-owner', {
+          body: { reportId }
+        });
+
+        if (fnError) {
+          console.error('❌ [ReportWeeklyDetail] 소유자 조회 실패:', fnError);
+          return;
+        }
+
+        if (data?.success && data?.exists && data?.owner) {
+          console.log('🔐 [ReportWeeklyDetail] 다른 계정의 보고서:', data.owner);
+          setOwnerInfo(data.owner);
+          setIsWrongAccount(true);
+        } else {
+          console.log('📭 [ReportWeeklyDetail] 보고서 없음 또는 소유자 정보 없음');
+        }
+      } catch (e) {
+        console.error('❌ [ReportWeeklyDetail] 소유자 확인 오류:', e);
+      } finally {
+        setIsCheckingOwner(false);
+      }
+    }
+
+    checkReportOwner();
+  }, [report, loading, externalReport, reportId, isCheckingOwner]);
+
+  // ⭐ 다른 계정 로그아웃
+  const handleLogoutAndRetry = async () => {
+    const currentUrl = `${location.pathname}${location.search}`;
+    localStorage.setItem('redirectAfterLogin', currentUrl);
+    await supabase.auth.signOut();
+    navigate('/login/new', { replace: true });
+  };
 
   // 데이터 추출
   const title = report ? formatReportTitle(report) : '보고서';
@@ -477,6 +535,113 @@ export default function ReportWeeklyDetail({
         </div>
       </div>
     );
+  }
+
+  // ⭐ 계정 불일치 - 다이얼로그 표시
+  if (isWrongAccount && ownerInfo) {
+    const providerName = ownerInfo.loginProvider === 'kakao' ? '카카오' :
+                         ownerInfo.loginProvider === 'google' ? '구글' : '다른';
+    const accountHint = ownerInfo.maskedEmail || ownerInfo.maskedPhone || '';
+
+    return (
+      <div className="bg-white fixed inset-0 flex justify-center">
+        <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+          <NavigationTopNavigationWidget onClose={onClose} />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/50" />
+              <div
+                className="relative bg-white overflow-hidden border"
+                style={{ width: '320px', borderColor: '#f3f3f3', borderRadius: '20px' }}
+              >
+                <div style={{ paddingLeft: '28px', paddingRight: '28px', paddingTop: '20px', paddingBottom: '20px' }}>
+                  <div className="flex flex-col items-center text-center" style={{ gap: '8px' }}>
+                    <p
+                      style={{
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: 600,
+                        fontSize: '17px',
+                        lineHeight: '25.5px',
+                        letterSpacing: '-0.34px',
+                        color: '#000000'
+                      }}
+                    >
+                      다른 계정의 보고서예요
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: 500,
+                        fontSize: '15px',
+                        lineHeight: '22px',
+                        letterSpacing: '-0.3px',
+                        color: '#868686'
+                      }}
+                    >
+                      {accountHint ? (
+                        <>
+                          <span style={{ color: '#48b2af', fontWeight: 600 }}>{providerName}</span> 계정<br />
+                          <span style={{ color: '#48b2af', fontWeight: 600 }}>{accountHint}</span><br />
+                          으로 로그인해 주세요.
+                        </>
+                      ) : (
+                        <>보고서를 작성한 계정으로<br />다시 로그인해 주세요.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className="flex flex-col"
+                  style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '20px', gap: '8px' }}
+                >
+                  <button
+                    onClick={handleLogoutAndRetry}
+                    className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                    style={{ height: '48px', backgroundColor: '#48b2af', borderRadius: '12px' }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '25px',
+                        letterSpacing: '-0.32px',
+                        color: '#ffffff'
+                      }}
+                    >
+                      다른 계정으로 로그인
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="w-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                    style={{ height: '48px', backgroundColor: '#f5f5f5', borderRadius: '12px' }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '25px',
+                        letterSpacing: '-0.32px',
+                        color: '#151515'
+                      }}
+                    >
+                      홈으로 이동
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 소유자 확인 중
+  if (isCheckingOwner && !report && !externalReport) {
+    return <WeeklyReportLoading />;
   }
 
   if (!report && !externalReport) {
