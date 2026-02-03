@@ -533,21 +533,37 @@ export async function fetchGAStats(
     const params = new URLSearchParams({ type });
 
     if (type === 'period') {
-      // 전체 기간이면 서비스 시작일부터 조회 (2026-01-11)
-      const startDate = dateRange?.startDate
-        ? dateRange.startDate.split('T')[0]
-        : '2026-01-11';  // 서비스 시작일
+      // 로컬 날짜 형식 변환 함수 (UTC 시간대 문제 방지)
+      const formatLocalDate = (date: Date): string => {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      };
 
-      // GA API는 endDate를 포함하므로, Supabase용 endDate(+1일)에서 1일 빼기
-      let endDate = 'today';
-      if (dateRange?.endDate) {
-        const endDateObj = new Date(dateRange.endDate);
-        endDateObj.setDate(endDateObj.getDate() - 1);  // 1일 빼기
-        endDate = endDateObj.toISOString().split('T')[0];
+      // 전체 기간이면 서비스 시작일부터 조회 (2026-01-11)
+      let startDateStr = '2026-01-11';  // 서비스 시작일
+      if (dateRange?.startDate) {
+        const startDateObj = new Date(dateRange.startDate);
+        startDateStr = formatLocalDate(startDateObj);
       }
 
-      params.append('startDate', startDate);
-      params.append('endDate', endDate);
+      // endDate 처리
+      let endDateStr = 'today';
+      if (dateRange?.endDate) {
+        const endDateObj = new Date(dateRange.endDate);
+        const startDateObj = dateRange?.startDate ? new Date(dateRange.startDate) : null;
+
+        // '오늘' 필터 체크: startDate와 endDate가 정확히 1일(24시간) 차이
+        const isTodayFilter = startDateObj &&
+          Math.abs(endDateObj.getTime() - startDateObj.getTime() - 24 * 60 * 60 * 1000) < 1000;
+
+        if (!isTodayFilter) {
+          // 7일, 30일 등: GA API는 endDate를 포함하므로 1일 빼기 (오늘 제외)
+          endDateObj.setDate(endDateObj.getDate() - 1);
+        }
+        endDateStr = formatLocalDate(endDateObj);
+      }
+
+      params.append('startDate', startDateStr);
+      params.append('endDate', endDateStr);
     }
 
     const { data, error } = await supabase.functions.invoke('get-ga-stats', {

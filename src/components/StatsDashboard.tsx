@@ -460,14 +460,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   color="#368683"
                   subValue={`재방문율 ${stats.returnRate}%`}
                 />
-                {gaStats?.activeUsers && gaStats.activeUsers > 0 && (
+                {gaStats?.newUsers && gaStats.newUsers > 0 && (
                   <StatCard
                     icon={UserPlus}
                     label="회원가입율"
-                    value={Math.round(stats.newCustomers / gaStats.activeUsers * 1000) / 10}
+                    value={Math.round(stats.newCustomers / gaStats.newUsers * 1000) / 10}
                     unit="%"
                     color="#6366F1"
-                    subValue={`GA 방문자 대비 가입`}
+                    subValue={`GA 신규 방문자 대비 가입`}
                   />
                 )}
                 <StatCard
