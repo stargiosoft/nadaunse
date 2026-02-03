@@ -654,9 +654,8 @@ export default function ReportWeeklyDetail({
                     >
                       {accountHint ? (
                         <>
-                          <span style={{ color: '#48b2af', fontWeight: 600 }}>{providerName}</span> 계정<br />
-                          <span style={{ color: '#48b2af', fontWeight: 600 }}>{accountHint}</span><br />
-                          으로 로그인해 주세요.
+                          <span style={{ color: '#48b2af', fontWeight: 600 }}>{accountHint}</span>
+                          (으)로<br />다시 로그인해 주세요.
                         </>
                       ) : (
                         <>보고서를 작성한 계정으로<br />다시 로그인해 주세요.</>
