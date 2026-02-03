@@ -2888,8 +2888,9 @@ function ReportWeeklyMemoEditWrapper() {
       }
 
       // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
-      localStorage.removeItem('my_report_cache');
-      console.log('🗑️ [응원글 수정] 보고서 목록 캐시 삭제');
+      localStorage.removeItem('my_report_cache_v3');
+      localStorage.setItem('my_report_needs_refresh', 'true');
+      console.log('🗑️ [응원글 수정] 보고서 목록 캐시 삭제 + refresh 플래그 설정');
 
       // 토스트 표시 (2.2초)
       sonnerToast.custom(
