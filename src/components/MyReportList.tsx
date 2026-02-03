@@ -1528,7 +1528,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                     letterSpacing: '-0.24px',
                     lineHeight: '18px'
                   }}>
-                    24시간 이상 지난 미확인 태그를 정리합니다
+                    72시간(3일) 이상 지난 미확인 태그를 정리합니다
                   </span>
                 </div>
               </div>
