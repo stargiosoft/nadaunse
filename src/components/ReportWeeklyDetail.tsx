@@ -354,7 +354,7 @@ function NavigationTopBar({ onClose }: { onClose?: () => void }) {
 
 function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="sticky top-0 z-50 bg-white w-full" data-name="Navigation / Top Navigation (Widget)">
+    <div className="shrink-0 z-50 bg-white w-full" data-name="Navigation / Top Navigation (Widget)">
       <NavigationTopBar onClose={onClose} />
     </div>
   );
@@ -362,7 +362,7 @@ function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
 
 function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () => void }) {
   return (
-    <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
+    <div className="shrink-0 bg-white w-full z-40" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
         <div className="flex w-full" style={{ gap: '12px' }}>
           {/* 이전 버튼 */}
@@ -457,10 +457,12 @@ export default function ReportWeeklyDetail({
 
   if (error && !externalReport) {
     return (
-      <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
-        <NavigationTopNavigationWidget onClose={onClose} />
-        <div className="flex-1 flex items-center justify-center p-5">
-          <p style={{ color: '#999', fontSize: '15px' }}>보고서를 불러올 수 없습니다.</p>
+      <div className="bg-white fixed inset-0 flex justify-center">
+        <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+          <NavigationTopNavigationWidget onClose={onClose} />
+          <div className="flex-1 flex items-center justify-center p-5">
+            <p style={{ color: '#999', fontSize: '15px' }}>보고서를 불러올 수 없습니다.</p>
+          </div>
         </div>
       </div>
     );
@@ -468,27 +470,32 @@ export default function ReportWeeklyDetail({
 
   if (!report && !externalReport) {
     return (
-      <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }}>
-        <NavigationTopNavigationWidget onClose={onClose} />
-        <div className="flex-1 flex items-center justify-center p-5">
-          <p style={{ color: '#999', fontSize: '15px' }}>보고서가 없습니다.</p>
+      <div className="bg-white fixed inset-0 flex justify-center">
+        <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+          <NavigationTopNavigationWidget onClose={onClose} />
+          <div className="flex-1 flex items-center justify-center p-5">
+            <p style={{ color: '#999', fontSize: '15px' }}>보고서가 없습니다.</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // iOS Safari/Chrome 스크롤 바운스 방지 패턴 (fixed inset-0)
   return (
-    <div className="bg-white relative size-full flex flex-col mx-auto h-full" style={{ maxWidth: '440px' }} data-name="나의 보고서 (보고서 상세)">
-      <NavigationTopNavigationWidget onClose={onClose} />
-      <div className="flex-1 overflow-y-auto w-full">
-        <ContentContainer3
-          title={title}
-          dateRange={dateRange}
-          paragraphs={paragraphs}
-          tags={tags}
-        />
+    <div className="bg-white fixed inset-0 flex justify-center" data-name="나의 보고서 (보고서 상세)">
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+        <NavigationTopNavigationWidget onClose={onClose} />
+        <div className="flex-1 overflow-auto w-full">
+          <ContentContainer3
+            title={title}
+            dateRange={dateRange}
+            paragraphs={paragraphs}
+            tags={tags}
+          />
+        </div>
+        <BottomButtons onPrev={onPrev} onNext={onNext} />
       </div>
-      <BottomButtons onPrev={onPrev} onNext={onNext} />
     </div>
   );
 }
