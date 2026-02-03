@@ -517,6 +517,8 @@ export default function ReportWeeklyDetail({
           body: { reportId }
         });
 
+        console.log('📦 [ReportWeeklyDetail] Edge Function 응답:', data);
+
         if (fnError) {
           console.error('❌ [ReportWeeklyDetail] 소유자 조회 실패:', fnError);
           return;
