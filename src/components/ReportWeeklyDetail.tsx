@@ -506,8 +506,8 @@ export default function ReportWeeklyDetail({
   // ⭐ 보고서가 없을 때 소유자 정보 확인 (계정 불일치 체크)
   useEffect(() => {
     async function checkReportOwner() {
-      // 보고서가 있거나, 로딩 중이거나, 외부 데이터가 있으면 스킵
-      if (report || loading || externalReport || !reportId || isCheckingOwner) return;
+      // 세션 체크 중이거나, 보고서가 있거나, 로딩 중이거나, 외부 데이터가 있으면 스킵
+      if (isCheckingSession || report || loading || externalReport || !reportId || isCheckingOwner) return;
 
       try {
         setIsCheckingOwner(true);
@@ -537,7 +537,7 @@ export default function ReportWeeklyDetail({
     }
 
     checkReportOwner();
-  }, [report, loading, externalReport, reportId, isCheckingOwner]);
+  }, [isCheckingSession, report, loading, externalReport, reportId]);
 
   // ⭐ 다른 계정 로그아웃
   const handleLogoutAndRetry = async () => {
