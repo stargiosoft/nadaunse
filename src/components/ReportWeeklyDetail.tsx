@@ -6,32 +6,6 @@ import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, Repo
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
 
-// iOS Safari/Chrome 바운스 방지를 위한 body 스크롤 막기 훅
-function usePreventBodyScroll() {
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalWidth = document.body.style.width;
-    const originalHeight = document.body.style.height;
-    const originalTop = document.body.style.top;
-
-    // body 스크롤 완전 차단
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
-    document.body.style.top = '0';
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.width = originalWidth;
-      document.body.style.height = originalHeight;
-      document.body.style.top = originalTop;
-    };
-  }, []);
-}
-
 function Icon() {
   return (
     <div className="absolute" style={{ inset: '10% -0.02% 3.02% 0.65%' }} data-name="Icon">
@@ -463,8 +437,16 @@ export default function ReportWeeklyDetail({
   sectionData: externalSection,
   tagsData: externalTags
 }: ReportWeeklyDetailProps) {
-  // iOS Safari/Chrome 바운스 방지
-  usePreventBodyScroll();
+  // iOS Safari viewport height 처리
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    return () => window.removeEventListener('resize', setVh);
+  }, []);
 
   // 외부 데이터가 없으면 훅으로 조회
   const { report: fetchedReport, sections, weeklyTags, loading, error } = useWeeklyReport(
@@ -510,13 +492,20 @@ export default function ReportWeeklyDetail({
     );
   }
 
-  // iOS Safari/Chrome 스크롤 바운스 방지 패턴 (fixed inset-0)
+  // iOS Safari/Chrome 스크롤 바운스 방지 패턴 (fixed inset-0 + --vh)
   return (
-    <div className="bg-white fixed inset-0 flex justify-center" data-name="나의 보고서 (보고서 상세)">
-      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+    <div
+      className="bg-white fixed inset-0 flex justify-center overflow-hidden"
+      style={{
+        height: 'calc(var(--vh, 1vh) * 100)',
+        minHeight: 'calc(var(--vh, 1vh) * 100)'
+      }}
+      data-name="나의 보고서 (보고서 상세)"
+    >
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white relative">
         <NavigationTopNavigationWidget onClose={onClose} />
         <div
-          className="flex-1 overflow-auto w-full"
+          className="flex-1 overflow-y-auto w-full"
           style={{
             overscrollBehaviorY: 'contain',
             WebkitOverflowScrolling: 'touch'
