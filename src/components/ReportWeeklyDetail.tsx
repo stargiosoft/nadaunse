@@ -1,10 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import svgPathsDove from "@/imports/svg-d6wqnyhzay";
 import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, ReportSection, UserTraitTag } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
+
+// iOS Safari/Chrome 바운스 방지를 위한 body 스크롤 막기 훅
+function usePreventBodyScroll() {
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalWidth = document.body.style.width;
+    const originalHeight = document.body.style.height;
+    const originalTop = document.body.style.top;
+
+    // body 스크롤 완전 차단
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.body.style.top = '0';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.width = originalWidth;
+      document.body.style.height = originalHeight;
+      document.body.style.top = originalTop;
+    };
+  }, []);
+}
 
 function Icon() {
   return (
@@ -437,6 +463,9 @@ export default function ReportWeeklyDetail({
   sectionData: externalSection,
   tagsData: externalTags
 }: ReportWeeklyDetailProps) {
+  // iOS Safari/Chrome 바운스 방지
+  usePreventBodyScroll();
+
   // 외부 데이터가 없으면 훅으로 조회
   const { report: fetchedReport, sections, weeklyTags, loading, error } = useWeeklyReport(
     externalReport ? undefined : reportId
@@ -486,7 +515,13 @@ export default function ReportWeeklyDetail({
     <div className="bg-white fixed inset-0 flex justify-center" data-name="나의 보고서 (보고서 상세)">
       <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
         <NavigationTopNavigationWidget onClose={onClose} />
-        <div className="flex-1 overflow-auto w-full">
+        <div
+          className="flex-1 overflow-auto w-full"
+          style={{
+            overscrollBehaviorY: 'contain',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           <ContentContainer3
             title={title}
             dateRange={dateRange}
