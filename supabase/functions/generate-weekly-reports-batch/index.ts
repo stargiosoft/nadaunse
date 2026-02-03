@@ -7,7 +7,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
 // 배치 설정
 const BATCH_CONFIG = {
-  concurrency: 3, // 동시 처리 수 (API 과부하 방지)
+  concurrency: 5, // 동시 처리 수 (API 과부하 방지)
   delayBetweenBatches: 2000, // 배치 간 딜레이 (ms)
 }
 

@@ -1,7 +1,7 @@
 # 나다움 찾기 기능 개발 계획
 
-> **상태**: Phase 2-3 완료 + 로그아웃 사용자 플로우 개선 완료 + 주간 보고서 메모/쿠폰 기능 개발 중
-> **최종 업데이트**: 2026-02-02
+> **상태**: Phase 1-5 완료 ✅ + 관리자 패널 추가
+> **최종 업데이트**: 2026-02-03
 
 ---
 
@@ -104,8 +104,9 @@
 - [x] "오늘의 한 줄 위로" 랜덤 문구 기능 (2026-01-29 완료)
 - [x] 라우팅 설정
 
-### Phase 4: 주간 보고서 (진행 중) 🚧
-- [ ] generate-weekly-report Edge Function
+### Phase 4: 주간 보고서 ✅
+- [x] generate-weekly-report Edge Function (GPT-5.1 기반 보고서 생성)
+- [x] generate-weekly-reports-batch Edge Function (배치 처리, concurrency: 5)
 - [x] 보고서 메모 페이지 (ReportWeeklyMemo.tsx) - 다중 모드 지원
   - [x] write 모드: 최초 작성 (이전/완료 버튼)
   - [x] view 모드: 다시보기 (X 닫기 버튼, 이전/닫기 버튼, 수정 연필 아이콘)
@@ -115,10 +116,23 @@
 - [x] 보고서 완료 → 쿠폰 페이지 연결 (CompletionCoupon.tsx)
 - [x] 재구매 쿠폰 발급 로직 (issueRevisitCoupon)
 - [x] MyReportList에 응원글 표시
+- [x] 기존 보고서 중복 방지 로직 (forceRegenerate 옵션)
 
-### Phase 5: 알림톡 & 마무리
-- [ ] send-report-alimtalk Edge Function
-- [ ] Cron Job 설정
+### Phase 5: 알림톡 & 자동 발송 ✅
+- [x] send-report-alimtalk Edge Function (TalkDream API, 5회 재시도)
+- [x] pg_cron + pg_net 스케줄 설정
+  - 스케줄: 매주 화요일 15:30 KST (테스트용)
+  - Vault에서 service_role_key 사용
+  - timeout_milliseconds: 300000 (5분)
+- [x] 배치 실행 로직 (5명씩 병렬 처리, 2초 간격)
+
+### Phase 6: 관리자 패널 ✅
+- [x] get-failed-reports Edge Function (실패 보고서 조회)
+- [x] MyReportList.tsx 관리자 패널 UI
+  - [x] 마스터 계정 여부 확인 (users.role === 'master')
+  - [x] 주차 선택 드롭다운 (최근 8주)
+  - [x] 실패 보고서 통계 표시
+  - [x] 재발송 버튼 (3분 타임아웃, 2초 간격)
 
 ---
 
@@ -424,10 +438,19 @@ src/
 
 supabase/
 ├── functions/
-│   └── extract-trait-tags/
-│       └── index.ts             # 태그 추출 Edge Function (GPT-5-nano)
+│   ├── extract-trait-tags/
+│   │   └── index.ts             # 태그 추출 Edge Function (GPT-5-nano)
+│   ├── generate-weekly-report/
+│   │   └── index.ts             # 개별 보고서 생성 (GPT-5.1)
+│   ├── generate-weekly-reports-batch/
+│   │   └── index.ts             # 배치 보고서 생성 (concurrency: 5)
+│   ├── send-report-alimtalk/
+│   │   └── index.ts             # 알림톡 발송 (TalkDream API)
+│   └── get-failed-reports/
+│       └── index.ts             # 실패 보고서 조회 (관리자용)
 └── migrations/
-    └── 20260128_nadaum_feature.sql  # DB 스키마
+    ├── 20260128_nadaum_feature.sql       # DB 스키마 (4개 테이블)
+    └── 20260203_weekly_report_cron.sql   # pg_cron 스케줄 설정
 ```
 
 ---
@@ -485,10 +508,13 @@ npx supabase db push --project-ref kcthtpmxffppfbkjjkub
 - [x] 콘솔에 불필요한 로그 없음
 - [x] 캐시 동작 (5분 내 재방문 시 API 호출 스킵)
 
-### 향후 검증 (Phase 4-5)
-- [ ] 주간 보고서 생성 테스트
-- [ ] 알림톡 발송 테스트
-- [ ] Cron Job 동작 확인
+### Phase 4-6 완료 검증 ✅
+- [x] 주간 보고서 생성 테스트 (DEV 버튼)
+- [x] 알림톡 발송 테스트
+- [x] Cron Job 동작 확인 (pg_cron + pg_net)
+- [x] 관리자 패널 실패 보고서 조회
+- [x] 관리자 패널 재발송 기능
+- [ ] **프로덕션 배포 대기** (화요일 15:30 자동 발송 테스트 후)
 
 ---
 
@@ -525,6 +551,18 @@ npx supabase db push --project-ref kcthtpmxffppfbkjjkub
 | 2026-02-02 | 기능: MyReportList.tsx 응원글(self_encouragement) 표시 |
 | 2026-02-02 | 버그 수정: coupon.ts source_order_id 파라미터명 수정 |
 | 2026-02-02 | 라우팅: /report-weekly-memo/:id, /report-completion/:id 추가 |
+| 2026-02-03 | **Phase 4-5 완료: 주간 보고서 자동 발송 시스템** |
+| 2026-02-03 | Edge Function: generate-weekly-report (GPT-5.1 보고서 생성) |
+| 2026-02-03 | Edge Function: generate-weekly-reports-batch (배치 처리, concurrency: 5) |
+| 2026-02-03 | Edge Function: send-report-alimtalk (TalkDream API, 5회 재시도) |
+| 2026-02-03 | Edge Function: get-failed-reports (실패 보고서 조회) |
+| 2026-02-03 | pg_cron 스케줄 설정: 매주 화요일 15:30 KST (테스트용) |
+| 2026-02-03 | Vault에 service_role_key 저장 (pg_net 인증용) |
+| 2026-02-03 | **Phase 6: 관리자 패널 추가** |
+| 2026-02-03 | MyReportList.tsx: 마스터 계정용 관리자 패널 UI |
+| 2026-02-03 | 기능: 주차별 실패 보고서 조회 및 재발송 |
+| 2026-02-03 | 기능: 기존 보고서 중복 방지 (forceRegenerate 옵션) |
+| 2026-02-03 | 버그 수정: 재발송 타임아웃 3분으로 증가 |
 
 ---
 
@@ -1135,3 +1173,130 @@ WITH CHECK (auth.uid() = user_id);
 - [ ] weekly_reports 테이블에 self_encouragement 컬럼 추가
 - [ ] UPDATE RLS 정책 추가
 - [ ] 코드 배포 (Vercel)
+
+---
+
+## 16. pg_cron 자동 발송 시스템 (2026-02-03 추가)
+
+### 16.1 아키텍처 개요
+
+```
+pg_cron (Supabase)
+    ↓ 매주 화요일 15:30 KST
+pg_net.http_post()
+    ↓ Authorization: Bearer {service_role_key from Vault}
+generate-weekly-reports-batch Edge Function
+    ↓ concurrency: 5, 2초 간격
+generate-weekly-report Edge Function (각 사용자별)
+    ↓ GPT-5.1 보고서 생성
+send-report-alimtalk Edge Function
+    ↓ TalkDream API
+알림톡 발송 완료
+```
+
+### 16.2 pg_cron 스케줄 설정
+
+**마이그레이션 파일**: `supabase/migrations/20260203_weekly_report_cron.sql`
+
+**현재 설정** (테스트용):
+```sql
+SELECT cron.schedule(
+  'weekly-report-batch',
+  '30 6 * * 2',  -- 매주 화요일 06:30 UTC (15:30 KST)
+  $$
+  SELECT net.http_post(
+    url := 'https://hyltbeewxaqashyivilu.supabase.co/functions/v1/generate-weekly-reports-batch',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key' LIMIT 1)
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 300000
+  );
+  $$
+);
+```
+
+**프로덕션 설정** (정식 운영):
+- 스케줄: `0 12 * * 0` (매주 일요일 21:00 KST)
+- URL: `https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/generate-weekly-reports-batch`
+
+### 16.3 Vault 설정
+
+**필수**: `service_role_key`를 Vault에 저장해야 함
+
+```sql
+-- Vault에 시크릿 추가
+SELECT vault.create_secret(
+  'your-service-role-key-here',
+  'service_role_key',
+  'Service Role Key for Edge Functions'
+);
+
+-- 확인
+SELECT name FROM vault.decrypted_secrets WHERE name = 'service_role_key';
+```
+
+**주의**: Edge Function Secrets와 Vault는 별개 저장소
+- Edge Function Secrets: `Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')` (Edge Function 내부)
+- Vault: `vault.decrypted_secrets` (PostgreSQL 내부, pg_cron용)
+
+### 16.4 배치 처리 설정
+
+**generate-weekly-reports-batch 설정**:
+```typescript
+const BATCH_CONFIG = {
+  concurrency: 5,           // 동시 처리 수
+  delayBetweenBatches: 2000 // 배치 간 2초 딜레이
+}
+```
+
+**300명 처리 예상 시간**:
+- 60개 배치 (300 ÷ 5)
+- 약 120초(2분) + API 호출 시간
+
+### 16.5 실패 시 재발송
+
+**관리자 패널 (MyReportList.tsx)**:
+1. 마스터 계정으로 로그인
+2. 마이페이지 → "나의 분석 보고서" 탭
+3. 👑 관리자 패널 표시
+4. 주차 선택 → "실패 보고서 조회"
+5. 실패 건수 확인 → "보고서 다시 보내기"
+
+**재발송 로직**:
+- 3분 타임아웃 (AbortController)
+- 2초 간격 순차 처리
+- 이미 보고서 있으면 자동 스킵 (중복 방지)
+
+### 16.6 모니터링
+
+**실행 로그 확인**:
+```sql
+SELECT * FROM cron.job_run_details
+WHERE jobid = (SELECT jobid FROM cron.job WHERE jobname = 'weekly-report-batch')
+ORDER BY start_time DESC
+LIMIT 10;
+```
+
+**수동 실행 (테스트)**:
+```sql
+SELECT trigger_weekly_report_batch();
+```
+
+**스케줄 확인**:
+```sql
+SELECT * FROM cron.job WHERE jobname = 'weekly-report-batch';
+```
+
+### 16.7 프로덕션 배포 체크리스트
+
+- [ ] Vault에 service_role_key 추가 (프로덕션)
+- [ ] pg_cron 스케줄 등록 (일요일 21:00 KST)
+- [ ] Edge Functions 배포 (4개)
+  - [ ] generate-weekly-report
+  - [ ] generate-weekly-reports-batch
+  - [ ] send-report-alimtalk
+  - [ ] get-failed-reports
+- [ ] Slack Webhook URL 설정 (선택)
+- [ ] 관리자 패널 테스트

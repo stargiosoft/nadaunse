@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-02
-> **주요 결정**: 통계 대시보드 GA 통합, 태그 확인율 콘텐츠 건 기준 계산, 나다움 보고서 플로우 설계
+> **최종 업데이트**: 2026-02-03
+> **주요 결정**: 주간 보고서 자동 발송 (pg_cron), 관리자 패널 설계, GPT-5.1 보고서 생성
 
 ---
 
@@ -13,6 +13,110 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-03
+
+### 주간 보고서 자동 발송 시스템 (pg_cron + pg_net)
+
+**결정**: Supabase의 pg_cron + pg_net 확장을 사용하여 주간 보고서 자동 발송
+
+**배경**:
+- 요구사항: 매주 특정 시간에 자동으로 보고서 생성 및 알림톡 발송
+- 문제: 클라이언트 기반 스케줄링은 서버 종료 시 실행 불가
+- 대안 검토: GitHub Actions, 외부 Cron 서비스 → Supabase 내장 기능 선택
+
+**구현 아키텍처**:
+```
+pg_cron (Supabase 내장)
+    ↓ 매주 화요일 15:30 KST (테스트) / 일요일 21:00 KST (정식)
+pg_net.http_post()
+    ↓ Authorization: Bearer {service_role_key from Vault}
+generate-weekly-reports-batch Edge Function
+    ↓ concurrency: 5, 2초 간격
+generate-weekly-report Edge Function (각 사용자별)
+    ↓ GPT-5.1 보고서 생성
+send-report-alimtalk Edge Function
+    ↓ TalkDream API
+알림톡 발송 완료
+```
+
+**핵심 결정 사항**:
+1. **Vault 사용**: Edge Function Secrets와 별개로, pg_cron에서 사용할 service_role_key를 Vault에 저장
+2. **배치 처리**: concurrency 5로 병렬 처리, 2초 간격으로 API 부하 방지
+3. **타임아웃 설정**: pg_net 300초, 프론트엔드 재발송 180초
+4. **중복 방지**: 기존 보고서 있으면 자동 스킵 (forceRegenerate 옵션으로 강제 재생성 가능)
+
+**영향 범위**:
+- `supabase/functions/generate-weekly-report/`
+- `supabase/functions/generate-weekly-reports-batch/`
+- `supabase/functions/send-report-alimtalk/`
+- `supabase/migrations/20260203_weekly_report_cron.sql`
+
+---
+
+### 관리자 패널 설계 (마스터 계정 전용)
+
+**결정**: MyReportList.tsx에 마스터 계정 전용 관리자 패널 추가
+
+**배경**:
+- 요구사항: 보고서 발송 실패 시 수동 재발송 기능 필요
+- 문제: 개발자만 DB 직접 접근 가능 → 운영자도 관리 가능해야 함
+
+**구현 방식**:
+```
+users.role === 'master' 체크
+    ↓
+관리자 패널 표시
+├── 주차 선택 드롭다운 (최근 8주)
+├── "실패 보고서 조회" 버튼
+│   └── get-failed-reports Edge Function 호출
+│       └── 태그 있는데 보고서 없는 사용자 조회
+├── 통계 표시 (태그 사용자, 발송 완료, 실패)
+└── "보고서 다시 보내기" 버튼
+    └── generate-weekly-report 순차 호출 (2초 간격, 3분 타임아웃)
+```
+
+**실패 판단 기준**:
+- `user_trait_tags`에 해당 주 확정 태그 있음
+- `weekly_reports`에 해당 주 보고서 없음
+→ 이 조건을 만족하면 "실패"로 판단
+
+**영향 범위**:
+- `src/components/MyReportList.tsx`
+- `supabase/functions/get-failed-reports/`
+
+---
+
+### GPT-5.1 주간 보고서 생성
+
+**결정**: OpenAI GPT-5.1 Responses API를 사용하여 주간 보고서 생성
+
+**배경**:
+- 요구사항: 사용자의 사주 정보, 주간 태그, 이용 콘텐츠 기반 맞춤형 보고서
+- 구성: 나 다시보기 + 3카드 타로 + 마음 처방 + To-Do List
+
+**프롬프트 구조**:
+```
+1. 역할 정의: 심리 학자, 나 보고서 작성자
+2. 지시사항: 4개 섹션별 작성 가이드
+3. 권고사항: 유료 콘텐츠 가중치
+4. 개인화 정보:
+   - 주간 태그 (강점/단점)
+   - 누적 태그
+   - 이용 콘텐츠 (유료/무료)
+5. 사주 정보 (Stargio API)
+6. 타로 정보 (랜덤 3장)
+7. 출력 양식 (JSON)
+```
+
+**재시도 로직**:
+- 최대 6회 시도 (1회 + 5회 재시도)
+- 지수 백오프: 2초, 4초, 8초, 16초, 32초
+
+**영향 범위**:
+- `supabase/functions/generate-weekly-report/index.ts`
 
 ---
 

@@ -109,7 +109,10 @@ serve(async (req) => {
   try {
     const {
       userId,
-      sendAlimtalk = false // 알림톡 발송 여부
+      sendAlimtalk = false, // 알림톡 발송 여부
+      weekStartDate,        // 커스텀 주 시작일 (YYYY-MM-DD) - 재발송용
+      weekEndDate,          // 커스텀 주 종료일 (YYYY-MM-DD) - 재발송용
+      forceRegenerate = false // 기존 보고서 삭제 후 재생성 (true일 때만)
     } = await req.json()
 
     if (!userId) {
@@ -121,6 +124,9 @@ serve(async (req) => {
 
     console.log('📊 [주간 보고서] 생성 시작')
     console.log('👤 사용자 ID:', userId)
+    if (weekStartDate && weekEndDate) {
+      console.log('📅 커스텀 주차 지정:', weekStartDate, '~', weekEndDate)
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -157,9 +163,31 @@ serve(async (req) => {
       )
     }
 
-    // 3. 전주 일~토 날짜 범위 계산
-    const weekRange = getLastWeekRange()
-    console.log('📅 전주 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    // 3. 전주 일~토 날짜 범위 계산 (커스텀 날짜 지원)
+    let weekRange: { start: Date; end: Date; year: number; month: number; week: number }
+
+    if (weekStartDate && weekEndDate) {
+      // 커스텀 날짜가 제공된 경우 (재발송용)
+      const customStart = new Date(weekStartDate + 'T00:00:00.000Z')
+      const customEnd = new Date(weekEndDate + 'T23:59:59.999Z')
+
+      // 주차 계산
+      const firstDayOfMonth = new Date(customStart.getFullYear(), customStart.getMonth(), 1)
+      const week = Math.ceil((customStart.getDate() + firstDayOfMonth.getDay()) / 7)
+
+      weekRange = {
+        start: customStart,
+        end: customEnd,
+        year: customStart.getFullYear(),
+        month: customStart.getMonth() + 1,
+        week
+      }
+      console.log('📅 커스텀 주차 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    } else {
+      // 기본: 전주 일~토
+      weekRange = getLastWeekRange()
+      console.log('📅 전주 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    }
 
     // 4. 전주 태그 조회 (일~토)
     const { data: weeklyTags, error: tagsError } = await supabase
@@ -506,7 +534,44 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
       )
     }
 
-    // 12. DB 저장 - weekly_reports
+    // 12. 기존 보고서 확인
+    const weekStartDateStr = weekRange.start.toISOString().split('T')[0]
+    const { data: existingReport } = await supabase
+      .from('weekly_reports')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('year', weekRange.year)
+      .eq('week_start_date', weekStartDateStr)
+      .single()
+
+    if (existingReport) {
+      if (!forceRegenerate) {
+        // ⭐ 이미 보고서가 있으면 성공으로 처리 (중복 생성 방지)
+        console.log('✅ 기존 보고서 존재 - 재생성 스킵:', existingReport.id)
+        return new Response(
+          JSON.stringify({
+            success: true,
+            reportId: existingReport.id,
+            message: '이미 해당 주차 보고서가 존재합니다.',
+            alreadyExists: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // forceRegenerate=true인 경우에만 삭제 후 재생성
+      console.log('🗑️ forceRegenerate=true - 기존 보고서 삭제 후 재생성:', existingReport.id)
+
+      // 연관 데이터 삭제 (FK 순서)
+      await supabase.from('report_tarot_selections').delete().eq('report_id', existingReport.id)
+      await supabase.from('weekly_report_sections').delete().eq('report_id', existingReport.id)
+      await supabase.from('user_coupons').delete().eq('source_order_id', existingReport.id)
+      await supabase.from('weekly_reports').delete().eq('id', existingReport.id)
+
+      console.log('✅ 기존 보고서 삭제 완료')
+    }
+
+    // 13. DB 저장 - weekly_reports
     const { data: reportRecord, error: reportError } = await supabase
       .from('weekly_reports')
       .insert({

@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 26개
-> **최종 업데이트**: 2026-02-02
+> **총 함수 수**: 30개
+> **최종 업데이트**: 2026-02-03
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -30,14 +30,16 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 9개 | 35% | OpenAI GPT, Gemini |
-| 🎟️ **쿠폰 관리** | 4개 | 15% | Supabase DB |
-| 👤 **사용자/콘텐츠 관리** | 2개 | 8% | JWT 인증, RLS |
-| 📨 **알림** | 1개 | 4% | TalkDream API (카카오 알림톡) |
-| 💳 **결제/환불** | 3개 | 12% | PortOne API, PostgreSQL Function |
-| 📊 **모니터링/통계** | 2개 | 8% | Sentry, Slack, Google Analytics |
-| 🔧 **콘텐츠 생성 관리** | 2개 | 8% | OpenAI, Gemini 통합 |
-| 🔍 **SEO** | 1개 | 4% | 동적 Sitemap 생성 |
+| 🤖 **AI 생성** | 9개 | 30% | OpenAI GPT, Gemini |
+| 📊 **주간 보고서** | 4개 | 13% | GPT-5.1, pg_cron, TalkDream |
+| 🎟️ **쿠폰 관리** | 4개 | 13% | Supabase DB |
+| 👤 **사용자/콘텐츠 관리** | 2개 | 7% | JWT 인증, RLS |
+| 📨 **알림** | 2개 | 7% | TalkDream API (카카오 알림톡) |
+| 💳 **결제/환불** | 3개 | 10% | PortOne API, PostgreSQL Function |
+| 📊 **모니터링/통계** | 2개 | 7% | Sentry, Slack, Google Analytics |
+| 🔧 **콘텐츠 생성 관리** | 2개 | 7% | OpenAI, Gemini 통합 |
+| 🔍 **SEO** | 1개 | 3% | 동적 Sitemap 생성 |
+| 🧹 **유틸리티** | 1개 | 3% | 태그 정리 |
 
 ---
 
@@ -75,6 +77,29 @@
 #### 나다움 태그 (1개)
 13. `extract-trait-tags` - 운세 답변에서 성향 태그 추출 (GPT-5-nano)
     - 태그 저장은 클라이언트에서 직접 `user_trait_tags` 테이블에 INSERT
+
+---
+
+### 3️⃣ **주간 보고서** (4개)
+
+14. `generate-weekly-report` - 개별 사용자 주간 보고서 생성 (GPT-5.1)
+    - 사주 정보 + 주간 태그 + 이용 콘텐츠 기반
+    - 3카드 타로 + 마음 처방 + To-Do List 생성
+    - `--no-verify-jwt` 필수 (배치에서 내부 호출)
+
+15. `generate-weekly-reports-batch` - 주간 보고서 배치 생성
+    - pg_cron에서 매주 호출
+    - concurrency: 5, 2초 간격 처리
+    - 전주 태그 있는 모든 사용자 대상
+
+16. `send-report-alimtalk` - 보고서 알림톡 발송
+    - TalkDream API 사용
+    - 최대 5회 재시도
+    - `--no-verify-jwt` 필수 (내부 호출)
+
+17. `get-failed-reports` - 실패 보고서 조회 (관리자용)
+    - 태그 있는데 보고서 없는 사용자 조회
+    - 마스터 계정 관리자 패널에서 사용
 
 ---
 

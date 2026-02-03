@@ -128,7 +128,7 @@ function FormInput({ phoneNumber, errors, onChange }: FormInputProps) {
                 type="tel"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="'-'하이픈 없이 숫자만 입력해 주세요"
+                placeholder="하이픈 없이 숫자만 입력해주세요"
                 value={phoneNumber}
                 onChange={onChange}
                 className="flex-[1_0_0] bg-transparent outline-none placeholder:text-[#b7b7b7]"

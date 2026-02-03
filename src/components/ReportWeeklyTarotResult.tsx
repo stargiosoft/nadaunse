@@ -143,7 +143,7 @@ function CardInterpretationCard({ tarot, cardLabel }: CardInterpretationCardProp
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }} data-name="Card / Interpretation Card">
       <div className="flex flex-row justify-center size-full">
-        <div className="flex items-start justify-center relative w-full" style={{ padding: '32px 0 28px 0' }}>
+        <div className="flex items-start justify-center relative w-full" style={{ padding: '28px 0 28px 0' }}>
           <div className="flex flex-col items-center w-full">
             {/* 카드 라벨 */}
             <p style={{
@@ -174,8 +174,8 @@ interface CardContainerProps {
 function CardContainer({ tarotSelections }: CardContainerProps) {
   return (
     <div
-      className="flex flex-col gap-4 items-start w-full pt-3"
-      style={{ paddingBottom: '230px', paddingLeft: '20px', paddingRight: '20px' }}
+      className="flex flex-col gap-4 items-start w-full"
+      style={{ padding: '12px 20px 230px 20px' }}
       data-name="Card Container"
     >
       {tarotSelections.map((tarot, index) => (

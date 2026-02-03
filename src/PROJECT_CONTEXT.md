@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-02 (v2.5.0 - 나다움 보고서 플로우 추가)
+> **최종 업데이트**: 2026-02-03 (v2.6.0 - 주간 보고서 자동 발송 + 관리자 패널)
 
 ---
 
@@ -17,9 +17,10 @@
     - Google: Supabase OAuth (`signInWithOAuth`)
     - Kakao: Kakao SDK (커스텀 구현, `signInWithPassword` 기반)
   - Database: PostgreSQL + RLS
-  - Edge Functions: Deno runtime (24개)
+  - Edge Functions: Deno runtime (30개)
+  - **자동화**: pg_cron + pg_net (주간 보고서 발송)
 - **AI**:
-  - OpenAI GPT-4o
+  - OpenAI GPT-4o, GPT-5.1 (주간 보고서)
   - Anthropic Claude-3.5-Sonnet
   - Google Gemini 2.5 Flash (이미지 생성)
 - **Payment**: PortOne (구 아임포트) v2
@@ -47,7 +48,7 @@
 
 ### 주요 통계
 - **컴포넌트**: 69개 (활성화, backup 제외) - 주간 보고서 8개 + 통계 대시보드 2개 추가
-- **Edge Functions**: 26개 (get-ga-stats 추가)
+- **Edge Functions**: 30개 (주간 보고서 4개 추가)
 - **페이지 컴포넌트**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
