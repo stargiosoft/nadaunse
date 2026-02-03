@@ -2683,8 +2683,8 @@ function ReportWeeklyDetailWrapper() {
     return (
       <ReportWeeklyDetail
         reportId={id}
-        onClose={() => navigate('/test/my-report-list')}
-        onPrev={() => navigate('/test/my-report-list')}
+        onClose={() => navigate('/my-report-list')}
+        onPrev={() => navigate('/my-report-list')}
         onNext={() => {}} // 로딩 중에는 비활성화
       />
     );
@@ -2693,8 +2693,8 @@ function ReportWeeklyDetailWrapper() {
   return (
     <ReportWeeklyDetail
       reportId={id}
-      onClose={() => navigate('/test/my-report-list')}
-      onPrev={() => navigate('/test/my-report-list')}
+      onClose={() => navigate('/my-report-list')}
+      onPrev={() => navigate('/my-report-list')}
       onNext={() => {
         // 타로가 이미 뽑혔으면 타로 결과 페이지로, 아니면 타로 뽑기 페이지로
         if (hasTarot) {
@@ -2718,7 +2718,7 @@ function ReportWeeklyTarotWrapper() {
 
   return (
     <ReportWeeklyTarot
-      onClose={() => navigate('/test/my-report-list')}
+      onClose={() => navigate('/my-report-list')}
       onNext={() => navigate(`/report-weekly-tarot-result/${id}`)}
     />
   );
@@ -2736,7 +2736,7 @@ function ReportWeeklyTarotResultWrapper() {
   return (
     <ReportWeeklyTarotResult
       reportId={id}
-      onClose={() => navigate('/test/my-report-list')}
+      onClose={() => navigate('/my-report-list')}
       onPrev={() => navigate(`/report-weekly-detail/${id}`)}
       onNext={() => navigate(`/report-weekly-mind-care/${id}`)}
     />
@@ -2755,7 +2755,7 @@ function ReportWeeklyMindCareWrapper() {
   return (
     <ReportWeeklyMindCare
       reportId={id}
-      onClose={() => navigate('/test/my-report-list')}
+      onClose={() => navigate('/my-report-list')}
       onPrev={() => navigate(`/report-weekly-tarot-result/${id}`)}
       onNext={() => navigate(`/report-weekly-memo/${id}`)}
     />
@@ -2811,7 +2811,7 @@ function ReportWeeklyMemoWrapper() {
     return (
       <ReportWeeklyMemo
         reportId={id}
-        onClose={() => navigate('/test/my-report-list')}
+        onClose={() => navigate('/my-report-list')}
         onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
         onNext={() => {}} // 로딩 중에는 비활성화
       />
@@ -2826,11 +2826,11 @@ function ReportWeeklyMemoWrapper() {
   return (
     <ReportWeeklyMemo
       reportId={id}
-      onClose={() => navigate('/test/my-report-list')}
+      onClose={() => navigate('/my-report-list')}
       onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
       onNext={() => {
         if (shouldGoToProfile) {
-          navigate('/test/my-report-list');
+          navigate('/my-report-list');
         } else {
           navigate(`/report-completion/${id}`);
         }
@@ -2851,7 +2851,7 @@ function ReportCompletionWrapper() {
   return (
     <CompletionCoupon
       reportId={id}
-      onClose={() => navigate('/test/my-report-list')}
+      onClose={() => navigate('/my-report-list')}
       onHome={() => navigate('/')}
     />
   );
@@ -3007,7 +3007,7 @@ export default function App() {
           {/* ⭐ 테스트용 Figma 컴포넌트 라우트 */}
           <Route path="/test/check-record-me" element={<CheckRecordMe />} />
           <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />
-          <Route path="/test/my-report-list" element={<MyReportList />} />
+          <Route path="/my-report-list" element={<MyReportList />} />
           <Route path="/test/my-report-weekly" element={<MyReportList />} /> {/* MyReportList가 전체 화면 렌더링 */}
           <Route path="/test/my-report-empty" element={<MyReportList forceEmptyState={true} />} />
           <Route path="/test/nadaum-tags" element={<NadaumTags onBack={() => {}} />} />

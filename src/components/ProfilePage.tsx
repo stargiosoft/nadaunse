@@ -683,56 +683,54 @@ export default function ProfilePage({
           </div>
         </div>
 
-        {/* ⭐ Tab Bar - DEV only */}
-        {DEV && (
-          <div
-            className="bg-white shrink-0 w-full"
-            style={{ borderBottom: '1px solid #f8f8f8', padding: '8px 16px' }}
-          >
-            <div className="flex items-center w-full">
-              {/* 프로필 탭 (선택됨) */}
-              <div
-                className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
+        {/* ⭐ Tab Bar - 프로필 / 나의 분석 보고서 */}
+        <div
+          className="bg-white shrink-0 w-full"
+          style={{ borderBottom: '1px solid #f8f8f8', padding: '8px 16px' }}
+        >
+          <div className="flex items-center w-full">
+            {/* 프로필 탭 (선택됨) */}
+            <div
+              className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
+              style={{
+                backgroundColor: '#f8f8f8',
+                padding: '12px 16px'
+              }}
+            >
+              <p
                 style={{
-                  backgroundColor: '#f8f8f8',
-                  padding: '12px 16px'
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: 600,
+                  fontSize: '15px',
+                  lineHeight: '20px',
+                  letterSpacing: '-0.45px',
+                  color: '#151515'
                 }}
               >
-                <p
-                  style={{
-                    fontFamily: 'Pretendard Variable',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    lineHeight: '20px',
-                    letterSpacing: '-0.45px',
-                    color: '#151515'
-                  }}
-                >
-                  프로필
-                </p>
-              </div>
-              {/* 나의 분석 보고서 탭 (선택 안됨) - ⭐ replace: true로 히스토리 교체 (iOS 스와이프 뒤로가기 → 홈) */}
-              <div
-                className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
-                style={{ padding: '12px 16px' }}
-                onClick={() => navigate('/test/my-report-list', { replace: true })}
+                프로필
+              </p>
+            </div>
+            {/* 나의 분석 보고서 탭 (선택 안됨) - ⭐ replace: true로 히스토리 교체 (iOS 스와이프 뒤로가기 → 홈) */}
+            <div
+              className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
+              style={{ padding: '12px 16px' }}
+              onClick={() => navigate('/my-report-list', { replace: true })}
+            >
+              <p
+                style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: 500,
+                  fontSize: '15px',
+                  lineHeight: '20px',
+                  letterSpacing: '-0.45px',
+                  color: '#999999'
+                }}
               >
-                <p
-                  style={{
-                    fontFamily: 'Pretendard Variable',
-                    fontWeight: 500,
-                    fontSize: '15px',
-                    lineHeight: '20px',
-                    letterSpacing: '-0.45px',
-                    color: '#999999'
-                  }}
-                >
-                  나의 분석 보고서
-                </p>
-              </div>
+                나의 분석 보고서
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지, overflow-x-hidden으로 좌우 스와이프 방지 */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
