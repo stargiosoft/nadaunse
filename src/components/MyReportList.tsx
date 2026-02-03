@@ -972,14 +972,22 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         setResendProgress({ current: i + 1, total });
 
         try {
+          // ⭐ 타임아웃 3분 설정 (OpenAI API 호출 시간 고려)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 180000); // 3분
+
           const { data, error } = await supabase.functions.invoke('generate-weekly-report', {
             body: {
               userId,
               sendAlimtalk: true,
               weekStartDate: selectedWeek.weekStartDate,
               weekEndDate: selectedWeek.weekEndDate
-            }
+            },
+            // @ts-expect-error - supabase-js의 FunctionInvokeOptions에 signal 지원
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (error || !data?.success) {
             console.error(`❌ [Admin] ${userId} 실패:`, error || data?.error);
@@ -989,9 +997,9 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
             successCount++;
           }
 
-          // 각 요청 사이에 1초 대기 (API 부하 방지)
+          // 각 요청 사이에 2초 대기 (API 부하 방지)
           if (i < failedUserIds.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
 
         } catch (e) {
