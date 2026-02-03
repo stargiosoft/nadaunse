@@ -1517,7 +1517,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                       color: '#ffffff',
                       letterSpacing: '-0.28px'
                     }}>
-                      {isCleaningTags ? '정리 중...' : '🧹 미확인 태그 즉시 정리'}
+                      {isCleaningTags ? '정리 중...' : '미확인 태그 즉시 정리'}
                     </span>
                   </button>
                   <span style={{
