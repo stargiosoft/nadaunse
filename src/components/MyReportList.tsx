@@ -367,6 +367,7 @@ interface DBWeeklyReport {
   tag_count: number;
   situation_summary: string | null;
   published_at: string;
+  self_encouragement: string | null;
 }
 
 interface DBReportSection {
@@ -410,6 +411,15 @@ function transformToMonthlyReports(
     const displayTags = weekTags.slice(0, 3).map(t => ({ label: `# ${t.tag_name}` }));
     const extraCount = Math.max(0, weekTags.length - 3);
 
+    // self_encouragement (사용자 작성 응원글) 사용
+    let message: { label: string; content: string } | undefined;
+    if (report.self_encouragement) {
+      message = {
+        label: '이번 주 나에게 :',
+        content: report.self_encouragement
+      };
+    }
+
     // 기간 포맷
     const startDate = formatDateShort(report.week_start_date);
     const endDate = formatDateShort(report.week_end_date);
@@ -420,7 +430,8 @@ function transformToMonthlyReports(
       title: `${report.week}주차 보고서`,
       period,
       tags: displayTags,
-      extraTagsCount: extraCount
+      extraTagsCount: extraCount,
+      message
     };
 
     if (!grouped.has(monthKey)) {
@@ -485,7 +496,7 @@ interface MyReportListProps {
 }
 
 // ⭐ 캐시 키 & 만료 시간 (CLAUDE.md 캐싱 전략 준수)
-const MY_REPORT_CACHE_KEY = 'my_report_cache_v2'; // v2: self_encouragement 컬럼 제거
+const MY_REPORT_CACHE_KEY = 'my_report_cache_v3'; // v3: self_encouragement 컬럼 복원
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5분
 
 /**
@@ -622,7 +633,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       // 1. 완료된 주간 보고서 목록 조회
       const { data: dbReports, error: reportsError } = await supabase
         .from('weekly_reports')
-        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at')
+        .select('id, year, month, week, week_start_date, week_end_date, tag_count, situation_summary, published_at, self_encouragement')
         .eq('user_id', userId)
         .eq('status', 'completed')
         .order('published_at', { ascending: false });

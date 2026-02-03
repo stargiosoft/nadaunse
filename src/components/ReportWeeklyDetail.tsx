@@ -508,7 +508,7 @@ export default function ReportWeeklyDetail({
     if (!report || externalReport) return;
 
     try {
-      const cachedJson = localStorage.getItem('my_report_cache_v2');
+      const cachedJson = localStorage.getItem('my_report_cache_v3');
       if (!cachedJson) {
         // 캐시가 없으면 refresh 필요
         localStorage.setItem('my_report_needs_refresh', 'true');
