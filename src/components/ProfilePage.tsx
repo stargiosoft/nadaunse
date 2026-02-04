@@ -1026,7 +1026,7 @@ export default function ProfilePage({
                                 나의 성향 태그
                               </p>
                             </div>
-                            <div className="relative shrink-0 size-[16px]">
+                            <div className="relative shrink-0 size-[16px]" style={{ transform: 'translateY(1px)' }}>
                               <MenuArrowRightIcon />
                             </div>
                           </div>
@@ -1037,7 +1037,7 @@ export default function ProfilePage({
                               <div
                                 key={tag.id}
                                 className="flex items-center justify-center rounded-[999px] shrink-0"
-                                style={{ backgroundColor: '#f0f8f8', padding: '5px 7px' }}
+                                style={{ backgroundColor: '#f0f8f8', padding: '4px 7px' }}
                               >
                                 <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', whiteSpace: 'nowrap' }}>
                                   # {tag.tag_name}
@@ -1046,7 +1046,7 @@ export default function ProfilePage({
                             ))}
                             {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
                             {totalTagCount > visibleTagCount && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '5px 0', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '4px 0', whiteSpace: 'nowrap' }}>
                                 +{totalTagCount - visibleTagCount}
                               </p>
                             )}
@@ -1074,7 +1074,7 @@ export default function ProfilePage({
                             나의 성향 태그
                           </p>
                         </div>
-                        <div className="relative shrink-0 size-[16px]">
+                        <div className="relative shrink-0 size-[16px]" style={{ transform: 'translateY(1px)' }}>
                           <MenuArrowRightIcon />
                         </div>
                       </div>
