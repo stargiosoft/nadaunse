@@ -1565,24 +1565,43 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             {/* 태그 통계 섹션 */}
             <section>
               <SectionHeader icon="🏷️" title="태그 통계" />
-              <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-                  <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, color: '#666666' }}>
-                    회원 태그 저장율
-                  </span>
-                  <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '20px', fontWeight: 600, color: '#6366F1' }}>
-                    {stats.tagUserRate}%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                  <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, color: '#666666' }}>
-                    전체 확인율
-                  </span>
-                  <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '20px', fontWeight: 600, color: '#3FB5B3' }}>
-                    {stats.overallTagConfirmRate}%
-                  </span>
-                </div>
+              <div className="grid grid-cols-2 gap-3" style={{ marginBottom: '12px' }}>
+                <StatCard
+                  icon={Users}
+                  label="태그 저장 고객"
+                  value={stats.tagUserCount}
+                  unit="명"
+                  color="#6366F1"
+                  subValue={`저장율 ${stats.tagUserRate}%`}
+                />
+                <StatCard
+                  icon={Eye}
+                  label="확인 태그수"
+                  value={stats.confirmedTagCount}
+                  unit="건"
+                  color="#3FB5B3"
+                  subValue={`확인율 ${stats.overallTagConfirmRate}%`}
+                />
+                <StatCard
+                  icon={Activity}
+                  label="전체 태그수"
+                  value={stats.totalTagCount}
+                  unit="건"
+                  color="#48B2AF"
+                />
+                <StatCard
+                  icon={UserCheck}
+                  label="회원당 태그"
+                  value={stats.avgTagsPerUser}
+                  unit="개"
+                  color="#EC4899"
+                  subValue="평균 저장 개수"
+                />
+              </div>
 
+              {/* 소스별 확인율 차트 */}
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                <h4 style={{ ...typography.label, marginBottom: '12px', fontWeight: 500 }}>소스별 확인율</h4>
                 {/* 바 차트 */}
                 {chartData.length > 0 ? (
                   <div style={{ width: '100%', height: 200 }}>

@@ -44,6 +44,11 @@ export interface DashboardStats {
   tagStats: TagStat[];
   overallTagConfirmRate: number;
   tagUserRate: number;          // 태그 저장 유저 비율 (%)
+  // 태그 상세 통계
+  tagUserCount: number;         // 태그 저장 고객 수
+  totalTagCount: number;        // 전체 태그 수
+  confirmedTagCount: number;    // 확인된 태그 수
+  avgTagsPerUser: number;       // 회원 당 평균 태그 저장 개수
 }
 
 // 기간 필터 옵션
@@ -451,6 +456,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
 
   // 9. 회원 태그 저장율: 기간 내 활동 회원 중 확정 태그 1개 이상 보유 비율
   let tagUserRate = 0;
+  let tagUserCount = 0;  // 태그 저장 고객 수
 
   if (isAllPeriod) {
     // 전체 기간: 전체 회원 대비 태그 보유자 비율 (간소화된 쿼리)
@@ -471,9 +477,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       console.error('태그 유저 조회 오류:', tagUserError);
     }
 
-    const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+    tagUserCount = new Set(tagUsersData?.map(r => r.user_id) || []).size;
     tagUserRate = (totalUserCount || 0) > 0
-      ? Math.round(uniqueTagUsers / (totalUserCount || 1) * 1000) / 10
+      ? Math.round(tagUserCount / (totalUserCount || 1) * 1000) / 10
       : 0;
   } else {
     // 기간 필터: 기간 내 활동한 회원 ID 목록 조회
@@ -506,12 +512,17 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
         console.error('태그 유저 조회 오류:', tagUserError);
       }
 
-      const uniqueTagUsers = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+      tagUserCount = new Set(tagUsersData?.map(r => r.user_id) || []).size;
       tagUserRate = activeUserIds.length > 0
-        ? Math.round(uniqueTagUsers / activeUserIds.length * 1000) / 10
+        ? Math.round(tagUserCount / activeUserIds.length * 1000) / 10
         : 0;
     }
   }
+
+  // 회원 당 평균 태그 저장 개수
+  const avgTagsPerUser = tagUserCount > 0
+    ? Math.round(totalContents / tagUserCount * 10) / 10
+    : 0;
 
   return {
     totalCustomers,
@@ -527,7 +538,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     totalRevenue,
     tagStats,
     overallTagConfirmRate,
-    tagUserRate
+    tagUserRate,
+    // 태그 상세 통계
+    tagUserCount,
+    totalTagCount: totalContents,
+    confirmedTagCount: totalConfirmedContents,
+    avgTagsPerUser
   };
 }
 
