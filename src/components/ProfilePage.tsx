@@ -1022,7 +1022,7 @@ export default function ProfilePage({
                         <div className="flex flex-col gap-[2px] flex-1">
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-[8px]">
-                              <div className="relative shrink-0 size-[20px]" style={{ transform: 'translateY(-1px)' }}>
+                              <div className="relative shrink-0 size-[20px]">
                                 <TagIcon />
                               </div>
                               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
