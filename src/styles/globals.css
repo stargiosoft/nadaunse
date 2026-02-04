@@ -335,3 +335,10 @@ html, body {
     opacity: 0.5;
   }
 }
+
+/* Mobile-friendly hover - only applies on devices with hover capability (not touch screens) */
+@media (hover: hover) and (pointer: fine) {
+  .hover-bg-gray:hover {
+    background-color: #f9f9f9;
+  }
+}

@@ -910,7 +910,10 @@ export default function ProfilePage({
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] h-[16px] leading-[16px] overflow-ellipsis overflow-hidden text-[#848484] text-[12px] tracking-[-0.24px] w-full">
                         {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
                       </p>
-                      <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[25px] min-w-full overflow-ellipsis overflow-hidden text-[15px] text-black tracking-[-0.32px] w-[min-content]">
+                      <p
+                        className="min-w-full overflow-ellipsis overflow-hidden w-[min-content]"
+                        style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25px', letterSpacing: '-0.32px', color: '#000000' }}
+                      >
                         {primarySaju.full_name} ({primarySaju.notes})
                       </p>
                     </div>
@@ -922,7 +925,7 @@ export default function ProfilePage({
                     className="bg-[#f9f9f9] relative rounded-[12px] w-full mb-[10px]"
                   >
                     <div className="flex flex-col items-center justify-center size-full">
-                      <div className="content-stretch flex flex-col items-center justify-center p-[12px] w-full">
+                      <div className="content-stretch flex flex-col items-center justify-center px-[12px] py-[10px] w-full">
                         <div className="flex items-center justify-center gap-[6px] rounded-[12px]">
                           <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
                             {formatBirthDate(primarySaju.birth_date, primarySaju.calendar_type)}
@@ -1011,15 +1014,15 @@ export default function ProfilePage({
                       style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '4px', paddingBottom: '4px' }}
                     >
                       <div
-                        className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                        className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                         onClick={() => {
                           navigate('/profile/nadaum-tags');
                         }}
                       >
-                        <div className="flex flex-col gap-[4px] flex-1">
+                        <div className="flex flex-col gap-[2px] flex-1">
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-[8px]">
-                              <div className="relative shrink-0 size-[20px]" style={{ transform: 'translateY(-1px)' }}>
+                              <div className="relative shrink-0 size-[20px]">
                                 <TagIcon />
                               </div>
                               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
@@ -1046,7 +1049,7 @@ export default function ProfilePage({
                             ))}
                             {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
                             {totalTagCount > visibleTagCount && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '4px 0', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '5px 0 4px 0', whiteSpace: 'nowrap' }}>
                                 +{totalTagCount - visibleTagCount}
                               </p>
                             )}
@@ -1061,7 +1064,7 @@ export default function ProfilePage({
                       style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '4px', paddingBottom: '4px' }}
                     >
                       <div
-                        className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                        className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                         onClick={() => {
                           navigate('/profile/nadaum-tags');
                         }}
@@ -1108,7 +1111,7 @@ export default function ProfilePage({
                   {isMaster && (
                     <motion.div
                       variants={itemVariants}
-                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                       style={{ width: '100%' }}
                       onClick={onNavigateToMasterContent}
                     >
@@ -1127,8 +1130,8 @@ export default function ProfilePage({
                   {isMaster && (
                     <motion.div
                       variants={itemVariants}
-                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                      style={{ width: '100%' }}
+                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
+                      style={{ width: '100%', marginTop: '-6px' }}
                       onClick={onNavigateToStatsDashboard}
                     >
                       <div className="flex items-center gap-[8px]">
@@ -1145,8 +1148,8 @@ export default function ProfilePage({
                   {/* 2. 이용 기록 */}
                   <motion.div
                     variants={itemVariants}
-                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                    style={{ width: '100%' }}
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%', marginTop: '-6px' }}
                     onClick={onNavigateToPurchaseHistory}
                   >
                     <div className="flex items-center gap-[8px]">
@@ -1162,7 +1165,7 @@ export default function ProfilePage({
                   {/* 3. 사주 정보 관리 */}
                   <motion.div
                     variants={itemVariants}
-                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                     style={{ width: '100%', marginTop: '-6px' }}
                     onClick={handleSajuMenuClick}
                   >
@@ -1180,7 +1183,7 @@ export default function ProfilePage({
                   <motion.div
                     variants={itemVariants}
                     onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
-                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                     style={{ width: '100%', marginTop: '-6px' }}
                   >
                     <div className="flex items-center gap-[8px]">
@@ -1197,7 +1200,7 @@ export default function ProfilePage({
                   <motion.div
                     variants={itemVariants}
                     onClick={handleLogoutClick}
-                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                     style={{ width: '100%', marginTop: '-6px' }}
                   >
                     <div className="flex items-center gap-[8px]">
