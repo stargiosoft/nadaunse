@@ -792,11 +792,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 animate={{ opacity: 1 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
               >
+                {/* GA 전체 고객 통계 섹션 */}
+                <SectionHeader icon="📈" title="GA 전체 고객 통계" />
+
                 {/* 1. 총 방문자 (GA) */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>총 방문자</h3>
-                    <span style={{ ...typography.small, color: '#999' }}>GA 기준</span>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -811,10 +813,64 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 2. 신규 사용자 vs 재방문자 */}
+                {/* 2. GA 신규 방문자 vs 재방문자 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>신규 사용자 대 재방문자</h3>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>신규 방문자 vs 재방문자</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={trendData.map(d => ({
+                          ...d,
+                          gaReturningUsers: d.gaActiveUsers - d.gaNewUsers
+                        }))}
+                        margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} iconType="circle" iconSize={8} />
+                        <Line type="monotone" dataKey="gaNewUsers" name="신규" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="gaReturningUsers" name="재방문" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 3. 평균 참여시간 (GA) */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '8px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>평균 참여시간</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.floor(v / 60)}분`} />
+                        <Tooltip
+                          formatter={(value: number) => {
+                            const minutes = Math.floor(value / 60);
+                            const seconds = value % 60;
+                            return [`${minutes}분 ${seconds}초`, '참여시간'];
+                          }}
+                          contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }}
+                        />
+                        <Line type="monotone" dataKey="gaAverageEngagementTime" name="참여시간" stroke={TREND_COLORS.quaternary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.quaternary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 회원가입 고객 통계 섹션 */}
+                <SectionHeader icon="📊" title="회원가입 고객 통계" />
+
+                {/* 4. 신규 고객 vs 재방문 고객 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>신규 고객 vs 재방문 고객</h3>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -831,7 +887,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 3. 회원가입율 */}
+                {/* 5. 회원가입율 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>회원가입율</h3>
@@ -850,7 +906,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 4. 콘텐츠 이용 추이 */}
+                {/* 6. 콘텐츠 이용 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>콘텐츠 이용 추이</h3>
@@ -870,7 +926,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 5. 콘텐츠 이용율 */}
+                {/* 7. 콘텐츠 이용율 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>콘텐츠 이용율</h3>
@@ -883,32 +939,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                         <Tooltip formatter={(value: number) => [`${value}%`, '이용율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
                         <Line type="monotone" dataKey="contentUsageRate" name="이용율" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </section>
-
-                {/* 6. 평균 참여시간 */}
-                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
-                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>평균 참여시간</h3>
-                    <span style={{ ...typography.small, color: '#999' }}>GA 기준</span>
-                  </div>
-                  <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
-                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.floor(v / 60)}분`} />
-                        <Tooltip
-                          formatter={(value: number) => {
-                            const minutes = Math.floor(value / 60);
-                            const seconds = value % 60;
-                            return [`${minutes}분 ${seconds}초`, '참여시간'];
-                          }}
-                          contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }}
-                        />
-                        <Line type="monotone" dataKey="gaAverageEngagementTime" name="참여시간" stroke={TREND_COLORS.quaternary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.quaternary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
