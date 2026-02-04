@@ -661,9 +661,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
       .lt('created_at', dateRange.endDate),
 
     // 5. 태그 데이터 (Supabase 기본 limit 1000개 제한 우회: range 사용)
+    // source_type 추가: 콘텐츠 건 기준 그룹핑에 필요
     supabase
       .from('user_trait_tags')
-      .select('user_id, created_at, is_confirmed', { count: 'exact' })
+      .select('user_id, created_at, is_confirmed, source_type', { count: 'exact' })
       .neq('tag_type', 'neutral')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
@@ -739,29 +740,33 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     const uniqueContentUsers = new Set([...uniqueFreeUsers, ...uniquePaidUsers]).size;
     const totalContentUsage = freeContentUsage + paidContentUsage;
 
-    // 태그
+    // 태그 - 콘텐츠 건 기준으로 그룹핑 (개요와 동일한 로직)
     const tagList = tagData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const tagSaved = tagList.length;
     const tagConfirmed = tagList.filter(t => t.is_confirmed).length;
+
+    // 콘텐츠 건 기준 그룹핑: user_id + source_type + created_at(초 단위)
+    const contentGroups: Record<string, { hasConfirmed: boolean }> = {};
+    tagList.forEach(tag => {
+      const sourceType = (tag as { source_type?: string }).source_type || 'unknown';
+      const createdAtSec = tag.created_at?.substring(0, 19) || '';
+      const groupKey = `${tag.user_id}_${sourceType}_${createdAtSec}`;
+
+      if (!contentGroups[groupKey]) {
+        contentGroups[groupKey] = { hasConfirmed: false };
+      }
+      if (tag.is_confirmed) {
+        contentGroups[groupKey].hasConfirmed = true;
+      }
+    });
+
+    // 콘텐츠 건 수 계산
+    const totalContentGroups = Object.keys(contentGroups).length;
+    const confirmedContentGroups = Object.values(contentGroups).filter(g => g.hasConfirmed).length;
+
     // 태그 저장 고객: 확정 태그(is_confirmed=true)를 저장한 유니크 사용자 (개요와 동일)
     const confirmedTagList = tagList.filter(t => t.is_confirmed);
     const uniqueTagUsers = new Set(confirmedTagList.map(d => d.user_id)).size;
-
-    // 🔍 디버깅 로그 3: 일별 필터링 결과
-    console.log(`[${dateKey}] 태그 필터링: 전체=${tagList.length}, 확정=${confirmedTagList.length}, 유니크유저=${uniqueTagUsers}`);
-    
-    // 🔍 디버깅 로그 4: dateKey 매칭 안 된 태그 샘플
-    if (dateArray.length === 1) {
-      const unmatchedTags = tagData?.filter(d => getDateKey(d.created_at) !== dateKey) || [];
-      if (unmatchedTags.length > 0) {
-        console.log(`[${dateKey}] 매칭 안 된 태그 수:`, unmatchedTags.length);
-        console.log('매칭 안 된 태그 샘플 (최대 5개):', unmatchedTags.slice(0, 5).map(t => ({
-          created_at: t.created_at,
-          dateKey: getDateKey(t.created_at),
-          is_confirmed: t.is_confirmed
-        })));
-      }
-    }
 
     // GA 데이터 가져오기
     const gaDateKey = toGADateFormat(dateKey);
@@ -779,9 +784,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     const tagSaveRate = totalCustomers > 0
       ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
       : 0;
-    // 태그 확인율: 전체 태그 대비 확인 태그
-    const tagConfirmRate = tagSaved > 0
-      ? Math.round(tagConfirmed / tagSaved * 1000) / 10
+    // 태그 확인율: 콘텐츠 건 기준 (개요와 동일)
+    // 확인된 콘텐츠 건 / 전체 콘텐츠 건
+    const tagConfirmRate = totalContentGroups > 0
+      ? Math.round(confirmedContentGroups / totalContentGroups * 1000) / 10
       : 0;
     // 회원당 태그 수: 태그 저장 고객 당 평균 확인 태그 개수
     const avgTagsPerUser = uniqueTagUsers > 0
