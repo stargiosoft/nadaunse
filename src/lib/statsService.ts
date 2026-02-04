@@ -489,9 +489,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       : 0;
   }
 
-  // 회원 당 평균 확인 태그 개수
+  // 회원 당 평균 확인 태그 개수 (개별 확인 태그 수 / 태그 저장 고객 수)
   const avgTagsPerUser = tagUserCount > 0
-    ? Math.round(totalConfirmedContents / tagUserCount * 10) / 10
+    ? Math.round(individualConfirmedTags / tagUserCount * 10) / 10
     : 0;
 
   return {
