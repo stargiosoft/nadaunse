@@ -1703,13 +1703,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.confirmedTagCount}
                   unit="건"
                   color="#3FB5B3"
-                  subValue={`확인율 ${stats.overallTagConfirmRate}%`}
                 />
                 <StatCard
                   icon={Activity}
-                  label="전체 태그수"
-                  value={stats.totalTagCount}
-                  unit="건"
+                  label="태그 확인율"
+                  value={stats.overallTagConfirmRate}
+                  unit="%"
                   color="#48B2AF"
                 />
                 <StatCard

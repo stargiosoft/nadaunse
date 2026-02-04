@@ -322,6 +322,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('태그 통계 조회에 실패했습니다.');
   }
 
+  // 개별 확인 태그 수 (개요 "확인 태그수" 표시용)
+  const individualConfirmedTags = tagData?.filter(t => t.is_confirmed).length || 0;
+
   // 콘텐츠 이용 건 기준으로 그룹핑 (user_id + source_type + 초 단위 created_at)
   // 같은 시점에 생성된 태그들을 하나의 콘텐츠 이용 건으로 처리
   const contentGroups: Record<string, { sourceType: string; hasConfirmed: boolean }> = {};
@@ -508,8 +511,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     tagUserRate,
     // 태그 상세 통계
     tagUserCount,
-    totalTagCount: totalContents,
-    confirmedTagCount: totalConfirmedContents,
+    totalTagCount: totalContents,  // 전체 콘텐츠 건수 (UI에서 미사용, 태그 확인율 계산에만 사용)
+    confirmedTagCount: individualConfirmedTags,  // 개별 확인 태그 수
     avgTagsPerUser
   };
 }
