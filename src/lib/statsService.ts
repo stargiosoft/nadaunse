@@ -877,20 +877,11 @@ export async function fetchGAStats(
         startDateStr = formatLocalDate(startDateObj);
       }
 
-      // endDate 처리
+      // endDate 처리 (GA API는 endDate를 inclusive하게 처리하므로 항상 1일 빼기)
       let endDateStr = 'today';
       if (dateRange?.endDate) {
         const endDateObj = new Date(dateRange.endDate);
-        const startDateObj = dateRange?.startDate ? new Date(dateRange.startDate) : null;
-
-        // '오늘' 필터 체크: startDate와 endDate가 정확히 1일(24시간) 차이
-        const isTodayFilter = startDateObj &&
-          Math.abs(endDateObj.getTime() - startDateObj.getTime() - 24 * 60 * 60 * 1000) < 1000;
-
-        if (!isTodayFilter) {
-          // 7일, 30일 등: GA API는 endDate를 포함하므로 1일 빼기 (오늘 제외)
-          endDateObj.setDate(endDateObj.getDate() - 1);
-        }
+        endDateObj.setDate(endDateObj.getDate() - 1);
         endDateStr = formatLocalDate(endDateObj);
       }
 
