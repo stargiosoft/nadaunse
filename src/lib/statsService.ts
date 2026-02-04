@@ -18,7 +18,7 @@ const ADMIN_IDS = [
 ];
 
 // 기간 프리셋 타입
-export type DateRangePreset = 'today' | '7days' | '30days' | '90days' | 'all' | 'custom';
+export type DateRangePreset = 'today' | '7days' | '30days' | '90days' | '1year' | 'custom';
 
 // 태그별 통계 타입
 export interface TagStat {
@@ -85,9 +85,18 @@ export function getDateRangeFromPreset(preset: DateRangePreset): DateRangeFilter
         startDate: new Date(yesterday.getTime() - 89 * 24 * 60 * 60 * 1000).toISOString(),
         endDate: today.toISOString()
       };
-    case 'all':
+    case '1year':
+      // 지난 1년 (오늘 제외): 어제 기준 -364일 ~ 어제
+      return {
+        startDate: new Date(yesterday.getTime() - 364 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
+      };
     default:
-      return {}; // 필터 없음
+      // 오늘 (기본값)
+      return {
+        startDate: today.toISOString(),
+        endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
+      };
   }
 }
 
@@ -522,6 +531,317 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   };
 }
 
+// 추세 프리셋 타입
+export type TrendRangePreset = '7days' | '30days' | '90days' | '1year' | 'custom';
+
+// 일별 GA 데이터 타입
+export interface DailyGAData {
+  date: string;  // 'YYYYMMDD' 형식
+  activeUsers: number;
+  newUsers: number;
+  averageEngagementTime: number;
+}
+
+// 일별 추세 데이터 타입
+export interface DailyTrendData {
+  date: string;  // 'MM/DD' 형식
+  dateLabel: string;  // 표시용 (예: '01/28')
+  fullDate: string;  // 'YYYY-MM-DD' 형식
+  // 회원가입 지표
+  newCustomers: number;
+  returningCustomers: number;
+  totalCustomers: number;
+  // 콘텐츠 이용
+  freeContentUsage: number;
+  paidContentUsage: number;
+  totalContentUsage: number;
+  // 비율 지표 (%)
+  contentUsageRate: number;  // 콘텐츠 이용율
+  tagUserRate: number;  // 회원 태그 저장율
+  // 매출
+  revenue: number;
+  // 태그
+  tagSaved: number;
+  tagConfirmed: number;
+  uniqueTagUsers: number;  // 태그 저장한 고유 유저 수
+  // 콘텐츠 이용 유저
+  uniqueContentUsers: number;  // 콘텐츠 이용한 고유 유저 수
+  // GA 관련 지표
+  gaActiveUsers: number;  // 총 방문자 (GA)
+  gaNewUsers: number;  // GA 신규 방문자
+  gaAverageEngagementTime: number;  // 평균 참여 시간 (초)
+  signupRate: number;  // 회원가입율 (newCustomers / gaNewUsers * 100)
+}
+
+/**
+ * 추세 프리셋에 따른 날짜 범위 계산 (전날 기준)
+ */
+export function getTrendDateRange(preset: TrendRangePreset): DateRangeFilter {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+  switch (preset) {
+    case '7days':
+      // 지난 7일: 어제 기준 -6일 ~ 어제
+      return {
+        startDate: new Date(yesterday.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
+      };
+    case '30days':
+      return {
+        startDate: new Date(yesterday.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
+      };
+    case '90days':
+      return {
+        startDate: new Date(yesterday.getTime() - 89 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
+      };
+    case '1year':
+      return {
+        startDate: new Date(yesterday.getTime() - 364 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
+      };
+    default:
+      return {
+        startDate: new Date(yesterday.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: today.toISOString()
+      };
+  }
+}
+
+/**
+ * 일별 추세 데이터 조회 (Supabase + GA 데이터 병합)
+ */
+export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<DailyTrendData[]> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 날짜 배열 생성
+  const startDate = new Date(dateRange.startDate!);
+  const endDate = new Date(dateRange.endDate!);
+  const dateArray: Date[] = [];
+
+  for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+    dateArray.push(new Date(d));
+  }
+
+  // Supabase 데이터와 GA 데이터를 병렬로 조회
+  const [
+    newCustomersResult,
+    returningCustomersResult,
+    freeContentResult,
+    paidContentResult,
+    tagDataResult,
+    gaDataResult,
+  ] = await Promise.all([
+    // 1. 신규 고객 데이터 (created_at 기준)
+    supabase
+      .from('users')
+      .select('id, created_at')
+      .not('id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate),
+
+    // 2. 재방문 고객 데이터 (last_login_at 기준, 기간 전 가입)
+    supabase
+      .from('users')
+      .select('id, last_login_at')
+      .not('id', 'in', `(${adminFilter})`)
+      .gte('last_login_at', dateRange.startDate)
+      .lt('last_login_at', dateRange.endDate)
+      .lt('created_at', dateRange.startDate),
+
+    // 3. 무료 콘텐츠 이용 데이터
+    supabase
+      .from('free_content_records')
+      .select('user_id, created_at')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate),
+
+    // 4. 유료 콘텐츠 이용 데이터
+    supabase
+      .from('orders')
+      .select('user_id, created_at, paid_amount')
+      .eq('pstatus', 'completed')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate),
+
+    // 5. 태그 데이터
+    supabase
+      .from('user_trait_tags')
+      .select('user_id, created_at, is_confirmed')
+      .neq('tag_type', 'neutral')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate),
+
+    // 6. GA 일별 데이터
+    fetchDailyGAStatsInternal(dateRange),
+  ]);
+
+  const newCustomersData = newCustomersResult.data;
+  const returningCustomersData = returningCustomersResult.data;
+  const freeContentData = freeContentResult.data;
+  const paidContentData = paidContentResult.data;
+  const tagData = tagDataResult.data;
+  const gaData = gaDataResult;
+
+  // GA 데이터를 날짜별 Map으로 변환 (YYYYMMDD -> data)
+  const gaDataMap = new Map<string, DailyGAData>();
+  if (gaData) {
+    gaData.forEach(d => {
+      gaDataMap.set(d.date, d);
+    });
+  }
+
+  // 날짜별로 그룹핑
+  const getDateKey = (dateStr: string) => dateStr.substring(0, 10);
+  // YYYY-MM-DD를 YYYYMMDD로 변환
+  const toGADateFormat = (dateKey: string) => dateKey.replace(/-/g, '');
+
+  const dailyData: DailyTrendData[] = dateArray.map(date => {
+    const dateKey = date.toISOString().substring(0, 10);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    // 해당 날짜의 데이터 필터링
+    const newCustomersList = newCustomersData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
+    const returningCustomersList = returningCustomersData?.filter(d => getDateKey(d.last_login_at) === dateKey) || [];
+    const newCustomers = newCustomersList.length;
+    const returningCustomers = returningCustomersList.length;
+    const totalCustomers = newCustomers + returningCustomers;
+
+    // 무료 콘텐츠
+    const freeContentList = freeContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
+    const freeContentUsage = freeContentList.length;
+    const uniqueFreeUsers = new Set(freeContentList.map(d => d.user_id));
+
+    // 유료 콘텐츠
+    const paidContentList = paidContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
+    const paidContentUsage = paidContentList.length;
+    const revenue = paidContentList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
+    const uniquePaidUsers = new Set(paidContentList.map(d => d.user_id));
+
+    // 콘텐츠 이용 고유 유저
+    const uniqueContentUsers = new Set([...uniqueFreeUsers, ...uniquePaidUsers]).size;
+    const totalContentUsage = freeContentUsage + paidContentUsage;
+
+    // 태그
+    const tagList = tagData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
+    const tagSaved = tagList.length;
+    const tagConfirmed = tagList.filter(t => t.is_confirmed).length;
+    const uniqueTagUsers = new Set(tagList.map(d => d.user_id)).size;
+
+    // GA 데이터 가져오기
+    const gaDateKey = toGADateFormat(dateKey);
+    const gaDayData = gaDataMap.get(gaDateKey);
+    const gaActiveUsers = gaDayData?.activeUsers || 0;
+    const gaNewUsers = gaDayData?.newUsers || 0;
+    const gaAverageEngagementTime = gaDayData?.averageEngagementTime || 0;
+
+    // 비율 계산
+    // 콘텐츠 이용율: 해당 날짜 GA 총 방문자 대비
+    const contentUsageRate = gaActiveUsers > 0
+      ? Math.round(uniqueContentUsers / gaActiveUsers * 1000) / 10
+      : 0;
+    // 회원 태그 저장율: 해당 날짜 GA 총 방문자 대비
+    const tagUserRate = gaActiveUsers > 0
+      ? Math.round(uniqueTagUsers / gaActiveUsers * 1000) / 10
+      : 0;
+    // 회원가입율: GA 신규 방문자 대비 Supabase 신규 회원가입
+    const signupRate = gaNewUsers > 0
+      ? Math.round(newCustomers / gaNewUsers * 1000) / 10
+      : 0;
+
+    return {
+      date: `${month}/${day}`,
+      dateLabel: `${month}/${day}`,
+      fullDate: dateKey,
+      newCustomers,
+      returningCustomers,
+      totalCustomers,
+      freeContentUsage,
+      paidContentUsage,
+      totalContentUsage,
+      contentUsageRate,
+      tagUserRate,
+      revenue,
+      tagSaved,
+      tagConfirmed,
+      uniqueTagUsers,
+      uniqueContentUsers,
+      // GA 관련 지표
+      gaActiveUsers,
+      gaNewUsers,
+      gaAverageEngagementTime,
+      signupRate,
+    };
+  });
+
+  return dailyData;
+}
+
+/**
+ * 일별 GA 통계 조회 (내부용 - Promise 반환)
+ */
+async function fetchDailyGAStatsInternal(
+  dateRange: DateRangeFilter
+): Promise<DailyGAData[] | null> {
+  try {
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    let startDateStr = '2026-01-11';
+    if (dateRange?.startDate) {
+      const startDateObj = new Date(dateRange.startDate);
+      startDateStr = formatLocalDate(startDateObj);
+    }
+
+    let endDateStr = 'today';
+    if (dateRange?.endDate) {
+      const endDateObj = new Date(dateRange.endDate);
+      endDateObj.setDate(endDateObj.getDate() - 1);
+      endDateStr = formatLocalDate(endDateObj);
+    }
+
+    const params = new URLSearchParams({
+      type: 'daily',
+      startDate: startDateStr,
+      endDate: endDateStr,
+    });
+
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ga-stats?${params.toString()}`;
+
+    const response = await fetch(functionUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('일별 GA 통계 조회 실패:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      console.error('일별 GA 통계 조회 오류:', result.error);
+      return null;
+    }
+
+    return result.data as DailyGAData[];
+  } catch (error) {
+    console.error('일별 GA 통계 조회 예외:', error);
+    return null;
+  }
+}
+
 // GA 통계 타입
 export interface GAStats {
   realtimeActiveUsers?: number;
@@ -615,6 +935,69 @@ export async function fetchGAStats(
     };
   } catch (error) {
     console.error('GA 통계 조회 예외:', error);
+    return null;
+  }
+}
+
+/**
+ * 일별 GA 통계 조회
+ * @param dateRange - 날짜 범위
+ */
+export async function fetchDailyGAStats(
+  dateRange: DateRangeFilter
+): Promise<DailyGAData[] | null> {
+  try {
+    // 로컬 날짜 형식 변환 함수 (UTC 시간대 문제 방지)
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    // startDate 처리
+    let startDateStr = '2026-01-11';  // 서비스 시작일
+    if (dateRange?.startDate) {
+      const startDateObj = new Date(dateRange.startDate);
+      startDateStr = formatLocalDate(startDateObj);
+    }
+
+    // endDate 처리 (오늘 제외)
+    let endDateStr = 'today';
+    if (dateRange?.endDate) {
+      const endDateObj = new Date(dateRange.endDate);
+      endDateObj.setDate(endDateObj.getDate() - 1);  // GA API는 endDate 포함이므로 1일 빼기
+      endDateStr = formatLocalDate(endDateObj);
+    }
+
+    const params = new URLSearchParams({
+      type: 'daily',
+      startDate: startDateStr,
+      endDate: endDateStr,
+    });
+
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ga-stats?${params.toString()}`;
+
+    const response = await fetch(functionUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('일별 GA 통계 조회 실패:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error('일별 GA 통계 조회 오류:', result.error);
+      return null;
+    }
+
+    return result.data as DailyGAData[];
+  } catch (error) {
+    console.error('일별 GA 통계 조회 예외:', error);
     return null;
   }
 }
