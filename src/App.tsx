@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { useGoBack } from './hooks/useIOSSafeNavigate';
@@ -1982,6 +1982,14 @@ function ExistingAccountPageNewWrapper() {
 // Terms Page Wrapper
 function TermsPageWrapper() {
   const navigate = useNavigate();
+  const signupCompletedRef = useRef(false);
+
+  // ⭐ 약관 동의 취소 시 세션 삭제 (신규 가입 중단)
+  const cleanupSession = useCallback(async () => {
+    console.log('⚠️ [TermsPage] 약관 동의 취소 → 세션 삭제');
+    localStorage.removeItem('tempUser');
+    await supabase.auth.signOut();
+  }, []);
 
   // ⭐ 이미 회원가입이 완료된 상태면 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
   useEffect(() => {
@@ -1997,7 +2005,31 @@ function TermsPageWrapper() {
     }
   }, [navigate]);
 
+  // ⭐ 브라우저 뒤로가기 감지 및 세션 삭제
+  useEffect(() => {
+    // 가상 히스토리 항목 추가 (뒤로가기 감지용)
+    window.history.pushState({ termsPage: true }, '');
+
+    const handlePopState = async (event: PopStateEvent) => {
+      // 회원가입이 완료되지 않은 상태에서 뒤로가기 시 세션 삭제
+      if (!signupCompletedRef.current) {
+        console.log('🔙 [TermsPage] 브라우저 뒤로가기 감지 → 세션 삭제');
+        await cleanupSession();
+        navigate('/login/new', { replace: true });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [cleanupSession, navigate]);
+
   const handleComplete = () => {
+    // ⭐ 회원가입 완료 플래그 설정 (unmount 시 세션 삭제 방지)
+    signupCompletedRef.current = true;
+
     // ⭐️ 가입 축하 쿠폰 페이지로 이동
     console.log('✅ 회원가입 완료 → 가입 축하 쿠폰 페이지로 이동');
 
@@ -2007,9 +2039,14 @@ function TermsPageWrapper() {
     navigate('/welcome-coupon', { replace: true });
   };
 
+  const handleBack = async () => {
+    await cleanupSession();
+    navigate('/login/new', { replace: true });
+  };
+
   return (
     <TermsPage
-      onBack={() => navigate('/login/new', { replace: true })}
+      onBack={handleBack}
       onComplete={handleComplete}
     />
   );
