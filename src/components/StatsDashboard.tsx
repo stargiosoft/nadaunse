@@ -1013,7 +1013,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         {selectedTab === '비교' && (
           <>
             {/* 비교 기간 필터 */}
-            <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '16px' }}>
+            <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
               <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
                 <Calendar size={16} color="#666" />
                 <span style={{ ...typography.label }}>비교 기간</span>
