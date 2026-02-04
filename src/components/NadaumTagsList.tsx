@@ -514,6 +514,10 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
     COMFORT_QUOTES[Math.floor(Math.random() * COMFORT_QUOTES.length)]
   );
 
+  // 🎨 헤더 버튼 터치 상태 (모바일 피드백용)
+  const [backButtonPressed, setBackButtonPressed] = useState(false);
+  const [homeButtonPressed, setHomeButtonPressed] = useState(false);
+
   // 🚀 동기적 캐시 확인 (초기화 시점) - 로딩 플래시 방지
   const getInitialState = () => {
     try {
@@ -728,9 +732,21 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
                 window.dispatchEvent(new CustomEvent('tagsModified'));
                 onBack();
               }}
-              onTouchStart={() => {}}
-              className="group flex items-center justify-center relative shrink-0 hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]"
-              style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px', WebkitTapHighlightColor: 'transparent' }}
+              onTouchStart={() => setBackButtonPressed(true)}
+              onTouchEnd={() => setBackButtonPressed(false)}
+              onTouchCancel={() => setBackButtonPressed(false)}
+              onMouseDown={() => setBackButtonPressed(true)}
+              onMouseUp={() => setBackButtonPressed(false)}
+              onMouseLeave={() => setBackButtonPressed(false)}
+              className="group flex items-center justify-center relative shrink-0 hover:bg-gray-100 transition-colors duration-200"
+              style={{
+                padding: '4px',
+                borderRadius: '12px',
+                width: '44px',
+                height: '44px',
+                WebkitTapHighlightColor: 'transparent',
+                backgroundColor: backButtonPressed ? '#F8F8F8' : 'transparent'
+              }}
             >
               <div className="relative shrink-0 transition-transform duration-200 group-active:scale-90" style={{ width: '24px', height: '24px' }}>
                  <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
@@ -754,9 +770,17 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
             {/* Right Action (Home) */}
             <button
               onClick={onHome}
-              onTouchStart={() => {}}
-              className="group flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]"
-              style={{ WebkitTapHighlightColor: 'transparent' }}>
+              onTouchStart={() => setHomeButtonPressed(true)}
+              onTouchEnd={() => setHomeButtonPressed(false)}
+              onTouchCancel={() => setHomeButtonPressed(false)}
+              onMouseDown={() => setHomeButtonPressed(true)}
+              onMouseUp={() => setHomeButtonPressed(false)}
+              onMouseLeave={() => setHomeButtonPressed(false)}
+              className="group flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] hover:bg-gray-100 transition-colors duration-200"
+              style={{
+                WebkitTapHighlightColor: 'transparent',
+                backgroundColor: homeButtonPressed ? '#F8F8F8' : 'transparent'
+              }}>
               <div className="relative shrink-0 transition-transform duration-200 group-active:scale-90" style={{ width: '24px', height: '24px' }}>
                  <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                   <path d={svgPaths.p3d07f180} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
