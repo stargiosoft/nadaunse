@@ -1595,7 +1595,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.avgTagsPerUser}
                   unit="개"
                   color="#EC4899"
-                  subValue="평균 저장 개수"
+                  subValue="평균 확인 개수"
                 />
               </div>
 
