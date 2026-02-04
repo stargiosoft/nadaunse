@@ -454,18 +454,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(uniqueContentUsers / totalCustomers * 1000) / 10
     : 0;
 
-  // 9. 회원 태그 저장율: 기간 내 활동 회원 중 확정 태그 1개 이상 보유 비율
+  // 9. 태그 저장 고객: 기간 내 확정 태그를 생성한 유니크 사용자
   let tagUserRate = 0;
   let tagUserCount = 0;  // 태그 저장 고객 수
 
   if (isAllPeriod) {
-    // 전체 기간: 전체 회원 대비 태그 보유자 비율 (간소화된 쿼리)
-    const { count: totalUserCount } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .not('id', 'in', `(${adminFilter})`);
-
-    // 확정 태그 보유자 수 (고유 user_id)
+    // 전체 기간: 확정 태그 생성자 수 (고유 user_id)
     const { data: tagUsersData, error: tagUserError } = await supabase
       .from('user_trait_tags')
       .select('user_id')
@@ -478,45 +472,30 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     }
 
     tagUserCount = new Set(tagUsersData?.map(r => r.user_id) || []).size;
-    tagUserRate = (totalUserCount || 0) > 0
-      ? Math.round(tagUserCount / (totalUserCount || 1) * 1000) / 10
+    // 저장율: 총 가입 고객 대비
+    tagUserRate = totalCustomers > 0
+      ? Math.round(tagUserCount / totalCustomers * 1000) / 10
       : 0;
   } else {
-    // 기간 필터: 기간 내 활동한 회원 ID 목록 조회
-    let activeUsersQuery = supabase
-      .from('users')
-      .select('id')
-      .not('id', 'in', `(${adminFilter})`);
+    // 기간 필터: 해당 기간 내 확정 태그를 생성한 유니크 사용자
+    const { data: tagUsersData, error: tagUserError } = await supabase
+      .from('user_trait_tags')
+      .select('user_id')
+      .eq('is_confirmed', true)
+      .neq('tag_type', 'neutral')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate);
 
-    if (dateRange?.startDate && dateRange?.endDate) {
-      activeUsersQuery = activeUsersQuery
-        .gte('last_login_at', dateRange.startDate)
-        .lt('last_login_at', dateRange.endDate);
+    if (tagUserError) {
+      console.error('태그 유저 조회 오류:', tagUserError);
     }
 
-    const { data: activeUsersData, error: activeUsersError } = await activeUsersQuery;
-    if (activeUsersError) {
-      console.error('활동 유저 조회 오류:', activeUsersError);
-    }
-    const activeUserIds = activeUsersData?.map(u => u.id) || [];
-
-    if (activeUserIds.length > 0 && activeUserIds.length <= 1000) {
-      const { data: tagUsersData, error: tagUserError } = await supabase
-        .from('user_trait_tags')
-        .select('user_id')
-        .eq('is_confirmed', true)
-        .neq('tag_type', 'neutral')
-        .in('user_id', activeUserIds);
-
-      if (tagUserError) {
-        console.error('태그 유저 조회 오류:', tagUserError);
-      }
-
-      tagUserCount = new Set(tagUsersData?.map(r => r.user_id) || []).size;
-      tagUserRate = activeUserIds.length > 0
-        ? Math.round(tagUserCount / activeUserIds.length * 1000) / 10
-        : 0;
-    }
+    tagUserCount = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+    // 저장율: 총 가입 고객 대비
+    tagUserRate = totalCustomers > 0
+      ? Math.round(tagUserCount / totalCustomers * 1000) / 10
+      : 0;
   }
 
   // 회원 당 평균 확인 태그 개수
