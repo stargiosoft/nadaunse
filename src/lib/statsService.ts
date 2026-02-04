@@ -659,14 +659,13 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 2. 재방문 고객 데이터 (last_login_at 기준, 기간 전 가입)
+    // 2. 재방문 고객 데이터 (last_login_at 기준, 해당 날짜 전 가입 - 일별 필터링에서 처리)
     supabase
       .from('users')
-      .select('id, last_login_at')
+      .select('id, last_login_at, created_at')
       .not('id', 'in', `(${adminFilter})`)
       .gte('last_login_at', dateRange.startDate)
-      .lt('last_login_at', dateRange.endDate)
-      .lt('created_at', dateRange.startDate),
+      .lt('last_login_at', dateRange.endDate),
 
     // 3. 무료 콘텐츠 이용 데이터
     supabase
@@ -733,7 +732,12 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
 
     // 해당 날짜의 데이터 필터링
     const newCustomersList = newCustomersData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
-    const returningCustomersList = returningCustomersData?.filter(d => getDateKey(d.last_login_at) === dateKey) || [];
+    // 재방문자: last_login_at이 해당 날짜이면서 created_at이 해당 날짜 이전인 사람
+    const returningCustomersList = returningCustomersData?.filter(d => {
+      if (getDateKey(d.last_login_at) !== dateKey) return false;
+      const createdDateKey = getDateKey(d.created_at);
+      return createdDateKey < dateKey; // 해당 날짜 이전에 가입한 사람만 재방문자
+    }) || [];
     const newCustomers = newCustomersList.length;
     const returningCustomers = returningCustomersList.length;
     const totalCustomers = newCustomers + returningCustomers;
