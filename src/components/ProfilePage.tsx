@@ -160,6 +160,8 @@ export default function ProfilePage({
       const cachedUserJson = localStorage.getItem('user');
       const cachedSajuJson = localStorage.getItem('primary_saju');
       const cachedTagsJson = localStorage.getItem('trait_tags_cache');
+      // ⭐ 사주 조회 완료 여부 (사주가 없어도 조회를 완료했으면 캐시 유효)
+      const sajuCacheChecked = localStorage.getItem('saju_cache_checked') === 'true';
 
       if (cachedUserJson) {
         const cachedUser = JSON.parse(cachedUserJson);
@@ -188,23 +190,25 @@ export default function ProfilePage({
           // 캐시 데이터는 있으니 로딩 상태는 false (API는 백그라운드에서 호출)
         }
 
-        // ⭐ 유효성 검사: user 정보와 primary_saju 정보가 모두 있어야 완전한 캐시로 간주
-        const hasValidCache = !!(cachedUser && cachedSaju);
+        // ⭐ 유효성 검사: user 정보 + (사주 있음 OR 사주 조회 완료)면 캐시 유효
+        // → 사주가 없어도 한번 조회했으면 캐시로 간주 (로딩 스킵)
+        const hasValidCache = !!(cachedUser && (cachedSaju || sajuCacheChecked));
 
         console.log('🚀 [ProfilePage] 초기화 시 캐시 확인');
         console.log('  - User 정보:', cachedUser ? '있음' : '없음');
         console.log('  - Primary Saju:', cachedSaju ? '있음' : '없음');
+        console.log('  - Saju Cache Checked:', sajuCacheChecked ? 'YES' : 'NO');
         console.log('  - Trait Tags:', hasValidTagCache ? `${cachedTags.length}개 (총 ${cachedTotalCount}개)` : '없음');
         console.log('  - 유효한 캐시:', hasValidCache ? 'YES' : 'NO');
 
         // ⭐ 완전한 캐시가 있으면 → 즉시 렌더링 (로딩 스킵)
-        // ⭐ user만 있고 사주가 없으면 → API 호출 필요 (isLoadingSaju: true)
+        // ⭐ user만 있고 사주 조회도 안했으면 → API 호출 필요 (isLoadingSaju: true)
         return {
           user: cachedUser,
           isMaster: cachedUser.role === 'master',
           primarySaju: cachedSaju,
           isLoadingSaju: !hasValidCache, // 유효한 캐시가 없으면 로딩 표시
-          hasCache: hasValidCache, // user + primary_saju가 모두 있어야 true
+          hasCache: hasValidCache, // user + (사주 있음 OR 조회 완료)면 true
           traitTags: cachedTags,
           totalTagCount: cachedTotalCount,
           // 🚀 Stale-While-Revalidate: 캐시 데이터가 있으면 로딩 없이 바로 표시
@@ -434,18 +438,22 @@ export default function ProfilePage({
           setPrimarySaju(null);
           localStorage.removeItem('primary_saju');
           localStorage.removeItem('saju_records_cache');
+          localStorage.removeItem('saju_cache_checked');
         } else if (sajuList && sajuList.length > 0) {
           const primary = sajuList.find((s: any) => s.is_primary) || sajuList[0];
           setPrimarySaju(primary);
           // ⭐ 사주 정보 캐시에 저장 (primary + 전체 리스트)
           localStorage.setItem('primary_saju', JSON.stringify(primary));
           localStorage.setItem('saju_records_cache', JSON.stringify(sajuList));
+          localStorage.setItem('saju_cache_checked', 'true'); // 조회 완료 플래그
           console.log('✅ 대표 사주 로드 완료:', primary);
         } else {
           setPrimarySaju(null);
           localStorage.removeItem('primary_saju');
           localStorage.removeItem('saju_records_cache');
-          console.log('📭 등록된 사주 없음');
+          // ⭐ 사주가 없어도 "조회 완료" 플래그 저장 → 다음 방문 시 로딩 스킵
+          localStorage.setItem('saju_cache_checked', 'true');
+          console.log('📭 등록된 사주 없음 (캐시 체크 완료)');
         }
 
         // 🚀 trait_tags 처리 (병렬 로드 결과)
@@ -479,6 +487,7 @@ export default function ProfilePage({
         console.log('🔐 [ProfilePage] 세션 만료 → 로그인 페이지로 이동');
         localStorage.removeItem('user'); // 만료된 user 정보 삭제
         localStorage.removeItem('primary_saju'); // 만료된 saju 정보 삭제
+        localStorage.removeItem('saju_cache_checked'); // 사주 조회 완료 플래그 삭제
         navigate('/login/new', { replace: true });
         return;
       }
