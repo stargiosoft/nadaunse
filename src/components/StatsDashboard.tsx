@@ -6,12 +6,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Home, Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -25,8 +25,27 @@ const DATE_PRESETS: { value: DateRangePreset; label: string }[] = [
   { value: '7days', label: '7일' },
   { value: '30days', label: '30일' },
   { value: '90days', label: '90일' },
-  { value: 'all', label: '전체' }
+  { value: '1year', label: '1년' }
 ];
+
+// 추세 탭 기간 프리셋 옵션
+const TREND_PRESETS: { value: TrendRangePreset; label: string }[] = [
+  { value: '7days', label: '7일' },
+  { value: '30days', label: '30일' },
+  { value: '90days', label: '90일' },
+  { value: '1year', label: '1년' }
+];
+
+// 비교 탭 기간 프리셋 타입
+type ComparePreset = '7days' | '30days' | 'custom';
+
+// 차트 라인 색상
+const TREND_COLORS = {
+  primary: '#3FB5B3',
+  secondary: '#6366F1',
+  tertiary: '#EC4899',
+  quaternary: '#F59E0B',
+};
 
 // 스켈레톤 카드 컴포넌트
 function SkeletonCard() {
@@ -100,17 +119,43 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
   return `${start} ~ ${end}`;
 }
 
+// 대시보드 탭 타입
+type DashboardTab = '개요' | '추세' | '비교';
+const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교'];
+
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [gaStats, setGaStats] = useState<GAStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState<DateRangePreset>('all');
+  const [selectedPreset, setSelectedPreset] = useState<DateRangePreset>('today');
+  const [selectedTab, setSelectedTab] = useState<DashboardTab>('개요');
 
   // 커스텀 날짜 선택 상태
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [customDateRange, setCustomDateRange] = useState<{ start?: Date; end?: Date }>({});
+
+  // 추세 탭 상태
+  const [trendPreset, setTrendPreset] = useState<TrendRangePreset>('7days');
+  const [trendData, setTrendData] = useState<DailyTrendData[]>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendError, setTrendError] = useState<string | null>(null);
+  const [showTrendDatePicker, setShowTrendDatePicker] = useState(false);
+  const [trendDateRange, setTrendDateRange] = useState<DateRange | undefined>(undefined);
+  const [trendCustomDateRange, setTrendCustomDateRange] = useState<{ start?: Date; end?: Date }>({});
+
+  // 비교 탭 상태
+  const [comparePreset, setComparePreset] = useState<ComparePreset>('7days');
+  const [currentPeriodStats, setCurrentPeriodStats] = useState<DashboardStats | null>(null);
+  const [previousPeriodStats, setPreviousPeriodStats] = useState<DashboardStats | null>(null);
+  const [currentGaStats, setCurrentGaStats] = useState<GAStats | null>(null);
+  const [previousGaStats, setPreviousGaStats] = useState<GAStats | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [showCompareDatePicker, setShowCompareDatePicker] = useState(false);
+  const [compareDateRange, setCompareDateRange] = useState<DateRange | undefined>(undefined);
+  const [compareCustomDateRange, setCompareCustomDateRange] = useState<{ start?: Date; end?: Date }>({});
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -206,6 +251,199 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     loadStats();
   }, []);
 
+  // 추세 데이터 로드 함수
+  const loadTrendStats = async (preset: TrendRangePreset = trendPreset, customRange?: DateRangeFilter) => {
+    setTrendLoading(true);
+    setTrendError(null);
+    try {
+      let dateRangeFilter: DateRangeFilter;
+      if (preset === 'custom' && customRange) {
+        dateRangeFilter = customRange;
+      } else {
+        dateRangeFilter = getTrendDateRange(preset);
+      }
+
+      const data = await fetchDailyTrendStats(dateRangeFilter);
+      setTrendData(data);
+    } catch (err) {
+      console.error('추세 데이터 로드 오류:', err);
+      setTrendError('추세 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setTrendLoading(false);
+    }
+  };
+
+  // 추세 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '추세' && trendData.length === 0 && !trendLoading) {
+      loadTrendStats();
+    }
+  }, [selectedTab]);
+
+  // 추세 기간 변경 핸들러
+  const handleTrendPresetChange = (preset: TrendRangePreset) => {
+    setTrendPreset(preset);
+    setTrendCustomDateRange({});
+    loadTrendStats(preset);
+  };
+
+  // 추세 달력 클릭 핸들러
+  const handleTrendCalendarClick = () => {
+    setShowTrendDatePicker(true);
+  };
+
+  // 추세 커스텀 날짜 적용 핸들러
+  const handleApplyTrendCustomDate = () => {
+    if (trendDateRange?.from) {
+      const startDate = trendDateRange.from;
+      const endDate = trendDateRange.to || trendDateRange.from;
+
+      const endDateNext = new Date(endDate);
+      endDateNext.setDate(endDateNext.getDate() + 1);
+
+      const customFilter: DateRangeFilter = {
+        startDate: startDate.toISOString(),
+        endDate: endDateNext.toISOString()
+      };
+
+      setTrendPreset('custom' as TrendRangePreset);
+      setTrendCustomDateRange({ start: startDate, end: endDate });
+      setShowTrendDatePicker(false);
+      loadTrendStats('custom' as TrendRangePreset, customFilter);
+    }
+  };
+
+  // 추세 기간 표시 라벨
+  const getTrendDateLabel = () => {
+    if (trendCustomDateRange.start) {
+      return formatDateRange(trendCustomDateRange.start, trendCustomDateRange.end);
+    }
+    return null;
+  };
+
+  // 비교 기간 계산 함수
+  const getCompareDateRanges = (preset: ComparePreset, customRange?: { start?: Date; end?: Date }) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+    let days = 7;
+    if (preset === '30days') days = 30;
+    if (preset === 'custom' && customRange?.start && customRange?.end) {
+      const diffTime = Math.abs(customRange.end.getTime() - customRange.start.getTime());
+      days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    // 현재 기간: 어제 기준 지난 N일 (오늘 제외)
+    const currentEnd = today;
+    const currentStart = new Date(yesterday.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+
+    // 이전 기간: 현재 기간 직전 N일
+    const previousEnd = currentStart;
+    const previousStart = new Date(currentStart.getTime() - days * 24 * 60 * 60 * 1000);
+
+    // 커스텀인 경우 직접 계산
+    if (preset === 'custom' && customRange?.start && customRange?.end) {
+      const customStart = new Date(customRange.start);
+      const customEnd = new Date(customRange.end);
+      customEnd.setDate(customEnd.getDate() + 1); // lt 연산자용
+
+      const customDays = Math.ceil((customEnd.getTime() - customStart.getTime()) / (1000 * 60 * 60 * 24));
+      const prevEnd = customStart;
+      const prevStart = new Date(customStart.getTime() - customDays * 24 * 60 * 60 * 1000);
+
+      return {
+        current: { startDate: customStart.toISOString(), endDate: customEnd.toISOString() },
+        previous: { startDate: prevStart.toISOString(), endDate: prevEnd.toISOString() },
+        currentLabel: `${customRange.start.getMonth() + 1}/${customRange.start.getDate()} ~ ${customRange.end.getMonth() + 1}/${customRange.end.getDate()}`,
+        previousLabel: `${prevStart.getMonth() + 1}/${prevStart.getDate()} ~ ${new Date(prevEnd.getTime() - 24 * 60 * 60 * 1000).getMonth() + 1}/${new Date(prevEnd.getTime() - 24 * 60 * 60 * 1000).getDate()}`,
+      };
+    }
+
+    return {
+      current: { startDate: currentStart.toISOString(), endDate: currentEnd.toISOString() },
+      previous: { startDate: previousStart.toISOString(), endDate: previousEnd.toISOString() },
+      currentLabel: `최근 ${days}일`,
+      previousLabel: `이전 ${days}일`,
+    };
+  };
+
+  // 비교 데이터 로드 함수
+  const loadCompareStats = async (preset: ComparePreset = comparePreset, customRange?: { start?: Date; end?: Date }) => {
+    setCompareLoading(true);
+    setCompareError(null);
+    try {
+      const ranges = getCompareDateRanges(preset, customRange);
+
+      // 현재 기간과 이전 기간 데이터를 병렬로 조회
+      const [currentStats, prevStats, currentGa, prevGa] = await Promise.all([
+        fetchDashboardStats(ranges.current),
+        fetchDashboardStats(ranges.previous),
+        fetchGAStats('period', ranges.current),
+        fetchGAStats('period', ranges.previous),
+      ]);
+
+      setCurrentPeriodStats(currentStats);
+      setPreviousPeriodStats(prevStats);
+      setCurrentGaStats(currentGa);
+      setPreviousGaStats(prevGa);
+    } catch (err) {
+      console.error('비교 데이터 로드 오류:', err);
+      setCompareError('비교 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
+  // 비교 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '비교' && !currentPeriodStats && !compareLoading) {
+      loadCompareStats();
+    }
+  }, [selectedTab]);
+
+  // 비교 기간 변경 핸들러
+  const handleComparePresetChange = (preset: ComparePreset) => {
+    setComparePreset(preset);
+    setCompareCustomDateRange({});
+    loadCompareStats(preset);
+  };
+
+  // 비교 달력 클릭 핸들러
+  const handleCompareCalendarClick = () => {
+    setShowCompareDatePicker(true);
+  };
+
+  // 비교 커스텀 날짜 적용 핸들러
+  const handleApplyCompareCustomDate = () => {
+    if (compareDateRange?.from) {
+      const startDate = compareDateRange.from;
+      const endDate = compareDateRange.to || compareDateRange.from;
+
+      setComparePreset('custom');
+      setCompareCustomDateRange({ start: startDate, end: endDate });
+      setShowCompareDatePicker(false);
+      loadCompareStats('custom', { start: startDate, end: endDate });
+    }
+  };
+
+  // 비교 기간 표시 라벨
+  const getCompareDateLabel = () => {
+    if (compareCustomDateRange.start) {
+      return formatDateRange(compareCustomDateRange.start, compareCustomDateRange.end);
+    }
+    return null;
+  };
+
+  // 증감율 계산 함수
+  const calcChangePercent = (current: number, previous: number): { value: number; isPositive: boolean } => {
+    if (previous === 0) {
+      return { value: current > 0 ? 100 : 0, isPositive: current > 0 };
+    }
+    const change = ((current - previous) / previous) * 100;
+    return { value: Math.abs(Math.round(change * 10) / 10), isPositive: change >= 0 };
+  };
+
   // 기간 변경 핸들러
   const handlePresetChange = (preset: DateRangePreset) => {
     setSelectedPreset(preset);
@@ -288,65 +526,730 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </header>
 
+          {/* 탭 필터 - 개요/추세/비교 */}
+          <div className="shrink-0 bg-white px-4 py-2" style={{ borderBottom: '1px solid #f0f0f0' }}>
+            <div className="flex items-center gap-1">
+              {DASHBOARD_TABS.map((tab) => (
+                <motion.button
+                  key={tab}
+                  onClick={() => setSelectedTab(tab)}
+                  className="relative px-4 py-2 rounded-xl transition-colors"
+                  style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontSize: '15px',
+                    fontWeight: selectedTab === tab ? 500 : 400,
+                    color: selectedTab === tab ? '#151515' : '#999999',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                  }}
+                >
+                  {selectedTab === tab && (
+                    <motion.div
+                      layoutId="dashboardTabIndicator"
+                      className="absolute inset-0 rounded-xl"
+                      style={{ backgroundColor: '#f8f8f8' }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab}</span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
           {/* 메인 콘텐츠 - 스크롤 영역 (HomePage 패턴) */}
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5">
-        {/* 기간 선택 */}
-        <div style={{ marginBottom: '20px' }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-            <div className="flex items-center gap-2">
-              <Calendar size={16} color="#666" />
-              <span style={{ ...typography.label }}>조회 기간</span>
+        {/* ========== 개요 탭 ========== */}
+        {selectedTab === '개요' && (
+          <>
+            {/* 기간 선택 */}
+            <div style={{ marginBottom: '20px' }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} color="#666" />
+                  <span style={{ ...typography.label }}>조회 기간</span>
+                </div>
+                <button
+                  onClick={handleCalendarClick}
+                  className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
+                  style={{
+                    ...typography.small,
+                    color: '#3FB5B3',
+                    fontWeight: 500,
+                    padding: '6px 12px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e7e7e7',
+                  }}
+                >
+                  <Calendar size={14} />
+                  직접 선택
+                </button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
+                {DATE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    onClick={() => handlePresetChange(preset.value)}
+                    className="rounded-full whitespace-nowrap transition-colors"
+                    style={{
+                      ...typography.preset,
+                      padding: '8px 16px',
+                      fontWeight: selectedPreset === preset.value ? 500 : 400,
+                      backgroundColor: selectedPreset === preset.value ? '#3FB5B3' : '#ffffff',
+                      color: selectedPreset === preset.value ? '#ffffff' : '#666666',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                {selectedPreset === 'custom' && (
+                  <button
+                    className="rounded-full whitespace-nowrap"
+                    style={{
+                      ...typography.preset,
+                      padding: '8px 16px',
+                      fontWeight: 500,
+                      backgroundColor: '#3FB5B3',
+                      color: '#ffffff',
+                    }}
+                  >
+                    {getDateLabel()}
+                  </button>
+                )}
+              </div>
             </div>
-            <button
-              onClick={handleCalendarClick}
-              className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
-              style={{
-                ...typography.small,
-                color: '#3FB5B3',
-                fontWeight: 500,
-                padding: '6px 12px',
-                backgroundColor: '#ffffff',
-                border: '1px solid #e7e7e7',
-              }}
-            >
-              <Calendar size={14} />
-              직접 선택
-            </button>
-          </div>
-          <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
-            {DATE_PRESETS.map((preset) => (
-              <button
-                key={preset.value}
-                onClick={() => handlePresetChange(preset.value)}
-                className="rounded-full whitespace-nowrap transition-colors"
-                style={{
-                  ...typography.preset,
-                  padding: '8px 16px',
-                  fontWeight: selectedPreset === preset.value ? 500 : 400,
-                  backgroundColor: selectedPreset === preset.value ? '#3FB5B3' : '#ffffff',
-                  color: selectedPreset === preset.value ? '#ffffff' : '#666666',
-                }}
-              >
-                {preset.label}
-              </button>
-            ))}
-            {selectedPreset === 'custom' && (
-              <button
-                className="rounded-full whitespace-nowrap"
-                style={{
-                  ...typography.preset,
-                  padding: '8px 16px',
-                  fontWeight: 500,
-                  backgroundColor: '#3FB5B3',
-                  color: '#ffffff',
-                }}
-              >
-                {getDateLabel()}
-              </button>
-            )}
-          </div>
-        </div>
+          </>
+        )}
 
+        {/* ========== 추세 탭 ========== */}
+        {selectedTab === '추세' && (
+          <>
+            {/* 기간 선택 */}
+            <div style={{ marginBottom: '20px' }}>
+              <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} color="#666" />
+                  <span style={{ ...typography.label }}>조회 기간</span>
+                </div>
+                <button
+                  onClick={handleTrendCalendarClick}
+                  className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
+                  style={{
+                    ...typography.small,
+                    color: '#3FB5B3',
+                    fontWeight: 500,
+                    padding: '6px 12px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e7e7e7',
+                  }}
+                >
+                  <Calendar size={14} />
+                  직접 선택
+                </button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
+                {TREND_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    onClick={() => handleTrendPresetChange(preset.value)}
+                    className="rounded-full whitespace-nowrap transition-colors"
+                    style={{
+                      ...typography.preset,
+                      padding: '8px 16px',
+                      fontWeight: trendPreset === preset.value ? 500 : 400,
+                      backgroundColor: trendPreset === preset.value ? '#3FB5B3' : '#ffffff',
+                      color: trendPreset === preset.value ? '#ffffff' : '#666666',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                {trendCustomDateRange.start && (
+                  <button
+                    className="rounded-full whitespace-nowrap"
+                    style={{
+                      ...typography.preset,
+                      padding: '8px 16px',
+                      fontWeight: 500,
+                      backgroundColor: '#3FB5B3',
+                      color: '#ffffff',
+                    }}
+                  >
+                    {getTrendDateLabel()}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 에러 상태 */}
+            {trendError && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
+                <p style={{ ...typography.label, marginBottom: '16px' }}>{trendError}</p>
+                <button
+                  onClick={() => loadTrendStats()}
+                  className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                  style={{ ...typography.button, padding: '10px 16px', backgroundColor: '#3FB5B3', color: '#ffffff' }}
+                >
+                  <RefreshCw size={16} />
+                  다시 시도
+                </button>
+              </div>
+            )}
+
+            {/* 로딩 상태 */}
+            {trendLoading && !trendError && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '200px' }} />
+                ))}
+              </div>
+            )}
+
+            {/* 차트 표시 */}
+            {!trendLoading && !trendError && trendData.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+              >
+                {/* 1. 총 방문자 (GA) */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>총 방문자</h3>
+                    <span style={{ ...typography.small, color: '#999' }}>GA 기준</span>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="gaActiveUsers" name="총 방문자" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 2. 신규 사용자 vs 재방문자 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>신규 사용자 대 재방문자</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} iconType="circle" iconSize={8} />
+                        <Line type="monotone" dataKey="newCustomers" name="신규" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="returningCustomers" name="재방문" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 3. 회원가입율 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>회원가입율</h3>
+                    <span style={{ ...typography.small, color: '#999' }}>GA 신규 방문자 대비</span>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} domain={[0, 'auto']} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(value: number) => [`${value}%`, '회원가입율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="signupRate" name="회원가입율" stroke={TREND_COLORS.tertiary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.tertiary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 4. 콘텐츠 이용 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>콘텐츠 이용 추이</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} iconType="circle" iconSize={8} />
+                        <Line type="monotone" dataKey="freeContentUsage" name="무료" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="paidContentUsage" name="유료" stroke={TREND_COLORS.tertiary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.tertiary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 5. 콘텐츠 이용율 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>콘텐츠 이용율</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(value: number) => [`${value}%`, '이용율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="contentUsageRate" name="이용율" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 6. 평균 참여시간 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>평균 참여시간</h3>
+                    <span style={{ ...typography.small, color: '#999' }}>GA 기준</span>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.floor(v / 60)}분`} />
+                        <Tooltip
+                          formatter={(value: number) => {
+                            const minutes = Math.floor(value / 60);
+                            const seconds = value % 60;
+                            return [`${minutes}분 ${seconds}초`, '참여시간'];
+                          }}
+                          contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }}
+                        />
+                        <Line type="monotone" dataKey="gaAverageEngagementTime" name="참여시간" stroke={TREND_COLORS.quaternary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.quaternary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 7. 태그 저장 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>태그 저장 추이</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} iconType="circle" iconSize={8} />
+                        <Line type="monotone" dataKey="tagSaved" name="저장" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="tagConfirmed" name="확인" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 8. 회원 태그 저장율 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>회원 태그 저장율</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(value: number) => [`${value}%`, '저장율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="tagUserRate" name="저장율" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 9. 매출 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>매출 추이</h3>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                        <Tooltip formatter={(value: number) => [`₩${value.toLocaleString()}`, '매출']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="revenue" name="매출" stroke={TREND_COLORS.quaternary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.quaternary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 새로고침 버튼 */}
+                <div className="flex justify-center" style={{ paddingTop: '16px', paddingBottom: '40px' }}>
+                  <button
+                    onClick={() => loadTrendStats()}
+                    className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                    style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      padding: '10px 16px',
+                      backgroundColor: '#ffffff',
+                      color: '#3FB5B3',
+                      border: '1px solid #3FB5B3',
+                    }}
+                  >
+                    <RefreshCw size={16} />
+                    새로고침
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* 데이터 없음 */}
+            {!trendLoading && !trendError && trendData.length === 0 && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '80px 20px' }}>
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: '64px', height: '64px', backgroundColor: '#E4F7F7', marginBottom: '16px' }}
+                >
+                  <Activity size={32} color="#3FB5B3" />
+                </div>
+                <p style={{ ...typography.label, textAlign: 'center' }}>
+                  해당 기간의 데이터가 없습니다
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ========== 비교 탭 ========== */}
+        {selectedTab === '비교' && (
+          <>
+            {/* 비교 기간 필터 */}
+            <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '16px' }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                <Calendar size={16} color="#666" />
+                <span style={{ ...typography.label }}>비교 기간</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { value: '7days' as ComparePreset, label: '7일' },
+                  { value: '30days' as ComparePreset, label: '30일' },
+                ].map((preset) => (
+                  <button
+                    key={preset.value}
+                    onClick={() => handleComparePresetChange(preset.value)}
+                    className="rounded-full transition-colors"
+                    style={{
+                      padding: '6px 14px',
+                      fontSize: '13px',
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontWeight: comparePreset === preset.value && !compareCustomDateRange.start ? 500 : 400,
+                      backgroundColor: comparePreset === preset.value && !compareCustomDateRange.start ? '#3FB5B3' : '#f5f5f5',
+                      color: comparePreset === preset.value && !compareCustomDateRange.start ? '#ffffff' : '#666666',
+                      border: 'none',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  onClick={handleCompareCalendarClick}
+                  className="flex items-center gap-1 rounded-full transition-colors"
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '13px',
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontWeight: compareCustomDateRange.start ? 500 : 400,
+                    backgroundColor: compareCustomDateRange.start ? '#3FB5B3' : '#f5f5f5',
+                    color: compareCustomDateRange.start ? '#ffffff' : '#666666',
+                    border: 'none',
+                  }}
+                >
+                  <Calendar size={14} />
+                  {getCompareDateLabel() || '직접 선택'}
+                </button>
+              </div>
+            </section>
+
+            {/* 커스텀 날짜 선택 팝업 */}
+            {showCompareDatePicker && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center"
+                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                onClick={() => setShowCompareDatePicker(false)}
+              >
+                <div
+                  className="rounded-2xl"
+                  style={{ backgroundColor: '#ffffff', padding: '20px', maxWidth: '320px' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h4 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>기간 선택</h4>
+                  <DayPicker
+                    mode="range"
+                    selected={compareDateRange}
+                    onSelect={setCompareDateRange}
+                    locale={ko}
+                    disabled={{ after: new Date(new Date().setDate(new Date().getDate() - 1)) }}
+                    modifiersStyles={{
+                      selected: { backgroundColor: '#3FB5B3', color: '#ffffff' },
+                      range_middle: { backgroundColor: '#E4F7F7', color: '#1a1a1a' },
+                    }}
+                  />
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => setShowCompareDatePicker(false)}
+                      className="flex-1 rounded-xl"
+                      style={{
+                        padding: '10px',
+                        backgroundColor: '#f5f5f5',
+                        color: '#666666',
+                        border: 'none',
+                        fontSize: '14px',
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                      }}
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={handleApplyCompareCustomDate}
+                      className="flex-1 rounded-xl"
+                      style={{
+                        padding: '10px',
+                        backgroundColor: '#3FB5B3',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '14px',
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                      }}
+                    >
+                      적용
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* 로딩 상태 */}
+            {compareLoading && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '80px 20px' }}>
+                <div className="animate-spin rounded-full" style={{ width: '32px', height: '32px', border: '3px solid #E4F7F7', borderTopColor: '#3FB5B3' }} />
+                <p style={{ ...typography.label, marginTop: '16px' }}>비교 데이터 로딩 중...</p>
+              </div>
+            )}
+
+            {/* 에러 상태 */}
+            {compareError && !compareLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center"
+                style={{ padding: '48px 0' }}
+              >
+                <p style={{ ...typography.label, marginBottom: '16px' }}>{compareError}</p>
+                <button
+                  onClick={() => loadCompareStats()}
+                  className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                  style={{ ...typography.button, padding: '10px 16px', backgroundColor: '#3FB5B3', color: '#ffffff' }}
+                >
+                  <RefreshCw size={16} />
+                  다시 시도
+                </button>
+              </motion.div>
+            )}
+
+            {/* 비교 데이터 표시 */}
+            {!compareLoading && !compareError && currentPeriodStats && previousPeriodStats && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+              >
+                {/* 기간 라벨 헤더 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl" style={{ backgroundColor: '#3FB5B3', padding: '12px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#ffffff' }}>
+                      {getCompareDateRanges(comparePreset, compareCustomDateRange).currentLabel}
+                    </p>
+                  </div>
+                  <div className="rounded-xl" style={{ backgroundColor: '#E5E7EB', padding: '12px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#666666' }}>
+                      {getCompareDateRanges(comparePreset, compareCustomDateRange).previousLabel}
+                    </p>
+                  </div>
+                </div>
+
+                {/* GA 방문자 통계 비교 */}
+                {currentGaStats && previousGaStats && (
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>📈 GA 방문자 통계</h3>
+                    {[
+                      { label: '총 방문자수', current: currentGaStats.activeUsers || 0, previous: previousGaStats.activeUsers || 0, unit: '명' },
+                      { label: '신규 방문자', current: currentGaStats.newUsers || 0, previous: previousGaStats.newUsers || 0, unit: '명' },
+                      { label: '재방문자', current: (currentGaStats.activeUsers || 0) - (currentGaStats.newUsers || 0), previous: (previousGaStats.activeUsers || 0) - (previousGaStats.newUsers || 0), unit: '명' },
+                      { label: '평균 참여시간', current: currentGaStats.averageEngagementTime || 0, previous: previousGaStats.averageEngagementTime || 0, unit: '초', formatFn: (v: number) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}` },
+                    ].map((item, idx) => {
+                      const change = calcChangePercent(item.current, item.previous);
+                      const displayValue = item.formatFn || ((v: number) => v.toLocaleString() + item.unit);
+                      return (
+                        <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 3 ? '12px' : 0 }}>
+                          <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
+                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
+                              {item.formatFn ? item.formatFn(item.current) : `${item.current.toLocaleString()}${item.unit}`}
+                            </p>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                              {change.isPositive ? '▲' : '▼'} {change.value}%
+                            </p>
+                          </div>
+                          <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
+                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                              {item.formatFn ? item.formatFn(item.previous) : `${item.previous.toLocaleString()}${item.unit}`}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </section>
+                )}
+
+                {/* 회원가입 고객 통계 비교 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>📊 회원가입 고객 통계</h3>
+                  {[
+                    { label: '신규 고객', current: currentPeriodStats.newCustomers, previous: previousPeriodStats.newCustomers, unit: '명' },
+                    { label: '재방문 고객', current: currentPeriodStats.returningCustomers, previous: previousPeriodStats.returningCustomers, unit: '명' },
+                    { label: '회원가입율', current: currentGaStats?.newUsers ? Math.round(currentPeriodStats.newCustomers / currentGaStats.newUsers * 1000) / 10 : 0, previous: previousGaStats?.newUsers ? Math.round(previousPeriodStats.newCustomers / previousGaStats.newUsers * 1000) / 10 : 0, unit: '%' },
+                    { label: '총 방문횟수', current: currentPeriodStats.totalVisits, previous: previousPeriodStats.totalVisits, unit: '회' },
+                  ].map((item, idx) => {
+                    const change = calcChangePercent(item.current, item.previous);
+                    return (
+                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 3 ? '12px' : 0 }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
+                            {item.current.toLocaleString()}{item.unit}
+                          </p>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                            {change.isPositive ? '▲' : '▼'} {change.value}%
+                          </p>
+                        </div>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                            {item.previous.toLocaleString()}{item.unit}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+
+                {/* 콘텐츠 이용 통계 비교 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>📱 콘텐츠 이용 통계</h3>
+                  {[
+                    { label: '콘텐츠 이용율', current: currentPeriodStats.contentUsageRate, previous: previousPeriodStats.contentUsageRate, unit: '%' },
+                    { label: '무료 콘텐츠', current: currentPeriodStats.freeContentUsage, previous: previousPeriodStats.freeContentUsage, unit: '회' },
+                    { label: '유료 콘텐츠', current: currentPeriodStats.paidContentUsage, previous: previousPeriodStats.paidContentUsage, unit: '회' },
+                  ].map((item, idx) => {
+                    const change = calcChangePercent(item.current, item.previous);
+                    return (
+                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 2 ? '12px' : 0 }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
+                            {item.current.toLocaleString()}{item.unit}
+                          </p>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                            {change.isPositive ? '▲' : '▼'} {change.value}%
+                          </p>
+                        </div>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                            {item.previous.toLocaleString()}{item.unit}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+
+                {/* 태그 통계 비교 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>🏷️ 태그 통계</h3>
+                  {[
+                    { label: '태그 저장율', current: currentPeriodStats.tagUserRate, previous: previousPeriodStats.tagUserRate, unit: '%' },
+                    { label: '전체 확인율', current: currentPeriodStats.overallTagConfirmRate, previous: previousPeriodStats.overallTagConfirmRate, unit: '%' },
+                  ].map((item, idx) => {
+                    const change = calcChangePercent(item.current, item.previous);
+                    return (
+                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 1 ? '12px' : 0 }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
+                            {item.current.toLocaleString()}{item.unit}
+                          </p>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                            {change.isPositive ? '▲' : '▼'} {change.value}%
+                          </p>
+                        </div>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                            {item.previous.toLocaleString()}{item.unit}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+
+                {/* 매출 통계 비교 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>💰 매출 통계</h3>
+                  {(() => {
+                    const change = calcChangePercent(currentPeriodStats.totalRevenue, previousPeriodStats.totalRevenue);
+                    return (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>기간 매출</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
+                            ₩{currentPeriodStats.totalRevenue.toLocaleString()}
+                          </p>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                            {change.isPositive ? '▲' : '▼'} {change.value}%
+                          </p>
+                        </div>
+                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>기간 매출</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                            ₩{previousPeriodStats.totalRevenue.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </section>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* ========== 개요 탭 콘텐츠 계속 ========== */}
+        {selectedTab === '개요' && (
+          <>
         {/* 에러 상태 */}
         {error && (
           <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
@@ -615,7 +1518,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                   <div>
                     <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', color: '#666666' }}>
-                      {selectedPreset === 'all' ? '총 매출' : '기간 매출'}
+                      {selectedPreset === '1year' ? '연간 매출' : '기간 매출'}
                     </p>
                     <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1a1a1a' }}>
                       ₩{stats.totalRevenue.toLocaleString()}
@@ -646,7 +1549,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </motion.div>
         )}
-      </div>{/* 스크롤 영역 닫기 */}
+          </>
+        )}{/* 개요 탭 닫기 */}
+          </div>{/* 스크롤 영역 닫기 */}
 
         </div>{/* 내부 컨테이너 닫기 */}
       </div>{/* 외부 컨테이너 닫기 */}
@@ -800,6 +1705,122 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       color: dateRange?.from ? '#ffffff' : '#b7b7b7',
                       border: 'none',
                       cursor: dateRange?.from ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    적용하기
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {/* 추세 탭 날짜 선택 모달 */}
+        {showTrendDatePicker && (
+          <>
+            {/* 배경 오버레이 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40"
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+              onClick={() => setShowTrendDatePicker(false)}
+            />
+
+            {/* 바텀시트 */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-white z-50 overflow-hidden"
+              style={{ borderRadius: '24px 24px 0 0', maxHeight: '85vh' }}
+            >
+              {/* 핸들 */}
+              <div className="flex justify-center" style={{ paddingTop: '12px', paddingBottom: '8px' }}>
+                <div style={{ width: '40px', height: '4px', backgroundColor: '#d4d4d4', borderRadius: '2px' }} />
+              </div>
+
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-4" style={{ paddingBottom: '16px', borderBottom: '1px solid #f0f0f0' }}>
+                <h3 style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '17px', fontWeight: 600, color: '#1a1a1a' }}>
+                  기간 선택
+                </h3>
+                <button
+                  onClick={() => setShowTrendDatePicker(false)}
+                  className="p-2 rounded-full transition-colors active:bg-gray-100"
+                >
+                  <X size={20} color="#666" />
+                </button>
+              </div>
+
+              {/* 선택된 날짜 표시 */}
+              <div className="px-4 py-3" style={{ backgroundColor: '#f9f9f9' }}>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', color: '#666666', marginBottom: '4px' }}>
+                  선택된 기간
+                </p>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, color: '#1a1a1a' }}>
+                  {trendDateRange?.from
+                    ? formatDateRange(trendDateRange.from, trendDateRange.to)
+                    : '날짜를 선택하세요'
+                  }
+                </p>
+              </div>
+
+              {/* 달력 */}
+              <div className="px-4 py-4 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 220px)' }}>
+                <div className="stats-datepicker">
+                  <DayPicker
+                    mode="range"
+                    selected={trendDateRange}
+                    onSelect={setTrendDateRange}
+                    locale={ko}
+                    disabled={{ after: new Date() }}
+                    showOutsideDays
+                    fixedWeeks
+                    components={{
+                      IconLeft: () => <ChevronLeft size={20} />,
+                      IconRight: () => <ChevronRight size={20} />
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 하단 버튼 */}
+              <div className="px-4 bg-white" style={{ padding: '16px', borderTop: '1px solid #f0f0f0' }}>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setTrendDateRange(undefined);
+                      setShowTrendDatePicker(false);
+                    }}
+                    className="flex-1 rounded-xl transition-colors active:opacity-80"
+                    style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      color: '#666666',
+                      padding: '12px',
+                      backgroundColor: '#f5f5f5',
+                      border: 'none',
+                    }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleApplyTrendCustomDate}
+                    disabled={!trendDateRange?.from}
+                    className="flex-1 rounded-xl transition-colors active:opacity-80"
+                    style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      padding: '12px',
+                      backgroundColor: trendDateRange?.from ? '#3FB5B3' : '#e5e5e5',
+                      color: trendDateRange?.from ? '#ffffff' : '#b7b7b7',
+                      border: 'none',
+                      cursor: trendDateRange?.from ? 'pointer' : 'not-allowed',
                     }}
                   >
                     적용하기

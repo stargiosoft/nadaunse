@@ -191,6 +191,69 @@ async function getActiveUsers(
   return { activeUsers: 0, newUsers: 0, averageEngagementTime: 0 };
 }
 
+// GA Data API 호출 - 일별 데이터
+interface DailyGAData {
+  date: string;  // YYYYMMDD 형식
+  activeUsers: number;
+  newUsers: number;
+  averageEngagementTime: number;
+}
+
+async function getDailyActiveUsers(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<DailyGAData[]> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'date' }],
+        metrics: [
+          { name: 'activeUsers' },
+          { name: 'newUsers' },
+          { name: 'userEngagementDuration' },
+        ],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const dailyData: DailyGAData[] = [];
+
+  if (data.rows && data.rows.length > 0) {
+    for (const row of data.rows) {
+      const date = row.dimensionValues[0].value;
+      const activeUsers = parseInt(row.metricValues[0].value, 10);
+      const newUsers = parseInt(row.metricValues[1].value, 10);
+      const totalEngagementSeconds = parseFloat(row.metricValues[2].value);
+      const averageEngagementTime = activeUsers > 0 ? Math.round(totalEngagementSeconds / activeUsers) : 0;
+
+      dailyData.push({
+        date,
+        activeUsers,
+        newUsers,
+        averageEngagementTime,
+      });
+    }
+  }
+
+  return dailyData;
+}
+
 serve(async (req: Request) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -209,7 +272,7 @@ serve(async (req: Request) => {
 
     // 요청 파라미터 파싱
     const url = new URL(req.url);
-    const type = url.searchParams.get('type') || 'realtime'; // realtime | period
+    const type = url.searchParams.get('type') || 'realtime'; // realtime | period | daily
     const startDate = url.searchParams.get('startDate') || '7daysAgo';
     const endDate = url.searchParams.get('endDate') || 'today';
 
@@ -223,6 +286,16 @@ serve(async (req: Request) => {
         success: true,
         type: 'realtime',
         realtimeActiveUsers: realtimeUsers,
+      };
+    } else if (type === 'daily') {
+      // 일별 데이터 조회
+      const dailyData = await getDailyActiveUsers(accessToken, propertyId, startDate, endDate);
+      result = {
+        success: true,
+        type: 'daily',
+        startDate,
+        endDate,
+        data: dailyData,
       };
     } else {
       const periodData = await getActiveUsers(accessToken, propertyId, startDate, endDate);
