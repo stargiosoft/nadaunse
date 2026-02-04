@@ -660,15 +660,15 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 5. 태그 데이터 (Supabase 기본 limit 1000개 → 10000개로 확장)
+    // 5. 태그 데이터 (Supabase 기본 limit 1000개 제한 우회: range 사용)
     supabase
       .from('user_trait_tags')
-      .select('user_id, created_at, is_confirmed')
+      .select('user_id, created_at, is_confirmed', { count: 'exact' })
       .neq('tag_type', 'neutral')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate)
-      .limit(10000),
+      .range(0, 9999),
 
     // 6. GA 일별 데이터
     fetchDailyGAStatsInternal(dateRange),
