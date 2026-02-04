@@ -69,7 +69,7 @@ import { Toast } from './components/ui/Toast';
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
 import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 페이지 이미지 프리로드
 import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
-import { clearUserCaches } from './lib/auth'; // ⭐ 캐시 삭제 함수
+import { clearUserCaches, recordTodayVisit } from './lib/auth'; // ⭐ 캐시 삭제 + 방문 기록 함수
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
 import { projectId } from './utils/supabase/info'; // ⚡ Edge Function warm-up용
 
@@ -2974,6 +2974,11 @@ export default function App() {
     return () => {
       authListener?.subscription.unsubscribe();
     };
+  }, []);
+
+  // 📅 앱 접속 시 방문 기록 (KST 기준 날짜별)
+  useEffect(() => {
+    recordTodayVisit();
   }, []);
 
   return (

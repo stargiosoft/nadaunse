@@ -45,6 +45,7 @@
 | `terms_agreed_at` | timestamptz | - | - | 약관 동의 일시 |
 | `last_login_at` | timestamptz | - | `now()` | 마지막 방문 일시 (일일 방문 기준 업데이트) |
 | `visit_count` | integer | - | `1` | 총 방문 일수 (일일 방문 기준) |
+| `visit_dates` | date[] | - | `'{}'` | KST 기준 방문 날짜 목록 (예: ['2026-02-01', '2026-02-02']) |
 | `created_at` | timestamptz | - | `now()` | 계정 생성 일시 |
 | `role` | text | CHECK | `'user'` | 사용자 권한 (master, admin, user) |
 
@@ -546,6 +547,7 @@ weekly_reports (주간 보고서)
 | 1.5.0 | 2026-01-29 | user_trait_tags 테이블 추가 (나다움 성향 태그 저장) | AI Assistant |
 | 1.6.0 | 2026-02-02 | weekly_reports, weekly_report_sections, report_tarot_selections 테이블 추가, user_trait_tags 컬럼명 수정 (name→tag_name, type→tag_type), is_confirmed 컬럼 추가, coupons.coupon_type 설명 수정 | AI Assistant |
 | 1.7.0 | 2026-02-03 | pg_cron 스케줄 추가 (주간 보고서 자동 발송), Vault에 service_role_key 저장 | AI Assistant |
+| 1.8.0 | 2026-02-04 | users 테이블에 visit_dates 컬럼 추가 (KST 기준 방문 날짜 배열) | AI Assistant |
 
 ---
 
