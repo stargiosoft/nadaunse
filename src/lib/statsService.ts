@@ -713,15 +713,23 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     });
   }
 
-  // 날짜별로 그룹핑
-  const getDateKey = (dateStr: string) => dateStr.substring(0, 10);
+  // 날짜별로 그룹핑 (로컬 시간 기준으로 변환)
+  const getDateKey = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   // YYYY-MM-DD를 YYYYMMDD로 변환
   const toGADateFormat = (dateKey: string) => dateKey.replace(/-/g, '');
 
   const dailyData: DailyTrendData[] = dateArray.map(date => {
-    const dateKey = date.toISOString().substring(0, 10);
+    // 로컬 시간 기준으로 dateKey 생성 (GA 데이터가 KST 기준이므로)
+    const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
 
     // 해당 날짜의 데이터 필터링
     const newCustomersList = newCustomersData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
