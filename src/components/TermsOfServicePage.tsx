@@ -66,7 +66,7 @@ export default function TermsOfServicePage() {
               transition={{ duration: 0.5, delay: 0 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                최종 업데이트일: 2025년 10월 22일
+                최종 업데이트일: 2026년 2월 4일
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
                 본 약관은 주식회사 스타지오소프트(이하 "회사")가 제공하는 운세 서비스 '나다운'(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항 등을 규정합니다. 서비스를 이용하기 전 반드시 본 약관을 숙지하여 주시기 바랍니다.
@@ -183,8 +183,17 @@ export default function TermsOfServicePage() {
                 <li className="mb-0 leading-[23.5px]">
                   회사는 서비스 개선 또는 운영상 필요에 따라 사전 공지 후 서비스의 일부 또는 전부를 변경할 수 있습니다. 다만, 서비스의 주요 변경이 있는 경우 최소 30일 전에 공지해야 합니다.
                 </li>
-                <li className="leading-[23.5px]">
+                <li className="mb-0 leading-[23.5px]">
                   회사는 상시 서비스 제공을 원칙으로 합니다. 단, 정기점검이나 설비의 보수, 전기통신 사업법에 의한 기간통신사업자로 인한 서비스 중단 등의 이유로 사전공지 후 혹은 천재지변 등 불가항력적인 사유로 사전공지 없이 서비스가 일시 중단될 수 있습니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  회사는 회원이 등록한 전화번호로 서비스 이용 관련 알림(결제 완료, 콘텐츠 생성 완료, 주간 성향 분석 보고서 등)을 카카오 알림톡으로 발송합니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  주간 성향 분석 보고서는 회원이 서비스 이용 중 기록한 성향 태그를 분석하여 매주 자동으로 생성 및 발송됩니다.
+                </li>
+                <li className="leading-[23.5px]">
+                  알림톡 수신을 원하지 않는 경우, 프로필에서 전화번호를 삭제하거나 고객센터를 통해 수신 거부를 요청할 수 있습니다.
                 </li>
               </ol>
             </motion.div>
@@ -257,7 +266,7 @@ export default function TermsOfServicePage() {
                   <li className="mb-0">정보 오류로 정상적인 결과가 나오지 않은 경우</li>
                   <li className="mb-0">기타 오류로 정상적인 서비스를 받지 못한 경우</li>
                 </ul>
-                <p className="mb-[8px]">3. 환불을 원하는 경우, 고객센터(이메일: stargiosoft@gmail.com)를 통해 요청할 수 있습니다. 회사는 이에 대한 사실을 확인한 후 환불 여부를 결정합니다.</p>
+                <p className="mb-[8px]">3. 환불을 원하는 경우, 고객센터(이메일: stargiosoft2@gmail.com)를 통해 요청할 수 있습니다. 회사는 이에 대한 사실을 확인한 후 환불 여부를 결정합니다.</p>
                 <p>4. 환불은 회사의 과실로 발생한 문제에 대해서만 가능하며, 결제일로부터 7일 이내에 요청해야 합니다.</p>
               </div>
             </motion.div>
@@ -497,7 +506,7 @@ export default function TermsOfServicePage() {
                 고객센터
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
-                이메일: stargiosoft@gmail.com
+                이메일: stargiosoft2@gmail.com
               </p>
             </motion.div>
 
@@ -512,7 +521,7 @@ export default function TermsOfServicePage() {
                 부 칙
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
-                (시행일) 이 약관은 2025년 10월 22일부터 시행합니다.
+                (시행일) 이 약관은 2026년 2월 4일부터 시행합니다.
               </p>
             </motion.div>
           </div>

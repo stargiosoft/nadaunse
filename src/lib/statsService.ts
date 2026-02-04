@@ -14,7 +14,8 @@ const ADMIN_IDS = [
   '48f1d43e-b1fa-4e1d-a1d0-01d8511947e0',
   'cc331c7d-feb4-4119-8a3f-3717e1effffd',
   'bb20c4d4-9f8e-4952-9452-a38df762b45a',
-  '9fb0b23b-b65b-4fb5-a356-b9969a842c55'
+  '9fb0b23b-b65b-4fb5-a356-b9969a842c55',
+  '2ad4d963-d51e-4a17-a7ca-5ca533585627'  // beaverj594@gmail.com
 ];
 
 // 기간 프리셋 타입
@@ -322,6 +323,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('태그 통계 조회에 실패했습니다.');
   }
 
+  // 개별 확인 태그 수 (개요 "확인 태그수" 표시용)
+  const individualConfirmedTags = tagData?.filter(t => t.is_confirmed).length || 0;
+
   // 콘텐츠 이용 건 기준으로 그룹핑 (user_id + source_type + 초 단위 created_at)
   // 같은 시점에 생성된 태그들을 하나의 콘텐츠 이용 건으로 처리
   const contentGroups: Record<string, { sourceType: string; hasConfirmed: boolean }> = {};
@@ -486,9 +490,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       : 0;
   }
 
-  // 회원 당 평균 확인 태그 개수
+  // 회원 당 평균 확인 태그 개수 (개별 확인 태그 수 / 태그 저장 고객 수)
   const avgTagsPerUser = tagUserCount > 0
-    ? Math.round(totalConfirmedContents / tagUserCount * 10) / 10
+    ? Math.round(individualConfirmedTags / tagUserCount * 10) / 10
     : 0;
 
   return {
@@ -508,14 +512,35 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     tagUserRate,
     // 태그 상세 통계
     tagUserCount,
-    totalTagCount: totalContents,
-    confirmedTagCount: totalConfirmedContents,
+    totalTagCount: totalContents,  // 전체 콘텐츠 건수 (UI에서 미사용, 태그 확인율 계산에만 사용)
+    confirmedTagCount: individualConfirmedTags,  // 개별 확인 태그 수
     avgTagsPerUser
   };
 }
 
 // 추세 프리셋 타입
 export type TrendRangePreset = '7days' | '30days' | '90days' | '1year' | 'custom';
+
+// 집계 단위 타입
+export type TrendGranularity = 'daily' | 'weekly' | 'monthly';
+
+/**
+ * 프리셋에 따른 집계 단위 결정
+ */
+export function getGranularityFromPreset(preset: TrendRangePreset): TrendGranularity {
+  switch (preset) {
+    case '7days':
+    case '30days':
+    case 'custom':
+      return 'daily';
+    case '90days':
+      return 'weekly';
+    case '1year':
+      return 'monthly';
+    default:
+      return 'daily';
+  }
+}
 
 // 일별 GA 데이터 타입
 export interface DailyGAData {
@@ -598,8 +623,10 @@ export function getTrendDateRange(preset: TrendRangePreset): DateRangeFilter {
 
 /**
  * 일별 추세 데이터 조회 (Supabase + GA 데이터 병합)
+ * @param dateRange 날짜 범위
+ * @param preset 프리셋 (90일: 주별, 1년: 월별 집계)
  */
-export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<DailyTrendData[]> {
+export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: TrendRangePreset): Promise<DailyTrendData[]> {
   const adminFilter = ADMIN_IDS.join(',');
 
   // 날짜 배열 생성
@@ -660,15 +687,16 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 5. 태그 데이터 (Supabase 기본 limit 1000개 → 10000개로 확장)
+    // 5. 태그 데이터 (Supabase 기본 limit 1000개 제한 우회: range 사용)
+    // source_type 추가: 콘텐츠 건 기준 그룹핑에 필요
     supabase
       .from('user_trait_tags')
-      .select('user_id, created_at, is_confirmed')
+      .select('user_id, created_at, is_confirmed, source_type', { count: 'exact' })
       .neq('tag_type', 'neutral')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate)
-      .limit(10000),
+      .range(0, 9999),
 
     // 6. GA 일별 데이터
     fetchDailyGAStatsInternal(dateRange),
@@ -739,10 +767,30 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     const uniqueContentUsers = new Set([...uniqueFreeUsers, ...uniquePaidUsers]).size;
     const totalContentUsage = freeContentUsage + paidContentUsage;
 
-    // 태그
+    // 태그 - 콘텐츠 건 기준으로 그룹핑 (개요와 동일한 로직)
     const tagList = tagData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const tagSaved = tagList.length;
     const tagConfirmed = tagList.filter(t => t.is_confirmed).length;
+
+    // 콘텐츠 건 기준 그룹핑: user_id + source_type + created_at(초 단위)
+    const contentGroups: Record<string, { hasConfirmed: boolean }> = {};
+    tagList.forEach(tag => {
+      const sourceType = (tag as { source_type?: string }).source_type || 'unknown';
+      const createdAtSec = tag.created_at?.substring(0, 19) || '';
+      const groupKey = `${tag.user_id}_${sourceType}_${createdAtSec}`;
+
+      if (!contentGroups[groupKey]) {
+        contentGroups[groupKey] = { hasConfirmed: false };
+      }
+      if (tag.is_confirmed) {
+        contentGroups[groupKey].hasConfirmed = true;
+      }
+    });
+
+    // 콘텐츠 건 수 계산
+    const totalContentGroups = Object.keys(contentGroups).length;
+    const confirmedContentGroups = Object.values(contentGroups).filter(g => g.hasConfirmed).length;
+
     // 태그 저장 고객: 확정 태그(is_confirmed=true)를 저장한 유니크 사용자 (개요와 동일)
     const confirmedTagList = tagList.filter(t => t.is_confirmed);
     const uniqueTagUsers = new Set(confirmedTagList.map(d => d.user_id)).size;
@@ -779,9 +827,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     const tagSaveRate = totalCustomers > 0
       ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
       : 0;
-    // 태그 확인율: 전체 태그 대비 확인 태그
-    const tagConfirmRate = tagSaved > 0
-      ? Math.round(tagConfirmed / tagSaved * 1000) / 10
+    // 태그 확인율: 콘텐츠 건 기준 (개요와 동일)
+    // 확인된 콘텐츠 건 / 전체 콘텐츠 건
+    const tagConfirmRate = totalContentGroups > 0
+      ? Math.round(confirmedContentGroups / totalContentGroups * 1000) / 10
       : 0;
     // 회원당 태그 수: 태그 저장 고객 당 평균 확인 태그 개수
     const avgTagsPerUser = uniqueTagUsers > 0
@@ -819,7 +868,139 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     };
   });
 
-  return dailyData;
+  // 프리셋에 따른 집계 적용
+  const granularity = preset ? getGranularityFromPreset(preset) : 'daily';
+
+  if (granularity === 'daily') {
+    return dailyData;
+  }
+
+  return aggregateTrendData(dailyData, granularity);
+}
+
+/**
+ * 주 번호 계산 (해당 월의 몇 번째 주인지)
+ */
+function getWeekOfMonth(date: Date): number {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const firstDayOfWeek = firstDay.getDay(); // 0(일) ~ 6(토)
+  const dayOfMonth = date.getDate();
+  return Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
+}
+
+/**
+ * 주의 시작일 계산 (월요일 기준)
+ */
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 월요일로 조정
+  return new Date(d.setDate(diff));
+}
+
+/**
+ * 일별 데이터를 주별/월별로 집계
+ */
+function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranularity): DailyTrendData[] {
+  if (granularity === 'daily' || dailyData.length === 0) return dailyData;
+
+  // 그룹화
+  const groups: Record<string, { label: string; data: DailyTrendData[] }> = {};
+
+  dailyData.forEach(day => {
+    const date = new Date(day.fullDate);
+    let groupKey: string;
+    let groupLabel: string;
+
+    if (granularity === 'weekly') {
+      // 주 단위 그룹핑 (월요일 기준)
+      const weekStart = getWeekStart(date);
+      groupKey = weekStart.toISOString().split('T')[0];
+      const month = date.getMonth() + 1;
+      const weekOfMonth = getWeekOfMonth(date);
+      groupLabel = `${month}월 ${weekOfMonth}주`;
+    } else {
+      // 월 단위 그룹핑
+      groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      groupLabel = `${date.getMonth() + 1}월`;
+    }
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = { label: groupLabel, data: [] };
+    }
+    groups[groupKey].data.push(day);
+  });
+
+  // 그룹별 집계
+  const sortedKeys = Object.keys(groups).sort();
+
+  return sortedKeys.map(key => {
+    const { label, data } = groups[key];
+
+    // 합계 계산
+    const newCustomers = data.reduce((sum, d) => sum + d.newCustomers, 0);
+    const returningCustomers = data.reduce((sum, d) => sum + d.returningCustomers, 0);
+    const totalCustomers = newCustomers + returningCustomers;
+    const freeContentUsage = data.reduce((sum, d) => sum + d.freeContentUsage, 0);
+    const paidContentUsage = data.reduce((sum, d) => sum + d.paidContentUsage, 0);
+    const totalContentUsage = freeContentUsage + paidContentUsage;
+    const revenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
+    const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
+    const uniqueTagUsers = data.reduce((sum, d) => sum + d.uniqueTagUsers, 0);
+    const uniqueContentUsers = data.reduce((sum, d) => sum + d.uniqueContentUsers, 0);
+    const gaActiveUsers = data.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+    const gaNewUsers = data.reduce((sum, d) => sum + d.gaNewUsers, 0);
+
+    // 평균 계산 (시간 관련)
+    const gaAverageEngagementTime = data.length > 0
+      ? Math.round(data.reduce((sum, d) => sum + d.gaAverageEngagementTime, 0) / data.length)
+      : 0;
+
+    // 비율 재계산 (합계 기반)
+    const contentUsageRate = totalCustomers > 0
+      ? Math.round(uniqueContentUsers / totalCustomers * 1000) / 10
+      : 0;
+    const tagSaveRate = totalCustomers > 0
+      ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
+      : 0;
+    // 태그 확인율: 일별 값의 평균 사용 (콘텐츠 기준 유지)
+    const daysWithTags = data.filter(d => d.tagSaved > 0);
+    const tagConfirmRate = daysWithTags.length > 0
+      ? Math.round(daysWithTags.reduce((sum, d) => sum + d.tagConfirmRate, 0) / daysWithTags.length * 10) / 10
+      : 0;
+    const avgTagsPerUser = uniqueTagUsers > 0
+      ? Math.round(tagConfirmed / uniqueTagUsers * 10) / 10
+      : 0;
+    const signupRate = gaNewUsers > 0
+      ? Math.round(newCustomers / gaNewUsers * 1000) / 10
+      : 0;
+
+    return {
+      date: label,
+      dateLabel: label,
+      fullDate: data[0].fullDate, // 그룹의 첫 번째 날짜
+      newCustomers,
+      returningCustomers,
+      totalCustomers,
+      freeContentUsage,
+      paidContentUsage,
+      totalContentUsage,
+      contentUsageRate,
+      revenue,
+      tagSaved,
+      tagConfirmed,
+      uniqueTagUsers,
+      tagSaveRate,
+      tagConfirmRate,
+      avgTagsPerUser,
+      uniqueContentUsers,
+      gaActiveUsers,
+      gaNewUsers,
+      gaAverageEngagementTime,
+      signupRate,
+    };
+  });
 }
 
 /**

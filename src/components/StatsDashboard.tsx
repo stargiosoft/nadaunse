@@ -269,7 +269,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         dateRangeFilter = getTrendDateRange(preset);
       }
 
-      const data = await fetchDailyTrendStats(dateRangeFilter);
+      const data = await fetchDailyTrendStats(dateRangeFilter, preset);
       setTrendData(data);
     } catch (err) {
       console.error('추세 데이터 로드 오류:', err);
@@ -795,10 +795,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 {/* GA 전체 고객 통계 섹션 */}
                 <SectionHeader icon="📈" title="GA 전체 고객 통계" />
 
-                {/* 1. 총 방문자 (GA) */}
+                {/* 1. 방문자 추이 (GA) */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>총 방문자</h3>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>방문자 추이</h3>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -807,7 +807,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey="gaActiveUsers" name="총 방문자" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="gaActiveUsers" name="방문자 추이" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -823,7 +823,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <LineChart
                         data={trendData.map(d => ({
                           ...d,
-                          gaReturningUsers: d.gaActiveUsers - d.gaNewUsers
+                          gaReturningUsers: Math.max(0, d.gaActiveUsers - d.gaNewUsers)
                         }))}
                         margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
                       >
@@ -849,7 +849,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <LineChart
                         data={trendData.map(d => ({
                           ...d,
-                          gaReturnRate: d.gaActiveUsers > 0 ? Math.round((d.gaActiveUsers - d.gaNewUsers) / d.gaActiveUsers * 1000) / 10 : 0
+                          gaReturnRate: d.gaActiveUsers > 0 ? Math.max(0, Math.round((d.gaActiveUsers - d.gaNewUsers) / d.gaActiveUsers * 1000) / 10) : 0
                         }))}
                         margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
                       >
@@ -891,10 +891,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 {/* 회원가입 고객 통계 섹션 */}
                 <SectionHeader icon="📊" title="회원가입 고객 통계" />
 
-                {/* 5. 총 가입 고객 */}
+                {/* 5. 가입 고객 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>총 가입 고객</h3>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>가입 고객 추이</h3>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -903,7 +903,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey="totalCustomers" name="총 가입 고객" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="totalCustomers" name="가입 고객 추이" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1389,8 +1389,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     {[
                       { label: '총 방문자수', current: currentGaStats.activeUsers || 0, previous: previousGaStats.activeUsers || 0, unit: '명' },
                       { label: '신규 방문자', current: currentGaStats.newUsers || 0, previous: previousGaStats.newUsers || 0, unit: '명' },
-                      { label: '재방문자', current: (currentGaStats.activeUsers || 0) - (currentGaStats.newUsers || 0), previous: (previousGaStats.activeUsers || 0) - (previousGaStats.newUsers || 0), unit: '명' },
-                      { label: '재방문율', current: currentGaStats.activeUsers ? Math.round(((currentGaStats.activeUsers - currentGaStats.newUsers) / currentGaStats.activeUsers) * 1000) / 10 : 0, previous: previousGaStats.activeUsers ? Math.round(((previousGaStats.activeUsers - previousGaStats.newUsers) / previousGaStats.activeUsers) * 1000) / 10 : 0, unit: '%' },
+                      { label: '재방문자', current: Math.max(0, (currentGaStats.activeUsers || 0) - (currentGaStats.newUsers || 0)), previous: Math.max(0, (previousGaStats.activeUsers || 0) - (previousGaStats.newUsers || 0)), unit: '명' },
+                      { label: '재방문율', current: currentGaStats.activeUsers ? Math.max(0, Math.round(((currentGaStats.activeUsers - currentGaStats.newUsers) / currentGaStats.activeUsers) * 1000) / 10) : 0, previous: previousGaStats.activeUsers ? Math.max(0, Math.round(((previousGaStats.activeUsers - previousGaStats.newUsers) / previousGaStats.activeUsers) * 1000) / 10) : 0, unit: '%' },
                       { label: '평균 참여시간', current: currentGaStats.averageEngagementTime || 0, previous: previousGaStats.averageEngagementTime || 0, unit: '초', formatFn: (v: number) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}` },
                     ].map((item, idx, arr) => {
                       const change = calcChangePercent(item.current, item.previous);
@@ -1597,10 +1597,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <StatCard
                         icon={UserCheck}
                         label="재방문자"
-                        value={gaStats.activeUsers - gaStats.newUsers}
+                        value={Math.max(0, gaStats.activeUsers - gaStats.newUsers)}
                         unit="명"
                         color="#368683"
-                        subValue={`재방문율 ${gaStats.activeUsers > 0 ? Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10 : 0}%`}
+                        subValue={`재방문율 ${gaStats.activeUsers > 0 ? Math.max(0, Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10) : 0}%`}
                       />
                       {gaStats.averageEngagementTime !== undefined && (
                         <StatCard
@@ -1703,13 +1703,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.confirmedTagCount}
                   unit="건"
                   color="#3FB5B3"
-                  subValue={`확인율 ${stats.overallTagConfirmRate}%`}
                 />
                 <StatCard
                   icon={Activity}
-                  label="전체 태그수"
-                  value={stats.totalTagCount}
-                  unit="건"
+                  label="태그 확인율"
+                  value={stats.overallTagConfirmRate}
+                  unit="%"
                   color="#48B2AF"
                 />
                 <StatCard
