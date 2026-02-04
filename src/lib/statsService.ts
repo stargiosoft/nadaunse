@@ -289,24 +289,6 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
 
   // 6. 태그 통계 조회 (source_type별, neutral 제외)
   // 콘텐츠 건 기준으로 계산 (태그 3개 = 1건, 1개라도 확인하면 확인된 건)
-  // 기간 내 방문 회원의 태그만 조회
-  let periodUserIds: string[] = [];
-
-  if (!isAllPeriod && dateRange?.startDate && dateRange?.endDate) {
-    // 기간 내 방문 회원 ID 조회
-    const { data: periodUsers, error: periodUsersError } = await supabase
-      .from('users')
-      .select('id')
-      .not('id', 'in', `(${adminFilter})`)
-      .gte('last_login_at', dateRange.startDate)
-      .lt('last_login_at', dateRange.endDate);
-
-    if (periodUsersError) {
-      console.error('기간 내 방문 유저 조회 오류:', periodUsersError);
-    }
-    periodUserIds = periodUsers?.map(u => u.id) || [];
-  }
-
   // 태그 데이터 조회 (그룹핑을 위해 user_id, created_at도 포함)
   let tagData: { user_id: string; source_type: string; is_confirmed: boolean; created_at: string }[] | null = null;
   let tagError: Error | null = null;
@@ -322,18 +304,17 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       .limit(5000);
     tagData = result.data;
     tagError = result.error;
-  } else if (periodUserIds.length > 0 && periodUserIds.length <= 1000) {
-    // 기간 내 방문 회원의 태그만 조회
+  } else {
+    // 기간 필터: 해당 기간 내 생성된 태그만 조회
     const result = await supabase
       .from('user_trait_tags')
       .select('user_id, source_type, is_confirmed, created_at')
       .neq('tag_type', 'neutral')
-      .in('user_id', periodUserIds);
+      .not('user_id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate);
     tagData = result.data;
     tagError = result.error;
-  } else {
-    // 유저가 없거나 너무 많으면 빈 결과
-    tagData = [];
   }
 
   if (tagError) {
