@@ -5,7 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Home, Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock } from 'lucide-react';
+import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock } from 'lucide-react';
+import svgPathsBack from "../imports/svg-ct14exwyb3";
+import svgPathsHome from "../imports/svg-sg7rn8f2dm";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -506,25 +508,43 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         <div className="w-full max-w-[440px] h-full flex flex-col" style={{ backgroundColor: '#f5f5f5' }}>
 
           {/* 헤더 - 고정 */}
-          <header className="shrink-0 z-10 bg-white" style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <div className="flex items-center justify-between px-3 h-[52px]">
-              <button
-                onClick={onBack}
-                className="p-2 -ml-2 rounded-full transition-colors active:bg-gray-100"
-              >
-                <ArrowLeft size={24} color="#333" />
-              </button>
-              <h1 style={typography.title}>
-                통계 대시보드
-              </h1>
-              <button
-                onClick={onHome}
-                className="p-2 -mr-2 rounded-full transition-colors active:bg-gray-100"
-              >
-                <Home size={24} color="#333" />
-              </button>
+          <div className="shrink-0 z-20 bg-white relative">
+            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
+              <div className="bg-white h-[52px] relative shrink-0 w-full">
+                <div className="flex flex-col justify-center size-full">
+                  <div className="box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] relative w-full">
+                    <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+                      <div
+                        onClick={onBack}
+                        className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3]"
+                      >
+                        <svg className="block w-6 h-6 group-active:scale-95 transition-transform" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                          <g id="arrow-left">
+                            <path d={svgPathsBack.p2a5cd480} stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+                            <path d={svgPathsBack.p1a4bb100} opacity="0" stroke="var(--stroke-0, #848484)" />
+                          </g>
+                        </svg>
+                      </div>
+                      <p className="basis-0 font-semibold grow leading-[25.5px] min-h-px min-w-px not-italic overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]" style={{ fontFamily: 'Pretendard Variable, sans-serif' }}>
+                        통계 대시보드
+                      </p>
+                      <div
+                        onClick={onHome}
+                        className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3]"
+                      >
+                        <svg className="block w-6 h-6 group-active:scale-95 transition-transform" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                          <g id="home-2">
+                            <path d={svgPathsHome.p3d07f180} stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                            <path d="M12 17.99V14.99" stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                          </g>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </header>
+          </div>
 
           {/* 탭 필터 - 개요/추세/비교 */}
           <div className="shrink-0 bg-white px-4 py-2" style={{ borderBottom: '1px solid #f0f0f0' }}>
