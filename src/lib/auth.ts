@@ -260,3 +260,66 @@ export const refreshSession = async () => {
 
   return data.session;
 };
+
+/**
+ * 오늘 방문 기록 (KST 기준)
+ * - 로그인된 사용자의 visit_dates 배열에 오늘 날짜 추가
+ * - 이미 기록된 날짜는 중복 추가하지 않음
+ * - 하루에 한 번만 기록 (localStorage로 체크)
+ */
+export const recordTodayVisit = async () => {
+  try {
+    // 현재 로그인 사용자 확인
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // KST 기준 오늘 날짜 (YYYY-MM-DD)
+    const now = new Date();
+    const kstOffset = 9 * 60; // KST = UTC+9
+    const kstTime = new Date(now.getTime() + (kstOffset + now.getTimezoneOffset()) * 60000);
+    const todayKST = `${kstTime.getFullYear()}-${String(kstTime.getMonth() + 1).padStart(2, '0')}-${String(kstTime.getDate()).padStart(2, '0')}`;
+
+    // 오늘 이미 기록했는지 확인 (localStorage)
+    const lastVisitKey = `last_visit_recorded_${user.id}`;
+    const lastRecorded = localStorage.getItem(lastVisitKey);
+    if (lastRecorded === todayKST) {
+      return; // 오늘 이미 기록됨
+    }
+
+    // 현재 visit_dates 가져오기
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('visit_dates')
+      .eq('id', user.id)
+      .single();
+
+    if (fetchError) {
+      logger.debug('방문 기록 조회 실패:', fetchError.message);
+      return;
+    }
+
+    // 이미 오늘 날짜가 있으면 스킵
+    const currentDates: string[] = userData?.visit_dates || [];
+    if (currentDates.includes(todayKST)) {
+      localStorage.setItem(lastVisitKey, todayKST);
+      return;
+    }
+
+    // 오늘 날짜 추가
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ visit_dates: [...currentDates, todayKST] })
+      .eq('id', user.id);
+
+    if (updateError) {
+      logger.debug('방문 기록 저장 실패:', updateError.message);
+      return;
+    }
+
+    // 성공 시 localStorage에 기록
+    localStorage.setItem(lastVisitKey, todayKST);
+    logger.debug('방문 기록 완료:', todayKST);
+  } catch (err) {
+    logger.debug('방문 기록 중 오류:', err);
+  }
+};
