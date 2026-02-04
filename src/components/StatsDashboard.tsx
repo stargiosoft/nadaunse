@@ -158,6 +158,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [showCompareDatePicker, setShowCompareDatePicker] = useState(false);
   const [compareDateRange, setCompareDateRange] = useState<DateRange | undefined>(undefined);
   const [compareCustomDateRange, setCompareCustomDateRange] = useState<{ start?: Date; end?: Date }>({});
+  // A군/B군 커스텀 날짜 선택 (직접 선택용)
+  const [compareGroupA, setCompareGroupA] = useState<DateRange | undefined>(undefined);
+  const [compareGroupB, setCompareGroupB] = useState<DateRange | undefined>(undefined);
+  const [activeCompareGroup, setActiveCompareGroup] = useState<'A' | 'B'>('A');
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -413,28 +417,84 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
   // 비교 달력 클릭 핸들러
   const handleCompareCalendarClick = () => {
+    setActiveCompareGroup('A');
     setShowCompareDatePicker(true);
   };
 
-  // 비교 커스텀 날짜 적용 핸들러
+  // 비교 커스텀 날짜 적용 핸들러 (A/B군 모두 선택 후)
   const handleApplyCompareCustomDate = () => {
-    if (compareDateRange?.from) {
-      const startDate = compareDateRange.from;
-      const endDate = compareDateRange.to || compareDateRange.from;
+    if (compareGroupA?.from && compareGroupB?.from) {
+      const groupAStart = compareGroupA.from;
+      const groupAEnd = compareGroupA.to || compareGroupA.from;
+      const groupBStart = compareGroupB.from;
+      const groupBEnd = compareGroupB.to || compareGroupB.from;
 
       setComparePreset('custom');
-      setCompareCustomDateRange({ start: startDate, end: endDate });
+      setCompareCustomDateRange({ start: groupAStart, end: groupAEnd });
       setShowCompareDatePicker(false);
-      loadCompareStats('custom', { start: startDate, end: endDate });
+
+      // A군과 B군 날짜를 직접 전달
+      loadCompareStatsWithGroups(
+        { start: groupAStart, end: groupAEnd },
+        { start: groupBStart, end: groupBEnd }
+      );
+    }
+  };
+
+  // A/B군 커스텀 비교 데이터 로드
+  const loadCompareStatsWithGroups = async (
+    groupA: { start: Date; end: Date },
+    groupB: { start: Date; end: Date }
+  ) => {
+    setCompareLoading(true);
+    setCompareError(null);
+    try {
+      const groupAEndNext = new Date(groupA.end);
+      groupAEndNext.setDate(groupAEndNext.getDate() + 1);
+      const groupBEndNext = new Date(groupB.end);
+      groupBEndNext.setDate(groupBEndNext.getDate() + 1);
+
+      const rangeA = { startDate: groupA.start.toISOString(), endDate: groupAEndNext.toISOString() };
+      const rangeB = { startDate: groupB.start.toISOString(), endDate: groupBEndNext.toISOString() };
+
+      const [currentStats, prevStats, currentGa, prevGa] = await Promise.all([
+        fetchDashboardStats(rangeA),
+        fetchDashboardStats(rangeB),
+        fetchGAStats('period', rangeA),
+        fetchGAStats('period', rangeB),
+      ]);
+
+      setCurrentPeriodStats(currentStats);
+      setPreviousPeriodStats(prevStats);
+      setCurrentGaStats(currentGa);
+      setPreviousGaStats(prevGa);
+    } catch (err) {
+      console.error('비교 데이터 로드 오류:', err);
+      setCompareError('비교 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setCompareLoading(false);
     }
   };
 
   // 비교 기간 표시 라벨
   const getCompareDateLabel = () => {
-    if (compareCustomDateRange.start) {
-      return formatDateRange(compareCustomDateRange.start, compareCustomDateRange.end);
+    if (compareGroupA?.from && compareGroupB?.from) {
+      const aLabel = formatDateRange(compareGroupA.from, compareGroupA.to);
+      const bLabel = formatDateRange(compareGroupB.from, compareGroupB.to);
+      return `A: ${aLabel}`;
     }
     return null;
+  };
+
+  // A/B군 라벨 가져오기
+  const getCompareGroupLabels = () => {
+    if (comparePreset === 'custom' && compareGroupA?.from && compareGroupB?.from) {
+      return {
+        currentLabel: formatDateRange(compareGroupA.from, compareGroupA.to),
+        previousLabel: formatDateRange(compareGroupB.from, compareGroupB.to),
+      };
+    }
+    return getCompareDateRanges(comparePreset, compareCustomDateRange);
   };
 
   // 증감율 계산 함수
@@ -999,7 +1059,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               </div>
             </section>
 
-            {/* 커스텀 날짜 선택 팝업 */}
+            {/* 커스텀 날짜 선택 팝업 (A군/B군) */}
             {showCompareDatePicker && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -1010,24 +1070,81 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               >
                 <div
                   className="rounded-2xl"
-                  style={{ backgroundColor: '#ffffff', padding: '20px', maxWidth: '320px' }}
+                  style={{ backgroundColor: '#ffffff', padding: '20px', maxWidth: '340px', width: '90%' }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h4 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>기간 선택</h4>
+                  <h4 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>비교 기간 직접 선택</h4>
+
+                  {/* A/B 그룹 탭 */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setActiveCompareGroup('A')}
+                      className="flex-1 rounded-xl transition-colors"
+                      style={{
+                        padding: '10px',
+                        fontSize: '14px',
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: activeCompareGroup === 'A' ? 600 : 400,
+                        backgroundColor: activeCompareGroup === 'A' ? '#3FB5B3' : '#f5f5f5',
+                        color: activeCompareGroup === 'A' ? '#ffffff' : '#666666',
+                        border: 'none',
+                      }}
+                    >
+                      A군 {compareGroupA?.from ? '✓' : ''}
+                    </button>
+                    <button
+                      onClick={() => setActiveCompareGroup('B')}
+                      className="flex-1 rounded-xl transition-colors"
+                      style={{
+                        padding: '10px',
+                        fontSize: '14px',
+                        fontFamily: 'Pretendard Variable, sans-serif',
+                        fontWeight: activeCompareGroup === 'B' ? 600 : 400,
+                        backgroundColor: activeCompareGroup === 'B' ? '#6366F1' : '#f5f5f5',
+                        color: activeCompareGroup === 'B' ? '#ffffff' : '#666666',
+                        border: 'none',
+                      }}
+                    >
+                      B군 {compareGroupB?.from ? '✓' : ''}
+                    </button>
+                  </div>
+
+                  {/* 선택된 기간 표시 */}
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="rounded-lg" style={{ padding: '8px 12px', backgroundColor: '#F0FDFA', border: activeCompareGroup === 'A' ? '2px solid #3FB5B3' : '1px solid #e5e5e5' }}>
+                      <p style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>A군</p>
+                      <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1a' }}>
+                        {compareGroupA?.from ? formatDateRange(compareGroupA.from, compareGroupA.to) : '선택 안됨'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg" style={{ padding: '8px 12px', backgroundColor: '#EEF2FF', border: activeCompareGroup === 'B' ? '2px solid #6366F1' : '1px solid #e5e5e5' }}>
+                      <p style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>B군</p>
+                      <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1a' }}>
+                        {compareGroupB?.from ? formatDateRange(compareGroupB.from, compareGroupB.to) : '선택 안됨'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 달력 */}
                   <DayPicker
                     mode="range"
-                    selected={compareDateRange}
-                    onSelect={setCompareDateRange}
+                    selected={activeCompareGroup === 'A' ? compareGroupA : compareGroupB}
+                    onSelect={activeCompareGroup === 'A' ? setCompareGroupA : setCompareGroupB}
                     locale={ko}
                     disabled={{ after: new Date(new Date().setDate(new Date().getDate() - 1)) }}
                     modifiersStyles={{
-                      selected: { backgroundColor: '#3FB5B3', color: '#ffffff' },
-                      range_middle: { backgroundColor: '#E4F7F7', color: '#1a1a1a' },
+                      selected: { backgroundColor: activeCompareGroup === 'A' ? '#3FB5B3' : '#6366F1', color: '#ffffff' },
+                      range_middle: { backgroundColor: activeCompareGroup === 'A' ? '#E4F7F7' : '#EEF2FF', color: '#1a1a1a' },
                     }}
                   />
+
                   <div className="flex gap-2 mt-4">
                     <button
-                      onClick={() => setShowCompareDatePicker(false)}
+                      onClick={() => {
+                        setShowCompareDatePicker(false);
+                        setCompareGroupA(undefined);
+                        setCompareGroupB(undefined);
+                      }}
                       className="flex-1 rounded-xl"
                       style={{
                         padding: '10px',
@@ -1042,17 +1159,19 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     </button>
                     <button
                       onClick={handleApplyCompareCustomDate}
+                      disabled={!compareGroupA?.from || !compareGroupB?.from}
                       className="flex-1 rounded-xl"
                       style={{
                         padding: '10px',
-                        backgroundColor: '#3FB5B3',
+                        backgroundColor: compareGroupA?.from && compareGroupB?.from ? '#3FB5B3' : '#ccc',
                         color: '#ffffff',
                         border: 'none',
                         fontSize: '14px',
                         fontFamily: 'Pretendard Variable, sans-serif',
+                        cursor: compareGroupA?.from && compareGroupB?.from ? 'pointer' : 'not-allowed',
                       }}
                     >
-                      적용
+                      비교하기
                     </button>
                   </div>
                 </div>
@@ -1097,13 +1216,15 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 {/* 기간 라벨 헤더 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl" style={{ backgroundColor: '#3FB5B3', padding: '12px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '11px', fontFamily: 'Pretendard Variable', fontWeight: 400, color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>A군</p>
                     <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#ffffff' }}>
-                      {getCompareDateRanges(comparePreset, compareCustomDateRange).currentLabel}
+                      {getCompareGroupLabels().currentLabel}
                     </p>
                   </div>
-                  <div className="rounded-xl" style={{ backgroundColor: '#E5E7EB', padding: '12px', textAlign: 'center' }}>
-                    <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#666666' }}>
-                      {getCompareDateRanges(comparePreset, compareCustomDateRange).previousLabel}
+                  <div className="rounded-xl" style={{ backgroundColor: '#6366F1', padding: '12px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '11px', fontFamily: 'Pretendard Variable', fontWeight: 400, color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>B군</p>
+                    <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#ffffff' }}>
+                      {getCompareGroupLabels().previousLabel}
                     </p>
                   </div>
                 </div>
@@ -1131,9 +1252,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                               {change.isPositive ? '▲' : '▼'} {change.value}%
                             </p>
                           </div>
-                          <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
-                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
-                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                          <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
                               {item.formatFn ? item.formatFn(item.previous) : `${item.previous.toLocaleString()}${item.unit}`}
                             </p>
                           </div>
@@ -1164,9 +1285,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             {change.isPositive ? '▲' : '▼'} {change.value}%
                           </p>
                         </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
                             {item.previous.toLocaleString()}{item.unit}
                           </p>
                         </div>
@@ -1195,9 +1316,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             {change.isPositive ? '▲' : '▼'} {change.value}%
                           </p>
                         </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
                             {item.previous.toLocaleString()}{item.unit}
                           </p>
                         </div>
@@ -1225,9 +1346,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             {change.isPositive ? '▲' : '▼'} {change.value}%
                           </p>
                         </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
                             {item.previous.toLocaleString()}{item.unit}
                           </p>
                         </div>
@@ -1252,9 +1373,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             {change.isPositive ? '▲' : '▼'} {change.value}%
                           </p>
                         </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#F5F5F5', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#999', marginBottom: '4px' }}>기간 매출</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#666' }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>기간 매출</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
                             ₩{previousPeriodStats.totalRevenue.toLocaleString()}
                           </p>
                         </div>
