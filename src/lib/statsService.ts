@@ -763,7 +763,9 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     const tagList = tagData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const tagSaved = tagList.length;
     const tagConfirmed = tagList.filter(t => t.is_confirmed).length;
-    const uniqueTagUsers = new Set(tagList.map(d => d.user_id)).size;
+    // 태그 저장 고객: 확정 태그(is_confirmed=true)를 저장한 유니크 사용자 (개요와 동일)
+    const confirmedTagList = tagList.filter(t => t.is_confirmed);
+    const uniqueTagUsers = new Set(confirmedTagList.map(d => d.user_id)).size;
 
     // GA 데이터 가져오기
     const gaDateKey = toGADateFormat(dateKey);
