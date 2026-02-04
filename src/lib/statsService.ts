@@ -572,14 +572,16 @@ export interface DailyTrendData {
   paidContentUsage: number;
   totalContentUsage: number;
   // 비율 지표 (%)
-  contentUsageRate: number;  // 콘텐츠 이용율
-  tagUserRate: number;  // 회원 태그 저장율
+  contentUsageRate: number;  // 콘텐츠 이용율 (uniqueContentUsers / totalCustomers)
   // 매출
   revenue: number;
-  // 태그
-  tagSaved: number;
-  tagConfirmed: number;
-  uniqueTagUsers: number;  // 태그 저장한 고유 유저 수
+  // 태그 지표
+  tagSaved: number;  // 전체 태그 수
+  tagConfirmed: number;  // 확인 태그 수
+  uniqueTagUsers: number;  // 태그 저장 고객 수
+  tagSaveRate: number;  // 태그 저장율 (uniqueTagUsers / totalCustomers * 100)
+  tagConfirmRate: number;  // 태그 확인율 (tagConfirmed / tagSaved * 100)
+  avgTagsPerUser: number;  // 회원당 태그 수 (tagConfirmed / uniqueTagUsers)
   // 콘텐츠 이용 유저
   uniqueContentUsers: number;  // 콘텐츠 이용한 고유 유저 수
   // GA 관련 지표
@@ -771,13 +773,21 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     const gaAverageEngagementTime = gaDayData?.averageEngagementTime || 0;
 
     // 비율 계산
-    // 콘텐츠 이용율: 해당 날짜 GA 총 방문자 대비
-    const contentUsageRate = gaActiveUsers > 0
-      ? Math.round(uniqueContentUsers / gaActiveUsers * 1000) / 10
+    // 콘텐츠 이용율: 총 가입 고객 대비 (개요와 동일)
+    const contentUsageRate = totalCustomers > 0
+      ? Math.round(uniqueContentUsers / totalCustomers * 1000) / 10
       : 0;
-    // 회원 태그 저장율: 해당 날짜 GA 총 방문자 대비
-    const tagUserRate = gaActiveUsers > 0
-      ? Math.round(uniqueTagUsers / gaActiveUsers * 1000) / 10
+    // 태그 저장율: 총 가입 고객 대비 태그 저장 고객
+    const tagSaveRate = totalCustomers > 0
+      ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
+      : 0;
+    // 태그 확인율: 전체 태그 대비 확인 태그
+    const tagConfirmRate = tagSaved > 0
+      ? Math.round(tagConfirmed / tagSaved * 1000) / 10
+      : 0;
+    // 회원당 태그 수: 태그 저장 고객 당 평균 확인 태그 개수
+    const avgTagsPerUser = uniqueTagUsers > 0
+      ? Math.round(tagConfirmed / uniqueTagUsers * 10) / 10
       : 0;
     // 회원가입율: GA 신규 방문자 대비 Supabase 신규 회원가입
     const signupRate = gaNewUsers > 0
@@ -795,11 +805,13 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
       paidContentUsage,
       totalContentUsage,
       contentUsageRate,
-      tagUserRate,
       revenue,
       tagSaved,
       tagConfirmed,
       uniqueTagUsers,
+      tagSaveRate,
+      tagConfirmRate,
+      avgTagsPerUser,
       uniqueContentUsers,
       // GA 관련 지표
       gaActiveUsers,
