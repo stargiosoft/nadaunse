@@ -48,7 +48,7 @@ function Container({ quote }: { quote: string }) {
 
 function Container1({ quote }: { quote: string }) {
   return (
-    <div className="relative shrink-0 w-full" style={{ borderRadius: '12px', background: 'linear-gradient(180deg, #F8FEE9 34.21%, #EAF2D5 100%)' }}>
+    <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', background: 'rgba(255, 255, 255, 0.94)' }}>
       <div className="flex flex-col items-start relative w-full" style={{ padding: '16px 20px' }}>
         <Container quote={quote} />
       </div>
@@ -491,7 +491,7 @@ function NadaumTagsListInternal({ tagType, tags, isLoading, onDeleteTag, onResto
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full">
       <div className="relative shrink-0 w-full">
-        <div className="flex flex-col items-start relative w-full" style={{ padding: '14px 0' }}>
+        <div className="flex flex-col items-start relative w-full" style={{ padding: '12px 0' }}>
           <TagContainer
             isExpanded={isExpanded}
             tagType={tagType}
@@ -728,8 +728,9 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
                 window.dispatchEvent(new CustomEvent('tagsModified'));
                 onBack();
               }}
+              onTouchStart={() => {}}
               className="group flex items-center justify-center relative shrink-0 hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]"
-              style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px' }}
+              style={{ padding: '4px', borderRadius: '12px', width: '44px', height: '44px', WebkitTapHighlightColor: 'transparent' }}
             >
               <div className="relative shrink-0 transition-transform duration-200 group-active:scale-90" style={{ width: '24px', height: '24px' }}>
                  <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
@@ -753,7 +754,9 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
             {/* Right Action (Home) */}
             <button
               onClick={onHome}
-              className="group flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]">
+              onTouchStart={() => {}}
+              className="group flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] hover:bg-gray-100 transition-colors duration-200 active:bg-[#F8F8F8]"
+              style={{ WebkitTapHighlightColor: 'transparent' }}>
               <div className="relative shrink-0 transition-transform duration-200 group-active:scale-90" style={{ width: '24px', height: '24px' }}>
                  <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                   <path d={svgPaths.p3d07f180} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
