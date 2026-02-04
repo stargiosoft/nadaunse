@@ -848,7 +848,7 @@ export default function ProfilePage({
           {/* Min-height wrapper - 스크롤 영역 전체를 채우면서 Footer가 항상 맨 아래에 위치 */}
           <div className="min-h-full flex flex-col">
           {/* Spacer */}
-          <div className="h-[16px] shrink-0 w-full" />
+          <div className="h-[10px] shrink-0 w-full" />
 
           {/* Main Content */}
           <div className="flex flex-col px-[20px] pb-0 font-['Pretendard_Variable',sans-serif]">
