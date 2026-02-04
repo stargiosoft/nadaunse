@@ -1011,7 +1011,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
         {/* ========== 비교 탭 ========== */}
         {selectedTab === '비교' && (
-          <div style={{ paddingTop: '4px' }}>
+          <div style={{ paddingTop: '16px' }}>
             {/* 비교 기간 필터 */}
             <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
               <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
