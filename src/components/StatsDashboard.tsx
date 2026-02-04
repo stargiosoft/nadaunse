@@ -1302,37 +1302,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   })}
                 </section>
 
-                {/* 콘텐츠 이용 통계 비교 */}
-                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
-                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>📱 콘텐츠 이용 통계</h3>
-                  {[
-                    { label: '콘텐츠 이용율', current: currentPeriodStats.contentUsageRate, previous: previousPeriodStats.contentUsageRate, unit: '%' },
-                    { label: '무료 콘텐츠', current: currentPeriodStats.freeContentUsage, previous: previousPeriodStats.freeContentUsage, unit: '회' },
-                    { label: '유료 콘텐츠', current: currentPeriodStats.paidContentUsage, previous: previousPeriodStats.paidContentUsage, unit: '회' },
-                  ].map((item, idx) => {
-                    const change = calcChangePercent(item.current, item.previous);
-                    return (
-                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 2 ? '12px' : 0 }}>
-                        <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
-                            {item.current.toLocaleString()}{item.unit}
-                          </p>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
-                            {change.isPositive ? '▲' : '▼'} {change.value}%
-                          </p>
-                        </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
-                            {item.previous.toLocaleString()}{item.unit}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </section>
-
                 {/* 태그 통계 비교 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>🏷️ 태그 통계</h3>
