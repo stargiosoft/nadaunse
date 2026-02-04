@@ -269,7 +269,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         dateRangeFilter = getTrendDateRange(preset);
       }
 
-      const data = await fetchDailyTrendStats(dateRangeFilter);
+      const data = await fetchDailyTrendStats(dateRangeFilter, preset);
       setTrendData(data);
     } catch (err) {
       console.error('추세 데이터 로드 오류:', err);

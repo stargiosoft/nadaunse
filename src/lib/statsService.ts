@@ -520,6 +520,27 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
 // 추세 프리셋 타입
 export type TrendRangePreset = '7days' | '30days' | '90days' | '1year' | 'custom';
 
+// 집계 단위 타입
+export type TrendGranularity = 'daily' | 'weekly' | 'monthly';
+
+/**
+ * 프리셋에 따른 집계 단위 결정
+ */
+export function getGranularityFromPreset(preset: TrendRangePreset): TrendGranularity {
+  switch (preset) {
+    case '7days':
+    case '30days':
+    case 'custom':
+      return 'daily';
+    case '90days':
+      return 'weekly';
+    case '1year':
+      return 'monthly';
+    default:
+      return 'daily';
+  }
+}
+
 // 일별 GA 데이터 타입
 export interface DailyGAData {
   date: string;  // 'YYYYMMDD' 형식
@@ -601,8 +622,10 @@ export function getTrendDateRange(preset: TrendRangePreset): DateRangeFilter {
 
 /**
  * 일별 추세 데이터 조회 (Supabase + GA 데이터 병합)
+ * @param dateRange 날짜 범위
+ * @param preset 프리셋 (90일: 주별, 1년: 월별 집계)
  */
-export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<DailyTrendData[]> {
+export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: TrendRangePreset): Promise<DailyTrendData[]> {
   const adminFilter = ADMIN_IDS.join(',');
 
   // 날짜 배열 생성
@@ -828,7 +851,139 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     };
   });
 
-  return dailyData;
+  // 프리셋에 따른 집계 적용
+  const granularity = preset ? getGranularityFromPreset(preset) : 'daily';
+
+  if (granularity === 'daily') {
+    return dailyData;
+  }
+
+  return aggregateTrendData(dailyData, granularity);
+}
+
+/**
+ * 주 번호 계산 (해당 월의 몇 번째 주인지)
+ */
+function getWeekOfMonth(date: Date): number {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const firstDayOfWeek = firstDay.getDay(); // 0(일) ~ 6(토)
+  const dayOfMonth = date.getDate();
+  return Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
+}
+
+/**
+ * 주의 시작일 계산 (월요일 기준)
+ */
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 월요일로 조정
+  return new Date(d.setDate(diff));
+}
+
+/**
+ * 일별 데이터를 주별/월별로 집계
+ */
+function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranularity): DailyTrendData[] {
+  if (granularity === 'daily' || dailyData.length === 0) return dailyData;
+
+  // 그룹화
+  const groups: Record<string, { label: string; data: DailyTrendData[] }> = {};
+
+  dailyData.forEach(day => {
+    const date = new Date(day.fullDate);
+    let groupKey: string;
+    let groupLabel: string;
+
+    if (granularity === 'weekly') {
+      // 주 단위 그룹핑 (월요일 기준)
+      const weekStart = getWeekStart(date);
+      groupKey = weekStart.toISOString().split('T')[0];
+      const month = date.getMonth() + 1;
+      const weekOfMonth = getWeekOfMonth(date);
+      groupLabel = `${month}월 ${weekOfMonth}주`;
+    } else {
+      // 월 단위 그룹핑
+      groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      groupLabel = `${date.getMonth() + 1}월`;
+    }
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = { label: groupLabel, data: [] };
+    }
+    groups[groupKey].data.push(day);
+  });
+
+  // 그룹별 집계
+  const sortedKeys = Object.keys(groups).sort();
+
+  return sortedKeys.map(key => {
+    const { label, data } = groups[key];
+
+    // 합계 계산
+    const newCustomers = data.reduce((sum, d) => sum + d.newCustomers, 0);
+    const returningCustomers = data.reduce((sum, d) => sum + d.returningCustomers, 0);
+    const totalCustomers = newCustomers + returningCustomers;
+    const freeContentUsage = data.reduce((sum, d) => sum + d.freeContentUsage, 0);
+    const paidContentUsage = data.reduce((sum, d) => sum + d.paidContentUsage, 0);
+    const totalContentUsage = freeContentUsage + paidContentUsage;
+    const revenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
+    const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
+    const uniqueTagUsers = data.reduce((sum, d) => sum + d.uniqueTagUsers, 0);
+    const uniqueContentUsers = data.reduce((sum, d) => sum + d.uniqueContentUsers, 0);
+    const gaActiveUsers = data.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+    const gaNewUsers = data.reduce((sum, d) => sum + d.gaNewUsers, 0);
+
+    // 평균 계산 (시간 관련)
+    const gaAverageEngagementTime = data.length > 0
+      ? Math.round(data.reduce((sum, d) => sum + d.gaAverageEngagementTime, 0) / data.length)
+      : 0;
+
+    // 비율 재계산 (합계 기반)
+    const contentUsageRate = totalCustomers > 0
+      ? Math.round(uniqueContentUsers / totalCustomers * 1000) / 10
+      : 0;
+    const tagSaveRate = totalCustomers > 0
+      ? Math.round(uniqueTagUsers / totalCustomers * 1000) / 10
+      : 0;
+    // 태그 확인율: 일별 값의 평균 사용 (콘텐츠 기준 유지)
+    const daysWithTags = data.filter(d => d.tagSaved > 0);
+    const tagConfirmRate = daysWithTags.length > 0
+      ? Math.round(daysWithTags.reduce((sum, d) => sum + d.tagConfirmRate, 0) / daysWithTags.length * 10) / 10
+      : 0;
+    const avgTagsPerUser = uniqueTagUsers > 0
+      ? Math.round(tagConfirmed / uniqueTagUsers * 10) / 10
+      : 0;
+    const signupRate = gaNewUsers > 0
+      ? Math.round(newCustomers / gaNewUsers * 1000) / 10
+      : 0;
+
+    return {
+      date: label,
+      dateLabel: label,
+      fullDate: data[0].fullDate, // 그룹의 첫 번째 날짜
+      newCustomers,
+      returningCustomers,
+      totalCustomers,
+      freeContentUsage,
+      paidContentUsage,
+      totalContentUsage,
+      contentUsageRate,
+      revenue,
+      tagSaved,
+      tagConfirmed,
+      uniqueTagUsers,
+      tagSaveRate,
+      tagConfirmRate,
+      avgTagsPerUser,
+      uniqueContentUsers,
+      gaActiveUsers,
+      gaNewUsers,
+      gaAverageEngagementTime,
+      signupRate,
+    };
+  });
 }
 
 /**
