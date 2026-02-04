@@ -1358,7 +1358,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 </section>
 
                 {/* 매출 통계 비교 */}
-                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
                   <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>💰 매출 통계</h3>
                   {(() => {
                     const change = calcChangePercent(currentPeriodStats.totalRevenue, previousPeriodStats.totalRevenue);
