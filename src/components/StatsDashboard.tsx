@@ -1269,11 +1269,15 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>📊 회원가입 고객 통계</h3>
                   {[
+                    { label: '총 가입 고객', current: currentPeriodStats.totalCustomers, previous: previousPeriodStats.totalCustomers, unit: '명' },
                     { label: '신규 고객', current: currentPeriodStats.newCustomers, previous: previousPeriodStats.newCustomers, unit: '명' },
                     { label: '재방문 고객', current: currentPeriodStats.returningCustomers, previous: previousPeriodStats.returningCustomers, unit: '명' },
                     { label: '재방문율', current: currentPeriodStats.returnRate, previous: previousPeriodStats.returnRate, unit: '%' },
                     { label: '회원가입율', current: currentGaStats?.newUsers ? Math.round(currentPeriodStats.newCustomers / currentGaStats.newUsers * 1000) / 10 : 0, previous: previousGaStats?.newUsers ? Math.round(previousPeriodStats.newCustomers / previousGaStats.newUsers * 1000) / 10 : 0, unit: '%' },
                     { label: '총 방문횟수', current: currentPeriodStats.totalVisits, previous: previousPeriodStats.totalVisits, unit: '회' },
+                    { label: '콘텐츠 이용율', current: currentPeriodStats.contentUsageRate, previous: previousPeriodStats.contentUsageRate, unit: '%' },
+                    { label: '무료 이용', current: currentPeriodStats.freeContentUsage, previous: previousPeriodStats.freeContentUsage, unit: '건' },
+                    { label: '유료 이용', current: currentPeriodStats.paidContentUsage, previous: previousPeriodStats.paidContentUsage, unit: '건' },
                   ].map((item, idx, arr) => {
                     const change = calcChangePercent(item.current, item.previous);
                     return (
