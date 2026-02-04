@@ -31,11 +31,11 @@ export default function Footer({ onNavigateToTerms, onNavigateToPrivacy }: Foote
     <div className="bg-[#f9f9f9] relative w-full" data-name="Footer">
       <div className="size-full">
         <div className="content-stretch flex flex-col items-start pt-[32px] px-[20px] pb-[32px] mb-0 relative w-full">
-          <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+          <div className="content-stretch flex flex-col gap-[0px] items-start relative shrink-0 w-full">
             {/* Logo and company info */}
             <div className="relative shrink-0 w-full">
               <div className="size-full">
-                <div className="content-stretch flex flex-col gap-[12px] items-start px-[8px] py-0 relative w-full">
+                <div className="content-stretch flex flex-col gap-[12px] items-start py-0 pl-[8px] relative w-full">
                   <CommonLogo />
                   <div className="content-stretch flex flex-col font-['Pretendard_Variable:Regular',sans-serif] font-normal gap-[4px] items-start leading-[19px] relative shrink-0 text-[#6d6d6d] text-[13px] tracking-[-0.26px] w-full">
                     <p className="relative shrink-0 w-full">Copyright 2025@Stargiosoft All Rights Reserved.</p>
@@ -49,7 +49,7 @@ export default function Footer({ onNavigateToTerms, onNavigateToPrivacy }: Foote
             </div>
 
             {/* Terms and Privacy links */}
-            <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+            <div className="content-stretch flex gap-[0px] items-center relative shrink-0 -mt-[2px]">
               <button
                 onClick={onNavigateToTerms}
                 className="content-stretch flex flex-col h-[34px] items-center justify-center px-[8px] py-0 relative rounded-[12px] shrink-0 cursor-pointer transition-colors active:bg-[#E7E7E7]"
