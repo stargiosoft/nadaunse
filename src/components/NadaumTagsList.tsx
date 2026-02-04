@@ -214,7 +214,7 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
       <div
         className="flex items-center cursor-pointer relative transition-all duration-200"
         style={{
-          padding: '12px 16px',
+          padding: '10px 16px',
           borderRadius: '99px',
           width: 'max-content',
           touchAction: 'pan-y',
