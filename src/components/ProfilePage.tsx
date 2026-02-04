@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SEO from './SEO';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
@@ -252,6 +252,23 @@ export default function ProfilePage({
 
   const navigate = useNavigate(); // ⭐ useNavigate 사용
 
+  // ⭐ 스크롤 기반 탭 바 숨김/표시
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isTabBarVisible, setIsTabBarVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
+
+  // ⭐ 탭 슬라이딩 애니메이션 (0: 프로필, 1: 나의 분석 보고서)
+  // SessionStorage로 이전 탭 위치 체크하여 부드러운 복귀 애니메이션
+  const getInitialTabIndex = () => {
+    const fromReportList = sessionStorage.getItem('from_report_list');
+    if (fromReportList === 'true') {
+      sessionStorage.removeItem('from_report_list');
+      return 1; // 보고서에서 왔으면 1에서 시작
+    }
+    return 0;
+  };
+  const [activeTabIndex, setActiveTabIndex] = useState(getInitialTabIndex());
+
   // ⭐ 태그 표시 개수 계산 (1줄에 맞게 2개 또는 3개)
   // 태그 총 글자 수가 20자 초과하면 2개만 표시
   const visibleTagCount = (() => {
@@ -473,6 +490,68 @@ export default function ProfilePage({
   // ⭐ 나다움 태그 초기 로드: loadUser()에서 병렬 처리로 통합됨
   // (별도 useEffect 제거 - 중복 API 호출 방지)
 
+  // ⭐ 탭 애니메이션: 보고서 페이지에서 돌아올 때 1→0으로 슬라이드
+  useEffect(() => {
+    if (activeTabIndex === 1) {
+      // 1에서 시작했으면 (보고서에서 돌아옴) 짧은 지연 후 0으로 애니메이션
+      const timer = setTimeout(() => {
+        setActiveTabIndex(0);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // ⭐ 스크롤 방향 감지 및 탭 바 표시/숨김
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = scrollContainer.scrollTop;
+          const scrollDelta = currentScrollY - lastScrollYRef.current;
+
+          // 스크롤이 최상단에 있으면 항상 탭바 표시
+          if (currentScrollY <= 0) {
+            setIsTabBarVisible(true);
+            lastScrollYRef.current = currentScrollY;
+            ticking = false;
+            return;
+          }
+
+          // 스크롤이 최하단에 있으면 탭바 상태 변경 안 함 (흔들림 방지)
+          const scrollHeight = scrollContainer.scrollHeight;
+          const clientHeight = scrollContainer.clientHeight;
+          const isAtBottom = currentScrollY + clientHeight >= scrollHeight - 10; // 10px threshold
+
+          if (isAtBottom) {
+            lastScrollYRef.current = currentScrollY;
+            ticking = false;
+            return;
+          }
+
+          // 스크롤 방향에 따라 탭바 표시/숨김
+          // 아래로 스크롤 (scrollDelta > 0) → 숨김
+          // 위로 스크롤 (scrollDelta < 0) → 표시
+          if (Math.abs(scrollDelta) > 3) { // 3px 이상 스크롤 시에만 반응 (더 민감하게)
+            setIsTabBarVisible(scrollDelta < 0);
+            lastScrollYRef.current = currentScrollY;
+          }
+
+          ticking = false;
+        });
+
+        ticking = true;
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // 🔧 태그 리프레시: 페이지 가시성 변경 또는 포커스 시 refresh 플래그 체크
   useEffect(() => {
     const checkAndRefreshTags = async () => {
@@ -685,26 +764,47 @@ export default function ProfilePage({
 
         {/* ⭐ Tab Bar - 프로필 / 나의 분석 보고서 */}
         <div
-          className="bg-white shrink-0 w-full"
-          style={{ borderBottom: '1px solid #f8f8f8', padding: '8px 16px' }}
+          className="bg-white w-full overflow-hidden"
+          style={{
+            borderBottom: isTabBarVisible ? '1px solid #f8f8f8' : 'none',
+            padding: isTabBarVisible ? '8px 16px' : '0 16px',
+            maxHeight: isTabBarVisible ? '200px' : '0',
+            opacity: isTabBarVisible ? 1 : 0,
+            transition: 'max-height 0.25s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.25s cubic-bezier(0.4, 0.0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0.0, 0.2, 1)',
+            willChange: 'max-height, opacity',
+            zIndex: 10
+          }}
         >
-          <div className="flex items-center w-full">
+          <div className="flex items-center w-full relative">
+            {/* 슬라이딩 인디케이터 */}
+            <div
+              className="absolute bg-[#f8f8f8] rounded-[12px]"
+              style={{
+                width: '50%',
+                height: '36px',
+                top: '0',
+                left: '0',
+                transform: `translateX(${activeTabIndex * 100}%)`,
+                transition: 'transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1)'
+              }}
+            />
             {/* 프로필 탭 (선택됨) */}
             <div
-              className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
+              className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer relative z-10"
               style={{
-                backgroundColor: '#f8f8f8',
-                padding: '12px 16px'
+                padding: '8px 16px'
               }}
+              onClick={() => setActiveTabIndex(0)}
             >
               <p
                 style={{
                   fontFamily: 'Pretendard Variable',
-                  fontWeight: 600,
+                  fontWeight: activeTabIndex === 0 ? 600 : 500,
                   fontSize: '15px',
                   lineHeight: '20px',
                   letterSpacing: '-0.45px',
-                  color: '#151515'
+                  color: activeTabIndex === 0 ? '#151515' : '#999999',
+                  transition: 'color 0.2s ease, font-weight 0.2s ease'
                 }}
               >
                 프로필
@@ -712,18 +812,29 @@ export default function ProfilePage({
             </div>
             {/* 나의 분석 보고서 탭 (선택 안됨) - ⭐ replace: true로 히스토리 교체 (iOS 스와이프 뒤로가기 → 홈) */}
             <div
-              className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer"
-              style={{ padding: '12px 16px' }}
-              onClick={() => navigate('/my-report-list', { replace: true })}
+              className="flex-1 flex items-center justify-center rounded-[12px] cursor-pointer relative z-10"
+              style={{
+                padding: '8px 16px'
+              }}
+              onClick={() => {
+                setActiveTabIndex(1);
+                // 애니메이션 보여주고 페이지 이동
+                setTimeout(() => {
+                  // 보고서 페이지로 이동함을 표시 (돌아올 때 애니메이션용)
+                  sessionStorage.setItem('from_report_list', 'true');
+                  navigate('/my-report-list', { replace: true });
+                }, 200);
+              }}
             >
               <p
                 style={{
                   fontFamily: 'Pretendard Variable',
-                  fontWeight: 500,
+                  fontWeight: activeTabIndex === 1 ? 600 : 500,
                   fontSize: '15px',
                   lineHeight: '20px',
                   letterSpacing: '-0.45px',
-                  color: '#999999'
+                  color: activeTabIndex === 1 ? '#151515' : '#999999',
+                  transition: 'color 0.2s ease, font-weight 0.2s ease'
                 }}
               >
                 나의 분석 보고서
@@ -733,11 +844,11 @@ export default function ProfilePage({
         </div>
 
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지, overflow-x-hidden으로 좌우 스와이프 방지 */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
           {/* Min-height wrapper - 스크롤 영역 전체를 채우면서 Footer가 항상 맨 아래에 위치 */}
           <div className="min-h-full flex flex-col">
           {/* Spacer */}
-          <div className="h-[16px] shrink-0 w-full" />
+          <div className="h-[10px] shrink-0 w-full" />
 
           {/* Main Content */}
           <div className="flex flex-col px-[20px] pb-0 font-['Pretendard_Variable',sans-serif]">
@@ -760,9 +871,9 @@ export default function ProfilePage({
               {!showEmptyState && primarySaju ? (
                 // 사주 정보 있음
                 <>
-                  <motion.div 
+                  <motion.div
                     variants={itemVariants}
-                    className="content-stretch flex gap-[12px] items-center w-full pb-[12px]"
+                    className="content-stretch flex gap-[12px] items-center w-full pb-[8px]"
                   >
                     {/* Profile Image with Shimmer Skeleton (YouTube Style) */}
                     <div className="profile-group relative rounded-[12px] shrink-0 size-[72px] overflow-hidden bg-[#e5e5e5]">
@@ -795,20 +906,20 @@ export default function ProfilePage({
                       <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[12px] z-20 pointer-events-none" />
                     </div>
 
-                    <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px text-nowrap">
+                    <div className="basis-0 content-stretch flex flex-col gap-[0px] grow items-start min-h-px min-w-px text-nowrap">
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] h-[16px] leading-[16px] overflow-ellipsis overflow-hidden text-[#848484] text-[12px] tracking-[-0.24px] w-full">
                         {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
                       </p>
-                      <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[25px] min-w-full overflow-ellipsis overflow-hidden text-[16px] text-black tracking-[-0.32px] w-[min-content]">
+                      <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[25px] min-w-full overflow-ellipsis overflow-hidden text-[15px] text-black tracking-[-0.32px] w-[min-content]">
                         {primarySaju.full_name} ({primarySaju.notes})
                       </p>
                     </div>
                   </motion.div>
 
                   {/* 생년월일시 / 띠 / 별자리 / 성별 */}
-                  <motion.div 
+                  <motion.div
                     variants={itemVariants}
-                    className="bg-[#f9f9f9] relative rounded-[12px] w-full mb-[24px]"
+                    className="bg-[#f9f9f9] relative rounded-[12px] w-full mb-[10px]"
                   >
                     <div className="flex flex-col items-center justify-center size-full">
                       <div className="content-stretch flex flex-col items-center justify-center p-[12px] w-full">
@@ -897,25 +1008,25 @@ export default function ProfilePage({
                     /* 태그가 있을 때 - 태그 카드 표시 */
                     <motion.div
                       variants={itemVariants}
-                      style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '16px', paddingBottom: '16px' }}
+                      style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '4px', paddingBottom: '4px' }}
                     >
                       <div
-                        className="flex items-center justify-between px-[16px] py-[4px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                        className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                         onClick={() => {
                           navigate('/profile/nadaum-tags');
                         }}
                       >
-                        <div className="flex flex-col gap-[8px] flex-1">
+                        <div className="flex flex-col gap-[4px] flex-1">
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-[8px]">
-                              <div className="relative shrink-0 size-[20px]">
+                              <div className="relative shrink-0 size-[20px]" style={{ transform: 'translateY(-1px)' }}>
                                 <TagIcon />
                               </div>
                               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                                 나의 성향 태그
                               </p>
                             </div>
-                            <div className="relative shrink-0 size-[24px]">
+                            <div className="relative shrink-0 size-[16px]">
                               <MenuArrowRightIcon />
                             </div>
                           </div>
@@ -928,14 +1039,14 @@ export default function ProfilePage({
                                 className="flex items-center justify-center rounded-[999px] shrink-0"
                                 style={{ backgroundColor: '#f0f8f8', padding: '5px 7px' }}
                               >
-                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683', whiteSpace: 'nowrap' }}>
+                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', whiteSpace: 'nowrap' }}>
                                   # {tag.tag_name}
                                 </p>
                               </div>
                             ))}
                             {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
                             {totalTagCount > visibleTagCount && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.24px', color: '#368683', padding: '5px 0', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '5px 0', whiteSpace: 'nowrap' }}>
                                 +{totalTagCount - visibleTagCount}
                               </p>
                             )}
@@ -947,10 +1058,10 @@ export default function ProfilePage({
                     /* 태그가 없을 때 - 메뉴 아이템만 표시 */
                     <motion.div
                       variants={itemVariants}
-                      style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '16px', paddingBottom: '16px' }}
+                      style={{ width: 'calc(100% + 40px)', marginLeft: '-20px', paddingLeft: '20px', paddingRight: '20px', paddingTop: '4px', paddingBottom: '4px' }}
                     >
                       <div
-                        className="flex items-center justify-between px-[16px] py-[4px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
+                        className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
                         onClick={() => {
                           navigate('/profile/nadaum-tags');
                         }}
@@ -963,7 +1074,7 @@ export default function ProfilePage({
                             나의 성향 태그
                           </p>
                         </div>
-                        <div className="relative shrink-0 size-[24px]">
+                        <div className="relative shrink-0 size-[16px]">
                           <MenuArrowRightIcon />
                         </div>
                       </div>
@@ -1007,7 +1118,7 @@ export default function ProfilePage({
                           콘텐츠 만들기
                         </p>
                       </div>
-                      <div className="relative shrink-0 size-[24px]">
+                      <div className="relative shrink-0 size-[16px]">
                         <MenuArrowRightIcon />
                       </div>
                     </motion.div>
@@ -1026,7 +1137,7 @@ export default function ProfilePage({
                           통계 대시보드
                         </p>
                       </div>
-                      <div className="relative shrink-0 size-[24px]">
+                      <div className="relative shrink-0 size-[16px]">
                         <MenuArrowRightIcon />
                       </div>
                     </motion.div>
@@ -1039,195 +1150,12 @@ export default function ProfilePage({
                     onClick={onNavigateToPurchaseHistory}
                   >
                     <div className="flex items-center gap-[8px]">
-                      <div className="relative shrink-0 size-[20px]">
+                      <div className="relative shrink-0" style={{ width: '21.5px', height: '20.5px', paddingTop: '1px' }}>
                         <ReceiptIcon />
                       </div>
                       <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>이용 기록</p>
-                      {/* DEV: UI 테스팅용 직접 이동 버튼 */}
-                      {DEV && (
-                        <button
-                          onClick={(e) => {
-                            // ⭐️ 이벤트 전파를 완벽하게 차단하여 부모의 로그인 체크 우회
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            // ⭐️ 개발용: 더미 구매내역 데이터 생성
-                            const devPurchases = [
-                              // 2025-01-03 (오늘)
-                              {
-                                id: 'dev_order_1',
-                                content_id: 'dev_content_1',
-                                saju_record_id: 'dev_saju_1',
-                                paid_amount: 5900,
-                                created_at: '2025-01-03T15:20:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '2025년 신년 프리미엄 운세',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '홍길동',
-                                  birth_date: '1990-05-15'
-                                }
-                              },
-                              {
-                                id: 'dev_order_2',
-                                content_id: 'dev_content_2',
-                                saju_record_id: 'dev_saju_2',
-                                paid_amount: 3900,
-                                created_at: '2025-01-03T10:30:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '나의 사랑 타로 운세',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '김영희',
-                                  birth_date: '1992-03-22'
-                                }
-                              },
-                              // 2025-01-02 (어제)
-                              {
-                                id: 'dev_order_3',
-                                content_id: 'dev_content_3',
-                                saju_record_id: 'dev_saju_3',
-                                paid_amount: 4900,
-                                created_at: '2025-01-02T14:30:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '1월 월간 운세 풀이',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '이철수',
-                                  birth_date: '1985-08-20'
-                                }
-                              },
-                              {
-                                id: 'dev_order_4',
-                                content_id: 'dev_content_4',
-                                saju_record_id: null,
-                                paid_amount: 2900,
-                                created_at: '2025-01-02T09:15:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '오늘의 운세 풀이',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: null
-                              },
-                              // 2024-12-30
-                              {
-                                id: 'dev_order_5',
-                                content_id: 'dev_content_5',
-                                saju_record_id: 'dev_saju_4',
-                                paid_amount: 4500,
-                                created_at: '2024-12-30T18:45:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '금전 운세 타로 카드',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '박지민',
-                                  birth_date: '1995-11-30'
-                                }
-                              },
-                              {
-                                id: 'dev_order_6',
-                                content_id: 'dev_content_6',
-                                saju_record_id: 'dev_saju_5',
-                                paid_amount: 3900,
-                                created_at: '2024-12-30T11:20:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '건강 운세 풀이',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '최민수',
-                                  birth_date: '1988-07-12'
-                                }
-                              },
-                              // 2024-12-25
-                              {
-                                id: 'dev_order_7',
-                                content_id: 'dev_content_7',
-                                saju_record_id: null,
-                                paid_amount: 2500,
-                                created_at: '2024-12-25T16:00:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '주간 운세',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: null
-                              },
-                              // 2024-12-20
-                              {
-                                id: 'dev_order_8',
-                                content_id: 'dev_content_8',
-                                saju_record_id: 'dev_saju_6',
-                                paid_amount: 6900,
-                                created_at: '2024-12-20T13:30:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '2025년 연간 프리미엄 사주 풀이',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '정수연',
-                                  birth_date: '1993-02-14'
-                                }
-                              },
-                              // 2024-12-15
-                              {
-                                id: 'dev_order_9',
-                                content_id: 'dev_content_9',
-                                saju_record_id: 'dev_saju_7',
-                                paid_amount: 3500,
-                                created_at: '2024-12-15T10:45:00',
-                                pstatus: 'completed',
-                                master_contents: {
-                                  title: '12월 타로 운세',
-                                  thumbnail_url: null,
-                                  content_type: 'paid'
-                                },
-                                saju_records: {
-                                  full_name: '강민지',
-                                  birth_date: '1997-09-05'
-                                }
-                              }
-                            ];
-
-                            // ⭐️ UI TEST 모드 플래그 설정 (구매내역 페이지에서만 사용)
-                            localStorage.setItem('ui_test_mode', 'true');
-
-                            // localStorage에 더미 데이터 저장
-                            localStorage.setItem('dev_purchase_records', JSON.stringify(devPurchases));
-
-                            console.log('⚡ [DEV] UI TEST 모드 활성화 → 더미 구매내역 페이지로 이동');
-
-                            // localStorage 저장이 확실히 반영된 후 이동
-                            setTimeout(() => {
-                              onNavigateToPurchaseHistory?.();
-                            }, 10);
-                          }}
-                          className="px-[6px] py-[2px] rounded-[4px] bg-red-100 border border-red-200 text-red-600 text-[10px] font-bold hover:bg-red-200 transition-colors cursor-pointer relative z-10"
-                        >
-                          UI TEST
-                        </button>
-                      )}
                     </div>
-                    <div className="relative shrink-0 size-[24px]">
+                    <div className="relative shrink-0 size-[16px]">
                       <MenuArrowRightIcon />
                     </div>
                   </motion.div>
@@ -1235,7 +1163,7 @@ export default function ProfilePage({
                   <motion.div
                     variants={itemVariants}
                     className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', marginTop: '-6px' }}
                     onClick={handleSajuMenuClick}
                   >
                     <div className="flex items-center gap-[8px]">
@@ -1243,38 +1171,8 @@ export default function ProfilePage({
                         <FolderIcon />
                       </div>
                       <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>사주 정보 관리</p>
-                      {/* DEV: UI 테스팅용 직접 이동 버튼 */}
-                      {DEV && (
-                        <button
-                          onClick={(e) => {
-                            // ⭐️ 이벤트 전파를 완벽하게 차단하여 부모의 로그인 체크 로직(handleSajuMenuClick)이 실행되지 않도록 함
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            // ⭐️ 개발용: 로그인된 유저 상태 강제 주입 (localStorage)
-                            const devUser = {
-                              id: 'dev_user_1',
-                              email: 'dev@test.com',
-                              nickname: '개발자',
-                              role: 'user',
-                              provider: 'dev'
-                            };
-                            localStorage.setItem('user', JSON.stringify(devUser));
-
-                            console.log('⚡ [DEV] 개발 유저 모드 활성화 -> 사주 관리 페이지 즉시 진입');
-
-                            // localStorage 저장이 확실히 반영된 후 이동
-                            setTimeout(() => {
-                              onNavigateToSajuManagement?.();
-                            }, 10);
-                          }}
-                          className="px-[6px] py-[2px] rounded-[4px] bg-red-100 border border-red-200 text-red-600 text-[10px] font-bold hover:bg-red-200 transition-colors cursor-pointer relative z-10"
-                        >
-                          UI TEST
-                        </button>
-                      )}
                     </div>
-                    <div className="relative shrink-0 size-[24px]">
+                    <div className="relative shrink-0 size-[16px]">
                       <MenuArrowRightIcon />
                     </div>
                   </motion.div>
@@ -1283,7 +1181,7 @@ export default function ProfilePage({
                     variants={itemVariants}
                     onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
                     className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', marginTop: '-6px' }}
                   >
                     <div className="flex items-center gap-[8px]">
                       <div className="relative shrink-0 size-[20px]">
@@ -1291,7 +1189,7 @@ export default function ProfilePage({
                       </div>
                       <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>의견 전달하기</p>
                     </div>
-                    <div className="relative shrink-0 size-[24px]">
+                    <div className="relative shrink-0 size-[16px]">
                       <MenuArrowRightIcon />
                     </div>
                   </motion.div>
@@ -1300,7 +1198,7 @@ export default function ProfilePage({
                     variants={itemVariants}
                     onClick={handleLogoutClick}
                     className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover:bg-[#f9f9f9] active:bg-[#f9f9f9] transition-colors"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', marginTop: '-6px' }}
                   >
                     <div className="flex items-center gap-[8px]">
                       <div className="relative shrink-0 size-[20px]">
@@ -1308,7 +1206,7 @@ export default function ProfilePage({
                       </div>
                       <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>로그아웃</p>
                     </div>
-                    <div className="relative shrink-0 size-[24px]">
+                    <div className="relative shrink-0 size-[16px]">
                       <MenuArrowRightIcon />
                     </div>
                   </motion.div>
@@ -1322,7 +1220,7 @@ export default function ProfilePage({
           {/* Footer Spacer - 최소 130px, 남은 공간 채움 */}
           <div className="grow" style={{ minHeight: 130 }} />
           {/* Footer */}
-          <div className="shrink-0 -mx-[20px]">
+          <div className="shrink-0">
             <Footer
               onNavigateToTerms={onNavigateToTermsOfService}
               onNavigateToPrivacy={onNavigateToPrivacyPolicy}
