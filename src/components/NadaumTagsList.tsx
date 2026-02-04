@@ -733,8 +733,8 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
                 onBack();
               }}
               onTouchStart={() => setBackButtonPressed(true)}
-              onTouchEnd={() => setBackButtonPressed(false)}
-              onTouchCancel={() => setBackButtonPressed(false)}
+              onTouchEnd={() => setTimeout(() => setBackButtonPressed(false), 100)}
+              onTouchCancel={() => setTimeout(() => setBackButtonPressed(false), 100)}
               onMouseDown={() => setBackButtonPressed(true)}
               onMouseUp={() => setBackButtonPressed(false)}
               onMouseLeave={() => setBackButtonPressed(false)}
@@ -771,8 +771,8 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
             <button
               onClick={onHome}
               onTouchStart={() => setHomeButtonPressed(true)}
-              onTouchEnd={() => setHomeButtonPressed(false)}
-              onTouchCancel={() => setHomeButtonPressed(false)}
+              onTouchEnd={() => setTimeout(() => setHomeButtonPressed(false), 100)}
+              onTouchCancel={() => setTimeout(() => setHomeButtonPressed(false), 100)}
               onMouseDown={() => setHomeButtonPressed(true)}
               onMouseUp={() => setHomeButtonPressed(false)}
               onMouseLeave={() => setHomeButtonPressed(false)}
