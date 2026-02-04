@@ -1040,7 +1040,7 @@ export default function ProfilePage({
                               <div
                                 key={tag.id}
                                 className="flex items-center justify-center rounded-[999px] shrink-0"
-                                style={{ backgroundColor: '#f0f8f8', padding: '4px 7px' }}
+                                style={{ backgroundColor: '#f0f8f8', padding: '3px 7px' }}
                               >
                                 <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', whiteSpace: 'nowrap' }}>
                                   # {tag.tag_name}
@@ -1049,7 +1049,7 @@ export default function ProfilePage({
                             ))}
                             {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
                             {totalTagCount > visibleTagCount && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '5px 0 4px 0', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '4px 0 3px 0', whiteSpace: 'nowrap' }}>
                                 +{totalTagCount - visibleTagCount}
                               </p>
                             )}
@@ -1117,7 +1117,7 @@ export default function ProfilePage({
                     >
                       <div className="flex items-center gap-[8px]">
                         <div className="relative shrink-0 size-[20px]">
-                          <PenSquare size={20} className="text-black" />
+                          <PenSquare size={18} className="text-black" />
                         </div>
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           콘텐츠 만들기
@@ -1138,7 +1138,7 @@ export default function ProfilePage({
                     >
                       <div className="flex items-center gap-[8px]">
                         <div className="relative shrink-0 size-[20px]">
-                          <BarChart3 size={20} className="text-black" />
+                          <BarChart3 size={18} className="text-black" />
                         </div>
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           통계 대시보드
