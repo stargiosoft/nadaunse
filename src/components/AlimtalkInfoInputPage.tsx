@@ -380,7 +380,7 @@ export default function AlimtalkInfoInputPage({
                   pattern="[0-9-]*"
                   value={phoneNumber}
                   onChange={(e) => handlePhoneNumberChange(e.target.value)}
-                  placeholder="010-1234-5678"
+                  placeholder="'-'하이픈 없이 숫자만 입력해 주세요"
                   className="w-full outline-none bg-transparent"
                   style={{
                     fontFamily: 'Pretendard Variable, sans-serif',
