@@ -459,6 +459,10 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       : 0;
   } else {
     // 기간 필터: 해당 기간 내 확정 태그를 생성한 유니크 사용자
+    // 🔍 디버깅 로그: 개요 쿼리 범위
+    console.log('=== 개요 디버깅 ===');
+    console.log('쿼리 범위:', dateRange.startDate, '~', dateRange.endDate);
+
     const { data: tagUsersData, error: tagUserError } = await supabase
       .from('user_trait_tags')
       .select('user_id')
@@ -472,7 +476,10 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       console.error('태그 유저 조회 오류:', tagUserError);
     }
 
+    // 🔍 디버깅 로그: 개요 결과
+    console.log('태그 저장 고객 (개요):', tagUsersData?.length, '행');
     tagUserCount = new Set(tagUsersData?.map(r => r.user_id) || []).size;
+    console.log('유니크 유저 수 (개요):', tagUserCount);
     // 저장율: 총 가입 고객 대비
     tagUserRate = totalCustomers > 0
       ? Math.round(tagUserCount / totalCustomers * 1000) / 10
@@ -604,6 +611,13 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     dateArray.push(new Date(d));
   }
 
+  // 🔍 디버깅 로그 1: 쿼리 범위 및 dateArray
+  console.log('=== 추세 디버깅 ===');
+  console.log('쿼리 범위 (원본):', dateRange.startDate, '~', dateRange.endDate);
+  console.log('쿼리 범위 (로컬):', startDate.toString(), '~', endDate.toString());
+  console.log('dateArray 길이:', dateArray.length);
+  console.log('dateArray:', dateArray.map(d => ({ iso: d.toISOString(), local: d.toString() })));
+
   // Supabase 데이터와 GA 데이터를 병렬로 조회
   const [
     newCustomersResult,
@@ -666,6 +680,11 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
   const tagData = tagDataResult.data;
   const gaData = gaDataResult;
 
+  // 🔍 디버깅 로그 2: 쿼리 결과
+  console.log('태그 데이터 총 수:', tagData?.length);
+  console.log('확정 태그 수:', tagData?.filter(t => t.is_confirmed).length);
+  console.log('확정 태그 유니크 유저 (쿼리 전체):', new Set(tagData?.filter(t => t.is_confirmed).map(t => t.user_id)).size);
+
   // GA 데이터를 날짜별 Map으로 변환 (YYYYMMDD -> data)
   const gaDataMap = new Map<string, DailyGAData>();
   if (gaData) {
@@ -726,6 +745,22 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter): Promise<
     // 태그 저장 고객: 확정 태그(is_confirmed=true)를 저장한 유니크 사용자 (개요와 동일)
     const confirmedTagList = tagList.filter(t => t.is_confirmed);
     const uniqueTagUsers = new Set(confirmedTagList.map(d => d.user_id)).size;
+
+    // 🔍 디버깅 로그 3: 일별 필터링 결과
+    console.log(`[${dateKey}] 태그 필터링: 전체=${tagList.length}, 확정=${confirmedTagList.length}, 유니크유저=${uniqueTagUsers}`);
+    
+    // 🔍 디버깅 로그 4: dateKey 매칭 안 된 태그 샘플
+    if (dateArray.length === 1) {
+      const unmatchedTags = tagData?.filter(d => getDateKey(d.created_at) !== dateKey) || [];
+      if (unmatchedTags.length > 0) {
+        console.log(`[${dateKey}] 매칭 안 된 태그 수:`, unmatchedTags.length);
+        console.log('매칭 안 된 태그 샘플 (최대 5개):', unmatchedTags.slice(0, 5).map(t => ({
+          created_at: t.created_at,
+          dateKey: getDateKey(t.created_at),
+          is_confirmed: t.is_confirmed
+        })));
+      }
+    }
 
     // GA 데이터 가져오기
     const gaDateKey = toGADateFormat(dateKey);
