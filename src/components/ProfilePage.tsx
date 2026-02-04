@@ -1117,7 +1117,7 @@ export default function ProfilePage({
                     >
                       <div className="flex items-center gap-[8px]">
                         <div className="relative shrink-0 size-[20px]">
-                          <PenSquare size={18} className="text-black" />
+                          <PenSquare size={12} className="text-black" />
                         </div>
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           콘텐츠 만들기
@@ -1138,7 +1138,7 @@ export default function ProfilePage({
                     >
                       <div className="flex items-center gap-[8px]">
                         <div className="relative shrink-0 size-[20px]">
-                          <BarChart3 size={18} className="text-black" />
+                          <BarChart3 size={12} className="text-black" />
                         </div>
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           통계 대시보드
