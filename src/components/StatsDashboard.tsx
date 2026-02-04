@@ -1237,12 +1237,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       { label: '총 방문자수', current: currentGaStats.activeUsers || 0, previous: previousGaStats.activeUsers || 0, unit: '명' },
                       { label: '신규 방문자', current: currentGaStats.newUsers || 0, previous: previousGaStats.newUsers || 0, unit: '명' },
                       { label: '재방문자', current: (currentGaStats.activeUsers || 0) - (currentGaStats.newUsers || 0), previous: (previousGaStats.activeUsers || 0) - (previousGaStats.newUsers || 0), unit: '명' },
+                      { label: '재방문율', current: currentGaStats.activeUsers ? Math.round(((currentGaStats.activeUsers - currentGaStats.newUsers) / currentGaStats.activeUsers) * 1000) / 10 : 0, previous: previousGaStats.activeUsers ? Math.round(((previousGaStats.activeUsers - previousGaStats.newUsers) / previousGaStats.activeUsers) * 1000) / 10 : 0, unit: '%' },
                       { label: '평균 참여시간', current: currentGaStats.averageEngagementTime || 0, previous: previousGaStats.averageEngagementTime || 0, unit: '초', formatFn: (v: number) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}` },
-                    ].map((item, idx) => {
+                    ].map((item, idx, arr) => {
                       const change = calcChangePercent(item.current, item.previous);
                       const displayValue = item.formatFn || ((v: number) => v.toLocaleString() + item.unit);
                       return (
-                        <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 3 ? '12px' : 0 }}>
+                        <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < arr.length - 1 ? '12px' : 0 }}>
                           <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
                             <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
                             <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
@@ -1270,12 +1271,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   {[
                     { label: '신규 고객', current: currentPeriodStats.newCustomers, previous: previousPeriodStats.newCustomers, unit: '명' },
                     { label: '재방문 고객', current: currentPeriodStats.returningCustomers, previous: previousPeriodStats.returningCustomers, unit: '명' },
+                    { label: '재방문율', current: currentPeriodStats.returnRate, previous: previousPeriodStats.returnRate, unit: '%' },
                     { label: '회원가입율', current: currentGaStats?.newUsers ? Math.round(currentPeriodStats.newCustomers / currentGaStats.newUsers * 1000) / 10 : 0, previous: previousGaStats?.newUsers ? Math.round(previousPeriodStats.newCustomers / previousGaStats.newUsers * 1000) / 10 : 0, unit: '%' },
                     { label: '총 방문횟수', current: currentPeriodStats.totalVisits, previous: previousPeriodStats.totalVisits, unit: '회' },
-                  ].map((item, idx) => {
+                  ].map((item, idx, arr) => {
                     const change = calcChangePercent(item.current, item.previous);
                     return (
-                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 3 ? '12px' : 0 }}>
+                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < arr.length - 1 ? '12px' : 0 }}>
                         <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
                           <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
