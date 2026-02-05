@@ -322,7 +322,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
 
 function RecommendationCardList() {
   return (
-    <div className="flex flex-col w-full" style={{ padding: '36px 0 40px 0', gap: '12px' }}>
+    <div className="flex flex-col w-full" style={{ padding: '20px 0 40px 0', gap: '12px' }}>
       <div className="flex items-center w-full" style={{ padding: '0 20px' }}>
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '17px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#000000' }}>
           태그 쌓기 좋은 운세
