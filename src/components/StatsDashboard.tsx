@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock } from 'lucide-react';
+import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock, Copy } from 'lucide-react';
 import svgPathsBack from "../imports/svg-ct14exwyb3";
 import svgPathsHome from "../imports/svg-sg7rn8f2dm";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid } from 'recharts';
@@ -423,6 +423,165 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     setShowCompareDatePicker(true);
   };
 
+  // 클립보드 복사 함수 - 개요
+  const copyOverviewData = async () => {
+    if (!stats || !gaStats) return;
+
+    const data = {
+      tab: '개요',
+      period: selectedPreset === 'custom' ? getDateLabel() : DATE_PRESETS.find(p => p.value === selectedPreset)?.label,
+      timestamp: new Date().toISOString(),
+      ga: {
+        activeUsers: gaStats.activeUsers,
+        newUsers: gaStats.newUsers,
+        returningUsers: gaStats.activeUsers && gaStats.newUsers ? gaStats.activeUsers - gaStats.newUsers : 0,
+        returnRate: gaStats.activeUsers && gaStats.newUsers && gaStats.activeUsers > 0
+          ? Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10 : 0,
+        avgEngagementTime: gaStats.averageEngagementTime,
+        freeResultPageViews: gaStats.freeResultPageViews,
+        freeResultPageViewsPerUser: gaStats.freeResultPageViewsPerUser,
+        freeResultActiveUsers: gaStats.freeResultPageViews && gaStats.freeResultPageViewsPerUser && gaStats.freeResultPageViewsPerUser > 0
+          ? Math.round(gaStats.freeResultPageViews / gaStats.freeResultPageViewsPerUser) : 0,
+      },
+      customers: {
+        total: stats.totalCustomers,
+        new: stats.newCustomers,
+        returning: stats.returningCustomers,
+        returnRate: stats.returnRate,
+        signupRate: gaStats.newUsers && gaStats.newUsers > 0
+          ? Math.round(stats.newCustomers / gaStats.newUsers * 1000) / 10 : 0,
+        totalVisits: stats.totalVisits,
+        contentUsageRate: stats.contentUsageRate,
+        freeContentUsage: stats.freeContentUsage,
+        freeContentUserRate: stats.freeContentUserRate,
+        paidContentUsage: stats.paidContentUsage,
+        paidContentUserRate: stats.paidContentUserRate,
+      },
+      tags: {
+        tagUserCount: stats.tagUserCount,
+        tagUserRate: stats.tagUserRate,
+        confirmedTagCount: stats.confirmedTagCount,
+        overallTagConfirmRate: stats.overallTagConfirmRate,
+        avgTagsPerUser: stats.avgTagsPerUser,
+      },
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
+  // 클립보드 복사 함수 - 추세
+  const copyTrendData = async () => {
+    if (!trendData || trendData.length === 0) return;
+
+    const data = {
+      tab: '추세',
+      period: trendCustomDateRange.start ? getTrendDateLabel() : TREND_PRESETS.find(p => p.value === trendPreset)?.label,
+      timestamp: new Date().toISOString(),
+      dailyData: trendData.map(d => ({
+        date: d.fullDate,
+        ga: {
+          activeUsers: d.gaActiveUsers,
+          newUsers: d.gaNewUsers,
+          avgEngagementTime: d.gaAverageEngagementTime,
+        },
+        customers: {
+          total: d.totalCustomers,
+          new: d.newCustomers,
+          returning: d.returningCustomers,
+          signupRate: d.signupRate,
+        },
+        content: {
+          free: d.freeContentUsage,
+          paid: d.paidContentUsage,
+          total: d.totalContentUsage,
+          usageRate: d.contentUsageRate,
+        },
+        tags: {
+          saved: d.tagSaved,
+          confirmed: d.tagConfirmed,
+          uniqueUsers: d.uniqueTagUsers,
+          saveRate: d.tagSaveRate,
+          confirmRate: d.tagConfirmRate,
+          avgPerUser: d.avgTagsPerUser,
+        },
+        revenue: d.revenue,
+      })),
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
+  // 클립보드 복사 함수 - 비교
+  const copyCompareData = async () => {
+    if (!currentPeriodStats || !previousPeriodStats) return;
+
+    const ranges = getCompareDateRanges(comparePreset, compareCustomDateRange);
+
+    const data = {
+      tab: '비교',
+      timestamp: new Date().toISOString(),
+      currentPeriod: {
+        label: ranges.currentLabel,
+        ga: currentGaStats ? {
+          activeUsers: currentGaStats.activeUsers,
+          newUsers: currentGaStats.newUsers,
+          avgEngagementTime: currentGaStats.averageEngagementTime,
+        } : null,
+        customers: {
+          total: currentPeriodStats.totalCustomers,
+          new: currentPeriodStats.newCustomers,
+          returning: currentPeriodStats.returningCustomers,
+        },
+        content: {
+          free: currentPeriodStats.freeContentUsage,
+          paid: currentPeriodStats.paidContentUsage,
+        },
+        tags: {
+          userCount: currentPeriodStats.tagUserCount,
+          confirmedCount: currentPeriodStats.confirmedTagCount,
+        },
+      },
+      previousPeriod: {
+        label: ranges.previousLabel,
+        ga: previousGaStats ? {
+          activeUsers: previousGaStats.activeUsers,
+          newUsers: previousGaStats.newUsers,
+          avgEngagementTime: previousGaStats.averageEngagementTime,
+        } : null,
+        customers: {
+          total: previousPeriodStats.totalCustomers,
+          new: previousPeriodStats.newCustomers,
+          returning: previousPeriodStats.returningCustomers,
+        },
+        content: {
+          free: previousPeriodStats.freeContentUsage,
+          paid: previousPeriodStats.paidContentUsage,
+        },
+        tags: {
+          userCount: previousPeriodStats.tagUserCount,
+          confirmedCount: previousPeriodStats.confirmedTagCount,
+        },
+      },
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
   // 비교 커스텀 날짜 적용 핸들러 (A/B군 모두 선택 후)
   const handleApplyCompareCustomDate = () => {
     if (compareGroupA?.from && compareGroupB?.from) {
@@ -651,21 +810,35 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <Calendar size={16} color="#666" />
                   <span style={{ ...typography.label }}>조회 기간</span>
                 </div>
-                <button
-                  onClick={handleCalendarClick}
-                  className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
-                  style={{
-                    ...typography.small,
-                    color: '#3FB5B3',
-                    fontWeight: 500,
-                    padding: '6px 12px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e7e7e7',
-                  }}
-                >
-                  <Calendar size={14} />
-                  직접 선택
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCalendarClick}
+                    className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
+                    style={{
+                      ...typography.small,
+                      color: '#3FB5B3',
+                      fontWeight: 500,
+                      padding: '6px 12px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e7e7e7',
+                    }}
+                  >
+                    <Calendar size={14} />
+                    직접 선택
+                  </button>
+                  <button
+                    onClick={copyOverviewData}
+                    className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                    style={{
+                      padding: '6px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e7e7e7',
+                    }}
+                    title="데이터 복사"
+                  >
+                    <Copy size={14} color="#666" />
+                  </button>
+                </div>
               </div>
               <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
                 {DATE_PRESETS.map((preset) => (
@@ -713,21 +886,35 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <Calendar size={16} color="#666" />
                   <span style={{ ...typography.label }}>조회 기간</span>
                 </div>
-                <button
-                  onClick={handleTrendCalendarClick}
-                  className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
-                  style={{
-                    ...typography.small,
-                    color: '#3FB5B3',
-                    fontWeight: 500,
-                    padding: '6px 12px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e7e7e7',
-                  }}
-                >
-                  <Calendar size={14} />
-                  직접 선택
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleTrendCalendarClick}
+                    className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
+                    style={{
+                      ...typography.small,
+                      color: '#3FB5B3',
+                      fontWeight: 500,
+                      padding: '6px 12px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e7e7e7',
+                    }}
+                  >
+                    <Calendar size={14} />
+                    직접 선택
+                  </button>
+                  <button
+                    onClick={copyTrendData}
+                    className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                    style={{
+                      padding: '6px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e7e7e7',
+                    }}
+                    title="데이터 복사"
+                  >
+                    <Copy size={14} color="#666" />
+                  </button>
+                </div>
               </div>
               <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
                 {TREND_PRESETS.map((preset) => (
@@ -1169,9 +1356,23 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           <div style={{ paddingTop: '16px' }}>
             {/* 비교 기간 필터 */}
             <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
-                <Calendar size={16} color="#666" />
-                <span style={{ ...typography.label }}>비교 기간</span>
+              <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} color="#666" />
+                  <span style={{ ...typography.label }}>비교 기간</span>
+                </div>
+                <button
+                  onClick={copyCompareData}
+                  className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                  style={{
+                    padding: '6px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e7e7e7',
+                  }}
+                  title="데이터 복사"
+                >
+                  <Copy size={14} color="#666" />
+                </button>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {[
