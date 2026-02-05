@@ -183,11 +183,15 @@ export const clearUserCaches = () => {
     localStorage.removeItem(key);
   });
 
-  // 패턴 기반 캐시 삭제 (free_content_detail_*_cache)
+  // 패턴 기반 캐시 삭제
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('free_content_detail_')) {
+    if (key && (
+      key.startsWith('free_content_detail_') ||
+      key.startsWith('weekly_report_detail_') ||  // ⭐ 주간 보고서 상세 캐시
+      key.startsWith('paid_result_')  // ⭐ 유료 콘텐츠 결과 캐시 (계정 전환 시 필수!)
+    )) {
       keysToRemove.push(key);
     }
   }
