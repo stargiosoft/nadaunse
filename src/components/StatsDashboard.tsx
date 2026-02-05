@@ -1623,14 +1623,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           subValue="무료 운세 결과 페이지"
                         />
                       )}
-                      {gaStats.freeResultPageViewsPerUser !== undefined && (
+                      {gaStats.freeResultPageViewsPerUser !== undefined && gaStats.freeResultPageViews !== undefined && (
                         <StatCard
                           icon={Activity}
                           label="1인당 무료 운세 조회수"
                           value={gaStats.freeResultPageViewsPerUser}
                           unit="회"
                           color="#10B981"
-                          subValue={`활성사용자 ${gaStats.activeUsers?.toLocaleString() || 0}명`}
+                          subValue={`활성사용자 ${gaStats.freeResultPageViewsPerUser > 0 ? Math.round(gaStats.freeResultPageViews / gaStats.freeResultPageViewsPerUser).toLocaleString() : 0}명`}
                         />
                       )}
                     </>
