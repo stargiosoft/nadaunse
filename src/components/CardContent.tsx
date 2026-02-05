@@ -87,7 +87,7 @@ function MoreButton({ onClick, isLoading }: { onClick: () => void; isLoading?: b
     >
       <div
         className="flex items-center justify-center rounded-[12px] border border-[#e7e7e7] border-dashed"
-        style={{ width: '160px', height: '96px' }}
+        style={{ width: '160px', height: '160px' }}
       >
         <p
           style={{
@@ -102,7 +102,7 @@ function MoreButton({ onClick, isLoading }: { onClick: () => void; isLoading?: b
           {isLoading ? '로딩 중...' : '더 볼래요!'}
         </p>
       </div>
-      <div className="flex items-center justify-center shrink-0" style={{ marginLeft: '-8px' }}>
+      <div className="flex items-center justify-center shrink-0" style={{ marginLeft: '-16px' }}>
         <div className="flex-none rotate-[180deg] scale-y-[-100%]">
           <div className="relative" style={{ width: '44px', height: '44px' }}>
             <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 44">
