@@ -1,3 +1,4 @@
+import React from "react";
 import svgPaths from "./svg-pn85us30m9";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
@@ -50,17 +51,25 @@ function Container2() {
 }
 
 function ButtonSquareButton({ onClick }: { onClick?: () => void }) {
+  const [isPressed, setIsPressed] = React.useState(false);
+
   return (
     <motion.button
-      className="bg-[#48b2af] h-[48px] relative rounded-[12px] shrink-0 w-full active:bg-[#41A09E] cursor-pointer transition-colors block"
+      className="h-[48px] relative rounded-[12px] shrink-0 w-full cursor-pointer transition-colors block"
       data-name="Button / Square Button"
       whileTap={{ scale: 0.99 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
+        backgroundColor: isPressed ? '#41A09E' : '#48B2AF',
         WebkitTapHighlightColor: 'transparent',
         transformOrigin: 'center center',
         willChange: 'transform'
       }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onMouseLeave={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
       onClick={onClick}
     >
       <div className="flex flex-row items-center justify-center size-full">

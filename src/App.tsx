@@ -43,6 +43,7 @@ import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더�
 import { PageLoader, DotLoading } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import HomePage from './pages/HomePage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
+import AlimtalkInfoInputPageTest from './components/AlimtalkInfoInputPageTest'; // ⭐ 테스트용 알림톡 정보 입력 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
 import ReceiveMyAnalysis from './components/ReceiveMyAnalysis';
@@ -3069,6 +3070,7 @@ export default function App() {
           <Route path="/result/saju" element={<ResultSajuRedirect />} /> {/* ⭐ 알림톡 템플릿 호환성 (리다이렉트) */}
           <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
           <Route path="/test/tarot" element={<TestTarotPage />} /> {/* ⭐ 테스트용 타로 셔플 (로그인 불필요) */}
+          {DEV && <Route path="/test/alimtalk-info" element={<AlimtalkInfoInputPageTest />} />} {/* ⭐ 테스트용 알림톡 정보 입력 (dev/staging만) */}
           {/* ⭐ 테스트용 Figma 컴포넌트 라우트 */}
           <Route path="/test/check-record-me" element={<CheckRecordMe />} />
           <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />

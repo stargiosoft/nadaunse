@@ -1,6 +1,6 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-02-03
+> **최종 업데이트**: 2026-02-05
 > **총 컴포넌트 수**: 69개 (활성화) - 주간 보고서 8개 + 통계 대시보드 2개 포함
 > **UI 컴포넌트 (shadcn/ui)**: 48개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
@@ -582,8 +582,10 @@
   - 태그 삭제/복원 (Optimistic UI + Toast 2.2초)
   - 캐싱 시스템 (localStorage, 5분 만료)
   - 동기적 캐시 초기화 (로딩 플래시 방지)
+  - **DEV 전용**: 빈 상태 테스트 버튼 (강한 모습/섬세한 모습 각각)
 - **파일 경로**: `/components/NadaumTagsList.tsx`
 - **추가일**: 2026-01-29
+- **최근 업데이트**: 2026-02-05 - DEV 환경 빈 상태 테스트 버튼 추가 (페이지 하단, 미니 사이즈)
 - **관련 데이터**: `src/data/comfortQuotes.ts` (92개 위로 문구)
 
 ### comfortQuotes.ts (데이터)
@@ -975,6 +977,19 @@
 
 ## 🔄 업데이트 이력
 
+### 2026-02-05
+- **NadaumTagsList.tsx DEV 전용 테스트 기능 추가**
+  - 빈 상태 테스트 버튼 2개 추가 (강한 모습/섬세한 모습)
+  - DEV 환경에서만 표시 (`import.meta.env.DEV`)
+  - `devForceEmpty` state로 강제 빈 상태 토글
+  - 페이지 하단 배치 (fixed 아님), 미니 사이즈 (36px 높이)
+  - 버튼 색상: 활성 #ff6678, 비활성 #48b2af
+- **EmptyContent.tsx 버튼 상호작용 개선**
+  - "태그 쌓으러 가기" 버튼 press 상태 추가
+  - 기본 색상 #48B2AF, 클릭 시 #41A09E
+  - Framer Motion scale 애니메이션 (0.99)
+  - Tailwind arbitrary value → inline style 전환
+
 ### 2026-01-29
 - **CheckRecordMe.tsx props 확장**
   - `orderId`, `sourceType`, `onComplete` props 추가 (유료 콘텐츠 지원)
@@ -1148,7 +1163,7 @@
 
 ---
 
-**문서 버전**: 2.6.0
-**최종 업데이트**: 2026-01-19
+**문서 버전**: 2.7.0
+**최종 업데이트**: 2026-02-05
 **다음 업데이트**: 새 컴포넌트 추가 또는 주요 변경 시
 **문서 끝**

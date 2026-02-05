@@ -9,6 +9,7 @@ import EmptyContent from "@/imports/EmptyContent";
 import imgImage from "@/assets/13545c727434815b8ecda334fd9e453f4a0ea3ac.png";
 import { supabase } from '@/lib/supabase';
 import { COMFORT_QUOTES } from '@/data/comfortQuotes';
+import { DEV } from '@/lib/env'; // ⭐ 개발 환경 체크
 
 // 태그 타입 정의
 interface TraitTag {
@@ -518,6 +519,9 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
   const [backButtonPressed, setBackButtonPressed] = useState(false);
   const [homeButtonPressed, setHomeButtonPressed] = useState(false);
 
+  // 🧪 DEV 모드: 강제로 빈 상태로 만들기 위한 플래그
+  const [devForceEmpty, setDevForceEmpty] = useState<'strong' | 'delicate' | null>(null);
+
   // 🚀 동기적 캐시 확인 (초기화 시점) - 로딩 플래시 방지
   const getInitialState = () => {
     try {
@@ -614,7 +618,15 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
 
   // 태그 타입에 따른 필터링 (positive = 강한 모습, negative = 섬세한 모습)
   const currentTagType = activeTab === 'strong' ? 'positive' : 'negative';
-  const filteredTags = allTags.filter(tag => tag.tag_type === currentTagType);
+  let filteredTags = allTags.filter(tag => tag.tag_type === currentTagType);
+
+  // 🧪 DEV 모드: 강제로 빈 상태로 표시
+  if (DEV && devForceEmpty) {
+    if ((devForceEmpty === 'strong' && activeTab === 'strong') ||
+        (devForceEmpty === 'delicate' && activeTab === 'delicate')) {
+      filteredTags = [];
+    }
+  }
 
   // 🚀 캐시 업데이트 헬퍼 함수
   const updateCache = useCallback((newTags: TraitTag[]) => {
@@ -815,6 +827,75 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
           </div>
         </div>
       </div>
+
+      {/* 🧪 DEV 전용 - 빈 상태 테스트 버튼 */}
+      {DEV && (
+        <div
+          className="w-full bg-white"
+          style={{
+            padding: '12px 20px',
+            marginTop: '24px'
+          }}
+        >
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={() => {
+                setDevForceEmpty(devForceEmpty === 'strong' ? null : 'strong');
+                setActiveTab('strong');
+              }}
+              className="flex-1 flex items-center justify-center transition-colors"
+              style={{
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: devForceEmpty === 'strong' ? '#ff6678' : '#48b2af',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'Pretendard Variable, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  lineHeight: '18px',
+                  letterSpacing: '-0.26px',
+                  color: '#ffffff',
+                }}
+              >
+                {devForceEmpty === 'strong' ? '✓ ' : ''}강한 모습 빈 상태
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setDevForceEmpty(devForceEmpty === 'delicate' ? null : 'delicate');
+                setActiveTab('delicate');
+              }}
+              className="flex-1 flex items-center justify-center transition-colors"
+              style={{
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: devForceEmpty === 'delicate' ? '#ff6678' : '#48b2af',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'Pretendard Variable, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  lineHeight: '18px',
+                  letterSpacing: '-0.26px',
+                  color: '#ffffff',
+                }}
+              >
+                {devForceEmpty === 'delicate' ? '✓ ' : ''}섬세한 모습 빈 상태
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
