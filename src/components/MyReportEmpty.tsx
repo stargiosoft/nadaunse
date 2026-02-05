@@ -12,7 +12,7 @@ function InitialEmptySummary() {
   };
 
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '18px' }}>
+    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '22px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ padding: '48px 20px 0 20px', gap: '36px' }}>
         {/* Flower Icon & Text */}
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
