@@ -12,7 +12,7 @@ function InitialEmptySummary() {
   };
 
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '22px' }}>
+    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '0px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ padding: '48px 20px 0 20px', gap: '36px' }}>
         {/* Flower Icon & Text */}
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
@@ -69,7 +69,7 @@ function InitialEmptySummary() {
 
 function RecommendationCardList() {
   return (
-    <div className="flex flex-col w-full" style={{ padding: '20px 0 40px 0', gap: '12px' }}>
+    <div className="flex flex-col w-full" style={{ padding: '20px 0 40px 0', gap: '8px' }}>
       <div className="flex items-center w-full" style={{ padding: '0 20px' }}>
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '17px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#000000' }}>
           태그 쌓기 좋은 운세
@@ -87,7 +87,7 @@ export default function MyReportEmpty() {
   return (
     <>
       <InitialEmptySummary />
-      <div className="w-full" style={{ height: '12px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '12px', backgroundColor: '#f9f9f9', marginTop: '20px' }} />
       <RecommendationCardList />
       <div className="flex-1" />
     </>

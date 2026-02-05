@@ -54,7 +54,7 @@ function WeeklyTagSummary({ count }: { count: number }) {
   };
 
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '22px' }}>
+    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '0px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ paddingTop: '48px', padding: '48px 20px 0 20px', gap: '36px' }}>
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
           <div className="relative" style={{ width: '48px', height: '48px' }}>
@@ -102,7 +102,7 @@ function WeeklyTagSummary({ count }: { count: number }) {
           </span>
         </button>
       </div>
-      <div className="w-full" style={{ height: '12px', marginTop: '40px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '12px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -116,7 +116,7 @@ function WeeklyEmptySummary() {
   };
 
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '22px' }}>
+    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '0px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ paddingTop: '48px', padding: '48px 20px 0 20px', gap: '36px' }}>
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
           <div className="relative" style={{ width: '48px', height: '48px' }}>
@@ -164,7 +164,7 @@ function WeeklyEmptySummary() {
           </span>
         </button>
       </div>
-      <div className="w-full" style={{ height: '12px', marginTop: '40px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '12px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -322,7 +322,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
 
 function RecommendationCardList() {
   return (
-    <div className="flex flex-col w-full" style={{ padding: '20px 0 40px 0', gap: '12px' }}>
+    <div className="flex flex-col w-full" style={{ padding: '20px 0 40px 0', gap: '8px' }}>
       <div className="flex items-center w-full" style={{ padding: '0 20px' }}>
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '17px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#000000' }}>
           태그 쌓기 좋은 운세
