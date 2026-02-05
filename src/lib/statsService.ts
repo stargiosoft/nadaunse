@@ -1067,6 +1067,8 @@ export interface GAStats {
   activeUsers?: number;
   newUsers?: number;
   averageEngagementTime?: number;  // 활성 사용자당 평균 참여 시간 (초)
+  freeResultPageViews?: number;    // 무료 운세 결과 페이지 조회수
+  freeResultPageViewsPerUser?: number;  // 활성 사용자당 무료 운세 결과 조회수
   type: 'realtime' | 'period';
 }
 
@@ -1142,6 +1144,8 @@ export async function fetchGAStats(
       activeUsers: result.activeUsers,
       newUsers: result.newUsers,
       averageEngagementTime: result.averageEngagementTime,
+      freeResultPageViews: result.freeResultPageViews,
+      freeResultPageViewsPerUser: result.freeResultPageViewsPerUser,
     };
   } catch (error) {
     console.error('GA 통계 조회 예외:', error);
