@@ -244,6 +244,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         activeUsers: gaPeriodData?.activeUsers,
         newUsers: gaPeriodData?.newUsers,
         averageEngagementTime: gaPeriodData?.averageEngagementTime,
+        freeResultPageViews: gaPeriodData?.freeResultPageViews,
+        freeResultPageViewsPerUser: gaPeriodData?.freeResultPageViewsPerUser,
       } as GAStats);
     } catch (err) {
       console.error('통계 로드 오류:', err);
@@ -1609,6 +1611,26 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           value={`${Math.floor(gaStats.averageEngagementTime / 60)}:${String(gaStats.averageEngagementTime % 60).padStart(2, '0')}`}
                           color="#EC4899"
                           subValue="사용자당 평균"
+                        />
+                      )}
+                      {gaStats.freeResultPageViews !== undefined && (
+                        <StatCard
+                          icon={Eye}
+                          label="무료 운세 조회수"
+                          value={gaStats.freeResultPageViews}
+                          unit="회"
+                          color="#F59E0B"
+                          subValue="무료 운세 결과 페이지"
+                        />
+                      )}
+                      {gaStats.freeResultPageViewsPerUser !== undefined && (
+                        <StatCard
+                          icon={Activity}
+                          label="1인당 조회수"
+                          value={gaStats.freeResultPageViewsPerUser}
+                          unit="회"
+                          color="#10B981"
+                          subValue="활성 사용자당 조회수"
                         />
                       )}
                     </>

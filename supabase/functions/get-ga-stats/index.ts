@@ -191,6 +191,68 @@ async function getActiveUsers(
   return { activeUsers: 0, newUsers: 0, averageEngagementTime: 0 };
 }
 
+// GA Data API 호출 - 특정 페이지 조회수 (무료 운세 결과)
+async function getFreeResultPageViews(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ pageViews: number; pageViewsPerUser: number }> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'pageTitle' }],
+        metrics: [
+          { name: 'screenPageViews' },
+          { name: 'screenPageViewsPerUser' },
+        ],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'pageTitle',
+            stringFilter: {
+              matchType: 'CONTAINS',
+              value: '무료 운세 결과',
+            },
+          },
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA 페이지 조회수 API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.rows && data.rows.length > 0) {
+    // 여러 행이 있을 수 있으므로 합산
+    let totalPageViews = 0;
+    let totalPageViewsPerUser = 0;
+    let rowCount = 0;
+
+    for (const row of data.rows) {
+      totalPageViews += parseInt(row.metricValues[0].value, 10);
+      totalPageViewsPerUser += parseFloat(row.metricValues[1].value);
+      rowCount++;
+    }
+
+    // 1인당 조회수는 평균
+    const pageViewsPerUser = rowCount > 0 ? Math.round(totalPageViewsPerUser / rowCount * 100) / 100 : 0;
+    return { pageViews: totalPageViews, pageViewsPerUser };
+  }
+
+  return { pageViews: 0, pageViewsPerUser: 0 };
+}
+
 // GA Data API 호출 - 일별 데이터
 interface DailyGAData {
   date: string;  // YYYYMMDD 형식
@@ -298,13 +360,19 @@ serve(async (req: Request) => {
         data: dailyData,
       };
     } else {
-      const periodData = await getActiveUsers(accessToken, propertyId, startDate, endDate);
+      // 기간별 데이터와 페이지 조회수를 병렬로 조회
+      const [periodData, pageData] = await Promise.all([
+        getActiveUsers(accessToken, propertyId, startDate, endDate),
+        getFreeResultPageViews(accessToken, propertyId, startDate, endDate),
+      ]);
       result = {
         success: true,
         type: 'period',
         startDate,
         endDate,
         ...periodData,
+        freeResultPageViews: pageData.pageViews,
+        freeResultPageViewsPerUser: pageData.pageViewsPerUser,
       };
     }
 
