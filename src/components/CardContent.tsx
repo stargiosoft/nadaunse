@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'motion/react';
@@ -157,6 +157,40 @@ export default function CardContent() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
+  // 마우스 드래그 스크롤
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [hasDragged, setHasDragged] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setHasDragged(false);
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // 스크롤 속도 조절
+    if (Math.abs(walk) > 5) {
+      setHasDragged(true);
+    }
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
   useEffect(() => {
     const loadFreeContents = async () => {
       try {
@@ -188,6 +222,8 @@ export default function CardContent() {
   }, []);
 
   const handleContentClick = (contentId: string) => {
+    // 드래그 중이었으면 클릭 무시
+    if (hasDragged) return;
     navigate(`/free/content/${contentId}`);
   };
 
@@ -230,8 +266,13 @@ export default function CardContent() {
 
   return (
     <div
+      ref={scrollContainerRef}
       className="flex items-start w-full overflow-x-auto scrollbar-hide"
-      style={{ paddingBottom: '16px' }}
+      style={{ paddingBottom: '16px', cursor: isDragging ? 'grabbing' : 'grab' }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="flex gap-[12px] items-start" style={{ paddingLeft: '20px' }}>
         {isLoading ? (
