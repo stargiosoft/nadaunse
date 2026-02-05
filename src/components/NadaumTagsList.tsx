@@ -218,7 +218,7 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
           borderRadius: '99px',
           width: 'max-content',
           touchAction: 'pan-y',
-          backgroundColor: '#f9f9f9',
+          backgroundColor: isSelected ? '#ffffff' : '#f9f9f9',
           border: isSelected ? '1.5px solid #48b2af' : '1.5px solid transparent'
         }}
       >
