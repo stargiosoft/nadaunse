@@ -34,9 +34,29 @@ function InitialEmptySummary() {
 
         {/* CTA Button */}
         <button
-          className="w-full flex items-center justify-center active:scale-[0.98] transition-all"
+          className="w-full flex items-center justify-center transition-all"
           style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
           onClick={handleGoToTags}
+          onTouchStart={(e) => {
+            e.currentTarget.style.backgroundColor = '#41a09e';
+            e.currentTarget.style.transform = 'scale(0.99)';
+          }}
+          onTouchEnd={(e) => {
+            e.currentTarget.style.backgroundColor = '#48b2af';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.backgroundColor = '#41a09e';
+            e.currentTarget.style.transform = 'scale(0.99)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.backgroundColor = '#48b2af';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#48b2af';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
         >
           <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
             태그 쌓으러 가기
