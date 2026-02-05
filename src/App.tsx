@@ -264,6 +264,8 @@ function GAInit() {
         '/error/500': '서버 오류',
         '/error/503': '서비스 점검 중',
         '/error/network': '네트워크 오류',
+        // 주간 보고서 페이지
+        '/my-report-list': '보고서 리스트',
       };
 
       // 정적 라우트 확인
@@ -317,6 +319,29 @@ function GAInit() {
       }
       if (pathname.startsWith('/nadaum-record/')) {
         return `[무료] 나다움 기록하기 | ${BASE_TITLE}`;
+      }
+
+      // 주간 보고서 페이지 (동적 라우트)
+      if (pathname.startsWith('/report-weekly-detail/')) {
+        return `보고서 시작 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/report-weekly-tarot-result/')) {
+        return `보고서 타로 결과 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/report-weekly-tarot/')) {
+        return `보고서 타로 셔플 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/report-weekly-mind-care/')) {
+        return `보고서 마음처방 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/report-weekly-memo/')) {
+        return `보고서 나 응원하기 | ${BASE_TITLE}`;
+      }
+      if (pathname.startsWith('/report-completion/')) {
+        return `보고서 완료/쿠폰 | ${BASE_TITLE}`;
+      }
+      if (pathname.includes('/cheer-edit')) {
+        return `나 응원하기 수정 | ${BASE_TITLE}`;
       }
 
       // 기본값
