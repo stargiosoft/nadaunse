@@ -70,10 +70,11 @@ export default function UnifiedResultPage() {
           // ⚠️ 캐시 userId 검증: 현재 로그인한 사용자의 캐시인지 확인
           const currentUserJson = localStorage.getItem('user');
           const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
-          const isCorrectUser = cached.userId && cached.userId === currentUserId;
+          // ⭐ cached.userId가 없거나(이전 버전 캐시) 불일치하면 캐시 무효화
+          const isCorrectUser = cached.userId && currentUserId && cached.userId === currentUserId;
 
-          if (!isCorrectUser && cached.userId) {
-            console.log('⚠️ [UnifiedResultPage] 캐시 userId 불일치 → 캐시 무효화');
+          if (!isCorrectUser) {
+            console.log('⚠️ [UnifiedResultPage] 캐시 userId 불일치/미존재 → 캐시 무효화');
             localStorage.removeItem(cacheKey);
           } else if (!isExpired && allTarotViewed && cached.results.length > 0) {
             // ⭐ question_order 타입 정규화 (JSON.parse 후 number 보장)
@@ -254,12 +255,20 @@ export default function UnifiedResultPage() {
             const cached = JSON.parse(cachedJson);
             const isExpired = Date.now() - cached.timestamp > CACHE_EXPIRY_MS;
 
+            // ⚠️ 캐시 userId 검증 (이전 버전 캐시 또는 다른 사용자 캐시 무효화)
+            const currentUserJson = localStorage.getItem('user');
+            const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
+            const isCorrectUser = cached.userId && currentUserId && cached.userId === currentUserId;
+
             // ⭐ 캐시 유효성 검사: 만료되지 않고, 타로 질문이 모두 완료된 경우만 사용
             const allTarotViewed = cached.results.every(
               (r: ResultItem) => r.question_type !== 'tarot' || r.tarot_user_viewed === true
             );
 
-            if (!isExpired && allTarotViewed && cached.results.length > 0) {
+            if (!isCorrectUser) {
+              console.log('⚠️ [UnifiedResultPage] 캐시 userId 불일치/미존재 → 캐시 무효화');
+              localStorage.removeItem(cacheKey);
+            } else if (!isExpired && allTarotViewed && cached.results.length > 0) {
               console.log('💾 [UnifiedResultPage] 캐시에서 로드:', orderId);
               normalizedResults = cached.results;
               cachedContentId = cached.contentId;
