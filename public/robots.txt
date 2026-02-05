@@ -5,6 +5,8 @@ User-agent: *
 Allow: /
 
 # 인덱싱 제외 경로
+Disallow: /free
+Allow: /free/content/
 Disallow: /login
 Disallow: /terms
 Disallow: /signup
