@@ -1630,7 +1630,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           value={gaStats.freeResultPageViewsPerUser}
                           unit="회"
                           color="#10B981"
-                          subValue="활성 사용자당 조회수"
+                          subValue={`활성사용자 ${gaStats.activeUsers?.toLocaleString() || 0}명`}
                         />
                       )}
                     </>
