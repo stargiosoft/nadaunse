@@ -430,6 +430,17 @@ export default function ProfilePage({
           setUser(userData);
           setIsMaster(userData.role === 'master');
           localStorage.setItem('user', JSON.stringify(userData));
+        } else if (!userData) {
+          // ⭐ 회원가입 미완료 (약관 동의 안하고 스와이프 뒤로가기 등)
+          // → 세션만 있고 users 테이블에 데이터 없음 → 세션 삭제 + 로그인 페이지로 리다이렉트
+          console.log('⚠️ [ProfilePage] users 데이터 없음 (회원가입 미완료) → 세션 삭제');
+          localStorage.removeItem('user');
+          localStorage.removeItem('tempUser');
+          localStorage.removeItem('primary_saju');
+          localStorage.removeItem('saju_cache_checked');
+          await supabase.auth.signOut();
+          navigate('/login/new', { replace: true });
+          return;
         }
 
         // saju_records 처리
