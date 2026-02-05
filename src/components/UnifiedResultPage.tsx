@@ -66,7 +66,16 @@ export default function UnifiedResultPage() {
           const allTarotViewed = cached.results.every(
             (r: ResultItem) => r.question_type !== 'tarot' || r.tarot_user_viewed === true
           );
-          if (!isExpired && allTarotViewed && cached.results.length > 0) {
+
+          // ⚠️ 캐시 userId 검증: 현재 로그인한 사용자의 캐시인지 확인
+          const currentUserJson = localStorage.getItem('user');
+          const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
+          const isCorrectUser = cached.userId && cached.userId === currentUserId;
+
+          if (!isCorrectUser && cached.userId) {
+            console.log('⚠️ [UnifiedResultPage] 캐시 userId 불일치 → 캐시 무효화');
+            localStorage.removeItem(cacheKey);
+          } else if (!isExpired && allTarotViewed && cached.results.length > 0) {
             // ⭐ question_order 타입 정규화 (JSON.parse 후 number 보장)
             const normalizedResults = cached.results.map((r: ResultItem) => ({
               ...r,
@@ -329,6 +338,32 @@ export default function UnifiedResultPage() {
             return;
           }
 
+          // ⚠️ 주문 소유자 검증: 현재 로그인한 사용자의 주문인지 확인
+          const orderOwnerId = (resultsData[0] as unknown as { orders: { user_id: string } }).orders?.user_id;
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+          if (orderOwnerId && currentUser && orderOwnerId !== currentUser.id) {
+            console.error('❌ [UnifiedResultPage] 다른 계정의 주문 (결과 존재하지만 소유자 불일치)');
+            console.log('📦 주문 소유자:', orderOwnerId, ', 현재 사용자:', currentUser.id);
+            setIsWrongAccount(true);
+
+            // 소유자 정보 조회
+            try {
+              const { data: ownerData } = await supabase.functions.invoke('get-order-owner', {
+                body: { orderId }
+              });
+              if (ownerData?.success && ownerData?.exists && ownerData.owner) {
+                setOwnerInfo(ownerData.owner);
+                console.log('🔐 [UnifiedResultPage] 주문 소유자 정보:', ownerData.owner);
+              }
+            } catch (e) {
+              console.error('❌ [UnifiedResultPage] 소유자 정보 조회 실패:', e);
+            }
+
+            setLoading(false);
+            return;
+          }
+
           console.log('📊 [UnifiedResultPage] DB에서 결과 데이터 로드 완료:', {
             count: resultsData.length,
             questionOrders: resultsData.map(r => r.question_order),
@@ -352,13 +387,17 @@ export default function UnifiedResultPage() {
 
           if (allTarotViewed) {
             try {
+              // ⚠️ 캐시에 userId 포함 (계정 전환 시 캐시 무효화용)
+              const currentUserJson = localStorage.getItem('user');
+              const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
               const cacheData = {
+                userId: currentUserId,
                 results: normalizedResults,
                 contentId: effectiveContentId,
                 timestamp: Date.now()
               };
               localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-              console.log('💾 [UnifiedResultPage] 캐시 저장 완료:', orderId);
+              console.log('💾 [UnifiedResultPage] 캐시 저장 완료:', orderId, ', userId:', currentUserId);
             } catch (saveError) {
               console.warn('⚠️ [UnifiedResultPage] 캐시 저장 실패:', saveError);
             }
