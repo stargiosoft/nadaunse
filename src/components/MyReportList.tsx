@@ -1623,8 +1623,13 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
               </div>
             )}
 
-            {!isInitialEmptyState && <div style={{ height: '20px' }} />}
-            <Footer />
+            {/* Footer - 로딩 중에는 숨김 */}
+            {!isLoading && (
+              <>
+                {!isInitialEmptyState && <div style={{ height: '20px' }} />}
+                <Footer />
+              </>
+            )}
           </div>
         </div>
 
