@@ -1626,7 +1626,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       {gaStats.freeResultPageViewsPerUser !== undefined && (
                         <StatCard
                           icon={Activity}
-                          label="1인당 조회수"
+                          label="1인당 무료 운세 조회수"
                           value={gaStats.freeResultPageViewsPerUser}
                           unit="회"
                           color="#10B981"
