@@ -171,6 +171,12 @@ export const clearUserCaches = () => {
     'free_contents_cache_v1',
     'homepage_contents_cache',
     'homepage_categories_cache_v2',
+    // ⭐ 주간 보고서 관련 캐시 (계정 전환 시 반드시 삭제!)
+    'my_report_cache_v3',
+    'my_report_needs_refresh',
+    'trait_tags_cache',
+    'trait_tags_needs_refresh',
+    'saju_cache_checked',
   ];
 
   // ⭐ pending_trait_tags가 있으면 cached_saju_info 보존 (PendingTagsCheck에서 DB 저장에 필요)
@@ -183,11 +189,14 @@ export const clearUserCaches = () => {
     localStorage.removeItem(key);
   });
 
-  // 패턴 기반 캐시 삭제 (free_content_detail_*_cache)
+  // 패턴 기반 캐시 삭제
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('free_content_detail_')) {
+    if (key && (
+      key.startsWith('free_content_detail_') ||
+      key.startsWith('weekly_report_detail_')  // ⭐ 주간 보고서 상세 캐시
+    )) {
       keysToRemove.push(key);
     }
   }
