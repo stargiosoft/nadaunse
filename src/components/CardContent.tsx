@@ -40,7 +40,7 @@ function FreeContentCard({ content, onClick }: { content: FreeContent; onClick: 
         {/* Label */}
         <div
           className="flex items-center justify-center rounded-[4px] shrink-0"
-          style={{ backgroundColor: '#f3f3f3', padding: '2px 4px 2.5px 4px' }}
+          style={{ backgroundColor: '#f3f3f3', padding: '2px 4px 1.5px 4px' }}
         >
           <p
             style={{
@@ -48,7 +48,7 @@ function FreeContentCard({ content, onClick }: { content: FreeContent; onClick: 
               fontWeight: 500,
               fontSize: '10px',
               lineHeight: 'normal',
-              color: '#999999'
+              color: '#6D6D6D'
             }}
           >
             무료 체험판
