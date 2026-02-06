@@ -102,10 +102,18 @@ function getInitialCacheState(reportId?: string): {
     const cachedJson = localStorage.getItem(cacheKey);
 
     if (cachedJson) {
-      const cache: CachedReportData = JSON.parse(cachedJson);
+      const cache: CachedReportData & { userId?: string } = JSON.parse(cachedJson);
       const isExpired = Date.now() - cache.timestamp > CACHE_EXPIRY_MS;
 
-      if (!isExpired && cache.report) {
+      // ⚠️ userId 검증: 현재 로그인한 사용자의 캐시인지 확인
+      const currentUserJson = localStorage.getItem('user');
+      const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
+      const isCorrectUser = cache.userId && cache.userId === currentUserId;
+
+      if (!isCorrectUser) {
+        console.log('⚠️ [useWeeklyReport] 캐시 userId 불일치 → 캐시 무효화');
+        localStorage.removeItem(cacheKey);
+      } else if (!isExpired && cache.report) {
         console.log('🚀 [useWeeklyReport] 캐시 히트! 즉시 렌더링 (reportId:', reportId, ')');
         return {
           report: cache.report,
@@ -115,8 +123,9 @@ function getInitialCacheState(reportId?: string): {
           loading: false,
           hasValidCache: true
         };
+      } else {
+        console.log('⏰ [useWeeklyReport] 캐시 만료 (5분 초과)');
       }
-      console.log('⏰ [useWeeklyReport] 캐시 만료 (5분 초과)');
     }
   } catch (e) {
     console.error('❌ [useWeeklyReport] 캐시 파싱 실패:', e);
@@ -164,7 +173,7 @@ export function useWeeklyReport(reportId?: string): WeeklyReportData {
   useEffect(() => {
     async function fetchReportData() {
       if (!user?.id) {
-        setLoading(false);
+        // ⚠️ user 로드 전에는 loading 유지 (소유자 확인 Edge Function 조기 호출 방지)
         return;
       }
 
@@ -248,7 +257,8 @@ export function useWeeklyReport(reportId?: string): WeeklyReportData {
         // 🚀 캐시에 저장 (만료 시간 포함)
         if (reportId) {
           const cacheKey = `${CACHE_KEY_PREFIX}${reportId}`;
-          const cacheData: CachedReportData = {
+          const cacheData: CachedReportData & { userId: string } = {
+            userId: user.id, // ⚠️ 계정 전환 시 캐시 무효화용
             report: reportData,
             sections: sectionsData || [],
             tarotSelections: tarotData || [],
@@ -256,7 +266,7 @@ export function useWeeklyReport(reportId?: string): WeeklyReportData {
             timestamp: Date.now()
           };
           localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-          console.log('💾 [useWeeklyReport] 캐시 저장 완료 (reportId:', reportId, ')');
+          console.log('💾 [useWeeklyReport] 캐시 저장 완료 (reportId:', reportId, ', userId:', user.id, ')');
         }
 
       } catch (err) {

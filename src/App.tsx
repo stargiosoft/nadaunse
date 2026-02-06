@@ -3113,12 +3113,16 @@ export default function App() {
         </Routes>
         <Toaster
           position="bottom-center"
-          visibleToasts={1}
-          offset={0}
+          visibleToasts={5} /* ⭐ 최대 5개 토스트 스택 허용 */
+          offset={24} /* ⭐ 기본 24px offset */
           style={{ zIndex: 9999 }}
           toastOptions={{
             unstyled: true,
-            className: 'toast-viewport-center',
+            className: 'toast-viewport-center toast-animate-enter',
+            classNames: {
+              toast: 'toast-animate-enter',
+              closeButton: 'toast-animate-exit',
+            },
           }}
         />
         </ErrorBoundary>

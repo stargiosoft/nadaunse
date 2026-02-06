@@ -65,7 +65,7 @@ function ArrowLeftIcon() {
 // Profile Icon (기본)
 function ProfileIcon() {
   return (
-    <div className="relative shrink-0 size-[62px]">
+    <div className="relative shrink-0" style={{ width: '56px', height: '56px' }}>
       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 62 62">
         <g id="Group">
           <path d={svgPathsProfile.p961370} fill="var(--fill-0, #E4F7F7)" id="Vector" />
@@ -984,15 +984,15 @@ export default function ProfilePage({
                   </motion.div>,
 
                   // Text Lines
-                  <motion.div 
+                  <motion.div
                     key="text-lines"
                     variants={itemVariants}
-                    className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full pt-[32px]"
+                    className="content-stretch flex flex-col gap-[4px] items-center relative shrink-0 w-full pt-[20px]"
                   >
-                    <p className="font-semibold leading-[25px] text-[20px] text-black text-center tracking-[-0.34px]">
+                    <p className="font-semibold leading-[22px] text-[16px] text-black text-center tracking-[-0.32px]">
                       사주 정보가 아직 없어요
                     </p>
-                    <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[25.5px] pt-[2px] text-[15px] text-[#848484] text-center tracking-[-0.3px]">
+                    <p className="font-normal leading-[19px] pt-[2px] text-[13px] text-[#999999] text-center tracking-[-0.26px]">
                       사주를 등록하면 운세 풀이가 시작돼요
                     </p>
                   </motion.div>,
@@ -1003,8 +1003,8 @@ export default function ProfilePage({
                     variants={itemVariants}
                     onClick={handleSajuMenuClick}
                     disabled={isCheckingSaju}
-                    whileTap={{ scale: 0.96 }}
-                    className="bg-[#48b2af] h-[48px] rounded-[12px] shrink-0 w-full cursor-pointer border-none transition-colors disabled:opacity-50 active:bg-[#389998] mt-[40px] mb-[32px]"
+                    whileTap={{ scale: 0.99 }}
+                    className="bg-[#48b2af] h-[48px] rounded-[12px] shrink-0 w-full cursor-pointer border-none transition-colors disabled:opacity-50 active:bg-[#389998] mt-[28px] mb-[20px]"
                   >
                     <div className="flex flex-row items-center justify-center size-full">
                       <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
