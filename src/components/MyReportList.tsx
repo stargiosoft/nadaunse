@@ -195,7 +195,7 @@ function EditIcon() {
 
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '0', padding: '0 2px' }}>
+    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '4px', padding: '0 2px' }}>
       <div className="flex items-center justify-between w-full" style={{ padding: '0 2px' }}>
         <div className="flex items-center" style={{ gap: '6px' }}>
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
@@ -246,8 +246,8 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
       <div className="flex items-center flex-nowrap overflow-hidden" style={{ gap: '6px', padding: '0 2px' }}>
         <div className="flex items-center flex-nowrap" style={{ gap: '4px' }}>
           {report.tags.slice(0, 3).map((tag, idx) => (
-            <div key={idx} className={`flex items-center justify-center border bg-white ${idx === 2 ? 'hidden min-[390px]:flex' : ''}`} style={{ padding: '4px 8px 3px 8px', borderRadius: '99px', borderColor: '#e7e7e7' }}>
-              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#151515', letterSpacing: '-0.24px' }}>
+            <div key={idx} className={`flex items-center justify-center ${idx === 2 ? 'hidden min-[390px]:flex' : ''}`} style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F5F5F5' }}>
+              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#525252', letterSpacing: '-0.24px' }}>
                 {tag.label}
               </p>
             </div>
@@ -650,6 +650,20 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       id: '2026-05',
       title: '26년 5월 보고서',
       reports: [
+        {
+          id: '2026-05-w4',
+          title: '5월 4주차',
+          period: '05.19 ~ 05.25',
+          tags: [{ label: '# 당당함' }, { label: '# 성실함' }, { label: '# 집중' }],
+          extraTagsCount: 2
+        },
+        {
+          id: '2026-05-w3',
+          title: '5월 3주차',
+          period: '05.12 ~ 05.18',
+          tags: [{ label: '# 자신감있는' }, { label: '# 밝은' }],
+          extraTagsCount: 1
+        },
         {
           id: '2026-05-w1',
           title: '5월 1주차',
