@@ -515,8 +515,9 @@ export function TarotGame({ onConfirm, title, question, slotCount = 1 }: TarotGa
     // Check if all slots are already filled
     if (selectedCards.length >= slotCount) return;
 
-    // Find the next available slot
-    const nextSlotIndex = selectedCards.length;
+    // Find the first available slot (비어있는 가장 첫 번째 슬롯)
+    const occupiedSlots = selectedCards.map(c => c.slotIndex);
+    const nextSlotIndex = Array.from({ length: slotCount }, (_, i) => i).find(i => !occupiedSlots.includes(i)) ?? selectedCards.length;
     const targetRef = targetBoxRefs[nextSlotIndex];
 
     if (targetRef.current && containerRef.current) {
