@@ -235,11 +235,16 @@ html, body {
   position: fixed !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: 96px !important;
+  /* ⭐ CSS 변수로 동적 위치 제어:
+     기본 24px + safe-area,
+     CTA 있으면 --toast-bottom-offset에 CTA 높이 + 24px 지정 */
+  bottom: calc(var(--toast-bottom-offset, 24px) + env(safe-area-inset-bottom, 0px)) !important;
   transform: none !important; /* ⭐ translateX 제거 */
   display: flex !important;
-  justify-content: center !important;
+  flex-direction: column !important; /* ⭐ 세로 스택 */
+  justify-content: flex-end !important; /* ⭐ 하단부터 쌓임 */
   align-items: center !important;
+  gap: 10px !important; /* ⭐ 토스트 간격 10px (8~12px 범위) */
   pointer-events: none !important;
   z-index: 9999 !important;
 }
@@ -258,20 +263,23 @@ html, body {
   position: fixed !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: 96px !important;
+  bottom: calc(var(--toast-bottom-offset, 24px) + env(safe-area-inset-bottom, 0px)) !important;
   transform: none !important; /* ⭐ translateX 제거 */
   width: 100% !important;
   max-width: none !important;
   display: flex !important;
-  justify-content: center !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
   pointer-events: none !important;
 }
 
-/* ⭐ Toast 등장 애니메이션 (opacity + translateY만 사용, 수평 위치 영향 없음) */
+/* ⭐ Toast 등장 애니메이션 (opacity + translateY, 아래→위 slide + fade) */
 @keyframes toast-slide-up {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(10px); /* ⭐ 8~12px 범위 */
   }
   to {
     opacity: 1;
@@ -279,8 +287,24 @@ html, body {
   }
 }
 
+/* ⭐ Toast 사라짐 애니메이션 (반대 방향) */
+@keyframes toast-slide-down {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
 .toast-animate-enter {
-  animation: toast-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: toast-slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1); /* ⭐ 200~300ms ease-out */
+}
+
+.toast-animate-exit {
+  animation: toast-slide-down 200ms cubic-bezier(0.4, 0, 1, 1); /* ⭐ 150~250ms ease-in */
 }
 
 /* Skeleton shimmer animation */

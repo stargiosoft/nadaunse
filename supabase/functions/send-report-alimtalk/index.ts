@@ -131,7 +131,7 @@ serve(async (req) => {
             },
             {
               type: 'WL', // 웹링크
-              name: '보고서 보기',
+              name: '다시보기',
               url_mobile: `https://nadaunse.com/report-weekly-detail/${reportId}`,
               url_pc: `https://nadaunse.com/report-weekly-detail/${reportId}`
             }

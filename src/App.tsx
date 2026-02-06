@@ -3124,7 +3124,7 @@ export default function App() {
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-          <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
+          {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />} {/* ⭐ 알림톡 정보 입력 (dev/staging만) */}
           {/* TarotDemo 백업됨 */}
 
           {/* ⭐ 공통 에러 페이지 라우트 (DEV 확인용) */}
@@ -3138,12 +3138,16 @@ export default function App() {
         </Routes>
         <Toaster
           position="bottom-center"
-          visibleToasts={1}
-          offset={0}
+          visibleToasts={5} /* ⭐ 최대 5개 토스트 스택 허용 */
+          offset={24} /* ⭐ 기본 24px offset */
           style={{ zIndex: 9999 }}
           toastOptions={{
             unstyled: true,
-            className: 'toast-viewport-center',
+            className: 'toast-viewport-center toast-animate-enter',
+            classNames: {
+              toast: 'toast-animate-enter',
+              closeButton: 'toast-animate-exit',
+            },
           }}
         />
         </ErrorBoundary>

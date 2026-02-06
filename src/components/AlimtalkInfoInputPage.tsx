@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NavigationHeader } from './NavigationHeader';
+import ArrowLeft from './ArrowLeft';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { getTarotCardsForQuestions } from '../lib/tarotCards';
@@ -286,7 +286,27 @@ export default function AlimtalkInfoInputPage({
     <div className="bg-white relative min-h-screen w-full flex justify-center">
       <div className="w-full max-w-[440px] relative pb-[120px]">
         {/* 상단 네비게이션 */}
-        <NavigationHeader title="알림톡 정보 입력" onBack={onBack} />
+        <div className="bg-white h-[52px] shrink-0 w-full z-20">
+          <div className="flex flex-col justify-center size-full">
+            <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
+              <ArrowLeft onClick={onBack} />
+              <p
+                style={{
+                  fontFamily: 'Pretendard Variable, sans-serif',
+                  fontSize: '18px',
+                  fontWeight: 600,
+                  lineHeight: '25.5px',
+                  letterSpacing: '-0.36px',
+                  color: '#000000',
+                  textAlign: 'center',
+                }}
+              >
+                알림톡 정보 입력
+              </p>
+              <div className="w-[44px]" /> {/* 우측 공간 확보 */}
+            </div>
+          </div>
+        </div>
 
         {/* 네비게이션 높이만큼 여백 (52px + 8px) */}
         <div style={{ height: '60px' }} />

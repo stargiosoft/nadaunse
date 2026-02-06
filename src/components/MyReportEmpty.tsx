@@ -87,7 +87,7 @@ export default function MyReportEmpty() {
   return (
     <>
       <InitialEmptySummary />
-      <div className="w-full" style={{ height: '12px', backgroundColor: '#f9f9f9', marginTop: '20px' }} />
+      <div className="w-full" style={{ height: '8px', backgroundColor: '#f9f9f9', marginTop: '20px' }} />
       <RecommendationCardList />
       <div className="flex-1" />
     </>

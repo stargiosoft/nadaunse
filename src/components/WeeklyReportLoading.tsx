@@ -1,7 +1,7 @@
 /**
  * 주간 보고서 로딩 페이지
  * - FreeContentLoading.tsx 스타일과 동일한 전체 화면 로딩
- * - 프로필 페이지 보고서 다시보기 / 알림톡 보고서 보기 진입 시 사용
+ * - 프로필 페이지 보고서 다시보기 / 알림톡 다시보기 진입 시 사용
  */
 
 import { DotLoading } from './ui/PageLoader';

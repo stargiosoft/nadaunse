@@ -266,7 +266,7 @@ function Icons1() {
 function Container8() {
   return (
     <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full" data-name="Container">
-      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">보고서 보기</p>
+      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">다시보기</p>
       <Icons1 />
     </div>
   );
@@ -409,7 +409,7 @@ function Icons2() {
 function Container14() {
   return (
     <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full" data-name="Container">
-      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">보고서 보기</p>
+      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">다시보기</p>
       <Icons2 />
     </div>
   );
@@ -577,7 +577,7 @@ function Icons4() {
 function Container20() {
   return (
     <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full" data-name="Container">
-      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">보고서 보기</p>
+      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">다시보기</p>
       <Icons4 />
     </div>
   );
@@ -720,7 +720,7 @@ function Icons5() {
 function Container26() {
   return (
     <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full" data-name="Container">
-      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">보고서 보기</p>
+      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">다시보기</p>
       <Icons5 />
     </div>
   );
@@ -854,7 +854,7 @@ function Icons6() {
 function Container32() {
   return (
     <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full" data-name="Container">
-      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">보고서 보기</p>
+      <p className="css-ew64yg font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] tracking-[-0.42px]">다시보기</p>
       <Icons6 />
     </div>
   );

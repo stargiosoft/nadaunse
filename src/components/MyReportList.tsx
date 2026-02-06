@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
@@ -8,7 +8,6 @@ import svgPaths from "@/imports/svg-o5jcc01aog";
 import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
 import svgEmptyPaths from "@/imports/svg-mzaxb1u3cp";
 import editSvgPaths from "@/imports/svg-4xnmni03a0";
-import svgArrowPaths from "@/imports/svg-nh8ftbb7rx";
 import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
@@ -102,7 +101,7 @@ function WeeklyTagSummary({ count }: { count: number }) {
           </span>
         </button>
       </div>
-      <div className="w-full" style={{ height: '12px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -164,7 +163,7 @@ function WeeklyEmptySummary() {
           </span>
         </button>
       </div>
-      <div className="w-full" style={{ height: '12px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -194,32 +193,39 @@ function EditIcon() {
   );
 }
 
-function ViewReportArrowIcon() {
+function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="relative" style={{ width: '12px', height: '12px' }}>
-      <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-        <g>
-          <path d={svgArrowPaths.p23113100} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-          <path d="M1.75 6H10.165" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
-  return (
-    <div className="flex flex-col w-full" style={{ gap: '8px', padding: '0 2px' }}>
-      <div className="flex items-center w-full" style={{ gap: '6px', padding: '0 2px' }}>
-        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
-          {report.title}
-        </p>
-        <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', color: '#B7B7B7', letterSpacing: '-0.26px' }}>
-          {report.period.replace(/^\d{4}\./, '')}
-        </span>
+    <div className="flex flex-col w-full" style={{ gap: '5px', padding: '2px 2px 6px 2px' }}>
+      <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
+        <div className="flex flex-col" style={{ gap: '1px' }}>
+          <div className="flex items-center" style={{ gap: '6px' }}>
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
+              {report.title.replace(' 보고서', '')}
+            </p>
+            {isLatest && (
+              <div className="flex items-center justify-center" style={{ padding: '1px 5px', borderRadius: '5px', backgroundColor: '#6AC9C6' }}>
+                <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '10px', lineHeight: '15px', color: '#ffffff', letterSpacing: '-0.2px' }}>
+                  New
+                </span>
+              </div>
+            )}
+          </div>
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '20px', color: '#999999', letterSpacing: '-0.5px', paddingLeft: '1px', marginTop: '-2px' }}>
+            {report.period.replace(/^\d{4}\./, '').replace(/ ~ /g, '~')}
+          </span>
+        </div>
+        <div
+          className="flex items-center transition-colors hover:bg-[#F8F8F8] active:bg-[#F8F8F8] cursor-pointer"
+          style={{ gap: '4px', padding: '2px 4px 2px 6px', borderRadius: '8px' }}
+          onClick={() => onReportClick?.(report.id)}
+        >
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
+            다시보기
+          </p>
+        </div>
       </div>
       {report.message && (
-        <div className="w-full" style={{ borderRadius: '12px', padding: '18px 16px', backgroundColor: '#f9f9f9' }}>
+        <div className="w-full" style={{ borderRadius: '12px', padding: '14px 10px 12px 18px', backgroundColor: '#f9f9f9' }}>
           <div className="flex items-start w-full" style={{ gap: '4px' }}>
             <div className="flex flex-col flex-1 min-w-0" style={{ gap: '4px' }}>
               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#151515', letterSpacing: '-0.42px' }}>
@@ -239,61 +245,60 @@ function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyRepo
           </div>
         </div>
       )}
-      <div className="flex items-center flex-nowrap overflow-hidden" style={{ gap: '6px', padding: '0 2px' }}>
+      <div className="flex items-center flex-nowrap overflow-hidden" style={{ gap: '6px', padding: '0 2px', marginTop: '3px' }}>
         <div className="flex items-center flex-nowrap" style={{ gap: '4px' }}>
           {report.tags.slice(0, 3).map((tag, idx) => (
-            <div key={idx} className={`flex items-center justify-center border bg-white ${idx === 2 ? 'hidden min-[390px]:flex' : ''}`} style={{ padding: '4px 8px 3px 8px', borderRadius: '99px', borderColor: '#e7e7e7' }}>
-              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#151515', letterSpacing: '-0.24px' }}>
+            <div key={idx} className="flex items-center justify-center" style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F6F6F6' }}>
+              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#525252', letterSpacing: '-0.24px' }}>
                 {tag.label}
               </p>
             </div>
           ))}
         </div>
-        {(report.tags.length + (report.extraTagsCount || 0)) > 2 && (
-          <p className="min-[390px]:hidden" style={{ paddingTop: '2px', fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', color: '#999999', letterSpacing: '-0.24px' }}>
-            +{(report.tags.length + (report.extraTagsCount || 0)) - 2}
-          </p>
-        )}
         {(report.tags.length + (report.extraTagsCount || 0)) > 3 && (
-          <p className="hidden min-[390px]:block" style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', color: '#999999', letterSpacing: '-0.24px' }}>
+          <p style={{ paddingTop: '2px', fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11px', lineHeight: '15px', color: '#525252', letterSpacing: '-0.22px' }}>
             +{(report.tags.length + (report.extraTagsCount || 0)) - 3}
           </p>
         )}
-      </div>
-      <div className="flex w-full justify-end" style={{ marginTop: '-4px' }}>
-        <div
-          className="flex items-center transition-colors hover:bg-[#F8F8F8] cursor-pointer"
-          style={{ gap: '4px', padding: '2px 4px 2px 6px', borderRadius: '8px' }}
-          onClick={() => onReportClick?.(report.id)}
-        >
-          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
-            보고서 보기
-          </p>
-          <ViewReportArrowIcon />
-        </div>
       </div>
     </div>
   );
 }
 
-function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
+function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick, isFirstMonth = false }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isFirstMonth?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
 
+  // 새 보고서가 있는지 확인 (첫 번째 월이고 보고서가 있으면 새 보고서 존재)
+  const hasNewReport = isFirstMonth && month.reports.length > 0;
+
   return (
-    <div className="flex flex-col w-full border-b last:border-0" style={{ borderColor: '#f3f3f3' }}>
+    <div className="flex flex-col w-full border-b last:border-0 last:mb-0" style={{ borderColor: '#F8F8F8', marginBottom: isExpanded ? '36px' : '0' }}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full bg-white transition-colors active:bg-[#f9f9f9]"
+        className="flex items-center justify-between w-full bg-white"
         style={{ padding: '14px 20px' }}
       >
-        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 500 : 400, fontSize: '17px', lineHeight: '24px', color: '#000000', letterSpacing: '-0.34px' }}>
-          {month.title}
-        </p>
+        <div className="flex items-center" style={{ gap: '6px' }}>
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 600 : 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
+            {month.title}
+          </p>
+          {/* 아코디언 닫혔을 때 새 보고서 알림 dot */}
+          {!isExpanded && hasNewReport && (
+            <div
+              style={{
+                width: '5px',
+                height: '5px',
+                borderRadius: '50%',
+                backgroundColor: '#6AC9C6'
+              }}
+            />
+          )}
+        </div>
         <motion.div
           animate={{ rotate: isExpanded ? -180 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <ChevronDown size={20} color="#b7b7b7" />
+          <ChevronDown size={20} color={isExpanded ? "#B7B7B7" : "#D4D4D4"} />
         </motion.div>
       </button>
       <AnimatePresence>
@@ -309,7 +314,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
               {month.reports.map((report, index) => (
                 <div key={report.id} className="flex flex-col">
                   {index > 0 && <div className="w-full" style={{ height: '1px', backgroundColor: '#F8F8F8', margin: '12px 0' }} />}
-                  <ReportCard report={report} onReportClick={onReportClick} onEditClick={onEditClick} />
+                  <ReportCard report={report} onReportClick={onReportClick} onEditClick={onEditClick} isLatest={isFirstMonth && index === 0} />
                 </div>
               ))}
             </div>
@@ -362,8 +367,15 @@ function MyReportWeeklyContent({
       ) : (
         // 보고서가 있을 때: 월별 보고서 목록 표시
         <div className="flex flex-col w-full" style={{ paddingBottom: '130px' }}>
-          {filteredReports.map((month) => (
-            <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} />
+          {/* 보고서 섹션 타이틀 */}
+          <div className="flex items-center w-full" style={{ padding: '16px 20px 0 20px' }}>
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '16px', lineHeight: '25.5px', color: '#000000', letterSpacing: '-0.36px' }}>
+              보고서
+            </p>
+          </div>
+
+          {filteredReports.map((month, index) => (
+            <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} isFirstMonth={index === 0} />
           ))}
         </div>
       )}
@@ -654,11 +666,112 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   // 🚀 동기적 캐시 초기화 (useState 초기화 시점에 캐시 로드)
   const initialState = getInitialCacheState();
 
-  const [reports, setReports] = useState<MonthlyReport[]>(initialState.reports);
+  // 🧪 DEV 환경에서 더미 보고서 데이터 추가
+  const devDummyReports: MonthlyReport[] = DEV && initialState.reports.length === 0 ? [
+    {
+      id: '2026-05',
+      title: '26년 5월 보고서',
+      reports: [
+        {
+          id: '2026-05-w4',
+          title: '5월 4주차',
+          period: '05.19 ~ 05.25',
+          tags: [{ label: '# 당당함' }, { label: '# 성실함' }, { label: '# 집중' }],
+          extraTagsCount: 2
+        },
+        {
+          id: '2026-05-w3',
+          title: '5월 3주차',
+          period: '05.12 ~ 05.18',
+          tags: [{ label: '# 자신감있는' }, { label: '# 밝은' }],
+          extraTagsCount: 1
+        },
+        {
+          id: '2026-05-w1',
+          title: '5월 1주차',
+          period: '05.01 ~ 05.07',
+          tags: [{ label: '# 사랑' }, { label: '# 행운' }, { label: '# 성장' }],
+          extraTagsCount: 2,
+          message: { label: '응원 메시지', content: '이번 주도 화이팅!' }
+        }
+      ]
+    },
+    {
+      id: '2026-04',
+      title: '26년 4월 보고서',
+      reports: [
+        {
+          id: '2026-04-w2',
+          title: '4월 2주차',
+          period: '04.08 ~ 04.14',
+          tags: [{ label: '# 도전' }, { label: '# 변화' }],
+          extraTagsCount: 1
+        },
+        {
+          id: '2026-04-w1',
+          title: '4월 1주차',
+          period: '04.01 ~ 04.07',
+          tags: [{ label: '# 새출발' }]
+        }
+      ]
+    },
+    {
+      id: '2026-03',
+      title: '26년 3월 보고서',
+      reports: [
+        {
+          id: '2026-03-w1',
+          title: '3월 1주차',
+          period: '03.01 ~ 03.07',
+          tags: [{ label: '# 희망' }, { label: '# 기회' }]
+        }
+      ]
+    },
+    {
+      id: '2026-02',
+      title: '26년 2월 보고서',
+      reports: [
+        {
+          id: '2026-02-w1',
+          title: '2월 1주차',
+          period: '02.01 ~ 02.07',
+          tags: [{ label: '# 평화' }, { label: '# 안정' }],
+          extraTagsCount: 0
+        }
+      ]
+    },
+    {
+      id: '2026-01',
+      title: '26년 1월 보고서',
+      reports: [
+        {
+          id: '2026-01-w2',
+          title: '1월 2주차',
+          period: '01.08 ~ 01.14',
+          tags: [{ label: '# 계획' }, { label: '# 목표' }, { label: '# 실천' }],
+          extraTagsCount: 1,
+          message: { label: '새해 응원', content: '새해 복 많이 받으세요!' }
+        },
+        {
+          id: '2026-01-w1',
+          title: '1월 1주차',
+          period: '01.01 ~ 01.07',
+          tags: [{ label: '# 새해' }]
+        }
+      ]
+    }
+  ] : [];
+
+  const [reports, setReports] = useState<MonthlyReport[]>(devDummyReports.length > 0 ? devDummyReports : initialState.reports);
   const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
   const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(initialState.currentWeekTagsCount);
   const [isLoading, setIsLoading] = useState(forceEmptyState ? false : !initialState.hasValidCache);
   const [hasAnyTags, setHasAnyTags] = useState(initialState.hasAnyTags);
+
+  // ⭐ 스크롤 감지용 상태 및 ref
+  const [isTabBarVisible, setIsTabBarVisible] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollYRef = useRef(0);
 
   // ⭐ 관리자 패널용 상태
   const [isMaster, setIsMaster] = useState(false);
@@ -843,6 +956,57 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       setIsLoading(false);
     }
   }, [forceEmptyState, fetchWeeklyReports]);
+
+  // ⭐ 스크롤 방향 감지 및 탭 바 표시/숨김
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = scrollContainer.scrollTop;
+          const scrollDelta = currentScrollY - lastScrollYRef.current;
+
+          // 스크롤이 최상단에 있으면 항상 탭바 표시
+          if (currentScrollY <= 0) {
+            setIsTabBarVisible(true);
+            lastScrollYRef.current = currentScrollY;
+            ticking = false;
+            return;
+          }
+
+          // 스크롤이 최하단에 있으면 탭바 상태 변경 안 함 (흔들림 방지)
+          const scrollHeight = scrollContainer.scrollHeight;
+          const clientHeight = scrollContainer.clientHeight;
+          const isAtBottom = currentScrollY + clientHeight >= scrollHeight - 10; // 10px threshold
+
+          if (isAtBottom) {
+            lastScrollYRef.current = currentScrollY;
+            ticking = false;
+            return;
+          }
+
+          // 스크롤 방향에 따라 탭바 표시/숨김
+          // 아래로 스크롤 (scrollDelta > 0) → 숨김
+          // 위로 스크롤 (scrollDelta < 0) → 표시
+          if (Math.abs(scrollDelta) > 3) { // 3px 이상 스크롤 시에만 반응
+            setIsTabBarVisible(scrollDelta < 0);
+            lastScrollYRef.current = currentScrollY;
+          }
+
+          ticking = false;
+        });
+
+        ticking = true;
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // 🚀 visibility/focus 변경 시 refresh 플래그 체크
   useEffect(() => {
@@ -1317,12 +1481,23 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         </div>
 
         {/* Tab Bar */}
-        <div className="shrink-0 w-full">
+        <div
+          className="w-full overflow-hidden"
+          style={{
+            maxHeight: isTabBarVisible ? '100px' : '0',
+            transition: 'max-height 0.3s ease-in-out',
+            opacity: isTabBarVisible ? 1 : 0
+          }}
+        >
           <NavigationTabBar activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
 
         {/* Main Content - 스크롤 영역 */}
-        <div className="flex-1 overflow-y-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto w-full"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           <div className="w-full bg-white flex flex-col min-h-full">
             {isLoading ? (
               // 로딩 상태 - DotLoading 사용 (FreeContentLoading과 동일)
