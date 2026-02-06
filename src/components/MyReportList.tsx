@@ -195,35 +195,35 @@ function EditIcon() {
 
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: '8px', padding: '0 2px' }}>
+    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '0', padding: '0 2px' }}>
       <div className="flex items-center justify-between w-full" style={{ padding: '0 2px' }}>
         <div className="flex items-center" style={{ gap: '6px' }}>
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
             {report.title}
           </p>
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', color: '#B7B7B7', letterSpacing: '-0.26px' }}>
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '18px', color: '#B7B7B7', letterSpacing: '-0.24px', paddingTop: '0.5px' }}>
             {report.period.replace(/^\d{4}\./, '')}
           </span>
           {isLatest && (
-            <div className="flex items-center justify-center" style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#48b2af' }}>
-              <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '11px', lineHeight: '16px', color: '#ffffff', letterSpacing: '-0.22px' }}>
+            <div className="flex items-center justify-center" style={{ padding: '1px 5px', borderRadius: '5px', backgroundColor: '#6AC9C6' }}>
+              <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '10px', lineHeight: '15px', color: '#ffffff', letterSpacing: '-0.2px' }}>
                 New
               </span>
             </div>
           )}
         </div>
         <div
-          className="flex items-center transition-colors hover:bg-[#F8F8F8] active:bg-[#EFEFEF] cursor-pointer"
+          className="flex items-center transition-colors hover:bg-[#F8F8F8] active:bg-[#F8F8F8] cursor-pointer"
           style={{ gap: '4px', padding: '2px 4px 2px 6px', borderRadius: '8px' }}
           onClick={() => onReportClick?.(report.id)}
         >
-          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '21px', color: '#848484', letterSpacing: '-0.39px' }}>
             다시보기
           </p>
         </div>
       </div>
       {report.message && (
-        <div className="w-full" style={{ borderRadius: '12px', padding: '18px 16px', backgroundColor: '#f9f9f9' }}>
+        <div className="w-full" style={{ borderRadius: '12px', padding: '18px 10px 18px 16px', backgroundColor: '#f9f9f9' }}>
           <div className="flex items-start w-full" style={{ gap: '4px' }}>
             <div className="flex flex-col flex-1 min-w-0" style={{ gap: '4px' }}>
               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#151515', letterSpacing: '-0.42px' }}>
