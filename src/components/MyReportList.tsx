@@ -196,21 +196,23 @@ function EditIcon() {
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
     <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '4px', padding: '0 2px' }}>
-      <div className="flex items-center justify-between w-full" style={{ padding: '0 2px' }}>
-        <div className="flex items-center" style={{ gap: '6px' }}>
-          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
-            {report.title}
-          </p>
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '18px', color: '#B7B7B7', letterSpacing: '-0.24px', paddingTop: '0.5px' }}>
+      <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
+        <div className="flex flex-col" style={{ gap: '2px' }}>
+          <div className="flex items-center" style={{ gap: '6px' }}>
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
+              {report.title}
+            </p>
+            {isLatest && (
+              <div className="flex items-center justify-center" style={{ padding: '1px 5px', borderRadius: '5px', backgroundColor: '#6AC9C6' }}>
+                <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '10px', lineHeight: '15px', color: '#ffffff', letterSpacing: '-0.2px' }}>
+                  New
+                </span>
+              </div>
+            )}
+          </div>
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '18px', color: '#B7B7B7', letterSpacing: '-0.24px' }}>
             {report.period.replace(/^\d{4}\./, '')}
           </span>
-          {isLatest && (
-            <div className="flex items-center justify-center" style={{ padding: '1px 5px', borderRadius: '5px', backgroundColor: '#6AC9C6' }}>
-              <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '10px', lineHeight: '15px', color: '#ffffff', letterSpacing: '-0.2px' }}>
-                New
-              </span>
-            </div>
-          )}
         </div>
         <div
           className="flex items-center transition-colors hover:bg-[#F8F8F8] active:bg-[#F8F8F8] cursor-pointer"
@@ -246,7 +248,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
       <div className="flex items-center flex-nowrap overflow-hidden" style={{ gap: '6px', padding: '0 2px' }}>
         <div className="flex items-center flex-nowrap" style={{ gap: '4px' }}>
           {report.tags.slice(0, 3).map((tag, idx) => (
-            <div key={idx} className={`flex items-center justify-center ${idx === 2 ? 'hidden min-[390px]:flex' : ''}`} style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F5F5F5' }}>
+            <div key={idx} className={`flex items-center justify-center ${idx === 2 ? 'hidden min-[390px]:flex' : ''}`} style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F6F6F6' }}>
               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#525252', letterSpacing: '-0.24px' }}>
                 {tag.label}
               </p>
@@ -254,12 +256,12 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
           ))}
         </div>
         {(report.tags.length + (report.extraTagsCount || 0)) > 2 && (
-          <p className="min-[390px]:hidden" style={{ paddingTop: '2px', fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', color: '#999999', letterSpacing: '-0.24px' }}>
+          <p className="min-[390px]:hidden" style={{ paddingTop: '2px', fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11px', lineHeight: '15px', color: '#525252', letterSpacing: '-0.22px' }}>
             +{(report.tags.length + (report.extraTagsCount || 0)) - 2}
           </p>
         )}
         {(report.tags.length + (report.extraTagsCount || 0)) > 3 && (
-          <p className="hidden min-[390px]:block" style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '12px', lineHeight: '16px', color: '#999999', letterSpacing: '-0.24px' }}>
+          <p className="hidden min-[390px]:block" style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11px', lineHeight: '15px', color: '#525252', letterSpacing: '-0.22px' }}>
             +{(report.tags.length + (report.extraTagsCount || 0)) - 3}
           </p>
         )}
