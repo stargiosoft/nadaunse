@@ -85,7 +85,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
     if (!contentId) {
       console.error('❌ [FreeContentLoading] contentId 없음');
       toast.error('잘못된 접근입니다.');
-      navigate('/');
+      navigate('/', { replace: true });
       return;
     }
 
@@ -118,7 +118,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             if (!cachedSaju) {
               console.error('❌ [FreeContentLoading] 캐시된 사주 정보 없음');
               toast.error('사주 정보를 찾을 수 없습니다.');
-              navigate('/');
+              navigate('/', { replace: true });
               return;
             }
             sajuDataForCache = JSON.parse(cachedSaju);
@@ -126,7 +126,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             if (!sajuRecordId) {
               console.error('❌ [FreeContentLoading] sajuRecordId 없음');
               toast.error('사주 정보를 찾을 수 없습니다.');
-              navigate('/');
+              navigate('/', { replace: true });
               return;
             }
             
@@ -139,7 +139,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             if (sajuError || !sajuRecord) {
               console.error('❌ [FreeContentLoading] 사주 정보 조회 실패:', sajuError);
               toast.error('사주 정보를 찾을 수 없습니다.');
-              navigate('/');
+              navigate('/', { replace: true });
               return;
             }
             
@@ -210,7 +210,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         if (contentError || !contentData) {
           console.error('❌ [FreeContentLoading] 콘텐츠 조회 실패:', contentError);
           toast.error('콘텐츠를 찾을 수 없습니다.');
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
 
@@ -235,14 +235,14 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         if (questionsError) {
           console.error('❌ [FreeContentLoading] 질문 조회 실패:', questionsError);
           toast.error('질문을 불러올 수 없습니다.');
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
 
         if (!questions || questions.length === 0) {
           console.error('❌ [FreeContentLoading] 질문이 없습니다.');
           toast.error('콘텐츠 정보가 올바르지 않습니다.');
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
 
@@ -260,7 +260,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           if (!cachedSaju) {
             console.error('❌ [FreeContentLoading] 캐시된 사주 정보 없음');
             toast.error('사주 정보를 찾을 수 없습니다.');
-            navigate('/');
+            navigate('/', { replace: true });
             return;
           }
 
@@ -281,7 +281,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           if (!sajuRecordId) {
             console.error('❌ [FreeContentLoading] sajuRecordId 없음');
             toast.error('사주 정보를 찾을 수 없습니다.');
-            navigate('/');
+            navigate('/', { replace: true });
             return;
           }
 
@@ -294,7 +294,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           if (sajuError || !sajuRecord) {
             console.error('❌ [FreeContentLoading] 사주 정보 조회 실패:', sajuError);
             toast.error('사주 정보를 찾을 수 없습니다.');
-            navigate('/');
+            navigate('/', { replace: true });
             return;
           }
 
@@ -578,7 +578,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
       } catch (err) {
         console.error('❌ [FreeContentLoading] 예외 발생:', err);
         toast.error('운세 생성 중 오류가 발생했습니다.');
-        navigate('/');
+        navigate('/', { replace: true });
       }
     };
 
