@@ -3099,7 +3099,7 @@ export default function App() {
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-          <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
+          {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />} {/* ⭐ 알림톡 정보 입력 (dev/staging만) */}
           {/* TarotDemo 백업됨 */}
 
           {/* ⭐ 공통 에러 페이지 라우트 (DEV 확인용) */}

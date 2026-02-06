@@ -102,7 +102,7 @@ function WeeklyTagSummary({ count }: { count: number }) {
           </span>
         </button>
       </div>
-      <div className="w-full" style={{ height: '12px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -164,7 +164,7 @@ function WeeklyEmptySummary() {
           </span>
         </button>
       </div>
-      <div className="w-full" style={{ height: '12px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -280,20 +280,20 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
 
   return (
-    <div className="flex flex-col w-full border-b last:border-0" style={{ borderColor: '#f3f3f3' }}>
+    <div className="flex flex-col w-full border-b last:border-0" style={{ borderColor: '#F8F8F8' }}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full bg-white transition-colors active:bg-[#f9f9f9]"
-        style={{ padding: '14px 20px' }}
+        style={{ padding: '12px 20px' }}
       >
-        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 500 : 400, fontSize: '17px', lineHeight: '24px', color: '#000000', letterSpacing: '-0.34px' }}>
+        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '15px', lineHeight: '15.5px', color: '#000000', letterSpacing: '-0.3px' }}>
           {month.title}
         </p>
         <motion.div
           animate={{ rotate: isExpanded ? -180 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <ChevronDown size={20} color="#b7b7b7" />
+          <ChevronDown size={20} color="#D4D4D4" />
         </motion.div>
       </button>
       <AnimatePresence>
@@ -362,6 +362,13 @@ function MyReportWeeklyContent({
       ) : (
         // 보고서가 있을 때: 월별 보고서 목록 표시
         <div className="flex flex-col w-full" style={{ paddingBottom: '130px' }}>
+          {/* 보고서 섹션 타이틀 */}
+          <div className="flex items-center w-full" style={{ padding: '16px 20px 0 20px' }}>
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '16px', lineHeight: '25.5px', color: '#000000', letterSpacing: '-0.36px' }}>
+              보고서
+            </p>
+          </div>
+
           {filteredReports.map((month) => (
             <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} />
           ))}
@@ -645,7 +652,89 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   // 🚀 동기적 캐시 초기화 (useState 초기화 시점에 캐시 로드)
   const initialState = getInitialCacheState();
 
-  const [reports, setReports] = useState<MonthlyReport[]>(initialState.reports);
+  // 🧪 DEV 환경에서 더미 보고서 데이터 추가
+  const devDummyReports: MonthlyReport[] = DEV && initialState.reports.length === 0 ? [
+    {
+      id: '2026-05',
+      title: '26년 5월 보고서',
+      reports: [
+        {
+          id: '2026-05-w1',
+          title: '5월 1주차',
+          period: '05.01 ~ 05.07',
+          tags: [{ label: '# 사랑' }, { label: '# 행운' }, { label: '# 성장' }],
+          extraTagsCount: 2,
+          message: { label: '응원 메시지', content: '이번 주도 화이팅!' }
+        }
+      ]
+    },
+    {
+      id: '2026-04',
+      title: '26년 4월 보고서',
+      reports: [
+        {
+          id: '2026-04-w2',
+          title: '4월 2주차',
+          period: '04.08 ~ 04.14',
+          tags: [{ label: '# 도전' }, { label: '# 변화' }],
+          extraTagsCount: 1
+        },
+        {
+          id: '2026-04-w1',
+          title: '4월 1주차',
+          period: '04.01 ~ 04.07',
+          tags: [{ label: '# 새출발' }]
+        }
+      ]
+    },
+    {
+      id: '2026-03',
+      title: '26년 3월 보고서',
+      reports: [
+        {
+          id: '2026-03-w1',
+          title: '3월 1주차',
+          period: '03.01 ~ 03.07',
+          tags: [{ label: '# 희망' }, { label: '# 기회' }]
+        }
+      ]
+    },
+    {
+      id: '2026-02',
+      title: '26년 2월 보고서',
+      reports: [
+        {
+          id: '2026-02-w1',
+          title: '2월 1주차',
+          period: '02.01 ~ 02.07',
+          tags: [{ label: '# 평화' }, { label: '# 안정' }],
+          extraTagsCount: 0
+        }
+      ]
+    },
+    {
+      id: '2026-01',
+      title: '26년 1월 보고서',
+      reports: [
+        {
+          id: '2026-01-w2',
+          title: '1월 2주차',
+          period: '01.08 ~ 01.14',
+          tags: [{ label: '# 계획' }, { label: '# 목표' }, { label: '# 실천' }],
+          extraTagsCount: 1,
+          message: { label: '새해 응원', content: '새해 복 많이 받으세요!' }
+        },
+        {
+          id: '2026-01-w1',
+          title: '1월 1주차',
+          period: '01.01 ~ 01.07',
+          tags: [{ label: '# 새해' }]
+        }
+      ]
+    }
+  ] : [];
+
+  const [reports, setReports] = useState<MonthlyReport[]>(devDummyReports.length > 0 ? devDummyReports : initialState.reports);
   const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
   const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(initialState.currentWeekTagsCount);
   const [isLoading, setIsLoading] = useState(forceEmptyState ? false : !initialState.hasValidCache);
