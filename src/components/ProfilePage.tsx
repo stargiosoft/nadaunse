@@ -1067,7 +1067,7 @@ export default function ProfilePage({
                             ))}
                             {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
                             {totalTagCount > visibleTagCount && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '4px 0 3px 0', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#6D6D6D', padding: '4px 0 3px 0', whiteSpace: 'nowrap' }}>
                                 +{totalTagCount - visibleTagCount}
                               </p>
                             )}
