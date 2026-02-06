@@ -68,18 +68,18 @@ function ProfileIcon() {
     <div className="relative shrink-0" style={{ width: '56px', height: '56px' }}>
       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 62 62">
         <g id="Group">
-          <path d={svgPathsProfile.p961370} fill="var(--fill-0, #E4F7F7)" id="Vector" />
+          <path d={svgPathsProfile.p961370} fill="var(--fill-0, #F6F6F6)" id="Vector" />
         </g>
       </svg>
       <div className="absolute inset-[20.11%_23.69%_18.25%_23.68%]">
         <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 33 39">
           <g id="Profile Icon">
-            <path d={svgPathsProfile.pa9095f0} fill="var(--fill-0, #557170)" id="Vector" />
-            <path d={svgPathsProfile.p1139d800} fill="var(--fill-0, #3FB5B3)" id="Vector_2" />
-            <path d={svgPathsProfile.p4bd4980} fill="var(--fill-0, #8BE1DF)" id="Vector_3" />
-            <path d={svgPathsProfile.p36a0700} fill="var(--fill-0, #3FB5B3)" id="Vector_4" />
-            <path d={svgPathsProfile.p786fd00} fill="var(--fill-0, #3FB5B3)" id="Vector_5" />
-            <path d={svgPathsProfile.p1a321300} fill="var(--fill-0, #C8FFFD)" id="Vector_6" />
+            <path d={svgPathsProfile.pa9095f0} fill="var(--fill-0, #9F9F9F)" id="Vector" />
+            <path d={svgPathsProfile.p1139d800} fill="var(--fill-0, #D2D2D2)" id="Vector_2" />
+            <path d={svgPathsProfile.p4bd4980} fill="var(--fill-0, #E6E6E6)" id="Vector_3" />
+            <path d={svgPathsProfile.p36a0700} fill="var(--fill-0, #D2D2D2)" id="Vector_4" />
+            <path d={svgPathsProfile.p786fd00} fill="var(--fill-0, #D2D2D2)" id="Vector_5" />
+            <path d={svgPathsProfile.p1a321300} fill="var(--fill-0, #FFFFFF)" id="Vector_6" />
           </g>
         </svg>
       </div>
@@ -974,37 +974,35 @@ export default function ProfilePage({
               ) : (
                 // 사주 정보 없음 - Fragment 제거하고 바로 motion 요소들 렌더링
                 [
-                  // Profile Icon - 중앙 정렬
-                  <motion.div 
-                    key="profile-icon"
-                    variants={itemVariants}
-                    className="flex items-center justify-center relative shrink-0 w-full pt-[28px]"
-                  >
-                    <ProfileIcon />
-                  </motion.div>,
-
-                  // Text Lines
+                  // Icon & Text Group (29px top padding, 17px gap between icon and text)
                   <motion.div
-                    key="text-lines"
+                    key="icon-text-group"
                     variants={itemVariants}
-                    className="content-stretch flex flex-col gap-[4px] items-center relative shrink-0 w-full pt-[20px]"
+                    className="flex flex-col items-center w-full"
+                    style={{ paddingTop: '29px', gap: '17px' }}
                   >
-                    <p className="font-semibold leading-[22px] text-[16px] text-black text-center tracking-[-0.32px]">
-                      사주 정보가 아직 없어요
-                    </p>
-                    <p className="font-normal leading-[19px] pt-[2px] text-[13px] text-[#999999] text-center tracking-[-0.26px]">
-                      사주를 등록하면 운세 풀이가 시작돼요
-                    </p>
+                    <div style={{ paddingTop: '3px' }}>
+                      <ProfileIcon />
+                    </div>
+                    <div className="flex flex-col items-center text-center w-full" style={{ gap: '2px' }}>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#b7b7b7' }} className="w-full">
+                        사주 정보가 아직 없어요
+                      </p>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', letterSpacing: '-0.42px', color: '#b7b7b7' }} className="w-full">
+                        사주를 등록하면 운세 풀이가 시작돼요
+                      </p>
+                    </div>
                   </motion.div>,
 
-                  // Button
+                  // Button (36px gap from icon-text group)
                   <motion.button
                     key="register-button"
                     variants={itemVariants}
                     onClick={handleSajuMenuClick}
                     disabled={isCheckingSaju}
                     whileTap={{ scale: 0.99 }}
-                    className="bg-[#48b2af] h-[48px] rounded-[12px] shrink-0 w-full cursor-pointer border-none transition-colors disabled:opacity-50 active:bg-[#389998] mt-[28px] mb-[20px]"
+                    className="bg-[#48b2af] shrink-0 w-full cursor-pointer border-none transition-colors disabled:opacity-50 active:bg-[#389998]"
+                    style={{ height: '48px', borderRadius: '12px', marginTop: '36px', marginBottom: '20px' }}
                   >
                     <div className="flex flex-row items-center justify-center size-full">
                       <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
