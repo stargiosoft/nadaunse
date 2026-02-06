@@ -195,7 +195,7 @@ function EditIcon() {
 
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '6px', padding: '0 2px' }}>
+    <div className="flex flex-col w-full" style={{ gap: '5px', padding: '0 2px' }}>
       <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
         <div className="flex flex-col" style={{ gap: '1px' }}>
           <div className="flex items-center" style={{ gap: '6px' }}>
@@ -273,7 +273,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full bg-white"
-        style={{ padding: '13px 20px' }}
+        style={{ padding: '14px 20px' }}
       >
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 600 : 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
           {month.title}
@@ -282,7 +282,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
           animate={{ rotate: isExpanded ? -180 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <ChevronDown size={20} color="#D4D4D4" />
+          <ChevronDown size={20} color={isExpanded ? "#151515" : "#D4D4D4"} />
         </motion.div>
       </button>
       <AnimatePresence>
