@@ -1655,8 +1655,10 @@ export default function HomePage() {
   return (
     <>
       <SEO
+        title="무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세"
+        description="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요."
         canonical="/"
-        keywords="AI 사주, AI 타로, 무료 운세, 오늘의 운세, 사주팔자, 타로점, 신년운세"
+        keywords="무료운세, 무료사주, 사주, 타로, 궁합, 신년운세, 오늘의운세, 띠별운세, 띠별오늘의운세, 별자리운세, AI 운세, AI 사주, 챗지피티사주, 챗gpt사주, 사주GPT, 신점, 사주팔자, 사주풀이, 인터넷사주, 자기이해, 나다운세"
       />
       <div className="bg-white fixed inset-0 flex justify-center">
         <div className="bg-white w-full max-w-[440px] h-full flex flex-col">

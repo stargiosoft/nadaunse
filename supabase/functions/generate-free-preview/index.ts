@@ -33,6 +33,54 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // ⭐ 비회원(게스트) 일일 무료 콘텐츠 제한 검증 (IP+UA 해시)
+    if (!userId) {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log('🔒 [Edge Function] 비회원 일일 제한 검증 시작')
+
+      // IP 추출: x-forwarded-for > cf-connecting-ip > x-real-ip
+      const forwarded = req.headers.get('x-forwarded-for')
+      const clientIp = forwarded
+        ? forwarded.split(',')[0].trim()
+        : req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown'
+      const userAgent = req.headers.get('user-agent') || 'unknown'
+
+      // SHA-256 fingerprint 생성
+      const encoder = new TextEncoder()
+      const data = encoder.encode(clientIp + userAgent)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+      console.log('📌 [Edge Function] IP:', clientIp.substring(0, 10) + '...')
+      console.log('📌 [Edge Function] fingerprint:', fingerprint.substring(0, 16) + '...')
+
+      // 오늘 조회 카운트 확인 (KST 기준)
+      const { data: viewCount, error: countError } = await supabase
+        .from('anonymous_free_views')
+        .select('id', { count: 'exact' })
+        .eq('fingerprint', fingerprint)
+        .eq('viewed_date', new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0])
+
+      const todayCount = viewCount?.length ?? 0
+      console.log('📌 [Edge Function] 오늘 조회 수:', todayCount)
+
+      if (todayCount >= 3) {
+        console.log('🚫 [Edge Function] 일일 제한 도달 (3개) → 차단')
+        return new Response(
+          JSON.stringify({ success: false, error: 'DAILY_LIMIT_REACHED' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // ⭐ fingerprint를 요청 컨텍스트에 저장 (AI 생성 후 기록용)
+      ;(req as any)._fingerprint = fingerprint
+      ;(req as any)._viewedDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+      console.log('✅ [Edge Function] 비회원 제한 검증 통과 (남은 횟수:', 3 - todayCount - 1, ')')
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    }
+
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('📋 [Edge Function] 1. 콘텐츠 정보 조회')
     console.log('📌 [Edge Function] contentId:', contentId)
@@ -397,7 +445,33 @@ ${fullQuestionerInfo}
 
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     } else {
-      console.log('ℹ️ [Edge Function] 게스트 사용자 → DB 저장 스킵')
+      // ⭐ 게스트 사용자: anonymous_free_views에 조회 기록 저장
+      console.log('ℹ️ [Edge Function] 게스트 사용자 → anonymous_free_views 기록')
+      const fingerprint = (req as any)._fingerprint
+      const viewedDate = (req as any)._viewedDate
+
+      if (fingerprint && viewedDate) {
+        try {
+          const { error: viewError } = await supabase
+            .from('anonymous_free_views')
+            .upsert(
+              {
+                fingerprint,
+                content_id: contentId,
+                viewed_date: viewedDate,
+              },
+              { onConflict: 'fingerprint,content_id,viewed_date' }
+            )
+
+          if (viewError) {
+            console.error('❌ [Edge Function] anonymous_free_views 저장 실패:', viewError)
+          } else {
+            console.log('✅ [Edge Function] anonymous_free_views 기록 완료')
+          }
+        } catch (viewDbError) {
+          console.error('❌ [Edge Function] anonymous_free_views 저장 중 예외:', viewDbError)
+        }
+      }
     }
 
     // 7. 응답 반환

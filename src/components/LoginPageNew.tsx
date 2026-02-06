@@ -44,7 +44,7 @@ function TextLoginText() {
       <div className="size-full">
         <div className="content-stretch flex flex-col gap-[4px] items-start not-italic px-[20px] py-[44px] relative text-black text-center w-full pt-[24px] pr-[20px] pb-[44px] pl-[20px]">
           <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[35.5px] relative shrink-0 text-[24px] tracking-[-0.48px] w-full">나다운이 처음이라면</p>
-          <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[39.5px] relative shrink-0 text-[27px] tracking-[-0.27px] w-full">무료로 체험해 보세요!</p>
+          <p className="font-['Pretendard_Variable:Bold',sans-serif] font-bold leading-[39.5px] relative shrink-0 text-[27px] tracking-[-0.27px] w-full">최대 10,000원 혜택 받아 가세요!</p>
         </div>
       </div>
     </div>
@@ -127,7 +127,7 @@ function GuidanceTooltip() {
       }}
     >
       <div className="flex flex-col font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-nowrap text-white tracking-[-0.42px]">
-        <p className="leading-[22px] whitespace-pre antialiased" style={{ WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' }}>지금 시작하면 0원!</p>
+        <p className="leading-[22px] whitespace-pre antialiased" style={{ WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale' }}>로그인하고 5,000원 쿠폰 2장 받기</p>
       </div>
       <div className="absolute bottom-[-5px] flex h-[6px] items-center justify-center left-1/2 translate-x-[-50%] w-[20px]">
         <div className="flex-none rotate-[180deg]">

@@ -1355,12 +1355,13 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
       console.log('👤 [DEV] 사용자 ID:', user.id);
 
-      // 2. generate-weekly-reports-batch Edge Function 호출 (테스트 모드)
-      // 현재 로그인한 사용자만 대상으로 실행
+      // 2. generate-weekly-reports-batch Edge Function 호출 (더미 모드)
+      // AI 없이 즉시 다음 주차 더미 보고서 생성
       const { data, error } = await supabase.functions.invoke('generate-weekly-reports-batch', {
         body: {
           testMode: true,
-          testUserIds: [user.id]
+          testUserIds: [user.id],
+          dummyMode: true
         }
       });
 

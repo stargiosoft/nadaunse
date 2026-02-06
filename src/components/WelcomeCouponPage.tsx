@@ -1,10 +1,10 @@
 /**
  * 가입 축하 쿠폰 안내 페이지
- * 
+ *
  * @description
  * - 회원가입 완료 후 자동으로 표시되는 쿠폰 안내 화면
- * - 5,000원 가입 축하 쿠폰이 발급되었음을 알림
- * 
+ * - 5,000원 가입 축하 쿠폰 2장 (총 10,000원)이 발급되었음을 알림
+ *
  * @props
  * - onClose: () => void - "운세 보러 가기" 버튼 클릭 시 호출
  */
@@ -288,7 +288,7 @@ export default function WelcomeCouponPage({ onClose }: WelcomeCouponPageProps) {
   // 📊 GA 이벤트: 회원가입 완료 + 웰컴 쿠폰 발급
   useEffect(() => {
     trackSignUp('kakao'); // 회원가입 완료 (카카오가 대부분)
-    trackWelcomeCouponIssued(3000); // 웰컴 쿠폰 3000원 발급
+    trackWelcomeCouponIssued(10000); // 웰컴 쿠폰 5,000원 x 2장 = 10,000원 발급
   }, []);
 
   return (

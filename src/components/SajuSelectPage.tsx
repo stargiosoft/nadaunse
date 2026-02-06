@@ -842,13 +842,15 @@ export default function SajuSelectPage() {
               <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
                 <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                   <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">내 사주</p>
+                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">내 사주</p>
                   </div>
                 </div>
                 <div className="h-0 relative shrink-0 w-full">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                    <path d="M0 0.5H350" stroke="#F3F3F3" />
-                  </svg>
+                  <div className="absolute inset-[-0.5px_0]">
+                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
+                      <path d="M0 0.5H350" stroke="#F3F3F3" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
@@ -871,13 +873,15 @@ export default function SajuSelectPage() {
             <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                  <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">함께 보는 사주</p>
+                  <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">함께 보는 사주</p>
                 </div>
               </div>
               <div className="h-0 relative shrink-0 w-full">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                  <path d="M0 0.5H350" stroke="#F3F3F3" />
-                </svg>
+                <div className="absolute inset-[-0.5px_0]">
+                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
+                    <path d="M0 0.5H350" stroke="#F3F3F3" />
+                  </svg>
+                </div>
               </div>
             </div>
 

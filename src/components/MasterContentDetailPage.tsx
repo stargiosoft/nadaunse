@@ -816,6 +816,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         description={content.description || `${content.title} - AI가 분석하는 나만의 운세`}
         canonical={`/product/${contentId}`}
         ogImage={content.thumbnail_url}
+        keywords="사주, 타로, 궁합, AI 운세, 사주풀이, 신년운세, 나다운세"
         product={{
           name: content.title,
           description: content.description || `${content.title} - AI가 분석하는 나만의 운세`,

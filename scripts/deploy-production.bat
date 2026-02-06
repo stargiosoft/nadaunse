@@ -8,128 +8,133 @@ echo ━━━━━━━━━━━━━━━━━━━━━━━━━
 set PROJECT_REF=kcthtpmxffppfbkjjkub
 
 echo.
-echo [1/24] generate-content-answers (진입점)
+echo [1/25] generate-content-answers (진입점)
 call npx supabase functions deploy generate-content-answers --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [2/24] generate-saju-answer (--no-verify-jwt, 내부 호출용)
+echo [2/25] generate-saju-answer (--no-verify-jwt, 내부 호출용)
 call npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [3/24] generate-tarot-answer (--no-verify-jwt, 내부 호출용)
+echo [3/25] generate-tarot-answer (--no-verify-jwt, 내부 호출용)
 call npx supabase functions deploy generate-tarot-answer --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [4/24] send-alimtalk (--no-verify-jwt, 내부 호출용)
+echo [4/25] send-alimtalk (--no-verify-jwt, 내부 호출용)
 call npx supabase functions deploy send-alimtalk --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [5/24] generate-free-preview
+echo [5/25] generate-free-preview
 call npx supabase functions deploy generate-free-preview --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [6/24] extract-trait-tags
+echo [6/25] extract-trait-tags
 call npx supabase functions deploy extract-trait-tags --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [7/24] generate-saju-preview
+echo [7/25] generate-saju-preview
 call npx supabase functions deploy generate-saju-preview --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [8/24] generate-tarot-preview
+echo [8/25] generate-tarot-preview
 call npx supabase functions deploy generate-tarot-preview --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [9/24] generate-master-content
+echo [9/25] generate-master-content
 call npx supabase functions deploy generate-master-content --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [10/24] generate-image-prompt
+echo [10/25] generate-image-prompt
 call npx supabase functions deploy generate-image-prompt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [11/24] generate-thumbnail
+echo [11/25] generate-thumbnail
 call npx supabase functions deploy generate-thumbnail --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [12/24] generate-sitemap (--no-verify-jwt)
+echo [12/25] generate-sitemap (--no-verify-jwt)
 call npx supabase functions deploy generate-sitemap --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [13/24] generate-weekly-report
+echo [13/25] generate-weekly-report
 call npx supabase functions deploy generate-weekly-report --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [14/24] generate-weekly-reports-batch
+echo [14/25] generate-weekly-reports-batch
 call npx supabase functions deploy generate-weekly-reports-batch --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [15/24] get-available-coupons
+echo [15/25] get-available-coupons
 call npx supabase functions deploy get-available-coupons --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [16/24] apply-coupon-to-order
+echo [16/25] apply-coupon-to-order
 call npx supabase functions deploy apply-coupon-to-order --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [17/24] issue-welcome-coupon
+echo [17/25] issue-welcome-coupon
 call npx supabase functions deploy issue-welcome-coupon --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [18/24] issue-revisit-coupon
+echo [18/25] issue-revisit-coupon
 call npx supabase functions deploy issue-revisit-coupon --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [19/24] payment-webhook
+echo [19/25] payment-webhook
 call npx supabase functions deploy payment-webhook --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [20/24] process-payment
+echo [20/25] process-payment
 call npx supabase functions deploy process-payment --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [21/24] process-refund
+echo [21/25] process-refund
 call npx supabase functions deploy process-refund --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [22/24] send-report-alimtalk
+echo [22/25] send-report-alimtalk
 call npx supabase functions deploy send-report-alimtalk --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [23/24] sentry-slack-webhook
+echo [23/25] sentry-slack-webhook
 call npx supabase functions deploy sentry-slack-webhook --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [24/24] users
+echo [24/25] users
 call npx supabase functions deploy users --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo [25/25] trigger-rebuild
+call npx supabase functions deploy trigger-rebuild --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 프로덕션 배포 완료! (24개 함수)
+echo ✅ 프로덕션 배포 완료! (25개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 echo 📌 --no-verify-jwt 적용된 함수:

@@ -4552,6 +4552,31 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
+## [2026-02-06] 선택 안 한 태그 재추출 방지
+
+### 문제 상황
+- 사용자가 나다움 기록하기에서 태그를 선택하지 않으면, 다음 콘텐츠에서 동일/유사한 태그가 다시 추출됨
+- 사용자 경험 관점에서 이미 거부한 태그가 반복 노출되는 것은 바람직하지 않음
+
+### 결정 사항
+- `users.rejected_tags text[]` 컬럼에 미선택 태그를 누적 저장
+- `extract-trait-tags` Edge Function 프롬프트에 금지 태그 섹션 추가
+- AI가 동일하거나 의미가 매우 유사한 태그를 추출하지 않도록 지시
+
+### 구현 방식
+- **저장 시점**: `CheckRecordMe`에서 태그 확정 시 (saveTags, handleSave 모두)
+- **조회 시점**: `App.tsx` (FreeResultPage), `UnifiedResultPage.tsx`에서 태그 추출 전
+- **전달 방식**: `rejectedTags` 파라미터로 Edge Function에 전달
+- **중복 제거**: `appendRejectedTags()`에서 Set으로 병합
+
+### 근거
+- DB 컬럼 방식 선택: 사용자별 영구 저장 필요, localStorage는 기기 종속적
+- `users` 테이블에 추가: 별도 테이블 불필요 (본인 row만 읽기/쓰기)
+- RLS 추가 불필요: 기존 `users` UPDATE 정책으로 커버
+- 인덱스 불필요: 본인 row만 조회하므로 PK로 충분
+
+---
+
 ## 📊 주요 결정 통계 (2026-01-16 기준)
 
 - **총 결정 기록**: 38개

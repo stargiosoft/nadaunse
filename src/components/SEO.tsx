@@ -19,8 +19,9 @@ interface SEOProps {
   product?: ProductJsonLd;
 }
 
-const DEFAULT_TITLE = '나다운세 - AI 사주 타로 운세';
-const DEFAULT_DESCRIPTION = 'AI가 분석하는 나만의 사주와 타로 운세. 무료 체험부터 심화 해석까지, 나다운 운세를 만나보세요.';
+const DEFAULT_TITLE = '나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이';
+const DEFAULT_DESCRIPTION = '무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세까지 나다운세에서 무료로 만나보세요.';
+const DEFAULT_KEYWORDS = '나다운세, 운세, 무료사주, 무료운세, 신년운세, 사주, 타로, 궁합, 오늘의운세, 띠별오늘의운세, 띠별운세, AI 운세, 별자리운세, 챗지피티사주, 챗gpt사주, 사주GPT, 신점, 사주팔자, 사주풀이, 인터넷사주, 자기이해';
 const DEFAULT_OG_IMAGE = 'https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/assets/OG%20image/OG%20KakaoTalk.png';
 const SITE_URL = 'https://nadaunse.com';
 
@@ -62,7 +63,7 @@ export function SEO({
       {/* 기본 메타 */}
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      {keywords && <meta name="keywords" content={keywords} />}
+      <meta name="keywords" content={keywords || DEFAULT_KEYWORDS} />
 
       {/* 검색엔진 제어 */}
       {noIndex && <meta name="robots" content="noindex, nofollow" />}

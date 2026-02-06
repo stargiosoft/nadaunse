@@ -556,23 +556,28 @@ export default function UnifiedResultPage() {
           answerText: r.gpt_response
         }));
 
-        // ⭐ 사용자의 기존 태그 조회 (중복 방지용 - 다른 콘텐츠에서 추출된 태그)
+        // ⭐ 사용자의 기존 태그 + 거부 태그 조회 (병렬 처리)
         let existingTags: string[] = [];
+        let rejectedTags: string[] = [];
         if (userData?.user?.id) {
-          const { data: existingTagsData } = await supabase
-            .from('user_trait_tags')
-            .select('tag_name')
-            .eq('user_id', userData.user.id);
+          const [tagsRes, userRes] = await Promise.all([
+            supabase.from('user_trait_tags').select('tag_name').eq('user_id', userData.user.id),
+            supabase.from('users').select('rejected_tags').eq('id', userData.user.id).single()
+          ]);
 
-          if (existingTagsData && existingTagsData.length > 0) {
-            existingTags = existingTagsData.map(t => t.tag_name);
+          if (tagsRes.data?.length > 0) {
+            existingTags = tagsRes.data.map(t => t.tag_name);
             console.log('📌 [UnifiedResultPage] 기존 태그 조회:', existingTags.length, '개');
+          }
+          if (userRes.data?.rejected_tags?.length > 0) {
+            rejectedTags = userRes.data.rejected_tags;
+            console.log('📌 [UnifiedResultPage] 거부 태그 조회:', rejectedTags.length, '개');
           }
         }
 
         console.log('🔄 [UnifiedResultPage] extract-trait-tags API 호출...');
         const { data, error } = await supabase.functions.invoke('extract-trait-tags', {
-          body: { contentAnswers, existingTags }
+          body: { contentAnswers, existingTags, rejectedTags }
         });
 
         if (!error && data?.success && data?.tags) {

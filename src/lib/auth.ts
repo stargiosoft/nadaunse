@@ -179,10 +179,11 @@ export const clearUserCaches = () => {
     'saju_cache_checked',
   ];
 
-  // ⭐ pending_trait_tags가 있으면 cached_saju_info 보존 (PendingTagsCheck에서 DB 저장에 필요)
-  if (hasPendingTags) {
+  // ⭐ cached_saju_info가 있으면 항상 보존 (로그인 후 사주 저장 필요)
+  const hasCachedSaju = !!localStorage.getItem('cached_saju_info');
+  if (hasPendingTags || hasCachedSaju) {
     fixedCacheKeys = fixedCacheKeys.filter(key => key !== 'cached_saju_info');
-    logger.debug('pending_trait_tags 발견 → cached_saju_info 보존');
+    logger.debug(`cached_saju_info 보존 (pending_trait_tags: ${hasPendingTags}, cached_saju: ${hasCachedSaju})`);
   }
 
   fixedCacheKeys.forEach(key => {

@@ -8,6 +8,7 @@ import PaymentNew from './components/PaymentNew';
 import BirthInfoInput from './components/BirthInfoInput';
 import SajuDetail from './components/SajuDetail';
 import FreeSajuDetail from './components/FreeSajuDetail';
+import LoginBottomSheet from './components/LoginBottomSheet';
 import ProfilePage from './components/ProfilePage';
 import StatsDashboard from './components/StatsDashboard'; // ⭐ 통계 대시보드
 import PurchaseHistoryPage from './components/PurchaseHistoryPage';
@@ -107,6 +108,23 @@ function LoginToast() {
   useEffect(() => {
     // 페이지 로드 후 약간의 딜레이를 주어 안정적으로 토스트 표시
     const timer = setTimeout(() => {
+      // ⭐ 태그 저장 토스트 플래그 먼저 확인 (무료 운세 → 회원가입 플로우)
+      const showTagSavedToast = sessionStorage.getItem('show_tag_saved_toast');
+
+      if (showTagSavedToast === 'true') {
+        // 플래그 즉시 삭제 (중복 표시 방지)
+        sessionStorage.removeItem('show_tag_saved_toast');
+
+        // 태그 저장 토스트 표시 (2줄)
+        sonnerToast.custom(
+          () => <Toast type="positive" message="태그가 저장됐어요!" subtitle="프로필에서 확인할 수 있어요" />,
+          { duration: 3000 }
+        );
+
+        console.log('🎉 [Toast] 태그 저장 토스트 표시');
+        return; // 태그 저장 토스트를 표시했으면 로그인 토스트는 표시하지 않음
+      }
+
       // sessionStorage에서 로그인 토스트 플래그 확인
       const showLoginToast = sessionStorage.getItem('show_login_toast');
 
@@ -123,6 +141,65 @@ function LoginToast() {
         );
 
         console.log('🎉 [LoginToast] 로그인 성공 토스트 표시');
+      }
+
+      // ⭐ 로그인 후 cached_saju_info 저장 처리 (AuthCallback에서 플래그만 설정)
+      const shouldSaveSaju = localStorage.getItem('save_cached_saju_after_login');
+      if (shouldSaveSaju === 'true') {
+        localStorage.removeItem('save_cached_saju_after_login');
+        const cachedSajuJson = localStorage.getItem('cached_saju_info');
+        if (cachedSajuJson) {
+          (async () => {
+            try {
+              const cachedSaju = JSON.parse(cachedSajuJson);
+              console.log('📋 [LoginSajuSync] cached_saju_info 저장 시작:', cachedSaju);
+
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.user) return;
+
+              const userId = session.user.id;
+
+              // 기존 대표 사주 존재 여부 확인
+              const { data: primarySaju } = await supabase
+                .from('saju_records')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('is_primary', true)
+                .maybeSingle();
+
+              const shouldBePrimary = !primarySaju;
+              console.log(`📌 [LoginSajuSync] 대표 사주: ${primarySaju ? '있음' : '없음'}, is_primary: ${shouldBePrimary}`);
+
+              const { data: newSaju, error: sajuError } = await supabase
+                .from('saju_records')
+                .insert({
+                  user_id: userId,
+                  full_name: cachedSaju.name,
+                  gender: cachedSaju.gender === 'female' ? 'female' : 'male',
+                  birth_date: new Date(cachedSaju.birthDate).toISOString(),
+                  birth_time: cachedSaju.birthTime || '12:00',
+                  notes: shouldBePrimary ? '본인' : '',
+                  is_primary: shouldBePrimary,
+                })
+                .select()
+                .single();
+
+              if (sajuError) {
+                console.error('❌ [LoginSajuSync] 사주 저장 실패:', sajuError);
+              } else {
+                console.log('✅ [LoginSajuSync] 사주 저장 완료:', newSaju.id);
+                if (shouldBePrimary) {
+                  localStorage.setItem('primary_saju', JSON.stringify(newSaju));
+                }
+                localStorage.setItem('profile_needs_refresh', 'true');
+              }
+              localStorage.removeItem('cached_saju_info');
+            } catch (err) {
+              console.error('❌ [LoginSajuSync] 오류:', err);
+              localStorage.removeItem('cached_saju_info');
+            }
+          })();
+        }
       }
     }, 100); // 100ms 딜레이
 
@@ -998,6 +1075,8 @@ function FreeResultPage() {
   const productFromState = location.state?.product;  // ⭐ FreeContentLoading에서 전달받은 product
   const contentAnswersFromState = location.state?.contentAnswers;  // ⭐ 백그라운드 태그 추출용
   const fromPurchaseHistory = location.state?.fromPurchaseHistory === true;  // ⭐ 운세 기록에서 진입 여부
+  const dailyLimitReached = location.state?.dailyLimitReached === true;  // ⭐ 비회원 일일 제한 도달
+  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(dailyLimitReached);
   const hasConfirmedTags = location.state?.hasConfirmedTags === true;  // ⭐ 이미 태그 확정됨 (나다움 기록하기 스킵)
   // ⭐ DB 레코드 ID (free_content_records.id) - 각 운세 결과별 태그 구분용
   const freeRecordId = location.state?.recordId as string | undefined;
@@ -1103,6 +1182,7 @@ function FreeResultPage() {
       try {
         // ⭐ 사용자의 기존 태그 조회 (중복 방지용)
         let existingTags: string[] = [];
+        let rejectedTags: string[] = [];
         const { data: userData } = await supabase.auth.getUser();
         if (userData?.user?.id) {
           const { data: existingTagsData } = await supabase
@@ -1114,12 +1194,24 @@ function FreeResultPage() {
             existingTags = existingTagsData.map(t => t.tag_name);
             console.log('📌 [FreeResultPage] 기존 태그 조회:', existingTags.length, '개');
           }
+
+          // ⭐ 거부된 태그 조회 (재추출 방지용)
+          const { data: userRecord } = await supabase
+            .from('users')
+            .select('rejected_tags')
+            .eq('id', userData.user.id)
+            .single();
+          if (userRecord?.rejected_tags?.length > 0) {
+            rejectedTags = userRecord.rejected_tags;
+            console.log('📌 [FreeResultPage] 거부 태그 조회:', rejectedTags.length, '개');
+          }
         }
 
         const tagResponse = await supabase.functions.invoke('extract-trait-tags', {
           body: {
             contentAnswers: contentAnswers,
-            existingTags
+            existingTags,
+            rejectedTags
           }
         });
 
@@ -1209,7 +1301,7 @@ function FreeResultPage() {
         return;
       }
       console.log('🔀 [FreeResultPage] 태그 추출 완료 → 나다움 기록하기로 이동');
-      navigate(`/nadaum-record/${id}`, { state: { tags } });
+      navigate(`/nadaum-record/${id}`, { state: { tags, freeRecordId, resultKey } });
     }
   }, [pendingNavigation, isTagExtracted, id, tags, navigate, hasConfirmedTags, fromPurchaseHistory]);
 
@@ -1241,7 +1333,7 @@ function FreeResultPage() {
       console.log('  - tags:', tags);
       console.log('  - tags 개수:', tags?.length || 0);
       console.log('  - freeRecordId:', freeRecordId);
-      navigate(`/nadaum-record/${id}`, { state: { tags, freeRecordId } });
+      navigate(`/nadaum-record/${id}`, { state: { tags, freeRecordId, resultKey } });
     } else {
       // 태그 추출 중 → 로딩 페이지로 이동
       console.log('⏳ [FreeResultPage] 태그 추출 중 → 로딩 페이지로 이동');
@@ -1525,26 +1617,37 @@ function FreeResultPage() {
   };
 
   return (
-    <FreeSajuDetail
-      recordId={recordId || ''}  // fromDB 모드에서도 빈 문자열 전달 (required prop)
-      userName={userName || dbResult?.saju_name}
-      productTitle={product.title}
-      productImage={product.image}
-      contentId={id}
-      onClose={handleClose}
-      recommendedProducts={recommendedContents}
-      onProductClick={(productId) => {
-        navigate(`/product/${productId}`);
-      }}
-      onBannerClick={(productId) => navigate(`/product/${productId}`)}
-      onUserIconClick={() => navigate('/profile')}
-      fromDB={effectiveFromDB}
-      dbRecordId={effectiveDbRecordId}
-      dbData={dbResult}  // ⭐ 이미 로드된 DB 데이터 전달 (이중 조회 방지)
-      onNext={id ? handleNext : undefined}  // ⭐ 무료 콘텐츠면 항상 나다움 기록하기 버튼 표시 (재조회 시에도)
-      nextLabel={hasConfirmedTags ? '완료' : '다음'}  // ⭐ 태그 확정 여부에 따라 버튼 레이블 변경
-      isNextLoading={false}  // ⭐ 태그 추출 중이면 로딩 페이지로 이동 (버튼 스피너 표시 안 함)
-    />
+    <>
+      <FreeSajuDetail
+        recordId={recordId || ''}  // fromDB 모드에서도 빈 문자열 전달 (required prop)
+        userName={userName || dbResult?.saju_name}
+        productTitle={product.title}
+        productImage={product.image}
+        contentId={id}
+        onClose={handleClose}
+        recommendedProducts={recommendedContents}
+        onProductClick={(productId) => {
+          navigate(`/product/${productId}`);
+        }}
+        onBannerClick={(productId) => navigate(`/product/${productId}`)}
+        onUserIconClick={() => navigate('/profile')}
+        fromDB={effectiveFromDB}
+        dbRecordId={effectiveDbRecordId}
+        dbData={dbResult}  // ⭐ 이미 로드된 DB 데이터 전달 (이중 조회 방지)
+        onNext={id ? handleNext : undefined}  // ⭐ 무료 콘텐츠면 항상 나다움 기록하기 버튼 표시 (재조회 시에도)
+        nextLabel={hasConfirmedTags ? '완료' : '다음'}  // ⭐ 태그 확정 여부에 따라 버튼 레이블 변경
+        isNextLoading={false}  // ⭐ 태그 추출 중이면 로딩 페이지로 이동 (버튼 스피너 표시 안 함)
+      />
+
+      {/* ⭐ 비회원 일일 제한 도달 시 로그인 유도 바텀시트 */}
+      {dailyLimitReached && id && (
+        <LoginBottomSheet
+          isOpen={isLoginSheetOpen}
+          onClose={() => setIsLoginSheetOpen(false)}
+          contentId={id}
+        />
+      )}
+    </>
   );
 }
 
@@ -1675,13 +1778,17 @@ function PendingTagsCheckPage() {
             const cachedSaju = JSON.parse(cachedSajuJson);
             console.log('📋 [PendingTagsCheck] cached_saju_info 발견:', cachedSaju);
 
-            // 기존 사주 개수 확인 (최초 사주면 is_primary: true)
-            const { data: existingSaju } = await supabase
+            // ⭐ 기존 대표 사주(is_primary) 존재 여부 확인
+            const { data: primarySaju } = await supabase
               .from('saju_records')
               .select('id')
-              .eq('user_id', session.user.id);
+              .eq('user_id', session.user.id)
+              .eq('is_primary', true)
+              .maybeSingle();
 
-            const isFirstSaju = !existingSaju || existingSaju.length === 0;
+            const hasPrimary = !!primarySaju;
+            const shouldBePrimary = !hasPrimary;
+            console.log(`📌 [PendingTagsCheck] 기존 대표 사주: ${hasPrimary ? '있음' : '없음'}, 이번 사주 is_primary: ${shouldBePrimary}`);
 
             // 사주 레코드 INSERT
             const { data: newSajuRecord, error: sajuInsertError } = await supabase
@@ -1689,11 +1796,11 @@ function PendingTagsCheckPage() {
               .insert({
                 user_id: session.user.id,
                 full_name: cachedSaju.name,
-                gender: cachedSaju.gender === 'female' ? 'female' : 'male', // 'female' 또는 'male'로 저장
+                gender: cachedSaju.gender === 'female' ? 'female' : 'male',
                 birth_date: new Date(cachedSaju.birthDate).toISOString(),
                 birth_time: cachedSaju.birthTime || '12:00',
-                notes: '본인',
-                is_primary: isFirstSaju
+                notes: shouldBePrimary ? '본인' : '',
+                is_primary: shouldBePrimary // ⭐ 대표 사주가 없을 때만 내 사주로 설정
               })
               .select()
               .single();
@@ -1704,8 +1811,10 @@ function PendingTagsCheckPage() {
               savedSajuRecordId = newSajuRecord.id;
               console.log('✅ [PendingTagsCheck] 사주 정보 저장 완료:', newSajuRecord.id);
 
-              // primary_saju 캐시 업데이트
-              localStorage.setItem('primary_saju', JSON.stringify(newSajuRecord));
+              // ⭐ 대표 사주인 경우에만 primary_saju 캐시 업데이트
+              if (shouldBePrimary) {
+                localStorage.setItem('primary_saju', JSON.stringify(newSajuRecord));
+              }
               localStorage.setItem('profile_needs_refresh', 'true');
             }
 
@@ -1719,10 +1828,11 @@ function PendingTagsCheckPage() {
         // ========================================
         // 2️⃣ 무료 콘텐츠 결과 저장 (localStorage → free_content_records)
         // ========================================
-        let freeResultKey = pendingData.orderId; // free_content_xxx_guest_xxx 형식
+        // ⭐ resultKey를 우선 사용 (정확한 localStorage 키), 없으면 orderId fallback
+        let freeResultKey = pendingData.resultKey || pendingData.orderId;
         let newFreeRecordId: string | null = null;
 
-        // orderId가 없거나 free_content_ 형식이 아니면 localStorage에서 패턴 매칭으로 찾기
+        // resultKey/orderId가 없거나 free_content_ 형식이 아니면 localStorage에서 패턴 매칭으로 찾기
         if (!freeResultKey || (!freeResultKey.startsWith('free_content_') && !freeResultKey.startsWith('temp_'))) {
           const contentId = pendingData.contentId;
           if (contentId) {
@@ -1822,91 +1932,67 @@ function PendingTagsCheckPage() {
         const finalOrderId = newFreeRecordId || pendingData.orderId;
 
         // ========================================
-        // 3️⃣ DB에서 본인 사주의 phone_number 확인
+        // 3️⃣ 태그 저장 후 홈으로 이동 (phone_number 체크 없이 바로 처리)
+        // ⭐ NEW 플로우: phone_number 입력은 마이페이지 → "나의 분석 보고서" 탭 클릭 시 (처음 1회만)
         // ========================================
-        const { data: sajuRecord, error: sajuError } = await supabase
-          .from('saju_records')
-          .select('id, phone_number')
-          .eq('user_id', session.user.id)
-          .eq('notes', '본인')
-          .maybeSingle();
+        console.log('🏷️ [PendingTagsCheck] 태그 저장 시작');
 
-        if (sajuError) {
-          console.error('❌ [PendingTagsCheck] 사주 레코드 조회 실패:', sajuError);
-        }
-
-        console.log('📱 [PendingTagsCheck] 사주 레코드:', sajuRecord);
-
-        if (sajuRecord?.phone_number) {
-          // ✅ phone_number 있음 → 태그 저장 후 홈으로 이동
-          console.log('✅ [PendingTagsCheck] phone_number 있음 → 태그 저장 시작');
-
-          // 태그 저장 로직
-          for (const tag of pendingData.tags) {
-            await supabase
-              .from('user_trait_tags')
-              .insert({
-                user_id: session.user.id,
-                tag_name: tag.label,
-                tag_type: tag.type,
-                source_type: pendingData.sourceType || 'free_content',
-                source_content_id: pendingData.contentId || null,
-                source_order_id: finalOrderId || null,
-                is_confirmed: true
-              });
-          }
-
-          console.log('✅ [PendingTagsCheck] 태그 저장 완료');
-
-          // 캐시 무효화
-          localStorage.setItem('trait_tags_needs_refresh', 'true');
-          localStorage.setItem('my_report_needs_refresh', 'true');
-          localStorage.removeItem('trait_tags_cache');
-          localStorage.removeItem('nadaum_all_tags_cache');
-          localStorage.removeItem('pending_trait_tags');
-
-          // 토스트 표시 + 홈으로 이동
-          toast.success('태그가 저장됐어요!', {
-            subtitle: '프로필에서 확인할 수 있어요.',
-            duration: 2200
-          });
-
-          navigate('/', { replace: true });
-        } else {
-          // ❌ phone_number 없음 → 나다움 기록하기 페이지로 리다이렉트 (바텀시트 오픈)
-          console.log('📱 [PendingTagsCheck] phone_number 없음 → 나다움 기록하기로 이동');
-
-          // pending_trait_tags의 orderId를 새 DB recordId로 업데이트
-          if (newFreeRecordId) {
-            const updatedPendingData = { ...pendingData, orderId: newFreeRecordId };
-            localStorage.setItem('pending_trait_tags', JSON.stringify(updatedPendingData));
-          }
-
-          // 바텀시트 오픈 플래그 저장
-          localStorage.setItem('open_phone_bottomsheet', 'true');
-
-          // 나다움 기록하기 페이지로 이동 (/nadaum-record/:id 라우트 사용)
-          const contentId = pendingData.contentId;
-          if (contentId) {
-            // pending_trait_tags에서 태그 정보를 state로 전달
-            const tagsForState = pendingData.tags.map((t: { label: string; type: string }) => ({
-              name: t.label,
-              type: t.type
-            }));
-
-            navigate(`/nadaum-record/${contentId}`, {
-              replace: true,
-              state: {
-                freeRecordId: newFreeRecordId || pendingData.orderId,
-                tags: tagsForState
-              }
+        // 태그 저장 로직
+        for (const tag of pendingData.tags) {
+          await supabase
+            .from('user_trait_tags')
+            .insert({
+              user_id: session.user.id,
+              tag_name: tag.label,
+              tag_type: tag.type || 'positive',
+              source_type: pendingData.sourceType || 'free_content',
+              source_content_id: pendingData.contentId || null,
+              source_order_id: finalOrderId || null,
+              is_confirmed: true
             });
-          } else {
-            // contentId가 없으면 홈으로
-            localStorage.removeItem('pending_trait_tags');
-            navigate('/', { replace: true });
+        }
+
+        console.log('✅ [PendingTagsCheck] 태그 저장 완료');
+
+        // ⭐ 미선택 태그 → users.rejected_tags에 추가 (AI 재추출 방지)
+        const unselectedTags: string[] = pendingData.unselectedTags || [];
+        if (unselectedTags.length > 0) {
+          try {
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('rejected_tags')
+              .eq('id', session.user.id)
+              .single();
+
+            const currentRejected: string[] = userRecord?.rejected_tags || [];
+            const merged = [...new Set([...currentRejected, ...unselectedTags])];
+
+            await supabase
+              .from('users')
+              .update({ rejected_tags: merged })
+              .eq('id', session.user.id);
+
+            console.log('✅ [PendingTagsCheck] rejected_tags 업데이트:', unselectedTags);
+          } catch (err) {
+            console.warn('⚠️ [PendingTagsCheck] rejected_tags 업데이트 실패:', err);
           }
         }
+
+        // 캐시 무효화
+        localStorage.setItem('trait_tags_needs_refresh', 'true');
+        localStorage.setItem('my_report_needs_refresh', 'true');
+        localStorage.removeItem('trait_tags_cache');
+        localStorage.removeItem('nadaum_all_tags_cache');
+        localStorage.removeItem('pending_trait_tags');
+        localStorage.removeItem('open_phone_bottomsheet');
+        localStorage.removeItem('redirectAfterLogin');
+
+        // ⭐ "태그가 저장됐어요!" 토스트 플래그 설정 (홈에서 표시)
+        sessionStorage.setItem('show_tag_saved_toast', 'true');
+        sessionStorage.removeItem('show_login_toast');
+
+        // 홈으로 이동
+        navigate('/', { replace: true });
       } catch (err) {
         console.error('❌ [PendingTagsCheck] 처리 중 오류:', err);
         localStorage.removeItem('pending_trait_tags');
@@ -1924,10 +2010,10 @@ function PendingTagsCheckPage() {
         <DotLoading />
         <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
           <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">나다움 기록을</p>
+            <p className="font-semibold leading-[32.5px]">잠시만</p>
           </div>
           <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">준비중이에요!</p>
+            <p className="font-semibold leading-[32.5px]">기다려주세요</p>
           </div>
         </div>
       </div>
@@ -2091,15 +2177,26 @@ function WelcomeCouponPageWrapper() {
     }
   }, [navigate]);
 
-  const handleClose = () => {
+  const handleClose = async () => {
     // ⭐ 환영 페이지를 봤다는 플래그 설정
     sessionStorage.setItem('welcomePageViewed', 'true');
 
-    // ⭐ 신규 회원 로그인 완료 토스트 표시 플래그 저장
-    sessionStorage.setItem('show_login_toast', 'true');
-
     // ⭐ 프로필 페이지 강제 리로드 플래그 저장
     sessionStorage.setItem('force_profile_reload', 'true');
+
+    // ⭐ 무료 운세에서 태그 저장 후 회원가입한 경우
+    // → /pending-tags-check로 이동하여 사주 정보 + 무료 콘텐츠 + 태그 모두 저장
+    const pendingTagsJson = localStorage.getItem('pending_trait_tags');
+
+    if (pendingTagsJson) {
+      console.log('📱 [WelcomeCoupon] pending_trait_tags 감지 → /pending-tags-check로 이동');
+      // PendingTagsCheckPage에서 사주 정보 + 무료 콘텐츠 결과 + 태그 모두 처리
+      navigate('/pending-tags-check', { replace: true });
+      return;
+    }
+
+    // ⭐ 일반 회원가입 (태그 저장 없이): 로그인 토스트 표시
+    sessionStorage.setItem('show_login_toast', 'true');
 
     // redirectAfterLogin 확인
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
@@ -2305,12 +2402,15 @@ function NadaumRecordWrapper() {
   const tags = location.state?.tags as { name: string; type: 'positive' | 'negative' | 'neutral' }[] | undefined;
   // ⭐ 무료 콘텐츠 레코드 ID (각 운세 결과별 구분용) - orderId로 전달하여 source_order_id에 저장
   const freeRecordId = location.state?.freeRecordId as string | undefined;
+  // ⭐ localStorage 결과 키 (게스트→로그인 시 정확한 결과 매칭용)
+  const resultKeyFromState = location.state?.resultKey as string | undefined;
 
   return (
     <CheckRecordMe
       contentId={id}
       orderId={freeRecordId}  // ⭐ 각 운세 결과별 구분 (source_order_id에 저장됨)
       tags={tags}
+      resultKey={resultKeyFromState}
       onBack={() => navigate(`/product/${id}/result/free`)} // 무료 운세 결과 페이지로 이동
       onHome={() => navigate('/')}
       onSkip={() => navigate('/')} // 다음에 할래요

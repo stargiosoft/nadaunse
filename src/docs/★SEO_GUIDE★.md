@@ -1,7 +1,7 @@
 # SEO 가이드 - 나다운세
 
 > **검색엔진 최적화(SEO) 설정 및 관리 가이드**
-> **최종 업데이트**: 2026-01-26
+> **최종 업데이트**: 2026-02-06
 
 ---
 
@@ -32,9 +32,9 @@
 
 ```html
 <!-- 기본 메타 정보 -->
-<title>나다운세 - 신년운세, 무료, 사주, 타로, 궁합</title>
-<meta name="description" content="사주팔자, 타로, 궁합, 신년운세까지 AI 기반 정확한 운세 풀이를 나다운세에서 지금 바로 무료로 만나보세요." />
-<meta name="keywords" content="나다운세, 운세, 무료사주, 무료운세, 신년운세, 사주, 타로, 궁합, 오늘의운세, 띠별운세, AI 운세, 사주팔자, 사주풀이" />
+<title>나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세</title>
+<meta name="description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요." />
+<meta name="keywords" content="나다운세, 운세, 무료사주, 무료운세, 신년운세, 사주, 타로, 궁합, 오늘의운세, 띠별오늘의운세, 띠별운세, AI 운세, 별자리운세, 챗지피티사주, 챗gpt사주, 사주GPT, 신점, 사주팔자, 사주풀이, 인터넷사주, 자기이해" />
 <meta name="robots" content="index,follow" />
 <meta name="author" content="나다운세" />
 
@@ -44,15 +44,15 @@
 <!-- Open Graph -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="나다운세" />
-<meta property="og:title" content="나다운세 - 신년운세, 무료, 사주, 타로, 궁합" />
-<meta property="og:description" content="사주팔자, 타로, 궁합, 신년운세까지 AI 기반 정확한 운세 풀이를 나다운세에서 지금 바로 무료로 만나보세요." />
+<meta property="og:title" content="나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세" />
+<meta property="og:description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요." />
 <meta property="og:url" content="https://nadaunse.com/" />
 <meta property="og:image" content="https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/assets/OG%20image/OG%20KakaoTalk.png" />
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="나다운세 - 신년운세, 무료, 사주, 타로, 궁합" />
-<meta name="twitter:description" content="사주팔자, 타로, 궁합, 신년운세까지 AI 기반 정확한 운세 풀이를 나다운세에서 지금 바로 무료로 만나보세요." />
+<meta name="twitter:title" content="나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세" />
+<meta name="twitter:description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요." />
 ```
 
 ### JSON-LD 구조화 데이터
@@ -63,10 +63,22 @@
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "나다운세",
-  "alternateName": ["nadaunse", "나다운 운세"],
+  "alternateName": ["nadaunse", "나다운 운세", "나다운세 운세", "AI운세"],
   "url": "https://nadaunse.com",
-  "description": "...",
-  "inLanguage": "ko-KR"
+  "description": "무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다.",
+  "inLanguage": "ko-KR",
+  "keywords": "무료운세, 사주, 타로, 궁합, AI 운세, 사주풀이, 신년운세, 띠별운세, 오늘의운세"
+}
+
+// FAQPage (리치 스니펫)
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "name": "나다운세에서 무료운세를 볼 수 있나요?", ... },
+    { "name": "AI 사주풀이는 어떻게 작동하나요?", ... },
+    { "name": "타로점과 사주 중 어떤 것을 선택해야 하나요?", ... }
+  ]
 }
 
 // Organization (구글 검색 로고용)
@@ -243,10 +255,45 @@ Vercel 빌드 시 자동 생성됨
 
 ---
 
+## 빌드 타임 프리렌더 (Prerender)
+
+### 개요
+SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를 공유하여, 검색엔진 크롤러가 페이지별 고유 메타 태그를 인식하지 못합니다. 이를 해결하기 위해 빌드 시 Supabase에서 콘텐츠 목록을 가져와 페이지별 고유 메타 태그가 주입된 정적 HTML을 생성합니다.
+
+### 동작 방식
+1. `vite build` 완료 후 `scripts/prerender.mjs` 자동 실행
+2. Supabase REST API로 `master_contents` 테이블에서 deployed 콘텐츠 조회
+3. `build/index.html`을 템플릿으로 사용하여 페이지별 HTML 생성:
+   - `/terms-of-service`, `/privacy-policy`: 정적 메타 태그 주입
+   - `/product/{id}`: 유료 콘텐츠 메타 태그 + Product JSON-LD 주입
+   - `/free/content/{id}`: 무료 콘텐츠 메타 태그 주입 (제목에 `[무료]` 접두사)
+4. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
+
+### 환경변수
+- `VITE_SUPABASE_PROJECT_ID`: Supabase URL 구성에 사용
+- `VITE_SUPABASE_ANON_KEY`: API 인증에 사용
+
+### 에러 처리
+Supabase 조회 실패 시 경고만 출력하고 빌드는 성공 처리 (기존 SPA 동작 유지).
+
+### 생성되는 파일 구조
+```
+build/
+├── index.html                     (홈 - 기존 그대로)
+├── terms-of-service/index.html    (이용약관)
+├── privacy-policy/index.html      (개인정보처리방침)
+├── product/{id}/index.html        (유료 콘텐츠)
+└── free/content/{id}/index.html   (무료 콘텐츠)
+```
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-06 | **빌드 타임 프리렌더 적용** - `scripts/prerender.mjs` 추가, 빌드 시 콘텐츠별 고유 메타 태그 주입된 정적 HTML 생성 (Google/Naver 크롤러 대응) |
+| 2026-02-06 | **SEO 키워드 다양화 개선** - title/description/keywords 전면 개편, FAQPage JSON-LD 추가, SEO.tsx 기본값 강화, 페이지별 keywords 추가 (HomePage, FreeContentDetail, MasterContentDetailPage) |
 | 2026-01-26 | 초기 SEO 설정 완료 (메타 태그, JSON-LD, 로고) |
 | 2026-01-26 | 네이버 서치어드바이저 등록 확인 |
 | 2026-01-26 | 구글 Search Console 등록 확인 (4 클릭, 11 노출, CTR 36.4%) |

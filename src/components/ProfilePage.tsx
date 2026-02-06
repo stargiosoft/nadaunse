@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import SEO from './SEO';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
 import svgPathsArrows from "../imports/svg-iwpvhe731i";
 import svgPathsProfile from "../imports/svg-33ktykwr5e";
@@ -14,6 +14,8 @@ import { ProfileSkeletonWithSaju } from './skeletons/ProfileSkeleton';
 import { ProfileImage } from './ProfileImage';
 import { DEV } from '../lib/env';
 import { BarChart3, PenSquare } from 'lucide-react'; // ⭐ 통계 대시보드, 콘텐츠 만들기 아이콘
+import ReceiveMyAnalysis from '@/components/ReceiveMyAnalysis'; // ⭐ 핸드폰 번호 입력 바텀시트
+import { toast } from '@/lib/toast';
 
 interface ProfilePageProps {
   onBack: () => void;
@@ -38,6 +40,7 @@ interface SajuRecord {
   zodiac?: string;  // 띠 (DB에서 가져온 값)
   gender: 'male' | 'female';
   is_primary?: boolean;  // 대표 사주 여부
+  phone_number?: string;  // 핸드폰 번호
 }
 
 // Arrow Right Icon
@@ -272,6 +275,11 @@ export default function ProfilePage({
     return 0;
   };
   const [activeTabIndex, setActiveTabIndex] = useState(getInitialTabIndex());
+
+  // ⭐ 핸드폰 번호 입력 바텀시트 상태
+  const [isPhoneBottomSheetOpen, setIsPhoneBottomSheetOpen] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
 
   // ⭐ 태그 표시 개수 계산 (1줄에 맞게 2개 또는 3개)
   // 태그 총 글자 수가 20자 초과하면 2개만 표시
@@ -737,6 +745,57 @@ export default function ProfilePage({
     setShowLogoutDialog(false);
   };
 
+  // ⭐ 핸드폰 번호 저장 후 보고서 페이지로 이동
+  const handlePhoneSave = async () => {
+    setIsSavingPhone(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        toast.error('로그인이 필요합니다.');
+        setIsSavingPhone(false);
+        return;
+      }
+
+      // 핸드폰 번호에서 하이픈 제거
+      const phoneNumberClean = phoneNumber.replace(/-/g, '');
+
+      // users 테이블에 phone_number 업데이트
+      const { error } = await supabase
+        .from('users')
+        .update({ phone_number: phoneNumberClean })
+        .eq('id', session.user.id);
+
+      if (error) {
+        console.error('❌ [ProfilePage] 핸드폰 번호 저장 실패:', error);
+        toast.error('저장에 실패했습니다. 다시 시도해주세요.');
+        setIsSavingPhone(false);
+        return;
+      }
+
+      console.log('✅ [ProfilePage] 핸드폰 번호 저장 완료');
+
+      // user 상태 업데이트
+      setUser((prev: typeof user) => ({ ...prev, phone_number: phoneNumberClean }));
+
+      toast.success('저장되었습니다!', { duration: 2000 });
+
+      setIsSavingPhone(false);
+      setIsPhoneBottomSheetOpen(false);
+
+      // 보고서 페이지로 이동
+      setActiveTabIndex(1);
+      setTimeout(() => {
+        sessionStorage.setItem('from_report_list', 'true');
+        navigate('/my-report-list', { replace: true });
+      }, 200);
+    } catch (e) {
+      console.error('❌ [ProfilePage] 핸드폰 번호 저장 에러:', e);
+      toast.error('저장에 실패했습니다.');
+      setIsSavingPhone(false);
+    }
+  };
+
   const handleSajuMenuClick = async () => {
     if (isCheckingSaju) return;
     
@@ -850,6 +909,19 @@ export default function ProfilePage({
                 padding: '8px 16px'
               }}
               onClick={() => {
+                // ⭐ 핸드폰 번호가 없고, 바텀시트 본 적 없으면 → 바텀시트 표시 (최초 1회)
+                // users 테이블 또는 본인 사주 레코드(saju_records)에 번호가 있으면 통과
+                const hasSeenPhoneBottomSheet = localStorage.getItem('phone_bottomsheet_shown') === 'true';
+                const hasPhoneNumber = (user?.phone_number && user.phone_number.length > 0)
+                  || (primarySaju?.phone_number && primarySaju.phone_number.length > 0);
+
+                if (!hasPhoneNumber && !hasSeenPhoneBottomSheet) {
+                  // 바텀시트 표시
+                  setIsPhoneBottomSheetOpen(true);
+                  localStorage.setItem('phone_bottomsheet_shown', 'true');
+                  return;
+                }
+
                 setActiveTabIndex(1);
                 // 애니메이션 보여주고 페이지 이동
                 setTimeout(() => {
@@ -1342,6 +1414,29 @@ export default function ProfilePage({
           </div>
         </div>
       )}
+
+      {/* ⭐ 핸드폰 번호 입력 바텀시트 */}
+      <AnimatePresence>
+        {isPhoneBottomSheetOpen && (
+          <ReceiveMyAnalysis
+            onClose={() => {
+              if (!isSavingPhone) {
+                setIsPhoneBottomSheetOpen(false);
+                // 바텀시트 닫아도 보고서 페이지로 이동
+                setActiveTabIndex(1);
+                setTimeout(() => {
+                  sessionStorage.setItem('from_report_list', 'true');
+                  navigate('/my-report-list', { replace: true });
+                }, 200);
+              }
+            }}
+            onSave={handlePhoneSave}
+            phoneNumber={phoneNumber}
+            setPhoneNumber={setPhoneNumber}
+            isLoading={isSavingPhone}
+          />
+        )}
+      </AnimatePresence>
       </div>
     </>
   );

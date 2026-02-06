@@ -31,6 +31,8 @@ import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
 import FreeContentLoading from './FreeContentLoading';
 import FreeContentDetailSkeleton from './skeletons/FreeContentDetailSkeleton';
+import LoginBottomSheet from './LoginBottomSheet';
+import { hasReachedLocalLimit } from '../lib/freeContentLimitService';
 import SEO from './SEO';
 import {
   TopNavigation,
@@ -76,6 +78,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   const [recommendedContents, setRecommendedContents] = useState<MasterContent[]>([]);
   const [visibleCount, setVisibleCount] = useState(3); // ⭐ 처음에는 3개 표시
   const [visiblePaidCount, setVisiblePaidCount] = useState(6); // ⭐ 유료 콘텐츠는 6개씩
+  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false); // ⭐ 비회원 제한 바텀시트
   const scrollObserverRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref (바운스 방지)
 
@@ -269,6 +272,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
 
   /**
    * 구매 버튼 클릭 (무료 체험) - Fallback only
+   * ⭐ 비회원 일일 제한 체크 추가
    */
   const handlePurchase = () => {
     console.log('🔵 [FreeContentDetail] handlePurchase 함수 시작', {
@@ -282,6 +286,20 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
       console.log('🔴 [FreeContentDetail] handlePurchase 실패 - 데이터 없음');
       alert('질문지가 없습니다.');
       return;
+    }
+
+    // ⭐ 1. 로그인 여부 확인 (로그인 유저는 무제한)
+    const userJson = localStorage.getItem('user');
+    const isLoggedIn = !!userJson;
+
+    if (!isLoggedIn) {
+      // ⭐ 2. 비로그인 유저: localStorage 일일 제한 체크 (즉시, 0ms)
+      if (hasReachedLocalLimit()) {
+        console.log('🚫 [FreeContentDetail] 비회원 일일 제한 도달 → LoginBottomSheet 표시');
+        setIsLoginSheetOpen(true);
+        return;
+      }
+      console.log('✅ [FreeContentDetail] 비회원 제한 미도달 → 기존 플로우 진행');
     }
 
     // 🚀 캐시 확인: 사주 정보가 있으면 바로 사주 선택 페이지로 이동 (birthinfo 스킵)
@@ -331,11 +349,13 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     showResult,
     visibleCount,
     visiblePaidCount,
+    isLoginSheetOpen,
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
     // Actions
     handlePurchase,
     setShowResult,
+    setIsLoginSheetOpen,
     loadMorePaidContents
   };
 }
@@ -464,10 +484,12 @@ export default function FreeContentDetail({
     showResult,
     visibleCount,
     visiblePaidCount,
+    isLoginSheetOpen,
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
     handlePurchase,
     setShowResult,
+    setIsLoginSheetOpen,
     loadMorePaidContents
   } = useFreeContentDetail(contentId, onBack);
 
@@ -530,6 +552,7 @@ export default function FreeContentDetail({
         description={content.description || `${content.title} - 무료로 보는 AI 운세`}
         canonical={`/product/${contentId}`}
         ogImage={content.thumbnail_url}
+        keywords="무료운세, 무료사주, AI 운세, 무료 타로, 사주풀이, 나다운세"
       />
       <div className="bg-white fixed inset-0 flex flex-col w-full">
         <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
@@ -599,6 +622,13 @@ export default function FreeContentDetail({
           />
         </div>
       </div>
+
+      {/* ⭐ 비회원 일일 제한 도달 시 로그인 유도 바텀시트 */}
+      <LoginBottomSheet
+        isOpen={isLoginSheetOpen}
+        onClose={() => setIsLoginSheetOpen(false)}
+        contentId={contentId}
+      />
     </>
   );
 }

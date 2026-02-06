@@ -63,11 +63,13 @@ serve(async (req) => {
     // 선택적 파라미터 (테스트용)
     let testMode = false
     let testUserIds: string[] = []
+    let dummyMode = false
 
     try {
       const body = await req.json()
       testMode = body.testMode || false
       testUserIds = body.testUserIds || []
+      dummyMode = body.dummyMode || false
     } catch {
       // body 없으면 정상 배치 모드
     }
@@ -75,10 +77,203 @@ serve(async (req) => {
     console.log('🚀 [주간 보고서 배치] 시작')
     console.log('📅 실행 시간:', new Date().toISOString())
     console.log('🧪 테스트 모드:', testMode)
+    console.log('🧪 더미 모드:', dummyMode)
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // ⭐ DEV 더미 모드: AI 없이 즉시 더미 보고서 생성
+    if (dummyMode && testUserIds.length > 0) {
+      console.log('🧪 [더미 모드] 더미 보고서 생성 시작...')
+      const userId = testUserIds[0]
+
+      // 1) 사용자의 최신 보고서 조회
+      const { data: latestReport } = await supabase
+        .from('weekly_reports')
+        .select('year, month, week, week_start_date, week_end_date')
+        .eq('user_id', userId)
+        .order('week_start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      // 2) 다음 주차 계산
+      let nextYear: number, nextMonth: number, nextWeek: number
+      let nextStartDate: string, nextEndDate: string
+
+      if (latestReport) {
+        const lastEnd = new Date(latestReport.week_end_date)
+        const nextStart = new Date(lastEnd)
+        nextStart.setDate(nextStart.getDate() + 1)
+        const nextEnd = new Date(nextStart)
+        nextEnd.setDate(nextEnd.getDate() + 6)
+
+        nextYear = nextStart.getFullYear()
+        nextMonth = nextStart.getMonth() + 1
+        nextWeek = latestReport.week === 5 ? 1 : latestReport.week + 1
+        if (nextMonth !== latestReport.month) nextWeek = 1
+        nextStartDate = nextStart.toISOString().split('T')[0]
+        nextEndDate = nextEnd.toISOString().split('T')[0]
+      } else {
+        // 보고서 없으면 이번주 기준
+        const now = new Date()
+        const dayOfWeek = now.getDay()
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+        const monday = new Date(now)
+        monday.setDate(now.getDate() + mondayOffset)
+        const sunday = new Date(monday)
+        sunday.setDate(monday.getDate() + 6)
+
+        nextYear = monday.getFullYear()
+        nextMonth = monday.getMonth() + 1
+        nextWeek = 1
+        nextStartDate = monday.toISOString().split('T')[0]
+        nextEndDate = sunday.toISOString().split('T')[0]
+      }
+
+      console.log(`🧪 [더미 모드] 다음 보고서: ${nextYear}년 ${nextMonth}월 ${nextWeek}주차 (${nextStartDate} ~ ${nextEndDate})`)
+
+      // 3) 더미 보고서 INSERT
+      const { data: newReport, error: reportError } = await supabase
+        .from('weekly_reports')
+        .insert({
+          user_id: userId,
+          year: nextYear,
+          month: nextMonth,
+          week: nextWeek,
+          week_start_date: nextStartDate,
+          week_end_date: nextEndDate,
+          status: 'completed',
+          tag_count: 6,
+          situation_summary: '[DEV] 더미 보고서입니다. 이번 주 당신은 다양한 콘텐츠를 통해 자신의 강점을 재발견하고, 새로운 가능성을 탐색했습니다.',
+          to_do_list: JSON.stringify([
+            { id: 1, text: '매일 10분 명상하기' },
+            { id: 2, text: '감사일기 3줄 쓰기' },
+            { id: 3, text: '새로운 취미 도전하기' }
+          ]),
+          published_at: new Date().toISOString()
+        })
+        .select('id')
+        .single()
+
+      if (reportError || !newReport) {
+        console.error('❌ [더미 모드] 보고서 생성 실패:', reportError)
+        return new Response(
+          JSON.stringify({ success: false, error: reportError?.message || '보고서 생성 실패' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const reportId = newReport.id
+      console.log('✅ [더미 모드] 보고서 생성:', reportId)
+
+      // 4) 더미 섹션 INSERT (4개)
+      const dummySections = [
+        {
+          report_id: reportId,
+          section_type: 'my_story',
+          section_order: 1,
+          title: '이번 주 나의 이야기',
+          content: {
+            section_id: 1,
+            title: '이번 주 나의 이야기',
+            content_paragraphs: [
+              '[DEV 더미] 이번 주 당신은 자신의 내면을 깊이 들여다보는 시간을 가졌습니다.',
+              '여러 콘텐츠를 통해 자신도 몰랐던 강점을 발견했고, 그 과정에서 작은 깨달음을 얻었습니다.',
+              '주변 사람들과의 관계에서도 새로운 시각을 갖게 되었고, 더 깊은 소통을 시도하셨어요.'
+            ]
+          }
+        },
+        {
+          report_id: reportId,
+          section_type: 'emotion_diagnosis',
+          section_order: 2,
+          title: '감정 진단',
+          content: {
+            section_id: 2,
+            title: '감정 진단',
+            content_paragraphs: [
+              '[DEV 더미] 전반적으로 안정적인 감정 상태를 유지하고 계시네요.',
+              '다만 가끔 미래에 대한 불안감이 찾아올 수 있는데, 이는 당신이 성장하고 있다는 증거입니다.',
+              '지금의 감정을 있는 그대로 받아들이고, 천천히 한 걸음씩 나아가세요.'
+            ]
+          }
+        },
+        {
+          report_id: reportId,
+          section_type: 'tarot_reading',
+          section_order: 3,
+          title: '타로 리딩',
+          content: {
+            section_id: 3,
+            title: '타로 리딩',
+            card_1_interpretation: '[DEV 더미] 첫 번째 카드는 새로운 시작을 암시합니다. 용기를 내어 첫 걸음을 내딛어보세요.',
+            card_2_interpretation: '[DEV 더미] 두 번째 카드는 내면의 지혜를 상징합니다. 직감을 믿고 결정을 내려보세요.',
+            card_3_interpretation: '[DEV 더미] 세 번째 카드는 풍요를 나타냅니다. 곧 좋은 결과가 찾아올 거예요.'
+          }
+        },
+        {
+          report_id: reportId,
+          section_type: 'soul_prescription',
+          section_order: 4,
+          title: '영혼 처방전',
+          content: {
+            section_id: 4,
+            title: '영혼 처방전',
+            content_paragraphs: [
+              '[DEV 더미] 이번 주의 처방전은 "자기 자신에게 친절하기" 입니다.',
+              '완벽하지 않아도 괜찮아요. 매일 조금씩 성장하는 자신을 응원해주세요.',
+              '작은 성취에도 스스로를 칭찬하는 습관을 들여보세요. 그것이 큰 변화의 시작입니다.'
+            ]
+          }
+        }
+      ]
+
+      const { error: sectionsError } = await supabase
+        .from('weekly_report_sections')
+        .insert(dummySections)
+
+      if (sectionsError) {
+        console.error('⚠️ [더미 모드] 섹션 생성 실패:', sectionsError)
+      } else {
+        console.log('✅ [더미 모드] 섹션 4개 생성 완료')
+      }
+
+      // 5) 더미 타로 카드 INSERT (3장)
+      const tarotCards = [
+        { report_id: reportId, card_order: 1, card_name: 'The Fool', card_image_url: '/tarot/major/00_the_fool.jpg', interpretation: '새로운 시작과 무한한 가능성', user_viewed: false },
+        { report_id: reportId, card_order: 2, card_name: 'The Star', card_image_url: '/tarot/major/17_the_star.jpg', interpretation: '희망과 영감의 빛', user_viewed: false },
+        { report_id: reportId, card_order: 3, card_name: 'The Sun', card_image_url: '/tarot/major/19_the_sun.jpg', interpretation: '기쁨과 성공의 에너지', user_viewed: false },
+      ]
+
+      const { error: tarotError } = await supabase
+        .from('report_tarot_selections')
+        .insert(tarotCards)
+
+      if (tarotError) {
+        console.error('⚠️ [더미 모드] 타로 카드 생성 실패:', tarotError)
+      } else {
+        console.log('✅ [더미 모드] 타로 카드 3장 생성 완료')
+      }
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+      console.log(`🏁 [더미 모드] 완료 (${elapsed}초)`)
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          summary: {
+            targetCount: 1,
+            successCount: 1,
+            failCount: 0,
+            skippedCount: 0,
+            elapsedSeconds: parseFloat(elapsed)
+          },
+          results: [{ userId, success: true, reportId }]
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // 1. 전주 날짜 범위 계산
     const weekRange = getLastWeekRange()

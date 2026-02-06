@@ -5,6 +5,7 @@
  * - https://nadaunse.com (프로덕션)
  * - https://www.nadaunse.com (프로덕션)
  * - https://staging.nadaunse.com (스테이징)
+ * - https://nadaunse-*.vercel.app (Vercel Preview)
  * - http://localhost:* (로컬 개발)
  */
 
@@ -27,6 +28,11 @@ function isAllowedOrigin(origin: string | null): boolean {
 
   // 로컬 개발 환경 (localhost 모든 포트)
   if (origin.startsWith('http://localhost:') || origin === 'http://localhost') {
+    return true;
+  }
+
+  // Vercel Preview 배포 (nadaunse-*.vercel.app)
+  if (origin.match(/^https:\/\/nadaunse(-[a-z0-9-]+)?\.vercel\.app$/)) {
     return true;
   }
 

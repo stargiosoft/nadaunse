@@ -21,8 +21,20 @@ serve(async (req) => {
       birthDate,      // 예: "1992-07-15"
       birthTime,      // 예: "21:30" (24시간 형식)
       gender,         // "male" 또는 "female"
-      sajuData: prefetchedSajuData  // ⭐ 미리 가져온 사주 데이터 (선택적)
+      sajuData: prefetchedSajuData,  // ⭐ 미리 가져온 사주 데이터 (선택적)
+      // ⭐ 초개인화 데이터 (선택적)
+      personalizationData
     } = await req.json()
+
+    // 초개인화 데이터 타입 정의
+    interface PersonalizationData {
+      recentPositiveTags: string[]
+      recentNegativeTags: string[]
+      allPositiveTags: string[]
+      allNegativeTags: string[]
+      recentSituationSummaries: { week: number; summary: string }[]
+    }
+    const pData = personalizationData as PersonalizationData | null
 
     if (!title || !birthDate || !birthTime || !gender) {
       return new Response(
@@ -111,12 +123,68 @@ serve(async (req) => {
       )
     }
 
+    // ⭐ 초개인화 프롬프트 섹션 생성
+    let questionerInfoSection = ''
+
+    if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.length > 0)) {
+      // 초개인화 데이터가 있는 경우 - 기획서 형식 적용
+      console.log('✅ 초개인화 프롬프트 적용')
+
+      // 최근 4주 태그 포맷팅
+      const recentPositiveStr = pData.recentPositiveTags.length > 0
+        ? pData.recentPositiveTags.map(t => `"${t}"`).join(', ')
+        : '없음'
+      const recentNegativeStr = pData.recentNegativeTags.length > 0
+        ? pData.recentNegativeTags.map(t => `"${t}"`).join(', ')
+        : '없음'
+
+      // 전체 태그 포맷팅
+      const allPositiveStr = pData.allPositiveTags.length > 0
+        ? pData.allPositiveTags.map(t => `"${t}"`).join(', ')
+        : '없음'
+      const allNegativeStr = pData.allNegativeTags.length > 0
+        ? pData.allNegativeTags.map(t => `"${t}"`).join(', ')
+        : '없음'
+
+      // 심리 흐름 포맷팅
+      let situationSummaryStr = ''
+      if (pData.recentSituationSummaries.length > 0) {
+        situationSummaryStr = pData.recentSituationSummaries
+          .map(s => `**${s.week}주차**: ${s.summary}`)
+          .join('\n\n')
+      } else {
+        situationSummaryStr = '없음'
+      }
+
+      questionerInfoSection = `## 질문자 정보
+### 상황
+${questionerInfo || '없음'}
+
+### 질문자가 직접 선택한 기질/성향
+- 최근 4주간 사용자가 모은 장단점 키워드
+    (최근 4주간 사용자가 집중적으로 선택한 키워드입니다. 현재의 운세 해석과 심리 상태 분석의 최우선 근거로 삼으십시오.)
+    - 본인이 생각하는 강점: ${recentPositiveStr}
+    - 본인이 생각하는 단점: ${recentNegativeStr}
+
+- 사용자가 모은 장단점 키워드 누적 데이터
+    (장기간 누적된 데이터입니다. 사용자의 타고난 본성이나 사주 원국과의 일치 여부를 확인할 때 배경 지식으로 활용하십시오.)
+    - 본인이 생각하는 강점: ${allPositiveStr}
+    - 본인이 생각하는 단점: ${allNegativeStr}
+
+### 질문자의 최근 4주간 심리 흐름
+${situationSummaryStr}`
+    } else {
+      // 초개인화 데이터가 없는 경우 - 기존 형식 유지
+      console.log('ℹ️ 초개인화 데이터 없음, 기본 프롬프트 사용')
+      questionerInfoSection = `## 질문자 정보
+${questionerInfo || '없음'}`
+    }
+
     // 프롬프트 구성 (사용자가 제공한 구조 그대로)
     const prompt = `## 역할
 고객의 사주 데이터와 현재 상황을 분석하여 통찰력 있는 맞춤 풀이를 완결된 보고서 형태로 제공하는 전문 사주 명리학자
 
-## 질문자 정보
-${questionerInfo || '없음'}
+${questionerInfoSection}
 
 ## 질문
 ${questionText}
@@ -230,30 +298,8 @@ ${JSON.stringify(sajuData, null, 2)}
 
     console.log('✅ 사주 답변 생성 완료 (GPT-5.1):', answerText.substring(0, 100) + '...')
 
-    // questionId가 있으면 DB 업데이트
-    if (questionId) {
-      try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-        const { error: updateError } = await supabase
-          .from('master_content_questions')
-          .update({ 
-            answer_text: answerText,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', questionId)
-
-        if (updateError) {
-          console.error('⚠️ DB 업데이트 실패:', updateError)
-        } else {
-          console.log('✅ DB 업데이트 완료:', questionId)
-        }
-      } catch (dbError) {
-        console.error('⚠️ DB 업데이트 오류:', dbError)
-      }
-    }
+    // ⭐ DB 저장은 generate-content-answers에서 order_results에 처리
+    // master_content_questions 업데이트 로직 제거 (컬럼 없음, 중복 로직)
 
     return new Response(
       JSON.stringify({ success: true, answerText }),

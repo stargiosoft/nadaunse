@@ -157,6 +157,15 @@ export default function AuthCallback() {
         // ⭐ 프로필 페이지 강제 리로드 플래그 저장
         sessionStorage.setItem('force_profile_reload', 'true');
 
+        // ⭐ cached_saju_info가 있으면 로그인 후 저장 플래그 설정
+        // (auth listener 내부에서 DB 쿼리하면 행이 걸리므로, 리다이렉트 후 App.tsx에서 처리)
+        const cachedSajuJson = localStorage.getItem('cached_saju_info');
+        const hasPendingTags = !!localStorage.getItem('pending_trait_tags');
+        if (cachedSajuJson && !hasPendingTags) {
+          console.log('📋 [AuthCallback] cached_saju_info 발견 → 리다이렉트 후 저장 예정');
+          localStorage.setItem('save_cached_saju_after_login', 'true');
+        }
+
         // 리다이렉트 URL 확인
         const redirectUrl = localStorage.getItem('redirectAfterLogin');
         console.log('📍 저장된 리다이렉트 URL:', redirectUrl);

@@ -820,6 +820,19 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
         }
         
         toast.success('배포에 성공했어요.');
+
+        // Vercel 재빌드 트리거 (fire-and-forget, 실패해도 배포에 영향 없음)
+        try {
+          supabase.functions.invoke('trigger-rebuild').then(({ error }) => {
+            if (error) {
+              console.warn('⚠️ Vercel 재빌드 트리거 실패 (무시):', error.message);
+            } else {
+              console.log('🔄 Vercel 재빌드 트리거 완료 - SEO 프리렌더가 자동 업데이트됩니다.');
+            }
+          });
+        } catch (err) {
+          console.warn('⚠️ Vercel 재빌드 트리거 실패 (무시):', err);
+        }
       }
     } catch (error) {
       console.error('💥 배포 중 예외 발생:', error);
