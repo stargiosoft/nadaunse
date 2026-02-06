@@ -8,6 +8,31 @@ import svgPaths from "@/imports/svg-o5jcc01aog";
 import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
 import svgEmptyPaths from "@/imports/svg-mzaxb1u3cp";
 import editSvgPaths from "@/imports/svg-4xnmni03a0";
+
+// New 뱃지 그라데이션 애니메이션 스타일
+const newBadgeStyle = document.createElement('style');
+newBadgeStyle.textContent = `
+  @keyframes newBadgeFlow {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+  }
+  .new-badge-animated {
+    background: linear-gradient(
+      135deg,
+      #6AC9C6 0%,
+      #9DE8E5 25%,
+      #6AC9C6 50%,
+      #9DE8E5 75%,
+      #6AC9C6 100%
+    );
+    background-size: 200% 200%;
+    animation: newBadgeFlow 2s linear infinite;
+  }
+`;
+if (typeof document !== 'undefined' && !document.getElementById('new-badge-gradient-style')) {
+  newBadgeStyle.id = 'new-badge-gradient-style';
+  document.head.appendChild(newBadgeStyle);
+}
 import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
@@ -203,7 +228,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
               {report.title.replace(' 보고서', '')}
             </p>
             {isLatest && (
-              <div className="flex items-center justify-center" style={{ padding: '1px 5px', borderRadius: '5px', backgroundColor: '#6AC9C6' }}>
+              <div className="flex items-center justify-center new-badge-animated" style={{ padding: '1px 5px', borderRadius: '5px' }}>
                 <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '10px', lineHeight: '15px', color: '#ffffff', letterSpacing: '-0.2px' }}>
                   New
                 </span>
@@ -220,7 +245,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
           onClick={() => onReportClick?.(report.id)}
         >
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
-            다시보기
+            다시 보기
           </p>
         </div>
       </div>
@@ -248,7 +273,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
       <div className="flex items-center flex-nowrap overflow-hidden" style={{ gap: '6px', padding: '0 2px', marginTop: '3px' }}>
         <div className="flex items-center flex-nowrap" style={{ gap: '4px' }}>
           {report.tags.slice(0, 3).map((tag, idx) => (
-            <div key={idx} className="flex items-center justify-center" style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F6F6F6' }}>
+            <div key={idx} className="flex items-center justify-center" style={{ padding: '2.5px 6px 2px 6px', borderRadius: '99px', backgroundColor: '#F6F6F6' }}>
               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#525252', letterSpacing: '-0.24px' }}>
                 {tag.label}
               </p>
@@ -1490,16 +1515,20 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           </div>
         </div>
 
-        {/* Tab Bar */}
-        <div
-          className="w-full overflow-hidden"
-          style={{
-            maxHeight: isTabBarVisible ? '100px' : '0',
-            transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
-            opacity: isTabBarVisible ? 1 : 0
-          }}
-        >
-          <NavigationTabBar activeTab={activeTab} onTabChange={handleTabChange} />
+        {/* Tab Bar Container - 높이 유지로 레이아웃 시프트 방지 */}
+        <div className="w-full relative shrink-0 overflow-hidden" style={{ height: '52px' }}>
+          {/* Tab Bar - transform으로 부드럽게 숨김 */}
+          <div
+            className="absolute top-0 left-0 right-0 w-full"
+            style={{
+              transform: isTabBarVisible ? 'translateY(0)' : 'translateY(-100%)',
+              transition: 'transform 0.3s ease-in-out',
+              backgroundColor: 'white',
+              zIndex: 10
+            }}
+          >
+            <NavigationTabBar activeTab={activeTab} onTabChange={handleTabChange} />
+          </div>
         </div>
 
         {/* Main Content - 스크롤 영역 */}
