@@ -117,10 +117,18 @@ if (params.value <= 0) {
 | `/product/{id}/result/free` | 무료 운세 결과 \| 나다운세 |
 | `/{id}/payment/new` | 결제 \| 나다운세 |
 | `/login/new` | 로그인 \| 나다운세 |
-| `/profile` | 프로필 \| 나다운세 |
+| `/profile` | 마이페이지 \| 나다운세 |
 | `/profile/nadaum-tags` | 나다움 태그 \| 나다운세 |
 | `/nadaum-record/{id}` | [무료] 나다움 기록하기 \| 나다운세 |
 | `/paid/nadaum-record` | [유료] 나다움 기록하기 \| 나다운세 |
+| `/my-report-list` | 보고서 리스트 \| 나다운세 |
+| `/report-weekly-detail/{id}` | 보고서 시작 \| 나다운세 |
+| `/report-weekly-tarot/{id}` | 보고서 타로 셔플 \| 나다운세 |
+| `/report-weekly-tarot-result/{id}` | 보고서 타로 결과 \| 나다운세 |
+| `/report-weekly-mind-care/{id}` | 보고서 마음처방 \| 나다운세 |
+| `/report-weekly-memo/{id}` | 보고서 나 응원하기 \| 나다운세 |
+| `/report-completion/{id}` | 보고서 완료/쿠폰 \| 나다운세 |
+| `/report-weekly/{id}/cheer-edit` | 나 응원하기 수정 \| 나다운세 |
 
 ### 콘텐츠 상세 페이지: 이중 page_view 트래킹
 
@@ -447,6 +455,7 @@ GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확�
 | 2026-01-29 | 무료 `/product/:id/result/free` page_view recordId당 최초 1회만 전송 (재조회 시 제외) |
 | 2026-02-02 | 나다움 기록하기 페이지 타이틀 추가 (`[무료]`, `[유료]` 구분) |
 | 2026-02-02 | 나다움 태그 페이지 타이틀 추가 (`/profile/nadaum-tags`) |
+| 2026-02-05 | 주간 보고서 페이지 타이틀 추가 (보고서 리스트, 보고서 시작, 타로 셔플/결과, 마음처방, 나 응원하기, 완료/쿠폰) |
 
 ---
 

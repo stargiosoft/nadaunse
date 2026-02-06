@@ -578,7 +578,15 @@ function getInitialCacheState(): {
       const cache = JSON.parse(cachedJson);
       const isExpired = Date.now() - cache.timestamp > CACHE_EXPIRY_MS;
 
-      if (!isExpired) {
+      // ⚠️ userId 검증: 현재 로그인한 사용자의 캐시인지 확인
+      const currentUserJson = localStorage.getItem('user');
+      const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
+      const isCorrectUser = cache.userId && cache.userId === currentUserId;
+
+      if (!isCorrectUser) {
+        console.log('⚠️ [MyReportList] 캐시 userId 불일치 → 캐시 무효화');
+        localStorage.removeItem(MY_REPORT_CACHE_KEY);
+      } else if (!isExpired) {
         console.log('🚀 [MyReportList] 캐시 히트! 즉시 렌더링');
         return {
           currentWeekTagsCount: cache.currentWeekTagsCount || 0,
@@ -587,8 +595,9 @@ function getInitialCacheState(): {
           hasValidCache: true,
           reports: cache.reports || []
         };
+      } else {
+        console.log('⏰ [MyReportList] 캐시 만료 (5분 초과)');
       }
-      console.log('⏰ [MyReportList] 캐시 만료 (5분 초과)');
     }
   } catch (e) {
     console.error('❌ [MyReportList] 캐시 파싱 실패:', e);
@@ -811,14 +820,15 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           console.log(`📋 [MyReportList] 월별 보고서 ${monthlyReports.length}개 로드됨`);
         }
 
-        // 🚀 캐시에 저장 (만료 시간 포함) - reports 데이터 포함!
+        // 🚀 캐시에 저장 (만료 시간 포함) - reports 데이터 + userId 포함!
         localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+          userId: user.id, // ⚠️ 계정 전환 시 캐시 무효화용
           currentWeekTagsCount: weeklyTagCount,
           hasAnyTags: hasAnyTagsNow,
           reports: monthlyReports,
           timestamp: Date.now()
         }));
-        console.log('💾 [MyReportList] 캐시 저장 완료 (보고서 포함)');
+        console.log('💾 [MyReportList] 캐시 저장 완료 (보고서 포함, userId:', user.id, ')');
 
       } catch (error) {
         console.error('❌ [MyReportList] 데이터 로드 실패:', error);
@@ -881,8 +891,9 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           console.log(`📋 [MyReportList] visibility 변경 → 보고서 ${monthlyReports.length}개 갱신`);
         }
 
-        // 캐시 업데이트 (reports 포함)
+        // 캐시 업데이트 (reports + userId 포함)
         localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+          userId: user.id,
           currentWeekTagsCount: weeklyTagCount,
           hasAnyTags: hasAnyTagsNow,
           reports: monthlyReports,
@@ -1203,6 +1214,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
           // 새 캐시 저장
           localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+            userId: user.id,
             currentWeekTagsCount,
             hasAnyTags: true,
             reports: monthlyReports,

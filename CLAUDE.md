@@ -131,7 +131,7 @@ npm run deploy:prod:core
 npm run deploy:staging
 ```
 
-**🚨 --no-verify-jwt 필수 함수 (내부 호출용)**:
+**🚨 --no-verify-jwt 필수 함수 (내부 호출 또는 공개 접근용)**:
 | 함수 | 이유 |
 |------|------|
 | `generate-saju-answer` | `generate-content-answers`에서 내부 호출 |
@@ -139,8 +139,9 @@ npm run deploy:staging
 | `send-alimtalk` | `generate-content-answers`에서 내부 호출 |
 | `generate-weekly-report` | `generate-weekly-reports-batch`에서 내부 호출 |
 | `send-report-alimtalk` | `generate-weekly-report`에서 내부 호출 |
+| `generate-sitemap` | Google 크롤러가 인증 없이 sitemap.xml 접근 필요 |
 
-- 위 함수들은 Service Role Key로 호출되므로 JWT 검증 비활성화 필수
+- 위 함수들은 Service Role Key로 호출되거나 공개 접근이 필요하므로 JWT 검증 비활성화 필수
 - **수동 배포 시 `--no-verify-jwt` 누락하면 "Invalid JWT" 401 에러 발생**
 - 배포 스크립트 사용하면 자동으로 플래그 적용됨
 

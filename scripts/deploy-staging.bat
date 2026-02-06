@@ -63,8 +63,8 @@ call npx supabase functions deploy generate-thumbnail --project-ref %PROJECT_REF
 if errorlevel 1 goto :error
 
 echo.
-echo [12/25] generate-sitemap
-call npx supabase functions deploy generate-sitemap --project-ref %PROJECT_REF%
+echo [12/25] generate-sitemap (--no-verify-jwt)
+call npx supabase functions deploy generate-sitemap --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.

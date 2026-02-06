@@ -338,6 +338,10 @@ export default function ProfilePage({
       // ⭐ 최초 로그인 플래그: 로그인 직후 한 번만 강제 API 호출
       const forceReload = sessionStorage.getItem('force_profile_reload') === 'true';
 
+      // 🔄 브라우저 새로고침 감지 (F5, Cmd+R 등)
+      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+      const isPageRefresh = navEntries.length > 0 && navEntries[0].type === 'reload';
+
       // 🚀 태그 refresh 플래그도 미리 체크
       const needsTagRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
 
@@ -347,14 +351,22 @@ export default function ProfilePage({
       console.log('  - needsRefresh:', needsRefresh);
       console.log('  - needsTagRefresh:', needsTagRefresh);
       console.log('  - forceReload:', forceReload);
+      console.log('  - isPageRefresh:', isPageRefresh);
 
       // 🚀 모든 캐시가 유효할 때만 API 호출 스킵 (user + saju + tags)
       // → iOS 스와이프 뒤로가기 시 불필요한 리로드 완전 방지
       // 🚀 태그는 Stale-While-Revalidate: 캐시 데이터가 있으면 API 호출해도 UI는 즉시 표시
-      if (initialState.hasCache && !initialState.needsTagRefresh && !needsRefresh && !needsTagRefresh && !forceReload) {
-        console.log('✅ [ProfilePage] 모든 캐시 유효 + refresh 불필요 + 강제 리로드 아님');
+      // ⚠️ 태그 캐시가 없으면 (isLoadingTags=true) API 호출 필요!
+      // 🔄 새로고침 시에는 항상 API 호출
+      const hasTagCache = !!localStorage.getItem('trait_tags_cache');
+      if (initialState.hasCache && !initialState.needsTagRefresh && !needsRefresh && !needsTagRefresh && !forceReload && !isPageRefresh && hasTagCache) {
+        console.log('✅ [ProfilePage] 모든 캐시 유효 + refresh 불필요 + 강제 리로드 아님 + 새로고침 아님');
         console.log('   → API 호출 완전 스킵 (캐시만 사용)');
         return;
+      }
+
+      if (isPageRefresh) {
+        console.log('🔄 [ProfilePage] 브라우저 새로고침 감지 → 강제 API 호출');
       }
 
       // ⭐ API 호출이 필요한 경우 로깅
@@ -384,7 +396,8 @@ export default function ProfilePage({
 
       if (authUser) {
         // 🚀 API 병렬화: users + saju_records + trait_tags 동시 실행
-        const shouldLoadTags = initialState.isLoadingTags || needsTagRefresh;
+        // 🔄 새로고침 시에도 태그 로드
+        const shouldLoadTags = initialState.isLoadingTags || needsTagRefresh || isPageRefresh;
 
         if (needsTagRefresh) {
           localStorage.removeItem('trait_tags_needs_refresh');
@@ -1137,7 +1150,7 @@ export default function ProfilePage({
                     >
                       <div className="flex items-center gap-[8px]">
                         <div className="relative shrink-0 size-[20px]">
-                          <PenSquare size={12} className="text-black" />
+                          <PenSquare size={18} className="text-black" />
                         </div>
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           콘텐츠 만들기
@@ -1158,7 +1171,7 @@ export default function ProfilePage({
                     >
                       <div className="flex items-center gap-[8px]">
                         <div className="relative shrink-0 size-[20px]">
-                          <BarChart3 size={12} className="text-black" />
+                          <BarChart3 size={18} className="text-black" />
                         </div>
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           통계 대시보드

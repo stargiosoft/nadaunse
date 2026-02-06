@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, Activity, Clock, Copy } from 'lucide-react';
+import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Clock, Copy, ExternalLink, BarChart3, Trophy } from 'lucide-react';
 import svgPathsBack from "../imports/svg-ct14exwyb3";
 import svgPathsHome from "../imports/svg-sg7rn8f2dm";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid } from 'recharts';
@@ -13,7 +13,7 @@ import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -122,8 +122,8 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
 }
 
 // 대시보드 탭 타입
-type DashboardTab = '개요' | '추세' | '비교';
-const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교'];
+type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠';
+const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠'];
 
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -162,6 +162,15 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [compareGroupA, setCompareGroupA] = useState<DateRange | undefined>(undefined);
   const [compareGroupB, setCompareGroupB] = useState<DateRange | undefined>(undefined);
   const [activeCompareGroup, setActiveCompareGroup] = useState<'A' | 'B'>('A');
+
+  // 콘텐츠 탭 상태
+  const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
+  const [categoryRanking, setCategoryRanking] = useState<CategoryViewStats[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [topContents, setTopContents] = useState<Record<string, ContentViewStats[]>>({});
+  const [topContentsLoading, setTopContentsLoading] = useState<string | null>(null);
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -409,6 +418,58 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       loadCompareStats();
     }
   }, [selectedTab]);
+
+  // 콘텐츠 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '콘텐츠' && categoryRanking.length === 0 && !contentLoading) {
+      loadContentRanking();
+    }
+  }, [selectedTab]);
+
+  // 콘텐츠 타입 필터 변경 시 데이터 리로드
+  useEffect(() => {
+    if (selectedTab === '콘텐츠') {
+      loadContentRanking();
+    }
+  }, [contentTypeFilter]);
+
+  // 콘텐츠 랭킹 데이터 로드
+  const loadContentRanking = async () => {
+    setContentLoading(true);
+    setContentError(null);
+    setExpandedCategory(null);
+    setTopContents({});
+    try {
+      const data = await fetchCategoryViewRanking(contentTypeFilter);
+      setCategoryRanking(data);
+    } catch (err) {
+      setContentError('콘텐츠 랭킹을 불러오는데 실패했습니다.');
+      console.error(err);
+    } finally {
+      setContentLoading(false);
+    }
+  };
+
+  // 카테고리 확장/축소 + Top5 로드
+  const handleCategoryToggle = async (category: string) => {
+    if (expandedCategory === category) {
+      setExpandedCategory(null);
+      return;
+    }
+    setExpandedCategory(category);
+    // 이미 로드된 경우 스킵
+    const cacheKey = `${category}_${contentTypeFilter}`;
+    if (topContents[cacheKey]) return;
+    setTopContentsLoading(category);
+    try {
+      const data = await fetchTopContentsByCategory(category, contentTypeFilter, 5);
+      setTopContents(prev => ({ ...prev, [cacheKey]: data }));
+    } catch (err) {
+      console.error('Top 콘텐츠 로드 실패:', err);
+    } finally {
+      setTopContentsLoading(null);
+    }
+  };
 
   // 비교 기간 변경 핸들러
   const handleComparePresetChange = (preset: ComparePreset) => {
@@ -2061,6 +2122,333 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         )}
           </>
         )}{/* 개요 탭 닫기 */}
+
+        {/* ========== 콘텐츠 탭 ========== */}
+        {selectedTab === '콘텐츠' && (
+          <div style={{ paddingTop: '16px' }}>
+            {/* 콘텐츠 타입 필터 (종합/심화 해석판/무료 체험판) */}
+            <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                <BarChart3 size={16} color="#666" />
+                <span style={{ ...typography.label }}>콘텐츠 유형</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {([
+                  { value: 'all' as ContentTypeFilter, label: '종합' },
+                  { value: 'paid' as ContentTypeFilter, label: '심화 해석판' },
+                  { value: 'free' as ContentTypeFilter, label: '무료 체험판' },
+                ]).map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setContentTypeFilter(filter.value)}
+                    className="rounded-xl transition-colors active:opacity-80"
+                    style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontSize: '14px',
+                      fontWeight: contentTypeFilter === filter.value ? 500 : 400,
+                      padding: '8px 16px',
+                      backgroundColor: contentTypeFilter === filter.value ? '#3FB5B3' : '#f5f5f5',
+                      color: contentTypeFilter === filter.value ? '#ffffff' : '#666666',
+                      border: 'none',
+                    }}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* 카테고리 뷰수 랭킹 */}
+            <section style={{ marginBottom: '20px' }}>
+              <SectionHeader icon="🏆" title="카테고리별 조회수 순위" />
+
+              {contentLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : contentError ? (
+                <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                  <p style={{ ...typography.label, color: '#ef4444', marginBottom: '12px' }}>{contentError}</p>
+                  <button
+                    onClick={loadContentRanking}
+                    className="rounded-xl transition-colors active:opacity-80"
+                    style={{ ...typography.button, padding: '8px 16px', backgroundColor: '#3FB5B3', color: '#ffffff', border: 'none' }}
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : categoryRanking.length === 0 ? (
+                <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+                  <p style={{ ...typography.label, color: '#999999' }}>데이터가 없습니다.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {categoryRanking.map((cat, index) => {
+                    const isExpanded = expandedCategory === cat.category;
+                    const cacheKey = `${cat.category}_${contentTypeFilter}`;
+                    const contents = topContents[cacheKey];
+                    const isLoadingContents = topContentsLoading === cat.category;
+                    // 1위 대비 비율 (프로그레스 바)
+                    const maxViews = categoryRanking[0]?.totalViews || 1;
+                    const ratio = Math.max((cat.totalViews / maxViews) * 100, 2);
+
+                    return (
+                      <motion.div
+                        key={cat.category}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        style={{ backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden' }}
+                      >
+                        {/* 카테고리 행 */}
+                        <button
+                          onClick={() => handleCategoryToggle(cat.category)}
+                          className="w-full transition-colors active:opacity-80"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '16px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                          }}
+                        >
+                          {/* 순위 뱃지 */}
+                          <div
+                            className="shrink-0 flex items-center justify-center"
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '8px',
+                              backgroundColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#f0f0f0',
+                              fontFamily: 'Pretendard Variable, sans-serif',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              color: index < 3 ? '#ffffff' : '#999999',
+                            }}
+                          >
+                            {index + 1}
+                          </div>
+
+                          {/* 카테고리 정보 */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between" style={{ marginBottom: '6px' }}>
+                              <span style={{
+                                fontFamily: 'Pretendard Variable, sans-serif',
+                                fontSize: '15px',
+                                fontWeight: 600,
+                                color: '#1a1a1a',
+                              }}>
+                                {cat.category}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span style={{
+                                  fontFamily: 'Pretendard Variable, sans-serif',
+                                  fontSize: '14px',
+                                  fontWeight: 600,
+                                  color: '#3FB5B3',
+                                }}>
+                                  {cat.totalViews.toLocaleString()}
+                                </span>
+                                <span style={{
+                                  fontFamily: 'Pretendard Variable, sans-serif',
+                                  fontSize: '12px',
+                                  fontWeight: 400,
+                                  color: '#999999',
+                                }}>
+                                  ({cat.contentCount}개)
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* 프로그레스 바 */}
+                            <div style={{ width: '100%', height: '6px', backgroundColor: '#f0f0f0', borderRadius: '3px' }}>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${ratio}%` }}
+                                transition={{ duration: 0.6, delay: index * 0.05 }}
+                                style={{
+                                  height: '100%',
+                                  borderRadius: '3px',
+                                  backgroundColor: index === 0 ? '#3FB5B3' : index === 1 ? '#48B2AF' : index === 2 ? '#5BC5C3' : '#81EBEA',
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* 더보기 아이콘 */}
+                          <div className="shrink-0">
+                            {isExpanded ? (
+                              <ChevronUp size={18} color="#999" />
+                            ) : (
+                              <ChevronDown size={18} color="#999" />
+                            )}
+                          </div>
+                        </button>
+
+                        {/* 확장: Top5 콘텐츠 */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.25, ease: 'easeOut' }}
+                              style={{ overflow: 'hidden' }}
+                            >
+                              <div style={{ padding: '0 16px 16px', borderTop: '1px solid #f0f0f0' }}>
+                                <div style={{ paddingTop: '12px' }}>
+                                  <div className="flex items-center gap-1" style={{ marginBottom: '10px' }}>
+                                    <Trophy size={13} color="#999" />
+                                    <span style={{
+                                      fontFamily: 'Pretendard Variable, sans-serif',
+                                      fontSize: '12px',
+                                      fontWeight: 500,
+                                      color: '#999999',
+                                    }}>
+                                      Top 5 콘텐츠
+                                    </span>
+                                  </div>
+
+                                  {isLoadingContents ? (
+                                    <div className="flex flex-col gap-2">
+                                      {[1, 2, 3].map((i) => (
+                                        <div key={i} className="animate-pulse" style={{ height: '40px', backgroundColor: '#f5f5f5', borderRadius: '10px' }} />
+                                      ))}
+                                    </div>
+                                  ) : contents && contents.length > 0 ? (
+                                    <div className="flex flex-col gap-2">
+                                      {contents.map((content, cIdx) => (
+                                        <a
+                                          key={content.id}
+                                          href={content.contentType === 'free'
+                                            ? `/free/content/${content.id}`
+                                            : `/master/content/detail/${content.id}`
+                                          }
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-3 rounded-xl transition-colors active:opacity-80"
+                                          style={{
+                                            padding: '10px 12px',
+                                            backgroundColor: '#fafafa',
+                                            textDecoration: 'none',
+                                          }}
+                                        >
+                                          <span style={{
+                                            fontFamily: 'Pretendard Variable, sans-serif',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            color: cIdx < 3 ? '#3FB5B3' : '#999999',
+                                            width: '18px',
+                                            textAlign: 'center',
+                                          }}>
+                                            {cIdx + 1}
+                                          </span>
+                                          <div className="flex-1 min-w-0">
+                                            <p style={{
+                                              fontFamily: 'Pretendard Variable, sans-serif',
+                                              fontSize: '13px',
+                                              fontWeight: 500,
+                                              color: '#1a1a1a',
+                                              margin: 0,
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap',
+                                            }}>
+                                              {content.title}
+                                            </p>
+                                          </div>
+                                          <div className="shrink-0 flex items-center gap-2">
+                                            <span style={{
+                                              fontFamily: 'Pretendard Variable, sans-serif',
+                                              fontSize: '12px',
+                                              fontWeight: 400,
+                                              color: content.contentType === 'paid' ? '#6366F1' : '#3FB5B3',
+                                              padding: '2px 6px',
+                                              borderRadius: '4px',
+                                              backgroundColor: content.contentType === 'paid' ? '#EEF2FF' : '#F0FDFA',
+                                            }}>
+                                              {content.contentType === 'paid' ? '유료' : '무료'}
+                                            </span>
+                                            <span style={{
+                                              fontFamily: 'Pretendard Variable, sans-serif',
+                                              fontSize: '12px',
+                                              fontWeight: 500,
+                                              color: '#666666',
+                                            }}>
+                                              {content.viewCount.toLocaleString()}회
+                                            </span>
+                                            <ExternalLink size={12} color="#b7b7b7" />
+                                          </div>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p style={{
+                                      fontFamily: 'Pretendard Variable, sans-serif',
+                                      fontSize: '12px',
+                                      fontWeight: 400,
+                                      color: '#999999',
+                                      textAlign: 'center',
+                                      padding: '12px 0',
+                                      margin: 0,
+                                    }}>
+                                      콘텐츠가 없습니다.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 전체 조회수 합계 */}
+              {!contentLoading && categoryRanking.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{
+                    marginTop: '16px',
+                    padding: '14px 16px',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Eye size={16} color="#3FB5B3" />
+                    <span style={{
+                      fontFamily: 'Pretendard Variable, sans-serif',
+                      fontSize: '13px',
+                      fontWeight: 400,
+                      color: '#666666',
+                    }}>
+                      전체 조회수
+                    </span>
+                  </div>
+                  <span style={{
+                    fontFamily: 'Pretendard Variable, sans-serif',
+                    fontSize: '20px',
+                    fontWeight: 600,
+                    color: '#1a1a1a',
+                  }}>
+                    {categoryRanking.reduce((sum, c) => sum + c.totalViews, 0).toLocaleString()}
+                  </span>
+                </motion.div>
+              )}
+            </section>
+          </div>
+        )}{/* 콘텐츠 탭 닫기 */}
+
           </div>{/* 스크롤 영역 닫기 */}
 
         </div>{/* 내부 컨테이너 닫기 */}

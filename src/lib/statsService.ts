@@ -1215,3 +1215,119 @@ export async function fetchDailyGAStats(
     return null;
   }
 }
+
+// ========== 콘텐츠 랭킹 타입 및 함수 ==========
+
+/** 콘텐츠 타입 필터 */
+export type ContentTypeFilter = 'all' | 'paid' | 'free';
+
+/** 카테고리별 뷰 통계 */
+export interface CategoryViewStats {
+  category: string;
+  totalViews: number;
+  contentCount: number;
+}
+
+/** 개별 콘텐츠 뷰 통계 */
+export interface ContentViewStats {
+  id: string;
+  title: string;
+  contentType: 'free' | 'paid';
+  viewCount: number;
+  categoryMain: string;
+}
+
+/**
+ * 카테고리별 뷰수 랭킹 조회
+ * master_contents 테이블의 view_count를 category_main별로 집계
+ */
+export async function fetchCategoryViewRanking(
+  contentTypeFilter: ContentTypeFilter = 'all'
+): Promise<CategoryViewStats[]> {
+  try {
+    let query = supabase
+      .from('master_contents')
+      .select('category_main, view_count')
+      .eq('status', 'deployed');
+
+    if (contentTypeFilter !== 'all') {
+      query = query.eq('content_type', contentTypeFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('카테고리 뷰 랭킹 조회 실패:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) return [];
+
+    // category_main별 집계
+    const categoryMap = new Map<string, { totalViews: number; contentCount: number }>();
+    for (const item of data) {
+      const cat = item.category_main || '기타';
+      const existing = categoryMap.get(cat) || { totalViews: 0, contentCount: 0 };
+      existing.totalViews += item.view_count || 0;
+      existing.contentCount += 1;
+      categoryMap.set(cat, existing);
+    }
+
+    // 배열 변환 후 뷰수 내림차순 정렬
+    const rankings: CategoryViewStats[] = Array.from(categoryMap.entries())
+      .map(([category, stats]) => ({
+        category,
+        totalViews: stats.totalViews,
+        contentCount: stats.contentCount,
+      }))
+      .sort((a, b) => b.totalViews - a.totalViews);
+
+    return rankings;
+  } catch (error) {
+    console.error('카테고리 뷰 랭킹 조회 예외:', error);
+    return [];
+  }
+}
+
+/**
+ * 특정 카테고리의 Top N 콘텐츠 조회
+ */
+export async function fetchTopContentsByCategory(
+  category: string,
+  contentTypeFilter: ContentTypeFilter = 'all',
+  limit: number = 5
+): Promise<ContentViewStats[]> {
+  try {
+    let query = supabase
+      .from('master_contents')
+      .select('id, title, content_type, view_count, category_main')
+      .eq('status', 'deployed')
+      .eq('category_main', category)
+      .order('view_count', { ascending: false })
+      .limit(limit);
+
+    if (contentTypeFilter !== 'all') {
+      query = query.eq('content_type', contentTypeFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Top 콘텐츠 조회 실패:', error);
+      return [];
+    }
+
+    if (!data) return [];
+
+    return data.map(item => ({
+      id: item.id,
+      title: item.title,
+      contentType: item.content_type as 'free' | 'paid',
+      viewCount: item.view_count || 0,
+      categoryMain: item.category_main,
+    }));
+  } catch (error) {
+    console.error('Top 콘텐츠 조회 예외:', error);
+    return [];
+  }
+}
