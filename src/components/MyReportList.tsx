@@ -197,7 +197,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
   return (
     <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '7px', padding: '0 2px' }}>
       <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
-        <div className="flex flex-col" style={{ gap: '2px' }}>
+        <div className="flex flex-col" style={{ gap: '1px' }}>
           <div className="flex items-center" style={{ gap: '6px' }}>
             <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
               {report.title}
@@ -210,8 +210,8 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
               </div>
             )}
           </div>
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '21px', color: '#525252', letterSpacing: '-0.28px' }}>
-            {report.period.replace(/^\d{4}\./, '')}
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13.5px', lineHeight: '20px', color: '#848484', letterSpacing: '-0.5px' }}>
+            {report.period.replace(/^\d{4}\./, '').replace(/ ~ /g, '~')}
           </span>
         </div>
         <div
