@@ -195,7 +195,7 @@ function EditIcon() {
 
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '4px', padding: '0 2px' }}>
+    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '7px', padding: '0 2px' }}>
       <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
         <div className="flex flex-col" style={{ gap: '2px' }}>
           <div className="flex items-center" style={{ gap: '6px' }}>
@@ -210,7 +210,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
               </div>
             )}
           </div>
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '18px', color: '#B7B7B7', letterSpacing: '-0.24px' }}>
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '21px', color: '#525252', letterSpacing: '-0.28px' }}>
             {report.period.replace(/^\d{4}\./, '')}
           </span>
         </div>
@@ -219,7 +219,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
           style={{ gap: '4px', padding: '2px 4px 2px 6px', borderRadius: '8px' }}
           onClick={() => onReportClick?.(report.id)}
         >
-          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '21px', color: '#848484', letterSpacing: '-0.39px' }}>
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
             다시보기
           </p>
         </div>
@@ -248,20 +248,15 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
       <div className="flex items-center flex-nowrap overflow-hidden" style={{ gap: '6px', padding: '0 2px' }}>
         <div className="flex items-center flex-nowrap" style={{ gap: '4px' }}>
           {report.tags.slice(0, 3).map((tag, idx) => (
-            <div key={idx} className={`flex items-center justify-center ${idx === 2 ? 'hidden min-[390px]:flex' : ''}`} style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F6F6F6' }}>
+            <div key={idx} className="flex items-center justify-center" style={{ padding: '2.5px 7px 2px 7px', borderRadius: '99px', backgroundColor: '#F6F6F6' }}>
               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', color: '#525252', letterSpacing: '-0.24px' }}>
                 {tag.label}
               </p>
             </div>
           ))}
         </div>
-        {(report.tags.length + (report.extraTagsCount || 0)) > 2 && (
-          <p className="min-[390px]:hidden" style={{ paddingTop: '2px', fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11px', lineHeight: '15px', color: '#525252', letterSpacing: '-0.22px' }}>
-            +{(report.tags.length + (report.extraTagsCount || 0)) - 2}
-          </p>
-        )}
         {(report.tags.length + (report.extraTagsCount || 0)) > 3 && (
-          <p className="hidden min-[390px]:block" style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11px', lineHeight: '15px', color: '#525252', letterSpacing: '-0.22px' }}>
+          <p style={{ paddingTop: '2px', fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11px', lineHeight: '15px', color: '#525252', letterSpacing: '-0.22px' }}>
             +{(report.tags.length + (report.extraTagsCount || 0)) - 3}
           </p>
         )}
@@ -278,9 +273,9 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full bg-white"
-        style={{ padding: '12px 20px' }}
+        style={{ padding: '13px 20px' }}
       >
-        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '15px', lineHeight: '15.5px', color: '#000000', letterSpacing: '-0.3px' }}>
+        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
           {month.title}
         </p>
         <motion.div
