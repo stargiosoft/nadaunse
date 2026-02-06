@@ -583,15 +583,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return (
         <FreeContentDetail
           contentId={contentId}
-          onBack={() => navigate('/')}
-          onHome={() => navigate('/')}
+          onBack={() => navigate(-1)}
+          onHome={() => navigate(-1)}
           onPurchase={async () => {}} // 로딩 중이므로 빈 함수
           onContentClick={(contentId) => {
             console.log('🔥 MasterContentDetailPage navigate 시도:', `/master/content/detail/${contentId}`);
             navigate(`/master/content/detail/${contentId}`);
           }}
           onBannerClick={() => {
-            navigate('/');
+            navigate(-1);
           }}
         />
       );
@@ -642,15 +642,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate('/')}
-        onHome={() => navigate('/')}
+        onBack={() => navigate(-1)}
+        onHome={() => navigate(-1)}
         onPurchase={handleFreePurchase}
         onContentClick={(contentId) => {
           console.log('🔥 MasterContentDetailPage navigate 시도:', `/master/content/detail/${contentId}`);
           navigate(`/master/content/detail/${contentId}`);
         }}
         onBannerClick={() => {
-          navigate('/');
+          navigate(-1);
         }}
       />
     );
@@ -671,7 +671,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             콘텐츠를 찾을 수 없습니다
           </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(-1)}
             className="bg-[#48b2af] text-white px-[24px] py-[12px] rounded-[12px] font-['Pretendard_Variable:SemiBold',sans-serif]"
           >
             홈으로 돌아가기
@@ -765,15 +765,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate('/')}
-        onHome={() => navigate('/')}
+        onBack={() => navigate(-1)}
+        onHome={() => navigate(-1)}
         onPurchase={handleFreePurchase}
       />
     );
   }
 
   const isPaid = content.content_type === 'paid';
-  const onBack = () => navigate('/');
+  const onBack = () => navigate(-1);
   
   const onPurchase = async () => {
     console.log('🔵 [MasterContentDetailPage] onPurchase 함수 시작', {

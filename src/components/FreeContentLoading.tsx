@@ -73,6 +73,33 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
   console.log('📌 [FreeContentLoading] userName:', userNameFromUrl);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+  // ⭐ 비회원 일일 사용 카운터 증가 (localStorage 기반)
+  const incrementFreeDailyUsage = () => {
+    const FREE_DAILY_LIMIT = 3;
+    const STORAGE_KEY = 'free_content_daily_usage';
+    try {
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstDate = new Date(now.getTime() + kstOffset);
+      const todayKST = kstDate.toISOString().split('T')[0];
+
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let newCount = 1;
+
+      if (stored) {
+        const { date, count } = JSON.parse(stored);
+        if (date === todayKST) {
+          newCount = count + 1;
+        }
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: todayKST, count: newCount }));
+      console.log(`📊 [FreeContentLoading] 비회원 일일 사용량 업데이트: ${newCount}/${FREE_DAILY_LIMIT}`);
+    } catch (e) {
+      console.warn('⚠️ [FreeContentLoading] 일일 사용량 카운터 업데이트 실패:', e);
+    }
+  };
+
   // ⭐️ Edge Function 동기 호출 (DB 폴링 제거)
   useEffect(() => {
     // ⭐ 이미 생성 시작했으면 중복 실행 방지
@@ -84,7 +111,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
     if (!contentId) {
       console.error('❌ [FreeContentLoading] contentId 없음');
       toast.error('잘못된 접근입니다.');
-      navigate('/');
+      navigate('/', { replace: true });
       return;
     }
 
@@ -117,7 +144,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             if (!cachedSaju) {
               console.error('❌ [FreeContentLoading] 캐시된 사주 정보 없음');
               toast.error('사주 정보를 찾을 수 없습니다.');
-              navigate('/');
+              navigate('/', { replace: true });
               return;
             }
             sajuDataForCache = JSON.parse(cachedSaju);
@@ -125,7 +152,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             if (!sajuRecordId) {
               console.error('❌ [FreeContentLoading] sajuRecordId 없음');
               toast.error('사주 정보를 찾을 수 없습니다.');
-              navigate('/');
+              navigate('/', { replace: true });
               return;
             }
             
@@ -138,7 +165,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             if (sajuError || !sajuRecord) {
               console.error('❌ [FreeContentLoading] 사주 정보 조회 실패:', sajuError);
               toast.error('사주 정보를 찾을 수 없습니다.');
-              navigate('/');
+              navigate('/', { replace: true });
               return;
             }
             
@@ -169,7 +196,10 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
               previewText: '전반적으로 건강한 상태를 유지하고 있으나, 스트레스 관리에 신경 쓰시는 것이 좋겠습니다.'
             }
           ];
-          
+
+          // ⭐ 비회원 일일 카운터 증가 (allProducts mock 데이터)
+          incrementFreeDailyUsage();
+
           // localStorage에 저장
           const resultData = {
             contentId: contentId,
@@ -177,7 +207,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             results: mockResults,
             createdAt: new Date().toISOString()
           };
-          
+
           // ⭐ 타임스탬프 추가: 동일 콘텐츠+사주로 다시 볼 때도 새로운 키 생성 (이전 태그 재사용 방지)
           const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
           localStorage.setItem(resultKey, JSON.stringify(resultData));
@@ -209,7 +239,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         if (contentError || !contentData) {
           console.error('❌ [FreeContentLoading] 콘텐츠 조회 실패:', contentError);
           toast.error('콘텐츠를 찾을 수 없습니다.');
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
 
@@ -234,14 +264,14 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         if (questionsError) {
           console.error('❌ [FreeContentLoading] 질문 조회 실패:', questionsError);
           toast.error('질문을 불러올 수 없습니다.');
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
 
         if (!questions || questions.length === 0) {
           console.error('❌ [FreeContentLoading] 질문이 없습니다.');
           toast.error('콘텐츠 정보가 올바르지 않습니다.');
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
 
@@ -259,7 +289,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           if (!cachedSaju) {
             console.error('❌ [FreeContentLoading] 캐시된 사주 정보 없음');
             toast.error('사주 정보를 찾을 수 없습니다.');
-            navigate('/');
+            navigate('/', { replace: true });
             return;
           }
 
@@ -280,7 +310,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           if (!sajuRecordId) {
             console.error('❌ [FreeContentLoading] sajuRecordId 없음');
             toast.error('사주 정보를 찾을 수 없습니다.');
-            navigate('/');
+            navigate('/', { replace: true });
             return;
           }
 
@@ -293,7 +323,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           if (sajuError || !sajuRecord) {
             console.error('❌ [FreeContentLoading] 사주 정보 조회 실패:', sajuError);
             toast.error('사주 정보를 찾을 수 없습니다.');
-            navigate('/');
+            navigate('/', { replace: true });
             return;
           }
 
@@ -360,6 +390,23 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         let shouldUseMockFallback = false;
         let fallbackReason = '';
 
+        // ⭐ 비회원 일일 제한 도달 체크 (서버 2차 검증)
+        if (result.data?.error === 'DAILY_LIMIT_REACHED') {
+          console.log('🚫 [FreeContentLoading] 서버 일일 제한 도달 → 콘텐츠 상세로 이동');
+
+          // localStorage도 동기화 (서버와 클라이언트 상태 일치)
+          const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+          const todayKST = kstNow.toISOString().split('T')[0];
+          localStorage.setItem('free_content_daily_usage', JSON.stringify({ date: todayKST, count: 3 }));
+
+          // 콘텐츠 상세로 돌아가면서 LoginBottomSheet 표시 유도
+          navigate(`/free/content/${contentId}`, {
+            replace: true,
+            state: { dailyLimitReached: true }
+          });
+          return;
+        }
+
         // 에러 체크 - result.error 존재 여부
         if (result.error) {
           console.warn('⚠️ [FreeContentLoading] Edge Function 호출 실패 (서버 에러 또는 키 누락 가능성)');
@@ -398,6 +445,9 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           console.warn('⚠️ [FreeContentLoading] Edge Function 실패 → mock 데이터로 fallback 실행');
           console.warn('📌 Fallback 사유:', fallbackReason);
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+          // ⭐ 비회원 일일 카운터 증가 (mock fallback)
+          incrementFreeDailyUsage();
 
           // Mock 데이터 생성 (기존 로직 재사용)
           const mockResults = [
@@ -454,6 +504,9 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
 
         console.log('✅ [FreeContentLoading] Edge Function 호출 성공');
         console.log('📌 [FreeContentLoading] answers 개수:', result.data.answers.length);
+
+        // ⭐ 비회원 일일 카운터 증가 (Edge Function 성공)
+        incrementFreeDailyUsage();
 
         // ⭐️ 4단계: Edge Function 응답을 FreeSajuDetail 형식으로 변환
         const results = result.data.answers.map((answer: any) => ({
@@ -528,7 +581,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
       } catch (err) {
         console.error('❌ [FreeContentLoading] 예외 발생:', err);
         toast.error('운세 생성 중 오류가 발생했습니다.');
-        navigate('/');
+        navigate('/', { replace: true });
       }
     };
 
