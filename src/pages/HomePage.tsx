@@ -1162,47 +1162,6 @@ export default function HomePage() {
     }
   }, [isInitialLoading, availableCategories, selectedCategory, selectedType, prefetchOtherCategories]);
 
-  // 📌 스크롤 위치 복원 (콘텐츠 상세에서 복귀 시)
-  useEffect(() => {
-    if (isInitialLoading || allContents.length === 0) return;
-
-    const raw = sessionStorage.getItem('homepage_scroll_position');
-    if (!raw) return;
-
-    try {
-      const saved = JSON.parse(raw);
-
-      // 30분 초과 데이터 무시
-      if (Date.now() - saved.timestamp > 30 * 60 * 1000) {
-        sessionStorage.removeItem('homepage_scroll_position');
-        return;
-      }
-
-      // 필터 불일치 시 무시 (다른 탭으로 진입한 경우)
-      if (saved.category !== selectedCategory || saved.contentType !== selectedType) {
-        sessionStorage.removeItem('homepage_scroll_position');
-        return;
-      }
-
-      // 즉시 제거 (중복 복원 방지)
-      sessionStorage.removeItem('homepage_scroll_position');
-
-      requestAnimationFrame(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        const target = Math.min(saved.scrollTop, maxScroll);
-
-        container.scrollTop = target;
-        lastScrollY.current = target;
-        setShowNavigation(true);
-      });
-    } catch {
-      sessionStorage.removeItem('homepage_scroll_position');
-    }
-  }, [isInitialLoading, allContents.length, selectedCategory, selectedType]);
-
   // 🆕 실제로 데이터가 있는 카테고리만 조회하여 탭에 표시
   useEffect(() => {
     const fetchAvailableCategories = async () => {
@@ -1661,16 +1620,6 @@ export default function HomePage() {
     sessionStorage.setItem('navigatedFromHome', 'true');
     console.log('🔑 [콘텐츠 클릭] SessionStorage 플래그 설정');
 
-    // 📌 스크롤 위치 저장 (복귀 시 복원용)
-    if (scrollContainerRef.current) {
-      sessionStorage.setItem('homepage_scroll_position', JSON.stringify({
-        scrollTop: scrollContainerRef.current.scrollTop,
-        category: selectedCategory,
-        contentType: selectedType,
-        timestamp: Date.now()
-      }));
-    }
-
     // 🎯 무료/유료 구분하여 적절한 경로로 이동
     // 📊 GA 이벤트: 콘텐츠 클릭 추적
     const clickedContent = contentsList.find(c => c.id === contentId) ||
@@ -1689,7 +1638,6 @@ export default function HomePage() {
 
   const handleCategoryChange = (category: TabCategory) => {
     setSelectedCategory(category);
-    sessionStorage.removeItem('homepage_scroll_position');
     // ⭐ 세션 스토리지에 필터 상태 저장 (페이지 이동 후에도 유지)
     const filterState = { category, contentType: selectedType };
     sessionStorage.setItem(SESSION_FILTER_KEY, JSON.stringify(filterState));
@@ -1698,7 +1646,6 @@ export default function HomePage() {
 
   const handleTypeChange = (type: 'all' | 'paid' | 'free') => {
     setSelectedType(type);
-    sessionStorage.removeItem('homepage_scroll_position');
     // ⭐ 세션 스토리지에 필터 상태 저장 (페이지 이동 후에도 유지)
     const filterState = { category: selectedCategory, contentType: type };
     sessionStorage.setItem(SESSION_FILTER_KEY, JSON.stringify(filterState));
