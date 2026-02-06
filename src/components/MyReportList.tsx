@@ -195,7 +195,7 @@ function EditIcon() {
 
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: '5px', padding: '2px 2px 6px 2px' }}>
+    <div className="flex flex-col w-full" style={{ gap: '5px', padding: '0px 2px 3px 2px' }}>
       <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
         <div className="flex flex-col" style={{ gap: '1px' }}>
           <div className="flex items-center" style={{ gap: '6px' }}>
@@ -267,14 +267,23 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
 
 function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick, isFirstMonth = false }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isFirstMonth?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
+  const [hasBeenRead, setHasBeenRead] = useState(defaultExpanded && month.reports.length > 0); // 기본 열림 상태면 읽음 처리
 
   // 새 보고서가 있는지 확인 (첫 번째 월이고 보고서가 있으면 새 보고서 존재)
   const hasNewReport = isFirstMonth && month.reports.length > 0;
 
+  // 아코디언 토글 핸들러
+  const handleToggle = () => {
+    if (!isExpanded) {
+      setHasBeenRead(true); // 열 때 읽음 처리
+    }
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <div className="flex flex-col w-full border-b last:border-0 last:mb-0" style={{ borderColor: '#F8F8F8', marginBottom: isExpanded ? '36px' : '0' }}>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggle}
         className="flex items-center justify-between w-full bg-white"
         style={{ padding: '14px 20px' }}
       >
@@ -282,14 +291,15 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 600 : 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
             {month.title}
           </p>
-          {/* 아코디언 닫혔을 때 새 보고서 알림 dot */}
-          {!isExpanded && hasNewReport && (
+          {/* 아코디언 닫혔을 때 새 보고서 알림 dot (읽지 않았을 때만) */}
+          {!isExpanded && hasNewReport && !hasBeenRead && (
             <div
               style={{
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
-                backgroundColor: '#6AC9C6'
+                backgroundColor: '#6AC9C6',
+                marginTop: '-7px'
               }}
             />
           )}
@@ -1485,7 +1495,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           className="w-full overflow-hidden"
           style={{
             maxHeight: isTabBarVisible ? '100px' : '0',
-            transition: 'max-height 0.3s ease-in-out',
+            transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out',
             opacity: isTabBarVisible ? 1 : 0
           }}
         >
