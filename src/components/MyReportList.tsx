@@ -19,11 +19,11 @@ newBadgeStyle.textContent = `
   .new-badge-animated {
     background: linear-gradient(
       135deg,
-      #6AC9C6 0%,
+      #85D5D2 0%,
       #9DE8E5 25%,
-      #6AC9C6 50%,
+      #85D5D2 50%,
       #9DE8E5 75%,
-      #6AC9C6 100%
+      #85D5D2 100%
     );
     background-size: 200% 200%;
     animation: newBadgeFlow 2s linear infinite;
@@ -1516,20 +1516,17 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           </div>
         </div>
 
-        {/* Tab Bar Container - 높이 유지로 레이아웃 시프트 방지 */}
-        <div className="w-full relative shrink-0 overflow-hidden" style={{ height: '52px' }}>
-          {/* Tab Bar - transform으로 부드럽게 숨김 */}
-          <div
-            className="absolute top-0 left-0 right-0 w-full"
-            style={{
-              transform: isTabBarVisible ? 'translateY(0)' : 'translateY(-100%)',
-              transition: 'transform 0.3s ease-in-out',
-              backgroundColor: 'white',
-              zIndex: 10
-            }}
-          >
-            <NavigationTabBar activeTab={activeTab} onTabChange={handleTabChange} />
-          </div>
+        {/* Tab Bar Container - 탭과 배경이 세트로 함께 사라짐 */}
+        <div
+          className="w-full relative shrink-0 overflow-hidden bg-white"
+          style={{
+            height: isTabBarVisible ? '52px' : '0px',
+            opacity: isTabBarVisible ? 1 : 0,
+            transition: 'height 0.3s ease-in-out, opacity 0.3s ease-in-out',
+            zIndex: 10
+          }}
+        >
+          <NavigationTabBar activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
 
         {/* Main Content - 스크롤 영역 */}
