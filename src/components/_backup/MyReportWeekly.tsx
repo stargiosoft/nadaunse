@@ -5,7 +5,6 @@ import { ChevronDown } from 'lucide-react';
 import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
 import svgEmptyPaths from "@/imports/svg-mzaxb1u3cp";
 import editSvgPaths from "@/imports/svg-4xnmni03a0";
-import svgArrowPaths from "@/imports/svg-nh8ftbb7rx";
 
 export interface ReportTag {
   label: string;
@@ -146,19 +145,6 @@ function EditIcon() {
   );
 }
 
-function ViewReportArrowIcon() {
-  return (
-    <div className="relative" style={{ width: '12px', height: '12px' }}>
-      <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-        <g>
-          <path d={svgArrowPaths.p23113100} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-          <path d="M1.75 6H10.165" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
 function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
   return (
     <div className="flex flex-col w-full" style={{ gap: '8px', padding: '0 2px' }}>
@@ -232,9 +218,8 @@ function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyRepo
           }}
         >
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
-            보고서 보기
+            다시보기
           </p>
-          <ViewReportArrowIcon />
         </div>
       </div>
     </div>

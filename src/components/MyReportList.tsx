@@ -8,7 +8,6 @@ import svgPaths from "@/imports/svg-o5jcc01aog";
 import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
 import svgEmptyPaths from "@/imports/svg-mzaxb1u3cp";
 import editSvgPaths from "@/imports/svg-4xnmni03a0";
-import svgArrowPaths from "@/imports/svg-nh8ftbb7rx";
 import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
@@ -194,29 +193,34 @@ function EditIcon() {
   );
 }
 
-function ViewReportArrowIcon() {
-  return (
-    <div className="relative" style={{ width: '12px', height: '12px' }}>
-      <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-        <g>
-          <path d={svgArrowPaths.p23113100} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-          <path d="M1.75 6H10.165" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
+function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
     <div className="flex flex-col w-full" style={{ gap: '8px', padding: '0 2px' }}>
-      <div className="flex items-center w-full" style={{ gap: '6px', padding: '0 2px' }}>
-        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
-          {report.title}
-        </p>
-        <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', color: '#B7B7B7', letterSpacing: '-0.26px' }}>
-          {report.period.replace(/^\d{4}\./, '')}
-        </span>
+      <div className="flex items-center justify-between w-full" style={{ padding: '0 2px' }}>
+        <div className="flex items-center" style={{ gap: '6px' }}>
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '25.5px', color: '#151515', letterSpacing: '-0.3px' }}>
+            {report.title}
+          </p>
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', color: '#B7B7B7', letterSpacing: '-0.26px' }}>
+            {report.period.replace(/^\d{4}\./, '')}
+          </span>
+          {isLatest && (
+            <div className="flex items-center justify-center" style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#48b2af' }}>
+              <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '11px', lineHeight: '16px', color: '#ffffff', letterSpacing: '-0.22px' }}>
+                New
+              </span>
+            </div>
+          )}
+        </div>
+        <div
+          className="flex items-center transition-colors hover:bg-[#F8F8F8] active:bg-[#EFEFEF] cursor-pointer"
+          style={{ gap: '4px', padding: '2px 4px 2px 6px', borderRadius: '8px' }}
+          onClick={() => onReportClick?.(report.id)}
+        >
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
+            다시보기
+          </p>
+        </div>
       </div>
       {report.message && (
         <div className="w-full" style={{ borderRadius: '12px', padding: '18px 16px', backgroundColor: '#f9f9f9' }}>
@@ -260,30 +264,18 @@ function ReportCard({ report, onReportClick, onEditClick }: { report: WeeklyRepo
           </p>
         )}
       </div>
-      <div className="flex w-full justify-end" style={{ marginTop: '-4px' }}>
-        <div
-          className="flex items-center transition-colors hover:bg-[#F8F8F8] cursor-pointer"
-          style={{ gap: '4px', padding: '2px 4px 2px 6px', borderRadius: '8px' }}
-          onClick={() => onReportClick?.(report.id)}
-        >
-          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', color: '#848484', letterSpacing: '-0.42px' }}>
-            보고서 보기
-          </p>
-          <ViewReportArrowIcon />
-        </div>
-      </div>
     </div>
   );
 }
 
-function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void }) {
+function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick, isFirstMonth = false }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isFirstMonth?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
 
   return (
     <div className="flex flex-col w-full border-b last:border-0" style={{ borderColor: '#F8F8F8' }}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full bg-white transition-colors active:bg-[#f9f9f9]"
+        className="flex items-center justify-between w-full bg-white"
         style={{ padding: '12px 20px' }}
       >
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '15px', lineHeight: '15.5px', color: '#000000', letterSpacing: '-0.3px' }}>
@@ -309,7 +301,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
               {month.reports.map((report, index) => (
                 <div key={report.id} className="flex flex-col">
                   {index > 0 && <div className="w-full" style={{ height: '1px', backgroundColor: '#F8F8F8', margin: '12px 0' }} />}
-                  <ReportCard report={report} onReportClick={onReportClick} onEditClick={onEditClick} />
+                  <ReportCard report={report} onReportClick={onReportClick} onEditClick={onEditClick} isLatest={isFirstMonth && index === 0} />
                 </div>
               ))}
             </div>
@@ -369,8 +361,8 @@ function MyReportWeeklyContent({
             </p>
           </div>
 
-          {filteredReports.map((month) => (
-            <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} />
+          {filteredReports.map((month, index) => (
+            <MonthlySection key={month.id} month={month} defaultExpanded={false} onReportClick={onReportClick} onEditClick={onEditClick} isFirstMonth={index === 0} />
           ))}
         </div>
       )}
