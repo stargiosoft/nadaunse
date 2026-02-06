@@ -538,8 +538,8 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={id}
-        onBack={() => navigate('/')}
-        onHome={() => navigate('/')}
+        onBack={() => navigate(-1)}
+        onHome={() => navigate(-1)}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
       />
@@ -697,8 +697,8 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={product.id.toString()}
-        onBack={() => navigate('/')}
-        onHome={() => navigate('/')}
+        onBack={() => navigate(-1)}
+        onHome={() => navigate(-1)}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
       />
@@ -2285,7 +2285,7 @@ function FreeContentDetailWrapper() {
     <FreeContentDetail
       contentId={id}
       onBack={goBack} // 🛡️ useGoBack 사용
-      onHome={() => navigate('/')}
+      onHome={() => navigate(-1)}
       onContentClick={(contentId) => {
         console.log('🔥 App.tsx navigate 시도 (replace):', `/master/content/detail/${contentId}`);
         // ⭐ 추천 콘텐츠 클릭 시 현재 페이지를 교체 (히스토리 쌓지 않음)
