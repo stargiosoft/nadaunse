@@ -225,7 +225,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
         </div>
       </div>
       {report.message && (
-        <div className="w-full" style={{ borderRadius: '12px', padding: '18px 10px 18px 16px', backgroundColor: '#f9f9f9' }}>
+        <div className="w-full" style={{ borderRadius: '12px', padding: '14px 12px 14px 18px', backgroundColor: '#f9f9f9' }}>
           <div className="flex items-start w-full" style={{ gap: '4px' }}>
             <div className="flex flex-col flex-1 min-w-0" style={{ gap: '4px' }}>
               <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '14px', lineHeight: '20px', color: '#151515', letterSpacing: '-0.42px' }}>
@@ -282,7 +282,7 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
           animate={{ rotate: isExpanded ? -180 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <ChevronDown size={20} color={isExpanded ? "#151515" : "#D4D4D4"} />
+          <ChevronDown size={20} color={isExpanded ? "#B7B7B7" : "#D4D4D4"} />
         </motion.div>
       </button>
       <AnimatePresence>
