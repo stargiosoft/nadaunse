@@ -2284,7 +2284,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 <div className="flex flex-col gap-3">
                   {categoryRanking.map((cat, index) => {
                     const isExpanded = expandedCategory === cat.category;
-                    const cacheKey = `${cat.category}_${contentTypeFilter}`;
+                    const cacheKey = `${cat.category}_${contentTypeFilter}_${contentPreset}`;
                     const contents = topContents[cacheKey];
                     const isLoadingContents = topContentsLoading === cat.category;
                     // 1위 대비 비율 (프로그레스 바)
