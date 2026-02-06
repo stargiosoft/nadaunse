@@ -13,7 +13,7 @@ import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -171,11 +171,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [topContents, setTopContents] = useState<Record<string, ContentViewStats[]>>({});
   const [topContentsLoading, setTopContentsLoading] = useState<string | null>(null);
-  const [contentPreset, setContentPreset] = useState<DateRangePreset>('today');
-  const [showContentDatePicker, setShowContentDatePicker] = useState(false);
-  const [contentDateRange, setContentDateRange] = useState<DateRange | undefined>(undefined);
-  const [contentCustomDateRange, setContentCustomDateRange] = useState<{ start?: Date; end?: Date }>({});
-  const [contentDateFilter, setContentDateFilter] = useState<DateRangeFilter>(getDateRangeFromPreset('today'));
+  const [contentPeriod, setContentPeriod] = useState<ContentPeriodFilter>('all');
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -439,14 +435,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   }, [contentTypeFilter]);
 
   // 콘텐츠 랭킹 데이터 로드
-  const loadContentRanking = async (dateFilter?: DateRangeFilter) => {
+  const loadContentRanking = async (period?: ContentPeriodFilter) => {
     setContentLoading(true);
     setContentError(null);
     setExpandedCategory(null);
     setTopContents({});
     try {
-      const filter = dateFilter || contentDateFilter;
-      const data = await fetchCategoryViewRanking(contentTypeFilter, filter);
+      const p = period ?? contentPeriod;
+      const data = await fetchCategoryViewRanking(contentTypeFilter, p);
       setCategoryRanking(data);
     } catch (err) {
       setContentError('콘텐츠 랭킹을 불러오는데 실패했습니다.');
@@ -456,40 +452,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 콘텐츠 탭 기간 프리셋 변경
-  const handleContentPresetChange = (preset: DateRangePreset) => {
-    setContentPreset(preset);
-    setContentCustomDateRange({});
-    const filter = getDateRangeFromPreset(preset);
-    setContentDateFilter(filter);
-    loadContentRanking(filter);
-  };
-
-  // 콘텐츠 탭 커스텀 날짜 적용
-  const handleApplyContentCustomDate = () => {
-    if (contentDateRange?.from) {
-      const startDate = contentDateRange.from;
-      const endDate = contentDateRange.to || contentDateRange.from;
-      const endDateNext = new Date(endDate);
-      endDateNext.setDate(endDateNext.getDate() + 1);
-      const customFilter: DateRangeFilter = {
-        startDate: startDate.toISOString(),
-        endDate: endDateNext.toISOString(),
-      };
-      setContentPreset('custom');
-      setContentCustomDateRange({ start: startDate, end: endDate });
-      setShowContentDatePicker(false);
-      setContentDateFilter(customFilter);
-      loadContentRanking(customFilter);
-    }
-  };
-
-  // 콘텐츠 탭 기간 표시 라벨
-  const getContentDateLabel = () => {
-    if (contentPreset === 'custom' && contentCustomDateRange.start) {
-      return formatDateRange(contentCustomDateRange.start, contentCustomDateRange.end);
-    }
-    return null;
+  // 콘텐츠 탭 기간 필터 변경
+  const handleContentPeriodChange = (period: ContentPeriodFilter) => {
+    setContentPeriod(period);
+    loadContentRanking(period);
   };
 
   // 카테고리 확장/축소 + Top5 로드
@@ -500,11 +466,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
     setExpandedCategory(category);
     // 이미 로드된 경우 스킵
-    const cacheKey = `${category}_${contentTypeFilter}_${contentPreset}`;
+    const cacheKey = `${category}_${contentTypeFilter}_${contentPeriod}`;
     if (topContents[cacheKey]) return;
     setTopContentsLoading(category);
     try {
-      const data = await fetchTopContentsByCategory(category, contentTypeFilter, 5, contentDateFilter);
+      const data = await fetchTopContentsByCategory(category, contentTypeFilter, 5, contentPeriod);
       setTopContents(prev => ({ ...prev, [cacheKey]: data }));
     } catch (err) {
       console.error('Top 콘텐츠 로드 실패:', err);
@@ -2168,60 +2134,33 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         {/* ========== 콘텐츠 탭 ========== */}
         {selectedTab === '콘텐츠' && (
           <div>
-            {/* 기간 선택 */}
+            {/* 기간 필터 */}
             <div style={{ marginBottom: '20px' }}>
-              <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} color="#666" />
-                  <span style={{ ...typography.label }}>조회 기간</span>
-                </div>
-                <button
-                  onClick={() => setShowContentDatePicker(true)}
-                  className="flex items-center gap-1 rounded-lg transition-colors active:opacity-80"
-                  style={{
-                    ...typography.small,
-                    color: '#3FB5B3',
-                    fontWeight: 500,
-                    padding: '6px 12px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e7e7e7',
-                  }}
-                >
-                  <Calendar size={14} />
-                  직접 선택
-                </button>
+              <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                <Calendar size={16} color="#666" />
+                <span style={{ ...typography.label }}>조회 기간</span>
               </div>
-              <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
-                {DATE_PRESETS.map((preset) => (
+              <div className="flex gap-2">
+                {([
+                  { value: 'this_week' as ContentPeriodFilter, label: '이번주' },
+                  { value: 'last_week' as ContentPeriodFilter, label: '저번주' },
+                  { value: 'all' as ContentPeriodFilter, label: '전체' },
+                ]).map((filter) => (
                   <button
-                    key={preset.value}
-                    onClick={() => handleContentPresetChange(preset.value)}
+                    key={filter.value}
+                    onClick={() => handleContentPeriodChange(filter.value)}
                     className="rounded-full whitespace-nowrap transition-colors"
                     style={{
                       ...typography.preset,
                       padding: '8px 16px',
-                      fontWeight: contentPreset === preset.value ? 500 : 400,
-                      backgroundColor: contentPreset === preset.value ? '#3FB5B3' : '#ffffff',
-                      color: contentPreset === preset.value ? '#ffffff' : '#666666',
+                      fontWeight: contentPeriod === filter.value ? 500 : 400,
+                      backgroundColor: contentPeriod === filter.value ? '#3FB5B3' : '#ffffff',
+                      color: contentPeriod === filter.value ? '#ffffff' : '#666666',
                     }}
                   >
-                    {preset.label}
+                    {filter.label}
                   </button>
                 ))}
-                {contentPreset === 'custom' && (
-                  <button
-                    className="rounded-full whitespace-nowrap"
-                    style={{
-                      ...typography.preset,
-                      padding: '8px 16px',
-                      fontWeight: 500,
-                      backgroundColor: '#3FB5B3',
-                      color: '#ffffff',
-                    }}
-                  >
-                    {getContentDateLabel()}
-                  </button>
-                )}
               </div>
             </div>
 
@@ -2284,7 +2223,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 <div className="flex flex-col gap-3">
                   {categoryRanking.map((cat, index) => {
                     const isExpanded = expandedCategory === cat.category;
-                    const cacheKey = `${cat.category}_${contentTypeFilter}_${contentPreset}`;
+                    const cacheKey = `${cat.category}_${contentTypeFilter}_${contentPeriod}`;
                     const contents = topContents[cacheKey];
                     const isLoadingContents = topContentsLoading === cat.category;
                     // 1위 대비 비율 (프로그레스 바)
@@ -2828,121 +2767,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           </>
         )}
 
-        {/* 콘텐츠 탭 날짜 선택 모달 */}
-        {showContentDatePicker && (
-          <>
-            {/* 배경 오버레이 */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40"
-              style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-              onClick={() => setShowContentDatePicker(false)}
-            />
-
-            {/* 바텀시트 */}
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-white z-50 overflow-hidden"
-              style={{ borderRadius: '24px 24px 0 0', maxHeight: '85vh' }}
-            >
-              {/* 핸들 */}
-              <div className="flex justify-center" style={{ paddingTop: '12px', paddingBottom: '8px' }}>
-                <div style={{ width: '40px', height: '4px', backgroundColor: '#d4d4d4', borderRadius: '2px' }} />
-              </div>
-
-              {/* 헤더 */}
-              <div className="flex items-center justify-between px-4" style={{ paddingBottom: '16px', borderBottom: '1px solid #f0f0f0' }}>
-                <h3 style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '17px', fontWeight: 600, color: '#1a1a1a' }}>
-                  기간 선택
-                </h3>
-                <button
-                  onClick={() => setShowContentDatePicker(false)}
-                  className="p-2 rounded-full transition-colors active:bg-gray-100"
-                >
-                  <X size={20} color="#666" />
-                </button>
-              </div>
-
-              {/* 선택된 날짜 표시 */}
-              <div className="px-4 py-3" style={{ backgroundColor: '#f9f9f9' }}>
-                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', color: '#666666', marginBottom: '4px' }}>
-                  선택된 기간
-                </p>
-                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, color: '#1a1a1a' }}>
-                  {contentDateRange?.from
-                    ? formatDateRange(contentDateRange.from, contentDateRange.to)
-                    : '날짜를 선택하세요'
-                  }
-                </p>
-              </div>
-
-              {/* 달력 */}
-              <div className="px-4 py-4 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 220px)' }}>
-                <div className="stats-datepicker">
-                  <DayPicker
-                    mode="range"
-                    selected={contentDateRange}
-                    onSelect={setContentDateRange}
-                    locale={ko}
-                    disabled={{ after: new Date() }}
-                    showOutsideDays
-                    fixedWeeks
-                    components={{
-                      IconLeft: () => <ChevronLeft size={20} />,
-                      IconRight: () => <ChevronRight size={20} />
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* 하단 버튼 */}
-              <div className="px-4 bg-white" style={{ padding: '16px', borderTop: '1px solid #f0f0f0' }}>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setContentDateRange(undefined);
-                      setShowContentDatePicker(false);
-                    }}
-                    className="flex-1 rounded-xl transition-colors active:opacity-80"
-                    style={{
-                      fontFamily: 'Pretendard Variable, sans-serif',
-                      fontSize: '15px',
-                      fontWeight: 500,
-                      color: '#666666',
-                      padding: '12px',
-                      backgroundColor: '#f5f5f5',
-                      border: 'none',
-                    }}
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleApplyContentCustomDate}
-                    disabled={!contentDateRange?.from}
-                    className="flex-1 rounded-xl transition-colors active:opacity-80"
-                    style={{
-                      fontFamily: 'Pretendard Variable, sans-serif',
-                      fontSize: '15px',
-                      fontWeight: 500,
-                      padding: '12px',
-                      backgroundColor: contentDateRange?.from ? '#3FB5B3' : '#e5e5e5',
-                      color: contentDateRange?.from ? '#ffffff' : '#b7b7b7',
-                      border: 'none',
-                      cursor: contentDateRange?.from ? 'pointer' : 'not-allowed',
-                    }}
-                  >
-                    적용하기
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
       </AnimatePresence>
     </>
   );

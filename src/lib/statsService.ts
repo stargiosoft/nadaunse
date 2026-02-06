@@ -1205,6 +1205,9 @@ export async function fetchDailyGAStats(
 /** 콘텐츠 타입 필터 */
 export type ContentTypeFilter = 'all' | 'paid' | 'free';
 
+/** 콘텐츠 기간 필터 */
+export type ContentPeriodFilter = 'this_week' | 'last_week' | 'all';
+
 /** 카테고리별 이용 통계 */
 export interface CategoryViewStats {
   category: string;
@@ -1222,127 +1225,49 @@ export interface ContentViewStats {
 }
 
 /**
- * 카테고리별 콘텐츠 이용 랭킹 조회 (기간 기반)
- * - 기간 지정 시: orders(유료) + free_content_records(무료) 기간 내 이용 횟수 집계
- * - 기간 미지정 시: master_contents.view_count 누적 조회수 사용
+ * 카테고리별 콘텐츠 뷰수 랭킹 조회 (기간 필터 기반)
+ * - 'this_week': weekly_clicks 기준
+ * - 'last_week': last_weekly_clicks 기준
+ * - 'all': view_count 누적 조회수 기준
  */
 export async function fetchCategoryViewRanking(
   contentTypeFilter: ContentTypeFilter = 'all',
-  dateRange?: DateRangeFilter
+  period: ContentPeriodFilter = 'all'
 ): Promise<CategoryViewStats[]> {
   try {
-    const hasPeriod = dateRange?.startDate && dateRange?.endDate;
+    const viewColumn = period === 'this_week' ? 'weekly_clicks'
+      : period === 'last_week' ? 'last_weekly_clicks'
+      : 'view_count';
 
-    if (hasPeriod) {
-      // 기간 기반: orders + free_content_records에서 실제 이용 횟수 집계
-      const contentUsageMap = new Map<string, number>();
+    let query = supabase
+      .from('master_contents')
+      .select(`category_main, ${viewColumn}`)
+      .eq('status', 'deployed');
 
-      // 유료 이용 (orders)
-      if (contentTypeFilter !== 'free') {
-        let paidQuery = supabase
-          .from('orders')
-          .select('content_id')
-          .eq('pstatus', 'completed')
-          .not('user_id', 'in', `(${ADMIN_IDS.join(',')})`)
-          .gte('created_at', dateRange.startDate!)
-          .lt('created_at', dateRange.endDate!);
-
-        const { data: paidData } = await paidQuery;
-        if (paidData) {
-          for (const row of paidData) {
-            if (row.content_id) {
-              contentUsageMap.set(row.content_id, (contentUsageMap.get(row.content_id) || 0) + 1);
-            }
-          }
-        }
-      }
-
-      // 무료 이용 (free_content_records)
-      if (contentTypeFilter !== 'paid') {
-        let freeQuery = supabase
-          .from('free_content_records')
-          .select('content_id')
-          .gte('created_at', dateRange.startDate!)
-          .lt('created_at', dateRange.endDate!);
-
-        const { data: freeData } = await freeQuery;
-        if (freeData) {
-          for (const row of freeData) {
-            if (row.content_id) {
-              contentUsageMap.set(row.content_id, (contentUsageMap.get(row.content_id) || 0) + 1);
-            }
-          }
-        }
-      }
-
-      if (contentUsageMap.size === 0) return [];
-
-      // content_id → category_main 매핑
-      const contentIds = Array.from(contentUsageMap.keys());
-      let metaQuery = supabase
-        .from('master_contents')
-        .select('id, category_main, content_type')
-        .eq('status', 'deployed')
-        .in('id', contentIds);
-
-      if (contentTypeFilter !== 'all') {
-        metaQuery = metaQuery.eq('content_type', contentTypeFilter);
-      }
-
-      const { data: metaData } = await metaQuery;
-      if (!metaData) return [];
-
-      // 카테고리별 집계
-      const categoryMap = new Map<string, { totalViews: number; contentIds: Set<string> }>();
-      for (const meta of metaData) {
-        const cat = meta.category_main || '기타';
-        const usage = contentUsageMap.get(meta.id) || 0;
-        const existing = categoryMap.get(cat) || { totalViews: 0, contentIds: new Set<string>() };
-        existing.totalViews += usage;
-        existing.contentIds.add(meta.id);
-        categoryMap.set(cat, existing);
-      }
-
-      return Array.from(categoryMap.entries())
-        .map(([category, stats]) => ({
-          category,
-          totalViews: stats.totalViews,
-          contentCount: stats.contentIds.size,
-        }))
-        .sort((a, b) => b.totalViews - a.totalViews);
-
-    } else {
-      // 기간 미지정: 누적 view_count 사용
-      let query = supabase
-        .from('master_contents')
-        .select('category_main, view_count')
-        .eq('status', 'deployed');
-
-      if (contentTypeFilter !== 'all') {
-        query = query.eq('content_type', contentTypeFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) { console.error('카테고리 뷰 랭킹 조회 실패:', error); return []; }
-      if (!data || data.length === 0) return [];
-
-      const categoryMap = new Map<string, { totalViews: number; contentCount: number }>();
-      for (const item of data) {
-        const cat = item.category_main || '기타';
-        const existing = categoryMap.get(cat) || { totalViews: 0, contentCount: 0 };
-        existing.totalViews += item.view_count || 0;
-        existing.contentCount += 1;
-        categoryMap.set(cat, existing);
-      }
-
-      return Array.from(categoryMap.entries())
-        .map(([category, stats]) => ({
-          category,
-          totalViews: stats.totalViews,
-          contentCount: stats.contentCount,
-        }))
-        .sort((a, b) => b.totalViews - a.totalViews);
+    if (contentTypeFilter !== 'all') {
+      query = query.eq('content_type', contentTypeFilter);
     }
+
+    const { data, error } = await query;
+    if (error) { console.error('카테고리 뷰 랭킹 조회 실패:', error); return []; }
+    if (!data || data.length === 0) return [];
+
+    const categoryMap = new Map<string, { totalViews: number; contentCount: number }>();
+    for (const item of data) {
+      const cat = item.category_main || '기타';
+      const existing = categoryMap.get(cat) || { totalViews: 0, contentCount: 0 };
+      existing.totalViews += (item as Record<string, unknown>)[viewColumn] as number || 0;
+      existing.contentCount += 1;
+      categoryMap.set(cat, existing);
+    }
+
+    return Array.from(categoryMap.entries())
+      .map(([category, stats]) => ({
+        category,
+        totalViews: stats.totalViews,
+        contentCount: stats.contentCount,
+      }))
+      .sort((a, b) => b.totalViews - a.totalViews);
   } catch (error) {
     console.error('카테고리 뷰 랭킹 조회 예외:', error);
     return [];
@@ -1350,103 +1275,45 @@ export async function fetchCategoryViewRanking(
 }
 
 /**
- * 특정 카테고리의 Top N 콘텐츠 조회 (기간 기반)
+ * 특정 카테고리의 Top N 콘텐츠 조회 (기간 필터 기반)
+ * - 'this_week': weekly_clicks 기준
+ * - 'last_week': last_weekly_clicks 기준
+ * - 'all': view_count 누적 조회수 기준
  */
 export async function fetchTopContentsByCategory(
   category: string,
   contentTypeFilter: ContentTypeFilter = 'all',
   limit: number = 5,
-  dateRange?: DateRangeFilter
+  period: ContentPeriodFilter = 'all'
 ): Promise<ContentViewStats[]> {
   try {
-    const hasPeriod = dateRange?.startDate && dateRange?.endDate;
+    const viewColumn = period === 'this_week' ? 'weekly_clicks'
+      : period === 'last_week' ? 'last_weekly_clicks'
+      : 'view_count';
 
-    if (hasPeriod) {
-      // 기간 기반: 이용 횟수 집계
-      const contentUsageMap = new Map<string, number>();
+    let query = supabase
+      .from('master_contents')
+      .select(`id, title, content_type, ${viewColumn}, category_main`)
+      .eq('status', 'deployed')
+      .eq('category_main', category)
+      .order(viewColumn, { ascending: false })
+      .limit(limit);
 
-      if (contentTypeFilter !== 'free') {
-        const { data: paidData } = await supabase
-          .from('orders')
-          .select('content_id')
-          .eq('pstatus', 'completed')
-          .not('user_id', 'in', `(${ADMIN_IDS.join(',')})`)
-          .gte('created_at', dateRange.startDate!)
-          .lt('created_at', dateRange.endDate!);
-
-        if (paidData) {
-          for (const row of paidData) {
-            if (row.content_id) contentUsageMap.set(row.content_id, (contentUsageMap.get(row.content_id) || 0) + 1);
-          }
-        }
-      }
-
-      if (contentTypeFilter !== 'paid') {
-        const { data: freeData } = await supabase
-          .from('free_content_records')
-          .select('content_id')
-          .gte('created_at', dateRange.startDate!)
-          .lt('created_at', dateRange.endDate!);
-
-        if (freeData) {
-          for (const row of freeData) {
-            if (row.content_id) contentUsageMap.set(row.content_id, (contentUsageMap.get(row.content_id) || 0) + 1);
-          }
-        }
-      }
-
-      // 해당 카테고리 콘텐츠만 필터
-      let metaQuery = supabase
-        .from('master_contents')
-        .select('id, title, content_type, category_main')
-        .eq('status', 'deployed')
-        .eq('category_main', category);
-
-      if (contentTypeFilter !== 'all') {
-        metaQuery = metaQuery.eq('content_type', contentTypeFilter);
-      }
-
-      const { data: metaData } = await metaQuery;
-      if (!metaData) return [];
-
-      return metaData
-        .map(item => ({
-          id: item.id,
-          title: item.title,
-          contentType: item.content_type as 'free' | 'paid',
-          viewCount: contentUsageMap.get(item.id) || 0,
-          categoryMain: item.category_main,
-        }))
-        .filter(item => item.viewCount > 0)
-        .sort((a, b) => b.viewCount - a.viewCount)
-        .slice(0, limit);
-
-    } else {
-      // 기간 미지정: 누적 view_count
-      let query = supabase
-        .from('master_contents')
-        .select('id, title, content_type, view_count, category_main')
-        .eq('status', 'deployed')
-        .eq('category_main', category)
-        .order('view_count', { ascending: false })
-        .limit(limit);
-
-      if (contentTypeFilter !== 'all') {
-        query = query.eq('content_type', contentTypeFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) { console.error('Top 콘텐츠 조회 실패:', error); return []; }
-      if (!data) return [];
-
-      return data.map(item => ({
-        id: item.id,
-        title: item.title,
-        contentType: item.content_type as 'free' | 'paid',
-        viewCount: item.view_count || 0,
-        categoryMain: item.category_main,
-      }));
+    if (contentTypeFilter !== 'all') {
+      query = query.eq('content_type', contentTypeFilter);
     }
+
+    const { data, error } = await query;
+    if (error) { console.error('Top 콘텐츠 조회 실패:', error); return []; }
+    if (!data) return [];
+
+    return data.map(item => ({
+      id: item.id,
+      title: item.title,
+      contentType: item.content_type as 'free' | 'paid',
+      viewCount: (item as Record<string, unknown>)[viewColumn] as number || 0,
+      categoryMain: item.category_main,
+    }));
   } catch (error) {
     console.error('Top 콘텐츠 조회 예외:', error);
     return [];

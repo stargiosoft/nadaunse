@@ -102,7 +102,8 @@
 | `discount_rate` | integer | - | - | 할인율 (%) |
 | `thumbnail_url` | text | - | - | 썸네일 이미지 URL |
 | `view_count` | integer | - | `0` | 조회수 |
-| `weekly_clicks` | integer | - | `0` | 주간 클릭수 |
+| `weekly_clicks` | integer | - | `0` | 주간 클릭수 (매주 월요일 00:00 KST 리셋) |
+| `last_weekly_clicks` | integer | - | `0` | 전주 클릭수 (리셋 시 weekly_clicks 값 보관) |
 | `status` | text | - | `'loading'` | 상태 (loading, deployed, archived 등) |
 | `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
 | `updated_at` | timestamptz | NOT NULL | `now()` | 수정 일시 |
