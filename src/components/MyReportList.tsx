@@ -195,7 +195,7 @@ function EditIcon() {
 
 function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { report: WeeklyReport; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isLatest?: boolean }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '7px', padding: '0 2px' }}>
+    <div className="flex flex-col w-full" style={{ gap: report.message ? '8px' : '6px', padding: '0 2px' }}>
       <div className="flex items-start justify-between w-full" style={{ padding: '0 2px' }}>
         <div className="flex flex-col" style={{ gap: '1px' }}>
           <div className="flex items-center" style={{ gap: '6px' }}>
@@ -210,7 +210,7 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
               </div>
             )}
           </div>
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13.5px', lineHeight: '20px', color: '#848484', letterSpacing: '-0.5px' }}>
+          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '20px', color: '#999999', letterSpacing: '-0.5px', paddingLeft: '1px', marginTop: '-2px' }}>
             {report.period.replace(/^\d{4}\./, '').replace(/ ~ /g, '~')}
           </span>
         </div>
@@ -269,13 +269,13 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
 
   return (
-    <div className="flex flex-col w-full border-b last:border-0" style={{ borderColor: '#F8F8F8' }}>
+    <div className="flex flex-col w-full border-b last:border-0 last:mb-0" style={{ borderColor: '#F8F8F8', marginBottom: isExpanded ? '32px' : '0' }}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full bg-white"
         style={{ padding: '13px 20px' }}
       >
-        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
+        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 600 : 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
           {month.title}
         </p>
         <motion.div
