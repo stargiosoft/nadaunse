@@ -327,7 +327,7 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
   return (
     <div className="flex justify-center w-full min-h-screen overflow-x-hidden" style={{ backgroundColor: '#ffffff' }}>
       <div
-        className="flex flex-col bg-white h-screen relative overflow-hidden"
+        className="flex flex-col bg-white h-screen relative overflow-x-hidden"
         style={{
           maxWidth: '440px',
           minWidth: '320px',

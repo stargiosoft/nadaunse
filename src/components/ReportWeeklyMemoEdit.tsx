@@ -53,11 +53,11 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
     <div className="relative w-full">
       <div className="flex flex-col w-full" style={{ gap: '12px' }}>
         {/* Header Text */}
-        <div className="flex flex-col w-full" style={{ gap: '4px', padding: '0 4px' }}>
+        <div className="flex flex-col w-full" style={{ gap: '3px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 500,
-            fontSize: '17px',
+            fontSize: '16px',
             lineHeight: '24px',
             color: '#000000',
             letterSpacing: '-0.36px'
@@ -78,8 +78,8 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
           style={{
             borderRadius: '20px',
             padding: '12px 16px',
-            borderColor: isFocused ? '#48b2af' : '#f9f9f9',
-            backgroundColor: '#f9f9f9',
+            borderColor: isFocused ? '#48b2af' : (text.length > 0 ? '#F3F3F3' : '#f9f9f9'),
+            backgroundColor: (text.length > 0 && !isFocused) ? '#ffffff' : '#f9f9f9',
             outline: isFocused ? '0.5px solid #48B2AF' : 'none'
           }}
         >
