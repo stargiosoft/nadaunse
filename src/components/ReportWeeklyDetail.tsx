@@ -7,6 +7,7 @@ import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, Repo
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
 import { supabase } from '@/lib/supabase';
+import FlowerPotIcon from './ui/FlowerPotIcon';
 
 function Icon() {
   return (
@@ -49,7 +50,7 @@ function TitleContainer({ title, dateRange }: TitleContainerProps) {
           fontWeight: 600,
           lineHeight: '24px',
           color: '#151515',
-          fontSize: '18px',
+          fontSize: '17px',
           letterSpacing: '-0.36px'
         }}>
           {title}
@@ -61,7 +62,7 @@ function TitleContainer({ title, dateRange }: TitleContainerProps) {
           color: '#999999',
           fontSize: '13px',
           letterSpacing: '-0.26px',
-          paddingTop: '2px',
+          paddingTop: '4px',
           paddingBottom: '3px'
         }}>
           {dateRange}
@@ -79,7 +80,7 @@ interface TextContainerProps {
 
 function TextContainer({ title, dateRange, paragraphs }: TextContainerProps) {
   return (
-    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '8px' }} data-name="Text Container">
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '12px' }} data-name="Text Container">
       <TitleContainer title={title} dateRange={dateRange} />
       <div style={{
         fontFamily: 'Pretendard Variable',
@@ -91,9 +92,14 @@ function TextContainer({ title, dateRange, paragraphs }: TextContainerProps) {
         width: '100%'
       }}>
         {paragraphs.map((paragraph, index) => (
-          <p key={index} className={index < paragraphs.length - 1 ? "mb-0" : ""}>
+          <p
+            key={index}
+            style={{
+              marginBottom: index < paragraphs.length - 1 ? '12px' : '0',
+              margin: index < paragraphs.length - 1 ? '0 0 12px 0' : '0'
+            }}
+          >
             {paragraph}
-            {index < paragraphs.length - 1 && <><br />&nbsp;<br /></>}
           </p>
         ))}
       </div>
@@ -109,11 +115,9 @@ interface ContentContainerProps {
 
 function ContentContainer({ title, dateRange, paragraphs }: ContentContainerProps) {
   return (
-    <div className="flex flex-col items-start relative self-stretch shrink-0 w-full" style={{ gap: '20px' }} data-name="Content Container">
-      <div className="flex items-center justify-center relative shrink-0">
-        <div className="flex-none rotate-[180deg] scale-y-[-100%]">
-          <NotoDove />
-        </div>
+    <div className="flex flex-col items-start relative self-stretch shrink-0 w-full" style={{ gap: '8px' }} data-name="Content Container">
+      <div className="flex items-center justify-start relative shrink-0" style={{ marginLeft: '-14px' }}>
+        <FlowerPotIcon size={56} />
       </div>
       <TextContainer title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
@@ -130,7 +134,7 @@ function Container({ title, dateRange, paragraphs }: ContainerProps) {
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }} data-name="Container">
       <div className="flex flex-row justify-center" style={{ width: '100%', height: '100%' }}>
-        <div className="flex items-start justify-center relative w-full" style={{ padding: '28px 20px' }}>
+        <div className="flex items-start justify-center relative w-full" style={{ padding: '16px 20px 20px 20px' }}>
           <ContentContainer title={title} dateRange={dateRange} paragraphs={paragraphs} />
         </div>
       </div>
@@ -160,7 +164,7 @@ interface ContentContainer1Props {
 
 function ContentContainer1({ title, dateRange, paragraphs }: ContentContainer1Props) {
   return (
-    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '12px 20px 40px 20px' }} data-name="Content Container">
+    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '8px 20px 24px 20px' }} data-name="Content Container">
       <CardInterpretationCard title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
@@ -176,7 +180,7 @@ function ContentContainer2({ title, dateRange, paragraphs }: ContentContainer2Pr
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Content Container">
       <ContentContainer1 title={title} dateRange={dateRange} paragraphs={paragraphs} />
-      <div className="shrink-0 w-full" style={{ height: '12px', backgroundColor: '#f9f9f9' }} data-name="Divider" />
+      <div className="shrink-0 w-full" style={{ height: '8px', backgroundColor: '#f9f9f9' }} data-name="Divider" />
     </div>
   );
 }
@@ -203,10 +207,10 @@ function Frame({ isOpen }: { isOpen: boolean }) {
   return (
     <div className="relative shrink-0 w-full">
       <div className="flex flex-row items-center justify-center" style={{ width: '100%', height: '100%' }}>
-        <div className="flex items-center justify-center relative w-full" style={{ gap: '11px', padding: '14px 20px' }}>
-          <p className="flex-[1_0_0]" style={{
+        <div className="flex items-center justify-between relative w-full" style={{ padding: '14px 20px' }}>
+          <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 500,
+            fontWeight: isOpen ? 600 : 500,
             lineHeight: '24px',
             color: '#000000',
             fontSize: '17px',
@@ -233,7 +237,7 @@ function ReportAccordion({ isOpen, onToggle }: { isOpen: boolean; onToggle: () =
 
 function TagLabel({ text }: { text: string }) {
   return (
-    <div className="flex items-center justify-center relative shrink-0" style={{ padding: '3px 10px 4px 10px', borderRadius: '99px' }} data-name="Tag label">
+    <div className="flex items-center justify-center relative shrink-0" style={{ padding: '1px 8px', borderRadius: '99px' }} data-name="Tag label">
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ border: '1px solid #e7e7e7', borderRadius: '99px' }} />
       <p style={{
         fontFamily: 'Pretendard Variable',
@@ -252,7 +256,7 @@ interface Frame1Props {
 
 function Frame1({ tags }: Frame1Props) {
   return (
-    <div className="flex items-center justify-start relative shrink-0 w-full content-start" style={{ flexWrap: 'wrap', gap: '6px' }}>
+    <div className="flex items-center justify-start relative shrink-0 w-full content-start" style={{ flexWrap: 'wrap', gap: '5px' }}>
       {tags.map((tag) => (
         <TagLabel key={tag.id} text={tag.tag_name} />
       ))}
@@ -312,7 +316,7 @@ interface ContentContainer3Props {
 
 function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContainer3Props) {
   return (
-    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '16px', paddingBottom: '230px' }} data-name="Content Container">
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '4px', paddingBottom: '130px' }} data-name="Content Container">
       <ContentContainer2 title={title} dateRange={dateRange} paragraphs={paragraphs} />
       <TagListAccordion tags={tags} />
     </div>
@@ -322,11 +326,9 @@ function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContai
 
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+    <div className="shrink-0 w-full z-20" style={{ height: '52px' }}>
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
-          className="text-center flex-1"
           style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -356,22 +358,43 @@ function NavigationTopBar({ onClose }: { onClose?: () => void }) {
 
 function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="shrink-0 z-50 bg-white w-full" data-name="Navigation / Top Navigation (Widget)">
-      <NavigationTopBar onClose={onClose} />
+    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }} data-name="Navigation / Top Navigation (Widget)">
+      <div className="w-full" style={{ maxWidth: '440px' }}>
+        <NavigationTopBar onClose={onClose} />
+      </div>
     </div>
   );
 }
 
 function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () => void }) {
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isNextPressed, setIsNextPressed] = useState(false);
+
+  const handlePrevPress = () => setIsPrevPressed(true);
+  const handlePrevRelease = () => setIsPrevPressed(false);
+  const handleNextPress = () => setIsNextPressed(true);
+  const handleNextRelease = () => setIsNextPressed(false);
+
   return (
-    <div className="shrink-0 bg-white w-full z-40" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
-      <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
+    <div className="fixed bottom-0 left-0 right-0 bg-white z-40 flex justify-center" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
+      <div className="flex flex-col items-center justify-center w-full" style={{ maxWidth: '440px', padding: '12px 20px' }}>
         <div className="flex w-full" style={{ gap: '12px' }}>
           {/* 이전 버튼 */}
           <button
             onClick={onPrev}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
-            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+            onMouseDown={handlePrevPress}
+            onMouseUp={handlePrevRelease}
+            onMouseLeave={handlePrevRelease}
+            onTouchStart={handlePrevPress}
+            onTouchEnd={handlePrevRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isPrevPressed ? '#E4F7F7' : '#f0f8f8',
+              height: '56px',
+              transform: isPrevPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -386,8 +409,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () =>
           {/* 다음 버튼 */}
           <button
             onClick={onNext}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
-            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+            onMouseDown={handleNextPress}
+            onMouseUp={handleNextRelease}
+            onMouseLeave={handleNextRelease}
+            onTouchStart={handleNextPress}
+            onTouchEnd={handleNextRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isNextPressed ? '#41A09E' : '#48b2af',
+              height: '56px',
+              transform: isNextPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -740,24 +774,16 @@ export default function ReportWeeklyDetail({
       }}
       data-name="나의 보고서 (보고서 상세)"
     >
-      <div className="w-full max-w-[440px] h-full flex flex-col bg-white relative">
-        <NavigationTopNavigationWidget onClose={onClose} />
-        <div
-          className="flex-1 overflow-y-auto w-full"
-          style={{
-            overscrollBehaviorY: 'contain',
-            WebkitOverflowScrolling: 'touch'
-          }}
-        >
-          <ContentContainer3
-            title={title}
-            dateRange={dateRange}
-            paragraphs={paragraphs}
-            tags={tags}
-          />
-        </div>
-        <BottomButtons onPrev={onPrev} onNext={onNext} />
+      <NavigationTopNavigationWidget onClose={onClose} />
+      <div className="w-full h-full overflow-y-auto bg-white" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '80px', overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
+        <ContentContainer3
+          title={title}
+          dateRange={dateRange}
+          paragraphs={paragraphs}
+          tags={tags}
+        />
       </div>
+      <BottomButtons onPrev={onPrev} onNext={onNext} />
     </div>
   );
 }

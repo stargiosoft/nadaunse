@@ -418,10 +418,12 @@ PostgreSQL 스케줄링 확장을 사용한 자동화 작업입니다.
 
 ### 1. `weekly-report-batch` (주간 보고서 자동 발송)
 
-- **스케줄**: `30 6 * * 2` (매주 화요일 06:30 UTC = 15:30 KST)
+- **스케줄**: 매주 일요일 12:00 KST부터 10분 간격 반복 호출
 - **용도**: 주간 보고서 일괄 생성 및 알림톡 발송
 - **호출 대상**: `generate-weekly-reports-batch` Edge Function
 - **인증**: Vault에 저장된 `service_role_key` 사용
+- **배치 설정**: concurrency 3, 60초 시간 제한, 이미 처리된 유저 자동 스킵
+- **selfContinue**: 관리자 수동 재발송 시 서버 자동 이어하기 (pg_cron에서는 불필요)
 
 ```sql
 -- 스케줄 등록

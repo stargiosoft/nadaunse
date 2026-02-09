@@ -189,17 +189,11 @@ export default function PaymentNew({
 
       // 오버레이가 있었다가 사라졌고, 아직 콜백을 받지 못한 상태 = 사용자가 닫음/뒤로감
       if (overlayWasFound && !paymentFrame && paymentInitiatedRef.current) {
-        console.log('🔄 [PaymentNew] 결제 오버레이 사라짐 감지 → 상품 상세로 리다이렉트');
+        console.log('🔄 [PaymentNew] 결제 오버레이 사라짐 감지 → 뒤로가기');
         stopPaymentOverlayWatch();
         paymentInitiatedRef.current = false;
         setIsProcessingPayment(false);
-        window.history.replaceState({}, '', window.location.href);
-
-        if (finalContentId) {
-          navigate(`/product/${finalContentId}`, { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
+        onBack();
       }
     }, 500); // 500ms 간격으로 체크
   };
@@ -269,15 +263,11 @@ export default function PaymentNew({
     const finalContentId = contentId || productId;
 
     const redirectToProductDetail = () => {
-      console.log('🔄 [PaymentNew] 결제 중 뒤로가기/복귀 감지 → 상품 상세로 리다이렉트');
+      console.log('🔄 [PaymentNew] 결제 중 뒤로가기/복귀 감지 → 뒤로가기');
       stopPaymentOverlayWatch();
       paymentInitiatedRef.current = false;
       setIsProcessingPayment(false);
-      if (finalContentId) {
-        navigate(`/product/${finalContentId}`, { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      onBack();
     };
 
     // ⭐ popstate: 브라우저 뒤로가기/앞으로가기 버튼 클릭 시 발생

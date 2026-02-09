@@ -12,7 +12,7 @@ function InitialEmptySummary() {
   };
 
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '18px' }}>
+    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '0px' }}>
       <div className="flex flex-col items-center pb-0 w-full" style={{ padding: '48px 20px 0 20px', gap: '36px' }}>
         {/* Flower Icon & Text */}
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
@@ -34,9 +34,29 @@ function InitialEmptySummary() {
 
         {/* CTA Button */}
         <button
-          className="w-full flex items-center justify-center active:scale-[0.98] transition-all"
+          className="w-full flex items-center justify-center transition-all"
           style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
           onClick={handleGoToTags}
+          onTouchStart={(e) => {
+            e.currentTarget.style.backgroundColor = '#41a09e';
+            e.currentTarget.style.transform = 'scale(0.99)';
+          }}
+          onTouchEnd={(e) => {
+            e.currentTarget.style.backgroundColor = '#48b2af';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.backgroundColor = '#41a09e';
+            e.currentTarget.style.transform = 'scale(0.99)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.backgroundColor = '#48b2af';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#48b2af';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
         >
           <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
             태그 쌓으러 가기
@@ -49,7 +69,7 @@ function InitialEmptySummary() {
 
 function RecommendationCardList() {
   return (
-    <div className="flex flex-col w-full" style={{ padding: '36px 0 40px 0', gap: '12px' }}>
+    <div className="flex flex-col w-full" style={{ padding: '20px 0 40px 0', gap: '8px' }}>
       <div className="flex items-center w-full" style={{ padding: '0 20px' }}>
         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '17px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#000000' }}>
           태그 쌓기 좋은 운세
@@ -67,7 +87,7 @@ export default function MyReportEmpty() {
   return (
     <>
       <InitialEmptySummary />
-      <div className="w-full" style={{ height: '12px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '8px', backgroundColor: '#f9f9f9', marginTop: '20px' }} />
       <RecommendationCardList />
       <div className="flex-1" />
     </>

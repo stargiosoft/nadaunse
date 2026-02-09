@@ -10,29 +10,35 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 const BATCH_CONFIG = {
   concurrency: 3, // 동시 처리 수 (5→3, 503 방지)
   delayBetweenBatches: 2000, // 배치 간 딜레이 (ms)
-  maxExecutionMs: 120_000, // 최대 실행 시간 120초 (selfContinue면 서버 자동 이어하기, 아니면 pg_cron 이어하기)
+  maxExecutionMs: 60_000, // 최대 실행 시간 60초 (마지막 배치 포함 ~90초 이내 종료, shutdown 방지)
 }
 
-// 전주 일~토 날짜 범위 계산
-function getLastWeekRange(): { start: Date; end: Date } {
-  const now = new Date()
-  const dayOfWeek = now.getDay() // 0=일요일
+// KST (한국 시간) 오프셋
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-  // 전주 일요일 (이번주 일요일 - 7일)
-  const lastSunday = new Date(now)
-  lastSunday.setDate(now.getDate() - dayOfWeek - 7)
-  lastSunday.setHours(0, 0, 0, 0)
+// 전주 일~토 날짜 범위 계산 (KST 기준)
+function getLastWeekRange(): { start: Date; end: Date; startDateStr: string; endDateStr: string } {
+  const kstNow = new Date(Date.now() + KST_OFFSET_MS)
+  const dayOfWeek = kstNow.getUTCDay() // 0=일요일
 
-  // 전주 토요일 (전주 일요일 + 6일)
-  const lastSaturday = new Date(lastSunday)
-  lastSaturday.setDate(lastSunday.getDate() + 6)
-  lastSaturday.setHours(23, 59, 59, 999)
+  // KST 기준 전주 일요일/토요일
+  const sundayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 7))
+  const saturdayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 1))
 
-  return { start: lastSunday, end: lastSaturday }
+  // KST 날짜 문자열 (YYYY-MM-DD)
+  const startDateStr = sundayKST.toISOString().split('T')[0]
+  const endDateStr = saturdayKST.toISOString().split('T')[0]
+
+  // DB 쿼리용 UTC 타임스탬프
+  const startUTC = new Date(sundayKST.getTime() - KST_OFFSET_MS)
+  const endUTC = new Date(saturdayKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1)
+
+  return { start: startUTC, end: endUTC, startDateStr, endDateStr }
 }
 
 // Slack 알림 (배치 결과 리포트)
-async function sendSlackNotification(message: string, isError: boolean = false) {
+async function sendSlackNotification(_message: string, _isError: boolean = false) {
+  return // 슬랙 알림 임시 비활성화
   const slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL')
   if (!slackWebhookUrl) {
     console.warn('⚠️ SLACK_WEBHOOK_URL 미설정 - Slack 알림 스킵')
@@ -92,16 +98,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // 1. 날짜 범위 계산 (커스텀 날짜 우선, 없으면 전주 자동 계산)
-    let weekRange: { start: Date; end: Date }
+    let weekRange: { start: Date; end: Date; startDateStr: string; endDateStr: string }
     if (customWeekStartDate && customWeekEndDate) {
+      const startKST = new Date(customWeekStartDate + 'T00:00:00.000Z')
+      const endKST = new Date(customWeekEndDate + 'T00:00:00.000Z')
       weekRange = {
-        start: new Date(customWeekStartDate + 'T00:00:00.000Z'),
-        end: new Date(customWeekEndDate + 'T23:59:59.999Z')
+        start: new Date(startKST.getTime() - KST_OFFSET_MS),
+        end: new Date(endKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1),
+        startDateStr: customWeekStartDate,
+        endDateStr: customWeekEndDate
       }
     } else {
       weekRange = getLastWeekRange()
     }
-    console.log('📅 주차 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    console.log('📅 주차 범위:', weekRange.startDateStr, '~', weekRange.endDateStr, '(UTC:', weekRange.start.toISOString(), '~', weekRange.end.toISOString(), ')')
 
     // 2. 대상 사용자 조회
     // 조건: 전주에 is_confirmed=true인 태그가 1개 이상 있는 사용자
@@ -151,8 +161,8 @@ serve(async (req) => {
     const { data: existingReports } = await supabase
       .from('weekly_reports')
       .select('user_id')
-      .gte('week_start_date', weekRange.start.toISOString().split('T')[0])
-      .lte('week_end_date', weekRange.end.toISOString().split('T')[0])
+      .gte('week_start_date', weekRange.startDateStr)
+      .lte('week_end_date', weekRange.endDateStr)
 
     const existingUserIds = new Set((existingReports || []).map(r => r.user_id))
     const filteredUserIds = targetUserIds.filter(id => !existingUserIds.has(id))

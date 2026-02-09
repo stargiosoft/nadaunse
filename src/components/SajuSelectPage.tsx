@@ -796,20 +796,8 @@ export default function SajuSelectPage() {
               <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                 <button
                   onClick={() => {
-                    // ⭐ 저장된 referrer로 이동 (사주 추가 → 사주 선택 → 뒤로가기 시 루프 방지)
-                    const referrer = sessionStorage.getItem('sajuSelectReferrer');
-                    sessionStorage.removeItem('sajuSelectReferrer'); // 사용 후 삭제
-                    if (referrer) {
-                      console.log('🔙 [SajuSelectPage] referrer로 이동:', referrer);
-                      navigate(referrer);
-                    } else if (productId) {
-                      // 결제 후 사주 선택 페이지로 온 경우 → 상품 상세 페이지로 이동
-                      console.log('🔙 [SajuSelectPage] productId 존재 → 상품 상세 페이지로 이동:', productId);
-                      navigate(`/master/content/detail/${productId}`);
-                    } else {
-                      console.log('🔙 [SajuSelectPage] referrer 없음 → /purchase-history로 이동');
-                      navigate('/purchase-history');
-                    }
+                    console.log('🔙 [SajuSelectPage] 뒤로가기 (히스토리 back)');
+                    navigate(-1);
                   }}
                   className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] bg-transparent border-none cursor-pointer"
                 >

@@ -583,8 +583,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return (
         <FreeContentDetail
           contentId={contentId}
-          onBack={() => navigate(-1)}
-          onHome={() => navigate(-1)}
+          onBack={() => navigate('/')}
+          onHome={() => navigate('/')}
           onPurchase={async () => {}} // 로딩 중이므로 빈 함수
           onContentClick={(contentId) => {
             console.log('🔥 MasterContentDetailPage navigate 시도:', `/master/content/detail/${contentId}`);
@@ -642,8 +642,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate(-1)}
-        onHome={() => navigate(-1)}
+        onBack={() => navigate('/')}
+        onHome={() => navigate('/')}
         onPurchase={handleFreePurchase}
         onContentClick={(contentId) => {
           console.log('🔥 MasterContentDetailPage navigate 시도:', `/master/content/detail/${contentId}`);
@@ -765,15 +765,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate(-1)}
-        onHome={() => navigate(-1)}
+        onBack={() => navigate('/')}
+        onHome={() => navigate('/')}
         onPurchase={handleFreePurchase}
       />
     );
   }
 
   const isPaid = content.content_type === 'paid';
-  const onBack = () => navigate(-1);
+  const onBack = () => navigate('/');
   
   const onPurchase = async () => {
     console.log('🔵 [MasterContentDetailPage] onPurchase 함수 시작', {

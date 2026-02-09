@@ -6,11 +6,9 @@ import WeeklyReportLoading from './WeeklyReportLoading';
 
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+    <div className="shrink-0 w-full z-20" style={{ position: 'sticky', top: 0, height: '52px', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
-          className="text-center flex-1"
           style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -103,17 +101,17 @@ interface CardTextContainerProps {
 
 function CardTextContainer({ title, description, imageUrl }: CardTextContainerProps) {
   return (
-    <div className="flex flex-col items-center relative shrink-0 w-full" style={{ padding: '0 20px' }} data-name="Container">
-        <div className="flex flex-col items-center w-full" style={{ gap: '18px', marginBottom: '10px' }}>
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ padding: '0 20px' }} data-name="Container">
+        <div className="flex flex-col items-center w-full" style={{ gap: '18px', marginBottom: '2px' }}>
             <TarotCardImage imageUrl={imageUrl} cardName={title} />
             <p style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 600,
-                fontSize: '18px',
+                fontSize: '16px',
                 lineHeight: '25.5px',
                 color: '#151515',
                 letterSpacing: '-0.36px',
-                textAlign: 'center',
+                textAlign: 'left',
                 width: '100%'
             }}>{title}</p>
         </div>
@@ -124,6 +122,7 @@ function CardTextContainer({ title, description, imageUrl }: CardTextContainerPr
         lineHeight: '28.5px',
         color: '#151515',
         letterSpacing: '-0.32px',
+        textAlign: 'left',
         width: '100%'
       }}>{description}</p>
     </div>
@@ -143,17 +142,18 @@ function CardInterpretationCard({ tarot, cardLabel }: CardInterpretationCardProp
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }} data-name="Card / Interpretation Card">
       <div className="flex flex-row justify-center size-full">
-        <div className="flex items-start justify-center relative w-full" style={{ padding: '28px 0 28px 0' }}>
+        <div className="flex items-start justify-center relative w-full" style={{ padding: '16px 0 20px 0' }}>
           <div className="flex flex-col items-center w-full">
             {/* 카드 라벨 */}
             <p style={{
               fontFamily: 'Pretendard Variable',
-              fontWeight: 500,
-              fontSize: '14px',
+              fontWeight: 600,
+              fontSize: '17px',
               lineHeight: '20px',
-              color: '#48b2af',
+              color: '#151515',
               letterSpacing: '-0.28px',
-              marginBottom: '16px'
+              paddingTop: '10px',
+              marginBottom: '18px'
             }}>{label}</p>
             <CardTextContainer
               title={tarot.card_name}
@@ -175,7 +175,7 @@ function CardContainer({ tarotSelections }: CardContainerProps) {
   return (
     <div
       className="flex flex-col gap-4 items-start w-full"
-      style={{ padding: '12px 20px 230px 20px' }}
+      style={{ padding: '8px 20px 230px 20px' }}
       data-name="Card Container"
     >
       {tarotSelections.map((tarot, index) => (
@@ -190,6 +190,14 @@ function CardContainer({ tarotSelections }: CardContainerProps) {
 }
 
 function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () => void }) {
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isNextPressed, setIsNextPressed] = useState(false);
+
+  const handlePrevPress = () => setIsPrevPressed(true);
+  const handlePrevRelease = () => setIsPrevPressed(false);
+  const handleNextPress = () => setIsNextPressed(true);
+  const handleNextRelease = () => setIsNextPressed(false);
+
   return (
     <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
@@ -197,8 +205,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () =>
           {/* 이전 버튼 */}
           <button
             onClick={onPrev}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
-            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+            onMouseDown={handlePrevPress}
+            onMouseUp={handlePrevRelease}
+            onMouseLeave={handlePrevRelease}
+            onTouchStart={handlePrevPress}
+            onTouchEnd={handlePrevRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isPrevPressed ? '#E4F7F7' : '#f0f8f8',
+              height: '56px',
+              transform: isPrevPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -213,8 +232,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () =>
           {/* 다음 버튼 */}
           <button
             onClick={onNext}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
-            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+            onMouseDown={handleNextPress}
+            onMouseUp={handleNextRelease}
+            onMouseLeave={handleNextRelease}
+            onTouchStart={handleNextPress}
+            onTouchEnd={handleNextRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isNextPressed ? '#41A09E' : '#48b2af',
+              height: '56px',
+              transform: isNextPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -310,9 +340,9 @@ export default function ReportWeeklyTarotResult({
   }
 
   return (
-    <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (타로 풀이)">
+    <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-y-auto" style={{ maxWidth: '440px' }} data-name="나의 보고서 (타로 풀이)">
       <NavigationTopBar onClose={onClose} />
-      <div className="flex-1 overflow-y-auto w-full relative">
+      <div className="flex-1 w-full relative">
         <CardContainer tarotSelections={tarotSelections} />
       </div>
       <BottomButtons onPrev={onPrev} onNext={onNext} />

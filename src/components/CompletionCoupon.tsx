@@ -81,7 +81,7 @@ const MemoizedLottie = React.memo(function LottieWrapper({ data }: { data: any }
   return <Lottie animationData={data} loop={true} />;
 });
 
-function ContentArea() {
+function ContentArea({ amount = 3000 }: { amount?: number }) {
   // Check if animation data is valid
   // @ts-ignore
   const hasAnimationData = animationData && animationData.layers && animationData.layers.length > 0;
@@ -132,7 +132,7 @@ function ContentArea() {
                 whiteSpace: 'nowrap',
                 paddingBottom: '1px'
               }}>
-                3,000
+                {amount.toLocaleString()}
               </p>
               <p style={{ 
                 fontFamily: 'Pretendard Variable', 
@@ -256,6 +256,7 @@ interface CompletionCouponProps {
 
 export default function CompletionCoupon({ reportId, onClose, onHome }: CompletionCouponProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [couponAmount, setCouponAmount] = useState(3000);
 
   useEffect(() => {
     async function issueCouponOnFirstVisit() {
@@ -273,7 +274,10 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
         const result = await issueRevisitCoupon(session.user.id, reportId);
 
         if (result.success) {
-          console.log('✅ [쿠폰] 재구매 쿠폰 발급 성공:', result.coupon);
+          console.log('✅ [쿠폰] 쿠폰 발급 성공:', result.couponType, result.coupon);
+          if (result.discountAmount) {
+            setCouponAmount(result.discountAmount);
+          }
           setIsLoading(false);
         } else if (result.alreadyIssued) {
           // ⭐ 이미 발급됨 → 바로 '나의 분석 보고서'로 이동
@@ -324,7 +328,7 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
 
         {/* Main Content (Scrollable) */}
         <div className="flex-1 overflow-y-auto w-full no-scrollbar">
-          <ContentArea />
+          <ContentArea amount={couponAmount} />
         </div>
 
         {/* Fixed Bottom Area */}

@@ -63,7 +63,7 @@ export async function issueWelcomeCoupon(userId: string): Promise<{ success: boo
  * @param userId - 사용자 ID
  * @param sourceOrderId - 출처 ID (주문 ID 또는 보고서 ID) - 중복 발급 방지용
  */
-export async function issueRevisitCoupon(userId: string, sourceOrderId?: string): Promise<{ success: boolean; coupon?: UserCoupon; error?: string; alreadyIssued?: boolean }> {
+export async function issueRevisitCoupon(userId: string, sourceOrderId?: string): Promise<{ success: boolean; coupon?: UserCoupon; error?: string; alreadyIssued?: boolean; couponType?: 'mission' | 'revisit'; discountAmount?: number }> {
   try {
     console.log('🎟️ [쿠폰API] 재구매 쿠폰 발급 시작:', { userId, sourceOrderId });
 

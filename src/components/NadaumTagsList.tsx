@@ -48,7 +48,7 @@ function Container({ quote }: { quote: string }) {
 
 function Container1({ quote }: { quote: string }) {
   return (
-    <div className="relative shrink-0 w-full" style={{ borderRadius: '12px', background: 'linear-gradient(180deg, #F8FEE9 34.21%, #EAF2D5 100%)' }}>
+    <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', background: 'rgba(255, 255, 255, 0.94)' }}>
       <div className="flex flex-col items-start relative w-full" style={{ padding: '16px 20px' }}>
         <Container quote={quote} />
       </div>
@@ -69,7 +69,7 @@ function Container2() {
   return (
     <div className="relative shrink-0 w-full">
       <div className="flex flex-row items-center" style={{ width: '100%', height: '100%' }}>
-        <div className="flex items-center relative w-full" style={{ padding: '0 20px 4px 20px' }}>
+        <div className="flex items-center relative w-full" style={{ padding: '12px 20px 1px 20px' }}>
           <div className="flex flex-col justify-center relative shrink-0">
             <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '18px', lineHeight: '24px', color: '#000000', letterSpacing: '-0.36px' }}>나의 성향 태그</p>
           </div>
@@ -218,7 +218,7 @@ function TagItem({ label, isSelected, onSelect, onDelete }: TagItemProps) {
           borderRadius: '99px',
           width: 'max-content',
           touchAction: 'pan-y',
-          backgroundColor: '#f9f9f9',
+          backgroundColor: isSelected ? '#ffffff' : '#f9f9f9',
           border: isSelected ? '1.5px solid #48b2af' : '1.5px solid transparent'
         }}
       >
@@ -491,7 +491,7 @@ function NadaumTagsListInternal({ tagType, tags, isLoading, onDeleteTag, onResto
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full">
       <div className="relative shrink-0 w-full">
-        <div className="flex flex-col items-start relative w-full" style={{ padding: '14px 0' }}>
+        <div className="flex flex-col items-start relative w-full" style={{ padding: '12px 0' }}>
           <TagContainer
             isExpanded={isExpanded}
             tagType={tagType}
@@ -767,7 +767,7 @@ export default function NadaumTagsList({ onBack, onHome }: NadaumTagsListProps) 
 
       {/* Content */}
       <div className="flex-1 w-full overflow-y-auto overflow-x-hidden" style={{ paddingBottom: '40px' }}>
-        <div className="flex flex-col items-start relative w-full" style={{ gap: '32px' }}>
+        <div className="flex flex-col items-start relative w-full" style={{ gap: '12px' }}>
           <ImageSection quote={randomQuote} />
           <div className="flex flex-col items-start relative shrink-0 w-full">
             <div className="flex flex-col items-start relative shrink-0 w-full">

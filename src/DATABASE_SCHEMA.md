@@ -1,8 +1,8 @@
 # 데이터베이스 스키마 문서
 
 > **작성일**: 2024-12-17
-> **버전**: 1.7.0
-> **최종 업데이트**: 2026-02-03
+> **버전**: 2.0.0
+> **최종 업데이트**: 2026-02-09
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -43,9 +43,10 @@
 | `marketing_agreed` | boolean | - | `false` | 마케팅 정보 수신 동의 여부 |
 | `ads_agreed` | boolean | - | `false` | 광고성 정보 수신 동의 여부 |
 | `terms_agreed_at` | timestamptz | - | - | 약관 동의 일시 |
-| `last_login_at` | timestamptz | - | `now()` | 마지막 방문 일시 (일일 방문 기준 업데이트) |
+| `last_login_at` | timestamptz | - | `now()` | 마지막 방문 일시 (App.tsx → recordTodayVisit()에서 모든 페이지 방문 시 갱신) |
 | `visit_count` | integer | - | `1` | 총 방문 일수 (일일 방문 기준) |
 | `visit_dates` | date[] | - | `'{}'` | KST 기준 방문 날짜 목록 (예: ['2026-02-01', '2026-02-02']) |
+| `rejected_tags` | text[] | - | `'{}'` | AI 태그 추출 시 제외할 태그 목록 (CheckRecordMe에서 미선택 태그 누적) |
 | `created_at` | timestamptz | - | `now()` | 계정 생성 일시 |
 | `role` | text | CHECK | `'user'` | 사용자 권한 (master, admin, user) |
 
@@ -309,12 +310,9 @@
 **인덱스**:
 - `idx_anonymous_free_views_fingerprint_date`: (fingerprint, viewed_date)
 
-**UNIQUE 제약조건**:
-- `(fingerprint, content_id, viewed_date)` — 같은 비회원이 같은 콘텐츠를 같은 날 중복 기록 방지
-
 **용도**:
 - 비회원 하루 3개 무료 콘텐츠 제한 (서버 2차 검증)
-- `generate-free-preview` Edge Function에서 Service Role Key로만 접근
+- `generate-free-preview` Edge Function에서 Service Role Key로만 접근 (INSERT 방식, 같은 콘텐츠 재조회도 매번 기록)
 - RLS Enabled (정책 없음 — Service Role Key 전용)
 
 **자동 정리**: pg_cron `cleanup-anonymous-free-views` — 매일 KST 09:00에 전날 이전 데이터 자동 삭제
@@ -580,6 +578,7 @@ weekly_reports (주간 보고서)
 | 1.7.0 | 2026-02-03 | pg_cron 스케줄 추가 (주간 보고서 자동 발송), Vault에 service_role_key 저장 | AI Assistant |
 | 1.8.0 | 2026-02-04 | users 테이블에 visit_dates 컬럼 추가 (KST 기준 방문 날짜 배열) | AI Assistant |
 | 1.9.0 | 2026-02-06 | anonymous_free_views 테이블 추가, pg_cron cleanup-anonymous-free-views 스케줄 등록 | AI Assistant |
+| 2.0.0 | 2026-02-09 | users 테이블에 rejected_tags 컬럼 추가, anonymous_free_views UNIQUE 제약 제거 (INSERT 방식 변경), last_login_at 갱신 로직 변경 (HomePage → App.tsx recordTodayVisit) | AI Assistant |
 
 ---
 

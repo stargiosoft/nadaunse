@@ -13,6 +13,7 @@ import ReportWeeklyTarotResult from '@/components/ReportWeeklyTarotResult';
 import ReportWeeklyMindCare from '@/components/ReportWeeklyMindCare';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
+import TagCouponBottomSheet from './TagCouponBottomSheet';
 
 interface SajuRecord {
   id: string;
@@ -56,6 +57,7 @@ interface CheckRecordMeProps {
   orderId?: string;   // ⭐ 주문 ID (유료 콘텐츠용 - source_order_id로 사용)
   tags?: { name: string; type: 'positive' | 'negative' | 'neutral' }[]; // API에서 받은 태그
   sourceType?: 'free_content' | 'paid_content'; // ⭐ 콘텐츠 유형
+  resultKey?: string; // ⭐ localStorage 결과 키 (게스트→로그인 시 정확한 결과 매칭용)
   onBack?: () => void;
   onHome?: () => void;
   onSkip?: () => void; // 다음에 할래요
@@ -67,6 +69,7 @@ export default function CheckRecordMe({
   orderId,           // ⭐ 추가
   tags: initialTags,
   sourceType = 'free_content', // ⭐ 추가
+  resultKey,         // ⭐ localStorage 결과 키
   onBack: onBackProp,
   onHome: onHomeProp,
   onSkip,
@@ -95,7 +98,7 @@ export default function CheckRecordMe({
     return defaultTags;
   });
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
-  const [view, setView] = useState<'recording' | 'result' | 'mypage' | 'dev-report' | 'dev-tarot-picking' | 'dev-tarot-result' | 'dev-mind-prescription'>('recording');
+  const [view, setView] = useState<'recording' | 'result' | 'mypage' | 'tag-saved-info' | 'coupon-info' | 'dev-report' | 'dev-tarot-picking' | 'dev-tarot-result' | 'dev-mind-prescription'>('recording');
   const navigate = useNavigate();
 
   // 휴대폰 번호를 부모 컴포넌트에서 관리하여 바텀 시트가 닫혀도 유지되도록 함
@@ -118,6 +121,113 @@ export default function CheckRecordMe({
   const [mySajuRecord, setMySajuRecord] = useState<SajuRecord | null>(initialPhoneState.mySajuRecord);
   const [needsPhoneNumber, setNeedsPhoneNumber] = useState(initialPhoneState.needsPhoneNumber);
   const [isCheckingPhone, setIsCheckingPhone] = useState(initialPhoneState.isCheckingPhone);
+
+  // ⭐ 태그 쿠폰 프로모션 바텀시트 상태
+  const [isPromoBottomSheetOpen, setIsPromoBottomSheetOpen] = useState(false);
+  const [isTagEncourageOpen, setIsTagEncourageOpen] = useState(false);
+  const [remainingTagCount, setRemainingTagCount] = useState(0);
+  const [completionRemainingTags, setCompletionRemainingTags] = useState(0); // 태그 저장 완료 페이지: 남은 태그 수
+  const [hasMissionCoupon, setHasMissionCoupon] = useState(false); // 미션 쿠폰 이미 발급됨 여부
+
+  // ⭐ 미션 쿠폰 발급 여부 확인 (마운트 시)
+  useEffect(() => {
+    const checkMissionCoupon = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) return;
+
+        // coupons 테이블에서 mission 타입 쿠폰 ID 조회
+        const { data: missionCoupon } = await supabase
+          .from('coupons')
+          .select('id')
+          .eq('coupon_type', 'mission')
+          .maybeSingle();
+
+        if (!missionCoupon) return;
+
+        // user_coupons에서 해당 유저에게 미션 쿠폰이 발급되었는지 확인
+        const { data: issuedMission } = await supabase
+          .from('user_coupons')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('coupon_id', missionCoupon.id)
+          .maybeSingle();
+
+        if (issuedMission) {
+          console.log('ℹ️ [CheckRecordMe] 미션 쿠폰 이미 발급됨 → 프로모션 스킵');
+          setHasMissionCoupon(true);
+        }
+      } catch (err) {
+        console.error('❌ [CheckRecordMe] 미션 쿠폰 체크 실패:', err);
+      }
+    };
+    checkMissionCoupon();
+  }, []);
+
+  // ⭐ "다음에 할래요" 스킵 처리 공통 함수
+  const executeSkipLogic = async (userId: string) => {
+    console.log('🗑️ [CheckRecordMe] 스킵 처리 시작...');
+
+    // 1. 해당 콘텐츠/주문의 미확정 태그 삭제
+    const deleteQuery = supabase
+      .from('user_trait_tags')
+      .delete()
+      .eq('user_id', userId)
+      .eq('is_confirmed', false);
+
+    if (orderId) {
+      await deleteQuery.eq('source_order_id', orderId);
+    } else if (contentId) {
+      await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+    }
+
+    console.log('✅ [CheckRecordMe] 미확정 태그 삭제 완료');
+
+    // 2. __SKIPPED__ 마커 태그 삽입 (이미 있으면 스킵)
+    let existingMarkerQuery = supabase
+      .from('user_trait_tags')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('tag_name', '__SKIPPED__');
+
+    if (orderId) {
+      existingMarkerQuery = existingMarkerQuery.eq('source_order_id', orderId);
+    } else if (contentId) {
+      existingMarkerQuery = existingMarkerQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+    }
+
+    const { data: existingMarker } = await existingMarkerQuery.maybeSingle();
+
+    if (!existingMarker) {
+      const skippedTag = {
+        user_id: userId,
+        tag_name: '__SKIPPED__',
+        tag_type: 'neutral',
+        source_type: sourceType,
+        source_content_id: contentId || null,
+        source_order_id: orderId || null,
+        is_confirmed: true
+      };
+
+      const { error: insertError } = await supabase
+        .from('user_trait_tags')
+        .insert(skippedTag);
+
+      if (insertError) {
+        console.warn('⚠️ [CheckRecordMe] __SKIPPED__ 마커 삽입 실패:', insertError);
+      } else {
+        console.log('✅ [CheckRecordMe] __SKIPPED__ 마커 삽입 완료');
+      }
+    } else {
+      console.log('ℹ️ [CheckRecordMe] __SKIPPED__ 마커 이미 존재');
+    }
+
+    // 캐시 무효화
+    localStorage.setItem('trait_tags_needs_refresh', 'true');
+    localStorage.setItem('my_report_needs_refresh', 'true');
+    localStorage.removeItem('trait_tags_cache');
+    localStorage.removeItem('nadaum_all_tags_cache');
+  };
 
   // ⭐ phone_number 바텀시트는 프로필 > 나의 분석 보고서에서만 노출
   // CheckRecordMe에서는 phone_number 체크/바텀시트 불필요
@@ -356,10 +466,15 @@ export default function CheckRecordMe({
         type: t.type
       }));
 
+      // 미선택 태그도 함께 저장 (로그인 후 rejected_tags 업데이트용)
+      const unselectedTags = tags.filter(t => !t.selected).map(t => t.label);
+
       localStorage.setItem('pending_trait_tags', JSON.stringify({
         tags: selectedTags,
+        unselectedTags: unselectedTags,
         contentId: contentId,
         orderId: orderId,
+        resultKey: resultKey,
         sourceType: sourceType
       }));
 
@@ -371,26 +486,82 @@ export default function CheckRecordMe({
       return;
     }
 
-    // ⭐ phone_number 바텀시트 제거 → 바로 태그 저장
-    console.log('✅ [CheckRecordMe] 바로 태그 저장');
+    // ⭐ 저장 전 기존 확정 태그 수 조회 (최초 5개 달성 여부 판단용)
+    const { data: beforeTags, error: beforeError } = await supabase
+      .from('user_trait_tags')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('is_confirmed', true)
+      .neq('tag_name', '__SKIPPED__');
+
+    if (beforeError) {
+      console.error('❌ [CheckRecordMe] 저장 전 태그 수 조회 실패:', beforeError);
+    }
+    const beforeTagCount = beforeTags?.length || 0;
+    console.log('🏷️ [CheckRecordMe] 저장 전 확정 태그 수:', beforeTagCount);
+
+    // ⭐ 태그 저장
+    console.log('✅ [CheckRecordMe] 태그 저장 시작...');
     setIsSaving(true);
     const success = await saveTags();
-    setIsSaving(false);
 
     if (success) {
-      // 토스트 표시 (2줄)
-      toast.success('태그가 저장됐어요!', {
-        subtitle: '프로필에서 확인할 수 있어요.',
-        duration: 2200
-      });
-
       // ⭐ onComplete 콜백이 있으면 호출 (유료 콘텐츠 → 구매내역으로 이동)
       if (onComplete) {
+        toast.success('태그가 저장됐어요!', {
+          subtitle: '프로필에서 확인할 수 있어요.',
+          duration: 2200
+        });
         onComplete();
-      } else if (onHomeProp) {
-        onHomeProp();
+        setIsSaving(false);
+        return;
+      }
+
+      // ⭐ 저장 후 총 확정 태그 수 조회
+      const { data: allConfirmedTags, error: countError } = await supabase
+        .from('user_trait_tags')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('is_confirmed', true)
+        .neq('tag_name', '__SKIPPED__');
+
+      if (countError) {
+        console.error('❌ [CheckRecordMe] 총 태그 수 조회 실패:', countError);
+      }
+
+      const totalTagCount = allConfirmedTags?.length || 0;
+      console.log('🏷️ [CheckRecordMe] 총 확정 태그 수:', totalTagCount);
+
+      // ⭐ 미션 쿠폰 이미 받은 사람 → 프로모션 안내 없이 바로 홈 (체리피커 방지)
+      if (hasMissionCoupon) {
+        console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 프로모션 스킵, 바로 홈');
+        toast.success('태그가 저장됐어요!', {
+          subtitle: '프로필에서 확인할 수 있어요.',
+          duration: 2200,
+        });
+        if (onHomeProp) onHomeProp();
+      } else if (totalTagCount >= 5 && beforeTagCount < 5) {
+        // ⭐ 최초로 태그 5개 달성 → 쿠폰 발급 안내 페이지
+        console.log('🎉 [CheckRecordMe] 최초 5개 달성 → 쿠폰 발급 안내 페이지');
+        setView('coupon-info');
+      } else if (totalTagCount >= 5 && beforeTagCount >= 5) {
+        // ⭐ 이미 5개 이상이었음 → 바로 홈으로
+        console.log('🏠 [CheckRecordMe] 이미 5개 이상 보유 → 바로 홈으로 이동');
+        toast.success('태그가 저장됐어요!', {
+          subtitle: '프로필에서 확인할 수 있어요.',
+          duration: 2200,
+        });
+        if (onHomeProp) onHomeProp();
+      } else {
+        // ⭐ 태그 1~4개 → 모아야할 태그수 안내 페이지
+        const remaining = 5 - totalTagCount;
+        console.log(`📊 [CheckRecordMe] 태그 ${totalTagCount}개 (${remaining}개 남음) → 태그수 안내 페이지`);
+        setCompletionRemainingTags(remaining);
+        setView('tag-saved-info');
       }
     }
+
+    setIsSaving(false);
   };
 
   // ⭐ 바텀시트에서 저장 버튼 클릭 (phone_number 저장 + 태그 확정)
@@ -668,6 +839,200 @@ export default function CheckRecordMe({
 
   if (view === 'dev-mind-prescription') {
     return <ReportWeeklyMindCare onClose={handleBack} onPrev={handleBack} />;
+  }
+
+  // ⭐ 1-4) 모아야할 태그수 안내 페이지 (태그 1~4개)
+  if (view === 'tag-saved-info') {
+    return (
+      <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
+        <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto flex flex-col items-center" style={{ paddingTop: '76px', paddingLeft: '32px', paddingRight: '32px' }}>
+            {/* Text Group */}
+            <motion.div
+              className="flex flex-col items-start w-full"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+              style={{ gap: '12px', transformOrigin: "left center", containerType: 'inline-size' }}
+            >
+              {/* Title */}
+              <div className="flex flex-col items-start w-full" style={{ gap: 0 }}>
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: 'clamp(24px, 9.5cqw, 26px)',
+                  fontWeight: 700,
+                  color: '#000000',
+                  letterSpacing: '-0.78px',
+                  margin: 0,
+                  whiteSpace: 'nowrap'
+                }}>
+                  태그가 저장됐어요
+                </p>
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: 'clamp(24px, 9.5cqw, 26px)',
+                  fontWeight: 700,
+                  color: '#000000',
+                  letterSpacing: '-0.78px',
+                  margin: 0,
+                  whiteSpace: 'nowrap'
+                }}>
+                  무료 쿠폰까지{' '}
+                  <span style={{ color: '#48B2AF' }}>태그 {completionRemainingTags}개</span>
+                  {' '}남았어요
+                </p>
+              </div>
+              {/* Subtitle */}
+              <p style={{
+                fontFamily: 'Pretendard Variable',
+                fontSize: '14px',
+                fontWeight: 400,
+                color: '#999999',
+                lineHeight: '22px',
+                letterSpacing: '-0.42px',
+                margin: '-4px 0 0 0',
+                paddingLeft: '1px'
+              }}>
+                태그 5개를 모으면 무료 쿠폰 지급돼요
+              </p>
+            </motion.div>
+
+            {/* Coupon Icon */}
+            <div className="flex items-center justify-center w-full overflow-hidden" style={{ marginTop: '52px', height: '250px' }}>
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+                style={{ width: '194px', height: '194px', transform: 'translateZ(0)', willChange: 'transform, opacity' }}
+              >
+                <img src="/coupon-mint.svg" alt="쿠폰 아이콘" style={{ width: '100%', height: '100%' }} />
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Bottom Button */}
+          <div className="bg-white relative shrink-0 w-full z-20">
+            <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
+            <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px 20px' }}>
+              <button
+                onClick={handleHome}
+                className="w-full flex items-center justify-center cursor-pointer transition-all active:scale-[0.98]"
+                style={{ backgroundColor: '#48b2af', height: '56px', borderRadius: '16px', border: 'none', padding: 0 }}
+              >
+                <span style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  color: '#ffffff',
+                  letterSpacing: '-0.32px',
+                  lineHeight: '25px'
+                }}>
+                  확인했어요
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ⭐ 1-5) 쿠폰 발급 안내 페이지 (태그 5개 이상 최초 달성)
+  if (view === 'coupon-info') {
+    return (
+      <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
+        <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto flex flex-col items-center" style={{ paddingTop: '76px', paddingLeft: '32px', paddingRight: '32px' }}>
+            {/* Text Group */}
+            <motion.div
+              className="flex flex-col items-start w-full"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+              style={{ gap: '12px', transformOrigin: "left center", containerType: 'inline-size' }}
+            >
+              {/* Title */}
+              <div className="flex flex-col items-start w-full" style={{ gap: 0 }}>
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: 'clamp(24px, 9.5cqw, 26px)',
+                  fontWeight: 700,
+                  color: '#000000',
+                  letterSpacing: '-0.78px',
+                  margin: 0,
+                  whiteSpace: 'nowrap'
+                }}>
+                  태그 5개를 모두 모았어요
+                </p>
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: 'clamp(24px, 9.5cqw, 26px)',
+                  fontWeight: 700,
+                  color: '#000000',
+                  letterSpacing: '-0.78px',
+                  margin: 0,
+                  whiteSpace: 'nowrap'
+                }}>
+                  일요일에{' '}
+                  <span style={{ color: '#48B2AF' }}>무료 쿠폰</span>
+                  이 지급돼요
+                </p>
+              </div>
+              {/* Subtitle */}
+              <p style={{
+                fontFamily: 'Pretendard Variable',
+                fontSize: '14px',
+                fontWeight: 400,
+                color: '#999999',
+                lineHeight: '22px',
+                letterSpacing: '-0.42px',
+                margin: '-4px 0 0 0',
+                paddingLeft: '1px'
+              }}>
+                쿠폰 지급 : 일요일 나의 분석 보고서 확인 후 자동 발급
+              </p>
+            </motion.div>
+
+            {/* Coupon Icon */}
+            <div className="flex items-center justify-center w-full overflow-hidden" style={{ marginTop: '52px', height: '250px' }}>
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+                style={{ width: '194px', height: '194px', transform: 'translateZ(0)', willChange: 'transform, opacity' }}
+              >
+                <img src="/coupon-mint.svg" alt="쿠폰 아이콘" style={{ width: '100%', height: '100%' }} />
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Bottom Button */}
+          <div className="bg-white relative shrink-0 w-full z-20">
+            <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
+            <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px 20px' }}>
+              <button
+                onClick={handleHome}
+                className="w-full flex items-center justify-center cursor-pointer transition-all active:scale-[0.98]"
+                style={{ backgroundColor: '#48b2af', height: '56px', borderRadius: '16px', border: 'none', padding: 0 }}
+              >
+                <span style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  color: '#ffffff',
+                  letterSpacing: '-0.32px',
+                  lineHeight: '25px'
+                }}>
+                  확인했어요
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // NOTE: CompletionCoupon 컴포넌트가 삭제되어 임시 placeholder 표시
@@ -971,83 +1336,62 @@ export default function CheckRecordMe({
             <button
               onClick={async () => {
                 // ⭐ "다음에 할래요" 클릭 시:
-                // 1. 미확정 태그 삭제
-                // 2. __SKIPPED__ 마커 태그 삽입 (is_confirmed=true)
-                //    → 이용기록에서 다시 들어와도 나다움 기록하기 스킵
+                // 비로그인/태그0개 → 프로모션 바텀시트
+                // 로그인+태그1~4개 → 태그 모으기 유도 바텀시트
+                // 로그인+태그5개 이상 → 바로 스킵
+                console.log('🔘 [CheckRecordMe] "다음에 할래요" 클릭');
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
-                  if (session?.user?.id) {
-                    console.log('🗑️ [CheckRecordMe] "다음에 할래요" 클릭 → 스킵 처리 시작...');
 
-                    // 1. 해당 콘텐츠/주문의 미확정 태그 삭제
-                    const deleteQuery = supabase
-                      .from('user_trait_tags')
-                      .delete()
-                      .eq('user_id', session.user.id)
-                      .eq('is_confirmed', false);
-
-                    if (orderId) {
-                      await deleteQuery.eq('source_order_id', orderId);
-                    } else if (contentId) {
-                      await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
-                    }
-
-                    console.log('✅ [CheckRecordMe] 미확정 태그 삭제 완료');
-
-                    // 2. __SKIPPED__ 마커 태그 삽입 (이미 있으면 스킵)
-                    // 먼저 기존 마커 확인
-                    let existingMarkerQuery = supabase
-                      .from('user_trait_tags')
-                      .select('id')
-                      .eq('user_id', session.user.id)
-                      .eq('tag_name', '__SKIPPED__');
-
-                    if (orderId) {
-                      existingMarkerQuery = existingMarkerQuery.eq('source_order_id', orderId);
-                    } else if (contentId) {
-                      existingMarkerQuery = existingMarkerQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
-                    }
-
-                    const { data: existingMarker } = await existingMarkerQuery.maybeSingle();
-
-                    if (!existingMarker) {
-                      // 마커가 없으면 삽입
-                      const skippedTag = {
-                        user_id: session.user.id,
-                        tag_name: '__SKIPPED__',
-                        tag_type: 'neutral',
-                        source_type: sourceType,
-                        source_content_id: contentId || null,
-                        source_order_id: orderId || null,
-                        is_confirmed: true  // ⭐ 확정 상태로 저장하여 나다움 기록하기 스킵
-                      };
-
-                      const { error: insertError } = await supabase
-                        .from('user_trait_tags')
-                        .insert(skippedTag);
-
-                      if (insertError) {
-                        console.warn('⚠️ [CheckRecordMe] __SKIPPED__ 마커 삽입 실패:', insertError);
-                      } else {
-                        console.log('✅ [CheckRecordMe] __SKIPPED__ 마커 삽입 완료');
-                      }
-                    } else {
-                      console.log('ℹ️ [CheckRecordMe] __SKIPPED__ 마커 이미 존재');
-                    }
-
-                    // 캐시 무효화
-                    localStorage.setItem('trait_tags_needs_refresh', 'true');
-                    localStorage.setItem('my_report_needs_refresh', 'true');
-                    localStorage.removeItem('trait_tags_cache');
-                    localStorage.removeItem('nadaum_all_tags_cache');
+                  // 비로그인 → 프로모션 바텀시트
+                  if (!session?.user?.id) {
+                    console.log('👤 [CheckRecordMe] 비로그인 → 프로모션 바텀시트 노출');
+                    setIsPromoBottomSheetOpen(true);
+                    return;
                   }
+
+                  // ⭐ 미션 쿠폰 이미 받은 사람 → 바로 스킵 (체리피커 방지)
+                  if (hasMissionCoupon) {
+                    console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 바로 스킵');
+                    await executeSkipLogic(session.user.id);
+                    if (onSkip) onSkip();
+                    return;
+                  }
+
+                  // 로그인 → 확정 태그 수 조회
+                  const { count: tagCount } = await supabase
+                    .from('user_trait_tags')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', session.user.id)
+                    .eq('is_confirmed', true)
+                    .neq('tag_name', '__SKIPPED__');
+
+                  const confirmedTags = tagCount ?? 0;
+                  console.log(`🏷️ [CheckRecordMe] 확정 태그 수: ${confirmedTags}`);
+
+                  if (confirmedTags >= 5) {
+                    // 5개 이상 → 바로 스킵 처리
+                    console.log('✅ [CheckRecordMe] 태그 5개 이상 → 바로 스킵');
+                    await executeSkipLogic(session.user.id);
+                    if (onSkip) onSkip();
+                    return;
+                  }
+
+                  if (confirmedTags >= 1) {
+                    // 1~4개 → 태그 모으기 유도 바텀시트
+                    const remaining = 5 - confirmedTags;
+                    console.log(`🏷️ [CheckRecordMe] 태그 ${confirmedTags}개 → 유도 바텀시트 (남은: ${remaining}개)`);
+                    setRemainingTagCount(remaining);
+                    setIsTagEncourageOpen(true);
+                    return;
+                  }
+
+                  // 0개 → 프로모션 바텀시트
+                  console.log('🏷️ [CheckRecordMe] 태그 0개 → 프로모션 바텀시트 노출');
+                  setIsPromoBottomSheetOpen(true);
                 } catch (err) {
                   console.error('❌ [CheckRecordMe] 스킵 처리 실패:', err);
-                }
-
-                // onSkip 콜백 호출
-                if (onSkip) {
-                  onSkip();
+                  if (onSkip) onSkip();
                 }
               }}
               className="group flex flex-col items-center justify-center relative self-center transition-colors duration-200 active:bg-gray-100"
@@ -1071,6 +1415,40 @@ export default function CheckRecordMe({
       </div>
 
       {/* ⭐ phone_number 바텀시트 제거 - 프로필 > 나의 분석 보고서에서만 노출 */}
+
+      {/* ⭐ 태그 쿠폰 프로모션 바텀시트 (비로그인 또는 태그 0개) */}
+      <TagCouponBottomSheet
+        isOpen={isPromoBottomSheetOpen}
+        onClose={async () => {
+          setIsPromoBottomSheetOpen(false);
+          // 닫기 → 스킵 처리 후 홈
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) await executeSkipLogic(session.user.id);
+          } catch {}
+          if (onSkip) onSkip();
+        }}
+        onOverlayClick={() => setIsPromoBottomSheetOpen(false)}
+        onSelectTag={() => setIsPromoBottomSheetOpen(false)}
+      />
+
+      {/* ⭐ 태그 모으기 유도 바텀시트 (로그인 + 태그 1~4개) */}
+      <TagCouponBottomSheet
+        isOpen={isTagEncourageOpen}
+        onClose={async () => {
+          setIsTagEncourageOpen(false);
+          // 닫기 → 스킵 처리 후 홈
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) await executeSkipLogic(session.user.id);
+          } catch {}
+          if (onSkip) onSkip();
+        }}
+        onOverlayClick={() => setIsTagEncourageOpen(false)}
+        onSelectTag={() => setIsTagEncourageOpen(false)}
+        remainingTags={remainingTagCount}
+      />
+
       </div>{/* max-w-[440px] wrapper 닫기 */}
     </div>
   );
