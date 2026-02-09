@@ -671,7 +671,6 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   } | null>(null);
   const [isLoadingFailedReports, setIsLoadingFailedReports] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [resendProgress, setResendProgress] = useState({ current: 0, total: 0, successCount: 0, failCount: 0, callCount: 0 });
   const weekOptions = getRecentWeeks(8);
 
   // ⭐ 주간 보고서 목록 조회 함수
@@ -990,7 +989,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     }
   };
 
-  // ⭐ 관리자: 실패 보고서 재발송 (서버 사이드 배치)
+  // ⭐ 관리자: 실패 보고서 재발송 (서버 사이드 배치 - fire & forget)
+  // selfContinue: true로 1회 호출 → 서버가 시간 제한 시 자동으로 자기 자신 재호출 → 클라이언트 개입 불필요
   const handleResendFailedReports = async () => {
     if (!failedReportInfo || failedReportInfo.failedCount === 0) {
       alert('재발송할 대상이 없습니다.');
@@ -1002,7 +1002,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     const confirmed = window.confirm(
       `${failedReportInfo.failedCount}명의 사용자에게 보고서를 재발송하시겠습니까?\n\n` +
       `⚠️ 주의: 이미 보고서가 있는 사용자는 제외됩니다.\n` +
-      `📦 서버에서 3명씩 병렬 처리됩니다. (배치 함수 사용)`
+      `📦 서버에서 자동 처리됩니다. 브라우저를 닫아도 됩니다.`
     );
 
     if (!confirmed) return;
@@ -1010,100 +1010,33 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     try {
       setIsResending(true);
       const selectedWeek = weekOptions[selectedWeekIndex];
-      let remainingUserIds = [...failedReportInfo.failedUserIds];
-      const total = remainingUserIds.length;
-      let cumulativeSuccess = 0;
-      let cumulativeFail = 0;
-      let callCount = 0;
+      console.log('🚀 [Admin] 보고서 재발송 시작:', failedReportInfo.failedCount, '명 (서버 selfContinue 모드)');
 
-      setResendProgress({ current: 0, total, successCount: 0, failCount: 0, callCount: 0 });
-      console.log('🚀 [Admin] 보고서 재발송 시작:', total, '명 (서버 배치 함수 사용)');
-
-      // isPartial 이어하기 루프: 서버가 시간 제한으로 부분 완료하면 나머지로 재호출
-      let consecutiveErrors = 0;
-      const MAX_CONSECUTIVE_ERRORS = 3;
-
-      while (remainingUserIds.length > 0) {
-        callCount++;
-        console.log(`📦 [Admin] 배치 호출 #${callCount} - 대상: ${remainingUserIds.length}명`);
-
-        // 배치 함수는 최대 120초 소요 → 180초 타임아웃 설정
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 180000);
-
-        let data, error;
-        try {
-          const result = await supabase.functions.invoke('generate-weekly-reports-batch', {
-            body: {
-              testMode: true,
-              testUserIds: remainingUserIds,
-              weekStartDate: selectedWeek.weekStartDate,
-              weekEndDate: selectedWeek.weekEndDate
-            },
-            // @ts-expect-error - supabase-js FunctionInvokeOptions에 signal 미정의이나 내부 fetch에 전달됨
-            signal: controller.signal
-          });
-          data = result.data;
-          error = result.error;
-        } finally {
-          clearTimeout(timeoutId);
+      const { data, error } = await supabase.functions.invoke('generate-weekly-reports-batch', {
+        body: {
+          testMode: true,
+          testUserIds: failedReportInfo.failedUserIds,
+          weekStartDate: selectedWeek.weekStartDate,
+          weekEndDate: selectedWeek.weekEndDate,
+          selfContinue: true
         }
+      });
 
-        // 에러 시 자동 재시도 (서버 shutdown 등 대비, 이미 처리된 유저는 서버에서 스킵)
-        if (error || !data?.success) {
-          consecutiveErrors++;
-          console.warn(`⚠️ [Admin] 배치 호출 #${callCount} 실패 (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, error || data?.error);
-          if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-            alert(`연속 ${MAX_CONSECUTIVE_ERRORS}회 오류 발생. 처리된 결과까지 반영됩니다.`);
-            break;
-          }
-          // 3초 대기 후 재시도 (서버 isolate 재시작 대기)
-          console.log('⏳ [Admin] 3초 후 자동 재시도...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          continue;
-        }
-
-        // 성공 시 연속 에러 카운트 리셋
-        consecutiveErrors = 0;
-
-        // 결과 집계
-        const summary = data.summary;
-        cumulativeSuccess += summary.successCount;
-        cumulativeFail += summary.failCount;
-        const cumulativeProcessed = cumulativeSuccess + cumulativeFail;
-
-        console.log(`✅ [Admin] 배치 호출 #${callCount} 완료 - 성공: ${summary.successCount}, 실패: ${summary.failCount}, isPartial: ${data.isPartial}`);
-
-        setResendProgress({
-          current: cumulativeProcessed,
-          total,
-          successCount: cumulativeSuccess,
-          failCount: cumulativeFail,
-          callCount
-        });
-
-        // 부분 완료 시: 처리된 유저(성공+실패) 제외 후 재호출
-        if (data.isPartial && data.results) {
-          const processedUserIds = new Set(
-            (data.results as Array<{ userId: string }>).map((r: { userId: string }) => r.userId)
-          );
-          remainingUserIds = remainingUserIds.filter(id => !processedUserIds.has(id));
-          console.log(`⏳ [Admin] 부분 완료 - 남은 대상: ${remainingUserIds.length}명, 다음 호출 진행...`);
-        } else {
-          // 전체 완료
-          break;
-        }
+      if (error || !data?.success) {
+        console.error('❌ [Admin] 배치 호출 실패:', error || data?.error);
+        alert('배치 호출에 실패했습니다. 다시 시도해주세요.');
+        return;
       }
 
-      alert(
-        `📊 재발송 완료!\n\n` +
-        `• 성공: ${cumulativeSuccess}명\n` +
-        `• 실패: ${cumulativeFail}명\n` +
-        `• 배치 호출 횟수: ${callCount}회`
-      );
+      const summary = data.summary;
+      const statusMsg = data.isPartial
+        ? `첫 배치 처리 완료 (${summary.processedCount}/${failedReportInfo.failedCount}명)\n나머지는 서버에서 자동 처리됩니다.\n결과는 Slack에서 확인하세요.`
+        : `전체 완료!\n• 성공: ${summary.successCount}명\n• 실패: ${summary.failCount}명`;
+
+      alert(`📊 ${statusMsg}`);
 
       // 결과 새로고침
-      if (cumulativeSuccess > 0) {
+      if (summary.successCount > 0) {
         handleFetchFailedReports();
       }
 
@@ -1112,7 +1045,6 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       alert('재발송 중 오류가 발생했습니다.');
     } finally {
       setIsResending(false);
-      setResendProgress({ current: 0, total: 0, successCount: 0, failCount: 0, callCount: 0 });
     }
   };
 
@@ -1537,7 +1469,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                           letterSpacing: '-0.3px'
                         }}>
                           {isResending
-                            ? `재발송 중... (${resendProgress.current}/${resendProgress.total})${resendProgress.callCount > 1 ? ` [호출 #${resendProgress.callCount}]` : ''}`
+                            ? '서버에 발송 요청 중...'
                             : `보고서 다시 보내기 (${failedReportInfo.failedCount}명)`
                           }
                         </span>
