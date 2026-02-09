@@ -1020,13 +1020,16 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       console.log('🚀 [Admin] 보고서 재발송 시작:', total, '명 (서버 배치 함수 사용)');
 
       // isPartial 이어하기 루프: 서버가 시간 제한으로 부분 완료하면 나머지로 재호출
+      let consecutiveErrors = 0;
+      const MAX_CONSECUTIVE_ERRORS = 3;
+
       while (remainingUserIds.length > 0) {
         callCount++;
         console.log(`📦 [Admin] 배치 호출 #${callCount} - 대상: ${remainingUserIds.length}명`);
 
-        // 배치 함수는 최대 300초 소요 → 360초 타임아웃 설정
+        // 배치 함수는 최대 120초 소요 → 180초 타임아웃 설정
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 360000);
+        const timeoutId = setTimeout(() => controller.abort(), 180000);
 
         let data, error;
         try {
@@ -1046,17 +1049,22 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           clearTimeout(timeoutId);
         }
 
-        if (error) {
-          console.error(`❌ [Admin] 배치 호출 #${callCount} 오류:`, error);
-          alert(`배치 호출 #${callCount} 오류가 발생했습니다. 처리된 결과까지 반영됩니다.`);
-          break;
+        // 에러 시 자동 재시도 (서버 shutdown 등 대비, 이미 처리된 유저는 서버에서 스킵)
+        if (error || !data?.success) {
+          consecutiveErrors++;
+          console.warn(`⚠️ [Admin] 배치 호출 #${callCount} 실패 (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, error || data?.error);
+          if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            alert(`연속 ${MAX_CONSECUTIVE_ERRORS}회 오류 발생. 처리된 결과까지 반영됩니다.`);
+            break;
+          }
+          // 3초 대기 후 재시도 (서버 isolate 재시작 대기)
+          console.log('⏳ [Admin] 3초 후 자동 재시도...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          continue;
         }
 
-        if (!data?.success) {
-          console.error(`❌ [Admin] 배치 호출 #${callCount} 실패:`, data?.error);
-          alert(`배치 호출 #${callCount} 실패. 처리된 결과까지 반영됩니다.`);
-          break;
-        }
+        // 성공 시 연속 에러 카운트 리셋
+        consecutiveErrors = 0;
 
         // 결과 집계
         const summary = data.summary;

@@ -10,7 +10,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 const BATCH_CONFIG = {
   concurrency: 3, // 동시 처리 수 (5→3, 503 방지)
   delayBetweenBatches: 2000, // 배치 간 딜레이 (ms)
-  maxExecutionMs: 300_000, // 최대 실행 시간 300초 (Edge Function 타임아웃 400초 대비 안전 마진)
+  maxExecutionMs: 120_000, // 최대 실행 시간 120초 (빠른 응답 반환 → 클라이언트 isPartial 루프로 이어하기)
 }
 
 // 전주 일~토 날짜 범위 계산
