@@ -59,7 +59,7 @@ function Toast({ onComplete, message = "변경사항이 저장되었어요" }: {
 // 공통 TopBar - X 버튼 (write/view 모드 공통)
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+    <div className="shrink-0 w-full z-20" style={{ position: 'sticky', top: 0, height: '52px', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
           style={{
@@ -554,11 +554,11 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
   if (mode === 'view') {
     return (
       <>
-        <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+        <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
           <TopBarWithClose onClose={onNext} />
 
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '100px' }}>
+          {/* Content */}
+          <div className="flex-1 w-full relative" style={{ paddingBottom: '100px' }}>
             <div className="w-full" style={{ padding: '16px 20px 40px 20px' }}>
               {/* Header with Edit Icon */}
               <div className="flex items-start justify-between w-full" style={{ marginBottom: '12px', padding: '0 4px' }}>
@@ -620,11 +620,11 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
 
   // 작성 모드 (write) - 최초 작성
   return (
-    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
       <TopBar onClose={onClose} />
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '100px' }}>
+      {/* Content */}
+      <div className="flex-1 w-full relative" style={{ paddingBottom: '100px' }}>
         <div className="w-full" style={{ padding: '16px 20px 40px 20px' }}>
           <TextAreaSection text={text} onChange={setText} />
 

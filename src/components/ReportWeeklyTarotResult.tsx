@@ -6,7 +6,7 @@ import WeeklyReportLoading from './WeeklyReportLoading';
 
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+    <div className="shrink-0 w-full z-20" style={{ position: 'sticky', top: 0, height: '52px', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
           style={{
@@ -175,7 +175,7 @@ function CardContainer({ tarotSelections }: CardContainerProps) {
   return (
     <div
       className="flex flex-col gap-4 items-start w-full"
-      style={{ padding: '12px 20px 230px 20px' }}
+      style={{ padding: '0 20px 230px 20px' }}
       data-name="Card Container"
     >
       {tarotSelections.map((tarot, index) => (
@@ -340,9 +340,9 @@ export default function ReportWeeklyTarotResult({
   }
 
   return (
-    <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (타로 풀이)">
+    <div className="bg-white relative size-full flex flex-col mx-auto h-screen overflow-y-auto" style={{ maxWidth: '440px' }} data-name="나의 보고서 (타로 풀이)">
       <NavigationTopBar onClose={onClose} />
-      <div className="flex-1 overflow-y-auto w-full relative">
+      <div className="flex-1 w-full relative">
         <CardContainer tarotSelections={tarotSelections} />
       </div>
       <BottomButtons onPrev={onPrev} onNext={onNext} />

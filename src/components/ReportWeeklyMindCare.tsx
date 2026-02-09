@@ -55,7 +55,7 @@ function SettingsIcon() {
 
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+    <div className="shrink-0 w-full z-20" style={{ position: 'sticky', top: 0, height: '52px', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
           style={{
@@ -108,7 +108,7 @@ function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
                  lineHeight: '25.5px',
                  color: '#151515',
                  letterSpacing: '-0.36px',
-                 marginTop: '10px',
+                 marginTop: '8px',
                  marginBottom: '4px'
                }}>마음 처방</p>
              </div>
@@ -147,7 +147,7 @@ function GoalItem({ text }: { text: string }) {
   return (
     <div className="relative shrink-0 w-full" style={{ backgroundColor: '#f8f8f8', borderRadius: '16px' }}>
       <div className="flex flex-row items-center size-full">
-        <div className="content-stretch flex items-center relative w-full" style={{ padding: '16px 20px', gap: '10px' }}>
+        <div className="content-stretch flex items-center relative w-full" style={{ padding: '16px', gap: '10px' }}>
           <CloverIcon />
           <div className="flex flex-col justify-center relative shrink-0 text-black" style={{ fontSize: '15px', letterSpacing: '-0.3px' }}>
             <p className="leading-[25.5px] font-normal" style={{ fontFamily: 'Pretendard Variable' }}>{text}</p>
@@ -373,13 +373,13 @@ export default function ReportWeeklyMindCare({
   }
 
   return (
-    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (마음 처방)">
+    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }} data-name="나의 보고서 (마음 처방)">
       <TopBar onClose={onClose} />
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '230px' }}>
+      {/* Content */}
+      <div className="flex-1 w-full relative" style={{ paddingBottom: '230px' }}>
         {/* Card Section */}
-        <div className="flex items-center justify-center pt-[12px] px-[20px] pb-[24px] w-full">
+        <div className="flex items-center justify-center px-[20px] pb-[24px] w-full">
            <PrescriptionCard paragraphs={paragraphs} />
         </div>
 

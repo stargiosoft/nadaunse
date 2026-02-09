@@ -164,7 +164,7 @@ interface ContentContainer1Props {
 
 function ContentContainer1({ title, dateRange, paragraphs }: ContentContainer1Props) {
   return (
-    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '12px 20px 24px 20px' }} data-name="Content Container">
+    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '0 20px 24px 20px' }} data-name="Content Container">
       <CardInterpretationCard title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
@@ -326,7 +326,7 @@ function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContai
 
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+    <div className="shrink-0 w-full z-20" style={{ height: '52px' }}>
       <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
           style={{
@@ -358,7 +358,7 @@ function NavigationTopBar({ onClose }: { onClose?: () => void }) {
 
 function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="shrink-0 z-50 bg-white w-full" data-name="Navigation / Top Navigation (Widget)">
+    <div className="shrink-0 z-50 w-full" style={{ position: 'sticky', top: 0, backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }} data-name="Navigation / Top Navigation (Widget)">
       <NavigationTopBar onClose={onClose} />
     </div>
   );
@@ -774,13 +774,7 @@ export default function ReportWeeklyDetail({
     >
       <div className="w-full max-w-[440px] h-full flex flex-col bg-white relative">
         <NavigationTopNavigationWidget onClose={onClose} />
-        <div
-          className="flex-1 overflow-y-auto w-full"
-          style={{
-            overscrollBehaviorY: 'contain',
-            WebkitOverflowScrolling: 'touch'
-          }}
-        >
+        <div className="flex-1 w-full overflow-y-auto" style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
           <ContentContainer3
             title={title}
             dateRange={dateRange}

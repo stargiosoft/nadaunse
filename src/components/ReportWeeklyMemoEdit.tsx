@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
+    <div className="shrink-0 w-full z-20" style={{ position: 'sticky', top: 0, height: '52px', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
           style={{
@@ -202,11 +202,11 @@ export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: 
   const [text, setText] = useState(initialText || "이번 한주도 고생했어. 힘든일도 많고 포기하고 싶을 때마다 괜찮다고 더 버텨보자고 애썼다고 칭찬해주고 싶어.");
 
   return (
-    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }} data-name="나의 보고서 (이번 주 나에게-수정하기)">
+    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }} data-name="나의 보고서 (이번 주 나에게-수정하기)">
       <TopBar onClose={onCancel} />
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '100px' }}>
+      {/* Content */}
+      <div className="flex-1 w-full relative" style={{ paddingBottom: '100px' }}>
         <div className="w-full" style={{ padding: '16px 20px 40px 20px' }}>
           <TextAreaSection text={text} onChange={setText} />
         </div>
