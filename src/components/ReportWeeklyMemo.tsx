@@ -135,7 +135,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
     <div className="relative w-full">
       <div className="flex flex-col w-full" style={{ gap: '12px' }}>
         {/* Header Text */}
-        <div className="flex flex-col w-full" style={{ gap: '3px', padding: '0 4px' }}>
+        <div className="flex flex-col w-full" style={{ gap: '2px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 500,
@@ -147,7 +147,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 400,
-            fontSize: '14px',
+            fontSize: '13px',
             lineHeight: '22px',
             color: '#6d6d6d',
             letterSpacing: '-0.42px'
@@ -172,7 +172,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="마음이 가는대로 적어보세요 :)"
-              className="w-full bg-transparent outline-none resize-none placeholder:text-[#B7B7B7] placeholder:font-light placeholder:text-[15px]"
+              className="memo-textarea w-full bg-transparent outline-none resize-none placeholder:font-light placeholder:text-[15px]"
               style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 400,
@@ -592,7 +592,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
             <div className="w-full" style={{ padding: '4px 20px 40px' }}>
               {/* Header with Edit Icon */}
               <div className="flex items-start justify-between w-full" style={{ marginBottom: '12px', padding: '0 4px' }}>
-                <div className="flex flex-col" style={{ gap: '3px' }}>
+                <div className="flex flex-col" style={{ gap: '2px' }}>
                   <p style={{
                     fontFamily: 'Pretendard Variable',
                     fontWeight: 500,
@@ -604,7 +604,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
                   <p style={{
                     fontFamily: 'Pretendard Variable',
                     fontWeight: 400,
-                    fontSize: '14px',
+                    fontSize: '13px',
                     lineHeight: '22px',
                     color: '#6d6d6d',
                     letterSpacing: '-0.42px'
@@ -678,6 +678,11 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
   // 작성 모드 (write) - 최초 작성
   return (
     <>
+      <style>{`
+        .memo-textarea::placeholder {
+          color: #B7B7B7;
+        }
+      `}</style>
       <TopBar onClose={onClose} />
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }}>
         {/* Content */}

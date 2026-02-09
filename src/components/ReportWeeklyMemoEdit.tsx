@@ -53,7 +53,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
     <div className="relative w-full">
       <div className="flex flex-col w-full" style={{ gap: '12px' }}>
         {/* Header Text */}
-        <div className="flex flex-col w-full" style={{ gap: '3px', padding: '0 4px' }}>
+        <div className="flex flex-col w-full" style={{ gap: '2px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 500,
@@ -65,7 +65,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 400,
-            fontSize: '14px',
+            fontSize: '13px',
             lineHeight: '22px',
             color: '#6d6d6d',
             letterSpacing: '-0.42px'
@@ -90,7 +90,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="마음이 가는대로 적어보세요 :)"
-              className="w-full bg-transparent outline-none resize-none placeholder:font-light placeholder:text-[15px] placeholder:text-[#B7B7B7]"
+              className="memo-textarea w-full bg-transparent outline-none resize-none placeholder:font-light placeholder:text-[15px]"
               style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 400,
@@ -216,6 +216,11 @@ export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: 
 
   return (
     <>
+      <style>{`
+        .memo-textarea::placeholder {
+          color: #B7B7B7;
+        }
+      `}</style>
       <TopBar onClose={onCancel} />
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }} data-name="나의 보고서 (이번 주 나에게-수정하기)">
         {/* Content */}
