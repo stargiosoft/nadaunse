@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-03 (v2.6.0 - 주간 보고서 자동 발송 + 관리자 패널)
+> **최종 업데이트**: 2026-02-09 (v2.7.0 - rejected_tags, last_login_at 통합, INSERT 방식 전환)
 
 ---
 
@@ -17,7 +17,7 @@
     - Google: Supabase OAuth (`signInWithOAuth`)
     - Kakao: Kakao SDK (커스텀 구현, `signInWithPassword` 기반)
   - Database: PostgreSQL + RLS
-  - Edge Functions: Deno runtime (30개)
+  - Edge Functions: Deno runtime (31개)
   - **자동화**: pg_cron + pg_net (주간 보고서 발송)
 - **AI**:
   - OpenAI GPT-4o, GPT-5.1 (주간 보고서)
@@ -48,7 +48,7 @@
 
 ### 주요 통계
 - **컴포넌트**: 69개 (활성화, backup 제외) - 주간 보고서 8개 + 통계 대시보드 2개 추가
-- **Edge Functions**: 30개 (주간 보고서 4개 추가)
+- **Edge Functions**: 31개 (주간 보고서 4개 포함)
 - **페이지 컴포넌트**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
@@ -106,8 +106,7 @@
 │  └─────────────────────┘      │   ├── generate-tarot-answer/preview     │  │
 │            ↓                  │   ├── generate-image-prompt             │  │
 │  ┌─────────────────────┐      │   ├── generate-thumbnail                │
-│   ├── extract-trait-tags (나다움 태그)   │
-│   └── save-trait-tags                   │  │
+│   └── extract-trait-tags (나다움 태그, rejectedTags 지원)  │  │
 │  │   PostgreSQL (RLS)  │      │                                         │  │
 │  │   ───────────────   │      │   쿠폰 관리 (4개)                        │  │
 │  │   • users           │←────→│   ├── get-available-coupons             │  │
@@ -202,6 +201,30 @@
 │  └──────────────────────────────────────────────────────────────────┘   ↓   │
 │                                                                    [결과 표시]│
 │  ※ 로그아웃: localStorage 캐시 / 로그인: DB 저장 가능                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              2-1. 비회원 무료 콘텐츠 일일 제한 (하루 3개)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [FreeContentDetail] → "무료로 보기" 클릭                                    │
+│         ↓                                                                    │
+│  1차 검증 (클라이언트, 즉시):                                                │
+│    freeContentLimitService.hasReachedLocalLimit()                            │
+│    → localStorage 'free_content_views_v1' 확인                              │
+│    → ❌ 3개 이상 → LoginBottomSheet 표시 (로그인 유도)                       │
+│    → ✅ 미만 → 사주 입력 → FreeContentLoading 진행                          │
+│         ↓                                                                    │
+│  2차 검증 (서버, Edge Function):                                             │
+│    generate-free-preview → IP+UA SHA-256 fingerprint                        │
+│    → anonymous_free_views 테이블 오늘 조회 수 확인                           │
+│    → ❌ 3개 이상 → { success: false, error: 'DAILY_LIMIT_REACHED' }         │
+│    → ✅ 미만 → 조회 기록 upsert → AI 생성 진행                              │
+│                                                                              │
+│  ※ 로그인 사용자: 무제한 (서버 검증 스킵)                                    │
+│  ※ 같은 콘텐츠 재조회: 카운트 안 함 (UNIQUE 제약)                            │
+│  ※ 서비스 파일: src/lib/freeContentLimitService.ts                          │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -326,8 +349,9 @@
 │       │ 무료/유료 콘텐츠 결과 페이지에서 태그 선택                            │
 │       │ → user_trait_tags 테이블에 저장 (is_confirmed = true)               │
 │       ↓                                                                      │
-│  [보고서 생성 단계] (일요일 자동 또는 수동 트리거)                            │
-│       │ generate-weekly-report Edge Function 호출                            │
+│  [보고서 생성 단계] (일요일 pg_cron 자동 또는 관리자 수동 재발송)            │
+│       │ generate-weekly-reports-batch → generate-weekly-report 호출          │
+│       │ concurrency 3, 60초 제한, selfContinue 자동 이어하기                │
 │       │ → OpenAI API로 보고서 콘텐츠 생성                                    │
 │       │ → weekly_reports + weekly_report_sections 저장                       │
 │       │ → report_tarot_selections에 타로 카드 사전 선택                      │
@@ -846,7 +870,7 @@ interface TarotGameProps {
 
 ### 🔐 인증 & 회원가입
 ```
-/lib/auth.ts                    → Supabase Auth 헬퍼 함수 (clearUserCaches 포함)
+/lib/auth.ts                    → Supabase Auth 헬퍼 함수 (clearUserCaches, recordTodayVisit 포함)
 /lib/supabase.ts                → Supabase 클라이언트 설정
 /pages/AuthCallback.tsx         → OAuth 콜백 처리
 /components/LoginPageNew.tsx    → 로그인 페이지
@@ -1653,6 +1677,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.7.0 | 2026-02-09 | **rejected_tags 시스템 추가** - CheckRecordMe 미선택 태그 누적 저장, extract-trait-tags rejectedTags 파라미터 추가. **last_login_at 통합** - HomePage → auth.ts recordTodayVisit()로 이동. **anonymous_free_views INSERT 전환** - upsert→INSERT, UNIQUE 제약 제거. TagCouponBottomSheet 추가 | AI Assistant |
 | 2.6.0 | 2026-02-03 | **계정 불일치 처리 플로우 추가** - 알림톡 링크 접속 시 다른 계정이면 소유자 마스킹 이메일 표시, get-order-owner/get-report-owner Edge Function 추가 | AI Assistant |
 | 2.5.0 | 2026-02-02 | **나다움 보고서 플로우 추가** - System Map에 6번째 데이터 흐름 추가 (태그 수집 → 보고서 생성 → 열람/다시보기/수정 플로우), 9개 컴포넌트 문서화, 4개 테이블 참조 | AI Assistant |
 | 2.3.0 | 2026-01-23 | **문서 중복 제거** - Database Schema, Edge Functions 섹션 간소화 (상세 문서 참조로 변경), 관리 포인트 감소 | AI Assistant |

@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import svgPaths from '@/imports/svg-rr05b2c3l6';
 import Frame427322492 from '@/imports/Frame427322492';
-import ReceiveMyAnalysis from '@/components/ReceiveMyAnalysis';
-import TagCouponBottomSheet from '@/components/TagCouponBottomSheet';
 import ArrowLeft from './ArrowLeft';
 // NOTE: CompletionCoupon과 MypageProfile은 삭제된 컴포넌트입니다
 // import CompletionCoupon from '@/components/CompletionCoupon';
@@ -15,6 +13,7 @@ import ReportWeeklyTarotResult from '@/components/ReportWeeklyTarotResult';
 import ReportWeeklyMindCare from '@/components/ReportWeeklyMindCare';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
+import TagCouponBottomSheet from './TagCouponBottomSheet';
 
 interface SajuRecord {
   id: string;
@@ -99,11 +98,7 @@ export default function CheckRecordMe({
     return defaultTags;
   });
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
-  const [isPromoBottomSheetOpen, setIsPromoBottomSheetOpen] = useState(false); // 프로모션 바텀시트
-  const [isTagEncourageOpen, setIsTagEncourageOpen] = useState(false); // 태그 모으기 유도 바텀시트
-  const [remainingTagCount, setRemainingTagCount] = useState(0); // 쿠폰까지 남은 태그 수
   const [view, setView] = useState<'recording' | 'result' | 'mypage' | 'tag-saved-info' | 'coupon-info' | 'dev-report' | 'dev-tarot-picking' | 'dev-tarot-result' | 'dev-mind-prescription'>('recording');
-  const [completionRemainingTags, setCompletionRemainingTags] = useState(0); // 완료 페이지: 남은 태그 수
   const navigate = useNavigate();
 
   // 휴대폰 번호를 부모 컴포넌트에서 관리하여 바텀 시트가 닫혀도 유지되도록 함
@@ -112,38 +107,13 @@ export default function CheckRecordMe({
 
   // ⭐ 본인 사주 레코드 (phone_number 확인용) - 무료 콘텐츠에서만 체크
   // 🚀 유료 콘텐츠는 이미 앞에서 phone_number를 받으므로 체크 불필요
+  // ⭐ phone_number 바텀시트는 프로필 > 나의 분석 보고서에서만 최초 1회 노출
+  // CheckRecordMe에서는 phone_number 체크 불필요 → 항상 바로 태그 저장
   const getInitialPhoneCheckState = () => {
-    // ⭐ 유료 콘텐츠면 phone_number 체크 스킵
-    if (sourceType === 'paid_content') {
-      console.log('✅ [CheckRecordMe] 유료 콘텐츠 → phone_number 체크 스킵');
-      return {
-        mySajuRecord: null,
-        needsPhoneNumber: false,
-        isCheckingPhone: false
-      };
-    }
-
-    // 무료 콘텐츠: 캐시에서 phone_number 확인
-    try {
-      const primarySajuJson = localStorage.getItem('primary_saju');
-      if (primarySajuJson) {
-        const primarySaju = JSON.parse(primarySajuJson);
-        if (primarySaju && primarySaju.notes === '본인') {
-          console.log('🚀 [CheckRecordMe] 캐시에서 phone_number 확인:', primarySaju.phone_number ? '있음' : '없음');
-          return {
-            mySajuRecord: primarySaju,
-            needsPhoneNumber: !primarySaju.phone_number,
-            isCheckingPhone: false
-          };
-        }
-      }
-    } catch (e) {
-      console.error('❌ [CheckRecordMe] 캐시 파싱 실패:', e);
-    }
     return {
       mySajuRecord: null,
       needsPhoneNumber: false,
-      isCheckingPhone: true
+      isCheckingPhone: false
     };
   };
 
@@ -152,167 +122,153 @@ export default function CheckRecordMe({
   const [needsPhoneNumber, setNeedsPhoneNumber] = useState(initialPhoneState.needsPhoneNumber);
   const [isCheckingPhone, setIsCheckingPhone] = useState(initialPhoneState.isCheckingPhone);
 
-  // ⭐ 무료 콘텐츠 + 캐시 미스 시에만 API 호출
-  useEffect(() => {
-    // 유료 콘텐츠거나 캐시에서 이미 확인 완료했으면 스킵
-    if (sourceType === 'paid_content' || !initialPhoneState.isCheckingPhone) {
-      return;
-    }
+  // ⭐ 태그 쿠폰 프로모션 바텀시트 상태
+  const [isPromoBottomSheetOpen, setIsPromoBottomSheetOpen] = useState(false);
+  const [isTagEncourageOpen, setIsTagEncourageOpen] = useState(false);
+  const [remainingTagCount, setRemainingTagCount] = useState(0);
+  const [completionRemainingTags, setCompletionRemainingTags] = useState(0); // 태그 저장 완료 페이지: 남은 태그 수
+  const [hasMissionCoupon, setHasMissionCoupon] = useState(false); // 미션 쿠폰 이미 발급됨 여부
 
-    const checkPhoneNumber = async () => {
+  // ⭐ 미션 쿠폰 발급 여부 확인 (마운트 시)
+  useEffect(() => {
+    const checkMissionCoupon = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) return;
 
-        if (!session?.user?.id) {
-          console.log('ℹ️ [CheckRecordMe] 비로그인 상태 → phone_number 체크 스킵');
-          setIsCheckingPhone(false);
-          setNeedsPhoneNumber(true);
-          return;
-        }
-
-        console.log('🔍 [CheckRecordMe] 본인 사주 레코드 조회...');
-        const { data: sajuRecord, error } = await supabase
-          .from('saju_records')
-          .select('id, phone_number, notes')
-          .eq('user_id', session.user.id)
-          .eq('notes', '본인')
+        // coupons 테이블에서 mission 타입 쿠폰 ID 조회
+        const { data: missionCoupon } = await supabase
+          .from('coupons')
+          .select('id')
+          .eq('coupon_type', 'mission')
           .maybeSingle();
 
-        if (error) {
-          console.error('❌ [CheckRecordMe] 사주 레코드 조회 실패:', error);
-          setIsCheckingPhone(false);
-          return;
-        }
+        if (!missionCoupon) return;
 
-        if (sajuRecord) {
-          console.log('✅ [CheckRecordMe] 본인 사주 레코드:', sajuRecord);
-          setMySajuRecord(sajuRecord);
-          setNeedsPhoneNumber(!sajuRecord.phone_number);
-        } else {
-          console.log('ℹ️ [CheckRecordMe] 본인 사주 레코드 없음');
-          setNeedsPhoneNumber(true);
+        // user_coupons에서 해당 유저에게 미션 쿠폰이 발급되었는지 확인
+        const { data: issuedMission } = await supabase
+          .from('user_coupons')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('coupon_id', missionCoupon.id)
+          .maybeSingle();
+
+        if (issuedMission) {
+          console.log('ℹ️ [CheckRecordMe] 미션 쿠폰 이미 발급됨 → 프로모션 스킵');
+          setHasMissionCoupon(true);
         }
       } catch (err) {
-        console.error('❌ [CheckRecordMe] phone_number 체크 오류:', err);
-      } finally {
-        setIsCheckingPhone(false);
+        console.error('❌ [CheckRecordMe] 미션 쿠폰 체크 실패:', err);
       }
     };
+    checkMissionCoupon();
+  }, []);
 
-    checkPhoneNumber();
-  }, [sourceType]);
+  // ⭐ "다음에 할래요" 스킵 처리 공통 함수
+  const executeSkipLogic = async (userId: string) => {
+    console.log('🗑️ [CheckRecordMe] 스킵 처리 시작...');
 
-  // ⭐ 로그인 후 태그 저장 및 홈으로 이동 처리 (바텀시트 없이)
-  // NOTE: 이 로직은 이제 PendingTagsCheckPage에서 처리하므로 거의 실행되지 않음
-  // 하지만 엣지 케이스를 위해 open_phone_bottomsheet 플래그도 함께 체크
+    // 1. 해당 콘텐츠/주문의 미확정 태그 삭제
+    const deleteQuery = supabase
+      .from('user_trait_tags')
+      .delete()
+      .eq('user_id', userId)
+      .eq('is_confirmed', false);
+
+    if (orderId) {
+      await deleteQuery.eq('source_order_id', orderId);
+    } else if (contentId) {
+      await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+    }
+
+    console.log('✅ [CheckRecordMe] 미확정 태그 삭제 완료');
+
+    // 2. __SKIPPED__ 마커 태그 삽입 (이미 있으면 스킵)
+    let existingMarkerQuery = supabase
+      .from('user_trait_tags')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('tag_name', '__SKIPPED__');
+
+    if (orderId) {
+      existingMarkerQuery = existingMarkerQuery.eq('source_order_id', orderId);
+    } else if (contentId) {
+      existingMarkerQuery = existingMarkerQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
+    }
+
+    const { data: existingMarker } = await existingMarkerQuery.maybeSingle();
+
+    if (!existingMarker) {
+      const skippedTag = {
+        user_id: userId,
+        tag_name: '__SKIPPED__',
+        tag_type: 'neutral',
+        source_type: sourceType,
+        source_content_id: contentId || null,
+        source_order_id: orderId || null,
+        is_confirmed: true
+      };
+
+      const { error: insertError } = await supabase
+        .from('user_trait_tags')
+        .insert(skippedTag);
+
+      if (insertError) {
+        console.warn('⚠️ [CheckRecordMe] __SKIPPED__ 마커 삽입 실패:', insertError);
+      } else {
+        console.log('✅ [CheckRecordMe] __SKIPPED__ 마커 삽입 완료');
+      }
+    } else {
+      console.log('ℹ️ [CheckRecordMe] __SKIPPED__ 마커 이미 존재');
+    }
+
+    // 캐시 무효화
+    localStorage.setItem('trait_tags_needs_refresh', 'true');
+    localStorage.setItem('my_report_needs_refresh', 'true');
+    localStorage.removeItem('trait_tags_cache');
+    localStorage.removeItem('nadaum_all_tags_cache');
+  };
+
+  // ⭐ phone_number 바텀시트는 프로필 > 나의 분석 보고서에서만 노출
+  // CheckRecordMe에서는 phone_number 체크/바텀시트 불필요
+
+  // ⭐ 로그인 후 pending_trait_tags 태그 복원 처리 (바텀시트 없이)
   useEffect(() => {
-    const saveTagsAndGoHome = async () => {
-      const shouldOpenBottomSheet = localStorage.getItem('open_phone_bottomsheet');
+    const restorePendingTags = async () => {
       const pendingTagsJson = localStorage.getItem('pending_trait_tags');
 
-      // ⭐ open_phone_bottomsheet + pending_trait_tags 둘 다 있어야 처리
-      // (PendingTagsCheckPage에서 이동한 경우에만 실행 - 이제는 거의 발생 안 함)
-      if (shouldOpenBottomSheet === 'true' && pendingTagsJson) {
-        console.log('📱 [CheckRecordMe] 회원가입 후 태그 저장 플래그 감지');
+      if (pendingTagsJson) {
+        console.log('📋 [CheckRecordMe] pending_trait_tags 복원 처리');
 
-        // ⭐ 로그인 상태 체크 먼저!
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user?.id) {
-          console.log('⚠️ [CheckRecordMe] 비로그인 상태 → 처리 취소 (로그인 후 처리)');
-          return;
-        }
+        // open_phone_bottomsheet 플래그가 있으면 제거 (더 이상 사용 안 함)
+        localStorage.removeItem('open_phone_bottomsheet');
 
         try {
           const pendingData = JSON.parse(pendingTagsJson);
-          console.log('📋 [CheckRecordMe] pending_trait_tags 데이터:', pendingData);
 
-          // ⭐ 태그를 바로 DB에 저장하고 홈으로 이동
+          // 저장된 태그로 선택 상태 복원
           if (pendingData.tags && pendingData.tags.length > 0) {
-            const selectedTagLabels = pendingData.tags.map((t: { label: string }) => t.label);
-            console.log('📋 [CheckRecordMe] 저장할 태그:', selectedTagLabels);
-
-            // DB에 태그 INSERT (확정 상태로)
-            const tagsToInsert = pendingData.tags.map((tag: { label: string; type?: string }) => ({
-              user_id: session.user.id,
-              tag_name: tag.label,
-              tag_type: tag.type || 'positive', // ⭐ tag_type 필수 (NOT NULL)
-              source_order_id: pendingData.orderId || null,
-              source_content_id: pendingData.contentId || null,
-              source_type: pendingData.sourceType || 'free',
-              is_confirmed: true, // 확정 상태로 저장
-            }));
-
-            const { error: insertError } = await supabase
-              .from('user_trait_tags')
-              .insert(tagsToInsert);
-
-            if (insertError) {
-              console.error('❌ [CheckRecordMe] 태그 INSERT 실패:', insertError);
-            } else {
-              console.log('✅ [CheckRecordMe] 태그 저장 완료:', selectedTagLabels.length, '개');
-            }
+            setTags(prevTags => {
+              const updatedTags = prevTags.map(tag => ({
+                ...tag,
+                selected: pendingData.tags.some((pt: { label: string }) => pt.label === tag.label)
+              }));
+              return updatedTags;
+            });
           }
-
-          // ⭐ 미선택 태그 → users.rejected_tags에 추가 (AI 재추출 방지)
-          const unselectedTags: string[] = pendingData.unselectedTags || [];
-          if (unselectedTags.length > 0) {
-            await appendRejectedTags(session.user.id, unselectedTags);
-          }
-
-          // 플래그 제거
-          localStorage.removeItem('open_phone_bottomsheet');
-          localStorage.removeItem('pending_trait_tags');
-          localStorage.removeItem('redirectAfterLogin');
-
-          // 캐시 무효화
-          localStorage.setItem('trait_tags_needs_refresh', 'true');
-
-          // ⭐ "로그인되었어요" 토스트 대신 "태그가 저장됐어요" 토스트 표시 플래그
-          sessionStorage.setItem('show_tag_saved_toast', 'true');
-          sessionStorage.removeItem('show_login_toast');
-
-          // 홈으로 이동 (App.tsx에서 토스트 표시)
-          console.log('🏠 [CheckRecordMe] 홈으로 이동');
-          navigate('/', { replace: true });
         } catch (e) {
-          console.error('❌ [CheckRecordMe] 태그 저장 실패:', e);
-          localStorage.removeItem('open_phone_bottomsheet');
-          localStorage.removeItem('pending_trait_tags');
+          console.error('❌ [CheckRecordMe] pending_trait_tags 복원 실패:', e);
         }
       }
     };
 
-    saveTagsAndGoHome();
-  }, [navigate]);
+    restorePendingTags();
+  }, []);
 
   const toggleTag = (id: string) => {
     setTags(tags.map(tag =>
       tag.id === id ? { ...tag, selected: !tag.selected } : tag
     ));
-  };
-
-  /** 미선택 태그를 users.rejected_tags에 추가 (중복 제거) */
-  const appendRejectedTags = async (userId: string, newRejectedTags: string[]) => {
-    if (newRejectedTags.length === 0) return;
-    try {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('rejected_tags')
-        .eq('id', userId)
-        .single();
-
-      const currentRejected: string[] = userData?.rejected_tags || [];
-      const merged = [...new Set([...currentRejected, ...newRejectedTags])];
-
-      await supabase
-        .from('users')
-        .update({ rejected_tags: merged })
-        .eq('id', userId);
-
-      console.log('✅ [CheckRecordMe] rejected_tags 업데이트:', newRejectedTags);
-    } catch (err) {
-      console.warn('⚠️ [CheckRecordMe] rejected_tags 업데이트 실패:', err);
-    }
   };
 
   // ⭐ 태그 확정 함수 (임시 태그 → 선택한 것만 확정, 나머지 삭제)
@@ -433,8 +389,28 @@ export default function CheckRecordMe({
           console.log('🗑️ [CheckRecordMe] 미선택 태그 삭제 완료');
         }
 
-        // ⭐ 3. 선택 안 한 태그: rejected_tags에 추가 (AI 재추출 방지)
-        await appendRejectedTags(session.user.id, unselectedTagNames);
+        // ⭐ 선택 안 한 태그를 users.rejected_tags에 누적 저장
+        if (unselectedTagNames.length > 0 && session?.user?.id) {
+          try {
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('rejected_tags')
+              .eq('id', session.user.id)
+              .single();
+
+            const existingRejected: string[] = userRecord?.rejected_tags || [];
+            const merged = [...new Set([...existingRejected, ...unselectedTagNames])];
+
+            await supabase
+              .from('users')
+              .update({ rejected_tags: merged })
+              .eq('id', session.user.id);
+
+            console.log('🚫 [CheckRecordMe] rejected_tags 저장 완료:', merged.length, '개');
+          } catch (rejectedErr) {
+            console.warn('⚠️ [CheckRecordMe] rejected_tags 저장 실패:', rejectedErr);
+          }
+        }
 
         console.log('✅ [CheckRecordMe] 태그 확정 완료');
         // 🚀 ProfilePage & NadaumTagsList & MyReportList 캐시 무효화
@@ -469,8 +445,7 @@ export default function CheckRecordMe({
     }
   };
 
-  // ⭐ Primary 버튼 클릭 핸들러 (태그 저장 → 총 태그 수 확인 → 완료 페이지 이동)
-  // 📌 핸드폰 번호 유효성 검사는 이 플로우에서 제거됨 (프로필 페이지에서 시행)
+  // ⭐ Primary 버튼 클릭 핸들러 (로그인 체크 → phone_number 체크 후 바텀시트 or 직접 저장)
   const handlePrimaryButtonClick = async () => {
     // 태그 선택 여부 체크
     if (!tags.some(t => t.selected)) {
@@ -525,12 +500,23 @@ export default function CheckRecordMe({
     const beforeTagCount = beforeTags?.length || 0;
     console.log('🏷️ [CheckRecordMe] 저장 전 확정 태그 수:', beforeTagCount);
 
-    // ⭐ 바로 태그 저장 (phone_number 체크 제거)
+    // ⭐ 태그 저장
     console.log('✅ [CheckRecordMe] 태그 저장 시작...');
     setIsSaving(true);
     const success = await saveTags();
 
     if (success) {
+      // ⭐ onComplete 콜백이 있으면 호출 (유료 콘텐츠 → 구매내역으로 이동)
+      if (onComplete) {
+        toast.success('태그가 저장됐어요!', {
+          subtitle: '프로필에서 확인할 수 있어요.',
+          duration: 2200
+        });
+        onComplete();
+        setIsSaving(false);
+        return;
+      }
+
       // ⭐ 저장 후 총 확정 태그 수 조회
       const { data: allConfirmedTags, error: countError } = await supabase
         .from('user_trait_tags')
@@ -546,7 +532,15 @@ export default function CheckRecordMe({
       const totalTagCount = allConfirmedTags?.length || 0;
       console.log('🏷️ [CheckRecordMe] 총 확정 태그 수:', totalTagCount);
 
-      if (totalTagCount >= 5 && beforeTagCount < 5) {
+      // ⭐ 미션 쿠폰 이미 받은 사람 → 프로모션 안내 없이 바로 홈 (체리피커 방지)
+      if (hasMissionCoupon) {
+        console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 프로모션 스킵, 바로 홈');
+        toast.success('태그가 저장됐어요!', {
+          subtitle: '프로필에서 확인할 수 있어요.',
+          duration: 2200,
+        });
+        if (onHomeProp) onHomeProp();
+      } else if (totalTagCount >= 5 && beforeTagCount < 5) {
         // ⭐ 최초로 태그 5개 달성 → 쿠폰 발급 안내 페이지
         console.log('🎉 [CheckRecordMe] 최초 5개 달성 → 쿠폰 발급 안내 페이지');
         setView('coupon-info');
@@ -557,7 +551,7 @@ export default function CheckRecordMe({
           subtitle: '프로필에서 확인할 수 있어요.',
           duration: 2200,
         });
-        navigate('/');
+        if (onHomeProp) onHomeProp();
       } else {
         // ⭐ 태그 1~4개 → 모아야할 태그수 안내 페이지
         const remaining = 5 - totalTagCount;
@@ -708,8 +702,28 @@ export default function CheckRecordMe({
           console.log('🗑️ [CheckRecordMe/handleSave] 미선택 태그 삭제 완료');
         }
 
-        // ⭐ 4. 선택 안 한 태그: rejected_tags에 추가 (AI 재추출 방지)
-        await appendRejectedTags(session.user.id, unselectedTagNames);
+        // ⭐ 선택 안 한 태그를 users.rejected_tags에 누적 저장
+        if (unselectedTagNames.length > 0 && session?.user?.id) {
+          try {
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('rejected_tags')
+              .eq('id', session.user.id)
+              .single();
+
+            const existingRejected: string[] = userRecord?.rejected_tags || [];
+            const merged = [...new Set([...existingRejected, ...unselectedTagNames])];
+
+            await supabase
+              .from('users')
+              .update({ rejected_tags: merged })
+              .eq('id', session.user.id);
+
+            console.log('🚫 [CheckRecordMe/handleSave] rejected_tags 저장 완료:', merged.length, '개');
+          } catch (rejectedErr) {
+            console.warn('⚠️ [CheckRecordMe/handleSave] rejected_tags 저장 실패:', rejectedErr);
+          }
+        }
 
         console.log('✅ [CheckRecordMe/handleSave] 태그 확정 완료');
 
@@ -762,78 +776,6 @@ export default function CheckRecordMe({
         onHomeProp();
       }
     }, 300);
-  };
-
-  // ⭐ 스킵 로직 공통 함수 (미확정 태그 삭제 + SKIPPED 마커 삽입 + 캐시 무효화)
-  const executeSkipLogic = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) return;
-
-      console.log('🗑️ [CheckRecordMe] 스킵 처리 시작...');
-
-      // 1. 해당 콘텐츠/주문의 미확정 태그 삭제
-      const deleteQuery = supabase
-        .from('user_trait_tags')
-        .delete()
-        .eq('user_id', session.user.id)
-        .eq('is_confirmed', false);
-
-      if (orderId) {
-        await deleteQuery.eq('source_order_id', orderId);
-      } else if (contentId) {
-        await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
-      }
-
-      console.log('✅ [CheckRecordMe] 미확정 태그 삭제 완료');
-
-      // 2. __SKIPPED__ 마커 태그 삽입 (이미 있으면 스킵)
-      let existingMarkerQuery = supabase
-        .from('user_trait_tags')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq('tag_name', '__SKIPPED__');
-
-      if (orderId) {
-        existingMarkerQuery = existingMarkerQuery.eq('source_order_id', orderId);
-      } else if (contentId) {
-        existingMarkerQuery = existingMarkerQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
-      }
-
-      const { data: existingMarker } = await existingMarkerQuery.maybeSingle();
-
-      if (!existingMarker) {
-        const skippedTag = {
-          user_id: session.user.id,
-          tag_name: '__SKIPPED__',
-          tag_type: 'neutral',
-          source_type: sourceType,
-          source_content_id: contentId || null,
-          source_order_id: orderId || null,
-          is_confirmed: true
-        };
-
-        const { error: insertError } = await supabase
-          .from('user_trait_tags')
-          .insert(skippedTag);
-
-        if (insertError) {
-          console.warn('⚠️ [CheckRecordMe] __SKIPPED__ 마커 삽입 실패:', insertError);
-        } else {
-          console.log('✅ [CheckRecordMe] __SKIPPED__ 마커 삽입 완료');
-        }
-      } else {
-        console.log('ℹ️ [CheckRecordMe] __SKIPPED__ 마커 이미 존재');
-      }
-
-      // 캐시 무효화
-      localStorage.setItem('trait_tags_needs_refresh', 'true');
-      localStorage.setItem('my_report_needs_refresh', 'true');
-      localStorage.removeItem('trait_tags_cache');
-      localStorage.removeItem('nadaum_all_tags_cache');
-    } catch (err) {
-      console.error('❌ [CheckRecordMe] 스킵 처리 실패:', err);
-    }
   };
 
   const handleBack = () => {
@@ -996,7 +938,7 @@ export default function CheckRecordMe({
     );
   }
 
-  // ⭐ 1-5) 쿠폰 발급 안내 페이지 (태그 5개 이상)
+  // ⭐ 1-5) 쿠폰 발급 안내 페이지 (태그 5개 이상 최초 달성)
   if (view === 'coupon-info') {
     return (
       <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
@@ -1393,62 +1335,63 @@ export default function CheckRecordMe({
             {/* Secondary Button - 다음에 할래요 */}
             <button
               onClick={async () => {
-                // ⭐ "다음에 할래요" 클릭 시 분기:
-                // - 로그아웃 유저 → 프로모션 바텀시트 노출
-                // - 로그인 유저, 태그 0개 → 프로모션 바텀시트 노출
-                // - 로그인 유저, 태그 1~4개 → 태그 모으기 유도 바텀시트 노출
-                // - 로그인 유저, 태그 5개 이상 → 별도 안내 없이 홈으로 이동
+                // ⭐ "다음에 할래요" 클릭 시:
+                // 비로그인/태그0개 → 프로모션 바텀시트
+                // 로그인+태그1~4개 → 태그 모으기 유도 바텀시트
+                // 로그인+태그5개 이상 → 바로 스킵
+                console.log('🔘 [CheckRecordMe] "다음에 할래요" 클릭');
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
 
-                  // 🔐 로그아웃 유저 → 프로모션 바텀시트 노출
+                  // 비로그인 → 프로모션 바텀시트
                   if (!session?.user?.id) {
-                    console.log('🎁 [CheckRecordMe] 로그아웃 유저 → 프로모션 바텀시트 노출');
+                    console.log('👤 [CheckRecordMe] 비로그인 → 프로모션 바텀시트 노출');
                     setIsPromoBottomSheetOpen(true);
                     return;
                   }
 
-                  // 🔍 로그인 유저 → 확정된 태그 개수 조회 (__SKIPPED__ 제외)
-                  const { data: confirmedTags, error: tagError } = await supabase
-                    .from('user_trait_tags')
-                    .select('id')
-                    .eq('user_id', session.user.id)
-                    .eq('is_confirmed', true)
-                    .neq('tag_name', '__SKIPPED__');
-
-                  if (tagError) {
-                    console.error('❌ [CheckRecordMe] 태그 조회 실패:', tagError);
-                  }
-
-                  const tagCount = confirmedTags?.length || 0;
-                  console.log('🏷️ [CheckRecordMe] 확정된 태그 개수:', tagCount);
-
-                  // ✅ 태그 5개 이상 → 별도 안내 없이 홈으로 이동
-                  if (tagCount >= 5) {
-                    console.log('🏠 [CheckRecordMe] 태그 5개 이상 → 스킵 후 홈으로 이동');
-                    await executeSkipLogic();
+                  // ⭐ 미션 쿠폰 이미 받은 사람 → 바로 스킵 (체리피커 방지)
+                  if (hasMissionCoupon) {
+                    console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 바로 스킵');
+                    await executeSkipLogic(session.user.id);
                     if (onSkip) onSkip();
                     return;
                   }
 
-                  // 🎯 태그 1~4개 → 태그 모으기 유도 바텀시트 노출
-                  if (tagCount >= 1) {
-                    const remaining = 5 - tagCount;
-                    console.log(`🎯 [CheckRecordMe] 태그 ${tagCount}개 (${remaining}개 남음) → 태그 모으기 유도 바텀시트 노출`);
+                  // 로그인 → 확정 태그 수 조회
+                  const { count: tagCount } = await supabase
+                    .from('user_trait_tags')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', session.user.id)
+                    .eq('is_confirmed', true)
+                    .neq('tag_name', '__SKIPPED__');
+
+                  const confirmedTags = tagCount ?? 0;
+                  console.log(`🏷️ [CheckRecordMe] 확정 태그 수: ${confirmedTags}`);
+
+                  if (confirmedTags >= 5) {
+                    // 5개 이상 → 바로 스킵 처리
+                    console.log('✅ [CheckRecordMe] 태그 5개 이상 → 바로 스킵');
+                    await executeSkipLogic(session.user.id);
+                    if (onSkip) onSkip();
+                    return;
+                  }
+
+                  if (confirmedTags >= 1) {
+                    // 1~4개 → 태그 모으기 유도 바텀시트
+                    const remaining = 5 - confirmedTags;
+                    console.log(`🏷️ [CheckRecordMe] 태그 ${confirmedTags}개 → 유도 바텀시트 (남은: ${remaining}개)`);
                     setRemainingTagCount(remaining);
                     setIsTagEncourageOpen(true);
                     return;
                   }
 
-                  // 🎁 태그 0개 → 프로모션 바텀시트 노출
-                  console.log('🎁 [CheckRecordMe] 태그 0개 유저 → 프로모션 바텀시트 노출');
+                  // 0개 → 프로모션 바텀시트
+                  console.log('🏷️ [CheckRecordMe] 태그 0개 → 프로모션 바텀시트 노출');
                   setIsPromoBottomSheetOpen(true);
                 } catch (err) {
                   console.error('❌ [CheckRecordMe] 스킵 처리 실패:', err);
-                  // 에러 발생 시에도 onSkip 호출
-                  if (onSkip) {
-                    onSkip();
-                  }
+                  if (onSkip) onSkip();
                 }
               }}
               className="group flex flex-col items-center justify-center relative self-center transition-colors duration-200 active:bg-gray-100"
@@ -1471,60 +1414,41 @@ export default function CheckRecordMe({
         </div>
       </div>
 
-      {/* Bottom Sheet Overlay - 휴대폰 번호 입력 */}
-      <AnimatePresence>
-        {isBottomSheetOpen && (
-          <ReceiveMyAnalysis
-            onClose={() => !isSaving && setIsBottomSheetOpen(false)} // 저장 중에는 닫기 방지
-            onSave={handleSave}
-            phoneNumber={phoneNumber}
-            setPhoneNumber={setPhoneNumber}
-            isLoading={isSaving}
-          />
-        )}
-      </AnimatePresence>
+      {/* ⭐ phone_number 바텀시트 제거 - 프로필 > 나의 분석 보고서에서만 노출 */}
 
-      {/* Bottom Sheet - 프로모션 (태그 5개 모으면 쿠폰 지급) */}
+      {/* ⭐ 태그 쿠폰 프로모션 바텀시트 (비로그인 또는 태그 0개) */}
       <TagCouponBottomSheet
         isOpen={isPromoBottomSheetOpen}
-        onClose={() => {
+        onClose={async () => {
           setIsPromoBottomSheetOpen(false);
-          // 닫기 버튼 클릭 시 onSkip 콜백 호출 (홈으로 이동)
-          if (onSkip) {
-            onSkip();
-          }
+          // 닫기 → 스킵 처리 후 홈
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) await executeSkipLogic(session.user.id);
+          } catch {}
+          if (onSkip) onSkip();
         }}
-        onOverlayClick={() => {
-          // 바텀시트 외부 클릭 시 바텀시트만 닫기 (페이지 유지)
-          setIsPromoBottomSheetOpen(false);
-        }}
-        onSelectTag={() => {
-          // 태그 선택하기 → 바텀시트 닫고 현재 화면 유지 (태그 선택 계속)
-          setIsPromoBottomSheetOpen(false);
-        }}
+        onOverlayClick={() => setIsPromoBottomSheetOpen(false)}
+        onSelectTag={() => setIsPromoBottomSheetOpen(false)}
       />
 
-      {/* Bottom Sheet - 태그 모으기 유도 (태그 1~4개 보유 시) */}
+      {/* ⭐ 태그 모으기 유도 바텀시트 (로그인 + 태그 1~4개) */}
       <TagCouponBottomSheet
         isOpen={isTagEncourageOpen}
-        remainingTags={remainingTagCount}
         onClose={async () => {
           setIsTagEncourageOpen(false);
-          // 닫기 버튼 클릭 시 스킵 처리 후 홈으로 이동
-          await executeSkipLogic();
-          if (onSkip) {
-            onSkip();
-          }
+          // 닫기 → 스킵 처리 후 홈
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user?.id) await executeSkipLogic(session.user.id);
+          } catch {}
+          if (onSkip) onSkip();
         }}
-        onOverlayClick={() => {
-          // 바텀시트 외부 클릭 시 바텀시트만 닫기 (페이지 유지)
-          setIsTagEncourageOpen(false);
-        }}
-        onSelectTag={() => {
-          // 태그 선택하기 → 바텀시트 닫고 현재 화면 유지 (태그 선택 계속)
-          setIsTagEncourageOpen(false);
-        }}
+        onOverlayClick={() => setIsTagEncourageOpen(false)}
+        onSelectTag={() => setIsTagEncourageOpen(false)}
+        remainingTags={remainingTagCount}
       />
+
       </div>{/* max-w-[440px] wrapper 닫기 */}
     </div>
   );

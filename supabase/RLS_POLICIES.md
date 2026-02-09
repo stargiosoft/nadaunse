@@ -216,6 +216,25 @@ const { count } = await supabase
 
 ---
 
+### 15. `anonymous_free_views` (비회원 무료 콘텐츠 일일 제한) - NEW 2026-02-06
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| (정책 없음) | - | - | - |
+
+**RLS 상태**: Enabled (정책 없음 — Service Role Key 전용)
+
+**용도**:
+- 비회원 사용자의 무료 콘텐츠 일일 이용 횟수 추적 (하루 3개)
+- `generate-free-preview` Edge Function에서 Service Role Key로만 INSERT/SELECT
+- IP+UserAgent SHA-256 fingerprint + viewed_date 기반 일일 제한
+
+**접근 방식**:
+- anon/authenticated 사용자는 직접 접근 불가 (RLS 정책 없음)
+- Service Role Key로만 접근 (Edge Function 내부)
+
+---
+
 ## 정책 요약
 
 | 테이블 | 정책 수 | RLS 상태 |
@@ -234,6 +253,7 @@ const { count } = await supabase
 | weekly_reports | 3 | Enabled |
 | weekly_report_sections | 2 | Enabled |
 | report_tarot_selections | 3 | Enabled |
+| anonymous_free_views | 0 | Enabled (Service Role 전용) |
 | **총계** | **39** | - |
 
 ---

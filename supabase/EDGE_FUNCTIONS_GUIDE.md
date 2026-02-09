@@ -2,7 +2,7 @@
 
 > **프로젝트**: 나다운세 (운세 서비스)
 > **총 함수 수**: 32개
-> **최종 업데이트**: 2026-02-03
+> **최종 업데이트**: 2026-02-09
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -30,17 +30,19 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 생성** | 9개 | 28% | OpenAI GPT, Gemini |
+| 🤖 **AI 콘텐츠 생성** | 9개 | 29% | OpenAI GPT, Gemini |
 | 📊 **주간 보고서** | 4개 | 13% | GPT-5.1, pg_cron, TalkDream |
 | 🎟️ **쿠폰 관리** | 4개 | 13% | Supabase DB |
-| 👤 **사용자/콘텐츠 관리** | 2개 | 6% | JWT 인증, RLS |
-| 📨 **알림** | 2개 | 6% | TalkDream API (카카오 알림톡) |
-| 💳 **결제/환불** | 3개 | 9% | PortOne API, PostgreSQL Function |
+| 🔧 **마스터 콘텐츠 관리** | 2개 | 6% | OpenAI, Gemini 통합 |
+| 📨 **알림** | 1개 | 3% | TalkDream API (카카오 알림톡) |
+| 👤 **사용자 관리** | 1개 | 3% | JWT 인증, RLS |
+| 💳 **결제/환불** | 3개 | 10% | PortOne API, PostgreSQL Function |
 | 📊 **모니터링/통계** | 2개 | 6% | Sentry, Slack, Google Analytics |
-| 🔧 **콘텐츠 생성 관리** | 2개 | 6% | OpenAI, Gemini 통합 |
 | 🔍 **SEO** | 1개 | 3% | 동적 Sitemap 생성 |
-| 🧹 **유틸리티** | 1개 | 3% | 태그 정리 |
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
+| 🧹 **유틸리티** | 2개 | 6% | 태그 정리, Vercel 재빌드 |
+
+**총 31개** (로컬 함수 기준)
 
 ---
 
@@ -55,7 +57,7 @@
 
 ---
 
-### 2️⃣ **콘텐츠 생성 (AI)** (8개)
+### 2️⃣ **AI 콘텐츠 생성** (9개)
 
 #### 무료 콘텐츠 (1개)
 5. `generate-free-preview` - 무료 콘텐츠 미리보기 생성 (GPT-4.1-nano)
@@ -86,12 +88,15 @@
 14. `generate-weekly-report` - 개별 사용자 주간 보고서 생성 (GPT-5.1)
     - 사주 정보 + 주간 태그 + 이용 콘텐츠 기반
     - 3카드 타로 + 마음 처방 + To-Do List 생성
+    - 복수 "본인" 사주 대응 (is_primary 우선, 최신순 fallback)
     - `--no-verify-jwt` 필수 (배치에서 내부 호출)
 
 15. `generate-weekly-reports-batch` - 주간 보고서 배치 생성
-    - pg_cron에서 매주 호출
-    - concurrency: 5, 2초 간격 처리
-    - 전주 태그 있는 모든 사용자 대상
+    - pg_cron에서 매주 호출 (10분 간격 반복, 이어하기 패턴)
+    - concurrency: 3, 2초 간격, 60초 시간 제한 (shutdown 방지)
+    - `selfContinue: true` → 시간 제한 시 자기 자신 재호출 (fire-and-forget)
+    - 관리자 재발송: 1회 호출로 서버 자동 처리 (브라우저 닫아도 됨)
+    - 전주 태그 있는 모든 사용자 대상, 기존 보고서 있으면 스킵
 
 16. `send-report-alimtalk` - 보고서 알림톡 발송
     - TalkDream API 사용
@@ -104,49 +109,57 @@
 
 ---
 
-### 3️⃣ **마스터 콘텐츠 관리** (2개)
+### 4️⃣ **마스터 콘텐츠 관리** (2개)
 
-13. `master-content` - 마스터 콘텐츠 CRUD API (권한 검증)
-14. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드)
-
----
-
-### 4️⃣ **알림** (1개)
-
-15. `send-alimtalk` - 알림톡 발송 (TalkDream API, 재시도 로직 포함)
+18. `master-content` - 마스터 콘텐츠 CRUD API (권한 검증)
+19. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
 
 ---
 
-### 5️⃣ **사용자 관리** (1개)
+### 5️⃣ **알림** (1개)
 
-16. `users` - 사용자 조회/생성 API (RLS 대신 권한 검증)
-
----
-
-### 6️⃣ **결제/환불** (3개)
-
-17. `payment-webhook` - 포트원 결제 웹훅 검증
-18. `process-payment` - 결제 트랜잭션 원자적 처리
-19. `process-refund` - 환불 처리 (쿠폰 복원 포함)
+20. `send-alimtalk` - 알림톡 발송 (TalkDream API, 재시도 로직 포함)
 
 ---
 
-### 7️⃣ **모니터링** (1개)
+### 6️⃣ **사용자 관리** (1개)
 
-20. `sentry-slack-webhook` - Sentry 이벤트를 Slack으로 중계
-
----
-
-### 8️⃣ **SEO** (1개)
-
-21. `generate-sitemap` - 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
+21. `users` - 사용자 조회/생성 API (RLS 대신 권한 검증)
 
 ---
 
-### 9️⃣ **콘텐츠 생성 관리** (2개)
+### 7️⃣ **결제/환불** (3개)
 
-21. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
-22. `server` - 서버 상태 확인
+22. `payment-webhook` - 포트원 결제 웹훅 검증
+23. `process-payment` - 결제 트랜잭션 원자적 처리
+24. `process-refund` - 환불 처리 (쿠폰 복원 포함)
+
+---
+
+### 8️⃣ **모니터링/통계** (2개)
+
+25. `sentry-slack-webhook` - Sentry 이벤트를 Slack으로 중계
+26. `get-ga-stats` - Google Analytics 통계 조회 (마스터 계정 전용)
+
+---
+
+### 9️⃣ **SEO** (1개)
+
+27. `generate-sitemap` - 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
+
+---
+
+### 🔟 **소유자 확인** (2개)
+
+28. `get-order-owner` - 유료 콘텐츠 소유자 정보 조회 (계정 불일치 처리)
+29. `get-report-owner` - 주간 보고서 소유자 정보 조회 (계정 불일치 처리)
+
+---
+
+### 1️⃣1️⃣ **유틸리티** (2개)
+
+30. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
+31. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
 
 ---
 
@@ -158,8 +171,9 @@
 결제 완료
     ↓
 generate-content-answers (병렬 처리)
-    ├─→ generate-saju-answer (사주 답변)
-    ├─→ generate-tarot-answer (타로 답변)
+    ├─→ user_trait_tags 조회 (초개인화 데이터)
+    ├─→ generate-saju-answer (사주 답변 + personalizationData)
+    ├─→ generate-tarot-answer (타로 답변 + personalizationData)
     └─→ send-alimtalk (완료 알림)
 ```
 
@@ -285,15 +299,22 @@ process-refund (환불 처리)
 - 3회 재시도 로직 (1초, 2초 간격)
 - API 실패 시 기본 생년월일 정보로 graceful degradation
 
+**비회원 일일 제한 검증** (2026-02-06 추가):
+- 비회원(`userId` 없음) 요청 시 IP+UserAgent SHA-256 fingerprint 생성
+- `anonymous_free_views` 테이블에서 오늘(KST) 조회 수 확인
+- 3개 이상이면 `{ success: false, error: 'DAILY_LIMIT_REACHED' }` 반환 (status 200)
+- 통과 시 조회 기록 INSERT 후 AI 생성 진행
+- 로그인 사용자는 무제한 (검증 스킵)
+
 **플로우**:
 ```
 FreeBirthInfoInput → FreeContentService
   → generate-free-preview (Edge Function)
+  → [비회원] IP+UA fingerprint → anonymous_free_views 일일 제한 체크
   → Stargio 사주 API (상세 데이터 조회)
   → OpenAI API (사주 데이터 포함 프롬프트)
-  → free_content_answers 저장
-  → FreeContentLoading (폴링)
-  → FreeSajuDetail (결과)
+  → [로그인] free_content_records 저장 / [비회원] anonymous_free_views 기록
+  → FreeContentLoading → FreeSajuDetail (결과)
 ```
 
 ---
@@ -390,6 +411,11 @@ for (let sajuAttempt = 1; sajuAttempt <= 3; sajuAttempt++) {
 }
 ```
 
+**⭐ 초개인화 데이터 조회 (2026-02-09)**:
+- 로그인 사용자의 `user_trait_tags`에서 최근 4주/전체 태그 + 심리 흐름 조회
+- 태그가 1개 이상 있으면 `personalizationData`로 `generate-saju-answer`, `generate-tarot-answer`에 전달
+- 조회 실패 시 무시하고 기본 프롬프트로 진행 (graceful degradation)
+
 **출력**:
 - `order_results` 테이블에 답변 저장
 - `orders.ai_generation_completed = true` 업데이트
@@ -485,11 +511,45 @@ response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-an
 
 ### 5. `generate-saju-answer`
 
-**역할**: 사주 개별 질문 답변 생성
+**역할**: 사주 개별 질문 답변 생성 (초개인화 지원)
 
 **차이점**: `generate-saju-preview`는 미리보기, 이건 실제 답변
 
-**사용처**: 마스터 콘텐츠 질문별 답변 생성 시
+**사용처**: `generate-content-answers`에서 내부 호출 (질문별 병렬 처리)
+
+**입력**:
+```typescript
+{
+  title: string,
+  description?: string,
+  questionerInfo?: string,        // 질문자 상황 텍스트
+  questionText: string,
+  questionId?: string,
+  birthDate: string,              // "1992-07-15"
+  birthTime: string,              // "21:30"
+  gender: string,                 // "male" | "female"
+  sajuData?: object,              // 미리 가져온 사주 데이터 (API 호출 스킵)
+  // ⭐ 초개인화 데이터 (선택적)
+  personalizationData?: {
+    recentPositiveTags: string[],   // 최근 4주 강점 태그
+    recentNegativeTags: string[],   // 최근 4주 단점 태그
+    allPositiveTags: string[],      // 누적 강점 태그
+    allNegativeTags: string[],      // 누적 단점 태그
+    recentSituationSummaries: { week: number; summary: string }[]  // 최근 4주 심리 흐름
+  }
+}
+```
+
+**초개인화 분기 조건**: `recentPositiveTags.length > 0 || allPositiveTags.length > 0`
+- 조건 충족 시: 태그 + 심리 흐름 포함 프롬프트
+- 미충족 시: 기본 프롬프트 (`questionerInfo`만 사용)
+
+**출력**:
+```typescript
+{ success: true, answerText: string }
+```
+
+**AI 모델**: OpenAI GPT-5.1 (reasoning: low, verbosity: low)
 
 ---
 
@@ -523,11 +583,45 @@ response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-an
 
 ### 7. `generate-tarot-answer`
 
-**역할**: 타로 개별 질문 답변 생성
+**역할**: 타로 개별 질문 답변 생성 (초개인화 지원)
 
 **차이점**: `generate-tarot-preview`는 미리보기, 이건 실제 답변
 
-**사용처**: 마스터 콘텐츠 질문별 답변 생성 시
+**사용처**: `generate-content-answers`에서 내부 호출 (질문별 병렬 처리)
+
+**입력**:
+```typescript
+{
+  title?: string,
+  description?: string,
+  questionerInfo?: string,        // 질문자 상황 텍스트
+  questionText: string,
+  questionId?: string,
+  tarotCards?: string,             // 미리 뽑은 카드 (없으면 78장에서 랜덤)
+  // ⭐ 초개인화 데이터 (선택적, generate-saju-answer와 동일 구조)
+  personalizationData?: {
+    recentPositiveTags: string[],
+    recentNegativeTags: string[],
+    allPositiveTags: string[],
+    allNegativeTags: string[],
+    recentSituationSummaries: { week: number; summary: string }[]
+  }
+}
+```
+
+**초개인화 분기 조건**: `recentPositiveTags.length > 0 || allPositiveTags.length > 0`
+
+**출력**:
+```typescript
+{
+  success: true,
+  answerText: string,
+  tarotCard: string,     // 선택된 카드명 (영문)
+  imageUrl: string       // 카드 이미지 URL (Supabase Storage)
+}
+```
+
+**AI 모델**: OpenAI GPT-4.1
 
 ---
 
@@ -611,7 +705,8 @@ MasterContentDetail → generate-image-prompt
     questionText: string,     // 질문 내용
     answerText: string        // AI 생성 답변
   }>,
-  existingTags?: string[]     // 기존 저장된 태그 (중복 방지용)
+  existingTags?: string[],    // 기존 저장된 태그 (중복 방지용)
+  rejectedTags?: string[]     // 사용자가 거부한 태그 목록 (users.rejected_tags에서 조회)
 }
 ```
 
@@ -637,6 +732,7 @@ MasterContentDetail → generate-image-prompt
 - 장점 2개, 단점 1개 추출 (총 3개)
 - 형용사 형태로 출력 (예: "창의적인", "질투심이 많은")
 - 기존 태그와 의미 중복 방지
+- `rejectedTags` 목록의 태그는 절대 사용 금지 (사용자가 이전에 거부한 태그)
 - '나다움'을 느낄 수 있는 구체적이고 개인화된 키워드
 
 **플로우** (무료 콘텐츠):
@@ -1672,6 +1768,7 @@ supabase functions deploy generate-master-content
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 1.9.0 | 2026-02-09 | `extract-trait-tags`에 `rejectedTags` 파라미터 추가, `generate-free-preview` upsert→INSERT 변경 |
 | 1.8.0 | 2026-02-03 | `get-order-owner`, `get-report-owner` 함수 추가 (계정 불일치 시 소유자 정보 마스킹 표시), 총 32개 |
 | 1.7.0 | 2026-02-02 | `get-ga-stats` 함수 추가 (Google Analytics 통계 조회), 모니터링/통계 카테고리 통합 |
 | 1.6.0 | 2026-02-02 | 나다움 보고서 (주간 보고서) 플로우 추가, 캐시 무효화 및 user_viewed 패턴 문서화 |

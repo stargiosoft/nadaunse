@@ -41,31 +41,41 @@ const RETRY_CONFIG = {
   delays: [2000, 4000, 8000, 16000, 32000] // 2초, 4초, 8초, 16초, 32초
 }
 
-// 전주 일~토 날짜 범위 계산
-function getLastWeekRange(): { start: Date; end: Date; year: number; month: number; week: number } {
-  const now = new Date()
-  const dayOfWeek = now.getDay() // 0=일요일
+// KST (한국 시간) 오프셋
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-  // 전주 일요일 (이번주 일요일 - 7일)
-  const lastSunday = new Date(now)
-  lastSunday.setDate(now.getDate() - dayOfWeek - 7)
-  lastSunday.setHours(0, 0, 0, 0)
+// 전주 일~토 날짜 범위 계산 (KST 기준, 토요일 기준 월/주차)
+function getLastWeekRange(): { start: Date; end: Date; year: number; month: number; week: number; startDateStr: string; endDateStr: string } {
+  // KST 기준 현재 날짜 (UTC 메서드로 KST 값 접근)
+  const kstNow = new Date(Date.now() + KST_OFFSET_MS)
+  const dayOfWeek = kstNow.getUTCDay() // 0=일요일
 
-  // 전주 토요일 (전주 일요일 + 6일)
-  const lastSaturday = new Date(lastSunday)
-  lastSaturday.setDate(lastSunday.getDate() + 6)
-  lastSaturday.setHours(23, 59, 59, 999)
+  // KST 기준 전주 일요일/토요일 (Date.UTC로 정확한 날짜 계산)
+  const sundayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 7))
+  const saturdayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 1))
 
-  // 주차 계산 (해당 월의 몇 번째 주인지)
-  const firstDayOfMonth = new Date(lastSunday.getFullYear(), lastSunday.getMonth(), 1)
-  const week = Math.ceil((lastSunday.getDate() + firstDayOfMonth.getDay()) / 7)
+  // KST 날짜 문자열 (YYYY-MM-DD) - DB week_start_date/week_end_date 저장용
+  const startDateStr = sundayKST.toISOString().split('T')[0]
+  const endDateStr = saturdayKST.toISOString().split('T')[0]
+
+  // DB 쿼리용 UTC 타임스탬프 (created_at 필터링)
+  const startUTC = new Date(sundayKST.getTime() - KST_OFFSET_MS)     // 일요일 00:00 KST → UTC
+  const endUTC = new Date(saturdayKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1) // 토요일 23:59:59.999 KST → UTC
+
+  // 토요일 기준 월/주차 계산 (월 경계 주차 문제 해결)
+  const satYear = saturdayKST.getUTCFullYear()
+  const satMonth = saturdayKST.getUTCMonth() + 1
+  const firstDayOfMonth = new Date(Date.UTC(saturdayKST.getUTCFullYear(), saturdayKST.getUTCMonth(), 1))
+  const week = Math.ceil((saturdayKST.getUTCDate() + firstDayOfMonth.getUTCDay()) / 7)
 
   return {
-    start: lastSunday,
-    end: lastSaturday,
-    year: lastSunday.getFullYear(),
-    month: lastSunday.getMonth() + 1,
-    week
+    start: startUTC,
+    end: endUTC,
+    year: satYear,
+    month: satMonth,
+    week,
+    startDateStr,
+    endDateStr
   }
 }
 
@@ -147,13 +157,17 @@ serve(async (req) => {
       )
     }
 
-    // 2. 사주 정보 조회 (본인)
-    const { data: sajuRecord, error: sajuError } = await supabase
+    // 2. 사주 정보 조회 (본인) - is_primary 우선, 없으면 최신 레코드
+    const { data: sajuRecords, error: sajuError } = await supabase
       .from('saju_records')
       .select('*')
       .eq('user_id', userId)
       .eq('notes', '본인')
-      .single()
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    const sajuRecord = sajuRecords?.[0]
 
     if (sajuError || !sajuRecord) {
       console.error('❌ 사주 정보 조회 실패:', sajuError)
@@ -164,29 +178,61 @@ serve(async (req) => {
     }
 
     // 3. 전주 일~토 날짜 범위 계산 (커스텀 날짜 지원)
-    let weekRange: { start: Date; end: Date; year: number; month: number; week: number }
+    let weekRange: { start: Date; end: Date; year: number; month: number; week: number; startDateStr: string; endDateStr: string }
 
     if (weekStartDate && weekEndDate) {
-      // 커스텀 날짜가 제공된 경우 (재발송용)
-      const customStart = new Date(weekStartDate + 'T00:00:00.000Z')
-      const customEnd = new Date(weekEndDate + 'T23:59:59.999Z')
+      // 커스텀 날짜가 제공된 경우 (KST YYYY-MM-DD로 간주)
+      const startKST = new Date(weekStartDate + 'T00:00:00.000Z')
+      const endKST = new Date(weekEndDate + 'T00:00:00.000Z')
 
-      // 주차 계산
-      const firstDayOfMonth = new Date(customStart.getFullYear(), customStart.getMonth(), 1)
-      const week = Math.ceil((customStart.getDate() + firstDayOfMonth.getDay()) / 7)
+      // DB 쿼리용 UTC 타임스탬프
+      const startUTC = new Date(startKST.getTime() - KST_OFFSET_MS)
+      const endUTC = new Date(endKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1)
+
+      // 종료일 기준 월/주차 계산
+      const satYear = endKST.getUTCFullYear()
+      const satMonth = endKST.getUTCMonth() + 1
+      const firstDayOfMonth = new Date(Date.UTC(endKST.getUTCFullYear(), endKST.getUTCMonth(), 1))
+      const week = Math.ceil((endKST.getUTCDate() + firstDayOfMonth.getUTCDay()) / 7)
 
       weekRange = {
-        start: customStart,
-        end: customEnd,
-        year: customStart.getFullYear(),
-        month: customStart.getMonth() + 1,
-        week
+        start: startUTC,
+        end: endUTC,
+        year: satYear,
+        month: satMonth,
+        week,
+        startDateStr: weekStartDate,
+        endDateStr: weekEndDate
       }
-      console.log('📅 커스텀 주차 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+      console.log('📅 커스텀 주차 범위:', weekRange.startDateStr, '~', weekRange.endDateStr, '(UTC:', weekRange.start.toISOString(), '~', weekRange.end.toISOString(), ')')
     } else {
-      // 기본: 전주 일~토
+      // 기본: 전주 일~토 (KST 기준)
       weekRange = getLastWeekRange()
-      console.log('📅 전주 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+      console.log('📅 전주 범위:', weekRange.startDateStr, '~', weekRange.endDateStr, '(UTC:', weekRange.start.toISOString(), '~', weekRange.end.toISOString(), ')')
+    }
+
+    // 3-1. 기존 보고서 존재 확인 (API 호출 전 조기 체크 - 비용 절약)
+    if (!forceRegenerate) {
+      const { data: earlyCheck } = await supabase
+        .from('weekly_reports')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('year', weekRange.year)
+        .eq('week_start_date', weekRange.startDateStr)
+        .single()
+
+      if (earlyCheck) {
+        console.log('✅ 기존 보고서 존재 - 재생성 스킵 (조기 체크):', earlyCheck.id)
+        return new Response(
+          JSON.stringify({
+            success: true,
+            reportId: earlyCheck.id,
+            message: '이미 해당 주차 보고서가 존재합니다.',
+            alreadyExists: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // 4. 전주 태그 조회 (일~토)
@@ -313,8 +359,19 @@ serve(async (req) => {
     const prompt = `## **역할**
 사용자가 자신의 다양한 모습을 발견하고 어떤 모습이든 스스로를 사랑하고 응원할 수 있도록 '나 보고서'를 매주 작성하는 심리 학자
 
+## **문체 및 어조 (모든 섹션에 공통 적용)**
+- 해요체 사용으로 따뜻하고 공감 가는 톤 유지
+- 사주 데이터를 깊이 이해한 전문가의 통찰력이 느껴지지만, 가까운 선배나 멘토처럼 다정하게 조언하는 어조
+- 상담자가 자신의 타고난 기질을 긍정하고 보완점을 찾을 수 있도록 대화 유도
+- 상담자 지칭은 '당신'으로 통일
+- 문장은 사람처럼 따뜻하게, 인간적인 결이 느껴지게 표현
+- 번역투나 어색한 표현 피하고 자연스러운 호흡 유지
+- "~에 가까워요", "~인 편이에요", "~같은" 등 부드러운 표현 활용
+- 비유와 은유 적극 사용 (예: "겉은 단단하지만 안에는 얇은 유리조각이 들어 있는 사람처럼")
+
 ## **지시 사항**
-1. '이용 콘텐츠' 기반으로 사용자의 고민과 현재 처해있는 상황을 정의합니다. 이 데이터는 사용자가 아닌 백엔드에 저장하는 목적이라 간결하게 db화 합니다. user는 이런 상황이다~ 라는 형태로 보고서 형태로 정의합니다.
+1. [situation_summary 전용 - DB 내부 저장용, 사용자에게 노출되지 않음]
+   '이용 콘텐츠' 기반으로 사용자의 고민과 현재 상황을 간결하게 요약합니다. 이 필드는 백엔드 DB에만 저장되며 사용자가 읽는 글이 아닙니다. "이 사용자는 ~한 상황이다"와 같은 3인칭 요약 형태로 작성합니다.
 2. '사용자 상황'과 '사용자 정보' 기반으로 '나 다시보기'를 작성합니다. 사주 기반 풀이는 '사주 정보'를, 그외 목표 및 구성은 아래를 내용을 참고합니다.
     - 목표: 자기 인지("나는 왜 이렇게 느꼈는지"를 설명해주어 자기비난 → 자기이해로 전환)
     - 구성: 이번 주의 나의 모습을 한 문장으로 요약 → 이번주 발견한 나만의 기질 및 심리적 상태 사주 기반 분석 → 처한 상황과 성향의 연결 및 진단
@@ -371,16 +428,6 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
 - '~해서', '~하며', '~하고', '~인데' 같은 연결 어미 사용 자제하고 간결하게 문장 완성
 - ':' 및 ';' 사용하지 않고 .로 문장 마감
 - 리스트(-, •) 사용 시 각 항목은 짧고 명확하게 (한 줄 권장)
-
-### 문체 및 어조
-- 해요체 사용으로 따뜻하고 공감 가는 톤 유지
-- 사주 데이터를 깊이 이해한 전문가의 통찰력이 느껴지지만, 가까운 선배나 멘토처럼 다정하게 조언하는 어조
-- 상담자가 자신의 타고난 기질을 긍정하고 보완점을 찾을 수 있도록 대화 유도
-- 상담자 지칭은 '당신'으로 통일
-- 문장은 사람처럼 따뜻하게, 인간적인 결이 느껴지게 표현
-- 번역투나 어색한 표현 피하고 자연스러운 호흡 유지
-- "~에 가까워요", "~인 편이에요", "~같은" 등 부드러운 표현 활용
-- 비유와 은유 적극 사용 (예: "겉은 단단하지만 안에는 얇은 유리조각이 들어 있는 사람처럼")
 
 ### 핵심 필수사항
 - 전문 용어 최소 사용: '종살격', '기사일주', '상관', '편관' 등 모든 사주 명리학 전문 용어를 가급적 최소한으로 사용해 명리학을 모르는 사용자도 쉽게 이해할 수 있도록 할 것
@@ -535,7 +582,7 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
     }
 
     // 12. 기존 보고서 확인
-    const weekStartDateStr = weekRange.start.toISOString().split('T')[0]
+    const weekStartDateStr = weekRange.startDateStr
     const { data: existingReport } = await supabase
       .from('weekly_reports')
       .select('id')
@@ -579,8 +626,8 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
         year: weekRange.year,
         month: weekRange.month,
         week: weekRange.week,
-        week_start_date: weekRange.start.toISOString().split('T')[0],
-        week_end_date: weekRange.end.toISOString().split('T')[0],
+        week_start_date: weekRange.startDateStr,
+        week_end_date: weekRange.endDateStr,
         status: 'completed',
         tag_count: (weeklyTags || []).length,
         situation_summary: reportData.situation_summary,

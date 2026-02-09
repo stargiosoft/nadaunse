@@ -62,20 +62,23 @@ export default function LoginBottomSheet({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-end justify-center pointer-events-none">
+        <>
           {/* Background overlay */}
           <motion.div
-            className="fixed inset-0 bg-black/50 touch-none pointer-events-auto"
+            key="login-backdrop"
+            className="fixed inset-0 z-[9999] bg-black/50"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
             style={{ touchAction: 'none' }}
           />
 
           {/* Bottom sheet */}
           <motion.div
-            className="relative w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col overflow-hidden pointer-events-auto z-[10000] transform-gpu"
+            key="login-sheet"
+            className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-[440px] z-[10000] bg-white rounded-t-[16px] flex flex-col overflow-hidden transform-gpu"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -171,7 +174,7 @@ export default function LoginBottomSheet({
               </motion.button>
             </div>
           </motion.div>
-        </div>
+        </>
       )}
     </AnimatePresence>,
     document.body

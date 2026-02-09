@@ -38,46 +38,62 @@ serve(async (req) => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('🔒 [Edge Function] 비회원 일일 제한 검증 시작')
 
-      // IP 추출: x-forwarded-for > cf-connecting-ip > x-real-ip
-      const forwarded = req.headers.get('x-forwarded-for')
-      const clientIp = forwarded
-        ? forwarded.split(',')[0].trim()
-        : req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown'
+      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || req.headers.get('cf-connecting-ip')
+        || 'unknown'
       const userAgent = req.headers.get('user-agent') || 'unknown'
 
       // SHA-256 fingerprint 생성
       const encoder = new TextEncoder()
-      const data = encoder.encode(clientIp + userAgent)
+      const data = encoder.encode(ip + userAgent)
       const hashBuffer = await crypto.subtle.digest('SHA-256', data)
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
-      console.log('📌 [Edge Function] IP:', clientIp.substring(0, 10) + '...')
+      console.log('📌 [Edge Function] IP:', ip)
       console.log('📌 [Edge Function] fingerprint:', fingerprint.substring(0, 16) + '...')
 
-      // 오늘 조회 카운트 확인 (KST 기준)
-      const { data: viewCount, error: countError } = await supabase
+      // KST 기준 오늘 날짜
+      const now = new Date()
+      const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+      const todayKST = kstDate.toISOString().split('T')[0]
+
+      // 오늘 조회 횟수 확인
+      const { count, error: countError } = await supabase
         .from('anonymous_free_views')
-        .select('id', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('fingerprint', fingerprint)
-        .eq('viewed_date', new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .eq('viewed_date', todayKST)
 
-      const todayCount = viewCount?.length ?? 0
-      console.log('📌 [Edge Function] 오늘 조회 수:', todayCount)
+      const todayCount = count ?? 0
+      console.log(`📊 [Edge Function] 오늘 조회 횟수: ${todayCount}/3`)
 
-      if (todayCount >= 3) {
-        console.log('🚫 [Edge Function] 일일 제한 도달 (3개) → 차단')
+      if (countError) {
+        console.warn('⚠️ [Edge Function] 조회 횟수 확인 실패:', countError)
+        // 에러 시에도 계속 진행 (서비스 가용성 우선)
+      } else if (todayCount >= 3) {
+        console.log('🚫 [Edge Function] 일일 제한 도달 → DAILY_LIMIT_REACHED')
         return new Response(
           JSON.stringify({ success: false, error: 'DAILY_LIMIT_REACHED' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      // ⭐ fingerprint를 요청 컨텍스트에 저장 (AI 생성 후 기록용)
-      ;(req as any)._fingerprint = fingerprint
-      ;(req as any)._viewedDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+      // ⭐ 조회 기록 저장 (중복 방지: fingerprint + content_id + viewed_date UNIQUE)
+      const { error: upsertError } = await supabase
+        .from('anonymous_free_views')
+        .upsert(
+          { fingerprint, content_id: contentId, viewed_date: todayKST },
+          { onConflict: 'fingerprint,content_id,viewed_date' }
+        )
 
-      console.log('✅ [Edge Function] 비회원 제한 검증 통과 (남은 횟수:', 3 - todayCount - 1, ')')
+      if (upsertError) {
+        console.warn('⚠️ [Edge Function] 조회 기록 저장 실패:', upsertError)
+      } else {
+        console.log('✅ [Edge Function] 조회 기록 저장 완료')
+      }
+
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     }
 
@@ -445,33 +461,7 @@ ${fullQuestionerInfo}
 
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     } else {
-      // ⭐ 게스트 사용자: anonymous_free_views에 조회 기록 저장
-      console.log('ℹ️ [Edge Function] 게스트 사용자 → anonymous_free_views 기록')
-      const fingerprint = (req as any)._fingerprint
-      const viewedDate = (req as any)._viewedDate
-
-      if (fingerprint && viewedDate) {
-        try {
-          const { error: viewError } = await supabase
-            .from('anonymous_free_views')
-            .upsert(
-              {
-                fingerprint,
-                content_id: contentId,
-                viewed_date: viewedDate,
-              },
-              { onConflict: 'fingerprint,content_id,viewed_date' }
-            )
-
-          if (viewError) {
-            console.error('❌ [Edge Function] anonymous_free_views 저장 실패:', viewError)
-          } else {
-            console.log('✅ [Edge Function] anonymous_free_views 기록 완료')
-          }
-        } catch (viewDbError) {
-          console.error('❌ [Edge Function] anonymous_free_views 저장 중 예외:', viewDbError)
-        }
-      }
+      console.log('ℹ️ [Edge Function] 게스트 사용자 → DB 저장 스킵')
     }
 
     // 7. 응답 반환

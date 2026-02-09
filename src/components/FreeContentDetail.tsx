@@ -25,14 +25,12 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { freeContentService, MasterContent, Question } from '../lib/freeContentService';
 import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
 import FreeContentLoading from './FreeContentLoading';
 import FreeContentDetailSkeleton from './skeletons/FreeContentDetailSkeleton';
-import LoginBottomSheet from './LoginBottomSheet';
-import { hasReachedLocalLimit } from '../lib/freeContentLimitService';
 import SEO from './SEO';
 import {
   TopNavigation,
@@ -47,6 +45,7 @@ import {
 } from './FreeContentDetailComponents';
 import { trackPageView, trackViewItem } from '../utils/analytics';
 import FreeContentResult from './FreeContentResult';
+import LoginBottomSheet from './LoginBottomSheet';
 
 /**
  * Props 인터페이스
@@ -68,6 +67,7 @@ interface FreeContentDetailProps {
  */
 function useFreeContentDetail(contentId: string, onBack: () => void) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [content, setContent] = useState<MasterContent | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,9 +78,19 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   const [recommendedContents, setRecommendedContents] = useState<MasterContent[]>([]);
   const [visibleCount, setVisibleCount] = useState(3); // ⭐ 처음에는 3개 표시
   const [visiblePaidCount, setVisiblePaidCount] = useState(6); // ⭐ 유료 콘텐츠는 6개씩
-  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false); // ⭐ 비회원 제한 바텀시트
   const scrollObserverRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref (바운스 방지)
+  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false); // ⭐ 비회원 제한 바텀시트
+
+  // ⭐ 서버 일일 제한(DAILY_LIMIT_REACHED)으로 돌아온 경우 LoginBottomSheet 자동 표시
+  useEffect(() => {
+    const state = location.state as { dailyLimitReached?: boolean } | null;
+    if (state?.dailyLimitReached) {
+      setIsLoginSheetOpen(true);
+      // state 초기화 (새로고침 시 재표시 방지)
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   /**
    * 초기 데이터 로드
@@ -271,8 +281,29 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   };
 
   /**
+   * ⭐ 비회원 일일 제한 체크 (localStorage 기반, KST)
+   */
+  const hasReachedLocalLimit = (): boolean => {
+    const FREE_DAILY_LIMIT = 3;
+    const STORAGE_KEY = 'free_content_daily_usage';
+    try {
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstDate = new Date(now.getTime() + kstOffset);
+      const todayKST = kstDate.toISOString().split('T')[0];
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return false;
+      const { date, count } = JSON.parse(stored);
+      if (date !== todayKST) return false;
+      console.log(`📊 [FreeContentDetail] 비회원 일일 사용량: ${count}/${FREE_DAILY_LIMIT}`);
+      return count >= FREE_DAILY_LIMIT;
+    } catch {
+      return false;
+    }
+  };
+
+  /**
    * 구매 버튼 클릭 (무료 체험) - Fallback only
-   * ⭐ 비회원 일일 제한 체크 추가
    */
   const handlePurchase = () => {
     console.log('🔵 [FreeContentDetail] handlePurchase 함수 시작', {
@@ -288,18 +319,13 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
       return;
     }
 
-    // ⭐ 1. 로그인 여부 확인 (로그인 유저는 무제한)
+    // ⭐ 비회원 일일 제한 체크 (1차 검증: localStorage)
     const userJson = localStorage.getItem('user');
     const isLoggedIn = !!userJson;
-
-    if (!isLoggedIn) {
-      // ⭐ 2. 비로그인 유저: localStorage 일일 제한 체크 (즉시, 0ms)
-      if (hasReachedLocalLimit()) {
-        console.log('🚫 [FreeContentDetail] 비회원 일일 제한 도달 → LoginBottomSheet 표시');
-        setIsLoginSheetOpen(true);
-        return;
-      }
-      console.log('✅ [FreeContentDetail] 비회원 제한 미도달 → 기존 플로우 진행');
+    if (!isLoggedIn && hasReachedLocalLimit()) {
+      console.log('🚫 [FreeContentDetail] 비회원 일일 제한 도달 → LoginBottomSheet 표시');
+      setIsLoginSheetOpen(true);
+      return;
     }
 
     // 🚀 캐시 확인: 사주 정보가 있으면 바로 사주 선택 페이지로 이동 (birthinfo 스킵)
@@ -349,13 +375,13 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     showResult,
     visibleCount,
     visiblePaidCount,
-    isLoginSheetOpen,
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
+    isLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     // Actions
     handlePurchase,
     setShowResult,
-    setIsLoginSheetOpen,
+    setIsLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     loadMorePaidContents
   };
 }
@@ -484,12 +510,12 @@ export default function FreeContentDetail({
     showResult,
     visibleCount,
     visiblePaidCount,
-    isLoginSheetOpen,
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
+    isLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     handlePurchase,
     setShowResult,
-    setIsLoginSheetOpen,
+    setIsLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     loadMorePaidContents
   } = useFreeContentDetail(contentId, onBack);
 
@@ -552,7 +578,6 @@ export default function FreeContentDetail({
         description={content.description || `${content.title} - 무료로 보는 AI 운세`}
         canonical={`/product/${contentId}`}
         ogImage={content.thumbnail_url}
-        keywords="무료운세, 무료사주, AI 운세, 무료 타로, 사주풀이, 나다운세"
       />
       <div className="bg-white fixed inset-0 flex flex-col w-full">
         <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
@@ -623,7 +648,7 @@ export default function FreeContentDetail({
         </div>
       </div>
 
-      {/* ⭐ 비회원 일일 제한 도달 시 로그인 유도 바텀시트 */}
+      {/* ⭐ 비회원 일일 제한 바텀시트 */}
       <LoginBottomSheet
         isOpen={isLoginSheetOpen}
         onClose={() => setIsLoginSheetOpen(false)}

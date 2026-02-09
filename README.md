@@ -50,7 +50,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 30개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 31개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne v2 |
@@ -61,7 +61,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 ## 📊 주요 통계
 
 - **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 30개 (주간 보고서 4개 포함)
+- **Edge Functions**: 31개 (주간 보고서 4개 포함)
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 
@@ -74,7 +74,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
 | [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (69개) |
-| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (30개) |
+| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (31개) |
 
 > **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
 
@@ -84,17 +84,34 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **GitHub**: https://github.com/stargiosoft/nadaunse
 - **Vercel**: https://vercel.com/stargiosofts-projects/nadaunse
 
+## 🆕 최근 주요 변경사항 (2026-02-09)
+
+### rejected_tags 태그 제외 시스템
+- **기능**: 나다움 기록하기에서 미선택 태그를 `users.rejected_tags`에 누적 저장
+- **효과**: 다음 콘텐츠 태그 추출 시 AI가 거부된 태그 자동 제외
+- **영향**: CheckRecordMe, extract-trait-tags, UnifiedResultPage, App.tsx
+
+### last_login_at 갱신 로직 통합
+- **변경**: HomePage 전용 → App.tsx `recordTodayVisit()` (모든 페이지 방문 시)
+- **효과**: StatsDashboard contentUsageRate > 100% 문제 해결
+- **영향**: auth.ts, HomePage.tsx, statsService.ts
+
+### 무료 콘텐츠 일일 제한 INSERT 방식 전환
+- **변경**: anonymous_free_views upsert → INSERT, UNIQUE 제약 제거
+- **효과**: 같은 콘텐츠 재조회도 일일 제한에 카운트
+
 ## 🆕 최근 주요 변경사항 (2026-02-03)
 
 ### 주간 보고서 자동 발송 시스템
 - **pg_cron + pg_net**: 매주 자동 보고서 생성 및 알림톡 발송
 - **GPT-5.1 기반**: 사주/태그 데이터 기반 맞춤형 보고서 생성
-- **배치 처리**: concurrency 5, 2초 간격으로 안정적 처리
-- **관리자 패널**: 실패 보고서 조회 및 재발송 기능
+- **배치 처리**: concurrency 3, 2초 간격, 60초 시간 제한 (shutdown 방지)
+- **selfContinue 패턴**: 시간 제한 시 서버가 자동으로 자기 자신 재호출 (클라이언트 개입 불필요)
+- **관리자 패널**: 실패 보고서 조회 및 재발송 기능 (fire-and-forget)
 
 ### 관리자 기능 (마스터 계정 전용)
 - **실패 보고서 조회**: 주차별 발송 실패 통계
-- **재발송 기능**: 실패 사용자에게 수동 재발송
+- **재발송 기능**: 1회 호출로 서버에서 자동 처리 (브라우저 닫아도 됨)
 - **태그 관리**: 미확인 태그 정리 기능
 
 ### Edge Functions 추가 (4개)
@@ -137,4 +154,4 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ---
 
-**최종 업데이트**: 2026-02-02
+**최종 업데이트**: 2026-02-09

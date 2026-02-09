@@ -10,7 +10,7 @@
 
 ## 📋 목차
 
-- [UI 컴포넌트 (8개)](#ui-컴포넌트)
+- [UI 컴포넌트 (7개)](#ui-컴포넌트)
 - [인증 관련 (4개)](#인증-관련)
 - [결제 관련 (4개)](#결제-관련)
 - [무료 콘텐츠 관련 (9개)](#무료-콘텐츠-관련)
@@ -78,22 +78,6 @@
 - **사용처**: 삭제/변경 확인 등
 - **타입**: Modal Component
 - **파일 경로**: `/components/ConfirmDialog.tsx`
-
-### FlowerPotIcon.tsx
-- **역할**: Lottie 애니메이션 화분 아이콘 컴포넌트
-- **사용처**: ReportWeeklyDetail (주간 보고서 상세)
-- **타입**: Presentational Component
-- **주요 기능**:
-  - Lottie 애니메이션 (화분 성장 애니메이션)
-  - 크기 조절 가능 (size prop)
-  - 자동 재생/반복 제어 (autoplay, loop props)
-- **Props**:
-  - `size?: number` - 아이콘 크기 (기본: 100px)
-  - `className?: string` - 커스텀 스타일
-  - `autoplay?: boolean` - 자동 재생 (기본: true)
-  - `loop?: boolean` - 반복 재생 (기본: true)
-- **파일 경로**: `/components/ui/FlowerPotIcon.tsx`
-- **최근 업데이트**: 2026-02-09 - 주간 보고서 화분 아이콘 추가
 
 ---
 
@@ -270,8 +254,20 @@
 - **주요 기능**:
   - 진행률 표시
   - 생성 상태 안내
-  - 폴링 (2초마다)
+  - DAILY_LIMIT_REACHED 서버 응답 처리
 - **파일 경로**: `/components/FreeContentLoading.tsx`
+
+### LoginBottomSheet.tsx
+- **역할**: 비회원 일일 제한 도달 시 로그인 유도 바텀시트
+- **사용처**: FreeContentDetail.tsx
+- **타입**: Modal Component (createPortal + AnimatePresence)
+- **주요 기능**:
+  - 잠금 아이콘 + "로그인하면 무제한 이용 가능" 메시지
+  - "로그인 하기" 버튼 → `/login/new` 이동
+  - 드래그 닫기 (80px threshold)
+  - body scroll lock + theme-color 딤 처리
+- **파일 경로**: `/components/LoginBottomSheet.tsx`
+- **추가 날짜**: 2026-02-06
 
 ### CardContent.tsx
 - **역할**: 무료 콘텐츠 카드 가로 스크롤 리스트
@@ -598,10 +594,8 @@
   - 태그 삭제/복원 (Optimistic UI + Toast 2.2초)
   - 캐싱 시스템 (localStorage, 5분 만료)
   - 동기적 캐시 초기화 (로딩 플래시 방지)
-  - **DEV 전용**: 빈 상태 테스트 버튼 (강한 모습/섬세한 모습 각각)
 - **파일 경로**: `/components/NadaumTagsList.tsx`
 - **추가일**: 2026-01-29
-- **최근 업데이트**: 2026-02-05 - DEV 환경 빈 상태 테스트 버튼 추가 (페이지 하단, 미니 사이즈)
 - **관련 데이터**: `src/data/comfortQuotes.ts` (92개 위로 문구)
 
 ### comfortQuotes.ts (데이터)
@@ -629,9 +623,10 @@
   - 응원글 표시 및 수정 링크
   - 캐싱 시스템 (localStorage, 5분 만료)
   - 동기적 캐시 초기화 (로딩 플래시 방지)
+  - 관리자 패널: 실패 보고서 조회/재발송 (selfContinue fire-and-forget)
 - **파일 경로**: `/components/MyReportList.tsx`
 - **추가일**: 2026-01-29
-- **최근 업데이트**: 2026-02-02 - MyReportWeekly 병합 (UI 컴포넌트 통합)
+- **최근 업데이트**: 2026-02-09 - 재발송 fire-and-forget 전환 (서버 selfContinue)
 
 ### ReportWeeklyDetail.tsx
 - **역할**: 주간 운세 요약 페이지
@@ -797,7 +792,9 @@
   - GPT-5-nano가 추출한 태그 표시 (장점 2개, 단점 1개)
   - 사용자 태그 선택 UI
   - 전화번호 입력 바텀시트 (미등록 시)
-  - `save-trait-tags` Edge Function 호출하여 DB 저장
+  - `user_trait_tags` 테이블에 직접 INSERT하여 DB 저장
+  - 미선택 태그를 `users.rejected_tags`에 누적 저장 (다음 추출 시 제외)
+  - TagCouponBottomSheet 연동 (태그 5개 모으기 프로모션)
 - **Props**:
   - `contentId?: string` - 콘텐츠 ID
   - `orderId?: string` - 주문 ID (유료 콘텐츠용)
@@ -808,7 +805,24 @@
   - `onSkip?: () => void` - 건너뛰기 콜백
   - `onComplete?: () => void` - 저장 완료 콜백
 - **파일 경로**: `/components/CheckRecordMe.tsx`
-- **최근 업데이트**: 2026-01-29 - orderId, sourceType, onComplete props 추가 (유료 콘텐츠 지원)
+- **최근 업데이트**: 2026-02-09 - rejected_tags 저장 로직 추가, TagCouponBottomSheet 연동
+
+### TagCouponBottomSheet.tsx
+- **역할**: 태그 쿠폰 안내 바텀시트
+- **사용처**: CheckRecordMe.tsx
+- **타입**: Modal Component
+- **주요 기능**:
+  - 프로모션 모드: 태그 5개 모으면 무료 쿠폰 지급 안내
+  - 태그 모으기 유도 모드: 남은 태그 수 안내 (remainingTags prop)
+  - Framer Motion 애니메이션
+- **Props**:
+  - `isOpen: boolean` - 바텀시트 열림 상태
+  - `onClose: () => void` - 닫기 콜백
+  - `onOverlayClick?: () => void` - 외부 클릭 콜백
+  - `onSelectTag: () => void` - 태그 선택하기 버튼 콜백
+  - `remainingTags?: number` - 남은 태그 수 (1~4)
+- **파일 경로**: `/components/TagCouponBottomSheet.tsx`
+- **추가일**: 2026-02-09
 
 
 ---
@@ -928,9 +942,9 @@
 
 ## 📊 통계
 
-- **총 컴포넌트**: 55개
+- **총 컴포넌트**: 56개
 - **페이지 컴포넌트**: 41개
-- **UI/유틸리티 컴포넌트**: 14개
+- **UI/유틸리티 컴포넌트**: 15개
 - **백업된 컴포넌트**: 9개
 
 ### 카테고리별 분포
@@ -942,7 +956,7 @@
 - 사주 정보 관리: 10개 (SajuCard 추가)
 - 타로 콘텐츠: 5개 (TestTarotPage 추가)
 - 프로필 및 구매: 4개
-- 유틸리티: 2개
+- 유틸리티: 3개 (TagCouponBottomSheet 추가)
 - 약관: 3개
 - 에러 처리: 2개
 
@@ -993,18 +1007,17 @@
 
 ## 🔄 업데이트 이력
 
-### 2026-02-05
-- **NadaumTagsList.tsx DEV 전용 테스트 기능 추가**
-  - 빈 상태 테스트 버튼 2개 추가 (강한 모습/섬세한 모습)
-  - DEV 환경에서만 표시 (`import.meta.env.DEV`)
-  - `devForceEmpty` state로 강제 빈 상태 토글
-  - 페이지 하단 배치 (fixed 아님), 미니 사이즈 (36px 높이)
-  - 버튼 색상: 활성 #ff6678, 비활성 #48b2af
-- **EmptyContent.tsx 버튼 상호작용 개선**
-  - "태그 쌓으러 가기" 버튼 press 상태 추가
-  - 기본 색상 #48B2AF, 클릭 시 #41A09E
-  - Framer Motion scale 애니메이션 (0.99)
-  - Tailwind arbitrary value → inline style 전환
+### 2026-02-09
+- **TagCouponBottomSheet.tsx 추가**
+  - 태그 쿠폰 안내 바텀시트 (프로모션 모드 / 태그 모으기 유도 모드)
+  - CheckRecordMe.tsx에서 사용
+- **CheckRecordMe.tsx rejected_tags 연동**
+  - 미선택 태그를 `users.rejected_tags`에 누적 저장
+  - TagCouponBottomSheet 연동 (태그 5개 프로모션)
+  - `save-trait-tags` Edge Function 삭제 → 클라이언트 직접 INSERT로 변경
+- **통계 업데이트**
+  - 총 컴포넌트: 55개 → 56개 (TagCouponBottomSheet 추가)
+  - 유틸리티: 2개 → 3개
 
 ### 2026-01-29
 - **CheckRecordMe.tsx props 확장**
@@ -1180,6 +1193,6 @@
 ---
 
 **문서 버전**: 2.7.0
-**최종 업데이트**: 2026-02-05
+**최종 업데이트**: 2026-02-09
 **다음 업데이트**: 새 컴포넌트 추가 또는 주요 변경 시
 **문서 끝**

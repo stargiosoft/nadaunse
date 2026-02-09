@@ -87,7 +87,7 @@ function ContentArea({ amount = 3000 }: { amount?: number }) {
   const hasAnimationData = animationData && animationData.layers && animationData.layers.length > 0;
 
   return (
-    <div className="flex flex-col items-center w-full" style={{ paddingTop: '20px', paddingBottom: '88px', paddingLeft: '32px', paddingRight: '32px' }}>
+    <div className="flex flex-col items-center w-full" style={{ paddingTop: '76px', paddingBottom: '88px', paddingLeft: '32px', paddingRight: '32px' }}>
       {/* Text Group */}
       <div className="flex flex-col items-start relative shrink-0 w-full gap-3 z-10">
         {/* Title Group */}
@@ -134,11 +134,11 @@ function ContentArea({ amount = 3000 }: { amount?: number }) {
               }}>
                 {amount.toLocaleString()}
               </p>
-              <p style={{
-                fontFamily: 'Pretendard Variable',
-                fontSize: 'clamp(24px, 9.5cqw, 26px)',
-                fontWeight: 700,
-                color: '#ff6678',
+              <p style={{ 
+                fontFamily: 'Pretendard Variable', 
+                fontSize: 'clamp(24px, 9.5cqw, 26px)', 
+                fontWeight: 700, 
+                color: '#ff6678', 
                 letterSpacing: '-0.78px',
                 margin: 0,
                 whiteSpace: 'nowrap'
@@ -171,16 +171,16 @@ function ContentArea({ amount = 3000 }: { amount?: number }) {
               damping: 20,
               delay: 0.1
             }}
-            style={{
-              fontFamily: 'Pretendard Variable',
-              fontSize: '14px',
-              fontWeight: 400,
-              color: '#999999',
-              lineHeight: '22px',
+            style={{ 
+              fontFamily: 'Pretendard Variable', 
+              fontSize: '14px', 
+              fontWeight: 400, 
+              color: '#999999', 
+              lineHeight: '22px', 
               letterSpacing: '-0.42px',
               margin: '-4px 0 0 0',
-              paddingLeft: '2px',
-              transformOrigin: "left center"
+              paddingLeft: '1px',
+              transformOrigin: "left center" 
             }}
           >
             쿠폰 사용 기간 : 기한 제한 없음
@@ -189,7 +189,7 @@ function ContentArea({ amount = 3000 }: { amount?: number }) {
       </div>
       
       {/* Visual Area: Animation + Coupon SVG */}
-      <div className="relative flex items-center justify-center w-full" style={{ marginTop: '44px', height: '250px' }}>
+      <div className="relative flex items-center justify-center w-full overflow-hidden" style={{ marginTop: '52px', height: '250px' }}>
         
         {/* Animation Layer (Background) */}
         {hasAnimationData && (
@@ -223,34 +223,13 @@ function BottomButton({ onHome }: { onHome?: () => void }) {
         {/* 홈으로 가기 버튼 (기획서 기준 단일 버튼) */}
         <button
           onClick={onHome}
-          className="flex items-center justify-center cursor-pointer w-full"
+          className="flex items-center justify-center cursor-pointer transition-all active:scale-[0.98] w-full"
           style={{
             backgroundColor: '#48b2af',
             height: '56px',
             borderRadius: '16px',
             border: 'none',
-            padding: 0,
-            transition: 'all 0.15s ease'
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.transform = 'scale(0.99)';
-            e.currentTarget.style.backgroundColor = '#41A09E';
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.backgroundColor = '#48b2af';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.backgroundColor = '#48b2af';
-          }}
-          onTouchStart={(e) => {
-            e.currentTarget.style.transform = 'scale(0.99)';
-            e.currentTarget.style.backgroundColor = '#41A09E';
-          }}
-          onTouchEnd={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.backgroundColor = '#48b2af';
+            padding: 0
           }}
         >
           <span style={{
@@ -325,9 +304,9 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
   }
 
   return (
-    <div className="flex justify-center w-full min-h-screen overflow-x-hidden" style={{ backgroundColor: '#ffffff' }}>
+    <div className="flex justify-center w-full bg-gray-100 min-h-screen overflow-x-hidden">
       <div
-        className="flex flex-col bg-white h-screen relative overflow-x-hidden"
+        className="flex flex-col bg-white h-screen relative shadow-lg overflow-hidden"
         style={{
           maxWidth: '440px',
           minWidth: '320px',
@@ -335,25 +314,25 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
         }}
       >
         {/* Top Navigation - X 버튼만 (기획서 기준) */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 bg-white flex items-center justify-end z-30" style={{ height: '52px', paddingRight: '12px', width: '100%', maxWidth: '440px' }}>
+        <div className="bg-white flex items-center justify-end relative shrink-0 w-full z-20" style={{ height: '52px', paddingRight: '12px' }}>
           <div
             onClick={onClose || onHome}
-            className="group flex items-center justify-center relative shrink-0 cursor-pointer transition-colors duration-200 active:bg-gray-100"
+            className="flex items-center justify-center relative shrink-0 cursor-pointer transition-colors active:bg-[#f3f4f6]"
             style={{ width: '44px', height: '44px', padding: '4px', borderRadius: '12px' }}
           >
-            <div className="relative shrink-0 transition-transform duration-200 group-active:scale-90" style={{ width: '24px', height: '24px' }}>
+            <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
               <CloseIcon />
             </div>
           </div>
         </div>
 
         {/* Main Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto w-full no-scrollbar" style={{ paddingTop: '52px', paddingBottom: '88px' }}>
+        <div className="flex-1 overflow-y-auto w-full no-scrollbar">
           <ContentArea amount={couponAmount} />
         </div>
 
         {/* Fixed Bottom Area */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 bg-white" style={{ width: '100%', maxWidth: '440px' }}>
+        <div className="sticky bottom-0 w-full shrink-0 z-20 bg-white">
            <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
            <BottomButton onHome={onHome} />
         </div>

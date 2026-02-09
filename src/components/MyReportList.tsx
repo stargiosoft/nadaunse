@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 import { DEV } from '@/lib/env';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl } from '@/lib/supabase';
 import svgPaths from "@/imports/svg-o5jcc01aog";
 import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
 import svgEmptyPaths from "@/imports/svg-mzaxb1u3cp";
 import editSvgPaths from "@/imports/svg-4xnmni03a0";
+import svgArrowPaths from "@/imports/svg-nh8ftbb7rx";
 
 // New 뱃지 그라데이션 애니메이션 스타일
 const newBadgeStyle = document.createElement('style');
@@ -212,6 +213,19 @@ function EditIcon() {
             <path d={editSvgPaths.p677f400} fill="#B7B7B7" />
             <path d={editSvgPaths.p367c240} fill="#B7B7B7" mask="url(#path-3-inside-2_27_3508)" />
           </g>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function ViewReportArrowIcon() {
+  return (
+    <div className="relative" style={{ width: '12px', height: '12px' }}>
+      <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
+        <g>
+          <path d={svgArrowPaths.p23113100} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
+          <path d="M1.75 6H10.165" stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.5" />
         </g>
       </svg>
     </div>
@@ -701,103 +715,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   // 🚀 동기적 캐시 초기화 (useState 초기화 시점에 캐시 로드)
   const initialState = getInitialCacheState();
 
-  // 🧪 DEV 환경에서 더미 보고서 데이터 추가
-  const devDummyReports: MonthlyReport[] = DEV && initialState.reports.length === 0 ? [
-    {
-      id: '2026-05',
-      title: '26년 5월 보고서',
-      reports: [
-        {
-          id: '2026-05-w4',
-          title: '5월 4주차',
-          period: '05.19 ~ 05.25',
-          tags: [{ label: '# 당당함' }, { label: '# 성실함' }, { label: '# 집중' }],
-          extraTagsCount: 2
-        },
-        {
-          id: '2026-05-w3',
-          title: '5월 3주차',
-          period: '05.12 ~ 05.18',
-          tags: [{ label: '# 자신감있는' }, { label: '# 밝은' }],
-          extraTagsCount: 1
-        },
-        {
-          id: '2026-05-w1',
-          title: '5월 1주차',
-          period: '05.01 ~ 05.07',
-          tags: [{ label: '# 사랑' }, { label: '# 행운' }, { label: '# 성장' }],
-          extraTagsCount: 2,
-          message: { label: '응원 메시지', content: '이번 주도 화이팅!' }
-        }
-      ]
-    },
-    {
-      id: '2026-04',
-      title: '26년 4월 보고서',
-      reports: [
-        {
-          id: '2026-04-w2',
-          title: '4월 2주차',
-          period: '04.08 ~ 04.14',
-          tags: [{ label: '# 도전' }, { label: '# 변화' }],
-          extraTagsCount: 1
-        },
-        {
-          id: '2026-04-w1',
-          title: '4월 1주차',
-          period: '04.01 ~ 04.07',
-          tags: [{ label: '# 새출발' }]
-        }
-      ]
-    },
-    {
-      id: '2026-03',
-      title: '26년 3월 보고서',
-      reports: [
-        {
-          id: '2026-03-w1',
-          title: '3월 1주차',
-          period: '03.01 ~ 03.07',
-          tags: [{ label: '# 희망' }, { label: '# 기회' }]
-        }
-      ]
-    },
-    {
-      id: '2026-02',
-      title: '26년 2월 보고서',
-      reports: [
-        {
-          id: '2026-02-w1',
-          title: '2월 1주차',
-          period: '02.01 ~ 02.07',
-          tags: [{ label: '# 평화' }, { label: '# 안정' }],
-          extraTagsCount: 0
-        }
-      ]
-    },
-    {
-      id: '2026-01',
-      title: '26년 1월 보고서',
-      reports: [
-        {
-          id: '2026-01-w2',
-          title: '1월 2주차',
-          period: '01.08 ~ 01.14',
-          tags: [{ label: '# 계획' }, { label: '# 목표' }, { label: '# 실천' }],
-          extraTagsCount: 1,
-          message: { label: '새해 응원', content: '새해 복 많이 받으세요!' }
-        },
-        {
-          id: '2026-01-w1',
-          title: '1월 1주차',
-          period: '01.01 ~ 01.07',
-          tags: [{ label: '# 새해' }]
-        }
-      ]
-    }
-  ] : [];
-
-  const [reports, setReports] = useState<MonthlyReport[]>(devDummyReports.length > 0 ? devDummyReports : initialState.reports);
+  const [reports, setReports] = useState<MonthlyReport[]>(initialState.reports);
   const [activeTab, setActiveTab] = useState(1); // "나의 분석 보고서" 탭이 기본 활성화
   const [currentWeekTagsCount, setCurrentWeekTagsCount] = useState(initialState.currentWeekTagsCount);
   const [isLoading, setIsLoading] = useState(forceEmptyState ? false : !initialState.hasValidCache);
@@ -1298,22 +1216,49 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
       console.log('👤 [DEV] 사용자 ID:', user.id);
 
-      // 2. generate-weekly-reports-batch Edge Function 호출 (더미 모드)
-      // AI 없이 즉시 다음 주차 더미 보고서 생성
-      const { data, error } = await supabase.functions.invoke('generate-weekly-reports-batch', {
-        body: {
-          testMode: true,
-          testUserIds: [user.id],
-          dummyMode: true
-        }
-      });
+      // 2. 이번 주 일요일 ~ 오늘 날짜 범위 계산
+      const { start } = getCurrentWeekRange();
+      const today = new Date();
+      const formatDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      const weekStartDate = formatDate(start);  // 이번 주 일요일
+      const weekEndDate = formatDate(today);    // 오늘
 
-      if (error) {
-        console.error('❌ [DEV] 배치 실행 실패:', error);
-        alert(`배치 실행 실패: ${error.message}`);
+      console.log('📅 [DEV] 이번 주 미리보기:', weekStartDate, '~', weekEndDate);
+
+      // 3. generate-weekly-reports-batch Edge Function 호출 (테스트 모드)
+      // 보고서 생성에 60초+ 소요되므로 fetchWithRetry(60초 타임아웃)를 우회하여 직접 fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/generate-weekly-reports-batch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            testMode: true,
+            testUserIds: [user.id],
+            weekStartDate,
+            weekEndDate
+          }),
+          signal: AbortSignal.timeout(180000) // 3분 타임아웃
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [DEV] 배치 실행 실패:', errorText);
+        alert('배치 실행에 실패했습니다.');
         return;
       }
 
+      const data = await response.json();
       console.log('✅ [DEV] 배치 실행 결과:', data);
 
       if (data?.success) {

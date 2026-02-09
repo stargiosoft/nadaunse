@@ -575,6 +575,20 @@ export default function UnifiedResultPage() {
           }
         }
 
+        // ⭐ rejected_tags 조회 (users 테이블)
+        let rejectedTags: string[] = [];
+        if (userData?.user?.id) {
+          const { data: userRecord } = await supabase
+            .from('users')
+            .select('rejected_tags')
+            .eq('id', userData.user.id)
+            .single();
+          rejectedTags = userRecord?.rejected_tags || [];
+          if (rejectedTags.length > 0) {
+            console.log('🚫 [UnifiedResultPage] rejected_tags 조회:', rejectedTags.length, '개');
+          }
+        }
+
         console.log('🔄 [UnifiedResultPage] extract-trait-tags API 호출...');
         const { data, error } = await supabase.functions.invoke('extract-trait-tags', {
           body: { contentAnswers, existingTags, rejectedTags }

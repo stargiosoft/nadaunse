@@ -8,7 +8,6 @@ import PaymentNew from './components/PaymentNew';
 import BirthInfoInput from './components/BirthInfoInput';
 import SajuDetail from './components/SajuDetail';
 import FreeSajuDetail from './components/FreeSajuDetail';
-import LoginBottomSheet from './components/LoginBottomSheet';
 import ProfilePage from './components/ProfilePage';
 import StatsDashboard from './components/StatsDashboard'; // ⭐ 통계 대시보드
 import PurchaseHistoryPage from './components/PurchaseHistoryPage';
@@ -44,7 +43,6 @@ import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더�
 import { PageLoader, DotLoading } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import HomePage from './pages/HomePage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
-import AlimtalkInfoInputPageTest from './components/AlimtalkInfoInputPageTest'; // ⭐ 테스트용 알림톡 정보 입력 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
 import ReceiveMyAnalysis from './components/ReceiveMyAnalysis';
@@ -112,10 +110,8 @@ function LoginToast() {
       const showTagSavedToast = sessionStorage.getItem('show_tag_saved_toast');
 
       if (showTagSavedToast === 'true') {
-        // 플래그 즉시 삭제 (중복 표시 방지)
         sessionStorage.removeItem('show_tag_saved_toast');
 
-        // 태그 저장 토스트 표시 (2줄)
         sonnerToast.custom(
           () => <Toast type="positive" message="태그가 저장됐어요!" subtitle="프로필에서 확인할 수 있어요" />,
           { duration: 3000 }
@@ -141,65 +137,6 @@ function LoginToast() {
         );
 
         console.log('🎉 [LoginToast] 로그인 성공 토스트 표시');
-      }
-
-      // ⭐ 로그인 후 cached_saju_info 저장 처리 (AuthCallback에서 플래그만 설정)
-      const shouldSaveSaju = localStorage.getItem('save_cached_saju_after_login');
-      if (shouldSaveSaju === 'true') {
-        localStorage.removeItem('save_cached_saju_after_login');
-        const cachedSajuJson = localStorage.getItem('cached_saju_info');
-        if (cachedSajuJson) {
-          (async () => {
-            try {
-              const cachedSaju = JSON.parse(cachedSajuJson);
-              console.log('📋 [LoginSajuSync] cached_saju_info 저장 시작:', cachedSaju);
-
-              const { data: { session } } = await supabase.auth.getSession();
-              if (!session?.user) return;
-
-              const userId = session.user.id;
-
-              // 기존 대표 사주 존재 여부 확인
-              const { data: primarySaju } = await supabase
-                .from('saju_records')
-                .select('id')
-                .eq('user_id', userId)
-                .eq('is_primary', true)
-                .maybeSingle();
-
-              const shouldBePrimary = !primarySaju;
-              console.log(`📌 [LoginSajuSync] 대표 사주: ${primarySaju ? '있음' : '없음'}, is_primary: ${shouldBePrimary}`);
-
-              const { data: newSaju, error: sajuError } = await supabase
-                .from('saju_records')
-                .insert({
-                  user_id: userId,
-                  full_name: cachedSaju.name,
-                  gender: cachedSaju.gender === 'female' ? 'female' : 'male',
-                  birth_date: new Date(cachedSaju.birthDate).toISOString(),
-                  birth_time: cachedSaju.birthTime || '12:00',
-                  notes: shouldBePrimary ? '본인' : '',
-                  is_primary: shouldBePrimary,
-                })
-                .select()
-                .single();
-
-              if (sajuError) {
-                console.error('❌ [LoginSajuSync] 사주 저장 실패:', sajuError);
-              } else {
-                console.log('✅ [LoginSajuSync] 사주 저장 완료:', newSaju.id);
-                if (shouldBePrimary) {
-                  localStorage.setItem('primary_saju', JSON.stringify(newSaju));
-                }
-                localStorage.setItem('profile_needs_refresh', 'true');
-              }
-              localStorage.removeItem('cached_saju_info');
-            } catch (err) {
-              console.error('❌ [LoginSajuSync] 오류:', err);
-              localStorage.removeItem('cached_saju_info');
-            }
-          })();
-        }
       }
     }, 100); // 100ms 딜레이
 
@@ -538,8 +475,8 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={id}
-        onBack={() => navigate(-1)}
-        onHome={() => navigate(-1)}
+        onBack={() => navigate('/')}
+        onHome={() => navigate('/')}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
       />
@@ -697,8 +634,8 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={product.id.toString()}
-        onBack={() => navigate(-1)}
-        onHome={() => navigate(-1)}
+        onBack={() => navigate('/')}
+        onHome={() => navigate('/')}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
       />
@@ -745,7 +682,7 @@ function PaymentNewPage() {
     return (
       <PaymentNew
         contentId={id}
-        onBack={() => navigate(`/product/${id}`)}
+        onBack={() => navigate(-1)}
         onPurchase={async () => {
           // ⭐ 로딩 페이지 이미지 미리 로드 (백그라운드에서 병렬 실행)
           preloadLoadingPageImages();
@@ -856,7 +793,7 @@ function PaymentNewPage() {
     <PaymentNew
       product={product}
       productId={id}
-      onBack={() => navigate(`/product/${id}`)}
+      onBack={() => navigate(-1)}
       onPurchase={handlePurchaseComplete}
       onNavigateToTermsOfService={() => navigate('/terms-of-service')}
       onNavigateToPrivacyPolicy={() => navigate('/privacy-policy')}
@@ -1075,8 +1012,6 @@ function FreeResultPage() {
   const productFromState = location.state?.product;  // ⭐ FreeContentLoading에서 전달받은 product
   const contentAnswersFromState = location.state?.contentAnswers;  // ⭐ 백그라운드 태그 추출용
   const fromPurchaseHistory = location.state?.fromPurchaseHistory === true;  // ⭐ 운세 기록에서 진입 여부
-  const dailyLimitReached = location.state?.dailyLimitReached === true;  // ⭐ 비회원 일일 제한 도달
-  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(dailyLimitReached);
   const hasConfirmedTags = location.state?.hasConfirmedTags === true;  // ⭐ 이미 태그 확정됨 (나다움 기록하기 스킵)
   // ⭐ DB 레코드 ID (free_content_records.id) - 각 운세 결과별 태그 구분용
   const freeRecordId = location.state?.recordId as string | undefined;
@@ -1182,7 +1117,6 @@ function FreeResultPage() {
       try {
         // ⭐ 사용자의 기존 태그 조회 (중복 방지용)
         let existingTags: string[] = [];
-        let rejectedTags: string[] = [];
         const { data: userData } = await supabase.auth.getUser();
         if (userData?.user?.id) {
           const { data: existingTagsData } = await supabase
@@ -1194,16 +1128,19 @@ function FreeResultPage() {
             existingTags = existingTagsData.map(t => t.tag_name);
             console.log('📌 [FreeResultPage] 기존 태그 조회:', existingTags.length, '개');
           }
+        }
 
-          // ⭐ 거부된 태그 조회 (재추출 방지용)
+        // ⭐ rejected_tags 조회 (users 테이블)
+        let rejectedTags: string[] = [];
+        if (userData?.user?.id) {
           const { data: userRecord } = await supabase
             .from('users')
             .select('rejected_tags')
             .eq('id', userData.user.id)
             .single();
-          if (userRecord?.rejected_tags?.length > 0) {
-            rejectedTags = userRecord.rejected_tags;
-            console.log('📌 [FreeResultPage] 거부 태그 조회:', rejectedTags.length, '개');
+          rejectedTags = userRecord?.rejected_tags || [];
+          if (rejectedTags.length > 0) {
+            console.log('🚫 [FreeResultPage] rejected_tags 조회:', rejectedTags.length, '개');
           }
         }
 
@@ -1303,7 +1240,7 @@ function FreeResultPage() {
       console.log('🔀 [FreeResultPage] 태그 추출 완료 → 나다움 기록하기로 이동');
       navigate(`/nadaum-record/${id}`, { state: { tags, freeRecordId, resultKey } });
     }
-  }, [pendingNavigation, isTagExtracted, id, tags, navigate, hasConfirmedTags, fromPurchaseHistory]);
+  }, [pendingNavigation, isTagExtracted, id, tags, navigate, hasConfirmedTags, fromPurchaseHistory, freeRecordId, resultKey]);
 
   // ⭐ '다음' 버튼 클릭 핸들러
   const handleNext = () => {
@@ -1617,37 +1554,26 @@ function FreeResultPage() {
   };
 
   return (
-    <>
-      <FreeSajuDetail
-        recordId={recordId || ''}  // fromDB 모드에서도 빈 문자열 전달 (required prop)
-        userName={userName || dbResult?.saju_name}
-        productTitle={product.title}
-        productImage={product.image}
-        contentId={id}
-        onClose={handleClose}
-        recommendedProducts={recommendedContents}
-        onProductClick={(productId) => {
-          navigate(`/product/${productId}`);
-        }}
-        onBannerClick={(productId) => navigate(`/product/${productId}`)}
-        onUserIconClick={() => navigate('/profile')}
-        fromDB={effectiveFromDB}
-        dbRecordId={effectiveDbRecordId}
-        dbData={dbResult}  // ⭐ 이미 로드된 DB 데이터 전달 (이중 조회 방지)
-        onNext={id ? handleNext : undefined}  // ⭐ 무료 콘텐츠면 항상 나다움 기록하기 버튼 표시 (재조회 시에도)
-        nextLabel={hasConfirmedTags ? '완료' : '다음'}  // ⭐ 태그 확정 여부에 따라 버튼 레이블 변경
-        isNextLoading={false}  // ⭐ 태그 추출 중이면 로딩 페이지로 이동 (버튼 스피너 표시 안 함)
-      />
-
-      {/* ⭐ 비회원 일일 제한 도달 시 로그인 유도 바텀시트 */}
-      {dailyLimitReached && id && (
-        <LoginBottomSheet
-          isOpen={isLoginSheetOpen}
-          onClose={() => setIsLoginSheetOpen(false)}
-          contentId={id}
-        />
-      )}
-    </>
+    <FreeSajuDetail
+      recordId={recordId || ''}  // fromDB 모드에서도 빈 문자열 전달 (required prop)
+      userName={userName || dbResult?.saju_name}
+      productTitle={product.title}
+      productImage={product.image}
+      contentId={id}
+      onClose={handleClose}
+      recommendedProducts={recommendedContents}
+      onProductClick={(productId) => {
+        navigate(`/product/${productId}`);
+      }}
+      onBannerClick={(productId) => navigate(`/product/${productId}`)}
+      onUserIconClick={() => navigate('/profile')}
+      fromDB={effectiveFromDB}
+      dbRecordId={effectiveDbRecordId}
+      dbData={dbResult}  // ⭐ 이미 로드된 DB 데이터 전달 (이중 조회 방지)
+      onNext={id ? handleNext : undefined}  // ⭐ 무료 콘텐츠면 항상 나다움 기록하기 버튼 표시 (재조회 시에도)
+      nextLabel={hasConfirmedTags ? '완료' : '다음'}  // ⭐ 태그 확정 여부에 따라 버튼 레이블 변경
+      isNextLoading={false}  // ⭐ 태그 추출 중이면 로딩 페이지로 이동 (버튼 스피너 표시 안 함)
+    />
   );
 }
 
@@ -1746,6 +1672,9 @@ function PendingTagsCheckPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // ⭐ 진입 즉시 로그인 토스트 플래그 제거 (태그 저장 토스트와 겹침 방지)
+    sessionStorage.removeItem('show_login_toast');
+
     const processPendingTags = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -1779,12 +1708,16 @@ function PendingTagsCheckPage() {
             console.log('📋 [PendingTagsCheck] cached_saju_info 발견:', cachedSaju);
 
             // ⭐ 기존 대표 사주(is_primary) 존재 여부 확인
-            const { data: primarySaju } = await supabase
+            const { data: primarySaju, error: primaryCheckError } = await supabase
               .from('saju_records')
               .select('id')
               .eq('user_id', session.user.id)
               .eq('is_primary', true)
               .maybeSingle();
+
+            if (primaryCheckError) {
+              console.warn('⚠️ [PendingTagsCheck] 대표 사주 조회 오류 (무시하고 진행):', primaryCheckError);
+            }
 
             const hasPrimary = !!primarySaju;
             const shouldBePrimary = !hasPrimary;
@@ -1823,6 +1756,8 @@ function PendingTagsCheckPage() {
           } catch (sajuErr) {
             console.error('❌ [PendingTagsCheck] 사주 정보 처리 오류:', sajuErr);
           }
+        } else {
+          console.warn('⚠️ [PendingTagsCheck] cached_saju_info 없음 → 사주 정보 저장 스킵');
         }
 
         // ========================================
@@ -2010,10 +1945,10 @@ function PendingTagsCheckPage() {
         <DotLoading />
         <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
           <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">잠시만</p>
+            <p className="font-semibold leading-[32.5px]">나다움 기록을</p>
           </div>
           <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">기다려주세요</p>
+            <p className="font-semibold leading-[32.5px]">준비중이에요!</p>
           </div>
         </div>
       </div>
@@ -2177,26 +2112,15 @@ function WelcomeCouponPageWrapper() {
     }
   }, [navigate]);
 
-  const handleClose = async () => {
+  const handleClose = () => {
     // ⭐ 환영 페이지를 봤다는 플래그 설정
     sessionStorage.setItem('welcomePageViewed', 'true');
 
+    // ⭐ 신규 회원 로그인 완료 토스트 표시 플래그 저장
+    sessionStorage.setItem('show_login_toast', 'true');
+
     // ⭐ 프로필 페이지 강제 리로드 플래그 저장
     sessionStorage.setItem('force_profile_reload', 'true');
-
-    // ⭐ 무료 운세에서 태그 저장 후 회원가입한 경우
-    // → /pending-tags-check로 이동하여 사주 정보 + 무료 콘텐츠 + 태그 모두 저장
-    const pendingTagsJson = localStorage.getItem('pending_trait_tags');
-
-    if (pendingTagsJson) {
-      console.log('📱 [WelcomeCoupon] pending_trait_tags 감지 → /pending-tags-check로 이동');
-      // PendingTagsCheckPage에서 사주 정보 + 무료 콘텐츠 결과 + 태그 모두 처리
-      navigate('/pending-tags-check', { replace: true });
-      return;
-    }
-
-    // ⭐ 일반 회원가입 (태그 저장 없이): 로그인 토스트 표시
-    sessionStorage.setItem('show_login_toast', 'true');
 
     // redirectAfterLogin 확인
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
@@ -2284,8 +2208,8 @@ function FreeContentDetailWrapper() {
   return (
     <FreeContentDetail
       contentId={id}
-      onBack={goBack} // 🛡️ useGoBack 사용
-      onHome={() => navigate(-1)}
+      onBack={() => navigate('/')}
+      onHome={() => navigate('/')}
       onContentClick={(contentId) => {
         console.log('🔥 App.tsx navigate 시도 (replace):', `/master/content/detail/${contentId}`);
         // ⭐ 추천 콘텐츠 클릭 시 현재 페이지를 교체 (히스토리 쌓지 않음)
@@ -3195,7 +3119,6 @@ export default function App() {
           <Route path="/result/saju" element={<ResultSajuRedirect />} /> {/* ⭐ 알림톡 템플릿 호환성 (리다이렉트) */}
           <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
           <Route path="/test/tarot" element={<TestTarotPage />} /> {/* ⭐ 테스트용 타로 셔플 (로그인 불필요) */}
-          {DEV && <Route path="/test/alimtalk-info" element={<AlimtalkInfoInputPageTest />} />} {/* ⭐ 테스트용 알림톡 정보 입력 (dev/staging만) */}
           {/* ⭐ 테스트용 Figma 컴포넌트 라우트 */}
           <Route path="/test/check-record-me" element={<CheckRecordMe />} />
           <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />
@@ -3224,7 +3147,7 @@ export default function App() {
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-          {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />} {/* ⭐ 알림톡 정보 입력 (dev/staging만) */}
+          <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
           {/* TarotDemo 백업됨 */}
 
           {/* ⭐ 공통 에러 페이지 라우트 (DEV 확인용) */}
@@ -3238,16 +3161,12 @@ export default function App() {
         </Routes>
         <Toaster
           position="bottom-center"
-          visibleToasts={5} /* ⭐ 최대 5개 토스트 스택 허용 */
-          offset={24} /* ⭐ 기본 24px offset */
+          visibleToasts={1}
+          offset={0}
           style={{ zIndex: 9999 }}
           toastOptions={{
             unstyled: true,
-            className: 'toast-viewport-center toast-animate-enter',
-            classNames: {
-              toast: 'toast-animate-enter',
-              closeButton: 'toast-animate-exit',
-            },
+            className: 'toast-viewport-center',
           }}
         />
         </ErrorBoundary>

@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-04
-> **주요 결정**: 통계 대시보드 계산 로직 통일, 추세 기간별 집계 단위
+> **최종 업데이트**: 2026-02-09
+> **주요 결정**: rejected_tags 태그 제외 시스템, last_login_at 갱신 로직 통합
 
 ---
 
@@ -13,6 +13,121 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-09
+
+### rejected_tags 태그 제외 시스템
+
+**결정**: 사용자가 CheckRecordMe에서 선택하지 않은 태그를 `users.rejected_tags`에 누적 저장하고, 다음 태그 추출 시 AI가 해당 태그를 제외
+
+**배경**:
+- 사용자가 반복적으로 같은 태그를 거부하는 패턴 발생
+- AI가 매번 동일한 태그를 추출하면 사용자 경험 저하
+
+**구현**:
+- `users.rejected_tags text[]` 컬럼 추가
+- CheckRecordMe에서 미선택 태그를 `rejected_tags`에 누적 append (중복 제거)
+- `extract-trait-tags` Edge Function에 `rejectedTags` 파라미터 추가
+- AI 프롬프트에 "절대 사용 금지 태그" 섹션으로 반영
+
+**영향 범위**:
+- `src/components/CheckRecordMe.tsx` - saveTags(), handleSave() 양쪽 플로우
+- `src/components/UnifiedResultPage.tsx` - 유료 콘텐츠 태그 추출 시 rejectedTags 전달
+- `src/App.tsx` - 무료 콘텐츠 태그 추출 시 rejectedTags 전달
+- `supabase/functions/extract-trait-tags/index.ts` - rejectedTags 프롬프트 반영
+
+---
+
+### last_login_at 갱신 로직 통합 (HomePage → App.tsx)
+
+**결정**: `last_login_at` + `visit_count` 갱신을 HomePage에서 App.tsx의 `recordTodayVisit()`로 이동
+
+**배경**:
+- 기존: HomePage의 useEffect에서만 `last_login_at` + `visit_count` 갱신
+- 문제: 사용자가 HomePage를 거치지 않고 다른 페이지로 직접 접근하면 `last_login_at` 갱신 안 됨
+- StatsDashboard의 `returningCustomers` 계산 시 `last_login_at >= startDate` 필터 사용 → 방문했지만 카운트 안 됨
+- `contentUsageRate`가 100% 초과 현상 발생
+
+**구현**:
+- `src/lib/auth.ts` `recordTodayVisit()` 수정:
+  - `visit_dates` 갱신 + `visit_count` 증가 + `last_login_at` 갱신을 하나의 update로 통합
+  - 이미 오늘 방문한 경우에도 `last_login_at`만 갱신 (접속 시각 추적)
+- `src/pages/HomePage.tsx` 간소화:
+  - 중복 방문 추적 로직 (~28줄) 제거
+  - `recordTodayVisit()`에 위임
+
+**영향 범위**:
+- `src/lib/auth.ts` - recordTodayVisit() 로직 강화
+- `src/pages/HomePage.tsx` - 중복 로직 제거
+- `src/lib/statsService.ts` - returningCustomers, contentUsageRate 정확도 개선
+
+---
+
+### anonymous_free_views INSERT 방식 전환
+
+**결정**: `generate-free-preview`에서 anonymous_free_views 기록을 upsert → INSERT로 변경, UNIQUE 제약 제거
+
+**배경**:
+- 기존: UNIQUE(fingerprint, content_id, viewed_date) + upsert → 같은 콘텐츠 재조회 시 카운트 안 됨
+- 변경: 같은 콘텐츠 재조회도 매번 카운트하여 일일 제한 더 엄격하게 적용
+
+**영향 범위**:
+- `supabase/functions/generate-free-preview/index.ts` - upsert → INSERT
+- `anonymous_free_views` 테이블 - UNIQUE 제약 제거
+
+---
+
+## 2026-02-06
+
+### 비회원 무료 콘텐츠 일일 제한 (2중 검증 아키텍처)
+
+**결정**: 클라이언트(localStorage) + 서버(IP+UA fingerprint) 2중 검증으로 비회원 하루 3개 제한
+
+**배경**:
+- 비회원이 무료 콘텐츠를 무제한 이용 → AI API 비용 증가
+- localStorage만으로는 브라우저 데이터 삭제 시 우회 가능
+- 로그인 없이도 사용자를 식별할 방법 필요
+
+**아키텍처**:
+```
+1차 검증 (클라이언트, 즉시):
+  FreeContentDetail.tsx → hasReachedLocalLimit()
+  → localStorage 'free_content_views_v1' 확인
+  → 3개 이상이면 LoginBottomSheet 표시
+
+2차 검증 (서버, Edge Function):
+  generate-free-preview → IP+UA SHA-256 fingerprint
+  → anonymous_free_views 테이블 조회
+  → 3개 이상이면 DAILY_LIMIT_REACHED 응답
+```
+
+**핵심 결정사항**:
+
+| 항목 | 결정 | 이유 |
+|------|------|------|
+| fingerprint 방식 | IP + UserAgent SHA-256 | 서버에서 즉시 생성 가능, 개인정보 최소 수집 |
+| 제한 단위 | 하루 3개 콘텐츠 | 체험 충분 + 남용 방지 균형 |
+| 날짜 기준 | KST (한국 시간) | 한국 서비스, 자정 기준 초기화 |
+| 같은 콘텐츠 재조회 | 매번 카운트 | INSERT 방식 (UNIQUE 제약 제거, 2026-02-09) |
+| 검증 실패 시 | 서비스 계속 (가용성 우선) | DB 에러 시에도 콘텐츠 이용 가능 |
+| 로그인 사용자 | 무제한 | 서버 검증 스킵 (`userId` 있으면 통과) |
+
+**신규 파일**:
+- `src/lib/freeContentLimitService.ts` — 클라이언트 제한 서비스
+- `src/components/LoginBottomSheet.tsx` — 로그인 유도 바텀시트
+- `supabase/migrations/20260206_add_guest_hash_to_free_content_records.sql` — anonymous_free_views 테이블
+
+**수정 파일**:
+- `supabase/functions/generate-free-preview/index.ts` — 서버 2차 검증 추가
+- `src/components/FreeContentDetail.tsx` — 클라이언트 1차 검증 + LoginBottomSheet
+- `src/components/FreeContentLoading.tsx` — DAILY_LIMIT_REACHED 응답 처리
+
+**자동 정리 (pg_cron)**:
+- `cleanup-anonymous-free-views` — 매일 KST 09:00 (UTC 00:00)에 전날 이전 `anonymous_free_views` 데이터 자동 삭제
+- Edge Function이 아닌 pg_cron 직접 SQL 방식 (Supabase에서 pg_cron → Edge Function HTTP 호출 불가)
+- 마이그레이션: `supabase/migrations/20260206_cleanup_anonymous_free_views_cron.sql`
 
 ---
 
@@ -78,6 +193,40 @@
 
 ---
 
+## 2026-02-09
+
+### 배치 selfContinue 패턴 + shutdown 대응
+
+**결정**: 배치 함수가 시간 제한 시 자기 자신을 재호출(selfContinue)하는 fire-and-forget 패턴 도입
+
+**배경**:
+- 문제 1: 관리자 "보고서 다시 보내기" 시 클라이언트가 while 루프로 isPartial 재호출 → 브라우저 타임아웃/shutdown
+- 문제 2: Supabase Edge Function이 120~180초 실행 시 isolate shutdown 발생
+- 문제 3: `.single()` 쿼리가 "본인" 사주 2개인 사용자에서 400 에러
+
+**해결**:
+1. **maxExecutionMs 60초**: 마지막 배치 포함 ~90초 이내 종료 → shutdown 방지
+2. **selfContinue 파라미터**: `true`이면 시간 제한 후 남은 유저로 자기 자신 재호출 (fire-and-forget fetch)
+3. **클라이언트 단순화**: 1회 호출 → "서버에 발송 요청 중..." → 결과 표시 → 끝
+4. **`.single()` → `.limit(1)`**: `is_primary desc, created_at desc` 정렬로 복수 본인 사주 대응
+
+**동작 흐름 (관리자 재발송)**:
+```
+클릭 → batch 함수 1회 호출 (selfContinue: true)
+  → 60초간 ~6명 처리 → 클라이언트에 응답 반환
+  → 동시에: 나머지로 자기 자신 재호출 (fire-and-forget)
+  → 새 인스턴스: 60초간 ~6명 처리 → 또 셀프 호출...
+  → 전체 완료 (Slack 알림)
+관리자 브라우저는 첫 응답 받고 끝. 꺼도 됨.
+```
+
+**영향 범위**:
+- `supabase/functions/generate-weekly-reports-batch/index.ts` - selfContinue, 60초 제한
+- `supabase/functions/generate-weekly-report/index.ts` - `.single()` → `.limit(1)` 수정
+- `src/components/MyReportList.tsx` - 클라이언트 while 루프 제거, fire-and-forget
+
+---
+
 ## 2026-02-03
 
 ### 주간 보고서 자동 발송 시스템 (pg_cron + pg_net)
@@ -92,11 +241,12 @@
 **구현 아키텍처**:
 ```
 pg_cron (Supabase 내장)
-    ↓ 매주 화요일 15:30 KST (테스트) / 일요일 21:00 KST (정식)
+    ↓ 매주 일요일 12:00 KST부터 10분 간격 반복 호출
 pg_net.http_post()
     ↓ Authorization: Bearer {service_role_key from Vault}
 generate-weekly-reports-batch Edge Function
-    ↓ concurrency: 5, 2초 간격
+    ↓ concurrency: 3, 2초 간격, 60초 시간 제한
+    ↓ selfContinue: 시간 제한 시 자기 자신 재호출 (fire-and-forget)
 generate-weekly-report Edge Function (각 사용자별)
     ↓ GPT-5.1 보고서 생성
 send-report-alimtalk Edge Function
@@ -106,9 +256,11 @@ send-report-alimtalk Edge Function
 
 **핵심 결정 사항**:
 1. **Vault 사용**: Edge Function Secrets와 별개로, pg_cron에서 사용할 service_role_key를 Vault에 저장
-2. **배치 처리**: concurrency 5로 병렬 처리, 2초 간격으로 API 부하 방지
-3. **타임아웃 설정**: pg_net 300초, 프론트엔드 재발송 180초
-4. **중복 방지**: 기존 보고서 있으면 자동 스킵 (forceRegenerate 옵션으로 강제 재생성 가능)
+2. **배치 처리**: concurrency 3으로 병렬 처리, 2초 간격으로 API 부하 방지
+3. **시간 제한 60초**: maxExecutionMs=60_000 (마지막 배치 포함 ~90초 이내 종료, Supabase isolate shutdown 방지)
+4. **selfContinue 패턴**: 시간 제한 시 남은 유저 ID로 자기 자신을 재호출 (fire-and-forget fetch). 관리자 재발송 시 클라이언트 1회 호출로 끝, 브라우저 닫아도 서버에서 자동 완료
+5. **이어하기 패턴**: pg_cron 10분 간격 반복 호출 시에는 기존 보고서 있는 유저 자동 스킵 (selfContinue 불필요)
+6. **중복 방지**: 기존 보고서 있으면 자동 스킵 (forceRegenerate 옵션으로 강제 재생성 가능)
 
 **영향 범위**:
 - `supabase/functions/generate-weekly-report/`
@@ -137,7 +289,8 @@ users.role === 'master' 체크
 │       └── 태그 있는데 보고서 없는 사용자 조회
 ├── 통계 표시 (태그 사용자, 발송 완료, 실패)
 └── "보고서 다시 보내기" 버튼
-    └── generate-weekly-report 순차 호출 (2초 간격, 3분 타임아웃)
+    └── generate-weekly-reports-batch 1회 호출 (selfContinue: true)
+        → 서버에서 자동 이어하기, 브라우저 닫아도 됨
 ```
 
 **실패 판단 기준**:
@@ -4588,6 +4741,102 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
-**문서 버전**: 2.8.0
-**최종 업데이트**: 2026-01-16
+---
+
+### iOS 스와이프 뒤로가기: 콘텐츠 상세 페이지 navigate('/') → navigate(-1) 전환
+**결정**: 콘텐츠 상세 페이지의 뒤로가기/홈 버튼에서 `navigate('/')` (push mode) 대신 `navigate(-1)` 사용
+**날짜**: 2026-02-06
+
+**배경**:
+- 홈 → 유료 상세 → 홈 → 무료 상세 → 홈 → 유료 상세 → iOS 스와이프 뒤로가기 시
+- 홈이 아닌 무료 상세로 이동하고, 이후 페이지가 닫히는 버그
+- 4~5번째 사이클부터 히스토리 스택이 꼬이기 시작
+
+**문제 원인**:
+```typescript
+// ❌ navigate('/') = history.push → 히스토리 스택에 '/' 엔트리 중복 추가
+onBack={() => navigate('/')}
+onHome={() => navigate('/')}
+```
+
+**히스토리 스택 분석**:
+```
+정상 (navigate(-1)):
+[Buffer×5, Home] → click → [Buffer×5, Home, Detail] → back → [Buffer×5, Home]
+
+버그 (navigate('/')):
+[Buffer×5, Home] → click → [Buffer×5, Home, Detail]
+→ navigate('/') → [Buffer×5, Home, Detail, Home(NEW!)]  ← push로 중복!
+→ click → [Buffer×5, Home, Detail, Home, Detail2]
+→ navigate('/') → [Buffer×5, Home, Detail, Home, Detail2, Home(NEW!)]
+→ iOS 스와이프 → Detail2로 이동 (Home이 아닌!)
+```
+
+**해결 방법**:
+```typescript
+// ✅ navigate(-1) = history.back() → 자연스러운 히스토리 탐색
+onBack={() => navigate(-1)}
+onHome={() => navigate(-1)}
+
+// ✅ 에러 fallback은 replace로 (히스토리 쌓지 않음)
+navigate('/', { replace: true })
+```
+
+**수정 파일 (3개)**:
+- `src/App.tsx`: FreeContentDetailWrapper onHome, ProductDetailPage FreeContentDetail onBack/onHome (3곳)
+- `src/components/MasterContentDetailPage.tsx`: 모든 navigate('/') → navigate(-1) (10곳)
+- `src/components/FreeContentLoading.tsx`: 에러 fallback navigate('/') → navigate('/', { replace: true }) (11곳)
+
+**핵심 원리** (기존 결정 재확인):
+- `navigate('/')` (push mode)는 히스토리 스택에 중복 '/' 엔트리를 만들어 iOS 버퍼 시스템과 충돌
+- 콘텐츠 상세에서 홈으로 돌아갈 때는 반드시 `navigate(-1)` 사용 (자연스러운 히스토리 탐색)
+- 에러/예외 상황의 fallback은 `navigate('/', { replace: true })` 사용 (스택 오염 방지)
+- **향후 새 페이지에서 홈으로 돌아가는 버튼 추가 시 반드시 `navigate(-1)` 사용할 것**
+
+**테스트**: iOS Safari에서 홈 ↔ 유료/무료 상세 반복 이동 후 스와이프 뒤로가기로 정상 복귀 확인
+
+---
+
+---
+
+## [2026-02-09] 유료 콘텐츠 초개인화 프롬프트 (나다움 태그 기반)
+
+### 결정 사항
+- `generate-saju-answer`, `generate-tarot-answer`에 `personalizationData` 파라미터 추가
+- `generate-content-answers`에서 `user_trait_tags` 테이블 조회 후 태그 데이터를 하위 함수에 전달
+- 태그가 있는 사용자: 최근 4주 태그 + 누적 태그 + 심리 흐름을 프롬프트에 포함
+- 태그가 없는 사용자: 기존 기본 프롬프트 유지
+
+### 초개인화 분기 조건
+```typescript
+if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.length > 0))
+```
+- positive 태그가 1개라도 있으면 초개인화 프롬프트 적용
+- negative만 있고 positive가 0개인 경우 기본 프롬프트
+
+### 프롬프트 구조 (초개인화 시)
+```
+## 질문자 정보
+### 상황 (기존 questionerInfo)
+### 질문자가 직접 선택한 기질/성향
+  - 최근 4주 강점/단점 태그 (최우선 근거)
+  - 누적 강점/단점 태그 (배경 지식)
+### 질문자의 최근 4주간 심리 흐름
+```
+
+### 근거
+- 사용자가 모은 나다움 태그를 운세 풀이에 반영하여 개인화 정확도 향상
+- `generate-content-answers`에서 한 번만 DB 조회 후 하위 함수에 전달 (효율적)
+- 조회 실패 시 graceful degradation (기본 프롬프트로 fallback)
+
+### 영향 범위
+- `supabase/functions/generate-content-answers/index.ts` - 태그 조회 + 전달 로직 추가
+- `supabase/functions/generate-saju-answer/index.ts` - personalizationData 수신 + 프롬프트 분기
+- `supabase/functions/generate-tarot-answer/index.ts` - 동일 패턴 적용
+- 불필요한 `master_content_questions` DB 업데이트 로직 제거 (두 함수 모두)
+
+---
+
+**문서 버전**: 3.0.0
+**최종 업데이트**: 2026-02-09
 **문서 끝**

@@ -12,7 +12,6 @@ import svgPaths from "../imports/svg-rj5zh7ifhy";
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { DotLoading } from './ui/PageLoader';
-import { recordFreeContentView } from '../lib/freeContentLimitService';
 
 interface FreeContentLoadingProps {
   userName?: string;
@@ -73,6 +72,33 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
   console.log('📌 [FreeContentLoading] guestMode:', guestMode);
   console.log('📌 [FreeContentLoading] userName:', userNameFromUrl);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // ⭐ 비회원 일일 사용 카운터 증가 (localStorage 기반)
+  const incrementFreeDailyUsage = () => {
+    const FREE_DAILY_LIMIT = 3;
+    const STORAGE_KEY = 'free_content_daily_usage';
+    try {
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstDate = new Date(now.getTime() + kstOffset);
+      const todayKST = kstDate.toISOString().split('T')[0];
+
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let newCount = 1;
+
+      if (stored) {
+        const { date, count } = JSON.parse(stored);
+        if (date === todayKST) {
+          newCount = count + 1;
+        }
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: todayKST, count: newCount }));
+      console.log(`📊 [FreeContentLoading] 비회원 일일 사용량 업데이트: ${newCount}/${FREE_DAILY_LIMIT}`);
+    } catch (e) {
+      console.warn('⚠️ [FreeContentLoading] 일일 사용량 카운터 업데이트 실패:', e);
+    }
+  };
 
   // ⭐️ Edge Function 동기 호출 (DB 폴링 제거)
   useEffect(() => {
@@ -170,7 +196,10 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
               previewText: '전반적으로 건강한 상태를 유지하고 있으나, 스트레스 관리에 신경 쓰시는 것이 좋겠습니다.'
             }
           ];
-          
+
+          // ⭐ 비회원 일일 카운터 증가 (allProducts mock 데이터)
+          incrementFreeDailyUsage();
+
           // localStorage에 저장
           const resultData = {
             contentId: contentId,
@@ -178,7 +207,7 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
             results: mockResults,
             createdAt: new Date().toISOString()
           };
-          
+
           // ⭐ 타임스탬프 추가: 동일 콘텐츠+사주로 다시 볼 때도 새로운 키 생성 (이전 태그 재사용 방지)
           const resultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
           localStorage.setItem(resultKey, JSON.stringify(resultData));
@@ -361,50 +390,21 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         let shouldUseMockFallback = false;
         let fallbackReason = '';
 
-        // ⭐ 비회원 일일 제한 도달 에러 처리 (Edge Function은 200 + success:false로 반환)
+        // ⭐ 비회원 일일 제한 도달 체크 (서버 2차 검증)
         if (result.data?.error === 'DAILY_LIMIT_REACHED') {
-          {
-            console.warn('🚫 [FreeContentLoading] 비회원 일일 제한 도달 → 로그인 유도 결과 페이지로 이동');
+          console.log('🚫 [FreeContentLoading] 서버 일일 제한 도달 → 콘텐츠 상세로 이동');
 
-            // 더미 데이터에 로그인 유도 메시지 삽입
-            const lockedMessage = '로그인하면 무료로 풀이를 볼 수 있어요. 비회원은 하루 3개까지만 볼 수 있습니다.';
-            const lockedResults = (questions || []).map((q: { id: string; question_text: string; question_order: number }, i: number) => ({
-              questionId: q.id || `q${i + 1}`,
-              questionOrder: q.question_order || i + 1,
-              questionText: q.question_text || `질문 ${i + 1}`,
-              questionType: 'text',
-              previewText: lockedMessage
-            }));
+          // localStorage도 동기화 (서버와 클라이언트 상태 일치)
+          const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+          const todayKST = kstNow.toISOString().split('T')[0];
+          localStorage.setItem('free_content_daily_usage', JSON.stringify({ date: todayKST, count: 3 }));
 
-            // fallback: 질문 정보가 없으면 기본 3개
-            const finalResults = lockedResults.length > 0 ? lockedResults : [
-              { questionId: 'q1', questionOrder: 1, questionText: '풀이 내용', questionType: 'text', previewText: lockedMessage },
-              { questionId: 'q2', questionOrder: 2, questionText: '풀이 내용', questionType: 'text', previewText: lockedMessage },
-              { questionId: 'q3', questionOrder: 3, questionText: '풀이 내용', questionType: 'text', previewText: lockedMessage },
-            ];
-
-            const lockedResultData = {
-              contentId: contentId,
-              sajuData: sajuDataForCache,
-              results: finalResults,
-              createdAt: new Date().toISOString()
-            };
-
-            const lockedResultKey = `free_content_${contentId}_locked_${Date.now()}`;
-            localStorage.setItem(lockedResultKey, JSON.stringify(lockedResultData));
-
-            navigate(`/product/${contentId}/result/free`, {
-              replace: true,
-              state: {
-                resultKey: lockedResultKey,
-                userName: userNameFromUrl,
-                contentId: contentId,
-                product: productInfo,
-                dailyLimitReached: true  // ⭐ 바텀시트 표시 플래그
-              }
-            });
-            return;
-          }
+          // 콘텐츠 상세로 돌아가면서 LoginBottomSheet 표시 유도
+          navigate(`/free/content/${contentId}`, {
+            replace: true,
+            state: { dailyLimitReached: true }
+          });
+          return;
         }
 
         // 에러 체크 - result.error 존재 여부
@@ -446,21 +446,33 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           console.warn('📌 Fallback 사유:', fallbackReason);
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-          // Mock 데이터 생성 (DB에서 가져온 실제 질문 사용)
-          const defaultMockText = `${userNameFromUrl}님의 운세를 분석해보니 긍정적인 흐름이 보입니다. 자세한 풀이는 유료 버전에서 확인하세요.`;
-          const mockResults = (questions && questions.length > 0)
-            ? questions.map((q: { id: string; question_text: string; question_order: number }, i: number) => ({
-                questionId: q.id || `q${i + 1}`,
-                questionOrder: q.question_order || i + 1,
-                questionText: q.question_text || `질문 ${i + 1}`,
-                questionType: 'text',
-                previewText: defaultMockText
-              }))
-            : [
-                { questionId: 'q1', questionOrder: 1, questionText: '풀이 내용', questionType: 'text', previewText: defaultMockText },
-                { questionId: 'q2', questionOrder: 2, questionText: '풀이 내용', questionType: 'text', previewText: defaultMockText },
-                { questionId: 'q3', questionOrder: 3, questionText: '풀이 내용', questionType: 'text', previewText: defaultMockText },
-              ];
+          // ⭐ 비회원 일일 카운터 증가 (mock fallback)
+          incrementFreeDailyUsage();
+
+          // Mock 데이터 생성 (기존 로직 재사용)
+          const mockResults = [
+            {
+              questionId: 'q1',
+              questionOrder: 1,
+              questionText: '나의 연애운은?',
+              questionType: 'text',
+              previewText: `${userNameFromUrl}님의 타고난 매력과 사랑의 에너지를 분석해보니, 곧 좋은 인연을 만날 가능성이 높습니다. 자세한 풀이는 유료 버전에서 확인하세요.`
+            },
+            {
+              questionId: 'q2',
+              questionOrder: 2,
+              questionText: '나의 재물운은?',
+              questionType: 'text',
+              previewText: '당신의 재물운은 꾸준한 상승세를 보이고 있습니다. 특히 올해 하반기에 좋은 기회가 있을 것으로 예상됩니다.'
+            },
+            {
+              questionId: 'q3',
+              questionOrder: 3,
+              questionText: '나의 건강운은?',
+              questionType: 'text',
+              previewText: '전반적으로 건강한 상태를 유지하고 있으나, 스트레스 관리에 신경 쓰시는 것이 좋겠습니다.'
+            }
+          ];
 
           // localStorage에 저장
           const fallbackResultData = {
@@ -474,12 +486,6 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           const fallbackResultKey = `free_content_${contentId}_${sajuRecordId || 'guest'}_${Date.now()}`;
           localStorage.setItem(fallbackResultKey, JSON.stringify(fallbackResultData));
           console.log('💾 [FreeContentLoading] localStorage 저장 완료 (mock fallback)');
-
-          // ⭐ 비로그인 유저: mock fallback에서도 무료 콘텐츠 조회 기록 (일일 제한용)
-          if (!currentUserId && contentId) {
-            recordFreeContentView(contentId);
-            console.log('📊 [FreeContentLoading] 비회원 무료 콘텐츠 조회 기록 완료 (mock fallback)');
-          }
 
           // 결과 페이지로 이동
           // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체
@@ -498,6 +504,9 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
 
         console.log('✅ [FreeContentLoading] Edge Function 호출 성공');
         console.log('📌 [FreeContentLoading] answers 개수:', result.data.answers.length);
+
+        // ⭐ 비회원 일일 카운터 증가 (Edge Function 성공)
+        incrementFreeDailyUsage();
 
         // ⭐️ 4단계: Edge Function 응답을 FreeSajuDetail 형식으로 변환
         const results = result.data.answers.map((answer: any) => ({
@@ -539,12 +548,6 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         if (currentUserId) {
           localStorage.setItem('free_content_needs_refresh', 'true');
           console.log('🔄 [FreeContentLoading] 운세 기록 캐시 갱신 플래그 설정');
-        }
-
-        // ⭐ 비로그인 유저: localStorage에 무료 콘텐츠 조회 기록 (일일 제한용)
-        if (!currentUserId && contentId) {
-          recordFreeContentView(contentId);
-          console.log('📊 [FreeContentLoading] 비회원 무료 콘텐츠 조회 기록 완료');
         }
 
         // ⭐️ 6단계: 결과 페이지로 이동
