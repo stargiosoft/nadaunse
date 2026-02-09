@@ -1223,14 +1223,27 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         callCount++;
         console.log(`📦 [Admin] 배치 호출 #${callCount} - 대상: ${remainingUserIds.length}명`);
 
-        const { data, error } = await supabase.functions.invoke('generate-weekly-reports-batch', {
-          body: {
-            testMode: true,
-            testUserIds: remainingUserIds,
-            weekStartDate: selectedWeek.weekStartDate,
-            weekEndDate: selectedWeek.weekEndDate
-          }
-        });
+        // 배치 함수는 최대 300초 소요 → 360초 타임아웃 설정
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 360000);
+
+        let data, error;
+        try {
+          const result = await supabase.functions.invoke('generate-weekly-reports-batch', {
+            body: {
+              testMode: true,
+              testUserIds: remainingUserIds,
+              weekStartDate: selectedWeek.weekStartDate,
+              weekEndDate: selectedWeek.weekEndDate
+            },
+            // @ts-expect-error - supabase-js FunctionInvokeOptions에 signal 미정의이나 내부 fetch에 전달됨
+            signal: controller.signal
+          });
+          data = result.data;
+          error = result.error;
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (error) {
           console.error(`❌ [Admin] 배치 호출 #${callCount} 오류:`, error);
