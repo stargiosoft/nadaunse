@@ -12,6 +12,8 @@ import { supabase } from '@/lib/supabase';
 import { invalidateWeeklyReportCache } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
+import { DEV } from '@/lib/env';
+import { useNavigate } from 'react-router-dom';
 
 // --- Icons ---
 
@@ -389,6 +391,7 @@ type MemoMode = 'loading' | 'write' | 'view' | 'edit';
 type ViewState = 'input' | 'edit' | 'result' | 'mypage' | 'report' | 'tarotPicking' | 'tarotResult' | 'prescription';
 
 export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: ReportWeeklyMemoProps) {
+  const navigate = useNavigate();
   const [text, setText] = useState("");
   const [savedText, setSavedText] = useState<string | null>(null);
   const [mode, setMode] = useState<MemoMode>('loading');
@@ -616,6 +619,23 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
                   whiteSpace: 'pre-wrap'
                 }}>{savedText}</p>
               </div>
+
+              {/* 개발 환경 전용 테스트 버튼 */}
+              <button
+                onClick={() => navigate('/test/completion-coupon')}
+                className="mt-6 w-full text-center rounded-lg"
+                style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#48b2af',
+                  backgroundColor: '#f0f8f8',
+                  padding: '12px 16px',
+                  border: '1px solid #e0f2f1'
+                }}
+              >
+                🎫 쿠폰 완료 화면 보기 (테스트용)
+              </button>
             </div>
           </div>
 
@@ -637,6 +657,24 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
         <div className="flex-1 w-full relative">
         <div className="w-full" style={{ padding: '4px 20px 40px' }}>
           <TextAreaSection text={text} onChange={setText} />
+
+          {/* 개발 환경 전용 테스트 버튼 */}
+          <button
+            onClick={() => navigate('/test/completion-coupon')}
+            className="w-full text-center rounded-lg"
+            style={{
+              fontFamily: 'Pretendard Variable',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#48b2af',
+              backgroundColor: '#f0f8f8',
+              padding: '12px 16px',
+              border: '1px solid #e0f2f1',
+              marginTop: '20px'
+            }}
+          >
+            🎫 쿠폰 완료 화면 보기 (테스트용)
+          </button>
 
         </div>
       </div>

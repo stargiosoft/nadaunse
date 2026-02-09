@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // --- Components ---
 
@@ -210,6 +211,7 @@ interface ReportWeeklyMemoEditProps {
 }
 
 export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: ReportWeeklyMemoEditProps) {
+  const navigate = useNavigate();
   const [text, setText] = useState(initialText || "이번 한주도 고생했어. 힘든일도 많고 포기하고 싶을 때마다 괜찮다고 더 버텨보자고 애썼다고 칭찬해주고 싶어.");
 
   return (
@@ -220,6 +222,24 @@ export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: 
         <div className="flex-1 w-full relative">
           <div className="w-full" style={{ padding: '4px 20px 40px' }}>
             <TextAreaSection text={text} onChange={setText} />
+
+            {/* 개발 환경 전용 테스트 버튼 */}
+            <button
+              onClick={() => navigate('/test/completion-coupon')}
+              className="w-full text-center rounded-lg"
+              style={{
+                fontFamily: 'Pretendard Variable',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#48b2af',
+                backgroundColor: '#f0f8f8',
+                padding: '12px 16px',
+                border: '1px solid #e0f2f1',
+                marginTop: '20px'
+              }}
+            >
+              🎫 쿠폰 완료 화면 보기 (테스트용)
+            </button>
           </div>
         </div>
 
