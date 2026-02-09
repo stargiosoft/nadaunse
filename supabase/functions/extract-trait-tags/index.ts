@@ -17,6 +17,8 @@ interface ExtractTraitTagsRequest {
   }>
   // 사용자가 기존에 저장한 태그 (중복 방지용)
   existingTags?: string[]
+  // 사용자가 선택하지 않은 태그 (추출 제외)
+  rejectedTags?: string[]
 }
 
 interface ExtractTraitTagsResponse {
@@ -38,7 +40,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { contentAnswers, existingTags = [] }: ExtractTraitTagsRequest = await req.json()
+    const { contentAnswers, existingTags = [], rejectedTags = [] }: ExtractTraitTagsRequest = await req.json()
 
     // 유효성 검증
     if (!contentAnswers || !Array.isArray(contentAnswers) || contentAnswers.length === 0) {
@@ -65,6 +67,11 @@ serve(async (req) => {
     // 기존 태그 문자열 구성
     const existingTagsStr = existingTags.length > 0
       ? JSON.stringify(existingTags)
+      : '[]'
+
+    // 거부된 태그 문자열 구성
+    const rejectedTagsStr = rejectedTags.length > 0
+      ? JSON.stringify(rejectedTags)
       : '[]'
 
     // 프롬프트 구성
@@ -94,6 +101,10 @@ ${contentText}
 아래 사용자가 저장한 기존 태그와 의미가 중복되지 않는 태그를 우선해 추출해.
 ${existingTagsStr}
 
+## **금지 태그**
+아래 태그는 사용자가 선택하지 않은 태그야. 이 태그와 동일하거나 의미가 매우 유사한 태그는 절대 추출하지 마.
+${rejectedTagsStr}
+
 ## **출력 형식**
 아래 JSON 형식으로만 응답해:
 [
@@ -122,6 +133,7 @@ ${existingTagsStr}
     console.log('🏷️ [extract-trait-tags] OpenAI API 호출 시작 (GPT-4.1-mini)...')
     console.log('📌 [extract-trait-tags] 콘텐츠 답변 수:', contentAnswers.length)
     console.log('📌 [extract-trait-tags] 기존 태그 수:', existingTags.length)
+    console.log('📌 [extract-trait-tags] 거부 태그 수:', rejectedTags.length)
 
     // OpenAI Chat Completions API 호출 (GPT-4.1-mini)
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

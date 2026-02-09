@@ -279,6 +279,29 @@ export default function CheckRecordMe({
           console.log('🗑️ [CheckRecordMe] 미선택 태그 삭제 완료');
         }
 
+        // ⭐ 선택 안 한 태그를 users.rejected_tags에 누적 저장
+        if (unselectedTagNames.length > 0 && session?.user?.id) {
+          try {
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('rejected_tags')
+              .eq('id', session.user.id)
+              .single();
+
+            const existingRejected: string[] = userRecord?.rejected_tags || [];
+            const merged = [...new Set([...existingRejected, ...unselectedTagNames])];
+
+            await supabase
+              .from('users')
+              .update({ rejected_tags: merged })
+              .eq('id', session.user.id);
+
+            console.log('🚫 [CheckRecordMe] rejected_tags 저장 완료:', merged.length, '개');
+          } catch (rejectedErr) {
+            console.warn('⚠️ [CheckRecordMe] rejected_tags 저장 실패:', rejectedErr);
+          }
+        }
+
         console.log('✅ [CheckRecordMe] 태그 확정 완료');
         // 🚀 ProfilePage & NadaumTagsList & MyReportList 캐시 무효화
         localStorage.setItem('trait_tags_needs_refresh', 'true');
@@ -506,6 +529,29 @@ export default function CheckRecordMe({
             await deleteQuery.eq('source_content_id', contentId).eq('source_type', sourceType);
           }
           console.log('🗑️ [CheckRecordMe/handleSave] 미선택 태그 삭제 완료');
+        }
+
+        // ⭐ 선택 안 한 태그를 users.rejected_tags에 누적 저장
+        if (unselectedTagNames.length > 0 && session?.user?.id) {
+          try {
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('rejected_tags')
+              .eq('id', session.user.id)
+              .single();
+
+            const existingRejected: string[] = userRecord?.rejected_tags || [];
+            const merged = [...new Set([...existingRejected, ...unselectedTagNames])];
+
+            await supabase
+              .from('users')
+              .update({ rejected_tags: merged })
+              .eq('id', session.user.id);
+
+            console.log('🚫 [CheckRecordMe/handleSave] rejected_tags 저장 완료:', merged.length, '개');
+          } catch (rejectedErr) {
+            console.warn('⚠️ [CheckRecordMe/handleSave] rejected_tags 저장 실패:', rejectedErr);
+          }
         }
 
         console.log('✅ [CheckRecordMe/handleSave] 태그 확정 완료');
