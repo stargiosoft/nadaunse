@@ -20,8 +20,8 @@ export default function WeeklyReportLoading({
         <div className="flex flex-col items-center relative shrink-0 w-full">
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 600,
-            fontSize: '22px',
+            fontWeight: 500,
+            fontSize: '20px',
             lineHeight: '32.5px',
             color: '#000000',
             letterSpacing: '-0.22px',
