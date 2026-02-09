@@ -59,7 +59,8 @@ function Toast({ onComplete, message = "변경사항이 저장되었어요" }: {
 // 공통 TopBar - X 버튼 (write/view 모드 공통)
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="shrink-0 w-full z-20" style={{ position: 'sticky', top: 0, height: '52px', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      <div className="w-full" style={{ maxWidth: '440px', height: '52px' }}>
       <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
           style={{
@@ -85,6 +86,7 @@ function TopBar({ onClose }: { onClose?: () => void }) {
           />
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -101,6 +103,7 @@ interface TextAreaSectionProps {
 
 function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
   const maxLength = 120;
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -116,8 +119,8 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
         <div className="flex flex-col w-full" style={{ gap: '4px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 700,
-            fontSize: '18px',
+            fontWeight: 500,
+            fontSize: '16px',
             lineHeight: '24px',
             color: '#000000',
             letterSpacing: '-0.36px'
@@ -134,15 +137,23 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
 
         {/* Text Area Box */}
         <div
-          className="w-full relative border focus-within:border-[#48b2af] transition-colors duration-200"
-          style={{ borderRadius: '20px', padding: '20px 16px', borderColor: '#f9f9f9', backgroundColor: '#f9f9f9' }}
+          className="w-full relative border transition-colors duration-200"
+          style={{
+            borderRadius: '20px',
+            padding: '16px',
+            borderColor: isFocused ? '#48b2af' : '#f9f9f9',
+            backgroundColor: '#f9f9f9',
+            outline: isFocused ? '0.5px solid #48B2AF' : 'none'
+          }}
         >
           <div className="flex flex-col w-full" style={{ gap: '12px' }}>
             <textarea
               value={text}
               onChange={handleChange}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               placeholder="마음이 가는대로 적어보세요 :)"
-              className="w-full bg-transparent outline-none resize-none placeholder:text-[#999999] placeholder:font-normal"
+              className="w-full bg-transparent outline-none resize-none placeholder:text-[#B7B7B7] placeholder:font-normal placeholder:text-[15px]"
               style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 400,
@@ -554,12 +565,11 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
   if (mode === 'view') {
     return (
       <>
-        <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
-          <TopBarWithClose onClose={onNext} />
-
+        <TopBarWithClose onClose={onNext} />
+        <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }}>
           {/* Content */}
-          <div className="flex-1 w-full relative" style={{ paddingBottom: '100px' }}>
-            <div className="w-full" style={{ padding: '16px 20px 40px 20px' }}>
+          <div className="flex-1 w-full relative">
+            <div className="w-full" style={{ padding: '12px 20px 40px 20px' }}>
               {/* Header with Edit Icon */}
               <div className="flex items-start justify-between w-full" style={{ marginBottom: '12px', padding: '0 4px' }}>
                 <div className="flex flex-col" style={{ gap: '4px' }}>
@@ -593,7 +603,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
               {/* 읽기 전용 텍스트 박스 */}
               <div
                 className="w-full relative"
-                style={{ borderRadius: '20px', padding: '20px 16px', backgroundColor: '#f9f9f9' }}
+                style={{ borderRadius: '20px', padding: '16px', backgroundColor: '#f9f9f9' }}
               >
                 <p style={{
                   fontFamily: 'Pretendard Variable',
@@ -620,11 +630,11 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
 
   // 작성 모드 (write) - 최초 작성
   return (
-    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
+    <>
       <TopBar onClose={onClose} />
-
-      {/* Content */}
-      <div className="flex-1 w-full relative" style={{ paddingBottom: '100px' }}>
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }}>
+        {/* Content */}
+        <div className="flex-1 w-full relative">
         <div className="w-full" style={{ padding: '16px 20px 40px 20px' }}>
           <TextAreaSection text={text} onChange={setText} />
 
@@ -632,6 +642,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
       </div>
 
       <BottomButtons onPrev={onPrev} onComplete={handleComplete} isLoading={isSaving} />
-    </div>
+      </div>
+    </>
   );
 }
