@@ -10,7 +10,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 const BATCH_CONFIG = {
   concurrency: 3, // 동시 처리 수 (5→3, 503 방지)
   delayBetweenBatches: 2000, // 배치 간 딜레이 (ms)
-  maxExecutionMs: 120_000, // 최대 실행 시간 120초 (빠른 응답 반환 → 클라이언트 isPartial 루프로 이어하기)
+  maxExecutionMs: 120_000, // 최대 실행 시간 120초 (selfContinue면 서버 자동 이어하기, 아니면 pg_cron 이어하기)
 }
 
 // 전주 일~토 날짜 범위 계산
@@ -68,6 +68,7 @@ serve(async (req) => {
     let dummyMode = false
     let customWeekStartDate: string | undefined  // YYYY-MM-DD
     let customWeekEndDate: string | undefined    // YYYY-MM-DD
+    let selfContinue = false  // true면 시간 제한 시 자동으로 자기 자신 재호출 (클라이언트 개입 불필요)
 
     try {
       const body = await req.json()
@@ -76,6 +77,7 @@ serve(async (req) => {
       dummyMode = body.dummyMode || false
       customWeekStartDate = body.weekStartDate
       customWeekEndDate = body.weekEndDate
+      selfContinue = body.selfContinue || false
     } catch {
       // body 없으면 정상 배치 모드
     }
@@ -491,6 +493,32 @@ serve(async (req) => {
       failedUsers.forEach(f => {
         console.error(`  - ${f.userId}: ${f.error}`)
       })
+    }
+
+    // 8. selfContinue: 시간 제한 종료 시 남은 유저로 자기 자신 재호출 (fire-and-forget)
+    if (stoppedByTimeLimit && selfContinue && remainingCount > 0) {
+      const processedUserIds = new Set(results.map(r => r.userId))
+      const remainingIds = filteredUserIds.filter(id => !processedUserIds.has(id))
+
+      if (remainingIds.length > 0) {
+        console.log(`🔄 [selfContinue] 자동 이어하기: ${remainingIds.length}명 남음, 셀프 호출 시작`)
+
+        const selfUrl = `${supabaseUrl}/functions/v1/generate-weekly-reports-batch`
+        fetch(selfUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            testMode: true,
+            testUserIds: remainingIds,
+            weekStartDate: customWeekStartDate,
+            weekEndDate: customWeekEndDate,
+            selfContinue: true
+          })
+        }).catch(err => console.error('❌ [selfContinue] 셀프 호출 실패:', err))
+      }
     }
 
     return new Response(
