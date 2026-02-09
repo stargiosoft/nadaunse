@@ -325,11 +325,11 @@ export async function markTarotAsViewed(selectionId: string): Promise<boolean> {
 }
 
 /**
- * 보고서 제목 포맷팅 (예: "26년 1월 4주차 보고서")
+ * 보고서 제목 포맷팅 (예: "26년 5월 (5주차)")
  */
 export function formatReportTitle(report: WeeklyReport): string {
   const yearShort = report.year.toString().slice(-2);
-  return `${yearShort}년 ${report.month}월 ${report.week}주차 보고서`;
+  return `${yearShort}년 ${report.month}월 (${report.week}주차)`;
 }
 
 /**

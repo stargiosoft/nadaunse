@@ -7,6 +7,7 @@ import { useWeeklyReport, formatReportTitle, formatWeekRange, WeeklyReport, Repo
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
 import { supabase } from '@/lib/supabase';
+import FlowerPotIcon from './ui/FlowerPotIcon';
 
 function Icon() {
   return (
@@ -61,7 +62,7 @@ function TitleContainer({ title, dateRange }: TitleContainerProps) {
           color: '#999999',
           fontSize: '13px',
           letterSpacing: '-0.26px',
-          paddingTop: '2px',
+          paddingTop: '3px',
           paddingBottom: '3px'
         }}>
           {dateRange}
@@ -91,9 +92,14 @@ function TextContainer({ title, dateRange, paragraphs }: TextContainerProps) {
         width: '100%'
       }}>
         {paragraphs.map((paragraph, index) => (
-          <p key={index} className={index < paragraphs.length - 1 ? "mb-0" : ""}>
+          <p
+            key={index}
+            style={{
+              marginBottom: index < paragraphs.length - 1 ? '12px' : '0',
+              margin: index < paragraphs.length - 1 ? '0 0 12px 0' : '0'
+            }}
+          >
             {paragraph}
-            {index < paragraphs.length - 1 && <><br />&nbsp;<br /></>}
           </p>
         ))}
       </div>
@@ -109,11 +115,9 @@ interface ContentContainerProps {
 
 function ContentContainer({ title, dateRange, paragraphs }: ContentContainerProps) {
   return (
-    <div className="flex flex-col items-start relative self-stretch shrink-0 w-full" style={{ gap: '20px' }} data-name="Content Container">
-      <div className="flex items-center justify-center relative shrink-0">
-        <div className="flex-none rotate-[180deg] scale-y-[-100%]">
-          <NotoDove />
-        </div>
+    <div className="flex flex-col items-start relative self-stretch shrink-0 w-full" style={{ gap: '8px' }} data-name="Content Container">
+      <div className="flex items-center justify-start relative shrink-0" style={{ marginLeft: '-14px' }}>
+        <FlowerPotIcon size={56} />
       </div>
       <TextContainer title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
@@ -130,7 +134,7 @@ function Container({ title, dateRange, paragraphs }: ContainerProps) {
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }} data-name="Container">
       <div className="flex flex-row justify-center" style={{ width: '100%', height: '100%' }}>
-        <div className="flex items-start justify-center relative w-full" style={{ padding: '28px 20px' }}>
+        <div className="flex items-start justify-center relative w-full" style={{ padding: '16px 20px 20px 20px' }}>
           <ContentContainer title={title} dateRange={dateRange} paragraphs={paragraphs} />
         </div>
       </div>
@@ -160,7 +164,7 @@ interface ContentContainer1Props {
 
 function ContentContainer1({ title, dateRange, paragraphs }: ContentContainer1Props) {
   return (
-    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '12px 20px 40px 20px' }} data-name="Content Container">
+    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '12px 20px 24px 20px' }} data-name="Content Container">
       <CardInterpretationCard title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
@@ -176,7 +180,7 @@ function ContentContainer2({ title, dateRange, paragraphs }: ContentContainer2Pr
   return (
     <div className="flex flex-col items-start relative shrink-0 w-full" data-name="Content Container">
       <ContentContainer1 title={title} dateRange={dateRange} paragraphs={paragraphs} />
-      <div className="shrink-0 w-full" style={{ height: '12px', backgroundColor: '#f9f9f9' }} data-name="Divider" />
+      <div className="shrink-0 w-full" style={{ height: '8px', backgroundColor: '#f9f9f9' }} data-name="Divider" />
     </div>
   );
 }
@@ -203,8 +207,8 @@ function Frame({ isOpen }: { isOpen: boolean }) {
   return (
     <div className="relative shrink-0 w-full">
       <div className="flex flex-row items-center justify-center" style={{ width: '100%', height: '100%' }}>
-        <div className="flex items-center justify-center relative w-full" style={{ gap: '11px', padding: '14px 20px' }}>
-          <p className="flex-[1_0_0]" style={{
+        <div className="flex items-center justify-between relative w-full" style={{ padding: '14px 20px' }}>
+          <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 500,
             lineHeight: '24px',
@@ -233,7 +237,7 @@ function ReportAccordion({ isOpen, onToggle }: { isOpen: boolean; onToggle: () =
 
 function TagLabel({ text }: { text: string }) {
   return (
-    <div className="flex items-center justify-center relative shrink-0" style={{ padding: '3px 10px 4px 10px', borderRadius: '99px' }} data-name="Tag label">
+    <div className="flex items-center justify-center relative shrink-0" style={{ padding: '1px 8px', borderRadius: '99px' }} data-name="Tag label">
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ border: '1px solid #e7e7e7', borderRadius: '99px' }} />
       <p style={{
         fontFamily: 'Pretendard Variable',
@@ -312,7 +316,7 @@ interface ContentContainer3Props {
 
 function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContainer3Props) {
   return (
-    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '16px', paddingBottom: '230px' }} data-name="Content Container">
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '4px', paddingBottom: '230px' }} data-name="Content Container">
       <ContentContainer2 title={title} dateRange={dateRange} paragraphs={paragraphs} />
       <TagListAccordion tags={tags} />
     </div>

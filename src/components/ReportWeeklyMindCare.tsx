@@ -113,7 +113,7 @@ interface PrescriptionCardProps {
 function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
   return (
     <div className="relative shrink-0 w-full" style={{ borderRadius: '16px', backgroundColor: '#f9f9f9' }}>
-      <div className="flex justify-center w-full" style={{ padding: '28px 20px' }}>
+      <div className="flex justify-center w-full" style={{ padding: '16px 20px 20px 20px' }}>
         <div className="flex flex-col items-start relative w-full" style={{ gap: '20px' }}>
 
           {/* Icon & Title Group */}
@@ -142,9 +142,14 @@ function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
                width: '100%'
              }}>
                {paragraphs.map((paragraph, index) => (
-                 <p key={index} className={index < paragraphs.length - 1 ? "mb-0" : ""}>
+                 <p
+                   key={index}
+                   style={{
+                     marginBottom: index < paragraphs.length - 1 ? '12px' : '0',
+                     margin: index < paragraphs.length - 1 ? '0 0 12px 0' : '0'
+                   }}
+                 >
                    {paragraph}
-                   {index < paragraphs.length - 1 && <><br />&nbsp;<br /></>}
                  </p>
                ))}
              </div>

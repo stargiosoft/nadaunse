@@ -1,7 +1,7 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-02-05
-> **총 컴포넌트 수**: 69개 (활성화) - 주간 보고서 8개 + 통계 대시보드 2개 포함
+> **최종 업데이트**: 2026-02-09
+> **총 컴포넌트 수**: 70개 (활성화) - 주간 보고서 8개 + 통계 대시보드 2개 포함
 > **UI 컴포넌트 (shadcn/ui)**: 48개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -10,7 +10,7 @@
 
 ## 📋 목차
 
-- [UI 컴포넌트 (7개)](#ui-컴포넌트)
+- [UI 컴포넌트 (8개)](#ui-컴포넌트)
 - [인증 관련 (4개)](#인증-관련)
 - [결제 관련 (4개)](#결제-관련)
 - [무료 콘텐츠 관련 (9개)](#무료-콘텐츠-관련)
@@ -78,6 +78,22 @@
 - **사용처**: 삭제/변경 확인 등
 - **타입**: Modal Component
 - **파일 경로**: `/components/ConfirmDialog.tsx`
+
+### FlowerPotIcon.tsx
+- **역할**: Lottie 애니메이션 화분 아이콘 컴포넌트
+- **사용처**: ReportWeeklyDetail (주간 보고서 상세)
+- **타입**: Presentational Component
+- **주요 기능**:
+  - Lottie 애니메이션 (화분 성장 애니메이션)
+  - 크기 조절 가능 (size prop)
+  - 자동 재생/반복 제어 (autoplay, loop props)
+- **Props**:
+  - `size?: number` - 아이콘 크기 (기본: 100px)
+  - `className?: string` - 커스텀 스타일
+  - `autoplay?: boolean` - 자동 재생 (기본: true)
+  - `loop?: boolean` - 반복 재생 (기본: true)
+- **파일 경로**: `/components/ui/FlowerPotIcon.tsx`
+- **최근 업데이트**: 2026-02-09 - 주간 보고서 화분 아이콘 추가
 
 ---
 
