@@ -373,6 +373,82 @@ style={{
 - `w-full max-w-[440px]`: 최대 너비 제한
 - `boxShadow`: 상단 페이드 효과로 콘텐츠와 자연스러운 경계
 
+### 버튼 클릭 인터랙션
+
+Tailwind v4에서 `active:scale-[0.99]`, `active:bg-[#...]` 같은 arbitrary value가 작동하지 않을 수 있습니다. JavaScript 이벤트 핸들러를 사용하세요.
+
+#### 하단 CTA 버튼 인터랙션
+
+```tsx
+<button
+  onClick={handleClick}
+  className="flex items-center justify-center cursor-pointer w-full"
+  style={{
+    backgroundColor: '#48b2af',
+    height: '56px',
+    borderRadius: '16px',
+    border: 'none',
+    padding: 0,
+    transition: 'all 0.15s ease'
+  }}
+  onMouseDown={(e) => {
+    e.currentTarget.style.transform = 'scale(0.99)';
+    e.currentTarget.style.backgroundColor = '#41A09E';
+  }}
+  onMouseUp={(e) => {
+    e.currentTarget.style.transform = 'scale(1)';
+    e.currentTarget.style.backgroundColor = '#48b2af';
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = 'scale(1)';
+    e.currentTarget.style.backgroundColor = '#48b2af';
+  }}
+  onTouchStart={(e) => {
+    e.currentTarget.style.transform = 'scale(0.99)';
+    e.currentTarget.style.backgroundColor = '#41A09E';
+  }}
+  onTouchEnd={(e) => {
+    e.currentTarget.style.transform = 'scale(1)';
+    e.currentTarget.style.backgroundColor = '#48b2af';
+  }}
+>
+  <span style={{
+    fontFamily: 'Pretendard Variable',
+    fontSize: '16px',
+    fontWeight: 500,
+    color: '#ffffff',
+    letterSpacing: '-0.32px',
+    lineHeight: '25px'
+  }}>
+    버튼 텍스트
+  </span>
+</button>
+```
+
+#### 아이콘 버튼 인터랙션 (Tailwind group 사용)
+
+```tsx
+{/* 닫기 버튼 예시 */}
+<div
+  onClick={onClose}
+  className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+  style={{ width: '44px', height: '44px', borderRadius: '12px' }}
+>
+  <X
+    className="transition-transform duration-200 group-active:scale-90"
+    style={{ width: '24px', height: '24px', color: '#848484' }}
+    strokeWidth={1.8}
+  />
+</div>
+```
+
+**핵심 포인트**:
+- `onMouseDown/onMouseUp`: 데스크톱 클릭 처리
+- `onTouchStart/onTouchEnd`: 모바일 터치 처리
+- `onMouseLeave`: 마우스가 버튼을 벗어날 때 상태 복원
+- `transition: 'all 0.15s ease'`: 부드러운 전환 효과
+- `group` + `group-active`: 부모 클릭 시 자식 아이콘 스케일 조정
+
 ---
 
 ## 7. 아이콘 컴포넌트 패턴
@@ -803,4 +879,4 @@ export default function MyPage() {
 
 ---
 
-**최종 업데이트**: 2026-01-19
+**최종 업데이트**: 2026-02-09

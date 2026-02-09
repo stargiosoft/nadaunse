@@ -42,10 +42,8 @@ export default function ReportWeeklyTarot({ onClose, onNext }: ReportWeeklyTarot
 
       {/* Top Navigation - 고정 위치 (fixed) */}
       <div className="fixed top-0 left-0 right-0 bg-white h-[52px] z-50 max-w-[440px] mx-auto">
-        <div className="flex items-center justify-between px-[12px] h-full">
-          <div className="w-[44px] h-[44px] opacity-0" />
+        <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
           <h1
-            className="text-center flex-1"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
