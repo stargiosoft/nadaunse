@@ -285,15 +285,22 @@ process-refund (환불 처리)
 - 3회 재시도 로직 (1초, 2초 간격)
 - API 실패 시 기본 생년월일 정보로 graceful degradation
 
+**비회원 일일 제한 검증** (2026-02-06 추가):
+- 비회원(`userId` 없음) 요청 시 IP+UserAgent SHA-256 fingerprint 생성
+- `anonymous_free_views` 테이블에서 오늘(KST) 조회 수 확인
+- 3개 이상이면 `{ success: false, error: 'DAILY_LIMIT_REACHED' }` 반환 (status 200)
+- 통과 시 조회 기록 upsert 후 AI 생성 진행
+- 로그인 사용자는 무제한 (검증 스킵)
+
 **플로우**:
 ```
 FreeBirthInfoInput → FreeContentService
   → generate-free-preview (Edge Function)
+  → [비회원] IP+UA fingerprint → anonymous_free_views 일일 제한 체크
   → Stargio 사주 API (상세 데이터 조회)
   → OpenAI API (사주 데이터 포함 프롬프트)
-  → free_content_answers 저장
-  → FreeContentLoading (폴링)
-  → FreeSajuDetail (결과)
+  → [로그인] free_content_records 저장 / [비회원] anonymous_free_views 기록
+  → FreeContentLoading → FreeSajuDetail (결과)
 ```
 
 ---

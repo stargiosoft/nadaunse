@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-04
-> **주요 결정**: 통계 대시보드 계산 로직 통일, 추세 기간별 집계 단위
+> **최종 업데이트**: 2026-02-06
+> **주요 결정**: 비회원 무료 콘텐츠 일일 제한 (2중 검증)
 
 ---
 
@@ -13,6 +13,58 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-06
+
+### 비회원 무료 콘텐츠 일일 제한 (2중 검증 아키텍처)
+
+**결정**: 클라이언트(localStorage) + 서버(IP+UA fingerprint) 2중 검증으로 비회원 하루 3개 제한
+
+**배경**:
+- 비회원이 무료 콘텐츠를 무제한 이용 → AI API 비용 증가
+- localStorage만으로는 브라우저 데이터 삭제 시 우회 가능
+- 로그인 없이도 사용자를 식별할 방법 필요
+
+**아키텍처**:
+```
+1차 검증 (클라이언트, 즉시):
+  FreeContentDetail.tsx → hasReachedLocalLimit()
+  → localStorage 'free_content_views_v1' 확인
+  → 3개 이상이면 LoginBottomSheet 표시
+
+2차 검증 (서버, Edge Function):
+  generate-free-preview → IP+UA SHA-256 fingerprint
+  → anonymous_free_views 테이블 조회
+  → 3개 이상이면 DAILY_LIMIT_REACHED 응답
+```
+
+**핵심 결정사항**:
+
+| 항목 | 결정 | 이유 |
+|------|------|------|
+| fingerprint 방식 | IP + UserAgent SHA-256 | 서버에서 즉시 생성 가능, 개인정보 최소 수집 |
+| 제한 단위 | 하루 3개 콘텐츠 | 체험 충분 + 남용 방지 균형 |
+| 날짜 기준 | KST (한국 시간) | 한국 서비스, 자정 기준 초기화 |
+| 같은 콘텐츠 재조회 | 카운트 안 함 | UNIQUE(fingerprint, content_id, viewed_date) |
+| 검증 실패 시 | 서비스 계속 (가용성 우선) | DB 에러 시에도 콘텐츠 이용 가능 |
+| 로그인 사용자 | 무제한 | 서버 검증 스킵 (`userId` 있으면 통과) |
+
+**신규 파일**:
+- `src/lib/freeContentLimitService.ts` — 클라이언트 제한 서비스
+- `src/components/LoginBottomSheet.tsx` — 로그인 유도 바텀시트
+- `supabase/migrations/20260206_add_guest_hash_to_free_content_records.sql` — anonymous_free_views 테이블
+
+**수정 파일**:
+- `supabase/functions/generate-free-preview/index.ts` — 서버 2차 검증 추가
+- `src/components/FreeContentDetail.tsx` — 클라이언트 1차 검증 + LoginBottomSheet
+- `src/components/FreeContentLoading.tsx` — DAILY_LIMIT_REACHED 응답 처리
+
+**자동 정리 (pg_cron)**:
+- `cleanup-anonymous-free-views` — 매일 KST 09:00 (UTC 00:00)에 전날 이전 `anonymous_free_views` 데이터 자동 삭제
+- Edge Function이 아닌 pg_cron 직접 SQL 방식 (Supabase에서 pg_cron → Edge Function HTTP 호출 불가)
+- 마이그레이션: `supabase/migrations/20260206_cleanup_anonymous_free_views_cron.sql`
 
 ---
 
@@ -4563,6 +4615,62 @@ export const isFigmaSite(): boolean    // Figma Make 환경 체크
 
 ---
 
-**문서 버전**: 2.8.0
-**최종 업데이트**: 2026-01-16
+---
+
+### iOS 스와이프 뒤로가기: 콘텐츠 상세 페이지 navigate('/') → navigate(-1) 전환
+**결정**: 콘텐츠 상세 페이지의 뒤로가기/홈 버튼에서 `navigate('/')` (push mode) 대신 `navigate(-1)` 사용
+**날짜**: 2026-02-06
+
+**배경**:
+- 홈 → 유료 상세 → 홈 → 무료 상세 → 홈 → 유료 상세 → iOS 스와이프 뒤로가기 시
+- 홈이 아닌 무료 상세로 이동하고, 이후 페이지가 닫히는 버그
+- 4~5번째 사이클부터 히스토리 스택이 꼬이기 시작
+
+**문제 원인**:
+```typescript
+// ❌ navigate('/') = history.push → 히스토리 스택에 '/' 엔트리 중복 추가
+onBack={() => navigate('/')}
+onHome={() => navigate('/')}
+```
+
+**히스토리 스택 분석**:
+```
+정상 (navigate(-1)):
+[Buffer×5, Home] → click → [Buffer×5, Home, Detail] → back → [Buffer×5, Home]
+
+버그 (navigate('/')):
+[Buffer×5, Home] → click → [Buffer×5, Home, Detail]
+→ navigate('/') → [Buffer×5, Home, Detail, Home(NEW!)]  ← push로 중복!
+→ click → [Buffer×5, Home, Detail, Home, Detail2]
+→ navigate('/') → [Buffer×5, Home, Detail, Home, Detail2, Home(NEW!)]
+→ iOS 스와이프 → Detail2로 이동 (Home이 아닌!)
+```
+
+**해결 방법**:
+```typescript
+// ✅ navigate(-1) = history.back() → 자연스러운 히스토리 탐색
+onBack={() => navigate(-1)}
+onHome={() => navigate(-1)}
+
+// ✅ 에러 fallback은 replace로 (히스토리 쌓지 않음)
+navigate('/', { replace: true })
+```
+
+**수정 파일 (3개)**:
+- `src/App.tsx`: FreeContentDetailWrapper onHome, ProductDetailPage FreeContentDetail onBack/onHome (3곳)
+- `src/components/MasterContentDetailPage.tsx`: 모든 navigate('/') → navigate(-1) (10곳)
+- `src/components/FreeContentLoading.tsx`: 에러 fallback navigate('/') → navigate('/', { replace: true }) (11곳)
+
+**핵심 원리** (기존 결정 재확인):
+- `navigate('/')` (push mode)는 히스토리 스택에 중복 '/' 엔트리를 만들어 iOS 버퍼 시스템과 충돌
+- 콘텐츠 상세에서 홈으로 돌아갈 때는 반드시 `navigate(-1)` 사용 (자연스러운 히스토리 탐색)
+- 에러/예외 상황의 fallback은 `navigate('/', { replace: true })` 사용 (스택 오염 방지)
+- **향후 새 페이지에서 홈으로 돌아가는 버튼 추가 시 반드시 `navigate(-1)` 사용할 것**
+
+**테스트**: iOS Safari에서 홈 ↔ 유료/무료 상세 반복 이동 후 스와이프 뒤로가기로 정상 복귀 확인
+
+---
+
+**문서 버전**: 2.9.0
+**최종 업데이트**: 2026-02-06
 **문서 끝**

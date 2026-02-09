@@ -254,8 +254,20 @@
 - **주요 기능**:
   - 진행률 표시
   - 생성 상태 안내
-  - 폴링 (2초마다)
+  - DAILY_LIMIT_REACHED 서버 응답 처리
 - **파일 경로**: `/components/FreeContentLoading.tsx`
+
+### LoginBottomSheet.tsx
+- **역할**: 비회원 일일 제한 도달 시 로그인 유도 바텀시트
+- **사용처**: FreeContentDetail.tsx
+- **타입**: Modal Component (createPortal + AnimatePresence)
+- **주요 기능**:
+  - 잠금 아이콘 + "로그인하면 무제한 이용 가능" 메시지
+  - "로그인 하기" 버튼 → `/login/new` 이동
+  - 드래그 닫기 (80px threshold)
+  - body scroll lock + theme-color 딤 처리
+- **파일 경로**: `/components/LoginBottomSheet.tsx`
+- **추가 날짜**: 2026-02-06
 
 ### CardContent.tsx
 - **역할**: 무료 콘텐츠 카드 가로 스크롤 리스트

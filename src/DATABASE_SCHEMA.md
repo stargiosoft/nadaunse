@@ -291,6 +291,36 @@
 
 ---
 
+### `anonymous_free_views`
+
+비회원(로그아웃) 사용자의 무료 콘텐츠 일일 이용 제한 추적 (IP+UA fingerprint 기반)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 레코드 고유 ID |
+| `fingerprint` | text | NOT NULL | - | IP+UserAgent SHA-256 해시 |
+| `content_id` | uuid | FOREIGN KEY, NOT NULL | - | 콘텐츠 ID (master_contents.id) |
+| `viewed_date` | date | NOT NULL | - | KST 기준 조회 날짜 |
+| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
+
+**외래키**:
+- `content_id` → `master_contents(id)` ON DELETE CASCADE
+
+**인덱스**:
+- `idx_anonymous_free_views_fingerprint_date`: (fingerprint, viewed_date)
+
+**UNIQUE 제약조건**:
+- `(fingerprint, content_id, viewed_date)` — 같은 비회원이 같은 콘텐츠를 같은 날 중복 기록 방지
+
+**용도**:
+- 비회원 하루 3개 무료 콘텐츠 제한 (서버 2차 검증)
+- `generate-free-preview` Edge Function에서 Service Role Key로만 접근
+- RLS Enabled (정책 없음 — Service Role Key 전용)
+
+**자동 정리**: pg_cron `cleanup-anonymous-free-views` — 매일 KST 09:00에 전날 이전 데이터 자동 삭제
+
+---
+
 ## 나다움 태그 테이블
 
 ### `user_trait_tags`
@@ -549,6 +579,7 @@ weekly_reports (주간 보고서)
 | 1.6.0 | 2026-02-02 | weekly_reports, weekly_report_sections, report_tarot_selections 테이블 추가, user_trait_tags 컬럼명 수정 (name→tag_name, type→tag_type), is_confirmed 컬럼 추가, coupons.coupon_type 설명 수정 | AI Assistant |
 | 1.7.0 | 2026-02-03 | pg_cron 스케줄 추가 (주간 보고서 자동 발송), Vault에 service_role_key 저장 | AI Assistant |
 | 1.8.0 | 2026-02-04 | users 테이블에 visit_dates 컬럼 추가 (KST 기준 방문 날짜 배열) | AI Assistant |
+| 1.9.0 | 2026-02-06 | anonymous_free_views 테이블 추가, pg_cron cleanup-anonymous-free-views 스케줄 등록 | AI Assistant |
 
 ---
 

@@ -33,6 +33,70 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // ⭐ 비회원(게스트) 일일 무료 콘텐츠 제한 검증 (IP+UA 해시)
+    if (!userId) {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log('🔒 [Edge Function] 비회원 일일 제한 검증 시작')
+
+      const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || req.headers.get('cf-connecting-ip')
+        || 'unknown'
+      const userAgent = req.headers.get('user-agent') || 'unknown'
+
+      // SHA-256 fingerprint 생성
+      const encoder = new TextEncoder()
+      const data = encoder.encode(ip + userAgent)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+      console.log('📌 [Edge Function] IP:', ip)
+      console.log('📌 [Edge Function] fingerprint:', fingerprint.substring(0, 16) + '...')
+
+      // KST 기준 오늘 날짜
+      const now = new Date()
+      const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+      const todayKST = kstDate.toISOString().split('T')[0]
+
+      // 오늘 조회 횟수 확인
+      const { count, error: countError } = await supabase
+        .from('anonymous_free_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('fingerprint', fingerprint)
+        .eq('viewed_date', todayKST)
+
+      const todayCount = count ?? 0
+      console.log(`📊 [Edge Function] 오늘 조회 횟수: ${todayCount}/3`)
+
+      if (countError) {
+        console.warn('⚠️ [Edge Function] 조회 횟수 확인 실패:', countError)
+        // 에러 시에도 계속 진행 (서비스 가용성 우선)
+      } else if (todayCount >= 3) {
+        console.log('🚫 [Edge Function] 일일 제한 도달 → DAILY_LIMIT_REACHED')
+        return new Response(
+          JSON.stringify({ success: false, error: 'DAILY_LIMIT_REACHED' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // ⭐ 조회 기록 저장 (중복 방지: fingerprint + content_id + viewed_date UNIQUE)
+      const { error: upsertError } = await supabase
+        .from('anonymous_free_views')
+        .upsert(
+          { fingerprint, content_id: contentId, viewed_date: todayKST },
+          { onConflict: 'fingerprint,content_id,viewed_date' }
+        )
+
+      if (upsertError) {
+        console.warn('⚠️ [Edge Function] 조회 기록 저장 실패:', upsertError)
+      } else {
+        console.log('✅ [Edge Function] 조회 기록 저장 완료')
+      }
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    }
+
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('📋 [Edge Function] 1. 콘텐츠 정보 조회')
     console.log('📌 [Edge Function] contentId:', contentId)

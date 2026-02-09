@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import svgPaths from '@/imports/svg-rr05b2c3l6';
 import Frame427322492 from '@/imports/Frame427322492';
-import ReceiveMyAnalysis from '@/components/ReceiveMyAnalysis';
 import ArrowLeft from './ArrowLeft';
 // NOTE: CompletionCoupon과 MypageProfile은 삭제된 컴포넌트입니다
 // import CompletionCoupon from '@/components/CompletionCoupon';
@@ -105,38 +104,13 @@ export default function CheckRecordMe({
 
   // ⭐ 본인 사주 레코드 (phone_number 확인용) - 무료 콘텐츠에서만 체크
   // 🚀 유료 콘텐츠는 이미 앞에서 phone_number를 받으므로 체크 불필요
+  // ⭐ phone_number 바텀시트는 프로필 > 나의 분석 보고서에서만 최초 1회 노출
+  // CheckRecordMe에서는 phone_number 체크 불필요 → 항상 바로 태그 저장
   const getInitialPhoneCheckState = () => {
-    // ⭐ 유료 콘텐츠면 phone_number 체크 스킵
-    if (sourceType === 'paid_content') {
-      console.log('✅ [CheckRecordMe] 유료 콘텐츠 → phone_number 체크 스킵');
-      return {
-        mySajuRecord: null,
-        needsPhoneNumber: false,
-        isCheckingPhone: false
-      };
-    }
-
-    // 무료 콘텐츠: 캐시에서 phone_number 확인
-    try {
-      const primarySajuJson = localStorage.getItem('primary_saju');
-      if (primarySajuJson) {
-        const primarySaju = JSON.parse(primarySajuJson);
-        if (primarySaju && primarySaju.notes === '본인') {
-          console.log('🚀 [CheckRecordMe] 캐시에서 phone_number 확인:', primarySaju.phone_number ? '있음' : '없음');
-          return {
-            mySajuRecord: primarySaju,
-            needsPhoneNumber: !primarySaju.phone_number,
-            isCheckingPhone: false
-          };
-        }
-      }
-    } catch (e) {
-      console.error('❌ [CheckRecordMe] 캐시 파싱 실패:', e);
-    }
     return {
       mySajuRecord: null,
       needsPhoneNumber: false,
-      isCheckingPhone: true
+      isCheckingPhone: false
     };
   };
 
@@ -145,108 +119,40 @@ export default function CheckRecordMe({
   const [needsPhoneNumber, setNeedsPhoneNumber] = useState(initialPhoneState.needsPhoneNumber);
   const [isCheckingPhone, setIsCheckingPhone] = useState(initialPhoneState.isCheckingPhone);
 
-  // ⭐ 무료 콘텐츠 + 캐시 미스 시에만 API 호출
+  // ⭐ phone_number 바텀시트는 프로필 > 나의 분석 보고서에서만 노출
+  // CheckRecordMe에서는 phone_number 체크/바텀시트 불필요
+
+  // ⭐ 로그인 후 pending_trait_tags 태그 복원 처리 (바텀시트 없이)
   useEffect(() => {
-    // 유료 콘텐츠거나 캐시에서 이미 확인 완료했으면 스킵
-    if (sourceType === 'paid_content' || !initialPhoneState.isCheckingPhone) {
-      return;
-    }
-
-    const checkPhoneNumber = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session?.user?.id) {
-          console.log('ℹ️ [CheckRecordMe] 비로그인 상태 → phone_number 체크 스킵');
-          setIsCheckingPhone(false);
-          setNeedsPhoneNumber(true);
-          return;
-        }
-
-        console.log('🔍 [CheckRecordMe] 본인 사주 레코드 조회...');
-        const { data: sajuRecord, error } = await supabase
-          .from('saju_records')
-          .select('id, phone_number, notes')
-          .eq('user_id', session.user.id)
-          .eq('notes', '본인')
-          .maybeSingle();
-
-        if (error) {
-          console.error('❌ [CheckRecordMe] 사주 레코드 조회 실패:', error);
-          setIsCheckingPhone(false);
-          return;
-        }
-
-        if (sajuRecord) {
-          console.log('✅ [CheckRecordMe] 본인 사주 레코드:', sajuRecord);
-          setMySajuRecord(sajuRecord);
-          setNeedsPhoneNumber(!sajuRecord.phone_number);
-        } else {
-          console.log('ℹ️ [CheckRecordMe] 본인 사주 레코드 없음');
-          setNeedsPhoneNumber(true);
-        }
-      } catch (err) {
-        console.error('❌ [CheckRecordMe] phone_number 체크 오류:', err);
-      } finally {
-        setIsCheckingPhone(false);
-      }
-    };
-
-    checkPhoneNumber();
-  }, [sourceType]);
-
-  // ⭐ 로그인 후 바텀시트 자동 오픈 처리
-  useEffect(() => {
-    const checkAndOpenBottomSheet = async () => {
-      const shouldOpenBottomSheet = localStorage.getItem('open_phone_bottomsheet');
+    const restorePendingTags = async () => {
       const pendingTagsJson = localStorage.getItem('pending_trait_tags');
 
-      if (shouldOpenBottomSheet === 'true' && pendingTagsJson) {
-        console.log('📱 [CheckRecordMe] 바텀시트 자동 오픈 플래그 감지');
+      if (pendingTagsJson) {
+        console.log('📋 [CheckRecordMe] pending_trait_tags 복원 처리');
 
-        // ⭐ 로그인 상태 체크 먼저!
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user?.id) {
-          console.log('⚠️ [CheckRecordMe] 비로그인 상태 → 바텀시트 오픈 취소 (로그인 후 처리)');
-          // 플래그는 유지하고 바텀시트는 열지 않음 (로그인 후 다시 처리)
-          return;
-        }
+        // open_phone_bottomsheet 플래그가 있으면 제거 (더 이상 사용 안 함)
+        localStorage.removeItem('open_phone_bottomsheet');
 
         try {
           const pendingData = JSON.parse(pendingTagsJson);
-          console.log('📋 [CheckRecordMe] pending_trait_tags 데이터:', pendingData);
-          console.log('📋 [CheckRecordMe] pendingData.tags:', pendingData.tags);
 
           // 저장된 태그로 선택 상태 복원
           if (pendingData.tags && pendingData.tags.length > 0) {
             setTags(prevTags => {
-              console.log('📋 [CheckRecordMe] prevTags (복원 전):', prevTags.map(t => ({ label: t.label, selected: t.selected })));
-              const pendingLabels = pendingData.tags.map((t: { label: string }) => t.label);
-              console.log('📋 [CheckRecordMe] pendingLabels:', pendingLabels);
-
               const updatedTags = prevTags.map(tag => ({
                 ...tag,
                 selected: pendingData.tags.some((pt: { label: string }) => pt.label === tag.label)
               }));
-              console.log('📋 [CheckRecordMe] updatedTags (복원 후):', updatedTags.map(t => ({ label: t.label, selected: t.selected })));
               return updatedTags;
             });
           }
-
-          // 바텀시트 열기
-          setIsBottomSheetOpen(true);
-          setNeedsPhoneNumber(true);
-
-          // 플래그 제거
-          localStorage.removeItem('open_phone_bottomsheet');
         } catch (e) {
-          console.error('❌ [CheckRecordMe] 바텀시트 자동 오픈 실패:', e);
-          localStorage.removeItem('open_phone_bottomsheet');
+          console.error('❌ [CheckRecordMe] pending_trait_tags 복원 실패:', e);
         }
       }
     };
 
-    checkAndOpenBottomSheet();
+    restorePendingTags();
   }, []);
 
   const toggleTag = (id: string) => {
@@ -442,15 +348,8 @@ export default function CheckRecordMe({
       return;
     }
 
-    // phone_number가 필요하면 바텀시트 열기
-    if (needsPhoneNumber) {
-      console.log('📱 [CheckRecordMe] phone_number 필요 → 바텀시트 열기');
-      setIsBottomSheetOpen(true);
-      return;
-    }
-
-    // phone_number가 이미 있으면 바로 태그 저장
-    console.log('✅ [CheckRecordMe] phone_number 있음 → 바로 태그 저장');
+    // ⭐ phone_number 바텀시트 제거 → 바로 태그 저장
+    console.log('✅ [CheckRecordMe] 바로 태그 저장');
     setIsSaving(true);
     const success = await saveTags();
     setIsSaving(false);
@@ -1125,18 +1024,7 @@ export default function CheckRecordMe({
         </div>
       </div>
 
-      {/* Bottom Sheet Overlay */}
-      <AnimatePresence>
-        {isBottomSheetOpen && (
-          <ReceiveMyAnalysis
-            onClose={() => !isSaving && setIsBottomSheetOpen(false)} // 저장 중에는 닫기 방지
-            onSave={handleSave}
-            phoneNumber={phoneNumber}
-            setPhoneNumber={setPhoneNumber}
-            isLoading={isSaving}
-          />
-        )}
-      </AnimatePresence>
+      {/* ⭐ phone_number 바텀시트 제거 - 프로필 > 나의 분석 보고서에서만 노출 */}
       </div>{/* max-w-[440px] wrapper 닫기 */}
     </div>
   );

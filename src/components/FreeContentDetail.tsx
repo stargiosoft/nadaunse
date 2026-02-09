@@ -25,7 +25,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { freeContentService, MasterContent, Question } from '../lib/freeContentService';
 import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
@@ -45,6 +45,7 @@ import {
 } from './FreeContentDetailComponents';
 import { trackPageView, trackViewItem } from '../utils/analytics';
 import FreeContentResult from './FreeContentResult';
+import LoginBottomSheet from './LoginBottomSheet';
 
 /**
  * Props 인터페이스
@@ -66,6 +67,7 @@ interface FreeContentDetailProps {
  */
 function useFreeContentDetail(contentId: string, onBack: () => void) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [content, setContent] = useState<MasterContent | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,17 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   const [visiblePaidCount, setVisiblePaidCount] = useState(6); // ⭐ 유료 콘텐츠는 6개씩
   const scrollObserverRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref (바운스 방지)
+  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false); // ⭐ 비회원 제한 바텀시트
+
+  // ⭐ 서버 일일 제한(DAILY_LIMIT_REACHED)으로 돌아온 경우 LoginBottomSheet 자동 표시
+  useEffect(() => {
+    const state = location.state as { dailyLimitReached?: boolean } | null;
+    if (state?.dailyLimitReached) {
+      setIsLoginSheetOpen(true);
+      // state 초기화 (새로고침 시 재표시 방지)
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   /**
    * 초기 데이터 로드
@@ -268,6 +281,28 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   };
 
   /**
+   * ⭐ 비회원 일일 제한 체크 (localStorage 기반, KST)
+   */
+  const hasReachedLocalLimit = (): boolean => {
+    const FREE_DAILY_LIMIT = 3;
+    const STORAGE_KEY = 'free_content_daily_usage';
+    try {
+      const now = new Date();
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const kstDate = new Date(now.getTime() + kstOffset);
+      const todayKST = kstDate.toISOString().split('T')[0];
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return false;
+      const { date, count } = JSON.parse(stored);
+      if (date !== todayKST) return false;
+      console.log(`📊 [FreeContentDetail] 비회원 일일 사용량: ${count}/${FREE_DAILY_LIMIT}`);
+      return count >= FREE_DAILY_LIMIT;
+    } catch {
+      return false;
+    }
+  };
+
+  /**
    * 구매 버튼 클릭 (무료 체험) - Fallback only
    */
   const handlePurchase = () => {
@@ -281,6 +316,15 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     if (!content || questions.length === 0) {
       console.log('🔴 [FreeContentDetail] handlePurchase 실패 - 데이터 없음');
       alert('질문지가 없습니다.');
+      return;
+    }
+
+    // ⭐ 비회원 일일 제한 체크 (1차 검증: localStorage)
+    const userJson = localStorage.getItem('user');
+    const isLoggedIn = !!userJson;
+    if (!isLoggedIn && hasReachedLocalLimit()) {
+      console.log('🚫 [FreeContentDetail] 비회원 일일 제한 도달 → LoginBottomSheet 표시');
+      setIsLoginSheetOpen(true);
       return;
     }
 
@@ -333,9 +377,11 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     visiblePaidCount,
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
+    isLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     // Actions
     handlePurchase,
     setShowResult,
+    setIsLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     loadMorePaidContents
   };
 }
@@ -466,8 +512,10 @@ export default function FreeContentDetail({
     visiblePaidCount,
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
+    isLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     handlePurchase,
     setShowResult,
+    setIsLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     loadMorePaidContents
   } = useFreeContentDetail(contentId, onBack);
 
@@ -599,6 +647,13 @@ export default function FreeContentDetail({
           />
         </div>
       </div>
+
+      {/* ⭐ 비회원 일일 제한 바텀시트 */}
+      <LoginBottomSheet
+        isOpen={isLoginSheetOpen}
+        onClose={() => setIsLoginSheetOpen(false)}
+        contentId={contentId}
+      />
     </>
   );
 }

@@ -397,6 +397,7 @@ serve(async (req) => {
 | `/lib/sentry.ts` | Sentry 에러 모니터링 초기화 |
 | `/lib/fetchWithRetry.ts` | 재시도 로직 (Exponential Backoff) |
 | `/lib/freeContentService.ts` | 무료 콘텐츠 비즈니스 로직 |
+| `/lib/freeContentLimitService.ts` | 비회원 무료 콘텐츠 일일 제한 (localStorage 기반) |
 | `/lib/coupon.ts` | 쿠폰 관리 로직 |
 
 ---

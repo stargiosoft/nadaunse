@@ -2,7 +2,7 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-02-03
+> **최종 업데이트**: 2026-02-06
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -458,6 +458,67 @@ SELECT * FROM cron.job WHERE jobname = 'weekly-report-batch';
 ```sql
 SELECT trigger_weekly_report_batch();
 ```
+
+### 2. `cleanup-unconfirmed-tags` (미확인 태그 자동 정리)
+
+- **스케줄**: `0 0 * * *` (매일 UTC 00:00 = KST 09:00)
+- **용도**: 24시간 이상 미확인(`is_confirmed = false`) 상태인 나다움 태그 그룹 자동 삭제
+- **실행 방식**: 직접 SQL 실행 (DB Function 호출)
+
+```sql
+SELECT cron.schedule(
+  'cleanup-unconfirmed-tags',
+  '0 0 * * *',
+  $$
+  DO $inner$
+  DECLARE
+    v_group record;
+    v_result jsonb;
+    v_processed int := 0;
+    v_deleted int := 0;
+  BEGIN
+    FOR v_group IN SELECT * FROM get_stale_unconfirmed_tag_groups() LOOP
+      SELECT process_stale_tag_group(
+        v_group.user_id, v_group.source_content_id,
+        v_group.source_order_id, v_group.source_type,
+        v_group.created_at_second
+      ) INTO v_result;
+      v_processed := v_processed + 1;
+      v_deleted := v_deleted + (v_result->>'deleted_count')::int;
+    END LOOP;
+    RAISE LOG 'cleanup-unconfirmed-tags completed: processed=%, deleted=%', v_processed, v_deleted;
+  END $inner$;
+  $$
+);
+```
+
+### 3. `cleanup-anonymous-free-views` (비회원 조회 기록 자동 정리) — NEW 2026-02-06
+
+- **스케줄**: `0 0 * * *` (매일 UTC 00:00 = KST 09:00)
+- **용도**: 전날 이전 비회원 무료 콘텐츠 조회 기록 자동 삭제
+- **대상 테이블**: `anonymous_free_views`
+- **실행 방식**: 직접 SQL 실행 (DELETE)
+
+```sql
+SELECT cron.schedule(
+  'cleanup-anonymous-free-views',
+  '0 0 * * *',
+  $$DELETE FROM public.anonymous_free_views WHERE viewed_date < CURRENT_DATE;$$
+);
+```
+
+**설명**:
+- `viewed_date`는 KST 기준이므로, UTC 00:00(KST 09:00) 시점에 `CURRENT_DATE`(UTC) 미만 = 어제 이전 레코드 삭제
+- 당일 데이터는 유지하여 일일 제한 기능 정상 동작 보장
+- 마이그레이션: `supabase/migrations/20260206_cleanup_anonymous_free_views_cron.sql`
+
+### pg_cron 스케줄 요약
+
+| Job Name | 스케줄 | 용도 |
+|----------|--------|------|
+| `weekly-report-batch` | 매주 화 06:30 UTC (15:30 KST) | 주간 보고서 일괄 생성 |
+| `cleanup-unconfirmed-tags` | 매일 00:00 UTC (09:00 KST) | 미확인 태그 자동 삭제 |
+| `cleanup-anonymous-free-views` | 매일 00:00 UTC (09:00 KST) | 비회원 조회 기록 자동 삭제 |
 
 ### pg_cron 관련 테이블
 
