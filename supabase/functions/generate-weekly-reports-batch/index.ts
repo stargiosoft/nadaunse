@@ -1,14 +1,16 @@
 // Supabase Edge Function: 주간 보고서 배치 생성
-// 매주 일요일 오후 9시 Cron Job으로 실행
+// 매주 일요일 오후 12시부터 pg_cron 10분 간격 반복 호출
 // 전주 태그를 쌓은 모든 사용자에게 보고서 생성 + 알림톡 발송
+// ※ 이미 보고서가 있는 사용자는 자동 스킵 → 반복 호출로 전체 처리 (이어하기 패턴)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
 // 배치 설정
 const BATCH_CONFIG = {
-  concurrency: 5, // 동시 처리 수 (API 과부하 방지)
+  concurrency: 3, // 동시 처리 수 (5→3, 503 방지)
   delayBetweenBatches: 2000, // 배치 간 딜레이 (ms)
+  maxExecutionMs: 300_000, // 최대 실행 시간 300초 (Edge Function 타임아웃 400초 대비 안전 마진)
 }
 
 // 전주 일~토 날짜 범위 계산
@@ -60,16 +62,20 @@ serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    // 선택적 파라미터 (테스트용)
+    // 선택적 파라미터 (테스트용 / 관리자 재발송용)
     let testMode = false
     let testUserIds: string[] = []
     let dummyMode = false
+    let customWeekStartDate: string | undefined  // YYYY-MM-DD
+    let customWeekEndDate: string | undefined    // YYYY-MM-DD
 
     try {
       const body = await req.json()
       testMode = body.testMode || false
       testUserIds = body.testUserIds || []
       dummyMode = body.dummyMode || false
+      customWeekStartDate = body.weekStartDate
+      customWeekEndDate = body.weekEndDate
     } catch {
       // body 없으면 정상 배치 모드
     }
@@ -78,6 +84,9 @@ serve(async (req) => {
     console.log('📅 실행 시간:', new Date().toISOString())
     console.log('🧪 테스트 모드:', testMode)
     console.log('🧪 더미 모드:', dummyMode)
+    if (customWeekStartDate && customWeekEndDate) {
+      console.log('📅 커스텀 주차:', customWeekStartDate, '~', customWeekEndDate)
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -275,9 +284,17 @@ serve(async (req) => {
       )
     }
 
-    // 1. 전주 날짜 범위 계산
-    const weekRange = getLastWeekRange()
-    console.log('📅 전주 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
+    // 1. 날짜 범위 계산 (커스텀 날짜 우선, 없으면 전주 자동 계산)
+    let weekRange: { start: Date; end: Date }
+    if (customWeekStartDate && customWeekEndDate) {
+      weekRange = {
+        start: new Date(customWeekStartDate + 'T00:00:00.000Z'),
+        end: new Date(customWeekEndDate + 'T23:59:59.999Z')
+      }
+    } else {
+      weekRange = getLastWeekRange()
+    }
+    console.log('📅 주차 범위:', weekRange.start.toISOString(), '~', weekRange.end.toISOString())
 
     // 2. 대상 사용자 조회
     // 조건: 전주에 is_confirmed=true인 태그가 1개 이상 있는 사용자
@@ -352,7 +369,7 @@ serve(async (req) => {
       )
     }
 
-    // 4. 배치 처리 (concurrency 만큼씩 병렬 처리)
+    // 4. 배치 처리 (concurrency 만큼씩 병렬 처리, 시간 제한 적용)
     const results: Array<{
       userId: string
       success: boolean
@@ -360,20 +377,38 @@ serve(async (req) => {
       error?: string
     }> = []
 
+    let stoppedByTimeLimit = false
+
     for (let i = 0; i < filteredUserIds.length; i += BATCH_CONFIG.concurrency) {
+      // 시간 체크: maxExecutionMs 초과 시 안전 종료 (다음 pg_cron 호출에서 이어서 처리)
+      const elapsed = Date.now() - startTime
+      if (elapsed > BATCH_CONFIG.maxExecutionMs) {
+        const remainingUsers = filteredUserIds.length - i
+        console.log(`⏰ 실행 시간 ${(elapsed / 1000).toFixed(1)}초 경과 - 안전 종료 (미처리 ${remainingUsers}명은 다음 호출에서 이어서 처리)`)
+        stoppedByTimeLimit = true
+        break
+      }
+
       const batch = filteredUserIds.slice(i, i + BATCH_CONFIG.concurrency)
-      console.log(`📦 배치 ${Math.floor(i / BATCH_CONFIG.concurrency) + 1}/${Math.ceil(filteredUserIds.length / BATCH_CONFIG.concurrency)} 처리 중... (${batch.length}명)`)
+      const batchNum = Math.floor(i / BATCH_CONFIG.concurrency) + 1
+      const totalBatches = Math.ceil(filteredUserIds.length / BATCH_CONFIG.concurrency)
+      console.log(`📦 배치 ${batchNum}/${totalBatches} 처리 중... (${batch.length}명, 경과 ${(elapsed / 1000).toFixed(0)}초)`)
 
       const batchPromises = batch.map(async (userId) => {
         try {
           console.log(`  👤 사용자 ${userId} 보고서 생성 시작...`)
 
           // generate-weekly-report Edge Function 호출
+          const invokeBody: Record<string, unknown> = {
+            userId,
+            sendAlimtalk: true // 알림톡 발송
+          }
+          if (customWeekStartDate && customWeekEndDate) {
+            invokeBody.weekStartDate = customWeekStartDate
+            invokeBody.weekEndDate = customWeekEndDate
+          }
           const response = await supabase.functions.invoke('generate-weekly-report', {
-            body: {
-              userId,
-              sendAlimtalk: true // 알림톡 발송
-            }
+            body: invokeBody
           })
 
           if (response.error) {
@@ -424,17 +459,26 @@ serve(async (req) => {
     // 5. 결과 집계
     const successCount = results.filter(r => r.success).length
     const failCount = results.filter(r => !r.success).length
+    const processedCount = results.length
+    const remainingCount = filteredUserIds.length - processedCount
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(1)
 
-    console.log('🏁 [주간 보고서 배치] 완료')
+    if (stoppedByTimeLimit) {
+      console.log(`⏰ [주간 보고서 배치] 시간 제한 종료 - ${processedCount}/${filteredUserIds.length}명 처리, ${remainingCount}명 다음 호출 대기`)
+    } else {
+      console.log('🏁 [주간 보고서 배치] 전체 완료')
+    }
     console.log(`📊 결과: 성공 ${successCount}명, 실패 ${failCount}명`)
     console.log(`⏱️ 소요 시간: ${elapsedTime}초`)
 
     // 6. Slack 알림
-    const slackMessage = `📊 *주간 보고서 배치 완료*
-• 대상: ${filteredUserIds.length}명
+    const statusEmoji = stoppedByTimeLimit ? '⏳' : '📊'
+    const statusText = stoppedByTimeLimit ? '부분 완료 (시간 제한)' : '배치 완료'
+    const slackMessage = `${statusEmoji} *주간 보고서 ${statusText}*
+• 대상: ${filteredUserIds.length}명 (이번 호출 처리: ${processedCount}명)
 • 성공: ${successCount}명
-• 실패: ${failCount}명
+• 실패: ${failCount}명${stoppedByTimeLimit ? `\n• 미처리: ${remainingCount}명 (다음 호출에서 이어서 처리)` : ''}
+• 기존 생성됨: ${existingUserIds.size}명 (스킵)
 • 소요 시간: ${elapsedTime}초
 • 기간: ${weekRange.start.toISOString().split('T')[0]} ~ ${weekRange.end.toISOString().split('T')[0]}`
 
@@ -452,10 +496,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        isPartial: stoppedByTimeLimit,
         summary: {
           targetCount: filteredUserIds.length,
+          processedCount,
           successCount,
           failCount,
+          remainingCount,
           skippedCount: existingUserIds.size,
           elapsedSeconds: parseFloat(elapsedTime)
         },
