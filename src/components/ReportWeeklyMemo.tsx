@@ -119,7 +119,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
         <div className="flex flex-col w-full" style={{ gap: '4px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: '16px',
             lineHeight: '24px',
             color: '#000000',
@@ -140,7 +140,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
           className="w-full relative border transition-colors duration-200"
           style={{
             borderRadius: '20px',
-            padding: '16px',
+            padding: '12px 16px',
             borderColor: isFocused ? '#48b2af' : '#f9f9f9',
             backgroundColor: '#f9f9f9',
             outline: isFocused ? '0.5px solid #48B2AF' : 'none'
@@ -153,7 +153,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="마음이 가는대로 적어보세요 :)"
-              className="w-full bg-transparent outline-none resize-none placeholder:text-[#B7B7B7] placeholder:font-normal placeholder:text-[15px]"
+              className="w-full bg-transparent outline-none resize-none placeholder:text-[#B7B7B7] placeholder:font-light placeholder:text-[15px]"
               style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 400,
@@ -569,7 +569,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
         <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }}>
           {/* Content */}
           <div className="flex-1 w-full relative">
-            <div className="w-full" style={{ padding: '12px 20px 40px 20px' }}>
+            <div className="w-full" style={{ padding: '4px 20px 40px' }}>
               {/* Header with Edit Icon */}
               <div className="flex items-start justify-between w-full" style={{ marginBottom: '12px', padding: '0 4px' }}>
                 <div className="flex flex-col" style={{ gap: '4px' }}>
@@ -635,7 +635,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }}>
         {/* Content */}
         <div className="flex-1 w-full relative">
-        <div className="w-full" style={{ padding: '16px 20px 40px 20px' }}>
+        <div className="w-full" style={{ padding: '4px 20px 40px' }}>
           <TextAreaSection text={text} onChange={setText} />
 
         </div>

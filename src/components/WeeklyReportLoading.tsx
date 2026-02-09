@@ -21,7 +21,7 @@ export default function WeeklyReportLoading({
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 500,
-            fontSize: '20px',
+            fontSize: '17px',
             lineHeight: '32.5px',
             color: '#000000',
             letterSpacing: '-0.22px',

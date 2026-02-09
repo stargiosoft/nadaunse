@@ -55,7 +55,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
         <div className="flex flex-col w-full" style={{ gap: '4px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: '16px',
             lineHeight: '24px',
             color: '#000000',
@@ -76,7 +76,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
           className="w-full relative border transition-colors duration-200"
           style={{
             borderRadius: '20px',
-            padding: '16px',
+            padding: '12px 16px',
             borderColor: isFocused ? '#48b2af' : '#f9f9f9',
             backgroundColor: '#f9f9f9',
             outline: isFocused ? '0.5px solid #48B2AF' : 'none'
@@ -89,7 +89,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="마음이 가는대로 적어보세요 :)"
-              className="w-full bg-transparent outline-none resize-none placeholder:font-normal placeholder:text-[15px] placeholder:text-[#B7B7B7]"
+              className="w-full bg-transparent outline-none resize-none placeholder:font-light placeholder:text-[15px] placeholder:text-[#B7B7B7]"
               style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 400,
@@ -218,7 +218,7 @@ export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: 
       <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '100px' }} data-name="나의 보고서 (이번 주 나에게-수정하기)">
         {/* Content */}
         <div className="flex-1 w-full relative">
-          <div className="w-full" style={{ padding: '12px 20px 40px 20px' }}>
+          <div className="w-full" style={{ padding: '4px 20px 40px' }}>
             <TextAreaSection text={text} onChange={setText} />
           </div>
         </div>
