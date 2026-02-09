@@ -274,6 +274,7 @@ export const refreshSession = async () => {
 /**
  * 오늘 방문 기록 (KST 기준)
  * - 로그인된 사용자의 visit_dates 배열에 오늘 날짜 추가
+ * - visit_count 증가 + last_login_at 갱신 (통계 대시보드 정확도 보장)
  * - 이미 기록된 날짜는 중복 추가하지 않음
  * - 하루에 한 번만 기록 (localStorage로 체크)
  */
@@ -296,10 +297,10 @@ export const recordTodayVisit = async () => {
       return; // 오늘 이미 기록됨
     }
 
-    // 현재 visit_dates 가져오기
+    // 현재 사용자 데이터 가져오기
     const { data: userData, error: fetchError } = await supabase
       .from('users')
-      .select('visit_dates')
+      .select('visit_dates, visit_count')
       .eq('id', user.id)
       .single();
 
@@ -308,17 +309,26 @@ export const recordTodayVisit = async () => {
       return;
     }
 
-    // 이미 오늘 날짜가 있으면 스킵
+    // 이미 오늘 날짜가 있으면 last_login_at만 갱신하고 스킵
     const currentDates: string[] = userData?.visit_dates || [];
     if (currentDates.includes(todayKST)) {
+      await supabase
+        .from('users')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', user.id);
       localStorage.setItem(lastVisitKey, todayKST);
       return;
     }
 
-    // 오늘 날짜 추가
+    // 오늘 날짜 추가 + visit_count 증가 + last_login_at 갱신
+    const newVisitCount = (userData?.visit_count || 0) + 1;
     const { error: updateError } = await supabase
       .from('users')
-      .update({ visit_dates: [...currentDates, todayKST] })
+      .update({
+        visit_dates: [...currentDates, todayKST],
+        visit_count: newVisitCount,
+        last_login_at: new Date().toISOString()
+      })
       .eq('id', user.id);
 
     if (updateError) {
@@ -328,7 +338,7 @@ export const recordTodayVisit = async () => {
 
     // 성공 시 localStorage에 기록
     localStorage.setItem(lastVisitKey, todayKST);
-    logger.debug('방문 기록 완료:', todayKST);
+    logger.debug('방문 기록 완료:', todayKST, `(방문 ${newVisitCount}회)`);
   } catch (err) {
     logger.debug('방문 기록 중 오류:', err);
   }
