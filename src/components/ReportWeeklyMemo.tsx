@@ -119,12 +119,12 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
         <div className="flex flex-col w-full" style={{ gap: '4px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 600,
-            fontSize: '16px',
+            fontWeight: 500,
+            fontSize: '17px',
             lineHeight: '24px',
             color: '#000000',
             letterSpacing: '-0.36px'
-          }}>이번 주 나에게</p>
+          }}>나에게 쓰는 한마디</p>
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 400,
@@ -132,7 +132,7 @@ function TextAreaSection({ text, onChange }: TextAreaSectionProps) {
             lineHeight: '22px',
             color: '#6d6d6d',
             letterSpacing: '-0.42px'
-          }}>한 주 동안 애쓴 당신에게 칭찬 한마디 어때요?</p>
+          }}>한 주 동안 애쓴 당신에게 칭찬 한마디 어때요? (선택)</p>
         </div>
 
         {/* Text Area Box */}
@@ -575,12 +575,12 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
                 <div className="flex flex-col" style={{ gap: '4px' }}>
                   <p style={{
                     fontFamily: 'Pretendard Variable',
-                    fontWeight: 700,
-                    fontSize: '18px',
+                    fontWeight: 500,
+                    fontSize: '17px',
                     lineHeight: '24px',
                     color: '#000000',
                     letterSpacing: '-0.36px'
-                  }}>이번 주 나에게</p>
+                  }}>나에게 쓰는 한마디</p>
                   <p style={{
                     fontFamily: 'Pretendard Variable',
                     fontWeight: 400,
@@ -588,16 +588,16 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
                     lineHeight: '22px',
                     color: '#6d6d6d',
                     letterSpacing: '-0.42px'
-                  }}>한 주 동안 애쓴 당신에게 칭찬 한마디 어때요?</p>
+                  }}>한 주 동안 애쓴 당신에게 칭찬 한마디 어때요? (선택)</p>
                 </div>
-                {/* 수정 아이콘 */}
-                <button
+                {/* 수정 아이콘 - 임시로 숨김 */}
+                {/* <button
                   onClick={() => setMode('edit')}
                   className="flex items-center justify-center shrink-0 active:bg-gray-100 transition-colors rounded-full"
                   style={{ width: '36px', height: '36px' }}
                 >
                   <Pencil size={18} color="#999999" />
-                </button>
+                </button> */}
               </div>
 
               {/* 읽기 전용 텍스트 박스 */}

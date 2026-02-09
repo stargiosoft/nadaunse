@@ -55,12 +55,12 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
         <div className="flex flex-col w-full" style={{ gap: '4px', padding: '0 4px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 600,
-            fontSize: '16px',
+            fontWeight: 500,
+            fontSize: '17px',
             lineHeight: '24px',
             color: '#000000',
             letterSpacing: '-0.36px'
-          }}>이번 주 나에게</p>
+          }}>나에게 쓰는 한마디</p>
           <p style={{
             fontFamily: 'Pretendard Variable',
             fontWeight: 400,
@@ -68,7 +68,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
             lineHeight: '22px',
             color: '#6d6d6d',
             letterSpacing: '-0.42px'
-          }}>한 주 동안 애쓴 당신에게 칭찬 한마디 어때요?</p>
+          }}>한 주 동안 애쓴 당신에게 칭찬 한마디 어때요? (선택)</p>
         </div>
 
         {/* Text Area Box */}
