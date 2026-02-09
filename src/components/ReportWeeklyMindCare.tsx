@@ -104,7 +104,7 @@ function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
                <p style={{
                  fontFamily: 'Pretendard Variable',
                  fontWeight: 600,
-                 fontSize: '18px',
+                 fontSize: '17px',
                  lineHeight: '25.5px',
                  color: '#151515',
                  letterSpacing: '-0.36px',
@@ -379,7 +379,7 @@ export default function ReportWeeklyMindCare({
       {/* Content */}
       <div className="flex-1 w-full relative" style={{ paddingBottom: '230px' }}>
         {/* Card Section */}
-        <div className="flex items-center justify-center px-[20px] pb-[24px] w-full">
+        <div className="flex items-center justify-center pt-[8px] px-[20px] pb-[24px] w-full">
            <PrescriptionCard paragraphs={paragraphs} />
         </div>
 

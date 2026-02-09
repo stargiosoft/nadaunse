@@ -50,7 +50,7 @@ function TitleContainer({ title, dateRange }: TitleContainerProps) {
           fontWeight: 600,
           lineHeight: '24px',
           color: '#151515',
-          fontSize: '18px',
+          fontSize: '17px',
           letterSpacing: '-0.36px'
         }}>
           {title}
@@ -62,7 +62,7 @@ function TitleContainer({ title, dateRange }: TitleContainerProps) {
           color: '#999999',
           fontSize: '13px',
           letterSpacing: '-0.26px',
-          paddingTop: '3px',
+          paddingTop: '4px',
           paddingBottom: '3px'
         }}>
           {dateRange}
@@ -164,7 +164,7 @@ interface ContentContainer1Props {
 
 function ContentContainer1({ title, dateRange, paragraphs }: ContentContainer1Props) {
   return (
-    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '0 20px 24px 20px' }} data-name="Content Container">
+    <div className="flex items-center justify-center relative shrink-0 w-full" style={{ padding: '8px 20px 24px 20px' }} data-name="Content Container">
       <CardInterpretationCard title={title} dateRange={dateRange} paragraphs={paragraphs} />
     </div>
   );
@@ -358,8 +358,10 @@ function NavigationTopBar({ onClose }: { onClose?: () => void }) {
 
 function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="shrink-0 z-50 w-full" style={{ position: 'sticky', top: 0, backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }} data-name="Navigation / Top Navigation (Widget)">
-      <NavigationTopBar onClose={onClose} />
+    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }} data-name="Navigation / Top Navigation (Widget)">
+      <div className="w-full" style={{ maxWidth: '440px' }}>
+        <NavigationTopBar onClose={onClose} />
+      </div>
     </div>
   );
 }
@@ -374,8 +376,8 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () =>
   const handleNextRelease = () => setIsNextPressed(false);
 
   return (
-    <div className="shrink-0 bg-white w-full z-40" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
-      <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
+    <div className="fixed bottom-0 left-0 right-0 bg-white z-40 flex justify-center" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
+      <div className="flex flex-col items-center justify-center w-full" style={{ maxWidth: '440px', padding: '12px 20px' }}>
         <div className="flex w-full" style={{ gap: '12px' }}>
           {/* 이전 버튼 */}
           <button
@@ -772,18 +774,16 @@ export default function ReportWeeklyDetail({
       }}
       data-name="나의 보고서 (보고서 상세)"
     >
-      <div className="w-full max-w-[440px] h-full flex flex-col bg-white relative">
-        <NavigationTopNavigationWidget onClose={onClose} />
-        <div className="flex-1 w-full overflow-y-auto" style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
-          <ContentContainer3
-            title={title}
-            dateRange={dateRange}
-            paragraphs={paragraphs}
-            tags={tags}
-          />
-        </div>
-        <BottomButtons onPrev={onPrev} onNext={onNext} />
+      <NavigationTopNavigationWidget onClose={onClose} />
+      <div className="w-full h-full overflow-y-auto bg-white" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '80px', overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}>
+        <ContentContainer3
+          title={title}
+          dateRange={dateRange}
+          paragraphs={paragraphs}
+          tags={tags}
+        />
       </div>
+      <BottomButtons onPrev={onPrev} onNext={onNext} />
     </div>
   );
 }

@@ -153,7 +153,7 @@ function CardInterpretationCard({ tarot, cardLabel }: CardInterpretationCardProp
               color: '#151515',
               letterSpacing: '-0.28px',
               paddingTop: '10px',
-              marginBottom: '20px'
+              marginBottom: '18px'
             }}>{label}</p>
             <CardTextContainer
               title={tarot.card_name}
@@ -175,7 +175,7 @@ function CardContainer({ tarotSelections }: CardContainerProps) {
   return (
     <div
       className="flex flex-col gap-4 items-start w-full"
-      style={{ padding: '0 20px 230px 20px' }}
+      style={{ padding: '8px 20px 230px 20px' }}
       data-name="Card Container"
     >
       {tarotSelections.map((tarot, index) => (
