@@ -1640,16 +1640,16 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               >
                 {/* 기간 라벨 헤더 */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl" style={{ backgroundColor: '#3FB5B3', padding: '12px', textAlign: 'center' }}>
-                    <p style={{ fontSize: '11px', fontFamily: 'Pretendard Variable', fontWeight: 400, color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>A군</p>
-                    <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#ffffff' }}>
-                      {getCompareGroupLabels().currentLabel}
-                    </p>
-                  </div>
                   <div className="rounded-xl" style={{ backgroundColor: '#6366F1', padding: '12px', textAlign: 'center' }}>
                     <p style={{ fontSize: '11px', fontFamily: 'Pretendard Variable', fontWeight: 400, color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>B군</p>
                     <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#ffffff' }}>
                       {getCompareGroupLabels().previousLabel}
+                    </p>
+                  </div>
+                  <div className="rounded-xl" style={{ backgroundColor: '#3FB5B3', padding: '12px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '11px', fontFamily: 'Pretendard Variable', fontWeight: 400, color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>A군</p>
+                    <p style={{ fontSize: '13px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: '#ffffff' }}>
+                      {getCompareGroupLabels().currentLabel}
                     </p>
                   </div>
                 </div>
@@ -1669,6 +1669,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       const displayValue = item.formatFn || ((v: number) => v.toLocaleString() + item.unit);
                       return (
                         <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < arr.length - 1 ? '12px' : 0 }}>
+                          <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
+                              {item.formatFn ? item.formatFn(item.previous) : `${item.previous.toLocaleString()}${item.unit}`}
+                            </p>
+                          </div>
                           <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
                             <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
                             <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
@@ -1676,12 +1682,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             </p>
                             <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
                               {change.isPositive ? '▲' : '▼'} {change.value}%
-                            </p>
-                          </div>
-                          <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
-                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
-                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
-                              {item.formatFn ? item.formatFn(item.previous) : `${item.previous.toLocaleString()}${item.unit}`}
                             </p>
                           </div>
                         </div>
@@ -1707,6 +1707,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     const change = calcChangePercent(item.current, item.previous);
                     return (
                       <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < arr.length - 1 ? '12px' : 0 }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
+                            {item.previous.toLocaleString()}{item.unit}
+                          </p>
+                        </div>
                         <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
                           <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
@@ -1714,12 +1720,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           </p>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
                             {change.isPositive ? '▲' : '▼'} {change.value}%
-                          </p>
-                        </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
-                            {item.previous.toLocaleString()}{item.unit}
                           </p>
                         </div>
                       </div>
@@ -1737,6 +1737,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     const change = calcChangePercent(item.current, item.previous);
                     return (
                       <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 1 ? '12px' : 0 }}>
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
+                            {item.previous.toLocaleString()}{item.unit}
+                          </p>
+                        </div>
                         <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
                           <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
@@ -1744,12 +1750,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           </p>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
                             {change.isPositive ? '▲' : '▼'} {change.value}%
-                          </p>
-                        </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
-                            {item.previous.toLocaleString()}{item.unit}
                           </p>
                         </div>
                       </div>
@@ -1764,6 +1764,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     const change = calcChangePercent(currentPeriodStats.totalRevenue, previousPeriodStats.totalRevenue);
                     return (
                       <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>기간 매출</p>
+                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
+                            ₩{previousPeriodStats.totalRevenue.toLocaleString()}
+                          </p>
+                        </div>
                         <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>기간 매출</p>
                           <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
@@ -1771,12 +1777,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           </p>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
                             {change.isPositive ? '▲' : '▼'} {change.value}%
-                          </p>
-                        </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>기간 매출</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
-                            ₩{previousPeriodStats.totalRevenue.toLocaleString()}
                           </p>
                         </div>
                       </div>

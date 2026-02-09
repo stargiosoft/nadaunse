@@ -93,7 +93,98 @@ serve(async (req) => {
     console.log('🕐 birth_time:', sajuRecord.birth_time)
     console.log('👤 gender:', sajuRecord.gender)
 
-    // 4. 사주 타입 질문이 있으면 Saju API 한 번만 호출하여 캐싱
+    // 4. 초개인화를 위한 태그 + 심리 흐름 조회 (user_id 필요)
+    // ⭐ 사용자가 나다움 태그를 1개 이상 모은 경우에만 적용
+    let personalizationData: {
+      recentPositiveTags: string[]
+      recentNegativeTags: string[]
+      allPositiveTags: string[]
+      allNegativeTags: string[]
+      recentSituationSummaries: { week: number; summary: string }[]
+    } | null = null
+
+    try {
+      // 4-1. 주문에서 user_id 조회
+      const { data: orderUserData, error: orderUserError } = await supabase
+        .from('orders')
+        .select('user_id')
+        .eq('id', orderId)
+        .single()
+
+      if (orderUserError || !orderUserData?.user_id) {
+        console.log('⚠️ 주문에 user_id 없음, 초개인화 스킵')
+      } else {
+        const userId = orderUserData.user_id
+        console.log('🔍 초개인화 데이터 조회 시작 (user_id:', userId, ')')
+
+        // 4-2. 최근 4주 기준일 계산 (오늘 기준 28일 전)
+        const fourWeeksAgo = new Date()
+        fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+        const fourWeeksAgoISO = fourWeeksAgo.toISOString()
+
+        // 4-3. 태그 조회 (is_confirmed = true인 것만)
+        const { data: allTags, error: tagsError } = await supabase
+          .from('user_trait_tags')
+          .select('tag_name, tag_type, created_at')
+          .eq('user_id', userId)
+          .eq('is_confirmed', true)
+          .order('created_at', { ascending: false })
+
+        if (tagsError) {
+          console.warn('⚠️ 태그 조회 실패:', tagsError)
+        } else if (allTags && allTags.length > 0) {
+          console.log(`✅ 태그 조회 완료: ${allTags.length}개`)
+
+          // 최근 4주 태그 분류
+          const recentTags = allTags.filter(t => new Date(t.created_at) >= fourWeeksAgo)
+          const recentPositiveTags = [...new Set(recentTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
+          const recentNegativeTags = [...new Set(recentTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
+
+          // 전체 태그 분류 (중복 제거)
+          const allPositiveTags = [...new Set(allTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
+          const allNegativeTags = [...new Set(allTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
+
+          console.log(`📊 최근 4주 태그: 강점 ${recentPositiveTags.length}개, 단점 ${recentNegativeTags.length}개`)
+          console.log(`📊 전체 태그: 강점 ${allPositiveTags.length}개, 단점 ${allNegativeTags.length}개`)
+
+          // 4-4. 최근 4주 심리 흐름 조회 (weekly_reports.situation_summary)
+          const { data: recentReports, error: reportsError } = await supabase
+            .from('weekly_reports')
+            .select('week, situation_summary, week_start_date')
+            .eq('user_id', userId)
+            .eq('status', 'completed')
+            .gte('week_start_date', fourWeeksAgoISO.split('T')[0])
+            .order('week_start_date', { ascending: true })
+            .limit(4)
+
+          let recentSituationSummaries: { week: number; summary: string }[] = []
+          if (reportsError) {
+            console.warn('⚠️ 심리 흐름 조회 실패:', reportsError)
+          } else if (recentReports && recentReports.length > 0) {
+            recentSituationSummaries = recentReports
+              .filter(r => r.situation_summary)
+              .map((r, idx) => ({ week: idx + 1, summary: r.situation_summary! }))
+            console.log(`✅ 심리 흐름 조회 완료: ${recentSituationSummaries.length}주`)
+          }
+
+          // 초개인화 데이터 설정
+          personalizationData = {
+            recentPositiveTags,
+            recentNegativeTags,
+            allPositiveTags,
+            allNegativeTags,
+            recentSituationSummaries
+          }
+          console.log('✅ 초개인화 데이터 준비 완료')
+        } else {
+          console.log('ℹ️ 태그 없음, 초개인화 스킵')
+        }
+      }
+    } catch (personalizationError) {
+      console.warn('⚠️ 초개인화 데이터 조회 오류 (무시하고 계속):', personalizationError)
+    }
+
+    // 5. 사주 타입 질문이 있으면 Saju API 한 번만 호출하여 캐싱
     // ⭐ SAJU_API_KEY를 사용하여 서버에서 직접 호출 (IP 화이트리스트 + 키 인증)
     let cachedSajuData: Record<string, unknown> | null = null
     const hasSajuQuestions = questions.some(q => q.question_type === 'saju')
@@ -238,7 +329,9 @@ serve(async (req) => {
                 birthDate: sajuRecord.birth_date,
                 birthTime: sajuRecord.birth_time,
                 gender: sajuRecord.gender,
-                sajuData: cachedSajuData  // ⭐ 미리 가져온 사주 데이터 전달
+                sajuData: cachedSajuData,  // ⭐ 미리 가져온 사주 데이터 전달
+                // ⭐ 초개인화 데이터 전달
+                personalizationData: personalizationData
               })
             })
 
@@ -296,7 +389,9 @@ serve(async (req) => {
                 questionerInfo: content.questioner_info,
                 questionText: question.question_text,
                 questionId: question.id,
-                tarotCards: question.tarot_cards || null
+                tarotCards: question.tarot_cards || null,
+                // ⭐ 초개인화 데이터 전달
+                personalizationData: personalizationData
               })
             })
 
