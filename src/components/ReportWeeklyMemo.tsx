@@ -60,10 +60,8 @@ function Toast({ onComplete, message = "변경사항이 저장되었어요" }: {
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
     <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
-          className="text-center flex-1"
           style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -193,6 +191,14 @@ interface BottomButtonsProps {
 }
 
 function BottomButtons({ onPrev, onComplete, isLoading }: BottomButtonsProps) {
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isCompletePressed, setIsCompletePressed] = useState(false);
+
+  const handlePrevPress = () => !isLoading && setIsPrevPressed(true);
+  const handlePrevRelease = () => setIsPrevPressed(false);
+  const handleCompletePress = () => !isLoading && setIsCompletePressed(true);
+  const handleCompleteRelease = () => setIsCompletePressed(false);
+
   const handleCompleteClick = () => {
     console.log('🔘 [버튼] 완료 버튼 클릭됨');
     console.log('🔘 [버튼] onComplete 함수 존재:', !!onComplete);
@@ -210,8 +216,19 @@ function BottomButtons({ onPrev, onComplete, isLoading }: BottomButtonsProps) {
           <button
             onClick={onPrev}
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7] disabled:opacity-50"
-            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+            onMouseDown={handlePrevPress}
+            onMouseUp={handlePrevRelease}
+            onMouseLeave={handlePrevRelease}
+            onTouchStart={handlePrevPress}
+            onTouchEnd={handlePrevRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer disabled:opacity-50"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isPrevPressed && !isLoading ? '#E4F7F7' : '#f0f8f8',
+              height: '56px',
+              transform: isPrevPressed && !isLoading ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -227,8 +244,19 @@ function BottomButtons({ onPrev, onComplete, isLoading }: BottomButtonsProps) {
           <button
             onClick={handleCompleteClick}
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E] disabled:opacity-70"
-            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+            onMouseDown={handleCompletePress}
+            onMouseUp={handleCompleteRelease}
+            onMouseLeave={handleCompleteRelease}
+            onTouchStart={handleCompletePress}
+            onTouchEnd={handleCompleteRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer disabled:opacity-70"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isCompletePressed && !isLoading ? '#41A09E' : '#48b2af',
+              height: '56px',
+              transform: isCompletePressed && !isLoading ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -252,6 +280,14 @@ interface BottomButtonsViewProps {
 }
 
 function BottomButtonsView({ onPrev, onClose }: BottomButtonsViewProps) {
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isClosePressed, setIsClosePressed] = useState(false);
+
+  const handlePrevPress = () => setIsPrevPressed(true);
+  const handlePrevRelease = () => setIsPrevPressed(false);
+  const handleClosePress = () => setIsClosePressed(true);
+  const handleCloseRelease = () => setIsClosePressed(false);
+
   return (
     <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
@@ -259,8 +295,19 @@ function BottomButtonsView({ onPrev, onClose }: BottomButtonsViewProps) {
           {/* 이전 버튼 */}
           <button
             onClick={onPrev}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
-            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+            onMouseDown={handlePrevPress}
+            onMouseUp={handlePrevRelease}
+            onMouseLeave={handlePrevRelease}
+            onTouchStart={handlePrevPress}
+            onTouchEnd={handlePrevRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isPrevPressed ? '#E4F7F7' : '#f0f8f8',
+              height: '56px',
+              transform: isPrevPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -275,8 +322,19 @@ function BottomButtonsView({ onPrev, onClose }: BottomButtonsViewProps) {
           {/* 닫기 버튼 */}
           <button
             onClick={onClose}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
-            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+            onMouseDown={handleClosePress}
+            onMouseUp={handleCloseRelease}
+            onMouseLeave={handleCloseRelease}
+            onTouchStart={handleClosePress}
+            onTouchEnd={handleCloseRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isClosePressed ? '#41A09E' : '#48b2af',
+              height: '56px',
+              transform: isClosePressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',

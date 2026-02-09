@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import svgPaths from "@/imports/svg-cxwdyqr8rc";
 import cloverSvgPaths from "@/imports/svg-8dky997t82";
@@ -6,30 +6,11 @@ import { motion } from 'motion/react';
 import { useWeeklyReport, WeeklyReport, ReportSection } from '@/hooks/useWeeklyReport';
 import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
+import SearchPillIcon from './ui/SearchPillIcon';
 
 // --- Icons & Graphics ---
 
-function GroupIcon() {
-  return (
-    <div className="absolute" style={{ inset: '6.25% 6.1% 6.16% 6.25%' }} data-name="Group">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 35.0614 35.0358">
-        <g id="Group">
-          <path d={svgPaths.p194c330} fill="#FCD53F" id="Vector" />
-          <path d={svgPaths.p15556900} fill="#F8312F" id="Vector_2" />
-          <path d={svgPaths.p54cab00} fill="#F4F4F4" id="Vector_3" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function PillIcon() {
-  return (
-    <div className="overflow-clip relative shrink-0" style={{ width: '40px', height: '40px' }} data-name="fluent-emoji-flat:pill">
-      <GroupIcon />
-    </div>
-  );
-}
+// PillIcon removed - now using SearchPillIcon (Lottie animation)
 
 function CloverIcon() {
   return (
@@ -75,10 +56,8 @@ function SettingsIcon() {
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
     <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
-          className="text-center flex-1"
           style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -118,7 +97,9 @@ function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
 
           {/* Icon & Title Group */}
           <div className="flex flex-col items-start relative w-full" style={{ gap: '8px' }}>
-             <PillIcon />
+             <div style={{ marginLeft: '-6px' }}>
+               <SearchPillIcon size={52} />
+             </div>
              <div className="flex flex-col items-start relative w-full">
                <p style={{
                  fontFamily: 'Pretendard Variable',
@@ -127,7 +108,8 @@ function PrescriptionCard({ paragraphs }: PrescriptionCardProps) {
                  lineHeight: '25.5px',
                  color: '#151515',
                  letterSpacing: '-0.36px',
-                 marginTop: '12px'
+                 marginTop: '10px',
+                 marginBottom: '4px'
                }}>마음 처방</p>
              </div>
 
@@ -165,7 +147,7 @@ function GoalItem({ text }: { text: string }) {
   return (
     <div className="relative shrink-0 w-full" style={{ backgroundColor: '#f8f8f8', borderRadius: '16px' }}>
       <div className="flex flex-row items-center size-full">
-        <div className="content-stretch flex items-center relative w-full" style={{ padding: '20px 24px', gap: '10px' }}>
+        <div className="content-stretch flex items-center relative w-full" style={{ padding: '16px 20px', gap: '10px' }}>
           <CloverIcon />
           <div className="flex flex-col justify-center relative shrink-0 text-black" style={{ fontSize: '15px', letterSpacing: '-0.3px' }}>
             <p className="leading-[25.5px] font-normal" style={{ fontFamily: 'Pretendard Variable' }}>{text}</p>
@@ -184,21 +166,22 @@ function GoalsSection({ goals }: GoalsSectionProps) {
   if (goals.length === 0) return null;
 
   return (
-    <div className="flex flex-col items-center w-full pb-0" style={{ paddingTop: '32px' }}>
+    <div className="flex flex-col items-center w-full pb-0" style={{ paddingTop: '18px' }}>
        {/* Title */}
-       <div className="flex items-center justify-center w-full pb-0" style={{ padding: '0 20px' }}>
-         <p className="text-center" style={{
+       <div className="flex items-center justify-start w-full pb-0" style={{ paddingLeft: '22px', paddingRight: '20px' }}>
+         <p style={{
            fontFamily: 'Pretendard Variable',
            fontWeight: 600,
            fontSize: '17px',
            lineHeight: '24px',
            color: '#000000',
-           letterSpacing: '-0.34px'
+           letterSpacing: '-0.34px',
+           textAlign: 'left'
          }}>행운을 잡기 위한 다음주 작은 목표</p>
        </div>
 
        {/* List */}
-       <div className="w-full pb-0" style={{ padding: '16px 28px 0 28px' }}>
+       <div className="w-full pb-0" style={{ padding: '14px 20px 0 20px' }}>
          <motion.div
            className="flex flex-col w-full"
            style={{ gap: '10px' }}
@@ -239,6 +222,14 @@ function GoalsSection({ goals }: GoalsSectionProps) {
 }
 
 function BottomButtons({ onPrev, onNext }: { onPrev?: () => void, onNext?: () => void }) {
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isNextPressed, setIsNextPressed] = useState(false);
+
+  const handlePrevPress = () => setIsPrevPressed(true);
+  const handlePrevRelease = () => setIsPrevPressed(false);
+  const handleNextPress = () => setIsNextPressed(true);
+  const handleNextRelease = () => setIsNextPressed(false);
+
   return (
     <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
@@ -246,8 +237,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void, onNext?: () =>
             {/* Prev Button */}
             <button
               onClick={onPrev}
-              className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
-              style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+              onMouseDown={handlePrevPress}
+              onMouseUp={handlePrevRelease}
+              onMouseLeave={handlePrevRelease}
+              onTouchStart={handlePrevPress}
+              onTouchEnd={handlePrevRelease}
+              className="flex-1 flex items-center justify-center relative cursor-pointer"
+              style={{
+                borderRadius: '16px',
+                backgroundColor: isPrevPressed ? '#E4F7F7' : '#f0f8f8',
+                height: '56px',
+                transform: isPrevPressed ? 'scale(0.99)' : 'scale(1)',
+                transition: 'all 0.1s ease'
+              }}
             >
                <p style={{
                  fontFamily: 'Pretendard Variable',
@@ -262,8 +264,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void, onNext?: () =>
             {/* Next Button */}
             <button
               onClick={onNext}
-              className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
-              style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+              onMouseDown={handleNextPress}
+              onMouseUp={handleNextRelease}
+              onMouseLeave={handleNextRelease}
+              onTouchStart={handleNextPress}
+              onTouchEnd={handleNextRelease}
+              className="flex-1 flex items-center justify-center relative cursor-pointer"
+              style={{
+                borderRadius: '16px',
+                backgroundColor: isNextPressed ? '#41A09E' : '#48b2af',
+                height: '56px',
+                transform: isNextPressed ? 'scale(0.99)' : 'scale(1)',
+                transition: 'all 0.1s ease'
+              }}
             >
                <p style={{
                  fontFamily: 'Pretendard Variable',
@@ -366,12 +379,12 @@ export default function ReportWeeklyMindCare({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto w-full relative" style={{ paddingBottom: '230px' }}>
         {/* Card Section */}
-        <div className="flex items-center justify-center pt-[12px] px-[20px] pb-[40px] w-full">
+        <div className="flex items-center justify-center pt-[12px] px-[20px] pb-[24px] w-full">
            <PrescriptionCard paragraphs={paragraphs} />
         </div>
 
         {/* Divider */}
-        <div className="w-full shrink-0" style={{ height: '12px', backgroundColor: '#f9f9f9' }} />
+        <div className="w-full shrink-0" style={{ height: '8px', backgroundColor: '#f9f9f9' }} />
 
         {/* Goals Section */}
         <GoalsSection goals={toDoList} />

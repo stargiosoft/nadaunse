@@ -327,10 +327,8 @@ function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContai
 function NavigationTopBar({ onClose }: { onClose?: () => void }) {
   return (
     <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
-          className="text-center flex-1"
           style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -367,6 +365,14 @@ function NavigationTopNavigationWidget({ onClose }: { onClose?: () => void }) {
 }
 
 function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () => void }) {
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isNextPressed, setIsNextPressed] = useState(false);
+
+  const handlePrevPress = () => setIsPrevPressed(true);
+  const handlePrevRelease = () => setIsPrevPressed(false);
+  const handleNextPress = () => setIsNextPressed(true);
+  const handleNextRelease = () => setIsNextPressed(false);
+
   return (
     <div className="shrink-0 bg-white w-full z-40" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
@@ -374,8 +380,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () =>
           {/* 이전 버튼 */}
           <button
             onClick={onPrev}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
-            style={{ borderRadius: '16px', backgroundColor: '#f0f8f8', height: '56px' }}
+            onMouseDown={handlePrevPress}
+            onMouseUp={handlePrevRelease}
+            onMouseLeave={handlePrevRelease}
+            onTouchStart={handlePrevPress}
+            onTouchEnd={handlePrevRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isPrevPressed ? '#E4F7F7' : '#f0f8f8',
+              height: '56px',
+              transform: isPrevPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',
@@ -390,8 +407,19 @@ function BottomButtons({ onPrev, onNext }: { onPrev?: () => void; onNext?: () =>
           {/* 다음 버튼 */}
           <button
             onClick={onNext}
-            className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
-            style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+            onMouseDown={handleNextPress}
+            onMouseUp={handleNextRelease}
+            onMouseLeave={handleNextRelease}
+            onTouchStart={handleNextPress}
+            onTouchEnd={handleNextRelease}
+            className="flex-1 flex items-center justify-center relative cursor-pointer"
+            style={{
+              borderRadius: '16px',
+              backgroundColor: isNextPressed ? '#41A09E' : '#48b2af',
+              height: '56px',
+              transform: isNextPressed ? 'scale(0.99)' : 'scale(1)',
+              transition: 'all 0.1s ease'
+            }}
           >
             <p style={{
               fontFamily: 'Pretendard Variable',

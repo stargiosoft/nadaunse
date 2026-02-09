@@ -6,10 +6,8 @@ import { X } from 'lucide-react';
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
     <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
-      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '12px', paddingRight: '12px' }}>
-        <div className="opacity-0" style={{ width: '44px', height: '44px' }} />
+      <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
         <h1
-          className="text-center flex-1"
           style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -123,6 +121,14 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
 }
 
 function BottomButtons({ onCancel, onSave }: { onCancel: () => void, onSave: () => void }) {
+  const [isCancelPressed, setIsCancelPressed] = useState(false);
+  const [isSavePressed, setIsSavePressed] = useState(false);
+
+  const handleCancelPress = () => setIsCancelPressed(true);
+  const handleCancelRelease = () => setIsCancelPressed(false);
+  const handleSavePress = () => setIsSavePressed(true);
+  const handleSaveRelease = () => setIsSavePressed(false);
+
   return (
     <div className="fixed bottom-0 bg-white w-full z-40" style={{ maxWidth: '440px', boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px' }}>
@@ -130,8 +136,19 @@ function BottomButtons({ onCancel, onSave }: { onCancel: () => void, onSave: () 
             {/* Cancel Button */}
             <button
               onClick={onCancel}
-              className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#E4F7F7]"
-              style={{ borderRadius: '16px', backgroundColor: '#F0F8F8', height: '56px' }}
+              onMouseDown={handleCancelPress}
+              onMouseUp={handleCancelRelease}
+              onMouseLeave={handleCancelRelease}
+              onTouchStart={handleCancelPress}
+              onTouchEnd={handleCancelRelease}
+              className="flex-1 flex items-center justify-center relative cursor-pointer"
+              style={{
+                borderRadius: '16px',
+                backgroundColor: isCancelPressed ? '#E4F7F7' : '#F0F8F8',
+                height: '56px',
+                transform: isCancelPressed ? 'scale(0.99)' : 'scale(1)',
+                transition: 'all 0.1s ease'
+              }}
             >
                <p style={{
                  fontFamily: 'Pretendard Variable',
@@ -146,8 +163,19 @@ function BottomButtons({ onCancel, onSave }: { onCancel: () => void, onSave: () 
             {/* Save Button */}
             <button
               onClick={onSave}
-              className="flex-1 flex items-center justify-center relative cursor-pointer transition active:scale-[0.99] active:!bg-[#41A09E]"
-              style={{ borderRadius: '16px', backgroundColor: '#48b2af', height: '56px' }}
+              onMouseDown={handleSavePress}
+              onMouseUp={handleSaveRelease}
+              onMouseLeave={handleSaveRelease}
+              onTouchStart={handleSavePress}
+              onTouchEnd={handleSaveRelease}
+              className="flex-1 flex items-center justify-center relative cursor-pointer"
+              style={{
+                borderRadius: '16px',
+                backgroundColor: isSavePressed ? '#41A09E' : '#48b2af',
+                height: '56px',
+                transform: isSavePressed ? 'scale(0.99)' : 'scale(1)',
+                transition: 'all 0.1s ease'
+              }}
             >
                <p style={{
                  fontFamily: 'Pretendard Variable',
