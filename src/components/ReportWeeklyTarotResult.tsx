@@ -103,17 +103,17 @@ interface CardTextContainerProps {
 
 function CardTextContainer({ title, description, imageUrl }: CardTextContainerProps) {
   return (
-    <div className="flex flex-col items-center relative shrink-0 w-full" style={{ padding: '0 20px' }} data-name="Container">
-        <div className="flex flex-col items-center w-full" style={{ gap: '18px', marginBottom: '10px' }}>
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ padding: '0 20px' }} data-name="Container">
+        <div className="flex flex-col items-center w-full" style={{ gap: '18px', marginBottom: '2px' }}>
             <TarotCardImage imageUrl={imageUrl} cardName={title} />
             <p style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 600,
-                fontSize: '18px',
+                fontSize: '16px',
                 lineHeight: '25.5px',
                 color: '#151515',
                 letterSpacing: '-0.36px',
-                textAlign: 'center',
+                textAlign: 'left',
                 width: '100%'
             }}>{title}</p>
         </div>
@@ -124,6 +124,7 @@ function CardTextContainer({ title, description, imageUrl }: CardTextContainerPr
         lineHeight: '28.5px',
         color: '#151515',
         letterSpacing: '-0.32px',
+        textAlign: 'left',
         width: '100%'
       }}>{description}</p>
     </div>
@@ -148,12 +149,13 @@ function CardInterpretationCard({ tarot, cardLabel }: CardInterpretationCardProp
             {/* 카드 라벨 */}
             <p style={{
               fontFamily: 'Pretendard Variable',
-              fontWeight: 500,
-              fontSize: '14px',
+              fontWeight: 600,
+              fontSize: '17px',
               lineHeight: '20px',
-              color: '#48b2af',
+              color: '#151515',
               letterSpacing: '-0.28px',
-              marginBottom: '16px'
+              paddingTop: '12px',
+              marginBottom: '20px'
             }}>{label}</p>
             <CardTextContainer
               title={tarot.card_name}

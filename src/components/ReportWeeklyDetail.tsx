@@ -80,7 +80,7 @@ interface TextContainerProps {
 
 function TextContainer({ title, dateRange, paragraphs }: TextContainerProps) {
   return (
-    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '8px' }} data-name="Text Container">
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '12px' }} data-name="Text Container">
       <TitleContainer title={title} dateRange={dateRange} />
       <div style={{
         fontFamily: 'Pretendard Variable',
@@ -210,7 +210,7 @@ function Frame({ isOpen }: { isOpen: boolean }) {
         <div className="flex items-center justify-between relative w-full" style={{ padding: '14px 20px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 500,
+            fontWeight: isOpen ? 600 : 500,
             lineHeight: '24px',
             color: '#000000',
             fontSize: '17px',
@@ -256,7 +256,7 @@ interface Frame1Props {
 
 function Frame1({ tags }: Frame1Props) {
   return (
-    <div className="flex items-center justify-start relative shrink-0 w-full content-start" style={{ flexWrap: 'wrap', gap: '6px' }}>
+    <div className="flex items-center justify-start relative shrink-0 w-full content-start" style={{ flexWrap: 'wrap', gap: '5px' }}>
       {tags.map((tag) => (
         <TagLabel key={tag.id} text={tag.tag_name} />
       ))}
@@ -316,7 +316,7 @@ interface ContentContainer3Props {
 
 function ContentContainer3({ title, dateRange, paragraphs, tags }: ContentContainer3Props) {
   return (
-    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '4px', paddingBottom: '230px' }} data-name="Content Container">
+    <div className="flex flex-col items-start relative shrink-0 w-full" style={{ gap: '4px', paddingBottom: '130px' }} data-name="Content Container">
       <ContentContainer2 title={title} dateRange={dateRange} paragraphs={paragraphs} />
       <TagListAccordion tags={tags} />
     </div>
