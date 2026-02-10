@@ -650,22 +650,24 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
               </div>
 
               {/* 개발 환경 전용 테스트 버튼 */}
-              <button
-                onClick={() => navigate('/test/completion-coupon')}
-                className="w-full text-center rounded-lg"
-                style={{
-                  fontFamily: 'Pretendard Variable',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: '#48b2af',
-                  backgroundColor: '#f0f8f8',
-                  padding: '12px 16px',
-                  border: '1px solid #e0f2f1',
-                  marginTop: '20px'
-                }}
-              >
-                🎫 쿠폰 완료 화면 보기 (테스트용)
-              </button>
+              {DEV && (
+                <button
+                  onClick={() => navigate('/test/completion-coupon')}
+                  className="w-full text-center rounded-lg"
+                  style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#48b2af',
+                    backgroundColor: '#f0f8f8',
+                    padding: '12px 16px',
+                    border: '1px solid #e0f2f1',
+                    marginTop: '20px'
+                  }}
+                >
+                  🎫 쿠폰 완료 화면 보기 (테스트용)
+                </button>
+              )}
             </div>
           </div>
 
@@ -694,22 +696,24 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
           <TextAreaSection text={text} onChange={setText} />
 
           {/* 개발 환경 전용 테스트 버튼 */}
-          <button
-            onClick={() => navigate('/test/completion-coupon')}
-            className="w-full text-center rounded-lg"
-            style={{
-              fontFamily: 'Pretendard Variable',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#48b2af',
-              backgroundColor: '#f0f8f8',
-              padding: '12px 16px',
-              border: '1px solid #e0f2f1',
-              marginTop: '20px'
-            }}
-          >
-            🎫 쿠폰 완료 화면 보기 (테스트용)
-          </button>
+          {DEV && (
+            <button
+              onClick={() => navigate('/test/completion-coupon')}
+              className="w-full text-center rounded-lg"
+              style={{
+                fontFamily: 'Pretendard Variable',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#48b2af',
+                backgroundColor: '#f0f8f8',
+                padding: '12px 16px',
+                border: '1px solid #e0f2f1',
+                marginTop: '20px'
+              }}
+            >
+              🎫 쿠폰 완료 화면 보기 (테스트용)
+            </button>
+          )}
 
         </div>
       </div>
