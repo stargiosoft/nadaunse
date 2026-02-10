@@ -159,6 +159,18 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false); // ⭐ 초기값 false
 
 
+  // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('🔄 [MasterContentDetailPage] bfcache 복원 감지 → 홈으로 이동');
+        navigate('/', { replace: true });
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [navigate]);
+
   const usageGuideRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -821,7 +833,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const isPaid = content.content_type === 'paid';
   const onBack = () => {
     console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { timestamp: new Date().toISOString() });
-    navigate('/');
+    navigate(-1);
   };
   
   const onPurchase = async () => {
