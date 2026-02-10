@@ -384,7 +384,7 @@ function BottomButtonsView({ onPrev, onClose }: BottomButtonsViewProps) {
 // CompletionCoupon, MypageProfile 삭제 대체 플레이스홀더
 function PlaceholderView({ title, onClose }: { title: string; onClose: () => void }) {
   return (
-    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+    <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
       <TopBar onClose={onClose} />
       <div className="flex-1 flex items-center justify-center">
         <p style={{ fontFamily: 'Pretendard Variable', fontSize: '16px', color: '#999999' }}>
@@ -522,7 +522,7 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
       console.error('❌ [응원글] 수정 저장 중 예외:', err);
     }
 
-    setMode('view'); // 다시보기로 복귀
+    // setMode('view') 제거 - 호출하는 쪽에서 처리
   };
 
   // 로딩 중 - WeeklyReportLoading 사용 (FreeContentLoading과 동일)
@@ -537,7 +537,10 @@ export default function ReportWeeklyMemo({ reportId, onClose, onPrev, onNext }: 
         <ReportWeeklyMemoEdit
           initialText={savedText || ''}
           onCancel={() => setMode('view')}
-          onSave={handleSaveEdit}
+          onSave={async (text) => {
+            await handleSaveEdit(text);
+            setMode('view');
+          }}
         />
         <AnimatePresence>
           {showToast && <Toast onComplete={() => setShowToast(false)} message={toastMessage} />}

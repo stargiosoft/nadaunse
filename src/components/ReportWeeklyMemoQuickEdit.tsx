@@ -1,8 +1,40 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import { invalidateWeeklyReportCache } from '@/hooks/useWeeklyReport';
+import { AnimatePresence, motion } from "motion/react";
+import { Check } from "lucide-react";
 
 // --- Components ---
+
+function Toast({ onComplete, message = "변경사항이 저장되었어요" }: { onComplete: () => void; message?: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 100, x: "-50%" }}
+      animate={{
+        opacity: [0, 1, 1, 1],
+        y: [100, 0, 0, 160],
+        x: "-50%"
+      }}
+      transition={{
+        delay: 0,
+        duration: 2.2,
+        times: [0, 0.15, 0.8, 1],
+        ease: ["easeOut", "linear", "easeIn"]
+      }}
+      onAnimationComplete={onComplete}
+      className="fixed z-50 flex items-center justify-center left-1/2 whitespace-nowrap shadow-none"
+      style={{ backdropFilter: 'blur(15px)', backgroundColor: 'rgba(0,0,0,0.5)', bottom: '30px', padding: '8px 16px 8px 12px', borderRadius: '999px', transform: 'translateX(-50%)' }}
+    >
+      <div className="flex items-center relative shrink-0" style={{ gap: '8px' }}>
+        <div className="relative shrink-0 rounded-full flex items-center justify-center" style={{ width: '24px', height: '24px', backgroundColor: '#46BB6F' }}>
+           <Check size={16} color="white" strokeWidth={3} />
+        </div>
+        <p className="relative shrink-0 text-white" style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, lineHeight: '22px', fontSize: '13px' }}>{message}</p>
+      </div>
+    </motion.div>
+  );
+}
 
 function TopBar({ onClose }: { onClose?: () => void }) {
   return (
@@ -40,20 +72,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
 
   return (
     <div className="relative w-full">
-      <div className="flex flex-col w-full" style={{ gap: '10px' }}>
-        {/* Header Text */}
-        <h2 style={{
-          fontFamily: 'Pretendard Variable',
-          fontWeight: 500,
-          fontSize: '16px',
-          lineHeight: '24px',
-          letterSpacing: '-0.36px',
-          color: 'rgb(0, 0, 0)',
-          paddingLeft: '4px'
-        }}>
-          나에게 쓰는 한마디
-        </h2>
-
+      <div className="flex flex-col w-full">
         {/* Text Area Box */}
         <div
           className="w-full relative border transition-colors duration-200"
@@ -115,7 +134,7 @@ function TextAreaSection({ text, onChange }: { text: string, onChange: (val: str
   );
 }
 
-function InlineButtons({ onCancel, onSave }: { onCancel: () => void, onSave: () => void }) {
+function InlineButtons({ onCancel, onSave }: { onCancel?: () => void, onSave?: () => void }) {
   const [isCancelPressed, setIsCancelPressed] = useState(false);
   const [isSavePressed, setIsSavePressed] = useState(false);
 
@@ -185,15 +204,66 @@ function InlineButtons({ onCancel, onSave }: { onCancel: () => void, onSave: () 
   );
 }
 
-interface ReportWeeklyMemoEditProps {
-  initialText: string;
-  onCancel: () => void;
-  onSave: (text: string) => void;
+interface ReportWeeklyMemoQuickEditProps {
+  reportId?: string;
+  initialText?: string;
+  onClose?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
-export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: ReportWeeklyMemoEditProps) {
-  const navigate = useNavigate();
-  const [text, setText] = useState(initialText || "이번 한주도 고생했어. 힘든일도 많고 포기하고 싶을 때마다 괜찮다고 더 버텨보자고 애썼다고 칭찬해주고 싶어.");
+export default function ReportWeeklyMemoQuickEdit({
+  reportId,
+  initialText = '',
+  onClose,
+  onPrev,
+  onNext
+}: ReportWeeklyMemoQuickEditProps) {
+  const [text, setText] = useState(initialText);
+  const [showToast, setShowToast] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleNext = async () => {
+    console.log('🎯 [QuickEdit] 다음 버튼 클릭');
+
+    if (isSaving) return;
+
+    // 텍스트가 있으면 저장
+    if (text.trim() && reportId) {
+      setIsSaving(true);
+      try {
+        const { error } = await supabase
+          .from('weekly_reports')
+          .update({ self_encouragement: text.trim() })
+          .eq('id', reportId);
+
+        if (error) {
+          console.error('❌ [QuickEdit] 저장 실패:', error);
+        } else {
+          console.log('✅ [QuickEdit] 저장 완료');
+          // 캐시 무효화
+          localStorage.removeItem('my_report_cache_v3');
+          localStorage.setItem('my_report_needs_refresh', 'true');
+          invalidateWeeklyReportCache(reportId);
+          console.log('🗑️ [QuickEdit] 보고서 캐시 삭제 + refresh 플래그 설정');
+        }
+      } catch (err) {
+        console.error('❌ [QuickEdit] 저장 중 예외:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+
+    onNext?.();
+  };
+
+  const handleCancel = () => {
+    onPrev?.();
+  };
+
+  const handleSave = () => {
+    handleNext();
+  };
 
   return (
     <>
@@ -202,34 +272,32 @@ export default function ReportWeeklyMemoEdit({ initialText, onCancel, onSave }: 
           color: #B7B7B7;
         }
       `}</style>
-      <TopBar onClose={onCancel} />
-      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '40px' }} data-name="나의 보고서 (이번 주 나에게-수정하기)">
+      <TopBar onClose={onClose} />
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px', paddingTop: '52px', paddingBottom: '40px' }} data-name="나의 보고서 (이번 주 나에게-Quick Edit)">
         {/* Content */}
         <div className="flex-1 w-full relative">
           <div className="w-full" style={{ padding: '4px 20px 40px' }}>
+            {/* Title */}
+            <h2 style={{
+              fontFamily: 'Pretendard Variable',
+              fontWeight: 500,
+              fontSize: '16px',
+              lineHeight: '24px',
+              letterSpacing: '-0.36px',
+              color: 'rgb(0, 0, 0)',
+              paddingLeft: '4px',
+              marginBottom: '10px'
+            }}>
+              나에게 쓰는 한마디
+            </h2>
             <TextAreaSection text={text} onChange={setText} />
-            <InlineButtons onCancel={onCancel} onSave={() => onSave(text)} />
-
-            {/* 개발 환경 전용 테스트 버튼 */}
-            <button
-              onClick={() => navigate('/test/completion-coupon')}
-              className="w-full text-center rounded-lg"
-              style={{
-                fontFamily: 'Pretendard Variable',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: '#48b2af',
-                backgroundColor: '#f0f8f8',
-                padding: '12px 16px',
-                border: '1px solid #e0f2f1',
-                marginTop: '20px'
-              }}
-            >
-              🎫 쿠폰 완료 화면 보기 (테스트용)
-            </button>
+            <InlineButtons onCancel={handleCancel} onSave={handleSave} />
           </div>
         </div>
       </div>
+      <AnimatePresence>
+        {showToast && <Toast onComplete={() => setShowToast(false)} />}
+      </AnimatePresence>
     </>
   );
 }

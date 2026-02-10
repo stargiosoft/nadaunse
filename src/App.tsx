@@ -58,6 +58,7 @@ import ReportWeeklyTarotResult from './components/ReportWeeklyTarotResult';
 import ReportWeeklyMindCare from './components/ReportWeeklyMindCare';
 import ReportWeeklyMemo from './components/ReportWeeklyMemo';
 import ReportWeeklyMemoEdit from './components/ReportWeeklyMemoEdit';
+import ReportWeeklyMemoQuickEdit from './components/ReportWeeklyMemoQuickEdit';
 import CompletionCoupon from './components/CompletionCoupon';
 import AuthCallback from './pages/AuthCallback';
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
@@ -3150,47 +3151,35 @@ function ReportWeeklyMemoEditWrapper() {
 
   const initialText = (location.state as { initialText?: string })?.initialText || '';
 
-  // 취소: 변경 없이 나 응원하기 다시보기 페이지로 이동 (fromEdit 플래그로 닫기 시 프로필로 이동하도록)
-  const handleCancel = () => {
-    navigate(`/report-weekly-memo/${id}`, { replace: true, state: { fromEdit: true } });
+  // X 버튼 클릭: 보고서 리스트로 돌아가기
+  const handleClose = () => {
+    navigate('/my-report-list', { replace: true });
   };
 
-  // 저장: DB 저장 → 토스트 표시 (2.2초) → 나 응원하기 다시보기 페이지로 이동
-  const handleSave = async (newText: string) => {
-    try {
-      const { error } = await supabase
-        .from('weekly_reports')
-        .update({ self_encouragement: newText })
-        .eq('id', id);
+  // 이전 버튼: 보고서 리스트로 돌아가기
+  const handlePrev = () => {
+    navigate('/my-report-list', { replace: true });
+  };
 
-      if (error) {
-        console.error('응원글 수정 실패:', error);
-        return;
-      }
+  // 다음 버튼: 저장 후 보고서 리스트로 돌아가기 (ReportWeeklyMemoQuickEdit 내부에서 저장 처리)
+  const handleNext = () => {
+    // 토스트 표시
+    sonnerToast.custom(
+      () => <Toast type="positive" message="수정이 반영됐어요." />,
+      { duration: 2200 }
+    );
 
-      // ⭐ 보고서 목록 캐시 무효화 (응원글 반영)
-      localStorage.removeItem('my_report_cache_v3');
-      localStorage.setItem('my_report_needs_refresh', 'true');
-      console.log('🗑️ [응원글 수정] 보고서 목록 캐시 삭제 + refresh 플래그 설정');
-
-      // 토스트 표시 (2.2초)
-      sonnerToast.custom(
-        () => <Toast type="positive" message="수정이 반영됐어요." />,
-        { duration: 2200 }
-      );
-
-      // 나 응원하기 다시보기 페이지로 이동 (fromEdit 플래그로 닫기 시 프로필로 이동하도록)
-      navigate(`/report-weekly-memo/${id}`, { replace: true, state: { fromEdit: true } });
-    } catch (err) {
-      console.error('응원글 수정 중 오류:', err);
-    }
+    // 보고서 리스트로 이동
+    navigate('/my-report-list', { replace: true });
   };
 
   return (
-    <ReportWeeklyMemoEdit
+    <ReportWeeklyMemoQuickEdit
+      reportId={id}
       initialText={initialText}
-      onCancel={handleCancel}
-      onSave={handleSave}
+      onClose={handleClose}
+      onPrev={handlePrev}
+      onNext={handleNext}
     />
   );
 }
