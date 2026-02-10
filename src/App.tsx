@@ -852,7 +852,6 @@ function BirthInfoPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const goBack = useGoBack(`/product/${id}`); // ⭐ 직전 페이지로 (fallback: 콘텐츠 상세)
-  const loginAuth = useLoginRequired();
 
   // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
   const numericId = Number(id);
@@ -875,7 +874,7 @@ function BirthInfoPage() {
       // master_contents 조회 (UUID인 경우)
       if (id) {
         console.log('🔍 [BirthInfoPage] master_contents 조회 시작...');
-        
+
         try {
           const { data, error } = await supabase
             .from('master_contents')
@@ -891,22 +890,20 @@ function BirthInfoPage() {
               type: data.content_type === 'free' ? 'free' : 'paid',
               category: data.category_main,
             };
-            
+
             console.log('✅ [BirthInfoPage] master_contents에서 발견:', data);
             console.log('📌 [BirthInfoPage] content_type:', data.content_type);
             console.log('📌 [BirthInfoPage] 변환된 product.type:', convertedProduct.type);
-            
+
             setProduct(convertedProduct);
           } else {
             console.error('❌ [BirthInfoPage] 마스터 콘텐츠 조회 실패:', error);
-            // 네트워크 에러 시 null 유지 (에러 화면 표시)
           }
         } catch (err) {
           console.error('❌ [BirthInfoPage] 마스터 콘텐츠 조회 중 예외 발생:', err);
-          // 네트워크 에러 시 null 유지 (에러 화면 표시)
         }
       }
-      
+
       setIsLoading(false);
     };
 
@@ -925,7 +922,7 @@ function BirthInfoPage() {
 
       // 로그인 사용자 확인
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         console.log('ℹ️ [BirthInfoPage] 로그아웃 사용자 → 입력 페이지');
         setHasSajuInfo(false);
@@ -963,18 +960,10 @@ function BirthInfoPage() {
     checkSajuInfo();
   }, [product, id, navigate]);
 
-  // ⭐ 상품 로딩 중에는 PageLoader 표시 (로그인 체크보다 먼저 - product.type 확인 필요)
+  // ⭐ 상품 로딩 중
   if (isLoading || (product?.type === 'free' && hasSajuInfo === null)) {
     return <PageLoader />;
   }
-
-  // ⭐ 로그인 체크 (무료 콘텐츠는 로그인 불필요)
-  if (product?.type !== 'free') {
-    if (loginAuth === 'checking') return <PageLoader />;
-    if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
-  }
-  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
-  if (location.key === 'default') return <Navigate to="/" replace />;
 
   if (!product) {
     console.error('❌ [BirthInfoPage] 상품을 찾을 수 없음');
@@ -982,7 +971,7 @@ function BirthInfoPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-[#999999] mb-4">상품을 찾을 수 없습니다</p>
-          <button 
+          <button
             onClick={() => navigate('/')}
             className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
           >
@@ -995,31 +984,40 @@ function BirthInfoPage() {
 
   console.log('🔀 [BirthInfoPage] 분기 판단 시작');
   console.log('📌 [BirthInfoPage] product.type:', product.type);
-  console.log('📌 [BirthInfoPage] product.type === "free":', product.type === 'free');
 
-  // ⭐️ 무료 콘텐츠인 경우 FreeBirthInfoInput 사용 (사주 정보 없는 경우만)
+  // ⭐️ 무료 콘텐츠 → 로그인 체크 없이 바로 FreeBirthInfoInput
   if (product.type === 'free') {
-    console.log('✅ [BirthInfoPage] 무료 콘텐츠 + 사주 정보 없음 → FreeBirthInfoInput 렌더링');
+    console.log('✅ [BirthInfoPage] 무료 콘텐츠 → FreeBirthInfoInput 렌더링');
     return (
       <FreeBirthInfoInput
         productId={id || ''}
-        onBack={goBack} // ⭐ 직전 페이지로 (구매내역에서 진입 시 구매내역으로 복귀)
+        onBack={goBack}
       />
     );
   }
 
-  // ⭐️ 유료 콘텐츠인 경우 BirthInfoInput 사용
+  // ⭐️ 유료 콘텐츠 → 로그인 필수
+  return <PaidBirthInfoContent id={id} product={product} goBack={goBack} />;
+}
+
+// ⭐ 유료 콘텐츠 전용 래퍼 (useLoginRequired 훅 사용)
+function PaidBirthInfoContent({ id, product, goBack }: { id: string | undefined; product: Product; goBack: () => void }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
+
   console.log('✅ [BirthInfoPage] 유료 콘텐츠 → BirthInfoInput 렌더링');
   return (
     <BirthInfoInput
       productId={id || ''}
-      onBack={goBack} // ⭐ 직전 페이지로 (구매내역에서 진입 시 구매내역으로 복귀)
+      onBack={goBack}
       onComplete={(recordId: string, userName?: string) => {
-        if (product.type === 'free') {
-          navigate(`/product/${id}/result/free`, { state: { recordId, userName } });
-        } else {
-          navigate(`/product/${id}/result`, { state: { recordId, userName } });
-        }
+        navigate(`/product/${id}/result`, { state: { recordId, userName } });
       }}
     />
   );
