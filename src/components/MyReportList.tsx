@@ -516,7 +516,7 @@ function transformToMonthlyReports(
     let message: { label: string; content: string } | undefined;
     if (report.self_encouragement) {
       message = {
-        label: '이번 주 나에게 :',
+        label: '나에게 쓰는 한마디',
         content: report.self_encouragement
       };
     }

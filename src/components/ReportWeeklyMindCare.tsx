@@ -352,7 +352,7 @@ export default function ReportWeeklyMindCare({
 
   if (error && !externalReport) {
     return (
-      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
         <TopBar onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>마음 처방을 불러올 수 없습니다.</p>
@@ -363,7 +363,7 @@ export default function ReportWeeklyMindCare({
 
   if (!mindCareSection && !externalSection) {
     return (
-      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-hidden" style={{ maxWidth: '440px' }}>
+      <div className="bg-white relative flex flex-col mx-auto h-screen w-full overflow-y-auto" style={{ maxWidth: '440px' }}>
         <TopBar onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-5">
           <p style={{ color: '#999', fontSize: '15px' }}>마음 처방 정보가 없습니다.</p>
