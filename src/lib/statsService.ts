@@ -170,8 +170,13 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       throw new Error('재방문 고객수 조회에 실패했습니다.');
     }
 
-    const startDateStr = dateRange.startDate!.substring(0, 10);
-    const endDateStr = dateRange.endDate!.substring(0, 10);
+    // ISO 문자열을 로컬 날짜 문자열로 변환 (UTC가 아닌 KST 기준)
+    const toLocalDateStr = (isoStr: string) => {
+      const d = new Date(isoStr);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const startDateStr = toLocalDateStr(dateRange.startDate!);
+    const endDateStr = toLocalDateStr(dateRange.endDate!);
 
     returningCustomers = returningUsersData?.filter(u =>
       u.visit_dates?.some((d: string) => d >= startDateStr && d < endDateStr)
