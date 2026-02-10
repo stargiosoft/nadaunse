@@ -1656,6 +1656,11 @@ function NadaumTagsListWrapper() {
 // ⭐ 통계 대시보드 Wrapper (마스터 전용)
 function StatsDashboardWrapper() {
   const navigate = useNavigate();
+  const masterAuth = useMasterAuth();
+
+  if (masterAuth === 'checking') return <PageLoader />;
+  if (masterAuth === 'denied') return <AccessDeniedDialog />;
+
   return (
     <StatsDashboard
       onBack={() => navigate(-1)}
@@ -2142,12 +2147,116 @@ function WelcomeCouponPageWrapper() {
   );
 }
 
+// ⭐ 마스터 권한 확인 훅 (DB 검증)
+function useMasterAuth() {
+  const [authState, setAuthState] = useState<'checking' | 'authorized' | 'denied'>('checking');
+
+  useEffect(() => {
+    const checkMasterRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setAuthState('denied');
+          return;
+        }
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        setAuthState(userData?.role === 'master' ? 'authorized' : 'denied');
+      } catch {
+        setAuthState('denied');
+      }
+    };
+
+    checkMasterRole();
+  }, []);
+
+  return authState;
+}
+
+// ⭐ 접근 권한 제한 다이얼로그 (ConfirmDialog 스타일 통일)
+function AccessDeniedDialog() {
+  const navigate = useNavigate();
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+    >
+      <div
+        className="bg-white rounded-[16px] w-[320px] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 제목 */}
+        <div className="px-[24px] pt-[32px] pb-[24px]">
+          <p
+            className="text-center"
+            style={{
+              fontFamily: 'Pretendard Variable, sans-serif',
+              fontWeight: 600,
+              fontSize: '18px',
+              lineHeight: '25.5px',
+              letterSpacing: '-0.36px',
+              color: '#151515'
+            }}
+          >
+            접근 권한이 없어요
+          </p>
+          <p
+            className="text-center mt-[8px]"
+            style={{
+              fontFamily: 'Pretendard Variable, sans-serif',
+              fontWeight: 400,
+              fontSize: '15px',
+              lineHeight: '20px',
+              letterSpacing: '-0.3px',
+              color: '#848484'
+            }}
+          >
+            관리자 계정으로 로그인해 주세요.
+          </p>
+        </div>
+
+        {/* 버튼 영역 */}
+        <div className="px-[16px] pb-[16px]">
+          <button
+            onClick={() => navigate('/', { replace: true })}
+            className="w-full h-[48px] rounded-[12px] transition-colors active:opacity-80"
+            style={{ backgroundColor: '#48b2af' }}
+          >
+            <p
+              style={{
+                fontFamily: 'Pretendard Variable, sans-serif',
+                fontWeight: 600,
+                fontSize: '15px',
+                lineHeight: '20px',
+                letterSpacing: '-0.45px',
+                color: '#ffffff'
+              }}
+            >
+              홈으로 가기
+            </p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Master Content List Wrapper
 function MasterContentListWrapper() {
   const navigate = useNavigate();
-  
+  const masterAuth = useMasterAuth();
+
+  if (masterAuth === 'checking') return <PageLoader />;
+  if (masterAuth === 'denied') return <AccessDeniedDialog />;
+
   return (
-    <MasterContentList 
+    <MasterContentList
       onBack={() => navigate(-1)}
       onNavigateHome={() => navigate('/')}
     />
@@ -2158,15 +2267,20 @@ function MasterContentListWrapper() {
 function MasterContentDetailWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const masterAuth = useMasterAuth();
+
+  if (masterAuth === 'checking') return <PageLoader />;
+  if (masterAuth === 'denied') return <AccessDeniedDialog />;
 
   if (!id) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-[#999999] mb-4">콘텐츠를 찾을 수 없습니다</p>
-          <button 
+          <p style={{ color: '#999999' }} className="mb-4">콘텐츠를 찾을 수 없습니다</p>
+          <button
             onClick={() => navigate('/master/content')}
-            className="bg-[#48b2af] text-white px-6 py-2 rounded-lg"
+            style={{ backgroundColor: '#48b2af', color: '#ffffff' }}
+            className="px-6 py-2 rounded-lg"
           >
             목록으로 돌아가기
           </button>
@@ -2598,8 +2712,8 @@ function MasterContentPaymentPageWrapper() {
 function MasterContentCreateFlowWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  
+  const masterAuth = useMasterAuth();
+
   // 기본 정보 상태 관리
   const [formData, setFormData] = useState<ContentFormData>({
     content_type: 'paid',
@@ -2616,50 +2730,9 @@ function MasterContentCreateFlowWrapper() {
     { id: '1', type: 'saju', content: '' },
   ]);
 
-  // 컴포넌트 마트 시 로그인 및 권한 확인
-  useEffect(() => {
-    const checkAuthAndRole = async () => {
-      try {
-        console.log('=== 권한 확인 시작 ===');
-        
-        // localStorage에서 사용자 정보 확인
-        const userStr = localStorage.getItem('user');
-        console.log('localStorage user:', userStr);
-        
-        if (!userStr) {
-          alert('로그인이 필요합니다.');
-          navigate('/');
-          return;
-        }
-
-        const user = JSON.parse(userStr);
-        console.log('Parsed user:', user);
-        console.log('User ID:', user.id);
-        console.log('User role:', user.role);
-
-        // role이 master인지 확인
-        if (user.role !== 'master') {
-          alert('마스터 권한이 필요합니다.');
-          navigate('/');
-          return;
-        }
-
-        console.log('=== 권한 확인 완료 ===');
-        setIsCheckingAuth(false);
-      } catch (error) {
-        console.error('Auth check error:', error);
-        alert('인증 확인 중 오류가 발생했습니다.');
-        navigate('/');
-      }
-    };
-
-    checkAuthAndRole();
-  }, [navigate]);
-
   // 권한 확인 중이면 로딩 표시
-  if (isCheckingAuth) {
-    return <PageLoader />;
-  }
+  if (masterAuth === 'checking') return <PageLoader />;
+  if (masterAuth === 'denied') return <AccessDeniedDialog />;
 
   // 현재 화면 결정 (URL 기반)
   const isQuestionsPage = location.pathname.includes('/questions');
