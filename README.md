@@ -91,6 +91,15 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **효과**: 다음 콘텐츠 태그 추출 시 AI가 거부된 태그 자동 제외
 - **영향**: CheckRecordMe, extract-trait-tags, UnifiedResultPage, App.tsx
 
+### 유료 콘텐츠 초개인화 풀이 (프로덕션 배포)
+- **기능**: 사주/타로 풀이 시 사용자의 나다움 태그를 AI 프롬프트에 반영
+- **효과**: 최근 4주 태그(우선) + 누적 태그(보조)로 개인화된 답변 생성
+- **영향**: generate-content-answers, generate-saju-answer, generate-tarot-answer
+
+### 미션성공쿠폰 추가 + 쿠폰 발급 프로세스 변경
+- **기능**: 주간 보고서 1회차 → 미션성공쿠폰, 2회차+ → 재방문쿠폰 발급
+- **현황**: 프로덕션에는 쿠폰 데이터만 추가, 발급 로직은 스테이징에서 테스트 중
+
 ### last_login_at 갱신 로직 통합
 - **변경**: HomePage 전용 → App.tsx `recordTodayVisit()` (모든 페이지 방문 시)
 - **효과**: StatsDashboard contentUsageRate > 100% 문제 해결

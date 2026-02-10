@@ -294,16 +294,29 @@ export default function TarotShufflePage() {
 
       {/* ⭐ Top Navigation - 고정 위치로 배치 */}
       <div className="fixed top-0 left-0 right-0 bg-white h-[52px] z-50 max-w-[440px] mx-auto">
-        <div className="flex items-center justify-between px-[12px] h-full">
-          <div className="w-[44px] h-[44px] opacity-0" />
-          <h1 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[18px] leading-[25.5px] tracking-[-0.36px] text-black text-center flex-1">
+        <div className="flex items-center justify-between h-full" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
+          <h1
+            style={{
+              fontFamily: 'Pretendard Variable, sans-serif',
+              fontWeight: 600,
+              fontSize: '18px',
+              lineHeight: '25.5px',
+              letterSpacing: '-0.36px',
+              color: '#000000'
+            }}
+          >
             상세 풀이
           </h1>
           <button
             onClick={handleClose}
-            className="group flex items-center justify-center w-[44px] h-[44px] rounded-[12px] cursor-pointer transition-colors duration-200 active:bg-gray-100"
+            className="group flex items-center justify-center cursor-pointer transition-colors duration-200 active:bg-gray-100"
+            style={{ width: '44px', height: '44px', borderRadius: '12px' }}
           >
-            <X className="w-[24px] h-[24px] text-[#848484] transition-transform duration-200 group-active:scale-90" strokeWidth={1.8} />
+            <X
+              className="transition-transform duration-200 group-active:scale-90"
+              style={{ width: '24px', height: '24px', color: '#848484' }}
+              strokeWidth={1.8}
+            />
           </button>
         </div>
       </div>

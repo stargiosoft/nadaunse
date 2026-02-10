@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import SEO from './SEO';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
 import svgPathsArrows from "../imports/svg-iwpvhe731i";
 import svgPathsProfile from "../imports/svg-33ktykwr5e";
@@ -14,6 +14,7 @@ import { ProfileSkeletonWithSaju } from './skeletons/ProfileSkeleton';
 import { ProfileImage } from './ProfileImage';
 import { DEV } from '../lib/env';
 import { BarChart3, PenSquare } from 'lucide-react'; // ⭐ 통계 대시보드, 콘텐츠 만들기 아이콘
+import ReceiveMyAnalysis from './ReceiveMyAnalysis';
 
 interface ProfilePageProps {
   onBack: () => void;
@@ -38,6 +39,7 @@ interface SajuRecord {
   zodiac?: string;  // 띠 (DB에서 가져온 값)
   gender: 'male' | 'female';
   is_primary?: boolean;  // 대표 사주 여부
+  phone_number?: string;  // 휴대폰 번호
 }
 
 // Arrow Right Icon
@@ -255,6 +257,11 @@ export default function ProfilePage({
   const [isLoadingTags, setIsLoadingTags] = useState(initialState.isLoadingTags);
 
   const navigate = useNavigate(); // ⭐ useNavigate 사용
+
+  // ⭐ 핸드폰 번호 바텀시트 상태
+  const [showPhoneBottomSheet, setShowPhoneBottomSheet] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isPhoneSaving, setIsPhoneSaving] = useState(false);
 
   // ⭐ 스크롤 기반 탭 바 숨김/표시
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -849,7 +856,12 @@ export default function ProfilePage({
               style={{
                 padding: '8px 16px'
               }}
-              onClick={() => {
+              onClick={async () => {
+                // ⭐ phone_number 없으면 바텀시트 표시 (처음 1회만)
+                if (primarySaju && !primarySaju.phone_number) {
+                  setShowPhoneBottomSheet(true);
+                  return;
+                }
                 setActiveTabIndex(1);
                 // 애니메이션 보여주고 페이지 이동
                 setTimeout(() => {
@@ -1343,6 +1355,66 @@ export default function ProfilePage({
         </div>
       )}
       </div>
+
+      {/* ⭐ 핸드폰 번호 입력 바텀시트 */}
+      <AnimatePresence>
+        {showPhoneBottomSheet && (
+          <ReceiveMyAnalysis
+            phoneNumber={phoneNumber}
+            setPhoneNumber={setPhoneNumber}
+            isLoading={isPhoneSaving}
+            onClose={() => setShowPhoneBottomSheet(false)}
+            onSave={async () => {
+              if (!primarySaju) return;
+              setIsPhoneSaving(true);
+              try {
+                const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (!authUser) {
+                  console.error('❌ [ProfilePage] 세션 없음');
+                  setIsPhoneSaving(false);
+                  return;
+                }
+
+                const { error } = await supabase
+                  .from('saju_records')
+                  .update({ phone_number: cleanPhone })
+                  .eq('id', primarySaju.id)
+                  .eq('user_id', authUser.id);
+
+                if (error) {
+                  console.error('❌ [ProfilePage] 핸드폰 번호 저장 실패:', JSON.stringify(error));
+                  setIsPhoneSaving(false);
+                  return;
+                }
+
+                console.log('✅ [ProfilePage] 핸드폰 번호 저장 성공:', cleanPhone);
+
+                // 캐시 무효화
+                localStorage.removeItem('primary_saju');
+                localStorage.removeItem('saju_records_cache');
+
+                // primarySaju 업데이트
+                setPrimarySaju({ ...primarySaju, phone_number: cleanPhone });
+
+                setShowPhoneBottomSheet(false);
+                setIsPhoneSaving(false);
+
+                // 보고서 페이지로 이동
+                setActiveTabIndex(1);
+                setTimeout(() => {
+                  sessionStorage.setItem('from_report_list', 'true');
+                  navigate('/my-report-list', { replace: true });
+                }, 200);
+              } catch (err) {
+                console.error('❌ [ProfilePage] 핸드폰 번호 저장 예외:', err);
+                setIsPhoneSaving(false);
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
