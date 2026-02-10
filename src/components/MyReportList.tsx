@@ -1735,8 +1735,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
               </div>
             )}
 
-            {/* Dev Controls - only visible in dev/staging environments */}
-            {DEV && !isLoading && (
+            {/* Dev Controls - visible in dev/staging or for master users */}
+            {(DEV || isMaster) && !isLoading && (
               <div className="flex flex-col items-center w-full" style={{ gap: '16px', padding: '0 20px', marginTop: '40px', paddingBottom: '20px' }}>
                 <div className="flex items-center justify-center flex-wrap" style={{ gap: '12px' }}>
                   <button
