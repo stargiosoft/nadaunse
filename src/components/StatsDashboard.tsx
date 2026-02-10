@@ -1149,10 +1149,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 {/* 회원가입 고객 통계 섹션 */}
                 <SectionHeader icon="📊" title="회원가입 고객 통계" />
 
-                {/* 5. 총 가입 고객 추이 */}
+                {/* 5. 고객 총 방문 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>총 가입 고객 추이</h3>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>고객 총 방문 추이</h3>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -1161,7 +1161,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey="totalCustomers" name="총 가입 고객 추이" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="totalCustomers" name="고객 총 방문 추이" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
