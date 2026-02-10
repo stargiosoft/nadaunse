@@ -963,17 +963,18 @@ function BirthInfoPage() {
     checkSajuInfo();
   }, [product, id, navigate]);
 
-  // ⭐ 로그인 체크 (모든 hooks 이후에 조기 반환) - 무료 콘텐츠는 로그인 불필요
+  // ⭐ 상품 로딩 중에는 PageLoader 표시 (로그인 체크보다 먼저 - product.type 확인 필요)
+  if (isLoading || (product?.type === 'free' && hasSajuInfo === null)) {
+    return <PageLoader />;
+  }
+
+  // ⭐ 로그인 체크 (무료 콘텐츠는 로그인 불필요)
   if (product?.type !== 'free') {
     if (loginAuth === 'checking') return <PageLoader />;
     if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
   }
   // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
   if (location.key === 'default') return <Navigate to="/" replace />;
-
-  if (isLoading || (product?.type === 'free' && hasSajuInfo === null)) {
-    return <PageLoader />;
-  }
 
   if (!product) {
     console.error('❌ [BirthInfoPage] 상품을 찾을 수 없음');
