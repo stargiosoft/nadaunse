@@ -812,6 +812,10 @@ function BirthInfoPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const goBack = useGoBack(`/product/${id}`); // ⭐ 직전 페이지로 (fallback: 콘텐츠 상세)
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
   const numericId = Number(id);
@@ -1626,6 +1630,10 @@ function ResultSajuRedirect() {
 function ProfilePageWrapper() {
   const navigate = useNavigate();
   const goBack = useGoBack('/'); // 🛡️ iOS 스와이프 뒤로가기 대응: navigate(-1) 사용
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -1671,6 +1679,36 @@ function MyReportListWrapper() {
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   return <MyReportList />;
+}
+
+// ⭐ 사주 선택 Wrapper (로그인 필수)
+function SajuSelectPageWrapper() {
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <SajuSelectPage />;
+}
+
+// ⭐ 이용 기록 Wrapper (로그인 필수)
+function PurchaseHistoryPageWrapper() {
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <PurchaseHistoryPage />;
+}
+
+// ⭐ 유료 콘텐츠 로딩 Wrapper (로그인 필수)
+function LoadingPageWrapper() {
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <LoadingPage />;
 }
 
 // ⭐ 통계 대시보드 Wrapper (마스터 전용)
@@ -2055,6 +2093,7 @@ function ExistingAccountPageNewWrapper() {
 function TermsPageWrapper() {
   const navigate = useNavigate();
   const signupCompletedRef = useRef(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   // ⭐ 약관 동의 취소 시 세션 삭제 (신규 가입 중단)
   const cleanupSession = useCallback(async () => {
@@ -2072,10 +2111,12 @@ function TermsPageWrapper() {
       console.log('🔄 [TermsPage] 이미 회원가입 완료 → 홈으로 리다이렉트');
       navigate('/', { replace: true });
     } else if (!tempUser) {
-      console.log('🔄 [TermsPage] 임시 사용자 정보 없음 → 로그인 페이지로 리다이렉트');
-      navigate('/login/new', { replace: true });
+      console.log('🔄 [TermsPage] 임시 사용자 정보 없음 → 로그인 안내 다이얼로그 표시');
+      setShowLoginDialog(true);
     }
   }, [navigate]);
+
+  if (showLoginDialog) return <SessionExpiredDialog isOpen={true} />;
 
   // ⭐ 브라우저 뒤로가기 감지 및 세션 삭제
   useEffect(() => {
@@ -2127,6 +2168,7 @@ function TermsPageWrapper() {
 // ⭐ Welcome Coupon Page Wrapper
 function WelcomeCouponPageWrapper() {
   const navigate = useNavigate();
+  const loginAuth = useLoginRequired();
 
   // ⭐ 이미 환영 페이지를 본 경우 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
   useEffect(() => {
@@ -2136,6 +2178,9 @@ function WelcomeCouponPageWrapper() {
       navigate('/', { replace: true });
     }
   }, [navigate]);
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   const handleClose = () => {
     // ⭐ 환영 페이지를 봤다는 플래그 설정
@@ -2618,6 +2663,10 @@ function SajuInputPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = location.state?.returnTo;
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   return (
     <SajuInputPage
@@ -2640,6 +2689,10 @@ function SajuManagementPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const goBack = useGoBack('/profile'); // 🛡️ iOS 스와이프 뒤로가기 대응: navigate(-1) 사용
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   return (
     <SajuManagementPage
@@ -2665,6 +2718,10 @@ function SajuAddPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = location.state?.returnTo;
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   return (
     <SajuAddPage
@@ -3202,14 +3259,14 @@ export default function App() {
           <Route path="/product/:id/payment" element={<PaymentNewPage />} />
           <Route path="/product/:id/payment/new" element={<PaymentNewPage />} />
           <Route path="/product/:id/birthinfo" element={<BirthInfoPage />} />
-          <Route path="/product/:id/saju-select" element={<SajuSelectPage />} />
+          <Route path="/product/:id/saju-select" element={<SajuSelectPageWrapper />} />
           <Route path="/product/:id/free-saju-select" element={<FreeSajuSelectPageWrapper />} />
           <Route path="/product/:id/free-saju-add" element={<FreeSajuAddPageWrapper />} />
           <Route path="/product/:id/result" element={<ResultPage />} />
           <Route path="/product/:id/result/free" element={<FreeResultPage />} />
           <Route path="/payment/complete" element={<PaymentComplete />} />
           <Route path="/profile" element={<ProfilePageWrapper />} />
-          <Route path="/purchase-history" element={<PurchaseHistoryPage />} />
+          <Route path="/purchase-history" element={<PurchaseHistoryPageWrapper />} />
           <Route path="/master/content" element={<MasterContentListWrapper />} />
           <Route path="/master/stats" element={<StatsDashboardWrapper />} /> {/* ⭐ 통계 대시보드 */}
           <Route path="/master/content/create" element={<MasterContentCreateFlowWrapper />} />
@@ -3226,7 +3283,7 @@ export default function App() {
           <Route path="/saju/input" element={<SajuInputPageWrapper />} />
           <Route path="/saju/management" element={<SajuManagementPageWrapper />} />
           <Route path="/saju/add" element={<SajuAddPageWrapper />} />
-          <Route path="/loading" element={<LoadingPage />} />
+          <Route path="/loading" element={<LoadingPageWrapper />} />
           <Route path="/free-loading" element={<FreeContentLoading />} />
           <Route path="/result" element={<UnifiedResultPage />} /> {/* ⭐ 통합 결과 페이지 */}
           <Route path="/result/saju" element={<ResultSajuRedirect />} /> {/* ⭐ 알림톡 템플릿 호환성 (리다이렉트) */}
