@@ -38,7 +38,7 @@ import ArrowLeft from './ArrowLeft';
 import NavigationTabBar from './NavigationTabBar';
 import MyReportEmpty from './MyReportEmpty';
 import CardContent from './CardContent';
-import { DotLoading } from './ui/PageLoader';
+import { LoadingWithMessage } from './ui/LoadingWithMessage';
 
 // ============================================
 // Types (from MyReportWeekly)
@@ -1425,10 +1425,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         >
           <div className="w-full bg-white flex flex-col min-h-full">
             {isLoading ? (
-              // 로딩 상태 - DotLoading 사용 (FreeContentLoading과 동일)
-              <div className="flex items-center justify-center w-full" style={{ padding: '80px 20px' }}>
-                <DotLoading />
-              </div>
+              // 로딩 상태 - LoadingWithMessage 사용
+              <LoadingWithMessage message="보고서를 불러오는 중이에요!" />
             ) : isInitialEmptyState ? (
               <MyReportEmpty />
             ) : (

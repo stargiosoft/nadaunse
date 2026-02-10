@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import svgPaths from "../imports/svg-rj5zh7ifhy";
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
-import { DotLoading } from './ui/PageLoader';
+import { LoadingWithMessage } from './ui/LoadingWithMessage';
 
 interface FreeContentLoadingProps {
   userName?: string;
@@ -595,16 +595,8 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
 
   return (
     <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden" data-name="로딩중 _ 390">
-      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
-        <DotLoading />
-        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">{userNameFromUrl}님의</p>
-          </div>
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">운세를 분석중이에요!</p>
-          </div>
-        </div>
+      <div className="w-full max-w-[440px]">
+        <LoadingWithMessage message={`${userNameFromUrl}님의 운세를 분석중이에요!`} padding="0 20px" />
       </div>
     </div>
   );

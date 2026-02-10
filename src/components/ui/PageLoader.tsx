@@ -7,31 +7,10 @@
  * - 메시지 없이: <PageLoader showMessage={false} />
  */
 
-interface DotLoadingProps {
-  className?: string;
-}
+import { DotLoading } from './LoadingWithMessage';
 
-/**
- * DotLoading - 3개의 점이 펄스 애니메이션하는 로딩 인디케이터
- */
-export function DotLoading({ className }: DotLoadingProps) {
-  return (
-    <div className={`flex items-center gap-[10px] h-[10px] ${className || ''}`} data-name="Dot loading">
-      <div
-        className="w-[10px] h-[10px] rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]"
-        style={{ backgroundColor: '#E4F7F7', animationDelay: '0s' }}
-      />
-      <div
-        className="w-[10px] h-[10px] rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]"
-        style={{ backgroundColor: '#7ED4D2', animationDelay: '0.2s' }}
-      />
-      <div
-        className="w-[10px] h-[10px] rounded-full animate-[dotPulse_1.4s_ease-in-out_infinite]"
-        style={{ backgroundColor: '#48B2AF', animationDelay: '0.4s' }}
-      />
-    </div>
-  );
-}
+// Re-export for backward compatibility
+export { DotLoading };
 
 interface PageLoaderProps {
   /** 로딩 메시지 (기본값: "잠시만 기다려주세요") */

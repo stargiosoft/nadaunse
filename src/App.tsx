@@ -41,7 +41,8 @@ import AlimtalkInfoInputPage from './components/AlimtalkInfoInputPage'; // ⭐ �
 import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
 import { SessionExpiredDialog } from './components/SessionExpiredDialog'; // ⭐ 로그인 필요 다이얼로그
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
-import { PageLoader, DotLoading } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
+import { PageLoader } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
+import { LoadingWithMessage } from './components/ui/LoadingWithMessage'; // ⭐ 로딩 + 메시지
 import HomePage from './pages/HomePage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
@@ -2015,19 +2016,11 @@ function PendingTagsCheckPage() {
     processPendingTags();
   }, [navigate]);
 
-  // 처리 중 로딩 화면 (FreeContentLoading 공통 스타일)
+  // 처리 중 로딩 화면 (LoadingWithMessage 사용)
   return (
     <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
-      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
-        <DotLoading />
-        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">나다움 기록을</p>
-          </div>
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">준비중이에요!</p>
-          </div>
-        </div>
+      <div className="w-full max-w-[440px]">
+        <LoadingWithMessage message="나다움 기록을 준비중이에요!" padding="0 20px" />
       </div>
     </div>
   );
@@ -2517,16 +2510,8 @@ function TagExtractionLoadingWrapper() {
 
   return (
     <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
-      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
-        <DotLoading />
-        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">{userName}님의</p>
-          </div>
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">나다움 태그를 분석중이에요!</p>
-          </div>
-        </div>
+      <div className="w-full max-w-[440px]">
+        <LoadingWithMessage message={`${userName}님의 나다움 태그를 분석중이에요!`} padding="0 20px" />
       </div>
     </div>
   );
@@ -2633,16 +2618,8 @@ function PaidTagExtractionLoadingWrapper() {
 
   return (
     <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
-      <div className="w-full max-w-[440px] flex flex-col gap-[44px] items-center px-[20px]">
-        <DotLoading />
-        <div className="content-stretch flex flex-col gap-[4px] items-start leading-[0] relative shrink-0 text-[22px] text-black text-center tracking-[-0.22px] w-full">
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">{userName}님의</p>
-          </div>
-          <div className="flex flex-col justify-center relative shrink-0 w-full">
-            <p className="font-semibold leading-[32.5px]">나다움 태그를 분석중이에요!</p>
-          </div>
-        </div>
+      <div className="w-full max-w-[440px]">
+        <LoadingWithMessage message={`${userName}님의 나다움 태그를 분석중이에요!`} padding="0 20px" />
       </div>
     </div>
   );
