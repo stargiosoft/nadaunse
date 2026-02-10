@@ -773,7 +773,10 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   }
 
   const isPaid = content.content_type === 'paid';
-  const onBack = () => navigate(-1);
+  const onBack = () => {
+    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { timestamp: new Date().toISOString() });
+    navigate('/');
+  };
   
   const onPurchase = async () => {
     console.log('🔵 [MasterContentDetailPage] onPurchase 함수 시작', {
@@ -834,11 +837,18 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               <div className="flex flex-col justify-center size-full">
                 <div className="box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] relative w-full">
                   <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                    <div 
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="뒤로가기"
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        onBack();
+                      }}
                       onClick={onBack}
-                      className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3]"
+                      className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3] touch-manipulation pointer-events-auto select-none z-30"
                     >
-                      <svg className="block w-6 h-6 group-active:scale-95 transition-transform" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                      <svg className="block w-6 h-6 group-active:scale-95 transition-transform pointer-events-none" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                         <g id="arrow-left">
                           <path d={svgPathsBack.p2a5cd480} stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
                           <path d={svgPathsBack.p1a4bb100} opacity="0" stroke="var(--stroke-0, #848484)" />
@@ -848,11 +858,18 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     <p className="basis-0 font-semibold grow leading-[25.5px] min-h-px min-w-px not-italic overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
                       {content.title}
                     </p>
-                    <div 
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="홈으로"
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        onBack();
+                      }}
                       onClick={onBack}
-                      className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3]"
+                      className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3] touch-manipulation pointer-events-auto select-none z-30"
                     >
-                      <svg className="block w-6 h-6 group-active:scale-95 transition-transform" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                      <svg className="block w-6 h-6 group-active:scale-95 transition-transform pointer-events-none" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                         <g id="home-2">
                           <path d={svgPathsHome.p3d07f180} stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                           <path d="M12 17.99V14.99" stroke="var(--stroke-0, #848484)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
