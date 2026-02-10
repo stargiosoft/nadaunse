@@ -526,6 +526,52 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     window.scrollTo(0, 0);
   }, [contentId]); // contentId가 바뀔 때마다 최상단으로
 
+  // 🔍 [DEBUG] 클릭 차단 요소 탐지 (배포 후 제거)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      console.log('🔍 [DEBUG] 클릭된 요소:', {
+        tag: target.tagName,
+        id: target.id,
+        className: target.className?.toString?.()?.slice(0, 100),
+        dataset: target.dataset,
+        rect: { top: Math.round(rect.top), left: Math.round(rect.left), width: Math.round(rect.width), height: Math.round(rect.height) },
+        zIndex: getComputedStyle(target).zIndex,
+        pointerEvents: getComputedStyle(target).pointerEvents,
+        position: getComputedStyle(target).position,
+      });
+    };
+    document.addEventListener('click', handler, true); // capture phase
+
+    // 헤더 버튼 위치에 어떤 요소가 있는지 체크
+    setTimeout(() => {
+      const points = [
+        { x: 30, y: 30, label: '뒤로가기 버튼 위치' },
+        { x: window.innerWidth - 30, y: 30, label: '홈 버튼 위치' },
+        { x: window.innerWidth / 2, y: 30, label: '헤더 중앙' },
+      ];
+      points.forEach(({ x, y, label }) => {
+        const el = document.elementFromPoint(x, y);
+        if (el) {
+          const style = getComputedStyle(el);
+          console.log(`🎯 [DEBUG] ${label} (${x},${y}):`, {
+            tag: el.tagName,
+            id: el.id,
+            className: el.className?.toString?.()?.slice(0, 100),
+            zIndex: style.zIndex,
+            position: style.position,
+            pointerEvents: style.pointerEvents,
+            parentTag: el.parentElement?.tagName,
+            parentId: el.parentElement?.id,
+          });
+        }
+      });
+    }, 2000);
+
+    return () => document.removeEventListener('click', handler, true);
+  }, []);
+
   // ⭐ 풀이원리 탭 오리 이미지 preload (탭 전환 시 즉시 표시)
   useEffect(() => {
     const img = new Image();
