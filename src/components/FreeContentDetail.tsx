@@ -576,7 +576,7 @@ export default function FreeContentDetail({
       <SEO
         title={`[무료] ${content.title}`}
         description={content.description || `${content.title} - 무료로 보는 AI 운세`}
-        canonical={`/product/${contentId}`}
+        canonical={`/free/content/${contentId}`}
         ogImage={content.thumbnail_url}
       />
       <div className="bg-white fixed inset-0 flex flex-col w-full">
