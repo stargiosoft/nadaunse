@@ -121,44 +121,20 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   let totalVisits = 0;
 
   if (isAllPeriod) {
-    // 전체 기간: visit_count 기준으로 구분
-    // 신규 고객: visit_count = 1
-    const { count: newCount, error: newError } = await supabase
+    // 전체 기간: visit_dates 배열 길이 기준으로 구분
+    const { data: usersData, error: usersError } = await supabase
       .from('users')
-      .select('*', { count: 'exact', head: true })
-      .not('id', 'in', `(${adminFilter})`)
-      .eq('visit_count', 1);
-
-    if (newError) {
-      console.error('신규 고객수 조회 오류:', newError);
-      throw new Error('신규 고객수 조회에 실패했습니다.');
-    }
-    newCustomers = newCount || 0;
-
-    // 재방문 고객: visit_count >= 2
-    const { count: returnCount, error: returnError } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .not('id', 'in', `(${adminFilter})`)
-      .gte('visit_count', 2);
-
-    if (returnError) {
-      console.error('재방문 고객수 조회 오류:', returnError);
-      throw new Error('재방문 고객수 조회에 실패했습니다.');
-    }
-    returningCustomers = returnCount || 0;
-
-    // 총 방문횟수: 전체 visit_count 합계
-    const { data: visitData, error: visitError } = await supabase
-      .from('users')
-      .select('visit_count')
+      .select('id, visit_dates, created_at')
       .not('id', 'in', `(${adminFilter})`);
 
-    if (visitError) {
-      console.error('방문횟수 조회 오류:', visitError);
-      throw new Error('방문횟수 조회에 실패했습니다.');
+    if (usersError) {
+      console.error('고객 데이터 조회 오류:', usersError);
+      throw new Error('고객 데이터 조회에 실패했습니다.');
     }
-    totalVisits = visitData?.reduce((sum, user) => sum + (user.visit_count || 0), 0) || 0;
+
+    newCustomers = usersData?.filter(u => (u.visit_dates?.length || 0) <= 1).length || 0;
+    returningCustomers = usersData?.filter(u => (u.visit_dates?.length || 0) >= 2).length || 0;
+    totalVisits = usersData?.reduce((sum, u) => sum + (u.visit_dates?.length || 0), 0) || 0;
 
   } else {
     // 특정 기간: 기간 기준으로 구분
@@ -182,46 +158,40 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     }
     newCustomers = newCount || 0;
 
-    // 2. 재방문 고객 (기간 내 방문했지만 기간 전에 가입)
-    let returningCustomersQuery = supabase
+    // 2. 재방문 고객 (visit_dates 중 기간 내 날짜가 있으면서 기간 전 가입자)
+    const { data: returningUsersData, error: returnError } = await supabase
       .from('users')
-      .select('*', { count: 'exact', head: true })
-      .not('id', 'in', `(${adminFilter})`);
+      .select('id, visit_dates, created_at')
+      .not('id', 'in', `(${adminFilter})`)
+      .lt('created_at', dateRange.startDate!);  // 기간 전 가입자만
 
-    if (dateRange?.startDate) {
-      returningCustomersQuery = returningCustomersQuery.gte('last_login_at', dateRange.startDate);
-      returningCustomersQuery = returningCustomersQuery.lt('created_at', dateRange.startDate);
-    }
-    if (dateRange?.endDate) {
-      returningCustomersQuery = returningCustomersQuery.lt('last_login_at', dateRange.endDate);
-    }
-
-    const { count: returnCount, error: returnError } = await returningCustomersQuery;
     if (returnError) {
       console.error('재방문 고객수 조회 오류:', returnError);
       throw new Error('재방문 고객수 조회에 실패했습니다.');
     }
-    returningCustomers = returnCount || 0;
 
-    // 3. 총 방문횟수 (기간 내 방문한 고객의 visit_count 합계)
-    let visitQuery = supabase
+    const startDateStr = dateRange.startDate!.substring(0, 10);
+    const endDateStr = dateRange.endDate!.substring(0, 10);
+
+    returningCustomers = returningUsersData?.filter(u =>
+      u.visit_dates?.some((d: string) => d >= startDateStr && d < endDateStr)
+    ).length || 0;
+
+    // 3. 총 방문횟수 (기간 내 모든 사용자의 visit_dates 중 기간 내 날짜 수 합계)
+    const { data: allUsersForVisits, error: visitError } = await supabase
       .from('users')
-      .select('visit_count')
+      .select('id, visit_dates')
       .not('id', 'in', `(${adminFilter})`);
 
-    if (dateRange?.startDate) {
-      visitQuery = visitQuery.gte('last_login_at', dateRange.startDate);
-    }
-    if (dateRange?.endDate) {
-      visitQuery = visitQuery.lt('last_login_at', dateRange.endDate);
-    }
-
-    const { data: visitData, error: visitError } = await visitQuery;
     if (visitError) {
       console.error('방문횟수 조회 오류:', visitError);
       throw new Error('방문횟수 조회에 실패했습니다.');
     }
-    totalVisits = visitData?.reduce((sum, user) => sum + (user.visit_count || 0), 0) || 0;
+
+    totalVisits = allUsersForVisits?.reduce((sum, u) => {
+      const visitsInRange = u.visit_dates?.filter((d: string) => d >= startDateStr && d < endDateStr).length || 0;
+      return sum + visitsInRange;
+    }, 0) || 0;
   }
 
   // 4. 무료 콘텐츠 이용 횟수 (관리자 제외)
@@ -662,13 +632,12 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 2. 재방문 고객 데이터 (last_login_at 기준, 해당 날짜 전 가입 - 일별 필터링에서 처리)
+    // 2. 재방문 고객 데이터 (visit_dates 기준, 기간 전 가입자)
     supabase
       .from('users')
-      .select('id, last_login_at, created_at')
+      .select('id, visit_dates, created_at')
       .not('id', 'in', `(${adminFilter})`)
-      .gte('last_login_at', dateRange.startDate)
-      .lt('last_login_at', dateRange.endDate),
+      .lt('created_at', dateRange.startDate),
 
     // 3. 무료 콘텐츠 이용 데이터
     supabase
@@ -742,12 +711,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
 
     // 해당 날짜의 데이터 필터링
     const newCustomersList = newCustomersData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
-    // 재방문자: last_login_at이 해당 날짜이면서 created_at이 해당 날짜 이전인 사람
-    const returningCustomersList = returningCustomersData?.filter(d => {
-      if (getDateKey(d.last_login_at) !== dateKey) return false;
-      const createdDateKey = getDateKey(d.created_at);
-      return createdDateKey < dateKey; // 해당 날짜 이전에 가입한 사람만 재방문자
-    }) || [];
+    // 재방문자: visit_dates에 해당 날짜가 포함된 사용자 (기간 전 가입자만 조회됨)
+    const returningCustomersList = returningCustomersData?.filter(d =>
+      d.visit_dates?.includes(dateKey)  // visit_dates는 'YYYY-MM-DD' 형식
+    ) || [];
     const newCustomers = newCustomersList.length;
     const returningCustomers = returningCustomersList.length;
     const totalCustomers = newCustomers + returningCustomers;
