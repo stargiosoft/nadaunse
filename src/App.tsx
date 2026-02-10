@@ -656,6 +656,7 @@ function ProductDetailPage() {
 function PaymentNewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const loginAuth = useLoginRequired();
 
   // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
@@ -678,6 +679,8 @@ function PaymentNewPage() {
   // ⭐ 로그인 체크 (모든 hooks 이후에 조기 반환)
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   if (isLoading) {
     return <PageLoader />;
@@ -928,6 +931,8 @@ function BirthInfoPage() {
   // ⭐ 로그인 체크 (모든 hooks 이후에 조기 반환)
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   if (isLoading || (product?.type === 'free' && hasSajuInfo === null)) {
     return <PageLoader />;
@@ -1686,10 +1691,13 @@ function MyReportListWrapper() {
 
 // ⭐ 사주 선택 Wrapper (로그인 필수)
 function SajuSelectPageWrapper() {
+  const location = useLocation();
   const loginAuth = useLoginRequired();
 
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   return <SajuSelectPage />;
 }
@@ -1706,10 +1714,13 @@ function PurchaseHistoryPageWrapper() {
 
 // ⭐ 유료 콘텐츠 로딩 Wrapper (로그인 필수)
 function LoadingPageWrapper() {
+  const location = useLocation();
   const loginAuth = useLoginRequired();
 
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   return <LoadingPage />;
 }
@@ -2119,8 +2130,6 @@ function TermsPageWrapper() {
     }
   }, [navigate]);
 
-  if (showLoginDialog) return <SessionExpiredDialog isOpen={true} />;
-
   // ⭐ 브라우저 뒤로가기 감지 및 세션 삭제
   useEffect(() => {
     // 가상 히스토리 항목 추가 (뒤로가기 감지용)
@@ -2141,6 +2150,8 @@ function TermsPageWrapper() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [cleanupSession, navigate]);
+
+  if (showLoginDialog) return <SessionExpiredDialog isOpen={true} />;
 
   const handleComplete = () => {
     // ⭐ 회원가입 완료 플래그 설정 (unmount 시 세션 삭제 방지)
@@ -2171,6 +2182,7 @@ function TermsPageWrapper() {
 // ⭐ Welcome Coupon Page Wrapper
 function WelcomeCouponPageWrapper() {
   const navigate = useNavigate();
+  const location = useLocation();
   const loginAuth = useLoginRequired();
 
   // ⭐ 이미 환영 페이지를 본 경우 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
@@ -2184,6 +2196,8 @@ function WelcomeCouponPageWrapper() {
 
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   const handleClose = () => {
     // ⭐ 환영 페이지를 봤다는 플래그 설정
@@ -2670,6 +2684,8 @@ function SajuInputPageWrapper() {
 
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   return (
     <SajuInputPage
@@ -2725,6 +2741,8 @@ function SajuAddPageWrapper() {
 
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
+  if (location.key === 'default') return <Navigate to="/" replace />;
 
   return (
     <SajuAddPage
