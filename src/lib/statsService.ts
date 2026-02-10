@@ -119,6 +119,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   let newCustomers = 0;
   let returningCustomers = 0;
   let totalVisits = 0;
+  let totalCustomerIds = new Set<string>();  // 콘텐츠 이용율 계산 시 분자 필터용
 
   if (isAllPeriod) {
     // 전체 기간: visit_dates 배열 길이 기준으로 구분
@@ -135,13 +136,14 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     newCustomers = usersData?.filter(u => (u.visit_dates?.length || 0) <= 1).length || 0;
     returningCustomers = usersData?.filter(u => (u.visit_dates?.length || 0) >= 2).length || 0;
     totalVisits = usersData?.reduce((sum, u) => sum + (u.visit_dates?.length || 0), 0) || 0;
+    totalCustomerIds = new Set(usersData?.map(u => u.id) || []);
 
   } else {
     // 특정 기간: 기간 기준으로 구분
-    // 1. 신규 고객 (기간 내 가입)
+    // 1. 신규 고객 (기간 내 가입) - ID도 조회하여 콘텐츠 이용율 필터에 사용
     let newCustomersQuery = supabase
       .from('users')
-      .select('*', { count: 'exact', head: true })
+      .select('id')
       .not('id', 'in', `(${adminFilter})`);
 
     if (dateRange?.startDate) {
@@ -151,12 +153,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       newCustomersQuery = newCustomersQuery.lt('created_at', dateRange.endDate);
     }
 
-    const { count: newCount, error: newError } = await newCustomersQuery;
+    const { data: newCustomersData, error: newError } = await newCustomersQuery;
     if (newError) {
       console.error('신규 고객수 조회 오류:', newError);
       throw new Error('신규 고객수 조회에 실패했습니다.');
     }
-    newCustomers = newCount || 0;
+    newCustomers = newCustomersData?.length || 0;
 
     // 2. 재방문 고객 (visit_dates 중 기간 내 날짜가 있으면서 기간 전 가입자)
     const { data: returningUsersData, error: returnError } = await supabase
@@ -178,9 +180,15 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     const startDateStr = toLocalDateStr(dateRange.startDate!);
     const endDateStr = toLocalDateStr(dateRange.endDate!);
 
-    returningCustomers = returningUsersData?.filter(u =>
+    const returningUsersList = returningUsersData?.filter(u =>
       u.visit_dates?.some((d: string) => d >= startDateStr && d < endDateStr)
-    ).length || 0;
+    ) || [];
+    returningCustomers = returningUsersList.length;
+
+    // totalCustomerIds: 신규 + 재방문 고객 ID 합집합
+    const newIds = newCustomersData?.map(u => u.id) || [];
+    const returnIds = returningUsersList.map(u => u.id);
+    totalCustomerIds = new Set([...newIds, ...returnIds]);
 
     // 3. 총 방문횟수 (기간 내 모든 사용자의 visit_dates 중 기간 내 날짜 수 합계)
     const { data: allUsersForVisits, error: visitError } = await supabase
@@ -377,7 +385,10 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   if (freeContentUserError) {
     console.error('무료 콘텐츠 유저 조회 오류:', freeContentUserError);
   }
-  const uniqueFreeContentUsers = new Set(freeContentUsers?.map(r => r.user_id) || []).size;
+  // totalCustomerIds에 포함된 유저만 카운트 (회원가입 고객 통계이므로)
+  const uniqueFreeContentUsers = new Set(
+    freeContentUsers?.map(r => r.user_id).filter(id => totalCustomerIds.has(id)) || []
+  ).size;
   const freeContentUserRate = totalCustomers > 0
     ? Math.round(uniqueFreeContentUsers / totalCustomers * 1000) / 10
     : 0;
@@ -400,14 +411,20 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   if (paidContentUserError) {
     console.error('유료 콘텐츠 유저 조회 오류:', paidContentUserError);
   }
-  const uniquePaidContentUsers = new Set(paidContentUsers?.map(r => r.user_id) || []).size;
+  const uniquePaidContentUsers = new Set(
+    paidContentUsers?.map(r => r.user_id).filter(id => totalCustomerIds.has(id)) || []
+  ).size;
   const paidContentUserRate = totalCustomers > 0
     ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
     : 0;
 
-  // 8-1. 콘텐츠 이용율: 무료 또는 유료 1개라도 이용한 고유 유저 수
-  const freeUserSet = new Set(freeContentUsers?.map(r => r.user_id) || []);
-  const paidUserSet = new Set(paidContentUsers?.map(r => r.user_id) || []);
+  // 8-1. 콘텐츠 이용율: 무료 또는 유료 1개라도 이용한 고유 유저 수 (totalCustomers에 포함된 유저만)
+  const freeUserSet = new Set(
+    freeContentUsers?.map(r => r.user_id).filter(id => totalCustomerIds.has(id)) || []
+  );
+  const paidUserSet = new Set(
+    paidContentUsers?.map(r => r.user_id).filter(id => totalCustomerIds.has(id)) || []
+  );
   const contentUserSet = new Set([...freeUserSet, ...paidUserSet]);
   const uniqueContentUsers = contentUserSet.size;
   const contentUsageRate = totalCustomers > 0
@@ -725,18 +742,24 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const returningCustomers = returningCustomersList.length;
     const totalCustomers = newCustomers + returningCustomers;
 
+    // 해당 일자의 totalCustomers에 포함된 유저 ID (콘텐츠 이용율 필터용)
+    const dayCustomerIds = new Set([
+      ...newCustomersList.map(d => d.id),
+      ...returningCustomersList.map(d => d.id),
+    ]);
+
     // 무료 콘텐츠
     const freeContentList = freeContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const freeContentUsage = freeContentList.length;
-    const uniqueFreeUsers = new Set(freeContentList.map(d => d.user_id));
+    const uniqueFreeUsers = new Set(freeContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
 
     // 유료 콘텐츠
     const paidContentList = paidContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const paidContentUsage = paidContentList.length;
     const revenue = paidContentList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
-    const uniquePaidUsers = new Set(paidContentList.map(d => d.user_id));
+    const uniquePaidUsers = new Set(paidContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
 
-    // 콘텐츠 이용 고유 유저
+    // 콘텐츠 이용 고유 유저 (totalCustomers에 포함된 유저만)
     const uniqueContentUsers = new Set([...uniqueFreeUsers, ...uniquePaidUsers]).size;
     const totalContentUsage = freeContentUsage + paidContentUsage;
 

@@ -1,7 +1,7 @@
 # SEO 가이드 - 나다운세
 
 > **검색엔진 최적화(SEO) 설정 및 관리 가이드**
-> **최종 업데이트**: 2026-02-06
+> **최종 업데이트**: 2026-02-10
 
 ---
 
@@ -156,12 +156,12 @@ Sitemap: https://nadaunse.com/sitemap.xml
 ## sitemap.xml 설정
 
 ### 자동 생성
-Vercel 빌드 시 자동 생성됨
+`scripts/prerender.mjs`가 빌드 시 Supabase에서 deployed 콘텐츠를 조회하여 자동 생성
 
 ### 포함되는 페이지
 - 홈페이지 (`/`) - priority: 1.0
-- 상품 페이지 (`/product/{id}`) - priority: 0.9
-- 무료 콘텐츠 (`/free/{id}`) - priority: 0.8
+- 유료 콘텐츠 (`/product/{id}`) - priority: 0.9
+- 무료 콘텐츠 (`/free/content/{id}`) - priority: 0.8
 - 정적 페이지 (이용약관, 개인정보처리방침) - priority: 0.3
 
 ---
@@ -170,12 +170,33 @@ Vercel 빌드 시 자동 생성됨
 
 ### 네이버 서치어드바이저
 
-**현재 상태** (2026-01-26 기준):
+**현재 상태** (2026-02-10 기준):
 - ✅ 사이트 등록 완료
 - ✅ 소유권 인증 완료
 - ✅ 사이트맵 제출 완료
 - ✅ HTTPS 리다이렉션 정상
 - ✅ 보안 인증서 정상
+
+**사이트 진단 결과** (2026-02-10):
+| 항목 | 수치 | 비고 |
+|------|------|------|
+| 색인 | 12 페이지 | 220+ 중 12개만 인덱싱 |
+| 수집제한 | 0 | |
+| 색인제외 | 0 | |
+| SEO 경고 | 17건 | description 동일(12) + alt 누락(5) |
+
+**SEO 경고 상세**:
+- `<meta name="description">` 태그에 동일 설명문 발견: **12건** → prerender 배포로 해결 예정
+- Alt 속성 누락: **5건**
+
+**성과 데이터** (최근 30일):
+| 지표 | 값 |
+|------|-----|
+| 총 클릭수 | 2 |
+| 총 노출수 | 9 |
+| 평균 CTR | 22.2% |
+
+**주요 검색어**: "nadaunse.com", "결혼할수있을까 팩폭사주", "나는 언제결혼할까 무료타로"
 
 **인증 방법**: HTML 파일 또는 메타 태그
 
@@ -186,21 +207,21 @@ Vercel 빌드 시 자동 생성됨
 
 ### 구글 Search Console
 
-**현재 상태** (2026-01-26 기준):
+**현재 상태** (2026-02-10 기준):
 - ✅ 사이트 등록 완료
 - ✅ 소유권 인증 완료
 - ✅ 사이트맵 제출 완료
 - ✅ 검색 결과에 노출 중
 
-**성과 데이터**:
+**성과 데이터** (최근 28일):
 | 지표 | 값 |
 |------|-----|
-| 총 클릭수 | 4 |
-| 총 노출수 | 11 |
-| 평균 CTR | 36.4% |
-| 평균 게재순위 | 4.8위 |
+| 총 클릭수 | 6 |
+| 총 노출수 | 22 |
+| 평균 CTR | 27.3% |
+| 평균 게재순위 | 4.5위 |
 
-**주요 검색어**: "나다운세" (4 클릭)
+**주요 검색어**: "나다운세" (브랜드명 검색만 유입 → prerender로 콘텐츠 키워드 유입 개선 예정)
 
 ```html
 <!-- 구글 인증 (필요 시 index.html에 추가) -->
@@ -223,9 +244,12 @@ Vercel 빌드 시 자동 생성됨
 - [ ] 크롤링 오류 확인
 
 ### SEO 개선 작업
-- [ ] 콘텐츠별 메타 태그 동적 설정
+- [x] 콘텐츠별 메타 태그 동적 설정 → **prerender로 해결 (2026-02-10)**
+- [x] 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`) **(2026-02-10)**
+- [ ] 이미지 alt 속성 누락 수정 (네이버 진단 5건)
 - [ ] 네이버 블로그/카페 백링크 확보
 - [ ] IndexNow 프로토콜 적용 검토
+- [ ] prerender 배포 후 네이버 사이트맵 재제출 및 주요 URL 수집 요청
 
 ---
 
@@ -260,6 +284,11 @@ Vercel 빌드 시 자동 생성됨
 ### 개요
 SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를 공유하여, 검색엔진 크롤러가 페이지별 고유 메타 태그를 인식하지 못합니다. 이를 해결하기 위해 빌드 시 Supabase에서 콘텐츠 목록을 가져와 페이지별 고유 메타 태그가 주입된 정적 HTML을 생성합니다.
 
+### 빌드 스크립트
+```json
+"build": "vite build && node scripts/prerender.mjs"
+```
+
 ### 동작 방식
 1. `vite build` 완료 후 `scripts/prerender.mjs` 자동 실행
 2. Supabase REST API로 `master_contents` 테이블에서 deployed 콘텐츠 조회
@@ -273,8 +302,17 @@ SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를
 - `VITE_SUPABASE_PROJECT_ID`: Supabase URL 구성에 사용
 - `VITE_SUPABASE_ANON_KEY`: API 인증에 사용
 
+### 주의사항: canonical URL 매핑
+프리렌더가 생성하는 canonical과 React 컴포넌트의 canonical이 반드시 일치해야 함:
+
+| 페이지 타입 | canonical URL | 컴포넌트 |
+|-------------|--------------|----------|
+| 유료 콘텐츠 | `/product/{id}` | `MasterContentDetailPage.tsx` |
+| 무료 콘텐츠 | `/free/content/{id}` | `FreeContentDetail.tsx` |
+
 ### 에러 처리
-Supabase 조회 실패 시 경고만 출력하고 빌드는 성공 처리 (기존 SPA 동작 유지).
+- Supabase 조회 실패 시 경고만 출력하고 빌드는 성공 처리 (기존 SPA 동작 유지)
+- 로컬 빌드 시 환경변수 미설정이면 콘텐츠 프리렌더 스킵 (정적 페이지만 생성)
 
 ### 생성되는 파일 구조
 ```
@@ -292,6 +330,7 @@ build/
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-10 | **prerender 파이프라인 활성화** - `package.json` 빌드에 prerender 연결, 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`). 네이버 진단: description 동일 12건, 색인 12/220+ |
 | 2026-02-06 | **빌드 타임 프리렌더 적용** - `scripts/prerender.mjs` 추가, 빌드 시 콘텐츠별 고유 메타 태그 주입된 정적 HTML 생성 (Google/Naver 크롤러 대응) |
 | 2026-02-06 | **SEO 키워드 다양화 개선** - title/description/keywords 전면 개편, FAQPage JSON-LD 추가, SEO.tsx 기본값 강화, 페이지별 keywords 추가 (HomePage, FreeContentDetail, MasterContentDetailPage) |
 | 2026-01-26 | 초기 SEO 설정 완료 (메타 태그, JSON-LD, 로고) |
