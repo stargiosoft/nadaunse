@@ -548,17 +548,17 @@ export default function ProfilePage({
           const scrollDelta = currentScrollY - lastScrollYRef.current;
 
           // 스크롤이 최상단에 있으면 항상 탭바 표시
-          if (currentScrollY <= 0) {
+          if (currentScrollY <= 5) { // 5px threshold로 최상단 감지 개선
             setIsTabBarVisible(true);
             lastScrollYRef.current = currentScrollY;
             ticking = false;
             return;
           }
 
-          // 스크롤이 최하단에 있으면 탭바 상태 변경 안 함 (흔들림 방지)
+          // 스크롤이 최하단에 있으면 탭바 상태 변경 안 함 (점핑 방지)
           const scrollHeight = scrollContainer.scrollHeight;
           const clientHeight = scrollContainer.clientHeight;
-          const isAtBottom = currentScrollY + clientHeight >= scrollHeight - 10; // 10px threshold
+          const isAtBottom = currentScrollY + clientHeight >= scrollHeight - 80; // 80px threshold로 점핑 방지
 
           if (isAtBottom) {
             lastScrollYRef.current = currentScrollY;
@@ -569,7 +569,7 @@ export default function ProfilePage({
           // 스크롤 방향에 따라 탭바 표시/숨김
           // 아래로 스크롤 (scrollDelta > 0) → 숨김
           // 위로 스크롤 (scrollDelta < 0) → 표시
-          if (Math.abs(scrollDelta) > 3) { // 3px 이상 스크롤 시에만 반응 (더 민감하게)
+          if (Math.abs(scrollDelta) > 5) { // 5px 이상 스크롤 시에만 반응 (민감도 낮춤)
             setIsTabBarVisible(scrollDelta < 0);
             lastScrollYRef.current = currentScrollY;
           }
@@ -876,8 +876,8 @@ export default function ProfilePage({
           </div>
         </div>
 
-        {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지, overflow-x-hidden으로 좌우 스와이프 방지 */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+        {/* ⭐ Scrollable Content Area - overscroll-y-contain으로 iOS 바운스 방지, overflow-x-hidden으로 좌우 스와이프 방지 */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
           {/* Min-height wrapper - 스크롤 영역 전체를 채우면서 Footer가 항상 맨 아래에 위치 */}
           <div className="min-h-full flex flex-col">
           {/* Spacer */}

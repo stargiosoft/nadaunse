@@ -516,7 +516,7 @@ function transformToMonthlyReports(
     let message: { label: string; content: string } | undefined;
     if (report.self_encouragement) {
       message = {
-        label: '나에게 쓰는 한마디',
+        label: '나에게 쓰는 한마디 : ',
         content: report.self_encouragement
       };
     }
@@ -923,17 +923,17 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           const scrollDelta = currentScrollY - lastScrollYRef.current;
 
           // 스크롤이 최상단에 있으면 항상 탭바 표시
-          if (currentScrollY <= 0) {
+          if (currentScrollY <= 5) { // 5px threshold로 최상단 감지 개선
             setIsTabBarVisible(true);
             lastScrollYRef.current = currentScrollY;
             ticking = false;
             return;
           }
 
-          // 스크롤이 최하단에 있으면 탭바 상태 변경 안 함 (흔들림 방지)
+          // 스크롤이 최하단에 있으면 탭바 상태 변경 안 함 (점핑 방지)
           const scrollHeight = scrollContainer.scrollHeight;
           const clientHeight = scrollContainer.clientHeight;
-          const isAtBottom = currentScrollY + clientHeight >= scrollHeight - 10; // 10px threshold
+          const isAtBottom = currentScrollY + clientHeight >= scrollHeight - 80; // 80px threshold로 점핑 방지
 
           if (isAtBottom) {
             lastScrollYRef.current = currentScrollY;
@@ -944,7 +944,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           // 스크롤 방향에 따라 탭바 표시/숨김
           // 아래로 스크롤 (scrollDelta > 0) → 숨김
           // 위로 스크롤 (scrollDelta < 0) → 표시
-          if (Math.abs(scrollDelta) > 3) { // 3px 이상 스크롤 시에만 반응
+          if (Math.abs(scrollDelta) > 5) { // 5px 이상 스크롤 시에만 반응 (민감도 낮춤)
             setIsTabBarVisible(scrollDelta < 0);
             lastScrollYRef.current = currentScrollY;
           }
@@ -1417,10 +1417,10 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           <NavigationTabBar activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
 
-        {/* Main Content - 스크롤 영역 */}
+        {/* Main Content - 스크롤 영역 (overscroll-y-contain으로 iOS 바운스 방지) */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto w-full"
+          className="flex-1 overflow-y-auto overscroll-y-contain w-full"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className="w-full bg-white flex flex-col min-h-full">
