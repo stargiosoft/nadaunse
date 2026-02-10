@@ -857,8 +857,10 @@ export default function ProfilePage({
                 padding: '8px 16px'
               }}
               onClick={async () => {
-                // ⭐ phone_number 없으면 바텀시트 표시 (처음 1회만)
-                if (primarySaju && !primarySaju.phone_number) {
+                // ⭐ phone_number 없고, 본인 사주 등록자이며, 아직 바텀시트를 본 적 없으면 1회만 표시
+                const alreadyShown = localStorage.getItem('phone_bottomsheet_shown');
+                if (primarySaju && !primarySaju.phone_number && !alreadyShown) {
+                  localStorage.setItem('phone_bottomsheet_shown', 'true');
                   setShowPhoneBottomSheet(true);
                   return;
                 }
@@ -1363,7 +1365,15 @@ export default function ProfilePage({
             phoneNumber={phoneNumber}
             setPhoneNumber={setPhoneNumber}
             isLoading={isPhoneSaving}
-            onClose={() => setShowPhoneBottomSheet(false)}
+            onClose={() => {
+              setShowPhoneBottomSheet(false);
+              // 닫기(스킵) 후 보고서 페이지로 이동
+              setActiveTabIndex(1);
+              setTimeout(() => {
+                sessionStorage.setItem('from_report_list', 'true');
+                navigate('/my-report-list', { replace: true });
+              }, 200);
+            }}
             onSave={async () => {
               if (!primarySaju) return;
               setIsPhoneSaving(true);
