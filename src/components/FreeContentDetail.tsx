@@ -80,6 +80,17 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     }
   }, [contentId, navigate]);
 
+  // 🛡️ iOS 스와이프 뒤로가기 방어: popstate 감지 시 무조건 홈으로 리다이렉트
+  // history.length=100 상태에서 navigate(-1)은 신뢰할 수 없음 → 항상 홈으로
+  useEffect(() => {
+    const handlePopState = () => {
+      console.log('🔙 [FreeContentDetail] popstate 감지 → 홈으로 리다이렉트');
+      navigate('/', { replace: true });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [navigate]);
+
   // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동 (FreeSajuDetail 패턴)
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
