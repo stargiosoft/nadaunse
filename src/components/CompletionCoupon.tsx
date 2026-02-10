@@ -304,13 +304,14 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
   }
 
   return (
-    <div className="flex justify-center w-full bg-gray-100 min-h-screen overflow-x-hidden">
+    <div className="flex justify-center w-full bg-gray-100 overflow-x-hidden" style={{ height: '100dvh' }}>
       <div
-        className="flex flex-col bg-white h-screen relative shadow-lg overflow-hidden"
+        className="flex flex-col bg-white relative shadow-lg"
         style={{
           maxWidth: '440px',
           minWidth: '320px',
-          width: '100%'
+          width: '100%',
+          height: '100%'
         }}
       >
         {/* Top Navigation - X 버튼만 (기획서 기준) */}
@@ -326,17 +327,15 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
           </div>
         </div>
 
-        {/* Main Content (Scrollable) - 하단 고정 버튼 높이만큼 패딩 */}
-        <div className="flex-1 overflow-y-auto w-full no-scrollbar" style={{ paddingBottom: '100px' }}>
+        {/* Main Content (Scrollable) */}
+        <div className="flex-1 min-h-0 overflow-y-auto w-full no-scrollbar">
           <ContentArea amount={couponAmount} />
         </div>
 
-        {/* Fixed Bottom Area - iOS Chrome 대응: fixed 사용 */}
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white flex justify-center" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-           <div className="w-full" style={{ maxWidth: '440px' }}>
-             <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
-             <BottomButton onHome={onHome} />
-           </div>
+        {/* Bottom Area - flex shrink-0으로 항상 하단 고정 */}
+        <div className="shrink-0 w-full z-20 bg-white relative" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+           <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
+           <BottomButton onHome={onHome} />
         </div>
       </div>
     </div>
