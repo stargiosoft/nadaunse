@@ -306,15 +306,40 @@ function ReportCard({ report, onReportClick, onEditClick, isLatest = false }: { 
 
 function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditClick, isFirstMonth = false }: { month: MonthlyReport; defaultExpanded?: boolean; onReportClick?: (id: string) => void; onEditClick?: (reportId: string, currentMessage: string) => void; isFirstMonth?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded && month.reports.length > 0);
-  const [hasBeenRead, setHasBeenRead] = useState(defaultExpanded && month.reports.length > 0); // 기본 열림 상태면 읽음 처리
 
-  // 새 보고서가 있는지 확인 (첫 번째 월이고 보고서가 있으면 새 보고서 존재)
-  const hasNewReport = isFirstMonth && month.reports.length > 0;
+  // ⭐ 새 보고서 확인 로직 (localStorage 기반)
+  const checkIfNewReport = (): boolean => {
+    if (!isFirstMonth || month.reports.length === 0) return false;
+
+    const STORAGE_KEY = 'last_viewed_report_id';
+    const latestReportId = month.reports[0]?.id; // 첫 번째 보고서 (최신)
+
+    try {
+      const lastViewedId = localStorage.getItem(STORAGE_KEY);
+      // 마지막으로 본 보고서 ID와 다르면 새 보고서
+      return !lastViewedId || lastViewedId !== latestReportId;
+    } catch (e) {
+      console.warn('⚠️ localStorage 접근 실패:', e);
+      return false;
+    }
+  };
+
+  const [hasNewReport, setHasNewReport] = useState(checkIfNewReport());
 
   // 아코디언 토글 핸들러
   const handleToggle = () => {
-    if (!isExpanded) {
-      setHasBeenRead(true); // 열 때 읽음 처리
+    if (!isExpanded && isFirstMonth && month.reports.length > 0) {
+      // 아코디언을 열 때 읽음 처리 (localStorage에 저장)
+      const STORAGE_KEY = 'last_viewed_report_id';
+      const latestReportId = month.reports[0]?.id;
+
+      try {
+        localStorage.setItem(STORAGE_KEY, latestReportId);
+        setHasNewReport(false); // 뱃지 숨김
+        console.log('✅ [MyReportList] 보고서 읽음 처리:', latestReportId);
+      } catch (e) {
+        console.warn('⚠️ localStorage 저장 실패:', e);
+      }
     }
     setIsExpanded(!isExpanded);
   };
@@ -330,8 +355,8 @@ function MonthlySection({ month, defaultExpanded = false, onReportClick, onEditC
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: isExpanded ? 600 : 400, fontSize: '15.5px', lineHeight: '16px', color: '#000000', letterSpacing: '-0.31px' }}>
             {month.title}
           </p>
-          {/* 아코디언 닫혔을 때 새 보고서 알림 dot (읽지 않았을 때만) */}
-          {!isExpanded && hasNewReport && !hasBeenRead && (
+          {/* 아코디언 닫혔을 때 새 보고서 알림 dot */}
+          {!isExpanded && hasNewReport && (
             <div
               style={{
                 width: '5px',
