@@ -326,15 +326,17 @@ export default function CompletionCoupon({ reportId, onClose, onHome }: Completi
           </div>
         </div>
 
-        {/* Main Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto w-full no-scrollbar">
+        {/* Main Content (Scrollable) - 하단 고정 버튼 높이만큼 패딩 */}
+        <div className="flex-1 overflow-y-auto w-full no-scrollbar" style={{ paddingBottom: '100px' }}>
           <ContentArea amount={couponAmount} />
         </div>
 
-        {/* Fixed Bottom Area */}
-        <div className="sticky bottom-0 w-full shrink-0 z-20 bg-white">
-           <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
-           <BottomButton onHome={onHome} />
+        {/* Fixed Bottom Area - iOS Chrome 대응: fixed 사용 */}
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white flex justify-center" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+           <div className="w-full" style={{ maxWidth: '440px' }}>
+             <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
+             <BottomButton onHome={onHome} />
+           </div>
         </div>
       </div>
     </div>
