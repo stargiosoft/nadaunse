@@ -68,6 +68,30 @@ interface FreeContentDetailProps {
 function useFreeContentDetail(contentId: string, onBack: () => void) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 🛡️ contentId 변경 감지 가드: 스와이프 뒤로가기로 다른 콘텐츠에 도달 시 홈으로 리다이렉트
+  const prevContentIdRef = useRef(contentId);
+
+  useEffect(() => {
+    if (prevContentIdRef.current !== contentId) {
+      console.log('🔄 [FreeContentDetail] contentId 변경 감지 → 홈으로 리다이렉트');
+      navigate('/', { replace: true });
+      return;
+    }
+  }, [contentId, navigate]);
+
+  // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동 (FreeSajuDetail 패턴)
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('🔄 [FreeContentDetail] bfcache 복원 감지 → 홈으로 이동');
+        navigate('/', { replace: true });
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [navigate]);
+
   const [content, setContent] = useState<MasterContent | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);

@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-09
-> **주요 결정**: rejected_tags 태그 제외 시스템, last_login_at 갱신 로직 통합
+> **최종 업데이트**: 2026-02-10
+> **주요 결정**: iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,79 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-10
+
+### 직접 URL 진입 시 뒤로가기/홈 버튼이 작동하지 않는 문제 (2중 방어 구조)
+
+**결정**: `DirectEntryHistoryGuard` + `useGoBack` 훅의 2중 방어 구조로 해결
+
+**문제**:
+- 사용자가 콘텐츠 상세 페이지 URL을 직접 입력하거나 외부 링크로 진입할 때, 뒤로가기/홈 버튼 클릭 시 홈(`/`)으로 이동하지 않음
+- `navigate(-1)` (history.back)은 브라우저 히스토리에 이전 페이지가 없으면 앱 밖으로 나가거나 아무 동작 없음
+- iOS Safari 스와이프 백 제스처에서도 동일한 문제 발생
+
+**왜 어려웠는가**:
+- SPA에서 브라우저 히스토리 스택을 직접 조회할 수 없음 (`history.length`는 전체 탭 히스토리라 신뢰 불가)
+- React Router의 `location.state`는 새로고침/직접 진입 시 null이 됨
+- iOS Safari는 히스토리 조작(`replaceState`, `pushState`)에 대해 데스크톱 브라우저와 다르게 동작
+- 여러 진입 경로(직접 URL, 외부 링크, 앱 내 네비게이션, 새로고침)를 모두 커버해야 함
+
+**시도했다 실패한 접근**:
+1. `history.length > 1` 체크 → 탭 전체 히스토리라 직접 진입 판별 불가
+2. `document.referrer` 체크 → 같은 도메인 내 이동 시에도 빈 값일 수 있음
+3. `navigate(-1)` 후 타이머로 fallback → 레이스 컨디션, iOS에서 불안정
+
+**최종 해결 (2중 방어)**:
+
+```
+1차 방어: DirectEntryHistoryGuard (App.tsx)
+  - 앱 초기화 시 현재 경로가 '/'가 아니면 히스토리에 홈을 삽입
+  - replaceState(null, '', '/') → pushState(null, '', 현재URL)
+  - sessionStorage로 세션당 1회만 실행
+  - 효과: 브라우저 뒤로가기/스와이프 백 → 홈으로 이동
+
+2차 방어: useGoBack 훅 (useIOSSafeNavigate.ts)
+  - location.state.canGoBack 플래그 확인
+  - 플래그 있음 → navigate(-1) (정상 뒤로가기)
+  - 플래그 없음 → navigate(fallback, { replace: true }) (홈으로 이동)
+  - 효과: 앱 내 뒤로가기 버튼 클릭 시 안전하게 처리
+```
+
+**핵심 포인트**:
+- 두 방어를 동시에 사용하는 이유: HistoryGuard만으로는 앱 내 버튼 클릭을 커버 못하고, useGoBack만으로는 iOS 스와이프 백을 커버 못함
+- `canGoBack` 플래그는 `useIOSSafeNavigate` 훅에서 네비게이션 시 자동으로 `location.state`에 설정
+
+**영향 범위**:
+- `src/App.tsx` - `DirectEntryHistoryGuard` 컴포넌트 추가
+- `src/hooks/useIOSSafeNavigate.ts` - `useGoBack` 훅 구현
+- `src/components/FreeContentDetailComponents.tsx` - TopNavigation에서 onBack/onHome 사용
+- `src/components/MasterContentDetailPage.tsx` - 유료 콘텐츠 상세 페이지 동일 적용
+
+---
+
+### 재방문 고객 통계를 visit_dates 기반으로 전환
+
+**결정**: 통계 대시보드의 재방문 고객 계산을 `last_login_at` → `visit_dates` (date[] 배열) 기반으로 변경
+
+**배경**:
+- `last_login_at`은 마지막 방문 시점 1개만 기록 → 기간 필터 시 중간 방문 데이터 누락
+- `visit_dates`는 모든 방문 날짜를 배열로 저장 → 기간 내 정확한 재방문 데이터 제공 가능
+
+**구현**:
+- 개요 탭 전체 기간: `visit_count` → `visit_dates` 배열 길이 기준 (<=1: 신규, >=2: 재방문)
+- 개요 탭 기간 필터: `last_login_at` 범위 → `visit_dates`에 기간 내 날짜 존재 + `created_at < startDate`
+- 추세 탭: `last_login_at` 기반 쿼리 → `visit_dates.includes(dateKey)` + `created_at < dateKey`
+
+**추가 수정 (타임존 버그)**:
+- ISO 문자열에서 `.substring(0, 10)`으로 날짜 추출 시 UTC 날짜가 됨 (KST와 9시간 차이)
+- `toLocalDateStr()` 함수로 로컬 시간 변환 적용
+- `aggregateTrendData()` 주별 그룹키도 `toISOString().split('T')[0]` → 로컬 시간 변환
+
+**영향 범위**:
+- `src/lib/statsService.ts` - `fetchDashboardStats()`, `fetchDailyTrendStats()`, `aggregateTrendData()`
 
 ---
 
@@ -4855,16 +4928,96 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 - CompletionCoupon에서 보고서 차수에 따라 쿠폰 타입 분기 (스테이징)
 
 **배포 상태**:
-- **프로덕션**: 미션성공쿠폰 데이터만 추가 (coupons 테이블 INSERT)
-- **스테이징**: 데이터 + 발급 로직 변경 모두 배포
+- **프로덕션**: 미션성공쿠폰 데이터 + 발급 로직 모두 배포 완료 (2026-02-10)
+- **스테이징**: 동일
 
 **영향 범위**:
 - `coupons` 테이블 - mission 타입 레코드 추가
 - `supabase/migrations/20260206_add_mission_coupon.sql` - 마이그레이션 파일
-- `src/components/CompletionCoupon.tsx` - 쿠폰 발급 분기 로직 (스테이징)
+- `src/components/CompletionCoupon.tsx` - 쿠폰 발급 분기 로직
+- `supabase/functions/issue-revisit-coupon/` - 미션/재방문 쿠폰 분기 처리
 
 ---
 
-**문서 버전**: 3.1.0
-**최종 업데이트**: 2026-02-09
+### iOS 스와이프 뒤로가기: FreeContentDetail 버그 수정
+
+**결정**: FreeContentDetail의 `navigate('/')` → `navigate(-1)` 전환 + contentId 변경 감지 가드 + bfcache 핸들러 추가
+
+**문제**:
+- 홈 → 무료 콘텐츠 상세(`/free/content/:id`) → iOS 스와이프 뒤로가기 시, 홈이 아닌 **다른 무료 콘텐츠 상세**로 이동
+- `history.length: 100` (브라우저 최대치) 상태에서 히스토리 스택이 오염되어 발생
+- MasterContentDetailPage는 이미 `navigate(-1)`로 수정되었으나 FreeContentDetail만 미적용 상태
+
+**원인**:
+1. FreeContentDetailWrapper/ProductDetailPage의 `onBack`/`onHome`이 `navigate('/')` (push) 사용 → 히스토리 엔트리를 계속 쌓아 history.length=100까지 증가
+2. iOS Safari에서 히스토리 최대치 도달 시 pushState의 forward entry 정리가 불완전
+
+**수정 내용**:
+1. **navigate('/') → navigate(-1)** (App.tsx 3곳): FreeContentDetailWrapper, ProductDetailPage(캐시), ProductDetailPage(일반)의 onBack/onHome
+2. **contentId 변경 감지 가드** (FreeContentDetail.tsx): `prevContentIdRef`로 같은 컴포넌트 인스턴스에서 contentId 변경 시 홈으로 리다이렉트
+3. **bfcache 핸들러** (FreeContentDetail.tsx): FreeSajuDetail 패턴 따라 `pageshow` 이벤트 핸들러 추가
+
+**안전성**:
+- contentId 변경 감지는 `/free/content/:id` 라우트에서 같은 인스턴스가 다른 id로 re-render되는 경우(스와이프 뒤로가기)만 해당
+- 추천 콘텐츠 클릭은 `/master/content/detail/`로 이동하므로 간섭 없음
+
+**영향 범위**:
+- `src/App.tsx` - FreeContentDetailWrapper, ProductDetailPage onBack/onHome
+- `src/components/FreeContentDetail.tsx` - useFreeContentDetail 훅에 가드 로직 추가
+
+---
+
+## [2026-02-10] 가입축하쿠폰 할인 금액 인상 (3000원 → 5000원)
+
+**결정 사항**:
+- 가입축하쿠폰(welcome) 할인 금액을 3,000원에서 5,000원으로 인상
+
+**구현**:
+- `coupons` 테이블의 `discount_amount` 값 UPDATE (SQL 직접 실행)
+- Edge Function `issue-welcome-coupon` 재배포
+
+**배포 상태**: 프로덕션 + 스테이징 모두 반영 완료
+
+---
+
+## [2026-02-10] 프로필 폰번호 바텀시트 1회 제한
+
+**결정 사항**:
+- 프로필 → "나의 분석 보고서" 탭 클릭 시 폰번호 입력 바텀시트가 매번 뜨던 것을 **최초 1회만** 표시하도록 변경
+
+**근거**:
+- UX 개선: 번호 입력을 원하지 않는 사용자가 매번 팝업을 닫아야 하는 불편 해소
+- 건너뛰기(닫기) 시에도 보고서 페이지로 자연스럽게 이동
+
+**구현**:
+- `localStorage`에 `phone_bottomsheet_shown` 플래그 저장
+- 조건: `primarySaju` 있음 + `phone_number` 없음 + 플래그 없음 → 바텀시트 1회 표시
+- 닫기(X) 클릭 시: 바텀시트 닫고 보고서 페이지로 이동
+
+**영향 범위**:
+- `src/components/ProfilePage.tsx` - 탭 클릭 핸들러 + onClose 콜백
+
+---
+
+## [2026-02-10] CompletionCoupon 하단 버튼 iOS Chrome 고정
+
+**결정 사항**:
+- 쿠폰 완료 화면의 "홈으로 가기" 버튼이 iOS Chrome에서 하단 고정되지 않는 문제 수정
+
+**근거**:
+- `sticky bottom-0`은 iOS Chrome에서 부모의 `overflow-hidden` + 내부 `transform` 조합 시 작동 안 함
+- `fixed`도 동일한 이유로 실패
+
+**구현**:
+- `h-screen` + `overflow-hidden` → `height: 100dvh` (iOS 주소창 동적 대응)
+- `sticky`/`fixed` → **flex 레이아웃** (`shrink-0`으로 버튼 영역 확보, `flex-1 min-h-0`으로 콘텐츠만 스크롤)
+- `env(safe-area-inset-bottom)` 적용
+
+**영향 범위**:
+- `src/components/CompletionCoupon.tsx` - 레이아웃 구조 변경
+
+---
+
+**문서 버전**: 3.3.0
+**최종 업데이트**: 2026-02-10
 **문서 끝**
