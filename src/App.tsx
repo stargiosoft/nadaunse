@@ -39,6 +39,7 @@ import TarotShufflePage from './components/TarotShufflePage'; // ⭐ 타로 셔�
 import WelcomeCouponPage from './components/WelcomeCouponPage'; // ⭐ 추가
 import AlimtalkInfoInputPage from './components/AlimtalkInfoInputPage'; // ⭐ 알림톡 정보 입력 페이지
 import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
+import { SessionExpiredDialog } from './components/SessionExpiredDialog'; // ⭐ 로그인 필요 다이얼로그
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
 import { PageLoader, DotLoading } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import HomePage from './pages/HomePage';
@@ -654,6 +655,10 @@ function ProductDetailPage() {
 function PaymentNewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
   const numericId = Number(id);
@@ -1645,12 +1650,27 @@ function ProfilePageWrapper() {
 // NadaumTagsList Wrapper
 function NadaumTagsListWrapper() {
   const navigate = useNavigate();
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
   return (
     <NadaumTagsList
       onBack={() => window.history.back()}
       onHome={() => navigate('/')}
     />
   );
+}
+
+// ⭐ 나의 분석 보고서 리스트 Wrapper (로그인 필수)
+function MyReportListWrapper() {
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <MyReportList />;
 }
 
 // ⭐ 통계 대시보드 Wrapper (마스터 전용)
@@ -2173,6 +2193,26 @@ function useMasterAuth() {
     };
 
     checkMasterRole();
+  }, []);
+
+  return authState;
+}
+
+// ⭐ 로그인 필요 확인 훅
+function useLoginRequired() {
+  const [authState, setAuthState] = useState<'checking' | 'logged_in' | 'not_logged_in'>('checking');
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setAuthState(user ? 'logged_in' : 'not_logged_in');
+      } catch {
+        setAuthState('not_logged_in');
+      }
+    };
+
+    checkLogin();
   }, []);
 
   return authState;
@@ -3195,7 +3235,7 @@ export default function App() {
           {/* ⭐ 테스트용 Figma 컴포넌트 라우트 */}
           <Route path="/test/check-record-me" element={<CheckRecordMe />} />
           <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />
-          <Route path="/my-report-list" element={<MyReportList />} />
+          <Route path="/my-report-list" element={<MyReportListWrapper />} />
           <Route path="/test/my-report-weekly" element={<MyReportList />} /> {/* MyReportList가 전체 화면 렌더링 */}
           <Route path="/test/my-report-empty" element={<MyReportList forceEmptyState={true} />} />
           <Route path="/test/nadaum-tags" element={<NadaumTags onBack={() => {}} />} />
