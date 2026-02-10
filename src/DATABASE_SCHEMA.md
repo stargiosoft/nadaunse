@@ -213,7 +213,7 @@
 |--------|------|----------|--------|------|
 | `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 쿠폰 고유 ID |
 | `name` | text | NOT NULL | - | 쿠폰 이름 |
-| `coupon_type` | text | NOT NULL | - | 쿠폰 타입 (welcome: 가입축하, revisit: 재구매) |
+| `coupon_type` | text | NOT NULL | - | 쿠폰 타입 (welcome: 가입축하, revisit: 재방문, mission: 미션성공) |
 | `discount_amount` | integer | NOT NULL | - | 할인 금액 (원 또는 %) |
 | `description` | text | - | - | 쿠폰 설명 |
 | `is_active` | boolean | - | `true` | 활성화 여부 |
@@ -579,6 +579,7 @@ weekly_reports (주간 보고서)
 | 1.8.0 | 2026-02-04 | users 테이블에 visit_dates 컬럼 추가 (KST 기준 방문 날짜 배열) | AI Assistant |
 | 1.9.0 | 2026-02-06 | anonymous_free_views 테이블 추가, pg_cron cleanup-anonymous-free-views 스케줄 등록 | AI Assistant |
 | 2.0.0 | 2026-02-09 | users 테이블에 rejected_tags 컬럼 추가, anonymous_free_views UNIQUE 제약 제거 (INSERT 방식 변경), last_login_at 갱신 로직 변경 (HomePage → App.tsx recordTodayVisit) | AI Assistant |
+| 2.1.0 | 2026-02-09 | coupons.coupon_type에 mission 타입 추가 (미션성공쿠폰) | AI Assistant |
 
 ---
 

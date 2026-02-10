@@ -198,9 +198,11 @@ generate-master-content (백그라운드)
     ↓
 issue-welcome-coupon (웰컴 쿠폰 발급)
 
-재방문 (7일 후)
+재방문 / 미션 완료
     ↓
-issue-revisit-coupon (재방문 쿠폰 발급)
+issue-revisit-coupon (재방문 쿠폰 또는 미션성공 쿠폰 발급)
+    ※ 주간 보고서 1회차 → 미션성공쿠폰 (mission)
+    ※ 주간 보고서 2회차+ → 재방문쿠폰 (revisit)
 
 결제 시
     ↓
@@ -231,8 +233,9 @@ ReportWeeklyMindCare: 마음 챙김 메시지
 ReportWeeklyMemo: 나에게 응원 한마디
     │  └─ 저장 시 my_report_cache 삭제 (캐시 무효화)
     ↓
-CompletionCoupon: 10% 할인 쿠폰 발급
-    │  └─ coupon_type: 'weekly_report'
+CompletionCoupon: 쿠폰 발급
+    │  ├─ 1회차 보고서: 미션성공쿠폰 (coupon_type: 'mission')
+    │  └─ 2회차+ 보고서: 재방문쿠폰 (coupon_type: 'revisit')
     ↓
 user_coupons 테이블에 쿠폰 INSERT
 ```
@@ -855,9 +858,12 @@ PaymentNew → get-available-coupons
 
 ### 3. `issue-revisit-coupon`
 
-**역할**: 재방문 쿠폰 발급 (프로모션 시)
+**역할**: 재방문 쿠폰 또는 미션성공 쿠폰 발급
 
-**호출 시점**: 
+**호출 시점**:
+- 주간 보고서 완료 시 (CompletionCoupon)
+  - 1회차 보고서: 미션성공쿠폰 (coupon_type: 'mission')
+  - 2회차 이후: 재방문쿠폰 (coupon_type: 'revisit')
 - 관리자가 특정 이벤트로 발급
 - 또는 자동 발급 로직 (예: 30일 후 재방문 시)
 
@@ -880,8 +886,8 @@ PaymentNew → get-available-coupons
 ```
 
 **쿠폰 정보**:
-- 이름: "재방문 쿠폰" (커스터마이즈 가능)
-- 할인 금액: 2,000원 (커스터마이즈 가능)
+- 재방문 쿠폰: 이름 "재방문 쿠폰", 2,000원 할인
+- 미션성공 쿠폰: 이름 "미션성공쿠폰" (coupons 테이블에서 mission 타입 조회)
 - 유효기간: 발급일로부터 30일
 
 ---

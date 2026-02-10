@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-09 (v2.7.0 - rejected_tags, last_login_at 통합, INSERT 방식 전환)
+> **최종 업데이트**: 2026-02-09 (v2.8.0 - 초개인화 프로덕션 배포, 미션성공쿠폰 추가)
 
 ---
 
@@ -249,7 +249,9 @@
 │  ┌──────────────────────────────────────────────────────────────────┐       │
 │  │  generate-content-answers                                         │       │
 │  │      ↓                                                           │       │
-│  │  [Stargio 사주 API] → [AI 운세 생성] → [order_results 저장]       │       │
+│  │  [user_trait_tags 조회] → [초개인화 데이터 구성]                    │       │
+│  │      ↓                                                           │       │
+│  │  [Stargio 사주 API] → [AI 운세 생성 (초개인화)] → [order_results]  │       │
 │  │      ↓                                                           │       │
 │  │  [orders.ai_generation_completed = true]                          │       │
 │  └──────────────────────────────────────────────────────────────────┘       │
@@ -373,7 +375,7 @@
 │  │       ↓                                                               │   │
 │  │  [ReportWeeklyMemo] → "나 응원하기" 작성 (write 모드)                 │   │
 │  │       ↓                                                               │   │
-│  │  [CompletionCoupon] → 쿠폰 발급 (재구매 쿠폰 3,000원)                 │   │
+│  │  [CompletionCoupon] → 쿠폰 발급 (1회차: 미션성공쿠폰, 2회차+: 재방문쿠폰) │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │       ↓                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -994,7 +996,7 @@ App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태�
 | 카테고리 | 개수 | 주요 기능 |
 |----------|------|----------|
 | AI 생성 | 8개 | 무료/유료 콘텐츠, 사주/타로 운세, 썸네일 생성 |
-| 쿠폰 관리 | 4개 | 조회, 적용, 웰컴/재방문 쿠폰 발급 |
+| 쿠폰 관리 | 4개 | 조회, 적용, 웰컴/재방문/미션성공 쿠폰 발급 |
 | 결제/환불 | 3개 | 웹훅 검증, 결제 처리, 환불 |
 | 사용자 관리 | 2개 | 사용자, 마스터 콘텐츠 |
 | 알림 | 1개 | 카카오 알림톡 발송 |
@@ -1017,7 +1019,7 @@ App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태�
 | `orders` | 결제 주문 | 결제 금액, PortOne ID, AI 생성 완료 여부 |
 | `order_results` | AI 생성 결과 | 질문/답변 쌍 |
 | `user_coupons` | 사용자 쿠폰 | 발급/사용 추적 |
-| `coupons` | 쿠폰 마스터 | 할인 금액, 쿠폰 타입 |
+| `coupons` | 쿠폰 마스터 | 할인 금액, 쿠폰 타입 (welcome, revisit, mission) |
 
 **📚 상세 문서**: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) - 전체 컬럼, 타입, 제약조건, 인덱스
 
@@ -1105,6 +1107,7 @@ AI 생성 요청 (Edge Function)
     쿠폰 적용 (선택)
     - 웰컴 쿠폰 (3000원)
     - 재방문 쿠폰 (2000원)
+    - 미션성공 쿠폰
          ↓
     결제 완료 → orders 생성
     (0원 결제는 PG 호출 없이 바로 처리)
@@ -1677,6 +1680,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.8.0 | 2026-02-09 | **초개인화 프로덕션 배포** - generate-content-answers/saju-answer/tarot-answer 초개인화 프롬프트 프로덕션 배포. **미션성공쿠폰 추가** - coupons 테이블에 mission 타입 추가, CompletionCoupon 발급 로직 변경 (1회차: mission, 2회차+: revisit). 유료 콘텐츠 플로우에 초개인화 데이터 흐름 반영 | AI Assistant |
 | 2.7.0 | 2026-02-09 | **rejected_tags 시스템 추가** - CheckRecordMe 미선택 태그 누적 저장, extract-trait-tags rejectedTags 파라미터 추가. **last_login_at 통합** - HomePage → auth.ts recordTodayVisit()로 이동. **anonymous_free_views INSERT 전환** - upsert→INSERT, UNIQUE 제약 제거. TagCouponBottomSheet 추가 | AI Assistant |
 | 2.6.0 | 2026-02-03 | **계정 불일치 처리 플로우 추가** - 알림톡 링크 접속 시 다른 계정이면 소유자 마스킹 이메일 표시, get-order-owner/get-report-owner Edge Function 추가 | AI Assistant |
 | 2.5.0 | 2026-02-02 | **나다움 보고서 플로우 추가** - System Map에 6번째 데이터 흐름 추가 (태그 수집 → 보고서 생성 → 열람/다시보기/수정 플로우), 9개 컴포넌트 문서화, 4개 테이블 참조 | AI Assistant |

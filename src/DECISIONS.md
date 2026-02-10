@@ -4835,8 +4835,36 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 - `supabase/functions/generate-tarot-answer/index.ts` - 동일 패턴 적용
 - 불필요한 `master_content_questions` DB 업데이트 로직 제거 (두 함수 모두)
 
+### 배포 상태
+- **프로덕션**: 2026-02-09 배포 완료 (generate-content-answers, generate-saju-answer, generate-tarot-answer)
+- **스테이징**: 2026-02-06 배포 완료
+
 ---
 
-**문서 버전**: 3.0.0
+### 미션성공쿠폰 추가 및 쿠폰 발급 프로세스 변경
+
+**결정**: `coupons` 테이블에 `mission` 타입 쿠폰 추가, 주간 보고서 쿠폰 발급 로직 변경
+
+**배경**:
+- 기존: 주간 보고서 완료 시 항상 재방문 쿠폰 (revisit) 발급
+- 변경: 1회차 보고서 → 미션성공쿠폰 (mission), 2회차 이후 → 재방문쿠폰 (revisit)
+- 쿠폰 이름: "미션쿠폰" → "미션성공쿠폰"으로 명칭 변경
+
+**구현**:
+- `coupons` 테이블에 `coupon_type = 'mission'` 레코드 추가 (프로덕션 + 스테이징)
+- CompletionCoupon에서 보고서 차수에 따라 쿠폰 타입 분기 (스테이징)
+
+**배포 상태**:
+- **프로덕션**: 미션성공쿠폰 데이터만 추가 (coupons 테이블 INSERT)
+- **스테이징**: 데이터 + 발급 로직 변경 모두 배포
+
+**영향 범위**:
+- `coupons` 테이블 - mission 타입 레코드 추가
+- `supabase/migrations/20260206_add_mission_coupon.sql` - 마이그레이션 파일
+- `src/components/CompletionCoupon.tsx` - 쿠폰 발급 분기 로직 (스테이징)
+
+---
+
+**문서 버전**: 3.1.0
 **최종 업데이트**: 2026-02-09
 **문서 끝**

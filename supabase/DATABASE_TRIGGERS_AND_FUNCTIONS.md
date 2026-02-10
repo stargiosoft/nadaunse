@@ -2,7 +2,7 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-02-06
+> **최종 업데이트**: 2026-02-09
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -654,7 +654,7 @@ CREATE TRIGGER on_auth_user_created
    └─ weekly_reports UPDATE (self_encouragement 필드)
 
 4. 쿠폰 발급
-   └─ user_coupons INSERT (coupon_type = 'weekly_report')
+   └─ user_coupons INSERT (1회차: mission, 2회차+: revisit)
 ```
 
 ### user_viewed 패턴

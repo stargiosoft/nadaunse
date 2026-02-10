@@ -89,6 +89,40 @@ if (!DEV && import.meta.env.DEV) {
 
 // ⚡ Build Cache Buster v1.4.3 - Fix dynamic import module fetch error
 
+/**
+ * 직접 링크 진입 시 브라우저 뒤로가기 보호
+ * - 외부 링크(카카오톡, 구글 등)로 콘텐츠 상세 페이지에 바로 진입하면
+ *   브라우저 히스토리에 나다운세 홈(/)이 없어서 뒤로가기 시 앱 밖으로 나감
+ * - 앱 최초 로드 시 홈(/)이 아닌 페이지에 진입하면 히스토리에 /를 삽입
+ * - 결과: [외부, /detail/xxx] → [외부, /, /detail/xxx]
+ *         브라우저 뒤로가기 → 홈 페이지로 이동 (앱 밖으로 나가지 않음)
+ */
+function DirectEntryHistoryGuard() {
+  const { pathname, search, hash } = useLocation();
+  const hasHandled = useRef(false);
+
+  useEffect(() => {
+    if (hasHandled.current) return;
+    hasHandled.current = true;
+
+    // 홈페이지로 진입한 경우 처리 불필요
+    if (pathname === '/') return;
+
+    // 이미 처리된 세션이면 스킵 (같은 탭에서 새로고침 시)
+    if (sessionStorage.getItem('nadaunse_history_guard')) return;
+    sessionStorage.setItem('nadaunse_history_guard', 'true');
+
+    // 히스토리 스택에 홈(/)을 현재 페이지 앞에 삽입
+    const currentUrl = pathname + search + hash;
+    window.history.replaceState(null, '', '/');
+    window.history.pushState(null, '', currentUrl);
+
+    console.log('🛡️ [DirectEntryGuard] 히스토리에 홈(/) 삽입:', currentUrl);
+  }, [pathname, search, hash]);
+
+  return null;
+}
+
 // ⭐ 히스토리 디버깅용 컴포넌트 (스크롤 이동 제거)
 function HistoryDebug() {
   const { pathname } = useLocation();
@@ -3228,6 +3262,7 @@ export default function App() {
     <HelmetProvider>
       <Router>
         <ErrorBoundary>
+        <DirectEntryHistoryGuard />
         <HistoryDebug />
         <GAInit />
         <LoginToast />
