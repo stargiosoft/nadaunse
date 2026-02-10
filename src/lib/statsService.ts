@@ -888,7 +888,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     if (granularity === 'weekly') {
       // 주 단위 그룹핑 (월요일 기준)
       const weekStart = getWeekStart(date);
-      groupKey = weekStart.toISOString().split('T')[0];
+      groupKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
       const month = date.getMonth() + 1;
       const weekOfMonth = getWeekOfMonth(date);
       groupLabel = `${month}월 ${weekOfMonth}주`;
