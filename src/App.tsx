@@ -657,9 +657,6 @@ function PaymentNewPage() {
   const navigate = useNavigate();
   const loginAuth = useLoginRequired();
 
-  if (loginAuth === 'checking') return <PageLoader />;
-  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
-
   // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
   const numericId = Number(id);
   const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
@@ -676,6 +673,10 @@ function PaymentNewPage() {
       console.log('🔍 [PaymentNewPage] master_contents → PaymentNew가 직접 조회');
     }
   }, [staticProduct]);
+
+  // ⭐ 로그인 체크 (모든 hooks 이후에 조기 반환)
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   if (isLoading) {
     return <PageLoader />;
@@ -814,9 +815,6 @@ function BirthInfoPage() {
   const goBack = useGoBack(`/product/${id}`); // ⭐ 직전 페이지로 (fallback: 콘텐츠 상세)
   const loginAuth = useLoginRequired();
 
-  if (loginAuth === 'checking') return <PageLoader />;
-  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
-
   // ⭐️ allProducts 조회는 동기 작업이므로 즉시 초기값 설정
   const numericId = Number(id);
   const staticProduct = !isNaN(numericId) ? allProducts.find(p => p.id === numericId) : null;
@@ -925,6 +923,10 @@ function BirthInfoPage() {
 
     checkSajuInfo();
   }, [product, id, navigate]);
+
+  // ⭐ 로그인 체크 (모든 hooks 이후에 조기 반환)
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
 
   if (isLoading || (product?.type === 'free' && hasSajuInfo === null)) {
     return <PageLoader />;
