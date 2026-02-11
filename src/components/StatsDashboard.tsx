@@ -1304,10 +1304,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 9. 태그 저장율 */}
+                {/* 9. 회원당 태그 저장율 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>태그 저장율</h3>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>회원당 태그 저장율</h3>
                     <span style={{ fontSize: '11px', fontFamily: 'Pretendard Variable', color: '#999' }}>태그 저장 고객 / 총 가입 고객</span>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
