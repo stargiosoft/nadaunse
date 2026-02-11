@@ -2527,7 +2527,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
         {/* ========== 보고서 탭 ========== */}
         {selectedTab === '보고서' && (
-          <div>
+          <div style={{ paddingTop: '16px' }}>
             {/* 에러 상태 */}
             {reportError && (
               <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
@@ -2561,7 +2561,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
               >
                 {/* 퍼널 테이블 (전체 기간) */}
-                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
                   <div className="flex items-center gap-2" style={{ marginBottom: '16px' }}>
                     <BarChart3 size={16} color="#3FB5B3" />
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>보고서 퍼널 (전체)</h3>
@@ -2596,7 +2596,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 </section>
 
                 {/* 기간 필터 */}
-                <div>
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
                   <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
                     <Calendar size={16} color="#666" />
                     <span style={{ ...typography.label }}>추세 기간</span>
@@ -2619,7 +2619,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       </button>
                     ))}
                   </div>
-                </div>
+                </section>
 
                 {/* 차트 1: 타로 3장 완료율 */}
                 {reportTrendData.length > 0 && (

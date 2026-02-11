@@ -109,6 +109,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | System can insert user_coupons | INSERT | public | `true` |
 | Users can update own coupons | UPDATE | public | `auth.uid() = user_id` |
 | Users can view own coupons | SELECT | public | `auth.uid() = user_id` |
+| Authenticated can view all user_coupons | SELECT | authenticated | `true` |
 
 **RLS 상태**: Enabled
 
@@ -162,6 +163,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
 | Users can view own weekly reports | SELECT | authenticated | `auth.uid() = user_id` |
+| Authenticated can view all weekly_reports | SELECT | authenticated | `true` |
 | Users can update own weekly reports | UPDATE | authenticated | `auth.uid() = user_id` |
 | Service role can manage weekly reports | ALL | service_role | `true` |
 
@@ -169,7 +171,8 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 **용도**:
 - 주간 보고서 메타데이터 및 응원글(self_encouragement) 저장
-- 사용자는 본인 보고서만 조회/수정 가능
+- 인증된 사용자는 모든 보고서 조회 가능 (통계 대시보드용)
+- 사용자는 본인 보고서만 수정 가능
 - 시스템(Service Role)은 보고서 생성 담당
 
 ---
@@ -194,6 +197,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
 | Users can view own tarot selections | SELECT | authenticated | `auth.uid() = weekly_reports.user_id` (조인) |
+| Authenticated can view all report_tarot_selections | SELECT | authenticated | `true` |
 | Users can update own tarot selections | UPDATE | authenticated | `auth.uid() = weekly_reports.user_id` (조인) |
 | Service role can manage tarot selections | ALL | service_role | `true` |
 
@@ -202,7 +206,8 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 **용도**:
 - 보고서별 타로 카드 선택 기록
 - `user_viewed` 플래그로 실제 사용자 상호작용 추적
-- 사용자는 본인 보고서의 타로 선택만 조회/수정 가능
+- 인증된 사용자는 모든 타로 선택 조회 가능 (통계 대시보드용)
+- 사용자는 본인 보고서의 타로 선택만 수정 가능
 
 **user_viewed 패턴**:
 ```typescript
