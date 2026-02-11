@@ -2081,8 +2081,9 @@ function LoginPageNewWrapper() {
   const handleLoginSuccess = (user: any) => {
     console.log('🎉 로그인 성공! user:', user);
 
-    // ⭐ iOS Safari: 로그인 후 홈 버퍼 재생성 (스와이프 뒤로가기 → /profile 등 이전 페이지 방지)
+    // ⭐ iOS Safari: 로그인 후 홈 버퍼 재생성 (스와이프 뒤로가기 → 이전 페이지/탭 닫힘 방지)
     sessionStorage.removeItem('homepage_history_initialized');
+    sessionStorage.removeItem('navigatedFromHome');
 
     // ⭐ 로그인 성공 토스트 표시 플래그 저장
     sessionStorage.setItem('show_login_toast', 'true');
@@ -2131,10 +2132,12 @@ function ExistingAccountPageNewWrapper() {
       onLoginWithCorrectProvider={() => {
         // 로그인 성공 시 홈으로 이동
         sessionStorage.removeItem('homepage_history_initialized');
+        sessionStorage.removeItem('navigatedFromHome');
         navigate('/', { replace: true });
       }}
       onNavigateToHome={() => {
         sessionStorage.removeItem('homepage_history_initialized');
+        sessionStorage.removeItem('navigatedFromHome');
         navigate('/', { replace: true });
       }}
     />

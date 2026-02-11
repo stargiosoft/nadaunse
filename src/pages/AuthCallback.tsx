@@ -170,8 +170,9 @@ export default function AuthCallback() {
         }
 
         // ⭐ 리다이렉트 모드: 기존 navigate 로직 유지
-        // ⭐ iOS Safari: 로그인 후 홈 버퍼 재생성 (스와이프 뒤로가기 → 이전 페이지 방지)
+        // ⭐ iOS Safari: 로그인 후 홈 버퍼 재생성 (스와이프 뒤로가기 → 이전 페이지/탭 닫힘 방지)
         sessionStorage.removeItem('homepage_history_initialized');
+        sessionStorage.removeItem('navigatedFromHome');
         // 로그인 성공 토스트 표시 플래그 저장
         sessionStorage.setItem('show_login_toast', 'true');
 
