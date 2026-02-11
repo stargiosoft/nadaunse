@@ -80,16 +80,9 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     }
   }, [contentId, navigate]);
 
-  // 🛡️ iOS 스와이프 뒤로가기 방어: popstate 감지 시 무조건 홈으로 리다이렉트
-  // history.length=100 상태에서 navigate(-1)은 신뢰할 수 없음 → 항상 홈으로
-  useEffect(() => {
-    const handlePopState = () => {
-      console.log('🔙 [FreeContentDetail] popstate 감지 → 홈으로 리다이렉트');
-      navigate('/', { replace: true });
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [navigate]);
+  // ⛔ popstate 핸들러 제거됨 (2026-02-10)
+  // Guard Entry 패턴과 충돌하여 히스토리 엔트리를 소모하고 Google OAuth로 이탈 유발
+  // Guard Entry가 있으면 React Router가 자체적으로 popstate → '/' 라우팅 처리
 
   // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동 (FreeSajuDetail 패턴)
   useEffect(() => {
