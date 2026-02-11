@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { signInWithKakao, signInWithGoogle, clearUserCaches } from '../lib/auth';
+import { signInWithKakao, signInWithGooglePopup, signInWithGoogleRedirect, clearUserCaches } from '../lib/auth';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -708,32 +708,76 @@ export default function LoginPageNew({
 
   const handleGoogleLogin = async () => {
     console.log('🔐 구글 로그인 시도');
-    trackLoginClick('google'); // 📊 GA 이벤트
+    trackLoginClick('google');
 
     // 🔒 다른 제공자로 이미 가입한 경우 체크
     const existingProvider = getLastLoginProvider();
     const existingEmail = getLastLoginEmail();
-    
+
     if (existingProvider && existingProvider !== 'google' && existingEmail) {
       console.log(`⚠️ 이미 ${existingProvider}로 가입됨 → 기가입자 페이지로 이동`);
       onNavigateToExistingAccount(existingProvider);
       return;
     }
 
-    // ⭐ 이미 저장된 리다이렉트 URL이 없는 경우에만 홈으로 설정
-    if (!localStorage.getItem('redirectAfterLogin')) {
-      localStorage.setItem('redirectAfterLogin', '/');
+    // ⭐ 팝업(새 탭) 열기 — 반드시 클릭 핸들러 내 동기 호출 (iOS 팝업 차단 회피)
+    const popup = window.open('about:blank', 'google-oauth');
+
+    // 팝업 차단 시 redirect fallback
+    if (!popup) {
+      console.log('⚠️ 팝업 차단됨 → redirect fallback');
+      if (!localStorage.getItem('redirectAfterLogin')) {
+        localStorage.setItem('redirectAfterLogin', '/');
+      }
+      try {
+        await signInWithGoogleRedirect();
+      } catch (error) {
+        console.error('❌ 구글 로그인 실패:', error);
+        alert('구글 로그인에 실패했습니다. 다시 시도해주세요.');
+      }
+      return;
     }
 
+    // ⭐ 팝업 모드 진행
+    localStorage.setItem('google_oauth_popup_mode', 'true');
+    setIsLoggingIn(true);
+
     try {
-      // /lib/auth.ts의 signInWithGoogle 사용 (Supabase OAuth)
-      await signInWithGoogle();
-      
-      // 리다이렉트되므로 여기는 실행되지 않음
-      console.log('🔄 구글 로그인 리다이렉트 중...');
-    } catch (error: any) {
-      console.error('❌ 구글 로그인 실패:', error);
-      alert('구글 로그인에 실패했습니다. 다시 시도해주세요.');
+      const result = await signInWithGooglePopup(popup);
+
+      if (result.isNew) {
+        // 신규 사용자 → 약관 페이지로 (tempUser는 AuthCallback에서 이미 저장됨)
+        onNavigateToTerms();
+      } else if (result.userData) {
+        // 기존 사용자 → 로그인 성공 (user는 AuthCallback에서 이미 저장됨)
+        // 로그인 성공 토스트 표시 플래그 저장
+        sessionStorage.setItem('show_login_toast', 'true');
+        // 프로필 페이지 강제 리로드 플래그 저장
+        sessionStorage.setItem('force_profile_reload', 'true');
+
+        // cached_saju_info가 있으면 로그인 후 저장 플래그 설정
+        const cachedSajuJson = localStorage.getItem('cached_saju_info');
+        const hasPendingTags = !!localStorage.getItem('pending_trait_tags');
+        if (cachedSajuJson && !hasPendingTags) {
+          localStorage.setItem('save_cached_saju_after_login', 'true');
+        }
+
+        onLoginSuccess(result.userData);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'popup_closed') {
+        // 사용자가 팝업을 닫음 → 조용히 로딩 해제
+        console.log('ℹ️ 사용자가 Google 로그인 팝업을 닫았습니다.');
+      } else {
+        console.error('❌ 구글 로그인 실패:', error);
+        alert('구글 로그인에 실패했습니다. 다시 시도해주세요.');
+      }
+    } finally {
+      setIsLoggingIn(false);
+      // cleanup
+      localStorage.removeItem('google_oauth_popup_mode');
+      localStorage.removeItem('google_auth_complete');
     }
   };
 

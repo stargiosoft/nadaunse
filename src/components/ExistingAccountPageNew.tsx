@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import svgPaths from "../imports/svg-iltjkti27j";
 import { imgGroup, imgGroup1, imgGroup2, imgGroup3 } from "../imports/svg-cp95o";
 import { supabase } from '../lib/supabase';
-import { signInWithKakao, signInWithGoogle } from '../lib/auth';
+import { signInWithKakao, signInWithGooglePopup, signInWithGoogleRedirect } from '../lib/auth';
 import { isDevelopment } from '../lib/env';
 import { PageLoader } from './ui/PageLoader';
 
@@ -397,25 +397,12 @@ export default function ExistingAccountPageNew({ provider, onBack, onLoginWithCo
 
   const handleLogin = async () => {
     console.log(`🔐 ${provider} 계정으로 로그인 시도`);
-    
+
     try {
       setIsLoading(true);
-      
-      // ⭐ OAuth 로그인 시작 (팝업/리다이렉트 발생, 콜백에서 처리됨)
+
       if (provider === 'kakao') {
         await signInWithKakao();
-      } else if (provider === 'google') {
-        await signInWithGoogle();
-      }
-      
-      // ⭐ signInWithOAuth는 팝업을 열거나 리다이렉트하는 함수
-      // 실제 로그인은 /auth/callback에서 처리되므로
-      // 여기서는 홈으로 이동하지 않고 대기만 함
-      console.log('🔄 OAuth 프로세스 시작됨 - 콜백 대기 중...');
-      
-      // ⭐ 카카오의 경우 동기적으로 로그인이 완료되므로 홈으로 이동
-      // (구글은 팝업/리다이렉트이므로 자동으로 콜백에서 처리됨)
-      if (provider === 'kakao') {
         console.log('✅ [기가입자] 카카오 로그인 완료 → 홈으로 이동');
         setIsLoading(false);
         if (onNavigateToHome) {
@@ -423,19 +410,60 @@ export default function ExistingAccountPageNew({ provider, onBack, onLoginWithCo
         } else {
           onLoginWithCorrectProvider();
         }
+      } else if (provider === 'google') {
+        // ⭐ 팝업(새 탭) 모드로 Google OAuth 진행
+        const popup = window.open('about:blank', 'google-oauth');
+
+        if (!popup) {
+          // 팝업 차단 시 redirect fallback
+          console.log('⚠️ 팝업 차단됨 → redirect fallback');
+          await signInWithGoogleRedirect();
+          return;
+        }
+
+        localStorage.setItem('google_oauth_popup_mode', 'true');
+
+        try {
+          const result = await signInWithGooglePopup(popup);
+          setIsLoading(false);
+
+          if (result.isNew) {
+            // 신규 사용자는 약관 페이지로 (이 페이지에서는 발생 안 할 수 있지만 안전 처리)
+            onLoginWithCorrectProvider();
+          } else {
+            sessionStorage.setItem('show_login_toast', 'true');
+            sessionStorage.setItem('force_profile_reload', 'true');
+            if (onNavigateToHome) {
+              onNavigateToHome();
+            } else {
+              onLoginWithCorrectProvider();
+            }
+          }
+        } catch (popupError: unknown) {
+          const message = popupError instanceof Error ? popupError.message : '';
+          if (message === 'popup_closed') {
+            console.log('ℹ️ 사용자가 Google 로그인 팝업을 닫았습니다.');
+          } else {
+            console.error('❌ 구글 로그인 실패:', popupError);
+            alert('로그인에 실패했습니다. 다시 시도해주세요.');
+          }
+          setIsLoading(false);
+          localStorage.removeItem('google_oauth_popup_mode');
+          localStorage.removeItem('google_auth_complete');
+        }
       }
-      
-    } catch (error: any) {
+
+    } catch (error: unknown) {
       console.error('❌ 로그인 실패:', error);
-      
+
       // 사용자가 취소한 경우는 조용히 처리
-      if (error?.error === 'access_denied') {
+      const errorObj = error as Record<string, unknown>;
+      if (errorObj?.error === 'access_denied') {
         console.log('ℹ️ 사용자가 로그인을 취소했습니다.');
         setIsLoading(false);
         return;
       }
-      
-      // 그 외 에러는 알림 표시 (에러 상세는 콘솔에만 기록)
+
       console.error('로그인 에러:', error);
       alert('로그인에 실패했습니다. 다시 시도해주세요.');
       setIsLoading(false);

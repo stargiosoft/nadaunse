@@ -86,6 +86,10 @@ export default function AuthCallback() {
     console.log('📧 세션 이메일:', session.user.email);
     console.log('🆔 세션 user_id:', session.user.id);
 
+    // ⭐ 팝업 모드 감지 (Google OAuth 팝업/새 탭에서 열린 경우)
+    const isPopupMode = !!localStorage.getItem('google_oauth_popup_mode');
+    console.log('🪟 팝업 모드:', isPopupMode);
+
     try {
       // ⭐️ Edge Function으로 사용자 조회/생성 (RLS 없이 안전하게 처리)
       console.log('🔍 Edge Function 호출 시작...');
@@ -111,14 +115,14 @@ export default function AuthCallback() {
       });
 
       console.log('📡 Edge Function 응답 상태:', response.status);
-      
+
       const result = await response.json();
       console.log('📦 Edge Function 응답:', result);
-      
+
       // ⭐️ 기존 사용자 (is_new: false)
       if (response.ok && result.success && !result.user.is_new) {
         console.log('✅ 기존 사용자 → 로그인 처리');
-        
+
         const userData = {
           id: result.user.id,
           email: result.user.email,
@@ -151,7 +155,22 @@ export default function AuthCallback() {
         }
         console.log('🍪 쿠키 저장 완료');
 
-        // ⭐ 로그인 성공 토스트 표시 플래그 저장
+        // ⭐ 팝업 모드: localStorage 신호 전송 후 창 닫기
+        if (isPopupMode) {
+          console.log('🪟 [팝업 모드] 부모 탭에 성공 신호 전송');
+          localStorage.setItem('google_auth_complete', JSON.stringify({
+            success: true,
+            isNew: false,
+            userData,
+            timestamp: Date.now(),
+          }));
+          localStorage.removeItem('google_oauth_popup_mode');
+          setTimeout(() => window.close(), 200);
+          return;
+        }
+
+        // ⭐ 리다이렉트 모드: 기존 navigate 로직 유지
+        // 로그인 성공 토스트 표시 플래그 저장
         sessionStorage.setItem('show_login_toast', 'true');
 
         // ⭐ 프로필 페이지 강제 리로드 플래그 저장
@@ -185,7 +204,7 @@ export default function AuthCallback() {
       // ⭐️ 신규 사용자 (404 또는 is_new: true)
       if (response.status === 404 || (result.user && result.user.is_new)) {
         console.log('⚠️ 신규 사용자 → 약관 페이지로 이동');
-        
+
         // 세션 정보를 localStorage에 임시 저장
         const tempUserData = {
           id: session.user.id,
@@ -194,10 +213,25 @@ export default function AuthCallback() {
           avatar_url: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url || '',
           provider: session.user.app_metadata?.provider || 'google',
         };
-        
+
         localStorage.setItem('tempUser', JSON.stringify(tempUserData));
         console.log('💾 임시 사용자 데이터 저장:', tempUserData);
-        
+
+        // ⭐ 팝업 모드: localStorage 신호 전송 후 창 닫기
+        if (isPopupMode) {
+          console.log('🪟 [팝업 모드] 신규 사용자 → 부모 탭에 신호 전송');
+          localStorage.setItem('google_auth_complete', JSON.stringify({
+            success: true,
+            isNew: true,
+            tempUserData,
+            timestamp: Date.now(),
+          }));
+          localStorage.removeItem('google_oauth_popup_mode');
+          setTimeout(() => window.close(), 200);
+          return;
+        }
+
+        // ⭐ 리다이렉트 모드: 기존 로직 유지
         navigate('/signup/terms', { replace: true });
         return;
       }
@@ -208,6 +242,19 @@ export default function AuthCallback() {
 
     } catch (error) {
       console.error('🚨 processSession 전체 에러:', error);
+
+      // ⭐ 팝업 모드: 에러 신호 전송 후 창 닫기
+      if (isPopupMode) {
+        console.log('🪟 [팝업 모드] 에러 → 부모 탭에 실패 신호 전송');
+        localStorage.setItem('google_auth_complete', JSON.stringify({
+          success: false,
+          timestamp: Date.now(),
+        }));
+        localStorage.removeItem('google_oauth_popup_mode');
+        setTimeout(() => window.close(), 200);
+        return;
+      }
+
       alert('로그인 처리 중 오류가 발생했습니다.\n다시 시도해주세요.');
       navigate('/login/new', { replace: true });
     }

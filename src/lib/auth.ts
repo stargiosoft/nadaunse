@@ -128,9 +128,10 @@ export const signInWithKakao = async () => {
 };
 
 /**
- * 구글 로그인 (Supabase OAuth)
+ * 구글 OAuth URL 생성 (공통)
+ * signInWithOAuth의 skipBrowserRedirect로 URL만 획득
  */
-export const signInWithGoogle = async () => {
+export const getGoogleOAuthUrl = async (): Promise<string | null> => {
   const redirectUrl = `${window.location.origin}/auth/callback`;
   logger.debug('구글 OAuth redirectTo:', redirectUrl);
 
@@ -138,7 +139,7 @@ export const signInWithGoogle = async () => {
     provider: 'google',
     options: {
       redirectTo: redirectUrl,
-      skipBrowserRedirect: true, // ⭐ 자동 리다이렉트 비활성화 → replace로 직접 처리
+      skipBrowserRedirect: true,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent'
@@ -151,14 +152,106 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 
-  // ⭐ window.location.replace() 사용: 로그인 페이지를 히스토리에 남기지 않음
-  // assign/href 대신 replace → iOS 스와이프 뒤로가기 시 로그인 페이지로 돌아가는 문제 방지
-  if (data?.url) {
-    logger.info('구글 OAuth 시작 (replace 모드)');
-    window.location.replace(data.url);
-  }
+  return data?.url || null;
+};
 
-  return data;
+/**
+ * 구글 로그인 - 팝업 모드 (메인)
+ * iOS Safari 스와이프 뒤로가기 → Google 페이지 이동 버그 근본 해결
+ * 팝업(새 탭)에서 OAuth 진행 → 부모 탭 히스토리 오염 없음
+ */
+export interface GooglePopupResult {
+  success: boolean;
+  isNew: boolean;
+  userData?: Record<string, unknown>;
+  tempUserData?: Record<string, unknown>;
+}
+
+export const signInWithGooglePopup = (popupWindow: Window): Promise<GooglePopupResult> => {
+  return new Promise(async (resolve, reject) => {
+    let resolved = false;
+    let closedPollTimer: ReturnType<typeof setInterval> | null = null;
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = () => {
+      if (closedPollTimer) clearInterval(closedPollTimer);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      window.removeEventListener('storage', onStorage);
+      localStorage.removeItem('google_oauth_popup_mode');
+      localStorage.removeItem('google_auth_complete');
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'google_auth_complete' || !e.newValue) return;
+      if (resolved) return;
+      resolved = true;
+
+      try {
+        const result: GooglePopupResult = JSON.parse(e.newValue);
+        cleanup();
+        if (result.success) {
+          resolve(result);
+        } else {
+          reject(new Error('Google 로그인 실패'));
+        }
+      } catch {
+        cleanup();
+        reject(new Error('Google 로그인 결과 파싱 실패'));
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+
+    // 팝업 닫힘 폴링 (500ms)
+    closedPollTimer = setInterval(() => {
+      if (popupWindow.closed && !resolved) {
+        resolved = true;
+        cleanup();
+        // 사용자가 팝업을 닫음 → 조용히 해제 (alert 없음)
+        reject(new Error('popup_closed'));
+      }
+    }, 500);
+
+    // 5분 타임아웃
+    timeoutTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        try { popupWindow.close(); } catch { /* ignore */ }
+        reject(new Error('Google 로그인 시간 초과'));
+      }
+    }, 5 * 60 * 1000);
+
+    // OAuth URL 획득 후 팝업을 해당 URL로 이동
+    try {
+      const oauthUrl = await getGoogleOAuthUrl();
+      if (!oauthUrl) {
+        resolved = true;
+        cleanup();
+        try { popupWindow.close(); } catch { /* ignore */ }
+        reject(new Error('OAuth URL을 가져올 수 없습니다'));
+        return;
+      }
+      popupWindow.location.href = oauthUrl;
+    } catch (err) {
+      resolved = true;
+      cleanup();
+      try { popupWindow.close(); } catch { /* ignore */ }
+      reject(err);
+    }
+  });
+};
+
+/**
+ * 구글 로그인 - 리다이렉트 모드 (fallback)
+ * 팝업이 차단된 경우 기존 redirect 방식으로 진행
+ */
+export const signInWithGoogleRedirect = async (): Promise<void> => {
+  const oauthUrl = await getGoogleOAuthUrl();
+  if (oauthUrl) {
+    logger.info('구글 OAuth 시작 (redirect fallback 모드)');
+    window.location.replace(oauthUrl);
+  }
 };
 
 /**
