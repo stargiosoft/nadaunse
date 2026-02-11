@@ -105,6 +105,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
 
   // 🛡️ History Guard Entry: iOS 스와이프 뒤로가기 시 항상 홈으로 이동하도록
   // 현재 히스토리 엔트리 바로 앞에 홈(/) 엔트리를 삽입
+  // ⭐ React Router state를 그대로 보존 (idx 변경 금지 - 내부 추적 깨짐 방지)
   const hasHistoryGuardRef = useRef(false);
   useEffect(() => {
     if (hasHistoryGuardRef.current) return;
@@ -113,15 +114,10 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     const currentState = window.history.state;
     const currentUrl = window.location.pathname + window.location.search + window.location.hash;
 
-    // 1) 현재 엔트리를 홈(/)으로 교체
-    const guardState = {
-      usr: null,
-      key: Math.random().toString(36).substring(2, 10),
-      idx: (currentState?.idx ?? 1) - 1
-    };
-    window.history.replaceState(guardState, '', '/');
+    // 1) 현재 엔트리를 홈(/)으로 교체 (동일 state 유지)
+    window.history.replaceState(currentState, '', '/');
 
-    // 2) 실제 콘텐츠 상세 페이지를 다시 push → 스와이프 뒤로가기 = 홈
+    // 2) 실제 콘텐츠 상세 페이지를 다시 push (동일 state 유지)
     window.history.pushState(currentState, '', currentUrl);
 
     console.log('🛡️ [FreeContentDetail] History guard entry inserted');

@@ -138,6 +138,7 @@ export const signInWithGoogle = async () => {
     provider: 'google',
     options: {
       redirectTo: redirectUrl,
+      skipBrowserRedirect: true, // ⭐ 자동 리다이렉트 비활성화 → replace로 직접 처리
       queryParams: {
         access_type: 'offline',
         prompt: 'consent'
@@ -150,7 +151,13 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 
-  logger.info('구글 OAuth 시작');
+  // ⭐ window.location.replace() 사용: 로그인 페이지를 히스토리에 남기지 않음
+  // assign/href 대신 replace → iOS 스와이프 뒤로가기 시 로그인 페이지로 돌아가는 문제 방지
+  if (data?.url) {
+    logger.info('구글 OAuth 시작 (replace 모드)');
+    window.location.replace(data.url);
+  }
+
   return data;
 };
 

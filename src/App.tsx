@@ -114,9 +114,11 @@ function DirectEntryHistoryGuard() {
     sessionStorage.setItem('nadaunse_history_guard', 'true');
 
     // 히스토리 스택에 홈(/)을 현재 페이지 앞에 삽입
+    // ⭐ React Router state 보존 필수 (null 사용 시 React Router 내부 추적 깨짐)
+    const currentState = window.history.state;
     const currentUrl = pathname + search + hash;
-    window.history.replaceState(null, '', '/');
-    window.history.pushState(null, '', currentUrl);
+    window.history.replaceState(currentState, '', '/');
+    window.history.pushState(currentState, '', currentUrl);
 
     console.log('🛡️ [DirectEntryGuard] 히스토리에 홈(/) 삽입:', currentUrl);
   }, [pathname, search, hash]);
