@@ -15,6 +15,7 @@ import svgPathsBack from "../imports/svg-geohasap3g";
 import svgPathsHome from "../imports/svg-pz84vpwvud";
 import svgPathsMore from "../imports/svg-yzh80oj47m";
 import { getRandomBanner, getBannerImageUrl, getProductIdForEnvironment, type AdBannerItem } from '../lib/adBannerConfig';
+import { ContentTags, isContentNew } from './ContentTags';
 
 /**
  * 홈 인디케이터 (iOS 스타일)
@@ -89,18 +90,19 @@ export function TopNavigation({ onBack, onHome, title }: TopNavigationProps) {
  */
 interface ProductInfoProps {
   content: MasterContent;
+  isRead?: boolean;
 }
 
-export function ProductInfo({ content }: ProductInfoProps) {
+export function ProductInfo({ content, isRead }: ProductInfoProps) {
   return (
     <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
       {/* 상품 이미지 */}
       <div className="aspect-[391/270] relative shrink-0 w-full">
         {content.thumbnail_url ? (
-          <img 
-            alt={content.title} 
-            className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" 
-            src={content.thumbnail_url} 
+          <img
+            alt={content.title}
+            className="absolute inset-0 max-w-none object-cover pointer-events-none size-full"
+            src={content.thumbnail_url}
           />
         ) : (
           <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
@@ -115,12 +117,12 @@ export function ProductInfo({ content }: ProductInfoProps) {
           <div className="box-border content-stretch flex flex-col gap-[16px] items-end px-[20px] py-0 relative w-full">
             <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
               <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full mt-[-8px] mb-[-6px] pb-[8px]">
-                {/* 무료 체험판 뱃지 */}
-                <div className="bg-[#f9f9f9] box-border content-stretch flex gap-[10px] items-center justify-center px-[8px] py-[4px] relative rounded-[8px] shrink-0">
-                  <p className="font-medium leading-[16px] not-italic relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px] whitespace-pre">
-                    무료 체험판
-                  </p>
-                </div>
+                {/* 콘텐츠 태그 (New, 무료, 읽어봄) */}
+                <ContentTags
+                  isPaid={false}
+                  isNew={isContentNew((content as MasterContent & { created_at?: string }).created_at)}
+                  isRead={isRead}
+                />
 
                 {/* 상품 제목 */}
                 <div className="relative shrink-0 w-full">
