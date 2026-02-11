@@ -159,6 +159,18 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false); // ⭐ 초기값 false
 
 
+  // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('🔄 [MasterContentDetailPage] bfcache 복원 감지 → 홈으로 이동');
+        navigate('/', { replace: true });
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [navigate]);
+
   const usageGuideRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -629,20 +641,20 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return (
         <FreeContentDetail
           contentId={contentId}
-          onBack={() => navigate(-1)}
-          onHome={() => navigate(-1)}
+          onBack={() => navigate('/', { replace: true })}
+          onHome={() => navigate('/', { replace: true })}
           onPurchase={async () => {}} // 로딩 중이므로 빈 함수
           onContentClick={(contentId) => {
             console.log('🔥 MasterContentDetailPage navigate 시도:', `/master/content/detail/${contentId}`);
             navigate(`/master/content/detail/${contentId}`);
           }}
           onBannerClick={() => {
-            navigate(-1);
+            navigate('/', { replace: true });
           }}
         />
       );
     }
-    
+
     // 무료/유료 판별 전 또는 유료 콘텐츠 → 유료 스켈레톤 사용
     console.log('🔍 [MasterContentDetail] 스켈레톤 렌더링 - loading:', isLoading, 'content:', !!content, 'isFreeContent:', isFreeContent);
     return <PaidContentDetailSkeleton />;
@@ -688,15 +700,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate(-1)}
-        onHome={() => navigate(-1)}
+        onBack={() => navigate('/', { replace: true })}
+        onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
         onContentClick={(contentId) => {
           console.log('🔥 MasterContentDetailPage navigate 시도:', `/master/content/detail/${contentId}`);
           navigate(`/master/content/detail/${contentId}`);
         }}
         onBannerClick={() => {
-          navigate(-1);
+          navigate('/', { replace: true });
         }}
       />
     );
@@ -717,7 +729,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             콘텐츠를 찾을 수 없습니다
           </p>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/', { replace: true })}
             className="bg-[#48b2af] text-white px-[24px] py-[12px] rounded-[12px] font-['Pretendard_Variable:SemiBold',sans-serif]"
           >
             홈으로 돌아가기
@@ -811,8 +823,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate(-1)}
-        onHome={() => navigate(-1)}
+        onBack={() => navigate('/', { replace: true })}
+        onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
       />
     );
@@ -821,7 +833,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const isPaid = content.content_type === 'paid';
   const onBack = () => {
     console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { timestamp: new Date().toISOString() });
-    navigate('/');
+    navigate('/', { replace: true });
   };
   
   const onPurchase = async () => {
