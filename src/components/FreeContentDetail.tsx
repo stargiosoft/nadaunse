@@ -625,6 +625,7 @@ export default function FreeContentDetail({
   if (showResult && generatedResults.length > 0) {
     return (
       <FreeContentResult
+        contentId={contentId}
         contentTitle={content.title}
         contentThumbnail={content.thumbnail_url}
         questions={generatedResults}
