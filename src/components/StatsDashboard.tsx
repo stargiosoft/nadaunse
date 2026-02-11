@@ -38,6 +38,13 @@ const TREND_PRESETS: { value: TrendRangePreset; label: string }[] = [
   { value: '1year', label: '1년' }
 ];
 
+// 보고서 탭 기간 프리셋 옵션 (7일 제외 - 주별 집계)
+const REPORT_TREND_PRESETS: { value: TrendRangePreset; label: string }[] = [
+  { value: '30days', label: '30일' },
+  { value: '90days', label: '90일' },
+  { value: '1year', label: '1년' }
+];
+
 // 비교 탭 기간 프리셋 타입
 type ComparePreset = '7days' | '30days' | 'custom';
 
@@ -178,7 +185,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [reportTrendData, setReportTrendData] = useState<ReportTrendData[]>([]);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
-  const [reportTrendPreset, setReportTrendPreset] = useState<TrendRangePreset>('7days');
+  const [reportTrendPreset, setReportTrendPreset] = useState<TrendRangePreset>('30days');
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -2602,7 +2609,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     <span style={{ ...typography.label }}>추세 기간</span>
                   </div>
                   <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
-                    {TREND_PRESETS.map((preset) => (
+                    {REPORT_TREND_PRESETS.map((preset) => (
                       <button
                         key={preset.value}
                         onClick={() => handleReportTrendPresetChange(preset.value)}

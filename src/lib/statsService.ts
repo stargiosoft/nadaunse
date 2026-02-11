@@ -1429,26 +1429,15 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
 }
 
 /**
- * 보고서 추세 데이터 조회
+ * 보고서 추세 데이터 조회 (주별 집계 - 일~토 기준)
+ * week_start_date로 그룹핑하여 주 단위 데이터 생성
+ * 1년 프리셋은 월별로 추가 집계
  */
 export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?: TrendRangePreset): Promise<ReportTrendData[]> {
   const adminFilter = ADMIN_IDS.join(',');
 
-  // 날짜 배열 생성
   const startDate = new Date(dateRange.startDate!);
   const endDate = new Date(dateRange.endDate!);
-  const dateArray: Date[] = [];
-  for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
-    dateArray.push(new Date(d));
-  }
-
-  // 로컬 날짜 키 생성 함수
-  const getDateKey = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-
-  // week_start_date 기준 필터 (date 타입이므로 YYYY-MM-DD 문자열)
   const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
   const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
@@ -1475,12 +1464,7 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
       .from('report_tarot_selections')
       .select('report_id, user_viewed')
       .in('report_id', reportIds);
-
-    if (error) {
-      console.error('타로 추세 조회 오류:', error);
-    } else {
-      tarotSelections = data || [];
-    }
+    if (!error) tarotSelections = data || [];
   }
 
   // 3. 쿠폰 발급 데이터
@@ -1491,15 +1475,10 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
       .select('source_order_id')
       .not('user_id', 'in', `(${adminFilter})`)
       .in('source_order_id', reportIds);
-
-    if (error) {
-      console.error('쿠폰 추세 조회 오류:', error);
-    } else {
-      coupons = data || [];
-    }
+    if (!error) coupons = data || [];
   }
 
-  // 보고서별 타로 완료 여부 Map
+  // 보고서별 타로 완료 수 Map
   const tarotByReport: Record<string, number> = {};
   tarotSelections.forEach(ts => {
     if (!tarotByReport[ts.report_id]) tarotByReport[ts.report_id] = 0;
@@ -1509,23 +1488,31 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   // 쿠폰 발급된 보고서 Set
   const couponReportIds = new Set(coupons.map(c => c.source_order_id));
 
-  // 일별 데이터 생성
-  const dailyData: ReportTrendData[] = dateArray.map(date => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
+  // week_start_date 기준으로 그룹핑 (주별 집계)
+  const weekGroups: Record<string, typeof reports> = {};
+  reports?.forEach(r => {
+    const wsd = r.week_start_date; // 'YYYY-MM-DD' (일요일)
+    if (!weekGroups[wsd]) weekGroups[wsd] = [];
+    weekGroups[wsd]!.push(r);
+  });
 
-    // week_start_date가 해당 날짜인 보고서
-    const dayReports = reports?.filter(r => r.week_start_date === dateKey) || [];
-    const totalReports = dayReports.length;
-    const tarotCompleted = dayReports.filter(r => (tarotByReport[r.id] || 0) >= 3).length;
-    const wroteEncouragement = dayReports.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length;
-    const couponIssued = dayReports.filter(r => couponReportIds.has(r.id)).length;
+  // 정렬된 주별 데이터 생성
+  const sortedWeeks = Object.keys(weekGroups).sort();
+  const weeklyData: ReportTrendData[] = sortedWeeks.map(wsd => {
+    const weekReports = weekGroups[wsd]!;
+    const totalReports = weekReports.length;
+    const tarotCompleted = weekReports.filter(r => (tarotByReport[r.id] || 0) >= 3).length;
+    const wroteEncouragement = weekReports.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length;
+    const couponIssued = weekReports.filter(r => couponReportIds.has(r.id)).length;
+
+    // 라벨: "MM/DD" (week_start_date 기준)
+    const d = new Date(wsd + 'T00:00:00');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
 
     return {
-      dateLabel: `${month}/${day}`,
-      fullDate: dateKey,
+      dateLabel: `${mm}/${dd}`,
+      fullDate: wsd,
       totalReports,
       tarotCompleted,
       wroteEncouragement,
@@ -1536,41 +1523,31 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
     };
   });
 
-  // 프리셋에 따른 집계
-  const granularity = preset ? getGranularityFromPreset(preset) : 'daily';
-  if (granularity === 'daily') return dailyData;
+  // 1년 프리셋은 월별 집계
+  if (preset === '1year') {
+    return aggregateReportTrendData(weeklyData, 'monthly');
+  }
 
-  return aggregateReportTrendData(dailyData, granularity);
+  return weeklyData;
 }
 
 /**
- * 보고서 추세 일별→주별/월별 집계
+ * 보고서 추세 주별→월별 집계
  */
-function aggregateReportTrendData(dailyData: ReportTrendData[], granularity: TrendGranularity): ReportTrendData[] {
-  if (granularity === 'daily' || dailyData.length === 0) return dailyData;
+function aggregateReportTrendData(weeklyData: ReportTrendData[], granularity: 'monthly'): ReportTrendData[] {
+  if (weeklyData.length === 0) return weeklyData;
 
   const groups: Record<string, { label: string; data: ReportTrendData[] }> = {};
 
-  dailyData.forEach(day => {
-    const date = new Date(day.fullDate);
-    let groupKey: string;
-    let groupLabel: string;
-
-    if (granularity === 'weekly') {
-      const weekStart = getWeekStart(date);
-      groupKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-      const month = date.getMonth() + 1;
-      const weekOfMonth = getWeekOfMonth(date);
-      groupLabel = `${month}월 ${weekOfMonth}주`;
-    } else {
-      groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      groupLabel = `${date.getMonth() + 1}월`;
-    }
+  weeklyData.forEach(week => {
+    const date = new Date(week.fullDate + 'T00:00:00');
+    const groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const groupLabel = `${date.getMonth() + 1}월`;
 
     if (!groups[groupKey]) {
       groups[groupKey] = { label: groupLabel, data: [] };
     }
-    groups[groupKey].data.push(day);
+    groups[groupKey].data.push(week);
   });
 
   const sortedKeys = Object.keys(groups).sort();
