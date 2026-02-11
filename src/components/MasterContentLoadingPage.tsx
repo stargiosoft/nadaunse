@@ -32,7 +32,7 @@ export default function MasterContentLoadingPage({ name }: MasterContentLoadingP
     console.log('🔄 [로딩페이지] AI 생성 완료 대기 시작:', pendingOrderId);
 
     let pollCount = 0;
-    const maxPolls = 60; // 최대 2분 (2초 * 60)
+    const maxPolls = 150; // 최대 5분 (2초 * 150)
 
     const pollInterval = setInterval(async () => {
       pollCount++;

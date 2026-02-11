@@ -37,6 +37,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // ⭐ 0. 중복 호출 방지: 이미 완료된 주문이면 즉시 리턴
+    const { data: orderCheck } = await supabase
+      .from('orders')
+      .select('ai_generation_completed')
+      .eq('id', orderId)
+      .single()
+
+    if (orderCheck?.ai_generation_completed) {
+      console.log('⏭️ 이미 AI 생성 완료된 주문입니다. 중복 호출 스킵 (orderId:', orderId, ')')
+      return new Response(
+        JSON.stringify({ success: true, message: '이미 생성 완료된 주문입니다.', skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // 1. 콘텐츠 정보 조회
     const { data: content, error: contentError } = await supabase
       .from('master_contents')
@@ -273,47 +288,63 @@ serve(async (req) => {
       }
     }
 
-    // 5. 모든 질문에 대해 병렬로 답변 생성
-    console.log('🔄 병렬 답변 생성 시작...')
+    // ⭐ 질문을 사주/타로 그룹으로 분리
+    const sajuQuestions = questions.filter((q: any) => q.question_type === 'saju')
+    const tarotQuestions = questions.filter((q: any) => q.question_type === 'tarot')
+    console.log(`📋 질문 그룹: 사주 ${sajuQuestions.length}개, 타로 ${tarotQuestions.length}개`)
 
-    const answerPromises = questions.map(async (question) => {
-      // ⭐️ 재시도 로직 추가 (최대 5번)
+    // ⭐ fetchWithTimeout 함수 (200초)
+    const fetchWithTimeout = async (url: string, options: any, timeoutMs = 200000) => {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal })
+        clearTimeout(timeoutId)
+        return response
+      } catch (error) {
+        clearTimeout(timeoutId)
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('API 호출 타임아웃 (200초 초과)')
+        }
+        throw error
+      }
+    }
+
+    // ⭐ 단일 질문 처리 함수 (재시도 포함, previousAnswers 수신)
+    async function processQuestion(
+      question: any,
+      previousAnswers: Array<{ questionText: string; answerText: string }>
+    ) {
+      // ⭐ AI 호출 전에 기존 답변 체크 (중복 호출 시 토큰 낭비 방지)
+      const { data: existingAnswer } = await supabase
+        .from('order_results')
+        .select('gpt_response')
+        .eq('order_id', orderId)
+        .eq('question_id', question.id)
+        .single()
+
+      if (existingAnswer?.gpt_response) {
+        console.log(`⏭️ 질문 ${question.question_order} 기존 답변 있음, AI 호출 스킵`)
+        return {
+          questionId: question.id,
+          success: true,
+          type: question.question_type,
+          attempt: 0,
+          answerText: existingAnswer.gpt_response,
+          skipped: true
+        }
+      }
+
       const maxRetries = 5
-      let attempt = 0
       let lastError: Error | null = null
 
-      while (attempt < maxRetries) {
-        attempt++
-
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          console.log(`🔹 질문 ${question.question_order}: ${question.question_type} (시도 ${attempt}/${maxRetries})`)
+          console.log(`🔹 질문 ${question.question_order}: ${question.question_type} (시도 ${attempt}/${maxRetries}, 이전답변 ${previousAnswers.length}개)`)
 
-          // ⭐️ 타임아웃 함수 (200초)
-          const fetchWithTimeout = async (url: string, options: any, timeoutMs = 200000) => {
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-            try {
-              const response = await fetch(url, {
-                ...options,
-                signal: controller.signal
-              })
-              clearTimeout(timeoutId)
-              return response
-            } catch (error) {
-              clearTimeout(timeoutId)
-              if (error instanceof Error && error.name === 'AbortError') {
-                throw new Error('API 호출 타임아웃 (200초 초과)')
-              }
-              throw error
-            }
-          }
-
-          let response
-          let data
+          let response, data
 
           if (question.question_type === 'saju') {
-            // 사주 풀이 (⭐ 캐싱된 사주 데이터 전달)
             response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-saju-answer`, {
               method: 'POST',
               headers: {
@@ -329,42 +360,30 @@ serve(async (req) => {
                 birthDate: sajuRecord.birth_date,
                 birthTime: sajuRecord.birth_time,
                 gender: sajuRecord.gender,
-                sajuData: cachedSajuData,  // ⭐ 미리 가져온 사주 데이터 전달
-                // ⭐ 초개인화 데이터 전달
-                personalizationData: personalizationData
+                sajuData: cachedSajuData,
+                personalizationData,
+                previousAnswers
               })
             })
-
             data = await response.json()
+            if (!data.success) throw new Error(`사주 답변 생성 실패: ${data.error}`)
 
-            if (!data.success) {
-              throw new Error(`사주 답변 생성 실패: ${data.error}`)
-            }
+            // DB 저장
+            const { data: existing } = await supabase
+              .from('order_results').select('id')
+              .eq('order_id', orderId).eq('question_id', question.id).single()
 
-            // ⭐️ order_results 테이블에 저장 (upsert로 중복 방지)
-            // ⚠️ 먼저 기존 답변이 있는지 확인
-            const { data: existingResult } = await supabase
-              .from('order_results')
-              .select('id')
-              .eq('order_id', orderId)
-              .eq('question_id', question.id)
-              .single()
-
-            if (existingResult) {
+            if (existing) {
               console.log(`⚠️ 이미 존재하는 답변 스킵 (질문 ${question.question_order})`)
             } else {
-              const { error: insertError } = await supabase
-                .from('order_results')
-                .insert({
-                  order_id: orderId,
-                  question_id: question.id,  // ⭐️ 필수! NOT NULL 컬럼
-                  question_order: question.question_order,
-                  question_text: question.question_text,
-                  gpt_response: data.answerText,
-                  question_type: 'saju',  // 질문 타입 추가
-                  created_at: new Date().toISOString()
-                })
-
+              const { error: insertError } = await supabase.from('order_results').insert({
+                order_id: orderId, question_id: question.id,
+                question_order: question.question_order,
+                question_text: question.question_text,
+                gpt_response: data.answerText,
+                question_type: 'saju',
+                created_at: new Date().toISOString()
+              })
               if (insertError) {
                 console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
               } else {
@@ -373,10 +392,9 @@ serve(async (req) => {
             }
 
             console.log(`✅ 사주 답변 생성 완료 (질문 ${question.question_order})`)
-            return { questionId: question.id, success: true, type: 'saju', attempt }
+            return { questionId: question.id, success: true, type: 'saju', attempt, answerText: data.answerText }
 
           } else if (question.question_type === 'tarot') {
-            // 타로 풀이
             response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-answer`, {
               method: 'POST',
               headers: {
@@ -390,50 +408,31 @@ serve(async (req) => {
                 questionText: question.question_text,
                 questionId: question.id,
                 tarotCards: question.tarot_cards || null,
-                // ⭐ 초개인화 데이터 전달
-                personalizationData: personalizationData
+                personalizationData,
+                previousAnswers
               })
             })
-
             data = await response.json()
+            if (!data.success) throw new Error(`타로 답변 생성 실패: ${data.error}`)
 
-            console.log('🎴 [타로] generate-tarot-answer 응답:', data)
+            // DB 저장
+            const { data: existingTarot } = await supabase
+              .from('order_results').select('id')
+              .eq('order_id', orderId).eq('question_id', question.id).single()
 
-            if (!data.success) {
-              throw new Error(`타로 답변 생성 실패: ${data.error}`)
-            }
-
-            // ⭐️ order_results 테이블에 저장 (upsert로 중복 방지)
-            // ⚠️ 먼저 기존 답변이 있는지 확인
-            const { data: existingTarotResult } = await supabase
-              .from('order_results')
-              .select('id')
-              .eq('order_id', orderId)
-              .eq('question_id', question.id)
-              .single()
-
-            if (existingTarotResult) {
+            if (existingTarot) {
               console.log(`⚠️ 이미 존재하는 타로 답변 스킵 (질문 ${question.question_order})`)
             } else {
-              const { error: insertError } = await supabase
-                .from('order_results')
-                .insert({
-                  order_id: orderId,
-                  question_id: question.id,  // ⭐️ 필수! NOT NULL 컬럼
-                  question_order: question.question_order,
-                  question_text: question.question_text,
-                  gpt_response: data.answerText,
-                  question_type: 'tarot',
-                  tarot_card_name: data.tarotCard || null,
-                  tarot_card_image_url: data.imageUrl || null,
-                  created_at: new Date().toISOString()
-                })
-
-              console.log('🎴 [타로] DB 저장 데이터:', {
-                tarot_card_name: data.tarotCard,
-                tarot_card_image_url: data.imageUrl
+              const { error: insertError } = await supabase.from('order_results').insert({
+                order_id: orderId, question_id: question.id,
+                question_order: question.question_order,
+                question_text: question.question_text,
+                gpt_response: data.answerText,
+                question_type: 'tarot',
+                tarot_card_name: data.tarotCard || null,
+                tarot_card_image_url: data.imageUrl || null,
+                created_at: new Date().toISOString()
               })
-
               if (insertError) {
                 console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
               } else {
@@ -442,8 +441,7 @@ serve(async (req) => {
             }
 
             console.log(`✅ 타로 답변 생성 완료 (질문 ${question.question_order})`)
-            return { questionId: question.id, success: true, type: 'tarot', attempt }
-
+            return { questionId: question.id, success: true, type: 'tarot', attempt, answerText: data.answerText }
           } else {
             throw new Error(`알 수 없는 질문 타입: ${question.question_type}`)
           }
@@ -451,37 +449,51 @@ serve(async (req) => {
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error))
           console.error(`❌ 질문 ${question.question_order} 시도 ${attempt} 실패:`, lastError.message)
-
-          // 마지막 시도가 아니면 재시도
           if (attempt < maxRetries) {
-            const waitTime = attempt * 2000 // 2초, 4초, 6초, 8초
+            const waitTime = attempt * 2000
             console.log(`⏳ ${waitTime}ms 대기 후 재시도...`)
             await new Promise(resolve => setTimeout(resolve, waitTime))
-            continue
-          }
-
-          // 최대 재시도 횟수 도달
-          console.error(`❌ 질문 ${question.question_order} 최종 실패 (${maxRetries}번 시도)`)
-          return {
-            questionId: question.id,
-            success: false,
-            error: lastError.message,
-            attempts: attempt
           }
         }
       }
 
-      // 이론상 여기 도달 불가 (while 안에서 return)
-      return {
-        questionId: question.id,
-        success: false,
-        error: lastError?.message || '알 수 없는 오류',
-        attempts: maxRetries
-      }
-    })
+      console.error(`❌ 질문 ${question.question_order} 최종 실패 (${maxRetries}번 시도)`)
+      return { questionId: question.id, success: false, error: lastError?.message, attempts: maxRetries }
+    }
 
-    // 모든 답변 생성 완료 대기
-    const results = await Promise.all(answerPromises)
+    // ⭐ 그룹별 직렬 처리 함수
+    async function processGroupSerially(groupQuestions: any[], groupName: string) {
+      const results: any[] = []
+      const accumulatedAnswers: Array<{ questionText: string; answerText: string }> = []
+
+      console.log(`🔄 ${groupName} 그룹 직렬 처리 시작 (${groupQuestions.length}개)`)
+
+      for (const question of groupQuestions) {
+        const result = await processQuestion(question, accumulatedAnswers)
+        results.push(result)
+
+        // 성공한 답변만 컨텍스트에 누적
+        if (result.success && result.answerText) {
+          accumulatedAnswers.push({
+            questionText: question.question_text,
+            answerText: result.answerText
+          })
+        }
+      }
+
+      console.log(`✅ ${groupName} 그룹 완료: ${results.filter((r: any) => r.success).length}/${groupQuestions.length} 성공`)
+      return results
+    }
+
+    // ⭐ 사주/타로 그룹 병렬 실행
+    console.log('🔄 그룹별 답변 생성 시작 (사주↔타로 병렬, 그룹 내 직렬)...')
+
+    const [sajuResults, tarotResults] = await Promise.all([
+      sajuQuestions.length > 0 ? processGroupSerially(sajuQuestions, '사주') : Promise.resolve([]),
+      tarotQuestions.length > 0 ? processGroupSerially(tarotQuestions, '타로') : Promise.resolve([])
+    ])
+
+    const results = [...sajuResults, ...tarotResults]
 
     console.log('🎉 모든 답변 생성 완료')
     console.log('📊 결과:', results)
