@@ -15,7 +15,8 @@ const ADMIN_IDS = [
   'cc331c7d-feb4-4119-8a3f-3717e1effffd',
   'bb20c4d4-9f8e-4952-9452-a38df762b45a',
   '9fb0b23b-b65b-4fb5-a356-b9969a842c55',
-  '2ad4d963-d51e-4a17-a7ca-5ca533585627'  // beaverj594@gmail.com
+  '2ad4d963-d51e-4a17-a7ca-5ca533585627',  // beaverj594@gmail.com
+  'fa39bffa-fe66-4146-aedc-9e891e6afe6e'
 ];
 
 // 기간 프리셋 타입
