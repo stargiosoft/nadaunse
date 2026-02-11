@@ -30,7 +30,10 @@ const setLastLoginEmail = (email: string) => {
 
 const getLastLoginProvider = (): 'kakao' | 'google' | null => {
   const match = document.cookie.match(/last_login_provider=([^;]+)/);
-  return match ? match[1] as 'kakao' | 'google' : null;
+  if (!match) return null;
+  const value = match[1];
+  if (value === 'kakao' || value === 'google') return value;
+  return null;
 };
 
 const getLastLoginEmail = (): string | null => {
