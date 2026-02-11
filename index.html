@@ -51,6 +51,11 @@
     <meta name="theme-color" content="#ffffff" />
     <meta name="msapplication-TileColor" content="#ffffff" />
 
+    <!-- FOUC 방지: CSS 로드 전까지 콘텐츠 숨김 -->
+    <style>
+      #root { opacity: 0; }
+    </style>
+
     <!-- 구조화된 데이터 (JSON-LD) - 구글 검색 결과 최적화 -->
     <script type="application/ld+json">
     {

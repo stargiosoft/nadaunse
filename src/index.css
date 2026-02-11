@@ -5994,3 +5994,6 @@ html {
     transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0));
   }
 }
+
+/* FOUC 방지: CSS 로드 완료 시 콘텐츠 표시 (index.html에서 opacity:0 설정) */
+#root { opacity: 1; }
