@@ -857,12 +857,16 @@ export default function ProfilePage({
                 padding: '8px 16px'
               }}
               onClick={async () => {
-                // ⭐ phone_number 없고, 본인 사주 등록자이며, 아직 바텀시트를 본 적 없으면 1회만 표시
+                // ⭐ 본인 사주에 phone_number 없고, 아직 바텀시트를 본 적 없으면 1회만 표시
                 const alreadyShown = localStorage.getItem('phone_bottomsheet_shown');
-                if (primarySaju && !primarySaju.phone_number && !alreadyShown) {
-                  localStorage.setItem('phone_bottomsheet_shown', 'true');
-                  setShowPhoneBottomSheet(true);
-                  return;
+                if (!alreadyShown) {
+                  const cachedList = JSON.parse(localStorage.getItem('saju_records_cache') || '[]');
+                  const mySaju = cachedList.find((s: SajuRecord) => s.notes === '본인');
+                  if (mySaju && !mySaju.phone_number) {
+                    localStorage.setItem('phone_bottomsheet_shown', 'true');
+                    setShowPhoneBottomSheet(true);
+                    return;
+                  }
                 }
                 setActiveTabIndex(1);
                 // 애니메이션 보여주고 페이지 이동
@@ -1375,7 +1379,6 @@ export default function ProfilePage({
               }, 200);
             }}
             onSave={async () => {
-              if (!primarySaju) return;
               setIsPhoneSaving(true);
               try {
                 const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
@@ -1387,10 +1390,19 @@ export default function ProfilePage({
                   return;
                 }
 
+                // ⭐ notes='본인' 사주에 전화번호 저장 (대표사주가 지인일 수 있으므로)
+                const cachedList = JSON.parse(localStorage.getItem('saju_records_cache') || '[]');
+                const mySaju = cachedList.find((s: SajuRecord) => s.notes === '본인');
+                if (!mySaju) {
+                  console.error('❌ [ProfilePage] 본인 사주를 찾을 수 없음');
+                  setIsPhoneSaving(false);
+                  return;
+                }
+
                 const { error } = await supabase
                   .from('saju_records')
                   .update({ phone_number: cleanPhone })
-                  .eq('id', primarySaju.id)
+                  .eq('id', mySaju.id)
                   .eq('user_id', authUser.id);
 
                 if (error) {
@@ -1399,14 +1411,11 @@ export default function ProfilePage({
                   return;
                 }
 
-                console.log('✅ [ProfilePage] 핸드폰 번호 저장 성공:', cleanPhone);
+                console.log('✅ [ProfilePage] 본인 사주에 핸드폰 번호 저장 성공:', cleanPhone);
 
                 // 캐시 무효화
                 localStorage.removeItem('primary_saju');
                 localStorage.removeItem('saju_records_cache');
-
-                // primarySaju 업데이트
-                setPrimarySaju({ ...primarySaju, phone_number: cleanPhone });
 
                 setShowPhoneBottomSheet(false);
                 setIsPhoneSaving(false);
