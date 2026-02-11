@@ -1075,8 +1075,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     if (onReportClick) {
       onReportClick(reportId);
     } else {
-      // 기본 동작: 주간 보고서 상세 페이지로 이동
-      navigate(`/report-weekly-detail/${reportId}`);
+      // 기본 동작: 주간 보고서 상세 페이지로 이동 (replace: 보고서 플로우가 히스토리 1슬롯만 차지)
+      navigate(`/report-weekly-detail/${reportId}`, { replace: true });
     }
   };
 
