@@ -466,23 +466,60 @@ function TopNavigationContainer({
   );
 }
 
+/** 배포 7일 이내 콘텐츠인지 판별 (8일차부터 미노출) */
+function isContentNew(createdAt: string | undefined): boolean {
+  if (!createdAt) return false;
+  const created = new Date(createdAt);
+  const now = new Date();
+  const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 7;
+}
+
 interface ContentCardProps {
   content: MasterContent;
   onClick: () => void;
   isFeatured?: boolean;
   index?: number;
+  isNew?: boolean;
+  isRead?: boolean;
 }
 
-function ContentCard({ content, onClick, isFeatured = false, index = 0 }: ContentCardProps) {
+/** 콘텐츠 태그 행 (New, 심화/무료, 읽어봄) - Figma 디자인 반영 */
+function ContentTags({ isPaid, isNew, isRead }: { isPaid: boolean; isNew?: boolean; isRead?: boolean }) {
+  return (
+    <div className="flex gap-[6px] items-center">
+      <div className="flex gap-[3px] items-start">
+        {isNew && (
+          <div className="flex items-center justify-center px-[4px] rounded-[4px]" style={{ backgroundColor: '#fff6f7' }}>
+            <p style={{ fontSize: '11px', fontWeight: 600, lineHeight: '15px', color: '#ef6878', fontFamily: 'Pretendard Variable' }}>New</p>
+          </div>
+        )}
+        <div className="flex items-center justify-center px-[4px] rounded-[4px]" style={{ backgroundColor: isPaid ? '#f0f8f8' : '#f0f8ff' }}>
+          <p style={{ fontSize: '11px', fontWeight: 600, lineHeight: '15px', color: isPaid ? '#41a09e' : '#4590d6', fontFamily: 'Pretendard Variable' }}>
+            {isPaid ? '심화' : '무료'}
+          </p>
+        </div>
+      </div>
+      {isRead && (
+        <>
+          <div style={{ width: 0, height: '6px', borderLeft: '1px solid #e0e0e0' }} />
+          <p style={{ fontSize: '11px', fontWeight: 400, lineHeight: '16px', color: '#999', fontFamily: 'Pretendard Variable' }}>읽어봄</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ContentCard({ content, onClick, isFeatured = false, index = 0, isNew = false, isRead = false }: ContentCardProps) {
   const isPaid = content.content_type === 'paid';
-  
+
   if (isFeatured) {
     return (
       <div onClick={onClick} className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full cursor-pointer transition-all duration-150 ease-out active:bg-gray-50 active:p-[12px] rounded-[16px]" data-name="Featured Card">
         <div className="group box-border relative shrink-0 w-full pt-0 pb-0 pointer-events-auto touch-manipulation [-webkit-tap-highlight-color:transparent] !transform-none !transition-none p-[0px]" data-name="Card / Browse Card">
           <div className="box-border content-stretch w-full">
             <div className="w-full">
- 
+
   <div className="box-border content-stretch w-full">
     <div className="flex flex-col gap-[12px] items-center justify-center w-full">
       <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full bg-gradient-to-r from-[#f0f0f0] via-[#e8e8e8] to-[#f0f0f0] bg-[length:200%_100%] animate-shimmer">
@@ -494,7 +531,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
             className="absolute inset-0 object-cover rounded-[16px] size-full"
             src={content.thumbnail_url}
             onLoad={(e) => {
-              // 이미지 로드 완료 시 부모의 shimmer 제거
               const parent = (e.target as HTMLElement).parentElement;
               if (parent) {
                 parent.classList.remove('animate-shimmer', 'bg-gradient-to-r', 'from-[#f0f0f0]', 'via-[#e8e8e8]', 'to-[#f0f0f0]', 'bg-[length:200%_100%]');
@@ -502,7 +538,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
               }
             }}
             onError={(e) => {
-              // 이미지 로드 실패 시 조용히 처리
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
             }}
@@ -517,15 +552,10 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
 
       <div className="relative shrink-0 w-full overflow-hidden">
         <div className="box-border flex flex-col gap-[5px] items-start px-[4px]">
+          <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
           <p className="text-[15px] font-medium line-clamp-2 pl-[2px]">
             {content.title}
           </p>
-
-          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} px-[6px] py-[2px] rounded-[6px]`}>
-            <p className={`${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[11px]`}>
-              {isPaid ? '심화 해석판' : '무료 체험판'}
-            </p>
-          </div>
         </div>
       </div>
     </div>
@@ -536,7 +566,7 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
       </div>
     );
   }
-  
+
   return (
     <div onClick={onClick} className="box-border content-stretch flex flex-col gap-[10px] h-auto items-start justify-start px-0 py-[10px] relative rounded-[16px] shrink-0 w-full cursor-pointer transition-all duration-150 ease-out active:scale-[0.96] active:bg-gray-50 active:px-[12px]" data-name="Card / Browse Card">
       <div className="content-stretch flex gap-[10px] items-start relative shrink-0 w-full overflow-hidden" data-name="Container">
@@ -549,7 +579,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
               className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full"
               src={content.thumbnail_url}
               onLoad={(e) => {
-                // 이미지 로드 완료 시 부모의 shimmer 제거
                 const parent = (e.target as HTMLElement).parentElement;
                 if (parent) {
                   parent.classList.remove('animate-shimmer', 'bg-gradient-to-r', 'from-[#f0f0f0]', 'via-[#e8e8e8]', 'to-[#f0f0f0]', 'bg-[length:200%_100%]');
@@ -557,7 +586,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
                 }
               }}
               onError={(e) => {
-                // 이미지 로드 실패 시 조용히 처리
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
               }}
@@ -570,6 +598,7 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
           <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
         </div>
         <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px relative shrink-0 overflow-hidden" data-name="Card / PriceBlock">
+          <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
           <div className="relative shrink-0 w-full" data-name="Container">
             <div className="flex flex-row items-center justify-center size-full">
               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full overflow-hidden">
@@ -578,11 +607,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
                 </p>
               </div>
             </div>
-          </div>
-          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] pb-[1px] pt-[3px] relative rounded-[4px] shrink-0`} data-name="Label Box">
-            <p className={`font-['Pretendard_Variable:Medium',sans-serif] leading-[16px] not-italic relative shrink-0 ${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[11px] text-nowrap tracking-[-0.24px] whitespace-pre`}>
-              {isPaid ? '심화 해석판' : '무료 체험판'}
-            </p>
           </div>
         </div>
       </div>
@@ -625,6 +649,7 @@ export default function HomePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<TabCategory[]>(['전체']);
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showNavigation, setShowNavigation] = useState(true);
@@ -1282,7 +1307,57 @@ export default function HomePage() {
       subscription.unsubscribe();
     };
   }, []);
-  
+
+  // 📚 사용자의 콘텐츠 읽음 이력 조회 (읽어봄 태그용)
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setReadContentIds(new Set());
+      return;
+    }
+
+    const fetchReadHistory = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const userId = session.user.id;
+        const ids = new Set<string>();
+
+        // 유료 콘텐츠: orders에서 성공한 주문의 content_id 조회
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('content_id')
+          .eq('user_id', userId)
+          .eq('success', true);
+
+        if (orders) {
+          orders.forEach((o: { content_id: string | null }) => {
+            if (o.content_id) ids.add(o.content_id);
+          });
+        }
+
+        // 무료 콘텐츠: free_content_records에서 content_id 조회
+        const { data: freeRecords } = await supabase
+          .from('free_content_records')
+          .select('content_id')
+          .eq('user_id', userId);
+
+        if (freeRecords) {
+          freeRecords.forEach((r: { content_id: string | null }) => {
+            if (r.content_id) ids.add(r.content_id);
+          });
+        }
+
+        setReadContentIds(ids);
+        console.log(`📚 [읽어봄] ${ids.size}개 콘텐츠 읽음 확인`);
+      } catch (error) {
+        console.error('읽음 상태 조회 실패:', error);
+      }
+    };
+
+    fetchReadHistory();
+  }, [isLoggedIn]);
+
   // 🚀 Phase 3: Featured 이미지 우선 프리로드 (중복 방지)
   useEffect(() => {
     if (featuredContent?.thumbnail_url) {
@@ -1342,22 +1417,26 @@ export default function HomePage() {
     }
   }, [allContents]);
 
-  // Contents list (excluding featured)
+  // Contents list (excluding featured) - 정렬: 인기순(미확인) 1순위, 인기순(읽어봄) 2순위
   const contentsList = useMemo(() => {
     if (!featuredContentFiltered) return allContents;
-    
-    // featured 제외 후 weekly_clicks 내림차순 정렬
+
     return allContents
       .filter(c => c.id !== featuredContentFiltered.id)
       .sort((a, b) => {
-        // 1차: weekly_clicks 내림차순
+        // 1차: 미확인(unread) 우선, 읽어봄(read) 후순위
+        const aRead = readContentIds.has(a.id) ? 1 : 0;
+        const bRead = readContentIds.has(b.id) ? 1 : 0;
+        if (aRead !== bRead) return aRead - bRead;
+
+        // 2차: weekly_clicks 내림차순 (인기순)
         if (b.weekly_clicks !== a.weekly_clicks) {
           return b.weekly_clicks - a.weekly_clicks;
         }
-        // 2차: created_at 내림차순 (최신순)
+        // 3차: created_at 내림차순 (최신순)
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
-  }, [allContents, featuredContentFiltered]);
+  }, [allContents, featuredContentFiltered, readContentIds]);
   
   // Load more contents (모든 필터에서 캐시 활용)
   const loadMoreContents = useCallback(async () => {
@@ -1660,10 +1739,12 @@ export default function HomePage() {
               {/* Featured Content (메인 배너) */}
               {featuredContentFiltered && (
                 <>
-                  <ContentCard 
-                    content={featuredContentFiltered} 
+                  <ContentCard
+                    content={featuredContentFiltered}
                     onClick={() => handleContentClick(featuredContentFiltered.id)}
                     isFeatured={true}
+                    isNew={isContentNew(featuredContentFiltered.created_at)}
+                    isRead={readContentIds.has(featuredContentFiltered.id)}
                   />
                   <Divider />
                 </>
@@ -1677,6 +1758,8 @@ export default function HomePage() {
                       content={content}
                       onClick={() => handleContentClick(content.id)}
                       index={index}
+                      isNew={isContentNew(content.created_at)}
+                      isRead={readContentIds.has(content.id)}
                     />
                     {index < contentsList.length - 1 && <Divider />}
                   </div>
