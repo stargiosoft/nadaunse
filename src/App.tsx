@@ -2986,8 +2986,8 @@ function ReportWeeklyDetailWrapper() {
     return (
       <ReportWeeklyDetail
         reportId={id}
-        onClose={() => navigate('/my-report-list')}
-        onPrev={() => navigate('/my-report-list')}
+        onClose={() => navigate('/my-report-list', { replace: true })}
+        onPrev={() => navigate('/my-report-list', { replace: true })}
         onNext={() => {}} // 로딩 중에는 비활성화
       />
     );
@@ -2996,14 +2996,14 @@ function ReportWeeklyDetailWrapper() {
   return (
     <ReportWeeklyDetail
       reportId={id}
-      onClose={() => navigate('/my-report-list')}
-      onPrev={() => navigate('/my-report-list')}
+      onClose={() => navigate('/my-report-list', { replace: true })}
+      onPrev={() => navigate('/my-report-list', { replace: true })}
       onNext={() => {
         // 타로가 이미 뽑혔으면 타로 결과 페이지로, 아니면 타로 뽑기 페이지로
         if (hasTarot) {
-          navigate(`/report-weekly-tarot-result/${id}`);
+          navigate(`/report-weekly-tarot-result/${id}`, { replace: true });
         } else {
-          navigate(`/report-weekly-tarot/${id}`);
+          navigate(`/report-weekly-tarot/${id}`, { replace: true });
         }
       }}
     />
@@ -3021,8 +3021,8 @@ function ReportWeeklyTarotWrapper() {
 
   return (
     <ReportWeeklyTarot
-      onClose={() => navigate('/my-report-list')}
-      onNext={() => navigate(`/report-weekly-tarot-result/${id}`)}
+      onClose={() => navigate('/my-report-list', { replace: true })}
+      onNext={() => navigate(`/report-weekly-tarot-result/${id}`, { replace: true })}
     />
   );
 }
@@ -3039,9 +3039,9 @@ function ReportWeeklyTarotResultWrapper() {
   return (
     <ReportWeeklyTarotResult
       reportId={id}
-      onClose={() => navigate('/my-report-list')}
-      onPrev={() => navigate(`/report-weekly-detail/${id}`)}
-      onNext={() => navigate(`/report-weekly-mind-care/${id}`)}
+      onClose={() => navigate('/my-report-list', { replace: true })}
+      onPrev={() => navigate(`/report-weekly-detail/${id}`, { replace: true })}
+      onNext={() => navigate(`/report-weekly-mind-care/${id}`, { replace: true })}
     />
   );
 }
@@ -3058,9 +3058,9 @@ function ReportWeeklyMindCareWrapper() {
   return (
     <ReportWeeklyMindCare
       reportId={id}
-      onClose={() => navigate('/my-report-list')}
-      onPrev={() => navigate(`/report-weekly-tarot-result/${id}`)}
-      onNext={() => navigate(`/report-weekly-memo/${id}`)}
+      onClose={() => navigate('/my-report-list', { replace: true })}
+      onPrev={() => navigate(`/report-weekly-tarot-result/${id}`, { replace: true })}
+      onNext={() => navigate(`/report-weekly-memo/${id}`, { replace: true })}
     />
   );
 }
@@ -3133,8 +3133,8 @@ function ReportWeeklyMemoWrapper() {
     return (
       <ReportWeeklyMemo
         reportId={id}
-        onClose={() => navigate('/my-report-list')}
-        onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
+        onClose={() => navigate('/my-report-list', { replace: true })}
+        onPrev={() => navigate(`/report-weekly-mind-care/${id}`, { replace: true })}
         onNext={() => {}} // 로딩 중에는 비활성화
       />
     );
@@ -3149,15 +3149,15 @@ function ReportWeeklyMemoWrapper() {
   return (
     <ReportWeeklyMemo
       reportId={id}
-      onClose={() => navigate('/my-report-list')}
-      onPrev={() => navigate(`/report-weekly-mind-care/${id}`)}
+      onClose={() => navigate('/my-report-list', { replace: true })}
+      onPrev={() => navigate(`/report-weekly-mind-care/${id}`, { replace: true })}
       onNext={() => {
         if (shouldGoToProfile) {
           console.log('✅ [응원글] 프로필로 이동 (fromEdit:', fromEdit, ', hasEncouragement:', hasEncouragement, ', hasCoupon:', hasCoupon, ')');
-          navigate('/my-report-list');
+          navigate('/my-report-list', { replace: true });
         } else {
           console.log('🎟️ [응원글] 쿠폰 페이지로 이동');
-          navigate(`/report-completion/${id}`);
+          navigate(`/report-completion/${id}`, { replace: true });
         }
       }}
     />
@@ -3176,7 +3176,7 @@ function ReportCompletionWrapper() {
   return (
     <CompletionCoupon
       reportId={id}
-      onClose={() => navigate('/my-report-list')}
+      onClose={() => navigate('/my-report-list', { replace: true })}
       onHome={() => navigate('/', { replace: true })}
     />
   );
