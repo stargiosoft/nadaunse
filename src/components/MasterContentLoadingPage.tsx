@@ -5,10 +5,18 @@
 
 import svgPaths from "../imports/svg-v8aod9r8yu";
 import imgGeminiGeneratedImageGmbs6Lgmbs6Lgmbs1 from "@/assets/35682d96407edc7fb5921d3d1b58f0b20b40da6e.png";
-import imgThumbnail from "@/assets/7b851936315a0976f82b567082641209095748c5.png";
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { ContentTags, isContentNew } from './ContentTags';
+
+interface RecommendedContent {
+  id: string;
+  title: string;
+  content_type: 'paid' | 'free';
+  thumbnail_url: string | null;
+  created_at: string;
+}
 
 interface MasterContentLoadingPageProps {
   name?: string;
@@ -18,6 +26,8 @@ export default function MasterContentLoadingPage({ name }: MasterContentLoadingP
   const navigate = useNavigate();
   const [progress, setProgress] = useState(24);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [recommendedContents, setRecommendedContents] = useState<RecommendedContent[]>([]);
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
 
   // ⭐️ AI 생성 완료 폴링
   useEffect(() => {
@@ -89,6 +99,46 @@ export default function MasterContentLoadingPage({ name }: MasterContentLoadingP
     }, 800);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // ⭐ 추천 콘텐츠 + 읽기 기록 fetch
+  useEffect(() => {
+    const fetchData = async () => {
+      // 현재 콘텐츠 ID (제외용)
+      const pendingOrderId = localStorage.getItem('pendingOrderId');
+      let currentContentId: string | null = null;
+      if (pendingOrderId) {
+        const { data } = await supabase
+          .from('orders')
+          .select('content_id')
+          .eq('id', pendingOrderId)
+          .single();
+        if (data) currentContentId = data.content_id;
+      }
+
+      // 추천 콘텐츠 조회 (인기순, 최대 4개)
+      let query = supabase
+        .from('master_contents')
+        .select('id, title, content_type, thumbnail_url, created_at')
+        .eq('status', 'deployed')
+        .order('weekly_clicks', { ascending: false })
+        .limit(5);
+      if (currentContentId) query = query.neq('id', currentContentId);
+      const { data: contents } = await query;
+      if (contents) setRecommendedContents(contents.slice(0, 4) as RecommendedContent[]);
+
+      // 읽기 기록 조회
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+      const ids = new Set<string>();
+      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('success', true);
+      if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
+      const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
+      if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
+      setReadContentIds(ids);
+    };
+    fetchData();
   }, []);
 
   const handleClose = () => {
@@ -226,61 +276,41 @@ export default function MasterContentLoadingPage({ name }: MasterContentLoadingP
           <div className="content-stretch flex flex-col gap-[12px] items-start px-[20px] pt-[40px] pb-[120px] w-full">
             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
               <div className="content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">기다리는 동안 무료 운세 보기</p>
+                <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#000', fontFamily: 'Pretendard Variable' }}>기다리는 동안 무료 운세 보기</p>
               </div>
             </div>
-            <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full overflow-x-auto">
-              <div className="content-stretch flex flex-col items-start relative shrink-0">
-                <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                  <div className="h-[120px] pointer-events-none relative rounded-[12px] shrink-0 w-[200px]">
-                    <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full" src={imgThumbnail} />
-                    <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-                  </div>
-                  <div className="content-stretch flex flex-col gap-[12px] items-end relative shrink-0 w-[200px]">
-                    <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                      <div className="bg-[#f9f9f9] content-stretch flex items-center justify-center px-[6px] py-[2px] relative rounded-[4px] shrink-0">
-                        <p className="leading-[16px] relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">무료 체험판</p>
-                      </div>
-                      <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-                        <div className="relative shrink-0 w-full">
-                          <div className="size-full">
-                            <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-                              <p className="leading-[25.5px] relative shrink-0 text-[15px] text-black tracking-[-0.3px] w-full">혹시 지금 바람 피우고 있을까?</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+            <div className="flex flex-col w-full">
+              {recommendedContents.map((item) => {
+                const isPaid = item.content_type === 'paid';
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(`/product/${item.id}`)}
+                    className="flex gap-[10px] items-start py-[10px] w-full cursor-pointer active:bg-gray-50 rounded-[12px]"
+                  >
+                    <div className="h-[54px] relative rounded-[12px] shrink-0 w-[80px]" style={{ backgroundColor: '#f0f0f0' }}>
+                      {item.thumbnail_url && (
+                        <img
+                          alt={item.title}
+                          className="absolute inset-0 object-cover rounded-[12px] size-full"
+                          src={item.thumbnail_url}
+                        />
+                      )}
+                      <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
+                    </div>
+                    <div className="flex flex-col gap-[3px] grow min-w-0">
+                      <ContentTags
+                        isPaid={isPaid}
+                        isNew={isContentNew(item.created_at)}
+                        isRead={readContentIds.has(item.id)}
+                      />
+                      <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: '23.5px', letterSpacing: '-0.3px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-1 overflow-hidden">
+                        {item.title}
+                      </p>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div className="content-stretch flex flex-col items-start relative shrink-0">
-                <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                  <div className="h-[120px] pointer-events-none relative rounded-[12px] shrink-0 w-[200px]">
-                    <img alt="" className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full" src={imgThumbnail} />
-                    <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-                  </div>
-                  <div className="content-stretch flex flex-col gap-[12px] items-end relative shrink-0 w-[200px]">
-                    <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                      <div className="bg-[#f9f9f9] content-stretch flex items-center justify-center px-[6px] py-[2px] relative rounded-[4px] shrink-0">
-                        <p className="leading-[16px] relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">무료 체험판</p>
-                      </div>
-                      <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-                        <div className="relative shrink-0 w-full">
-                          <div className="size-full">
-                            <div className="content-stretch flex flex-col items-start px-px py-0 relative w-full">
-                              <p className="leading-[25.5px] relative shrink-0 text-[15px] text-black tracking-[-0.3px] w-full">내 연인은 바람기 있을까?</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="content-stretch flex items-center justify-center mr-[-20px] p-[12px] relative rounded-[12px] shrink-0 w-[200px] h-full border border-dashed border-[#d4d4d4]">
-                <p className="leading-[25.5px] relative shrink-0 text-[#6d6d6d] text-[15px] text-nowrap tracking-[-0.3px]">더 볼래요!</p>
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>
