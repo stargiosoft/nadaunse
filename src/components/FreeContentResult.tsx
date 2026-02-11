@@ -87,7 +87,7 @@ export default function FreeContentResult({
       if (!session?.user) return;
       const userId = session.user.id;
       const ids = new Set<string>();
-      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('success', true);
+      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed');
       if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
       const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
       if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });

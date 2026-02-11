@@ -173,7 +173,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         .select('id')
         .eq('user_id', userId)
         .eq('content_id', contentId)
-        .eq('success', true)
+        .eq('pstatus', 'completed')
         .limit(1);
       if (orders && orders.length > 0) { setIsRead(true); return; }
       // 무료: free_content_records 확인

@@ -1294,7 +1294,7 @@ export default function HomePage() {
           .from('orders')
           .select('content_id')
           .eq('user_id', userId)
-          .eq('success', true);
+          .eq('pstatus', 'completed');
 
         if (orders) {
           orders.forEach((o: { content_id: string | null }) => {
