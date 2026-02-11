@@ -90,6 +90,12 @@ if (!DEV && import.meta.env.DEV) {
 
 // ⚡ Build Cache Buster v1.4.3 - Fix dynamic import module fetch error
 
+// ⭐ iOS Safari: 홈에서 새로고침 시 히스토리 버퍼 초기화 (스와이프 뒤로가기 보호)
+if (window.location.pathname === '/') {
+  sessionStorage.removeItem('homepage_history_initialized');
+  sessionStorage.removeItem('navigatedFromHome');
+}
+
 /**
  * 직접 링크 진입 시 브라우저 뒤로가기 보호
  * - 외부 링크(카카오톡, 구글 등)로 콘텐츠 상세 페이지에 바로 진입하면
