@@ -6,6 +6,7 @@ import img from "@/assets/5615ff21216f93eb47cac8ee15adee136174d7be.png";
 import img2 from "@/assets/67f3616aab1dcdea805228bdd4e698e8f57dd487.png";
 import { AdBanner } from './FreeContentDetailComponents';
 import { supabase } from '../lib/supabase';
+import { ContentTags, isContentNew } from './ContentTags';
 
 interface FreeSajuDetailProps {
   recordId: string;  // localStorage key (resultKey)
@@ -19,6 +20,7 @@ interface FreeSajuDetailProps {
     title: string;
     type: 'free' | 'paid';
     image: string;
+    created_at?: string;
   }>;
   onProductClick?: (productId: number) => void;
   onBannerClick?: (productId: string) => void;
@@ -91,6 +93,23 @@ export default function FreeSajuDetail({
   const navigate = useNavigate();
   const [visibleCount, setVisibleCount] = useState(3); // ⭐️ 표시할 콘텐츠 개수
   const observerTarget = useRef<HTMLDivElement>(null);
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
+
+  // ⭐ 읽기 기록 조회 (읽어봄 태그용)
+  useEffect(() => {
+    const fetchReadHistory = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+      const ids = new Set<string>();
+      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed');
+      if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
+      const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
+      if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
+      setReadContentIds(ids);
+    };
+    fetchReadHistory();
+  }, []);
   
   // ⭐️ localStorage에서 결과 데이터 즉시 로드 (동기 작업이므로 로딩 불필요)
   const loadCachedData = (): { data: CachedData | null; error: boolean } => {
@@ -530,25 +549,16 @@ export default function FreeSajuDetail({
                               <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
                             </div>
 
-                            {/* ⭐ 콘텐츠 정보 */}
-                            <div className="basis-0 content-stretch flex flex-col gap-[6px] grow items-start min-h-px min-w-px relative shrink-0">
-                              {/* 제목 */}
-                              <div className="relative shrink-0 w-full">
-                                <div className="flex flex-row items-center justify-center size-full">
-                                  <div className="content-stretch flex items-center justify-center px-[2px] py-0 relative w-full">
-                                    <p className="basis-0 font-['Pretendard_Variable:Medium',sans-serif] font-medium grow leading-[23.5px] min-h-px min-w-px relative shrink-0 text-[15px] text-black tracking-[-0.3px] overflow-ellipsis overflow-hidden line-clamp-2">
-                                      {product.title}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* 뱃지 - 심화 해석판(청록) vs 무료 체험판(회색) */}
-                              <div className={`${product.type === 'paid' ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} content-stretch flex items-center justify-center px-[6px] pt-[3px] pb-[1px] relative rounded-[4px] shrink-0`}>
-                                <p className={`font-medium leading-[16px] relative shrink-0 ${product.type === 'paid' ? 'text-[#41a09e]' : 'text-[#848484]'} text-[12px] text-nowrap tracking-[-0.24px]`}>
-                                  {product.type === 'paid' ? '심화 해석판' : '무료 체험판'}
-                                </p>
-                              </div>
+                            {/* ⭐ 콘텐츠 정보 (ContentTags + 제목) */}
+                            <div className="flex flex-col gap-[3px] grow min-w-0">
+                              <ContentTags
+                                isPaid={product.type === 'paid'}
+                                isNew={isContentNew(product.created_at)}
+                                isRead={readContentIds.has(String(product.id))}
+                              />
+                              <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: '23.5px', letterSpacing: '-0.3px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-1 overflow-hidden">
+                                {product.title}
+                              </p>
                             </div>
                           </div>
                         </div>

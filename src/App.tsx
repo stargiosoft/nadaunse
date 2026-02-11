@@ -1449,7 +1449,8 @@ function FreeResultPage() {
             id: content.id,
             title: content.title,
             type: content.content_type as 'free' | 'paid',
-            image: content.thumbnail_url || ''
+            image: content.thumbnail_url || '',
+            created_at: (content as MasterContent & { created_at?: string }).created_at || ''
           }));
 
           setRecommendedContents(formattedRecommended);
@@ -1510,7 +1511,8 @@ function FreeResultPage() {
               id: content.id,
               title: content.title,
               type: content.content_type as 'free' | 'paid',
-              image: content.thumbnail_url || ''
+              image: content.thumbnail_url || '',
+              created_at: (content as MasterContent & { created_at?: string }).created_at || ''
             }));
             
             setRecommendedContents(formattedRecommended);
