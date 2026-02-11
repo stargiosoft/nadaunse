@@ -13,7 +13,7 @@ import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportTrendStats } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -122,8 +122,8 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
 }
 
 // 대시보드 탭 타입
-type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠';
-const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠'];
+type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서';
+const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서'];
 
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -172,6 +172,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [topContents, setTopContents] = useState<Record<string, ContentViewStats[]>>({});
   const [topContentsLoading, setTopContentsLoading] = useState<string | null>(null);
   const [contentPeriod, setContentPeriod] = useState<ContentPeriodFilter>('all');
+
+  // 보고서 탭 상태
+  const [reportFunnel, setReportFunnel] = useState<ReportFunnelData | null>(null);
+  const [reportTrendData, setReportTrendData] = useState<ReportTrendData[]>([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportTrendPreset, setReportTrendPreset] = useState<TrendRangePreset>('7days');
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -490,6 +497,39 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const handleCompareCalendarClick = () => {
     setActiveCompareGroup('A');
     setShowCompareDatePicker(true);
+  };
+
+  // 보고서 데이터 로드 함수
+  const loadReportData = async (preset: TrendRangePreset = reportTrendPreset) => {
+    setReportLoading(true);
+    setReportError(null);
+    try {
+      const dateRangeFilter = getTrendDateRange(preset);
+      const [funnel, trend] = await Promise.all([
+        fetchReportFunnelStats(),
+        fetchReportTrendStats(dateRangeFilter, preset),
+      ]);
+      setReportFunnel(funnel);
+      setReportTrendData(trend);
+    } catch (err) {
+      console.error('보고서 데이터 로드 오류:', err);
+      setReportError('보고서 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // 보고서 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '보고서' && !reportFunnel && !reportLoading) {
+      loadReportData();
+    }
+  }, [selectedTab]);
+
+  // 보고서 기간 변경 핸들러
+  const handleReportTrendPresetChange = (preset: TrendRangePreset) => {
+    setReportTrendPreset(preset);
+    loadReportData(preset);
   };
 
   // 클립보드 복사 함수 - 개요
@@ -2484,6 +2524,158 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </section>
           </div>
         )}{/* 콘텐츠 탭 닫기 */}
+
+        {/* ========== 보고서 탭 ========== */}
+        {selectedTab === '보고서' && (
+          <div>
+            {/* 에러 상태 */}
+            {reportError && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
+                <p style={{ ...typography.label, marginBottom: '16px' }}>{reportError}</p>
+                <button
+                  onClick={() => loadReportData()}
+                  className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                  style={{ ...typography.button, padding: '10px 16px', backgroundColor: '#3FB5B3', color: '#ffffff' }}
+                >
+                  <RefreshCw size={16} />
+                  다시 시도
+                </button>
+              </div>
+            )}
+
+            {/* 로딩 상태 */}
+            {reportLoading && !reportError && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '280px' }} />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '200px' }} />
+                ))}
+              </div>
+            )}
+
+            {/* 데이터 표시 */}
+            {!reportLoading && !reportError && reportFunnel && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+              >
+                {/* 퍼널 테이블 (전체 기간) */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '16px' }}>
+                    <BarChart3 size={16} color="#3FB5B3" />
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>보고서 퍼널 (전체)</h3>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>단계</th>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>수</th>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>전환율</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { label: '보고서 발행', value: reportFunnel.totalReports, rate: 100 },
+                          { label: '타로 카드 생성', value: reportFunnel.tarotGenerated, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotGenerated / reportFunnel.totalReports * 1000) / 10 : 0 },
+                          { label: '타로 1장 이상 확인', value: reportFunnel.tarotStarted, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotStarted / reportFunnel.totalReports * 1000) / 10 : 0 },
+                          { label: '타로 3장 완료', value: reportFunnel.tarotCompleted, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotCompleted / reportFunnel.totalReports * 1000) / 10 : 0 },
+                          { label: '응원글 작성', value: reportFunnel.wroteEncouragement, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.wroteEncouragement / reportFunnel.totalReports * 1000) / 10 : 0 },
+                          { label: '쿠폰 발급', value: reportFunnel.couponIssued, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.couponIssued / reportFunnel.totalReports * 1000) / 10 : 0 },
+                        ].map((row, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, color: '#1a1a1a', padding: '10px 12px', borderBottom: '1px solid #f8f8f8' }}>{row.label}</td>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 600, color: '#3FB5B3', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.value.toLocaleString()}</td>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 400, color: '#666', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.rate}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                {/* 기간 필터 */}
+                <div>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                    <Calendar size={16} color="#666" />
+                    <span style={{ ...typography.label }}>추세 기간</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px' }}>
+                    {TREND_PRESETS.map((preset) => (
+                      <button
+                        key={preset.value}
+                        onClick={() => handleReportTrendPresetChange(preset.value)}
+                        className="rounded-full whitespace-nowrap transition-colors"
+                        style={{
+                          ...typography.preset,
+                          padding: '8px 16px',
+                          fontWeight: reportTrendPreset === preset.value ? 500 : 400,
+                          backgroundColor: reportTrendPreset === preset.value ? '#3FB5B3' : '#ffffff',
+                          color: reportTrendPreset === preset.value ? '#ffffff' : '#666666',
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 차트 1: 타로 3장 완료율 */}
+                {reportTrendData.length > 0 && (
+                  <>
+                    <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                      <h3 style={{ ...typography.sectionTitle, margin: 0, marginBottom: '16px' }}>타로 3장 완료율</h3>
+                      <div style={{ width: '100%', height: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={reportTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                            <Line type="monotone" dataKey="tarotCompletionRate" name="타로 완료율" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+
+                    {/* 차트 2: 응원글 작성율 */}
+                    <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                      <h3 style={{ ...typography.sectionTitle, margin: 0, marginBottom: '16px' }}>응원글 작성율</h3>
+                      <div style={{ width: '100%', height: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={reportTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                            <Line type="monotone" dataKey="encouragementRate" name="응원글 작성율" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+
+                    {/* 차트 3: 쿠폰 발급율 */}
+                    <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '40px' }}>
+                      <h3 style={{ ...typography.sectionTitle, margin: 0, marginBottom: '16px' }}>쿠폰 발급율</h3>
+                      <div style={{ width: '100%', height: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={reportTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                            <Line type="monotone" dataKey="couponIssuedRate" name="쿠폰 발급율" stroke={TREND_COLORS.tertiary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.tertiary }} activeDot={{ r: 5 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </div>
+        )}{/* 보고서 탭 닫기 */}
 
           </div>{/* 스크롤 영역 닫기 */}
 

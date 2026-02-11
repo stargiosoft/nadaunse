@@ -159,17 +159,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false); // ⭐ 초기값 false
 
 
-  // 🛡️ iOS 스와이프 뒤로가기 방어: popstate 감지 시 무조건 홈으로 리다이렉트
-  // history.length=100 상태에서 navigate(-1)은 신뢰할 수 없음 → 항상 홈으로
-  useEffect(() => {
-    const handlePopState = () => {
-      console.log('🔙 [MasterContentDetailPage] popstate 감지 → 홈으로 리다이렉트');
-      navigate('/', { replace: true });
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [navigate]);
-
   // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
@@ -182,6 +171,29 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [navigate]);
 
+  // 🛡️ History Guard Entry: iOS 스와이프 뒤로가기 시 항상 홈으로 이동하도록
+  // 현재 히스토리 엔트리 바로 앞에 홈(/) 엔트리를 삽입
+  const hasHistoryGuardRef = useRef(false);
+  useEffect(() => {
+    if (hasHistoryGuardRef.current) return;
+    hasHistoryGuardRef.current = true;
+
+    const currentState = window.history.state;
+    const currentUrl = window.location.pathname + window.location.search + window.location.hash;
+
+    // 1) 현재 엔트리를 홈(/)으로 교체
+    const guardState = {
+      usr: null,
+      key: Math.random().toString(36).substring(2, 10),
+      idx: (currentState?.idx ?? 1) - 1
+    };
+    window.history.replaceState(guardState, '', '/');
+
+    // 2) 실제 콘텐츠 상세 페이지를 다시 push → 스와이프 뒤로가기 = 홈
+    window.history.pushState(currentState, '', currentUrl);
+
+    console.log('🛡️ [MasterContentDetailPage] History guard entry inserted');
+  }, []);
   const usageGuideRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
