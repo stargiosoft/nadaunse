@@ -703,9 +703,11 @@ export default function HomePage() {
         return;
       }
 
-      // Case 3: 상태 없음 (앱 최초 진입점 = 앱 종료 직전)
-      if (!state) {
-        console.log('⚠️ [히스토리] 상태 없는 엔트리 도달 → 홈 마킹 + 버퍼 생성');
+      // Case 3: 상태 없음 OR guard entry(React Router state만 있고 type 없음)
+      // guard entry에서 스와이프 뒤로가기로 도달한 경우, 버퍼를 생성하여
+      // 뒤에 있는 /my-report-list, /profile 등에 도달하지 못하게 함
+      if (!state || !state.type) {
+        console.log('⚠️ [히스토리] 상태 없는/가드 엔트리 도달 → 홈 마킹 + 버퍼 생성');
         window.history.replaceState({ type: 'home', index: 0 }, '', window.location.href);
         for (let i = 0; i < BUFFER_COUNT; i++) {
           window.history.pushState({ type: 'home_buffer', index: i }, '', window.location.href);
