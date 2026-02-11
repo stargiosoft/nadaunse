@@ -1280,8 +1280,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} iconType="circle" iconSize={8} />
-                        <Line type="monotone" dataKey="tagSaved" name="저장" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
                         <Line type="monotone" dataKey="tagConfirmed" name="확인" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
