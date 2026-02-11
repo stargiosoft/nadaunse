@@ -1331,3 +1331,267 @@ export async function fetchTopContentsByCategory(
     return [];
   }
 }
+
+// ========== 보고서 퍼널/추세 타입 및 함수 ==========
+
+/** 보고서 퍼널 집계 데이터 */
+export interface ReportFunnelData {
+  totalReports: number;       // 완료된 보고서 수
+  tarotGenerated: number;     // 타로 카드 생성된 보고서 수
+  tarotStarted: number;       // 타로 1장이라도 확인한 보고서 수
+  tarotCompleted: number;     // 타로 3장 모두 확인한 보고서 수
+  wroteEncouragement: number; // 응원글 작성한 보고서 수
+  couponIssued: number;       // 쿠폰 발급된 보고서 수
+}
+
+/** 보고서 추세 데이터 (일별/주별/월별) */
+export interface ReportTrendData {
+  dateLabel: string;
+  fullDate: string;
+  totalReports: number;
+  tarotCompleted: number;
+  wroteEncouragement: number;
+  couponIssued: number;
+  // 전환율 (%)
+  tarotCompletionRate: number;   // tarotCompleted / totalReports
+  encouragementRate: number;     // wroteEncouragement / totalReports
+  couponIssuedRate: number;      // couponIssued / totalReports
+}
+
+/**
+ * 보고서 퍼널 전체 집계 조회
+ */
+export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 1. 완료된 보고서 조회 (관리자 제외)
+  const { data: reports, error: reportsError } = await supabase
+    .from('weekly_reports')
+    .select('id, self_encouragement')
+    .eq('status', 'completed')
+    .not('user_id', 'in', `(${adminFilter})`);
+
+  if (reportsError) {
+    console.error('보고서 퍼널 조회 오류:', reportsError);
+    throw new Error('보고서 데이터 조회에 실패했습니다.');
+  }
+
+  const totalReports = reports?.length || 0;
+  const reportIds = reports?.map(r => r.id) || [];
+  const wroteEncouragement = reports?.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length || 0;
+
+  if (reportIds.length === 0) {
+    return { totalReports: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
+  }
+
+  // 2. 타로 선택 데이터 조회
+  const { data: tarotSelections, error: tarotError } = await supabase
+    .from('report_tarot_selections')
+    .select('report_id, user_viewed')
+    .in('report_id', reportIds);
+
+  if (tarotError) {
+    console.error('타로 선택 조회 오류:', tarotError);
+    throw new Error('타로 선택 데이터 조회에 실패했습니다.');
+  }
+
+  // 보고서별 타로 상태 집계
+  const tarotByReport: Record<string, { total: number; viewed: number }> = {};
+  tarotSelections?.forEach(ts => {
+    if (!tarotByReport[ts.report_id]) {
+      tarotByReport[ts.report_id] = { total: 0, viewed: 0 };
+    }
+    tarotByReport[ts.report_id].total++;
+    if (ts.user_viewed) {
+      tarotByReport[ts.report_id].viewed++;
+    }
+  });
+
+  const tarotGenerated = Object.keys(tarotByReport).length;
+  const tarotStarted = Object.values(tarotByReport).filter(t => t.viewed >= 1).length;
+  const tarotCompleted = Object.values(tarotByReport).filter(t => t.viewed >= 3).length;
+
+  // 3. 쿠폰 발급 수 조회 (source_order_id가 report ID에 매칭)
+  const { data: coupons, error: couponError } = await supabase
+    .from('user_coupons')
+    .select('source_order_id')
+    .not('user_id', 'in', `(${adminFilter})`)
+    .in('source_order_id', reportIds);
+
+  if (couponError) {
+    console.error('쿠폰 조회 오류:', couponError);
+    throw new Error('쿠폰 데이터 조회에 실패했습니다.');
+  }
+
+  const couponIssued = new Set(coupons?.map(c => c.source_order_id) || []).size;
+
+  return { totalReports, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
+}
+
+/**
+ * 보고서 추세 데이터 조회
+ */
+export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?: TrendRangePreset): Promise<ReportTrendData[]> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 날짜 배열 생성
+  const startDate = new Date(dateRange.startDate!);
+  const endDate = new Date(dateRange.endDate!);
+  const dateArray: Date[] = [];
+  for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+    dateArray.push(new Date(d));
+  }
+
+  // 로컬 날짜 키 생성 함수
+  const getDateKey = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  // week_start_date 기준 필터 (date 타입이므로 YYYY-MM-DD 문자열)
+  const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+  const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+  // 1. 보고서 데이터 조회
+  const { data: reports, error: reportsError } = await supabase
+    .from('weekly_reports')
+    .select('id, self_encouragement, week_start_date')
+    .eq('status', 'completed')
+    .not('user_id', 'in', `(${adminFilter})`)
+    .gte('week_start_date', startDateStr)
+    .lt('week_start_date', endDateStr);
+
+  if (reportsError) {
+    console.error('보고서 추세 조회 오류:', reportsError);
+    throw new Error('보고서 추세 데이터 조회에 실패했습니다.');
+  }
+
+  const reportIds = reports?.map(r => r.id) || [];
+
+  // 2. 타로 선택 데이터
+  let tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
+  if (reportIds.length > 0) {
+    const { data, error } = await supabase
+      .from('report_tarot_selections')
+      .select('report_id, user_viewed')
+      .in('report_id', reportIds);
+
+    if (error) {
+      console.error('타로 추세 조회 오류:', error);
+    } else {
+      tarotSelections = data || [];
+    }
+  }
+
+  // 3. 쿠폰 발급 데이터
+  let coupons: { source_order_id: string }[] = [];
+  if (reportIds.length > 0) {
+    const { data, error } = await supabase
+      .from('user_coupons')
+      .select('source_order_id')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .in('source_order_id', reportIds);
+
+    if (error) {
+      console.error('쿠폰 추세 조회 오류:', error);
+    } else {
+      coupons = data || [];
+    }
+  }
+
+  // 보고서별 타로 완료 여부 Map
+  const tarotByReport: Record<string, number> = {};
+  tarotSelections.forEach(ts => {
+    if (!tarotByReport[ts.report_id]) tarotByReport[ts.report_id] = 0;
+    if (ts.user_viewed) tarotByReport[ts.report_id]++;
+  });
+
+  // 쿠폰 발급된 보고서 Set
+  const couponReportIds = new Set(coupons.map(c => c.source_order_id));
+
+  // 일별 데이터 생성
+  const dailyData: ReportTrendData[] = dateArray.map(date => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
+    // week_start_date가 해당 날짜인 보고서
+    const dayReports = reports?.filter(r => r.week_start_date === dateKey) || [];
+    const totalReports = dayReports.length;
+    const tarotCompleted = dayReports.filter(r => (tarotByReport[r.id] || 0) >= 3).length;
+    const wroteEncouragement = dayReports.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length;
+    const couponIssued = dayReports.filter(r => couponReportIds.has(r.id)).length;
+
+    return {
+      dateLabel: `${month}/${day}`,
+      fullDate: dateKey,
+      totalReports,
+      tarotCompleted,
+      wroteEncouragement,
+      couponIssued,
+      tarotCompletionRate: totalReports > 0 ? Math.round(tarotCompleted / totalReports * 1000) / 10 : 0,
+      encouragementRate: totalReports > 0 ? Math.round(wroteEncouragement / totalReports * 1000) / 10 : 0,
+      couponIssuedRate: totalReports > 0 ? Math.round(couponIssued / totalReports * 1000) / 10 : 0,
+    };
+  });
+
+  // 프리셋에 따른 집계
+  const granularity = preset ? getGranularityFromPreset(preset) : 'daily';
+  if (granularity === 'daily') return dailyData;
+
+  return aggregateReportTrendData(dailyData, granularity);
+}
+
+/**
+ * 보고서 추세 일별→주별/월별 집계
+ */
+function aggregateReportTrendData(dailyData: ReportTrendData[], granularity: TrendGranularity): ReportTrendData[] {
+  if (granularity === 'daily' || dailyData.length === 0) return dailyData;
+
+  const groups: Record<string, { label: string; data: ReportTrendData[] }> = {};
+
+  dailyData.forEach(day => {
+    const date = new Date(day.fullDate);
+    let groupKey: string;
+    let groupLabel: string;
+
+    if (granularity === 'weekly') {
+      const weekStart = getWeekStart(date);
+      groupKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+      const month = date.getMonth() + 1;
+      const weekOfMonth = getWeekOfMonth(date);
+      groupLabel = `${month}월 ${weekOfMonth}주`;
+    } else {
+      groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      groupLabel = `${date.getMonth() + 1}월`;
+    }
+
+    if (!groups[groupKey]) {
+      groups[groupKey] = { label: groupLabel, data: [] };
+    }
+    groups[groupKey].data.push(day);
+  });
+
+  const sortedKeys = Object.keys(groups).sort();
+
+  return sortedKeys.map(key => {
+    const { label, data } = groups[key];
+    const totalReports = data.reduce((sum, d) => sum + d.totalReports, 0);
+    const tarotCompleted = data.reduce((sum, d) => sum + d.tarotCompleted, 0);
+    const wroteEncouragement = data.reduce((sum, d) => sum + d.wroteEncouragement, 0);
+    const couponIssued = data.reduce((sum, d) => sum + d.couponIssued, 0);
+
+    return {
+      dateLabel: label,
+      fullDate: data[0].fullDate,
+      totalReports,
+      tarotCompleted,
+      wroteEncouragement,
+      couponIssued,
+      tarotCompletionRate: totalReports > 0 ? Math.round(tarotCompleted / totalReports * 1000) / 10 : 0,
+      encouragementRate: totalReports > 0 ? Math.round(wroteEncouragement / totalReports * 1000) / 10 : 0,
+      couponIssuedRate: totalReports > 0 ? Math.round(couponIssued / totalReports * 1000) / 10 : 0,
+    };
+  });
+}
