@@ -302,6 +302,7 @@ function GAInit() {
         '/terms-of-service': '이용약관',
         '/privacy-policy': '개인정보처리방침',
         '/profile': '마이페이지',
+        '/profile/nadaum-tags': '나다움 태그',
         '/purchase-history': '이용 기록',
         '/saju/management': '사주 관리',
         '/saju/input': '내 사주 입력',
