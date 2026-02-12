@@ -824,7 +824,9 @@ export default function PaymentNew({
     }, 1000);
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
+    console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
 
+    try {
     window.IMP.request_pay(
       paymentParams,
       async function (response: any) {
@@ -946,6 +948,15 @@ export default function PaymentNew({
         }
       },
     );
+    } catch (error) {
+      // ⭐ PortOne SDK request_pay 자체가 에러를 throw한 경우
+      console.error('❌ [PaymentNew] request_pay 호출 에러:', error);
+      stopPaymentOverlayWatch();
+      paymentInitiatedRef.current = false;
+      setIsProcessingPayment(false);
+      window.history.replaceState({}, '', window.location.href);
+      alert('결제 모듈에 문제가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   // ⭐ 콘텐츠 + 쿠폰 모두 로딩 완료 후 표시 (가격+혜택가 동시 표시)
