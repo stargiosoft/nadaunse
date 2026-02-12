@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgPaths from "../imports/svg-b5r0yb3uuf";
 import { supabase } from '../lib/supabase';
-import MasterContentLoadingPage from './MasterContentLoadingPage';
 import { getTarotCardsForQuestions } from '../lib/tarotCards';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PageLoader } from './ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트

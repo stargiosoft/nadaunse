@@ -4,6 +4,13 @@ import { motion } from 'framer-motion';
 import { MasterContent } from '../types/masterContent';
 import { supabase } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
+
+/** 썸네일 URL에 updated_at 기반 캐시 버스터 추가 */
+function withCacheBuster(url: string | null, updatedAt?: string): string | null {
+  if (!url) return null;
+  const ts = updatedAt ? new Date(updatedAt).getTime() : '';
+  return ts ? `${url}${url.includes('?') ? '&' : '?'}v=${ts}` : url;
+}
 import { preloadImages } from '../lib/imagePreloader';
 import { preloadThumbnails } from '../lib/thumbnailCache';
 import HomeSkeleton from '../components/skeletons/HomeSkeleton';
@@ -12,6 +19,7 @@ import svgPaths from "../imports/svg-94402brxf8";
 import svgPathsLogo from "../imports/svg-7fu3k5931y";
 import { trackFreeContentClick, trackPaidContentView } from '../utils/analytics';
 import SEO from '../components/SEO';
+import { ContentTags, isContentNew } from '../components/ContentTags';
 
 type TabCategory = '전체' | '개인운세' | '연애' | '이별' | '궁합' | '재물' | '직업' | '시험/학업' | '건강' | '인간관계' | '자녀' | '이사/매매' | '기타';
 
@@ -471,18 +479,20 @@ interface ContentCardProps {
   onClick: () => void;
   isFeatured?: boolean;
   index?: number;
+  isNew?: boolean;
+  isRead?: boolean;
 }
 
-function ContentCard({ content, onClick, isFeatured = false, index = 0 }: ContentCardProps) {
+function ContentCard({ content, onClick, isFeatured = false, index = 0, isNew = false, isRead = false }: ContentCardProps) {
   const isPaid = content.content_type === 'paid';
-  
+
   if (isFeatured) {
     return (
       <div onClick={onClick} className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full cursor-pointer transition-all duration-150 ease-out active:bg-gray-50 active:p-[12px] rounded-[16px]" data-name="Featured Card">
         <div className="group box-border relative shrink-0 w-full pt-0 pb-0 pointer-events-auto touch-manipulation [-webkit-tap-highlight-color:transparent] !transform-none !transition-none p-[0px]" data-name="Card / Browse Card">
           <div className="box-border content-stretch w-full">
             <div className="w-full">
- 
+
   <div className="box-border content-stretch w-full">
     <div className="flex flex-col gap-[12px] items-center justify-center w-full">
       <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full bg-gradient-to-r from-[#f0f0f0] via-[#e8e8e8] to-[#f0f0f0] bg-[length:200%_100%] animate-shimmer">
@@ -494,7 +504,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
             className="absolute inset-0 object-cover rounded-[16px] size-full"
             src={content.thumbnail_url}
             onLoad={(e) => {
-              // 이미지 로드 완료 시 부모의 shimmer 제거
               const parent = (e.target as HTMLElement).parentElement;
               if (parent) {
                 parent.classList.remove('animate-shimmer', 'bg-gradient-to-r', 'from-[#f0f0f0]', 'via-[#e8e8e8]', 'to-[#f0f0f0]', 'bg-[length:200%_100%]');
@@ -502,7 +511,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
               }
             }}
             onError={(e) => {
-              // 이미지 로드 실패 시 조용히 처리
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
             }}
@@ -517,15 +525,10 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
 
       <div className="relative shrink-0 w-full overflow-hidden">
         <div className="box-border flex flex-col gap-[5px] items-start px-[4px]">
+          <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
           <p className="text-[15px] font-medium line-clamp-2 pl-[2px]">
             {content.title}
           </p>
-
-          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} px-[6px] py-[2px] rounded-[6px]`}>
-            <p className={`${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[11px]`}>
-              {isPaid ? '심화 해석판' : '무료 체험판'}
-            </p>
-          </div>
         </div>
       </div>
     </div>
@@ -536,7 +539,7 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
       </div>
     );
   }
-  
+
   return (
     <div onClick={onClick} className="box-border content-stretch flex flex-col gap-[10px] h-auto items-start justify-start px-0 py-[10px] relative rounded-[16px] shrink-0 w-full cursor-pointer transition-all duration-150 ease-out active:scale-[0.96] active:bg-gray-50 active:px-[12px]" data-name="Card / Browse Card">
       <div className="content-stretch flex gap-[10px] items-start relative shrink-0 w-full overflow-hidden" data-name="Container">
@@ -549,7 +552,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
               className="absolute inset-0 max-w-none object-50%-50% object-cover rounded-[12px] size-full"
               src={content.thumbnail_url}
               onLoad={(e) => {
-                // 이미지 로드 완료 시 부모의 shimmer 제거
                 const parent = (e.target as HTMLElement).parentElement;
                 if (parent) {
                   parent.classList.remove('animate-shimmer', 'bg-gradient-to-r', 'from-[#f0f0f0]', 'via-[#e8e8e8]', 'to-[#f0f0f0]', 'bg-[length:200%_100%]');
@@ -557,7 +559,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
                 }
               }}
               onError={(e) => {
-                // 이미지 로드 실패 시 조용히 처리
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
               }}
@@ -570,6 +571,7 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
           <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
         </div>
         <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px relative shrink-0 overflow-hidden" data-name="Card / PriceBlock">
+          <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
           <div className="relative shrink-0 w-full" data-name="Container">
             <div className="flex flex-row items-center justify-center size-full">
               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full overflow-hidden">
@@ -578,11 +580,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0 }: Conten
                 </p>
               </div>
             </div>
-          </div>
-          <div className={`${isPaid ? 'bg-[#f0f8f8]' : 'bg-[#f9f9f9]'} box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] pb-[1px] pt-[3px] relative rounded-[4px] shrink-0`} data-name="Label Box">
-            <p className={`font-['Pretendard_Variable:Medium',sans-serif] leading-[16px] not-italic relative shrink-0 ${isPaid ? 'text-[#41a09e]' : 'text-[#848484]'} text-[11px] text-nowrap tracking-[-0.24px] whitespace-pre`}>
-              {isPaid ? '심화 해석판' : '무료 체험판'}
-            </p>
           </div>
         </div>
       </div>
@@ -625,6 +622,13 @@ export default function HomePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<TabCategory[]>(['전체']);
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(() => {
+    try {
+      const cached = localStorage.getItem('read_content_ids_cache');
+      if (cached) return new Set(JSON.parse(cached) as string[]);
+    } catch { /* ignore */ }
+    return new Set();
+  });
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showNavigation, setShowNavigation] = useState(true);
@@ -771,7 +775,7 @@ export default function HomePage() {
   const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
 
   // 🔧 캐시 버전 관리 (정렬 로직 변경 시 캐시 무효화)
-  const CACHE_VERSION = 'v6'; // 필터별 캐시 분리 적용
+  const CACHE_VERSION = 'v7'; // 미확인 우선 정렬 적용
   const CATEGORIES_CACHE_KEY = 'homepage_categories_cache_v2'; // v2: 카테고리 순서 고정
 
   // 🚀 Phase 1: 필터별 캐시 키 생성 함수
@@ -869,7 +873,7 @@ export default function HomePage() {
 
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate')
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate')
           .eq('status', 'deployed');
 
         // 필터 적용
@@ -895,7 +899,7 @@ export default function HomePage() {
         if (data && data.length > 0) {
           const newContents = data.map((item: any) => ({
             ...item,
-            thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
+            thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
           })) as MasterContent[];
 
           // 기존 캐시 데이터에 추가
@@ -981,7 +985,7 @@ export default function HomePage() {
 
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
           .eq('status', 'deployed');
 
         // 카테고리 필터
@@ -1060,7 +1064,7 @@ export default function HomePage() {
         // 🎯 쿼리 빌더 시작
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
           .eq('status', 'deployed');
 
         // 🔍 카테고리 필터 적용
@@ -1091,7 +1095,7 @@ export default function HomePage() {
           const contents = data.map((item: any) => ({
             ...item,
             // 🎨 썸네일 최적화 (리스트용)
-            thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
+            thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
           })) as MasterContent[];
 
           // 💾 캐시에 저장 (모든 필터에서 캐시)
@@ -1282,7 +1286,59 @@ export default function HomePage() {
       subscription.unsubscribe();
     };
   }, []);
-  
+
+  // 📚 사용자의 콘텐츠 읽음 이력 조회 (읽어봄 태그용)
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setReadContentIds(new Set());
+      localStorage.removeItem('read_content_ids_cache');
+      return;
+    }
+
+    const fetchReadHistory = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const userId = session.user.id;
+        const ids = new Set<string>();
+
+        // 유료 콘텐츠: orders에서 성공한 주문의 content_id 조회
+        const { data: orders } = await supabase
+          .from('orders')
+          .select('content_id')
+          .eq('user_id', userId)
+          .eq('pstatus', 'completed');
+
+        if (orders) {
+          orders.forEach((o: { content_id: string | null }) => {
+            if (o.content_id) ids.add(o.content_id);
+          });
+        }
+
+        // 무료 콘텐츠: free_content_records에서 content_id 조회
+        const { data: freeRecords } = await supabase
+          .from('free_content_records')
+          .select('content_id')
+          .eq('user_id', userId);
+
+        if (freeRecords) {
+          freeRecords.forEach((r: { content_id: string | null }) => {
+            if (r.content_id) ids.add(r.content_id);
+          });
+        }
+
+        setReadContentIds(ids);
+        localStorage.setItem('read_content_ids_cache', JSON.stringify([...ids]));
+        console.log(`📚 [읽어봄] ${ids.size}개 콘텐츠 읽음 확인`);
+      } catch (error) {
+        console.error('읽음 상태 조회 실패:', error);
+      }
+    };
+
+    fetchReadHistory();
+  }, [isLoggedIn]);
+
   // 🚀 Phase 3: Featured 이미지 우선 프리로드 (중복 방지)
   useEffect(() => {
     if (featuredContent?.thumbnail_url) {
@@ -1325,39 +1381,48 @@ export default function HomePage() {
   // 🚫 클라이언트 사이드 필터링 제거 (서버에서 이미 필터링됨)
   // allContents가 이미 필터링된 데이터이므로 그대로 사용
   
-  // Featured content from all results
+  // Featured content from all results - 미확인 인기 콘텐츠 우선
   const featuredContentFiltered = useMemo(() => {
     if (allContents.length === 0) return null;
-    
-    // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
-    const hasClicks = allContents.some(c => c.weekly_clicks > 0);
-    
-    if (hasClicks) {
-      // 클릭수가 가장 높은 콘텐츠를 featured로
-      const maxClicks = Math.max(...allContents.map(c => c.weekly_clicks));
-      return allContents.find(c => c.weekly_clicks === maxClicks) || null;
-    } else {
-      // 모두 0이면 최신 콘텐츠를 featured로
-      return allContents[0];
-    }
-  }, [allContents]);
 
-  // Contents list (excluding featured)
+    // 인기순(미확인 우선) 정렬 후 첫 번째 선택
+    const sorted = [...allContents].sort((a, b) => {
+      // 1차: 미확인 우선
+      const aRead = readContentIds.has(a.id) ? 1 : 0;
+      const bRead = readContentIds.has(b.id) ? 1 : 0;
+      if (aRead !== bRead) return aRead - bRead;
+
+      // 2차: weekly_clicks 내림차순
+      if (b.weekly_clicks !== a.weekly_clicks) {
+        return b.weekly_clicks - a.weekly_clicks;
+      }
+      // 3차: created_at 내림차순
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+
+    return sorted[0] || null;
+  }, [allContents, readContentIds]);
+
+  // Contents list (excluding featured) - 정렬: 인기순(미확인) 1순위, 인기순(읽어봄) 2순위
   const contentsList = useMemo(() => {
     if (!featuredContentFiltered) return allContents;
-    
-    // featured 제외 후 weekly_clicks 내림차순 정렬
+
     return allContents
       .filter(c => c.id !== featuredContentFiltered.id)
       .sort((a, b) => {
-        // 1차: weekly_clicks 내림차순
+        // 1차: 미확인(unread) 우선, 읽어봄(read) 후순위
+        const aRead = readContentIds.has(a.id) ? 1 : 0;
+        const bRead = readContentIds.has(b.id) ? 1 : 0;
+        if (aRead !== bRead) return aRead - bRead;
+
+        // 2차: weekly_clicks 내림차순 (인기순)
         if (b.weekly_clicks !== a.weekly_clicks) {
           return b.weekly_clicks - a.weekly_clicks;
         }
-        // 2차: created_at 내림차순 (최신순)
+        // 3차: created_at 내림차순 (최신순)
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       });
-  }, [allContents, featuredContentFiltered]);
+  }, [allContents, featuredContentFiltered, readContentIds]);
   
   // Load more contents (모든 필터에서 캐시 활용)
   const loadMoreContents = useCallback(async () => {
@@ -1382,7 +1447,10 @@ export default function HomePage() {
 
         // 캐시에 요청한 범위의 데이터가 있는지 확인
         if (cachedData.length > endIndex) {
-          const newContents = cachedData.slice(startIndex, endIndex + 1) as MasterContent[];
+          const newContents = (cachedData.slice(startIndex, endIndex + 1) as MasterContent[]).map((item: MasterContent) => ({
+            ...item,
+            thumbnail_url: withCacheBuster(item.thumbnail_url, item.updated_at),
+          }));
 
           if (newContents.length > 0) {
             console.log(`✅ [Cache Hit] 캐시에서 ${newContents.length}개 로드 (${startIndex} ~ ${endIndex})`);
@@ -1411,7 +1479,7 @@ export default function HomePage() {
       // 🎯 캐시에 없으면 DB에서 쿼리
       let query = supabase
         .from('master_contents')
-        .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+        .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
         .eq('status', 'deployed');
       
       // 🔍 카테고리 필터 적용
@@ -1438,7 +1506,7 @@ export default function HomePage() {
         const newContents = data.map((item: any) => ({
           ...item,
           // 🎨 썸네일 최적화 (리스트용)
-          thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
+          thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
         })) as MasterContent[];
         
         // 전체 콘텐츠에 추가
@@ -1662,10 +1730,12 @@ export default function HomePage() {
               {/* Featured Content (메인 배너) */}
               {featuredContentFiltered && (
                 <>
-                  <ContentCard 
-                    content={featuredContentFiltered} 
+                  <ContentCard
+                    content={featuredContentFiltered}
                     onClick={() => handleContentClick(featuredContentFiltered.id)}
                     isFeatured={true}
+                    isNew={isContentNew(featuredContentFiltered.created_at)}
+                    isRead={readContentIds.has(featuredContentFiltered.id)}
                   />
                   <Divider />
                 </>
@@ -1679,6 +1749,8 @@ export default function HomePage() {
                       content={content}
                       onClick={() => handleContentClick(content.id)}
                       index={index}
+                      isNew={isContentNew(content.created_at)}
+                      isRead={readContentIds.has(content.id)}
                     />
                     {index < contentsList.length - 1 && <Divider />}
                   </div>

@@ -15,7 +15,7 @@
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 31개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 32개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne (구 아임포트) v2 |
@@ -25,9 +25,9 @@
 
 ### 주요 통계
 - **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 31개 (주간 보고서 4개 포함)
+- **Edge Functions**: 32개 (주간 보고서 4개 포함)
 - **페이지**: 41개
-- **UI 컴포넌트 (shadcn/ui)**: 48개
+- **UI 컴포넌트 (shadcn/ui)**: 52개
 - **타로 카드 덱**: 78장
 
 ---
@@ -110,14 +110,14 @@ const bgImage = "/background.jpg";
 
 ### 7. 컴포넌트 재사용
 - 새 컴포넌트 만들기 전 `components-inventory.md` 확인
-- `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (48개)
+- `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (52개)
 
 ### 8. Edge Functions
 - **소스 코드 위치**: `/supabase/functions/` (Supabase CLI 기본 경로)
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
-- **총 31개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(1), 소유자 확인(2), 유틸리티(2)
+- **총 32개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(2), 소유자 확인(2), 유틸리티(2)
 
 **⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
 ```bash
@@ -131,7 +131,7 @@ npm run deploy:prod:core
 npm run deploy:staging
 ```
 
-**🚨 --no-verify-jwt 필수 함수 (내부 호출 또는 공개 접근용)**:
+**🚨 --no-verify-jwt 필수 함수 (내부 호출, 외부 서버 콜백, pg_cron, 공개 접근용) - 총 10개**:
 | 함수 | 이유 |
 |------|------|
 | `generate-saju-answer` | `generate-content-answers`에서 내부 호출 |
@@ -139,17 +139,21 @@ npm run deploy:staging
 | `send-alimtalk` | `generate-content-answers`에서 내부 호출 |
 | `generate-weekly-report` | `generate-weekly-reports-batch`에서 내부 호출 |
 | `send-report-alimtalk` | `generate-weekly-report`에서 내부 호출 |
+| `generate-weekly-reports-batch` | pg_cron 스케줄러 호출 (사용자 JWT 없음) |
+| `cleanup-unconfirmed-tags` | pg_cron 스케줄러 호출 (사용자 JWT 없음) |
+| `payment-webhook` | PortOne 서버 콜백 (외부 결제 서버, JWT 없음) |
+| `sentry-slack-webhook` | Sentry 서버 콜백 (외부 모니터링 서버, JWT 없음) |
 | `generate-sitemap` | Google 크롤러가 인증 없이 sitemap.xml 접근 필요 |
 
-- 위 함수들은 Service Role Key로 호출되거나 공개 접근이 필요하므로 JWT 검증 비활성화 필수
+- 위 함수들은 Service Role Key로 호출되거나, 외부 서버 콜백이거나, pg_cron 스케줄러 호출이므로 JWT 검증 비활성화 필수
 - **수동 배포 시 `--no-verify-jwt` 누락하면 "Invalid JWT" 401 에러 발생**
 - 배포 스크립트 사용하면 자동으로 플래그 적용됨
 
 **배포 스크립트 위치**: `/scripts/`
 ```
 scripts/
-├── deploy-production.bat   # 프로덕션 전체 배포 (31개)
-├── deploy-staging.bat      # 스테이징 전체 배포 (31개)
+├── deploy-production.bat   # 프로덕션 전체 배포 (32개)
+├── deploy-staging.bat      # 스테이징 전체 배포 (32개)
 ├── deploy-core.bat         # 핵심 함수만 배포 (4개)
 └── README.md               # 상세 가이드
 ```
@@ -199,7 +203,7 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 → 94% 토큰 절약!
 ```
 
-**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 31개)에서 Serena는 필수입니다.
+**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 32개)에서 Serena는 필수입니다.
 
 ### 11. 캐싱 전략 (Cache Strategy)
 
@@ -415,7 +419,7 @@ serve(async (req) => {
 └── imports/        # SVG, 이미지 임포트
 
 supabase/
-├── functions/      # Edge Functions (31개)
+├── functions/      # Edge Functions (32개)
 ├── migrations/     # SQL 마이그레이션 파일
 └── *.md            # Supabase 관련 문서
 ```
@@ -573,7 +577,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 **필수 문서**:
 1. `DATABASE_SCHEMA.md` - 전체 DB 구조 파악
 2. `PROJECT_CONTEXT.md` - RLS 정책, Edge Functions
-3. `supabase/EDGE_FUNCTIONS_GUIDE.md` - Edge Functions 31개 목록
+3. `supabase/EDGE_FUNCTIONS_GUIDE.md` - Edge Functions 32개 목록
 
 **체크리스트**:
 - [ ] RLS 정책 추가 필요한지 확인
@@ -777,7 +781,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 |------|-------------|----------|
 | **[DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md)** | DB 작업 시 | 테이블 구조, 컬럼, 타입, 제약조건, 인덱스 |
 | **[supabase/RLS_POLICIES.md](./supabase/RLS_POLICIES.md)** | 권한 문제 디버깅 시 | 9개 테이블의 26개 RLS 정책, Staging↔Production 동기화 |
-| **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | DB 자동화 작업 시 | 5개 Triggers, 5개 Functions, updated_at 자동 갱신 패턴 |
+| **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | DB 자동화 작업 시 | 5개 Triggers, 8개 Functions, 4개 pg_cron Jobs, updated_at 자동 갱신 패턴 |
 
 ### ⚡ Supabase Edge Functions
 
@@ -789,7 +793,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 | 문서 | 언제 읽나요? | 주요 내용 |
 |------|-------------|----------|
-| **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 찾기, 재사용 검토 시 | 51개 컴포넌트 분류, 파일 위치, shadcn/ui 48개 |
+| **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 찾기, 재사용 검토 시 | 75개 컴포넌트 분류, 파일 위치, shadcn/ui 52개 |
 
 ### 🚀 시작 가이드
 
@@ -837,4 +841,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-02-09
+**최종 업데이트**: 2026-02-12

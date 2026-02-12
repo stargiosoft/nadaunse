@@ -1413,9 +1413,10 @@ export default function ProfilePage({
 
                 console.log('✅ [ProfilePage] 본인 사주에 핸드폰 번호 저장 성공:', cleanPhone);
 
-                // 캐시 무효화
+                // 캐시 무효화 - saju_cache_checked도 제거해야 다음 방문 시 API 재호출
                 localStorage.removeItem('primary_saju');
                 localStorage.removeItem('saju_records_cache');
+                localStorage.removeItem('saju_cache_checked');
 
                 setShowPhoneBottomSheet(false);
                 setIsPhoneSaving(false);

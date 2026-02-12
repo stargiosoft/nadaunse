@@ -8,16 +8,29 @@
  * @updated 2026-01-28 - 나다움 기록하기 연결을 위한 '다음' 버튼 추가
  */
 
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from './ui/button';
 import svgPaths from "../imports/svg-z3xcg5m9wk";
+import { supabase } from '../lib/supabase';
+import { ContentTags, isContentNew } from './ContentTags';
 
 interface Question {
   question_text: string;
   answer_text: string;
 }
 
+interface RecommendedContent {
+  id: string;
+  title: string;
+  content_type: 'paid' | 'free';
+  thumbnail_url: string | null;
+  created_at: string;
+}
+
 interface FreeContentResultProps {
+  contentId: string;
   contentTitle: string;
   contentThumbnail?: string;
   questions: string[] | Question[];
@@ -43,6 +56,7 @@ function Icons() {
 }
 
 export default function FreeContentResult({
+  contentId,
   contentTitle,
   contentThumbnail,
   questions,
@@ -51,6 +65,37 @@ export default function FreeContentResult({
   onPurchase,
   onNext
 }: FreeContentResultProps) {
+  const navigate = useNavigate();
+  const [recommendedContents, setRecommendedContents] = useState<RecommendedContent[]>([]);
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
+
+  // ⭐ 추천 콘텐츠 + 읽기 기록 fetch
+  useEffect(() => {
+    const fetchData = async () => {
+      // 추천 콘텐츠 조회 (인기순, 최대 4개, 현재 콘텐츠 제외)
+      const { data: contents } = await supabase
+        .from('master_contents')
+        .select('id, title, content_type, thumbnail_url, created_at')
+        .eq('status', 'deployed')
+        .neq('id', contentId)
+        .order('weekly_clicks', { ascending: false })
+        .limit(4);
+      if (contents) setRecommendedContents(contents as RecommendedContent[]);
+
+      // 읽기 기록 조회
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+      const ids = new Set<string>();
+      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed');
+      if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
+      const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
+      if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
+      setReadContentIds(ids);
+    };
+    fetchData();
+  }, [contentId]);
+
   // questions가 string[]인 경우와 Question[]인 경우 모두 처리
   const normalizedQuestions = questions.map((q, idx) => {
     if (typeof q === 'string') {
@@ -118,18 +163,7 @@ export default function FreeContentResult({
               </div>
             )}
             <div className="flex flex-col gap-1">
-              <span
-                className="px-2 py-0.5 rounded-full w-fit"
-                style={{
-                  backgroundColor: '#e8f5f4',
-                  fontFamily: 'Pretendard Variable',
-                  fontWeight: 500,
-                  fontSize: '12px',
-                  color: '#41a09e'
-                }}
-              >
-                무료 체험판
-              </span>
+              <ContentTags isPaid={false} isNew={false} isRead={true} />
               <p style={{
                 fontFamily: 'Pretendard Variable',
                 fontWeight: 500,
@@ -204,7 +238,40 @@ export default function FreeContentResult({
                 이런 운세는 어때요?
               </p>
 
-              {/* 추천 콘텐츠 카드들은 여기에 추가 가능 */}
+              {/* 추천 콘텐츠 카드 리스트 */}
+              <div className="flex flex-col w-full">
+                {recommendedContents.map((item) => {
+                  const isPaid = item.content_type === 'paid';
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => navigate(`/product/${item.id}`)}
+                      className="flex gap-[10px] items-start py-[10px] w-full cursor-pointer active:bg-gray-50 rounded-[12px]"
+                    >
+                      <div className="h-[54px] relative rounded-[12px] shrink-0 w-[80px]" style={{ backgroundColor: '#f0f0f0' }}>
+                        {item.thumbnail_url && (
+                          <img
+                            alt={item.title}
+                            className="absolute inset-0 object-cover rounded-[12px] size-full"
+                            src={item.thumbnail_url}
+                          />
+                        )}
+                        <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
+                      </div>
+                      <div className="flex flex-col gap-[3px] grow min-w-0">
+                        <ContentTags
+                          isPaid={isPaid}
+                          isNew={isContentNew(item.created_at)}
+                          isRead={readContentIds.has(item.id)}
+                        />
+                        <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: '23.5px', letterSpacing: '-0.3px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-1 overflow-hidden">
+                          {item.title}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

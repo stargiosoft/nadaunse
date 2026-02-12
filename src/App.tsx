@@ -90,6 +90,12 @@ if (!DEV && import.meta.env.DEV) {
 
 // ⚡ Build Cache Buster v1.4.3 - Fix dynamic import module fetch error
 
+// ⭐ iOS Safari: 홈에서 새로고침 시 히스토리 버퍼 초기화 (스와이프 뒤로가기 보호)
+if (window.location.pathname === '/') {
+  sessionStorage.removeItem('homepage_history_initialized');
+  sessionStorage.removeItem('navigatedFromHome');
+}
+
 /**
  * 직접 링크 진입 시 브라우저 뒤로가기 보호
  * - 외부 링크(카카오톡, 구글 등)로 콘텐츠 상세 페이지에 바로 진입하면
@@ -296,6 +302,7 @@ function GAInit() {
         '/terms-of-service': '이용약관',
         '/privacy-policy': '개인정보처리방침',
         '/profile': '마이페이지',
+        '/profile/nadaum-tags': '나다움 태그',
         '/purchase-history': '이용 기록',
         '/saju/management': '사주 관리',
         '/saju/input': '내 사주 입력',
@@ -312,7 +319,10 @@ function GAInit() {
         '/signup/terms': '회원가입 약관',
         '/auth/callback': '로그인 처리 중',
         '/alimtalk/input': '알림톡 정보 입력',
+        '/pending-tags-check': '태그 확인 중',
+        '/paid/tag-loading': '태그 추출 중',
         '/master/content': '콘텐츠 관리',
+        '/master/stats': '통계 대시보드',
         '/master/content/create': '콘텐츠 생성',
         '/master/content/create/questions': '질문 작성',
         '/error/404': '페이지를 찾을 수 없음',
@@ -329,6 +339,9 @@ function GAInit() {
       }
 
       // 동적 라우트 패턴 매칭
+      if (pathname.startsWith('/product/') && pathname.endsWith('/tag-loading')) {
+        return `태그 추출 중 | ${BASE_TITLE}`;
+      }
       if (pathname.startsWith('/product/') && pathname.endsWith('/payment')) {
         return `결제 | ${BASE_TITLE}`;
       }
@@ -1443,7 +1456,8 @@ function FreeResultPage() {
             id: content.id,
             title: content.title,
             type: content.content_type as 'free' | 'paid',
-            image: content.thumbnail_url || ''
+            image: content.thumbnail_url || '',
+            created_at: (content as MasterContent & { created_at?: string }).created_at || ''
           }));
 
           setRecommendedContents(formattedRecommended);
@@ -1504,7 +1518,8 @@ function FreeResultPage() {
               id: content.id,
               title: content.title,
               type: content.content_type as 'free' | 'paid',
-              image: content.thumbnail_url || ''
+              image: content.thumbnail_url || '',
+              created_at: (content as MasterContent & { created_at?: string }).created_at || ''
             }));
             
             setRecommendedContents(formattedRecommended);

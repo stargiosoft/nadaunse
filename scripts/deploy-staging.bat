@@ -133,13 +133,18 @@ call npx supabase functions deploy cleanup-unconfirmed-tags --project-ref %PROJE
 if errorlevel 1 goto :error
 
 echo.
-echo [26/26] trigger-rebuild
+echo [26/27] trigger-rebuild
 call npx supabase functions deploy trigger-rebuild --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo [27/27] index-now
+call npx supabase functions deploy index-now --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 스테이징 배포 완료! (26개 함수)
+echo ✅ 스테이징 배포 완료! (27개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 echo 📌 --no-verify-jwt 적용된 함수:

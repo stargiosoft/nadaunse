@@ -50,7 +50,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 31개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 32개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne v2 |
@@ -61,9 +61,9 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 ## 📊 주요 통계
 
 - **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 31개 (주간 보고서 4개 포함)
+- **Edge Functions**: 32개 (주간 보고서 4개 포함)
 - **페이지**: 41개
-- **UI 컴포넌트 (shadcn/ui)**: 48개
+- **UI 컴포넌트 (shadcn/ui)**: 52개
 
 ## 📚 문서
 
@@ -74,7 +74,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
 | [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (69개) |
-| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (31개) |
+| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (32개) |
 
 > **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
 
@@ -83,6 +83,22 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **Figma**: [운세 서비스 홈 화면](https://www.figma.com/design/bc3Qpt5d7QS33QrqQuevI2)
 - **GitHub**: https://github.com/stargiosoft/nadaunse
 - **Vercel**: https://vercel.com/stargiosofts-projects/nadaunse
+
+## 🆕 최근 주요 변경사항 (2026-02-10~11)
+
+### Google OAuth 팝업 모드 전환
+- **변경**: Google OAuth redirect 방식 → 팝업/새 탭 방식으로 전환
+- **원인**: iOS Safari에서 Google OAuth redirect가 히스토리 스택에 3-4개 항목 추가 → 뒤로가기 오작동
+- **영향**: auth.ts, AuthCallback.tsx, LoginPageNew.tsx, ExistingAccountPageNew.tsx
+- **상세**: [DECISIONS.md](./src/DECISIONS.md) → "2026-02-11 Google OAuth 팝업 모드 전환"
+
+### 유료 콘텐츠 통합 결과 페이지 (UnifiedResultPage)
+- **변경**: SajuResultPage + TarotResultPage → UnifiedResultPage로 통합
+- **효과**: 코드 중복 제거, 유지보수성 향상
+
+### 주간 보고서 컴포넌트 추가
+- **추가**: MyReportEmpty, WeeklyReportLoading, ReceiveMyAnalysis
+- **효과**: 빈 상태 UI, 로딩 상태, 분석 수신 플로우 개선
 
 ## 🆕 최근 주요 변경사항 (2026-02-09)
 
@@ -105,9 +121,9 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **효과**: StatsDashboard contentUsageRate > 100% 문제 해결
 - **영향**: auth.ts, HomePage.tsx, statsService.ts
 
-### 무료 콘텐츠 일일 제한 INSERT 방식 전환
-- **변경**: anonymous_free_views upsert → INSERT, UNIQUE 제약 제거
-- **효과**: 같은 콘텐츠 재조회도 일일 제한에 카운트
+### 무료 콘텐츠 일일 제한 upsert 방식
+- **방식**: anonymous_free_views에 upsert (fingerprint + content_id + viewed_date UNIQUE 인덱스 기반)
+- **효과**: 같은 콘텐츠 재조회 시 중복 방지, 다른 콘텐츠 조회만 일일 제한에 카운트
 
 ## 🆕 최근 주요 변경사항 (2026-02-03)
 
@@ -163,4 +179,4 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ---
 
-**최종 업데이트**: 2026-02-09
+**최종 업데이트**: 2026-02-12

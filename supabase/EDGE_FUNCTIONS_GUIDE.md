@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 32개
-> **최종 업데이트**: 2026-02-09
+> **총 함수 수**: 31개
+> **최종 업데이트**: 2026-02-12
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -143,23 +143,24 @@
 
 ---
 
-### 9️⃣ **SEO** (1개)
+### 9️⃣ **SEO** (2개)
 
 27. `generate-sitemap` - 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
+28. `index-now` - IndexNow 프로토콜로 검색엔진에 URL 즉시 제출 (네이버/Bing)
 
 ---
 
 ### 🔟 **소유자 확인** (2개)
 
-28. `get-order-owner` - 유료 콘텐츠 소유자 정보 조회 (계정 불일치 처리)
-29. `get-report-owner` - 주간 보고서 소유자 정보 조회 (계정 불일치 처리)
+29. `get-order-owner` - 유료 콘텐츠 소유자 정보 조회 (계정 불일치 처리)
+30. `get-report-owner` - 주간 보고서 소유자 정보 조회 (계정 불일치 처리)
 
 ---
 
 ### 1️⃣1️⃣ **유틸리티** (2개)
 
-30. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
-31. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
+31. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
+32. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
 
 ---
 
@@ -1474,7 +1475,7 @@ COMMIT;
 
 ---
 
-## 🔍 SEO Functions (1개)
+## 🔍 SEO Functions (2개)
 
 ### 1. `generate-sitemap`
 
@@ -1570,6 +1571,66 @@ npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjku
 - ✅ 정적 파일 관리 불필요
 - ✅ 인기순 정렬로 중요 페이지 우선 노출
 - ✅ 1시간 캐싱으로 Supabase 비용 절감
+
+### 2. `index-now`
+
+**역할**: IndexNow 프로토콜로 검색엔진(네이버/Bing/Yandex)에 URL 변경 즉시 알림
+
+**호출 시점**:
+- 콘텐츠 배포/업데이트 후
+- Vercel 빌드 완료 후
+- 관리자가 수동 호출
+
+**메서드**: `POST`
+
+**입력**:
+```json
+{
+  "urls": ["/product/123", "/free/content/456", "/"]
+}
+```
+- `urls`: 제출할 URL 배열 (상대 경로 또는 절대 URL)
+
+**출력**:
+```json
+{
+  "success": true,
+  "submitted": 3,
+  "urls": ["https://nadaunse.com/product/123", ...],
+  "status": 200
+}
+```
+
+**로직**:
+1. URL 목록을 절대 URL로 정규화
+2. `api.indexnow.org`에 POST 요청 (host, key, keyLocation, urlList)
+3. 응답 코드(200/202: 성공, 400/403/422/429: 실패) 처리
+
+**환경변수**: `INDEXNOW_API_KEY` (Supabase Dashboard에서 설정)
+
+**키 검증 파일**: `public/e32ae15605104f698d20fde140bc8e83.txt`
+- 빌드 시 `https://nadaunse.com/e32ae15605104f698d20fde140bc8e83.txt`로 서빙됨
+
+**배포 명령어**:
+```bash
+# 스테이징
+npx supabase functions deploy index-now --project-ref hyltbeewxaqashyivilu
+
+# 프로덕션
+npx supabase functions deploy index-now --project-ref kcthtpmxffppfbkjjkub
+```
+
+**테스트**:
+```bash
+curl -X POST https://hyltbeewxaqashyivilu.supabase.co/functions/v1/index-now \
+  -H "Authorization: Bearer {SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"urls": ["/"]}'
+```
+
+**한계**:
+- 구글은 IndexNow 미지원 (Google Search Console에서 별도 URL 검사 필요)
+- 제출해도 색인 보장은 아님 (검색엔진 판단에 따름)
 
 ---
 
@@ -1716,6 +1777,7 @@ npx supabase functions deploy generate-sitemap --project-ref kcthtpmxffppfbkjjku
 | `process-payment` | 💳 결제 | POST | - | 결제 완료 후 |
 | `process-refund` | 💳 환불 | POST | - | 환불 요청 시 |
 | `generate-sitemap` | 🔍 SEO | GET | - | /sitemap.xml 요청 시 |
+| `index-now` | 🔍 SEO | POST | - | 콘텐츠 배포/업데이트 후 |
 | `extract-trait-tags` | 🤖 AI 생성 | POST | GPT-5-nano | 운세 결과 페이지 진입 시 |
 | `get-ga-stats` | 📊 통계 | GET | GA Data API | 통계 대시보드 진입 시 |
 | `get-order-owner` | 🔐 소유자 확인 | POST | - | 유료 콘텐츠 계정 불일치 시 |
@@ -1774,6 +1836,7 @@ supabase functions deploy generate-master-content
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 2.0.0 | 2026-02-12 | `index-now` 함수 추가 (IndexNow 프로토콜로 검색엔진 URL 즉시 제출), SEO 카테고리 2개로 확장 |
 | 1.9.0 | 2026-02-09 | `extract-trait-tags`에 `rejectedTags` 파라미터 추가, `generate-free-preview` upsert→INSERT 변경 |
 | 1.8.0 | 2026-02-03 | `get-order-owner`, `get-report-owner` 함수 추가 (계정 불일치 시 소유자 정보 마스킹 표시), 총 32개 |
 | 1.7.0 | 2026-02-02 | `get-ga-stats` 함수 추가 (Google Analytics 통계 조회), 모니터링/통계 카테고리 통합 |

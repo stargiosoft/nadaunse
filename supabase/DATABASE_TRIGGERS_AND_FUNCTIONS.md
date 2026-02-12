@@ -2,7 +2,8 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **최종 업데이트**: 2026-02-09
+> **Triggers**: 5개 | **Functions**: 8개 | **pg_cron Jobs**: 4개
+> **최종 업데이트**: 2026-02-12
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -514,6 +515,54 @@ SELECT cron.schedule(
 - 당일 데이터는 유지하여 일일 제한 기능 정상 동작 보장
 - 마이그레이션: `supabase/migrations/20260206_cleanup_anonymous_free_views_cron.sql`
 
+### 4. `weekly-clicks-reset` (주간 클릭수 리셋) — NEW 2026-02-10
+
+- **스케줄**: `0 15 * * 0` (매주 일요일 UTC 15:00 = 월요일 KST 00:00)
+- **용도**: 마스터 콘텐츠의 주간 클릭수를 리셋하고 이전 값 보관
+- **대상 테이블**: `master_contents`
+- **실행 방식**: 직접 SQL 실행 (UPDATE)
+
+```sql
+SELECT cron.schedule(
+  'weekly-clicks-reset',
+  '0 15 * * 0',
+  $$
+  UPDATE master_contents
+  SET last_weekly_clicks = weekly_clicks,
+      weekly_clicks = 0;
+  $$
+);
+```
+
+**설명**:
+- `weekly_clicks` 값을 `last_weekly_clicks`에 보관 후 0으로 리셋
+- 매주 월요일 00:00 KST에 실행되어 전주 클릭 통계 보존
+
+### 수동 실행 함수: `reset_weekly_clicks()` — NEW 2026-02-10
+
+- **용도**: 주간 클릭수 리셋을 수동으로 실행 (테스트/긴급 대응용)
+- **리턴**: `jsonb` (`{ success: true, updated_count: N }`)
+
+```sql
+CREATE OR REPLACE FUNCTION reset_weekly_clicks()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_updated_count integer;
+BEGIN
+  UPDATE master_contents
+  SET last_weekly_clicks = weekly_clicks,
+      weekly_clicks = 0;
+  GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+  RETURN jsonb_build_object(
+    'success', true,
+    'updated_count', v_updated_count
+  );
+END $$;
+```
+
 ### pg_cron 스케줄 요약
 
 | Job Name | 스케줄 | 용도 |
@@ -521,6 +570,7 @@ SELECT cron.schedule(
 | `weekly-report-batch` | 매주 화 06:30 UTC (15:30 KST) | 주간 보고서 일괄 생성 |
 | `cleanup-unconfirmed-tags` | 매일 00:00 UTC (09:00 KST) | 미확인 태그 자동 삭제 |
 | `cleanup-anonymous-free-views` | 매일 00:00 UTC (09:00 KST) | 비회원 조회 기록 자동 삭제 |
+| `weekly-clicks-reset` | 매주 일 15:00 UTC (월 00:00 KST) | 주간 클릭수 리셋 |
 
 ### pg_cron 관련 테이블
 

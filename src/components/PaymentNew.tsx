@@ -106,6 +106,12 @@ export default function PaymentNew({
   const paymentInitiatedRef = useRef(false);
   // ⭐ 결제 오버레이 감지용 interval ref
   const paymentOverlayCheckRef = useRef<NodeJS.Timeout | null>(null);
+  // ⭐ request_pay 호출 시각 (grace period 판단용)
+  const paymentRequestedAtRef = useRef<number>(0);
+  // ⭐ 현재 결제 수단 ref (카카오페이 외부 앱 전환 감지용)
+  const paymentMethodRef = useRef<'kakaopay' | 'card' | null>(null);
+  // ⭐ 결제 시작 후 grace period (ms) - 이 시간 동안 visibilitychange/popstate 무시
+  const PAYMENT_GRACE_PERIOD_MS = 5000;
 
   // ⭐ 결제 오버레이 감지 시작/중지 함수
   const startPaymentOverlayWatch = (finalContentId: string | undefined) => {
@@ -116,11 +122,26 @@ export default function PaymentNew({
 
     // 첫 번째 체크에서 오버레이가 있는지 확인 (기준점 설정)
     let overlayWasFound = false;
+    let checkCount = 0;
+    // ⭐ 안전 타임아웃: 오버레이/리다이렉트 없이 5초 경과 시 로딩 해제
+    const MAX_CHECKS_WITHOUT_OVERLAY = 10; // 5초 (500ms × 10)
 
     paymentOverlayCheckRef.current = setInterval(() => {
       // 결제가 진행 중인 상태에서만 체크
       if (!paymentInitiatedRef.current) {
         stopPaymentOverlayWatch();
+        return;
+      }
+
+      checkCount++;
+
+      // ⭐ 안전 타임아웃: 오버레이를 한 번도 못 찾은 채 5초 경과
+      // → 모바일 리다이렉트 실패 또는 PG 연동 오류로 판단
+      if (!overlayWasFound && checkCount >= MAX_CHECKS_WITHOUT_OVERLAY) {
+        console.log('⏰ [PaymentNew] 안전 타임아웃 - 결제 오버레이/리다이렉트 감지 실패 (15초)');
+        stopPaymentOverlayWatch();
+        paymentInitiatedRef.current = false;
+        setIsProcessingPayment(false);
         return;
       }
 
@@ -266,15 +287,41 @@ export default function PaymentNew({
       console.log('🔄 [PaymentNew] 결제 중 뒤로가기/복귀 감지 → 뒤로가기');
       stopPaymentOverlayWatch();
       paymentInitiatedRef.current = false;
+      paymentMethodRef.current = null;
       setIsProcessingPayment(false);
+      // ⭐ pushState로 추가된 history entry 정리
+      window.history.replaceState({}, '', window.location.href);
       onBack();
+    };
+
+    // ⭐ grace period 체크: request_pay 직후 SDK 처리 시간 동안 이벤트 무시
+    const isInGracePeriod = () => {
+      if (paymentRequestedAtRef.current === 0) return false;
+      const elapsed = Date.now() - paymentRequestedAtRef.current;
+      return elapsed < PAYMENT_GRACE_PERIOD_MS;
     };
 
     // ⭐ popstate: 브라우저 뒤로가기/앞으로가기 버튼 클릭 시 발생
     const handlePopState = () => {
-      console.log('🔄 [PaymentNew] popstate 이벤트, paymentInitiated:', paymentInitiatedRef.current);
+      console.log('🔄 [PaymentNew] popstate 이벤트, paymentInitiated:', paymentInitiatedRef.current, ', paymentMethod:', paymentMethodRef.current);
 
       if (paymentInitiatedRef.current) {
+        // ⭐ grace period 중이면 무시 (SDK가 아직 처리 중)
+        if (isInGracePeriod()) {
+          console.log('⏳ [PaymentNew] popstate: grace period 중 → 무시');
+          return;
+        }
+
+        // ⭐ 카카오페이는 외부 앱 전환 방식이므로 popstate에서 뒤로가기하지 않음
+        // pushState로 추가된 entry가 pop되면 상태만 초기화하고 페이지에 머무름
+        if (paymentMethodRef.current === 'kakaopay') {
+          console.log('⏳ [PaymentNew] popstate: 카카오페이 → 상태 초기화 (페이지 유지)');
+          paymentInitiatedRef.current = false;
+          paymentMethodRef.current = null;
+          setIsProcessingPayment(false);
+          return;
+        }
+
         // ⭐ 결제 오버레이가 아직 열려있으면 리다이렉트하지 않음
         if (isPaymentOverlayOpen()) {
           console.log('⚠️ [PaymentNew] popstate: 결제 오버레이가 아직 열려있음 → 리다이렉트 취소');
@@ -291,6 +338,18 @@ export default function PaymentNew({
       console.log('🔄 [PaymentNew] pageshow 이벤트, persisted:', event.persisted, ', paymentInitiated:', paymentInitiatedRef.current);
 
       if (paymentInitiatedRef.current) {
+        // ⭐ grace period 중이면 무시
+        if (isInGracePeriod()) {
+          console.log('⏳ [PaymentNew] pageshow: grace period 중 → 무시');
+          return;
+        }
+
+        // ⭐ 카카오페이는 외부 앱 전환 방식이므로 뒤로가기하지 않음
+        if (paymentMethodRef.current === 'kakaopay') {
+          console.log('⏳ [PaymentNew] pageshow: 카카오페이 → 콜백 대기 (페이지 유지)');
+          return;
+        }
+
         // ⭐ 결제 오버레이가 아직 열려있으면 리다이렉트하지 않음
         if (isPaymentOverlayOpen()) {
           console.log('⚠️ [PaymentNew] pageshow: 결제 오버레이가 아직 열려있음 → 리다이렉트 취소');
@@ -309,9 +368,26 @@ export default function PaymentNew({
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('🔄 [PaymentNew] visibilitychange visible, paymentInitiated:', paymentInitiatedRef.current);
+        console.log('🔄 [PaymentNew] visibilitychange visible, paymentInitiated:', paymentInitiatedRef.current, ', paymentMethod:', paymentMethodRef.current);
 
         if (paymentInitiatedRef.current) {
+          // ⭐ grace period 중이면 무시 (SDK가 결제 처리 중)
+          if (isInGracePeriod()) {
+            console.log('⏳ [PaymentNew] visibilitychange: grace period 중 → 무시');
+            return;
+          }
+
+          // ⭐ 카카오페이는 외부 앱 전환 방식이므로 즉시 뒤로가기하지 않음
+          // 앱에서 복귀 → 로딩만 해제하고 페이지에 머무름
+          // PortOne 콜백이 나중에 도착하면 정상 처리됨 (성공 시 onPurchase, 실패 시 alert)
+          if (paymentMethodRef.current === 'kakaopay') {
+            console.log('⏳ [PaymentNew] visibilitychange: 카카오페이 앱 복귀 → 로딩 해제 (콜백 대기)');
+            setIsProcessingPayment(false);
+            // paymentInitiatedRef는 유지 → 콜백 도착 시 처리
+            // (다시 구매 버튼 클릭 시 isProcessingPayment가 false이므로 재시도 가능)
+            return;
+          }
+
           // ⭐ 결제 오버레이가 아직 열려있으면 리다이렉트하지 않음
           if (isPaymentOverlayOpen()) {
             console.log('⚠️ [PaymentNew] visibilitychange: 결제 오버레이가 아직 열려있음 → 리다이렉트 취소');
@@ -778,6 +854,7 @@ export default function PaymentNew({
     const redirectUrl = `${window.location.origin}/payment/complete?contentId=${finalContentId}&amount=${totalPrice}&payMethod=${selectedPaymentMethod === "kakaopay" ? "kakaopay" : "card"}&userCouponId=${selectedCouponId || ""}`;
 
     // 결제 요청 파라미터 구성
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const paymentParams: any = {
       pg: pgProvider,
       pay_method: "card",
@@ -787,35 +864,62 @@ export default function PaymentNew({
       buyer_name: "구매자명",
       buyer_tel: "010-0000-0000",
       m_redirect_url: redirectUrl,
-      popup: false,
     };
+
+    // ⭐ PC에서만 popup: false (iframe 모드)
+    // 모바일에서는 popup 미설정 → SDK가 자동으로 redirect 모드 사용
+    // PortOne SDK 3.43.0: 모바일에서 popup:false가 iframe을 강제하면 결제 UI가 렌더링 안됨
+    if (!isMobile) {
+      paymentParams.popup = false;
+    }
 
     // 다날 카드결제 시 디지털 상품 설정
     if (selectedPaymentMethod === "card") {
       paymentParams.digital = true;
     }
 
+    console.log('🔄 [PaymentNew] 환경:', isMobile ? '모바일(redirect)' : 'PC(iframe)', ', 결제수단:', selectedPaymentMethod);
+
     // 포트원 결제 요청
     // ⭐ PG 팝업/리다이렉트 전에 ref 설정 (뒤로가기 감지용)
     paymentInitiatedRef.current = true;
+    paymentMethodRef.current = selectedPaymentMethod;
+    // ⭐ grace period 시작 (visibilitychange/popstate가 SDK 처리를 방해하지 않도록)
+    paymentRequestedAtRef.current = Date.now();
 
-    // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
-    window.history.pushState({ paymentInProgress: true }, '', window.location.href);
+    // ⭐ PC에서만 history pushState + overlay watch (iframe 모드용)
+    // 모바일 redirect 모드에서는 pushState가 SDK와 충돌할 수 있으므로 스킵
+    if (!isMobile) {
+      window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
-    // ⭐ 결제 오버레이 감지 시작 (iframe이 사라지면 뒤로가기로 판단)
-    // 약간의 딜레이 후 시작 (iframe이 로드될 시간 확보)
-    setTimeout(() => {
-      startPaymentOverlayWatch(finalContentId);
-    }, 1000);
+      // iframe 감지 시작 (PC 전용)
+      setTimeout(() => {
+        startPaymentOverlayWatch(finalContentId);
+      }, 1000);
+
+      // 안전 장치: 2초 후 로딩 오버레이 강제 해제
+      setTimeout(() => {
+        if (paymentInitiatedRef.current) {
+          console.log('⏰ [PaymentNew] 2초 안전 타임아웃 → 로딩 오버레이 강제 해제');
+          setIsProcessingPayment(false);
+        }
+      }, 2000);
+    }
+    // 모바일: SDK가 redirect하므로 로딩은 페이지 전환 시 자연스럽게 사라짐
+    // m_redirect_url로 복귀 시 PaymentComplete 페이지가 결과 처리
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
+    console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
 
+    try {
     window.IMP.request_pay(
       paymentParams,
       async function (response: any) {
         // ⭐ 콜백 실행 = 정상 플로우 → ref 리셋 및 오버레이 감지 중지
         stopPaymentOverlayWatch();
         paymentInitiatedRef.current = false;
+        paymentMethodRef.current = null;
+        paymentRequestedAtRef.current = 0;
         setIsProcessingPayment(false);
         console.log('🔄 [PaymentNew] 포트원 콜백 수신, success:', response.success);
 
@@ -931,6 +1035,16 @@ export default function PaymentNew({
         }
       },
     );
+    } catch (error) {
+      // ⭐ PortOne SDK request_pay 자체가 에러를 throw한 경우
+      console.error('❌ [PaymentNew] request_pay 호출 에러:', error);
+      stopPaymentOverlayWatch();
+      paymentInitiatedRef.current = false;
+      paymentMethodRef.current = null;
+      setIsProcessingPayment(false);
+      window.history.replaceState({}, '', window.location.href);
+      alert('결제 모듈에 문제가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   // ⭐ 콘텐츠 + 쿠폰 모두 로딩 완료 후 표시 (가격+혜택가 동시 표시)

@@ -20,7 +20,7 @@ function DealCard() {
       <div className="flex flex-col items-start w-full" style={{ gap: '8px' }}>
         {/* Thumbnail */}
         <div className="relative shrink-0 w-full" style={{ height: '120px', borderRadius: '12px' }}>
-          <img alt="" className="absolute inset-0 max-w-none object-cover" style={{ borderRadius: '12px', width: '100%', height: '100%' }} src={imgThumbnail} />
+          <img alt="운세 콘텐츠 썸네일" className="absolute inset-0 max-w-none object-cover" style={{ borderRadius: '12px', width: '100%', height: '100%' }} src={imgThumbnail} />
         </div>
 
         {/* Price Info */}
@@ -101,7 +101,7 @@ function DealCard2() {
       <div className="flex flex-col items-start w-full" style={{ gap: '8px' }}>
         {/* Thumbnail */}
         <div className="relative shrink-0 w-full" style={{ height: '120px', borderRadius: '12px' }}>
-          <img alt="" className="absolute inset-0 max-w-none object-cover" style={{ borderRadius: '12px', width: '100%', height: '100%' }} src={imgThumbnail} />
+          <img alt="운세 콘텐츠 썸네일" className="absolute inset-0 max-w-none object-cover" style={{ borderRadius: '12px', width: '100%', height: '100%' }} src={imgThumbnail} />
         </div>
 
         {/* Price Info */}

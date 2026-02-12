@@ -27,6 +27,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { freeContentService, MasterContent, Question } from '../lib/freeContentService';
+import { supabase } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
 import { motion } from "motion/react";
 import FreeContentLoading from './FreeContentLoading';
@@ -129,6 +130,23 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   const scrollObserverRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null); // ⭐ 스크롤 컨테이너 ref (바운스 방지)
   const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false); // ⭐ 비회원 제한 바텀시트
+  const [isRead, setIsRead] = useState(false); // ⭐ 읽기 기록 여부
+
+  // ⭐ 읽기 기록 확인 (free_content_records 테이블)
+  useEffect(() => {
+    const checkReadHistory = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data } = await supabase
+        .from('free_content_records')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('content_id', contentId)
+        .limit(1);
+      if (data && data.length > 0) setIsRead(true);
+    };
+    checkReadHistory();
+  }, [contentId]);
 
   // ⭐ 서버 일일 제한(DAILY_LIMIT_REACHED)으로 돌아온 경우 LoginBottomSheet 자동 표시
   useEffect(() => {
@@ -426,6 +444,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
     isLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
+    isRead, // ⭐ 읽기 기록 여부
     // Actions
     handlePurchase,
     setShowResult,
@@ -561,6 +580,7 @@ export default function FreeContentDetail({
     scrollObserverRef,
     scrollContainerRef, // ⭐ 바운스 방지용 스크롤 컨테이너
     isLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
+    isRead, // ⭐ 읽기 기록 여부
     handlePurchase,
     setShowResult,
     setIsLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
@@ -605,6 +625,7 @@ export default function FreeContentDetail({
   if (showResult && generatedResults.length > 0) {
     return (
       <FreeContentResult
+        contentId={contentId}
         contentTitle={content.title}
         contentThumbnail={content.thumbnail_url}
         questions={generatedResults}
@@ -655,7 +676,7 @@ export default function FreeContentDetail({
           >
           {/* Product Image & Info */}
           <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
-            <ProductInfo content={content} />
+            <ProductInfo content={content} isRead={isRead} />
           </motion.div>
 
           {/* Divider */}

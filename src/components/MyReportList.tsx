@@ -75,7 +75,7 @@ function WeeklyTagSummary({ count }: { count: number }) {
 
   const handleGoToTags = () => {
     localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   return (
@@ -137,7 +137,7 @@ function WeeklyEmptySummary() {
 
   const handleGoToTags = () => {
     localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   return (
@@ -1410,7 +1410,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
           <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
             <div className="flex items-center justify-between" style={{ padding: '4px 12px', width: '100%' }}>
-              <ArrowLeft onClick={onBack || (() => navigate('/'))} />
+              <ArrowLeft onClick={onBack || (() => navigate('/', { replace: true }))} />
               <p style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
                 fontSize: '18px',

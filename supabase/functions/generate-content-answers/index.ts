@@ -564,12 +564,15 @@ serve(async (req) => {
       } else {
         // 2단계: 본인 사주에서 전화번호 조회 (notes='본인'인 사주)
         // ⭐️ is_primary는 대표 사주 (함께보는 사주일 수 있음), notes='본인'이 실제 본인 사주
-        const { data: mySaju, error: mySajuError } = await supabase
+        const { data: mySajuRows, error: mySajuError } = await supabase
           .from('saju_records')
           .select('full_name, phone_number')
           .eq('user_id', orderInfo.user_id)
           .eq('notes', '본인')
-          .single()
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        const mySaju = mySajuRows?.[0] || null
 
         if (mySajuError || !mySaju) {
           console.warn('⚠️ 본인 사주 조회 실패:', mySajuError)

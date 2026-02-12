@@ -107,6 +107,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [isPrimarySajuChangeDialogOpen, setIsPrimarySajuChangeDialogOpen] = useState(false);
   const [pendingPrimarySajuId, setPendingPrimarySajuId] = useState<string | null>(null);
+  const [isChangingPrimary, setIsChangingPrimary] = useState(false);
   
   // ⭐ 케밥 메뉴 상태
   const [kebabMenuOpen, setKebabMenuOpen] = useState(false);
@@ -673,87 +674,87 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
    * 대표 사주 변경 확인 핸들러
    */
   const handleConfirmPrimarySajuChange = async () => {
-    if (!pendingPrimarySajuId) return;
+    if (!pendingPrimarySajuId || isChangingPrimary) return;
+
+    setIsChangingPrimary(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
-        toast.error('로그인이 필요합다');
+        toast.error('로그인이 필요합니다');
+        setIsChangingPrimary(false);
         return;
       }
 
       console.log('🔄 [대표사주변경] 시작:', pendingPrimarySajuId);
 
-      // 1단계: 기존 대표 사주들의 is_primary를 false로 변경
-      const { error: resetError } = await supabase
-        .from('saju_records')
-        .update({ is_primary: false })
-        .eq('user_id', user.id)
-        .eq('is_primary', true);
-
-      if (resetError) {
-        console.error('❌ [대표사주변경] 기존 대표 해제 실패:', resetError);
-        throw resetError;
-      }
-
-      // 2단계: 새로운 대표 주의 is_primary를 true로 변경
-      const { error: updateError } = await supabase
-        .from('saju_records')
-        .update({ is_primary: true })
-        .eq('id', pendingPrimarySajuId);
-
-      if (updateError) {
-        console.error('❌ [대표사주변경] 새 대표 설정 실패:', updateError);
-        throw updateError;
-      }
-
-      console.log('✅ [대표사주변경] 완료:', pendingPrimarySajuId);
-
-      // ⭐ 캐시 선행 업데이트: 새 대표 사주 조회해서 캐시에 저장
-      // → ProfilePage에서 백그라운드 API 호출 없이 즉시 표시
-      const { data: newPrimarySaju, error: fetchNewPrimaryError } = await supabase
-        .from('saju_records')
-        .select('*')
-        .eq('id', pendingPrimarySajuId)
-        .single();
-
-      if (!fetchNewPrimaryError && newPrimarySaju) {
-        localStorage.setItem('primary_saju', JSON.stringify(newPrimarySaju));
-        console.log('✅ [대표사주변경] 캐시 선행 업데이트 완료 - 새 대표 사주:', newPrimarySaju.full_name);
-
-        // saju_records_cache도 업데이트 (is_primary 상태 반영)
-        const { data: updatedSajuList } = await supabase
+      // 1단계: 기존 대표 해제 + 새 대표 설정 병렬 실행
+      const [resetResult, updateResult] = await Promise.all([
+        supabase
           .from('saju_records')
-          .select('*')
+          .update({ is_primary: false })
           .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
+          .eq('is_primary', true),
+        supabase
+          .from('saju_records')
+          .update({ is_primary: true })
+          .eq('id', pendingPrimarySajuId),
+      ]);
 
-        if (updatedSajuList) {
-          localStorage.setItem('saju_records_cache', JSON.stringify(updatedSajuList));
+      if (resetResult.error) {
+        console.error('❌ [대표사주변경] 기존 대표 해제 실패:', resetResult.error);
+        throw resetResult.error;
+      }
+      if (updateResult.error) {
+        console.error('❌ [대표사주변경] 새 대표 설정 실패:', updateResult.error);
+        throw updateResult.error;
+      }
+
+      console.log('✅ [대표사주변경] DB 업데이트 완료:', pendingPrimarySajuId);
+
+      // 2단계: 낙관적 캐시 업데이트 (DB 재조회 없이 로컬 데이터로 즉시 반영)
+      const cachedListJson = localStorage.getItem('saju_records_cache');
+      if (cachedListJson) {
+        try {
+          const cachedList = JSON.parse(cachedListJson) as SajuInfo[];
+          const updatedList = cachedList.map(s => ({
+            ...s,
+            is_primary: s.id === pendingPrimarySajuId,
+          }));
+          const newPrimary = updatedList.find(s => s.id === pendingPrimarySajuId);
+
+          localStorage.setItem('saju_records_cache', JSON.stringify(updatedList));
+          if (newPrimary) {
+            localStorage.setItem('primary_saju', JSON.stringify(newPrimary));
+            console.log('✅ [대표사주변경] 캐시 낙관적 업데이트 완료 - 새 대표 사주:', newPrimary.full_name);
+          }
+        } catch {
+          // 캐시 파싱 실패 시 무효화
+          localStorage.removeItem('primary_saju');
+          localStorage.removeItem('saju_records_cache');
+          console.log('🗑️ [대표사주변경] 캐시 무효화 (파싱 실패)');
         }
       } else {
-        // 조회 실패 시 기존 방식대로 무효화
         localStorage.removeItem('primary_saju');
-        localStorage.removeItem('saju_records_cache');
-        console.log('🗑️ [대표사주변경] 캐시 무효화 (조회 실패)');
+        console.log('🗑️ [대표사주변경] 캐시 무효화 (캐시 없음)');
       }
 
-      // 3단계: UI 업데이트
+      // 3단계: UI 업데이트 + 다이얼로그 닫기 + 프로필 이동
       setSelectedSajuId(pendingPrimarySajuId);
       setIsPrimarySajuChangeDialogOpen(false);
       setPendingPrimarySajuId(null);
 
-      // 4단계: 토스트 메시지 표시 (2.2초 후 자동 사라짐)
       toast.success('대표 사주가 변경되었습니다.', { duration: 2200 });
 
-      // 5단계: 프로필 페이지로 이동 (토스트는 그대로 노출됨)
       onBack();
     } catch (error) {
       console.error('❌ [대표사주변경] 실패:', error);
       toast.error('대표 사주 변경에 실패했습니다');
       setIsPrimarySajuChangeDialogOpen(false);
       setPendingPrimarySajuId(null);
+    } finally {
+      setIsChangingPrimary(false);
     }
   };
 
@@ -1097,10 +1098,11 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         )}
       </div>
       <SessionExpiredDialog isOpen={isSessionExpired} />
-      <PrimarySajuChangeDialog 
-        isOpen={isPrimarySajuChangeDialogOpen} 
-        onConfirm={handleConfirmPrimarySajuChange} 
-        onCancel={handleCancelPrimarySajuChange} 
+      <PrimarySajuChangeDialog
+        isOpen={isPrimarySajuChangeDialogOpen}
+        isLoading={isChangingPrimary}
+        onConfirm={handleConfirmPrimarySajuChange}
+        onCancel={handleCancelPrimarySajuChange}
       />
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}

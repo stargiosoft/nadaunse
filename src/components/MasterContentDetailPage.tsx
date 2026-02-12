@@ -16,6 +16,7 @@ import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
 import { trackViewItem, trackPurchaseClick, trackPageView } from '../utils/analytics';
 import SEO from './SEO';
+import { ContentTags, isContentNew } from './ContentTags';
 
 // Animation Variants
 const staggerContainer = {
@@ -59,6 +60,7 @@ interface MasterContent {
   price_original: number;
   price_discount: number;
   discount_rate: number;
+  created_at?: string;
 }
 
 interface UserCoupon {
@@ -157,7 +159,34 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
   const [hasExistingAnswers, setHasExistingAnswers] = useState(false); // ⭐ 이미 생성된 답변 존재 여부
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false); // ⭐ 초기값 false
+  const [isRead, setIsRead] = useState(false); // ⭐ 읽기 기록 여부
 
+  // ⭐ 읽기 기록 확인 (orders + free_content_records)
+  useEffect(() => {
+    const checkReadHistory = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+      // 유료: orders에서 success=true 확인
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('content_id', contentId)
+        .eq('pstatus', 'completed')
+        .limit(1);
+      if (orders && orders.length > 0) { setIsRead(true); return; }
+      // 무료: free_content_records 확인
+      const { data: freeRecords } = await supabase
+        .from('free_content_records')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('content_id', contentId)
+        .limit(1);
+      if (freeRecords && freeRecords.length > 0) setIsRead(true);
+    };
+    checkReadHistory();
+  }, [contentId]);
 
   // 🛡️ bfcache 핸들러: iOS Safari bfcache 복원 시 홈으로 이동
   useEffect(() => {
@@ -331,7 +360,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         const [contentResult, questionsResult] = await Promise.all([
           supabase
             .from('master_contents')
-            .select('id, title, content_type, category_main, thumbnail_url, description, questioner_info, weekly_clicks, view_count, price_original, price_discount, discount_rate, status')
+            .select('id, title, content_type, category_main, thumbnail_url, description, questioner_info, weekly_clicks, view_count, price_original, price_discount, discount_rate, status, created_at')
             .eq('id', contentId)
             .eq('status', 'deployed')
             .single(),
@@ -1059,7 +1088,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full mt-0 pt-0">
                 <div className="aspect-[391/270] relative shrink-0 w-full bg-[#f0f0f0]">
                   {content.thumbnail_url ? (
-                    <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={content.thumbnail_url} />
+                    <img alt={`${content.title} 썸네일`} className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={content.thumbnail_url} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] text-[#999999]">이미지 없음</p>
@@ -1071,11 +1100,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     <div className="box-border content-stretch flex flex-col gap-[16px] items-end px-[20px] py-0 relative w-full">
                       <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
                         <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[8px] py-[4px] relative rounded-[8px] shrink-0">
-                            <p className="font-medium leading-[16px] not-italic relative shrink-0 text-[#41a09e] text-[12px] text-nowrap tracking-[-0.24px] whitespace-pre">
-                              {isPaid ? '심화 해석판' : '무료 체험판'}
-                            </p>
-                          </div>
+                          <ContentTags
+                            isPaid={isPaid}
+                            isNew={isContentNew(content.created_at)}
+                            isRead={isRead}
+                          />
                           <div className="relative shrink-0 w-full">
                             <div className="size-full">
                               <div className="box-border content-stretch flex flex-col gap-[10px] items-start px-[2px] py-0 relative w-full">
@@ -1546,7 +1575,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             </div>
                             <div className="h-[65px] relative shrink-0 w-[50px]">
                               <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                                <img alt="" className="absolute h-[123.53%] left-[-13.78%] max-w-none top-[-11.76%] w-[125.64%]" src={characterImg} />
+                                <img alt="나다운세 캐릭터" className="absolute h-[123.53%] left-[-13.78%] max-w-none top-[-11.76%] w-[125.64%]" src={characterImg} />
                               </div>
                             </div>
                           </div>

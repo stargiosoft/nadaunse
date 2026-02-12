@@ -60,7 +60,7 @@ function Container1({ quote }: { quote: string }) {
 function ImageSection({ quote }: { quote: string }) {
   return (
     <div className="flex flex-col items-start justify-end relative shrink-0 w-full" style={{ height: '270px', padding: '16px 20px' }}>
-      <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none" style={{ width: '100%', height: '100%' }} src={imgImage} />
+      <img alt="나다움 태그 배경" className="absolute inset-0 max-w-none object-cover pointer-events-none" style={{ width: '100%', height: '100%' }} src={imgImage} />
       <Container1 quote={quote} />
     </div>
   );
