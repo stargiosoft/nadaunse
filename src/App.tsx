@@ -67,9 +67,8 @@ import AuthCallback from './pages/AuthCallback';
 import { allProducts } from './data/products';
 import { initGA, trackPageView } from './utils/analytics';
 import { supabase } from './lib/supabase';
-import { Toaster, toast as sonnerToast } from 'sonner';
+import { Toaster } from 'sonner';
 import { toast } from './lib/toast'; // ⭐ 커스텀 토스트 (subtitle 지원)
-import { Toast } from './components/ui/Toast';
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
 import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 페이지 이미지 프리로드
 import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
@@ -158,10 +157,10 @@ function LoginToast() {
       if (showTagSavedToast === 'true') {
         sessionStorage.removeItem('show_tag_saved_toast');
 
-        sonnerToast.custom(
-          () => <Toast type="positive" message="태그가 저장됐어요!" subtitle="프로필에서 확인할 수 있어요" />,
-          { duration: 3000 }
-        );
+        toast.success('태그가 저장됐어요!', {
+          subtitle: '프로필에서 확인할 수 있어요',
+          duration: 3000,
+        });
 
         console.log('🎉 [Toast] 태그 저장 토스트 표시');
         return; // 태그 저장 토스트를 표시했으면 로그인 토스트는 표시하지 않음
@@ -176,11 +175,8 @@ function LoginToast() {
         // 플래그 즉시 삭제 (중복 표시 방지)
         sessionStorage.removeItem('show_login_toast');
 
-        // 토스트 표시 (2.2초간)
-        sonnerToast.custom(
-          () => <Toast type="positive" message="로그인 되었어요, 반가워요" />,
-          { duration: 2200 }
-        );
+        // 토스트 표시 (2.2초간) - toast 래퍼 사용 (unstyled: true 포함으로 auto-dismiss 보장)
+        toast.success('로그인 되었어요, 반가워요', { duration: 2200 });
 
         console.log('🎉 [LoginToast] 로그인 성공 토스트 표시');
       }
@@ -3221,11 +3217,8 @@ function ReportWeeklyMemoEditWrapper() {
 
   // 다음 버튼: 저장 후 보고서 리스트로 돌아가기 (ReportWeeklyMemoQuickEdit 내부에서 저장 처리)
   const handleNext = () => {
-    // 토스트 표시
-    sonnerToast.custom(
-      () => <Toast type="positive" message="수정이 반영됐어요." />,
-      { duration: 2200 }
-    );
+    // 토스트 표시 - toast 래퍼 사용 (unstyled: true 포함으로 auto-dismiss 보장)
+    toast.success('수정이 반영됐어요.', { duration: 2200 });
 
     // 보고서 리스트로 이동
     navigate('/my-report-list', { replace: true });
