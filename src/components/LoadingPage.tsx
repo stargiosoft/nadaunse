@@ -8,6 +8,7 @@ import { preloadImages } from '../lib/imagePreloader';
 import { motion } from "motion/react";
 import kakaoIcon from '../assets/loading/kakao-icon.svg';
 import tarotCardBack from '../assets/f494ca2b3b180a2d66b2960718e3e515db3248a2.png';
+import { ContentTags, isContentNew } from './ContentTags';
 
 // 타로 배경 이미지 - public 폴더에서 절대 경로로 참조
 const tarotBackground = "/tarot-shuffle-background.jpg";
@@ -18,6 +19,7 @@ interface FreeContent {
   title: string;
   thumbnail_url: string | null;
   weekly_clicks: number;
+  created_at: string;
 }
 
 // ⭐ 무료 콘텐츠 캐시 키 (5분 만료)
@@ -119,6 +121,9 @@ export default function LoadingPage() {
   // ⭐ 현재 콘텐츠의 카테고리 (다른 운세 보기 클릭 시 홈 필터에 사용)
   const [contentCategory, setContentCategory] = useState<string | null>(null);
 
+  // ⭐ 읽기 기록 (ContentTags용)
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
+
   // ⭐ iOS Safari 고스트 클릭 방지 (페이지 마운트 후 500ms 동안 버튼 클릭 무시)
   const mountTimeRef = useRef<number>(Date.now());
 
@@ -190,6 +195,22 @@ export default function LoadingPage() {
 
     fetchContentCategory();
   }, [contentId]);
+
+  // ⭐ 읽기 기록 fetch (ContentTags 읽어봄 표시용)
+  useEffect(() => {
+    const fetchReadHistory = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+      const ids = new Set<string>();
+      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed');
+      if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
+      const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
+      if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
+      setReadContentIds(ids);
+    };
+    fetchReadHistory();
+  }, []);
 
   // ⭐ 결과 페이지 에셋 프리로드 (대기 시간 활용)
   // 사용자가 기다리는 동안 백그라운드로 에셋 로드 → AI 완료 시 즉시 렌더링
@@ -266,7 +287,7 @@ export default function LoadingPage() {
         // ⭐ master_contents에서 무료 콘텐츠 조회 (weekly_clicks 내림차순 정렬)
         const { data: contents, error: contentsError } = await supabase
           .from('master_contents')
-          .select('id, title, thumbnail_url, weekly_clicks')
+          .select('id, title, thumbnail_url, weekly_clicks, created_at')
           .eq('content_type', 'free')
           .order('weekly_clicks', { ascending: false });
 
@@ -689,40 +710,25 @@ export default function LoadingPage() {
                         </div>
 
                         {/* Info */}
-                        <div className="flex flex-1 flex-col items-start" style={{ gap: '1px' }}>
-                          <div className="flex items-center justify-center w-full" style={{ padding: '0 2px' }}>
-                            <p
-                              className="flex-1 text-left"
-                              style={{
-                                fontFamily: "'Pretendard Variable', sans-serif",
-                                fontWeight: 500,
-                                fontSize: '15px',
-                                lineHeight: '25.5px',
-                                letterSpacing: '-0.3px',
-                                color: 'black'
-                              }}
-                            >
-                              {content.title}
-                            </p>
-                          </div>
-                          <div
-                            className="flex items-center justify-center rounded-[5px]"
-                            style={{ backgroundColor: '#f9f9f9', padding: '2px 5px' }}
+                        <div className="flex flex-1 flex-col items-start" style={{ gap: '3px' }}>
+                          <ContentTags
+                            isPaid={false}
+                            isNew={isContentNew(content.created_at)}
+                            isRead={readContentIds.has(content.id)}
+                          />
+                          <p
+                            className="flex-1 text-left line-clamp-1 overflow-hidden w-full"
+                            style={{
+                              fontFamily: "'Pretendard Variable', sans-serif",
+                              fontWeight: 500,
+                              fontSize: '15px',
+                              lineHeight: '23.5px',
+                              letterSpacing: '-0.3px',
+                              color: 'black'
+                            }}
                           >
-                            <p
-                              className="shrink-0"
-                              style={{
-                                fontFamily: "'Pretendard Variable', sans-serif",
-                                fontWeight: 500,
-                                fontSize: '12px',
-                                lineHeight: '16px',
-                                letterSpacing: '-0.24px',
-                                color: '#848484'
-                              }}
-                            >
-                              무료 체험판
-                            </p>
-                          </div>
+                            {content.title}
+                          </p>
                         </div>
                       </div>
                     </button>

@@ -22,10 +22,9 @@ interface FreeContentViewData {
  */
 function getTodayKST(): string {
   const now = new Date();
-  // UTC + 9시간 = KST
-  const kstOffset = 9 * 60 * 60 * 1000;
-  const kstDate = new Date(now.getTime() + kstOffset);
-  return kstDate.toISOString().split('T')[0];
+  const kstOffset = 9 * 60; // KST = UTC+9 (분 단위)
+  const kstTime = new Date(now.getTime() + (kstOffset + now.getTimezoneOffset()) * 60000);
+  return `${kstTime.getFullYear()}-${String(kstTime.getMonth() + 1).padStart(2, '0')}-${String(kstTime.getDate()).padStart(2, '0')}`;
 }
 
 /**
