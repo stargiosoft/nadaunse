@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import SEO from './SEO';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
@@ -121,8 +121,28 @@ export default function LoadingPage() {
   // ⭐ 현재 콘텐츠의 카테고리 (다른 운세 보기 클릭 시 홈 필터에 사용)
   const [contentCategory, setContentCategory] = useState<string | null>(null);
 
-  // ⭐ 읽기 기록 (ContentTags용)
-  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
+  // ⭐ 읽기 기록 (ContentTags용) - 캐시에서 동기 초기화
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(() => {
+    try {
+      const cached = localStorage.getItem('read_content_ids_cache');
+      if (cached) {
+        const arr = JSON.parse(cached) as string[];
+        return new Set(arr);
+      }
+    } catch { /* ignore */ }
+    return new Set();
+  });
+
+  // ⭐ 정렬: 인기순(미확인) 1순위, 인기순(읽어봄) 2순위
+  const sortedFreeContents = useMemo(() => {
+    return [...freeContents].sort((a, b) => {
+      const aRead = readContentIds.has(a.id) ? 1 : 0;
+      const bRead = readContentIds.has(b.id) ? 1 : 0;
+      if (aRead !== bRead) return aRead - bRead;
+      if (b.weekly_clicks !== a.weekly_clicks) return b.weekly_clicks - a.weekly_clicks;
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+  }, [freeContents, readContentIds]);
 
   // ⭐ iOS Safari 고스트 클릭 방지 (페이지 마운트 후 500ms 동안 버튼 클릭 무시)
   const mountTimeRef = useRef<number>(Date.now());
@@ -208,6 +228,8 @@ export default function LoadingPage() {
       const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
       if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
       setReadContentIds(ids);
+      // 캐시 저장 (다음 방문 시 동기 초기화용)
+      localStorage.setItem('read_content_ids_cache', JSON.stringify([...ids]));
     };
     fetchReadHistory();
   }, []);
@@ -666,8 +688,8 @@ export default function LoadingPage() {
                     </div>
                   </div>
                 ))
-              ) : freeContents.length > 0 ? (
-                freeContents.map((content, index) => (
+              ) : sortedFreeContents.length > 0 ? (
+                sortedFreeContents.map((content, index) => (
                   <div key={content.id}>
                     {/* 구분선 (첫 번째 아이템 제외) */}
                     {index > 0 && (

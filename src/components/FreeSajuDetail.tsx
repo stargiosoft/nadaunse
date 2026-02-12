@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from "motion/react";
 import svgPaths from '../imports/svg-e15u41g853';
@@ -93,7 +93,13 @@ export default function FreeSajuDetail({
   const navigate = useNavigate();
   const [visibleCount, setVisibleCount] = useState(3); // ⭐️ 표시할 콘텐츠 개수
   const observerTarget = useRef<HTMLDivElement>(null);
-  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(() => {
+    try {
+      const cached = localStorage.getItem('read_content_ids_cache');
+      if (cached) return new Set(JSON.parse(cached) as string[]);
+    } catch { /* ignore */ }
+    return new Set();
+  });
 
   // ⭐ 읽기 기록 조회 (읽어봄 태그용)
   useEffect(() => {
@@ -107,10 +113,21 @@ export default function FreeSajuDetail({
       const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
       if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
       setReadContentIds(ids);
+      localStorage.setItem('read_content_ids_cache', JSON.stringify([...ids]));
     };
     fetchReadHistory();
   }, []);
-  
+
+  // ⭐ 정렬: 인기순(미확인) 1순위, 인기순(읽어봄) 2순위
+  const sortedRecommendedProducts = useMemo(() => {
+    return [...recommendedProducts].sort((a, b) => {
+      const aRead = readContentIds.has(String(a.id)) ? 1 : 0;
+      const bRead = readContentIds.has(String(b.id)) ? 1 : 0;
+      if (aRead !== bRead) return aRead - bRead;
+      return 0; // DB에서 이미 인기순으로 정렬되어 옴
+    });
+  }, [recommendedProducts, readContentIds]);
+
   // ⭐️ localStorage에서 결과 데이터 즉시 로드 (동기 작업이므로 로딩 불필요)
   const loadCachedData = (): { data: CachedData | null; error: boolean } => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -494,7 +511,7 @@ export default function FreeSajuDetail({
               </motion.div>
 
               {/* Recommended Products - 추천 콘텐츠가 있을 때만 표시 */}
-              {recommendedProducts.length > 0 && (
+              {sortedRecommendedProducts.length > 0 && (
                 <motion.div
                   className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full px-[20px]"
                   variants={containerVariants}
@@ -513,7 +530,7 @@ export default function FreeSajuDetail({
                     className="relative w-full flex flex-col"
                     variants={containerVariants}
                   >
-                    {recommendedProducts.slice(0, visibleCount).map((product, index) => (
+                    {sortedRecommendedProducts.slice(0, visibleCount).map((product, index) => (
                       <motion.div
                         key={product.id}
                         variants={itemVariants}
@@ -566,7 +583,7 @@ export default function FreeSajuDetail({
                     ))}
 
                     {/* ⭐ 무한 스크롤 트리거 */}
-                    {visibleCount < recommendedProducts.length && (
+                    {visibleCount < sortedRecommendedProducts.length && (
                       <div
                         ref={observerTarget}
                         className="h-[1px] w-full"

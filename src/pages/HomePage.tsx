@@ -615,7 +615,13 @@ export default function HomePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<TabCategory[]>(['전체']);
-  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
+  const [readContentIds, setReadContentIds] = useState<Set<string>>(() => {
+    try {
+      const cached = localStorage.getItem('read_content_ids_cache');
+      if (cached) return new Set(JSON.parse(cached) as string[]);
+    } catch { /* ignore */ }
+    return new Set();
+  });
   const observerTarget = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showNavigation, setShowNavigation] = useState(true);
@@ -762,7 +768,7 @@ export default function HomePage() {
   const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
 
   // 🔧 캐시 버전 관리 (정렬 로직 변경 시 캐시 무효화)
-  const CACHE_VERSION = 'v6'; // 필터별 캐시 분리 적용
+  const CACHE_VERSION = 'v7'; // 미확인 우선 정렬 적용
   const CATEGORIES_CACHE_KEY = 'homepage_categories_cache_v2'; // v2: 카테고리 순서 고정
 
   // 🚀 Phase 1: 필터별 캐시 키 생성 함수
@@ -1278,6 +1284,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!isLoggedIn) {
       setReadContentIds(new Set());
+      localStorage.removeItem('read_content_ids_cache');
       return;
     }
 
@@ -1315,6 +1322,7 @@ export default function HomePage() {
         }
 
         setReadContentIds(ids);
+        localStorage.setItem('read_content_ids_cache', JSON.stringify([...ids]));
         console.log(`📚 [읽어봄] ${ids.size}개 콘텐츠 읽음 확인`);
       } catch (error) {
         console.error('읽음 상태 조회 실패:', error);
@@ -1366,22 +1374,27 @@ export default function HomePage() {
   // 🚫 클라이언트 사이드 필터링 제거 (서버에서 이미 필터링됨)
   // allContents가 이미 필터링된 데이터이므로 그대로 사용
   
-  // Featured content from all results
+  // Featured content from all results - 미확인 인기 콘텐츠 우선
   const featuredContentFiltered = useMemo(() => {
     if (allContents.length === 0) return null;
-    
-    // weekly_clicks가 0보다 큰 콘텐츠가 있는지 확인
-    const hasClicks = allContents.some(c => c.weekly_clicks > 0);
-    
-    if (hasClicks) {
-      // 클릭수가 가장 높은 콘텐츠를 featured로
-      const maxClicks = Math.max(...allContents.map(c => c.weekly_clicks));
-      return allContents.find(c => c.weekly_clicks === maxClicks) || null;
-    } else {
-      // 모두 0이면 최신 콘텐츠를 featured로
-      return allContents[0];
-    }
-  }, [allContents]);
+
+    // 인기순(미확인 우선) 정렬 후 첫 번째 선택
+    const sorted = [...allContents].sort((a, b) => {
+      // 1차: 미확인 우선
+      const aRead = readContentIds.has(a.id) ? 1 : 0;
+      const bRead = readContentIds.has(b.id) ? 1 : 0;
+      if (aRead !== bRead) return aRead - bRead;
+
+      // 2차: weekly_clicks 내림차순
+      if (b.weekly_clicks !== a.weekly_clicks) {
+        return b.weekly_clicks - a.weekly_clicks;
+      }
+      // 3차: created_at 내림차순
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+
+    return sorted[0] || null;
+  }, [allContents, readContentIds]);
 
   // Contents list (excluding featured) - 정렬: 인기순(미확인) 1순위, 인기순(읽어봄) 2순위
   const contentsList = useMemo(() => {
