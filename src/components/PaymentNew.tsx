@@ -863,11 +863,12 @@ export default function PaymentNew({
       buyer_name: "구매자명",
       buyer_tel: "010-0000-0000",
       m_redirect_url: redirectUrl,
-      popup: false,
     };
 
-    // 다날 카드결제 시 디지털 상품 설정
+    // 카드(다날)만 popup:false 설정 (iframe 결제창)
+    // 카카오페이는 popup 미설정 → SDK 자동 감지 (PC: iframe QR, Mobile: redirect)
     if (selectedPaymentMethod === "card") {
+      paymentParams.popup = false;
       paymentParams.digital = true;
     }
 
@@ -881,10 +882,36 @@ export default function PaymentNew({
     // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
     window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
-    // ⭐ 카카오페이가 아닌 경우에만 오버레이 감지 시작
-    // (카카오페이는 외부 앱 전환 방식이므로 iframe 오버레이가 없음)
-    if (selectedPaymentMethod !== 'kakaopay') {
-      // 약간의 딜레이 후 시작 (iframe이 로드될 시간 확보)
+    // ⭐ 결제 수단별 오버레이/로딩 처리
+    if (selectedPaymentMethod === 'kakaopay') {
+      // 카카오페이: 1.5초 후 로딩 해제 (SDK 초기화 시간 확보)
+      // - PC: QR iframe이 로딩 뒤에 가려지는 것 방지
+      // - Mobile: redirect 전 로딩 해제
+      setTimeout(() => {
+        if (paymentInitiatedRef.current && paymentMethodRef.current === 'kakaopay') {
+          console.log('🔄 [PaymentNew] 카카오페이 로딩 오버레이 해제');
+          setIsProcessingPayment(false);
+          // PC에서만 overlay watch 시작 (QR 팝업 닫기 감지용)
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (!isMobile) {
+            startPaymentOverlayWatch(finalContentId);
+          }
+        }
+      }, 1500);
+
+      // 20초 안전 타임아웃 (SDK silent failure 대비)
+      setTimeout(() => {
+        if (paymentInitiatedRef.current && paymentMethodRef.current === 'kakaopay') {
+          console.log('🔄 [PaymentNew] 카카오페이 20초 안전 타임아웃 → 상태 리셋');
+          stopPaymentOverlayWatch();
+          paymentInitiatedRef.current = false;
+          paymentMethodRef.current = null;
+          paymentRequestedAtRef.current = 0;
+          setIsProcessingPayment(false);
+        }
+      }, 20000);
+    } else {
+      // 카드(다날): 기존 overlay watch 로직 유지
       setTimeout(() => {
         startPaymentOverlayWatch(finalContentId);
       }, 1000);
