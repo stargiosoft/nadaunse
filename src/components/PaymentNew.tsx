@@ -854,7 +854,7 @@ export default function PaymentNew({
     const redirectUrl = `${window.location.origin}/payment/complete?contentId=${finalContentId}&amount=${totalPrice}&payMethod=${selectedPaymentMethod === "kakaopay" ? "kakaopay" : "card"}&userCouponId=${selectedCouponId || ""}`;
 
     // 결제 요청 파라미터 구성
-    // ⭐ popup: false → 모든 결제 수단에서 iframe 모드 사용 (v2026.01.21-보안완성 동일)
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const paymentParams: any = {
       pg: pgProvider,
       pay_method: "card",
@@ -864,13 +864,21 @@ export default function PaymentNew({
       buyer_name: "구매자명",
       buyer_tel: "010-0000-0000",
       m_redirect_url: redirectUrl,
-      popup: false,
     };
+
+    // ⭐ PC에서만 popup: false (iframe 모드)
+    // 모바일에서는 popup 미설정 → SDK가 자동으로 redirect 모드 사용
+    // PortOne SDK 3.43.0: 모바일에서 popup:false가 iframe을 강제하면 결제 UI가 렌더링 안됨
+    if (!isMobile) {
+      paymentParams.popup = false;
+    }
 
     // 다날 카드결제 시 디지털 상품 설정
     if (selectedPaymentMethod === "card") {
       paymentParams.digital = true;
     }
+
+    console.log('🔄 [PaymentNew] 환경:', isMobile ? '모바일(redirect)' : 'PC(iframe)', ', 결제수단:', selectedPaymentMethod);
 
     // 포트원 결제 요청
     // ⭐ PG 팝업/리다이렉트 전에 ref 설정 (뒤로가기 감지용)
@@ -879,23 +887,26 @@ export default function PaymentNew({
     // ⭐ grace period 시작 (visibilitychange/popstate가 SDK 처리를 방해하지 않도록)
     paymentRequestedAtRef.current = Date.now();
 
-    // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
-    window.history.pushState({ paymentInProgress: true }, '', window.location.href);
+    // ⭐ PC에서만 history pushState + overlay watch (iframe 모드용)
+    // 모바일 redirect 모드에서는 pushState가 SDK와 충돌할 수 있으므로 스킵
+    if (!isMobile) {
+      window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
-    // ⭐ 결제 오버레이 감지 시작 (모든 결제 수단 공통 - v2026.01.21-보안완성 동일)
-    // iframe이 로드될 시간 확보 후 시작
-    setTimeout(() => {
-      startPaymentOverlayWatch(finalContentId);
-    }, 1000);
+      // iframe 감지 시작 (PC 전용)
+      setTimeout(() => {
+        startPaymentOverlayWatch(finalContentId);
+      }, 1000);
 
-    // ⭐ 안전 장치: 2초 후 로딩 오버레이 강제 해제
-    // overlay watch가 iframe을 감지하지 못해도 결제 UI가 가려지지 않도록 보장
-    setTimeout(() => {
-      if (paymentInitiatedRef.current) {
-        console.log('⏰ [PaymentNew] 2초 안전 타임아웃 → 로딩 오버레이 강제 해제');
-        setIsProcessingPayment(false);
-      }
-    }, 2000);
+      // 안전 장치: 2초 후 로딩 오버레이 강제 해제
+      setTimeout(() => {
+        if (paymentInitiatedRef.current) {
+          console.log('⏰ [PaymentNew] 2초 안전 타임아웃 → 로딩 오버레이 강제 해제');
+          setIsProcessingPayment(false);
+        }
+      }, 2000);
+    }
+    // 모바일: SDK가 redirect하므로 로딩은 페이지 전환 시 자연스럽게 사라짐
+    // m_redirect_url로 복귀 시 PaymentComplete 페이지가 결과 처리
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
     console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
