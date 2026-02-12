@@ -863,11 +863,12 @@ export default function PaymentNew({
       buyer_name: "구매자명",
       buyer_tel: "010-0000-0000",
       m_redirect_url: redirectUrl,
-      popup: false,
     };
 
-    // 다날 카드결제 시 디지털 상품 설정
+    // 카드(다날): iframe 결제창 + 디지털 상품 설정
+    // 카카오페이: popup 미설정 → SDK가 redirect 모드로 동작 (m_redirect_url로 복귀)
     if (selectedPaymentMethod === "card") {
+      paymentParams.popup = false;
       paymentParams.digital = true;
     }
 
@@ -881,12 +882,18 @@ export default function PaymentNew({
     // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
     window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
-    // ⭐ 결제 오버레이 감지 시작 (모든 결제 수단 공통)
-    // v2026.01.21-보안완성 기준: 카카오페이 포함 모든 결제에서 overlay watch 활성화
-    // overlay watch가 iframe 감지 시 로딩 해제 + iframe 사라지면 뒤로가기 처리
-    setTimeout(() => {
-      startPaymentOverlayWatch(finalContentId);
-    }, 1000);
+    // ⭐ 결제 수단별 오버레이/로딩 처리
+    if (selectedPaymentMethod === 'kakaopay') {
+      // 카카오페이: redirect 방식 → iframe overlay 없음
+      // SDK가 페이지를 redirect하므로 overlay watch 불필요
+      // 로딩은 redirect 시 자동으로 사라짐 (페이지 전환)
+      console.log('🔄 [PaymentNew] 카카오페이 redirect 모드 → overlay watch 스킵');
+    } else {
+      // 카드(다날): iframe 방식 → overlay watch로 결제창 감지
+      setTimeout(() => {
+        startPaymentOverlayWatch(finalContentId);
+      }, 1000);
+    }
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
     console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
