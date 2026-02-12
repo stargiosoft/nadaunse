@@ -863,12 +863,11 @@ export default function PaymentNew({
       buyer_name: "구매자명",
       buyer_tel: "010-0000-0000",
       m_redirect_url: redirectUrl,
+      popup: false,
     };
 
-    // 카드(다날)만 popup:false 설정 (iframe 결제창)
-    // 카카오페이는 popup 미설정 → SDK 자동 감지 (PC: iframe QR, Mobile: redirect)
+    // 다날 카드결제 시 디지털 상품 설정
     if (selectedPaymentMethod === "card") {
-      paymentParams.popup = false;
       paymentParams.digital = true;
     }
 
@@ -882,40 +881,12 @@ export default function PaymentNew({
     // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
     window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
-    // ⭐ 결제 수단별 오버레이/로딩 처리
-    if (selectedPaymentMethod === 'kakaopay') {
-      // 카카오페이: 1.5초 후 로딩 해제 (SDK 초기화 시간 확보)
-      // - PC: QR iframe이 로딩 뒤에 가려지는 것 방지
-      // - Mobile: redirect 전 로딩 해제
-      setTimeout(() => {
-        if (paymentInitiatedRef.current && paymentMethodRef.current === 'kakaopay') {
-          console.log('🔄 [PaymentNew] 카카오페이 로딩 오버레이 해제');
-          setIsProcessingPayment(false);
-          // PC에서만 overlay watch 시작 (QR 팝업 닫기 감지용)
-          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-          if (!isMobile) {
-            startPaymentOverlayWatch(finalContentId);
-          }
-        }
-      }, 1500);
-
-      // 20초 안전 타임아웃 (SDK silent failure 대비)
-      setTimeout(() => {
-        if (paymentInitiatedRef.current && paymentMethodRef.current === 'kakaopay') {
-          console.log('🔄 [PaymentNew] 카카오페이 20초 안전 타임아웃 → 상태 리셋');
-          stopPaymentOverlayWatch();
-          paymentInitiatedRef.current = false;
-          paymentMethodRef.current = null;
-          paymentRequestedAtRef.current = 0;
-          setIsProcessingPayment(false);
-        }
-      }, 20000);
-    } else {
-      // 카드(다날): 기존 overlay watch 로직 유지
-      setTimeout(() => {
-        startPaymentOverlayWatch(finalContentId);
-      }, 1000);
-    }
+    // ⭐ 결제 오버레이 감지 시작 (모든 결제 수단 공통)
+    // v2026.01.21-보안완성 기준: 카카오페이 포함 모든 결제에서 overlay watch 활성화
+    // overlay watch가 iframe 감지 시 로딩 해제 + iframe 사라지면 뒤로가기 처리
+    setTimeout(() => {
+      startPaymentOverlayWatch(finalContentId);
+    }, 1000);
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
     console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
