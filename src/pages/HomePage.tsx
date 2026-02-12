@@ -1465,7 +1465,7 @@ export default function HomePage() {
             setCurrentPage(prev => prev + 1);
             // totalCount 기반으로 hasMore 판단 (cachedData.length는 프리페치 진행 중이라 부정확)
             const total = cachedTotalCount ?? cachedData.length;
-            setHasMore(endIndex < total - 1);
+            setHasMore(endIndex < total);
             setIsLoading(false);
 
             console.log(`✅ [Cache] ${newContents.length}개 콘텐츠 캐시에서 로드 완료 (totalCount: ${total})`);
@@ -1517,7 +1517,7 @@ export default function HomePage() {
         });
         
         setCurrentPage(prev => prev + 1);
-        setHasMore(count ? endIndex < count - 1 : false);
+        setHasMore(count ? endIndex < count : false);
         
         console.log(`✅ ${newContents.length}개 콘텐츠 추가 로드 완료 (전체: ${count}개, 필터: ${selectedCategory}/${selectedType})`);
       } else {
