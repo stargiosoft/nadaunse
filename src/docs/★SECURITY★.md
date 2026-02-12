@@ -168,32 +168,43 @@ curl -I -X OPTIONS "https://[project-id].supabase.co/functions/v1/users" \
 
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.iamport.kr https://developers.kakao.com https://*.sentry.io;
-style-src 'self' 'unsafe-inline';
-img-src 'self' data: blob: https://*.supabase.co https://*.kakaocdn.net;
-font-src 'self' data:;
-connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://*.sentry.io https://kauth.kakao.com https://kapi.kakao.com https://api.iamport.kr;
-frame-src https://*.iamport.kr https://*.kakao.com https://kauth.kakao.com;
+script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.iamport.kr https://*.iamport.kr https://*.portone.io https://developers.kakao.com https://*.kakaocdn.net https://*.sentry.io https://www.googletagmanager.com https://wcs.pstatic.net https://ssl.pstatic.net;
+style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+img-src 'self' data: blob: https://*.supabase.co https://*.kakaocdn.net https://wcs.pstatic.net;
+font-src 'self' data: https://cdn.jsdelivr.net;
+connect-src 'self' https://*.supabase.co https://*.supabase.in wss://*.supabase.co https://*.sentry.io https://kauth.kakao.com https://kapi.kakao.com https://*.iamport.kr https://*.portone.io https://www.google-analytics.com https://region1.google-analytics.com https://cdn.jsdelivr.net https://wcs.pstatic.net https://*.naver.com;
+frame-src https://*.iamport.kr https://*.portone.io https://*.kakao.com https://kauth.kakao.com https://*.kakaopay.com https://*.danal.co.kr https://*.teledit.com https://*.inicis.com https://*.toss.im;
 media-src 'self';
 object-src 'none';
 base-uri 'self';
-form-action 'self' https://kauth.kakao.com;
+form-action 'self' https://kauth.kakao.com https://*.kakaopay.com https://*.iamport.kr https://*.portone.io;
+worker-src 'self' blob:;
 ```
 
 ### 지시문별 설명
 
 | 지시문 | 허용 소스 | 이유 |
 |--------|----------|------|
-| **script-src** | self, iamport, kakao, sentry | 결제 SDK, 카카오 SDK, 에러 모니터링 |
-| **connect-src** | supabase, sentry, kakao, iamport | API 호출, 실시간 연결, 인증 |
-| **frame-src** | iamport, kakao | 결제창 팝업, 카카오 로그인 창 |
-| **img-src** | supabase, kakaocdn | 썸네일 이미지, 프로필 사진 |
+| **script-src** | self, iamport, portone, kakao, sentry, gtm, naver | 결제 SDK, 카카오 SDK, 에러 모니터링, 애널리틱스 |
+| **connect-src** | supabase, sentry, kakao, iamport, portone, GA, naver | API 호출, 실시간 연결, 인증, 애널리틱스 |
+| **frame-src** | iamport, portone, kakao, kakaopay, danal, **teledit**, inicis, toss | 결제창 iframe (⚠️ 다날은 `teledit.com` 도메인도 사용) |
+| **form-action** | self, kakao, **kakaopay**, iamport, portone | 결제 redirect (⚠️ 카카오페이 모바일은 form submit 사용) |
+| **img-src** | supabase, kakaocdn, naver | 썸네일 이미지, 프로필 사진, 애널리틱스 |
 | **object-src** | none | Flash/Plugin 완전 차단 |
 
 ### 주의사항
 
 - `'unsafe-inline'`, `'unsafe-eval'`: React/Vite 빌드 호환성을 위해 필요
 - 향후 nonce 기반 CSP로 강화 가능
+
+### ⚠️ 결제 CSP 장애 사례 (2026-01-21 ~ 2026-02-12)
+
+CSP 도입 시 결제 도메인 2개가 누락되어 **약 3주간 결제 장애** 발생:
+1. `*.teledit.com` (`frame-src`) - 다날이 체크아웃에 사용하는 파트너 도메인
+2. `*.kakaopay.com` (`form-action`) - 카카오페이 모바일 redirect 시 form submit 대상
+
+**교훈**: PG사 도메인은 공식 문서에 명시되지 않은 서브도메인/파트너 도메인이 있을 수 있으므로, CSP 변경 후 반드시 **모든 결제 수단 × 모든 환경(PC/모바일)** 조합을 테스트할 것.
+상세: `DECISIONS.md` → "2026-02-12 CSP 결제 장애 해결"
 
 ---
 

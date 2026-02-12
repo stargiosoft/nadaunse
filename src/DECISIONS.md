@@ -4,7 +4,7 @@
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
 > **최종 업데이트**: 2026-02-12
-> **주요 결정**: IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **주요 결정**: CSP 결제 도메인 누락으로 3주간 결제 장애 해결 (teledit.com, kakaopay.com form-action), IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -37,6 +37,47 @@
 **한계**: 구글은 IndexNow 미지원 → Google Search Console에서 별도 URL 검사 필요
 
 **영향 범위**: Edge Function 1개 추가 (31 → 32), 배포 스크립트 업데이트
+
+---
+
+### CSP(Content Security Policy)로 인한 결제 장애 해결 (3주간 매출 손실)
+
+**결정**: `vercel.json` CSP 헤더에 누락된 결제 도메인 2개 추가
+
+**문제**:
+- 2026-01-21 보안 강화(OWASP 권장) 작업 시 CSP를 도입하면서 결제 관련 도메인을 등록했으나, 2개 도메인이 누락됨
+- **1월 21일부터 약 3주간** 일부 결제가 차단되어 매출 손실 발생
+- 2월 12일에 "모바일 전 결제수단 불가" 증상으로 본격 인지
+- 처음에는 PortOne SDK 자체 이슈로 오진 → 코드 수정 6회 시도 모두 실패 → 순수 HTML 테스트 페이지에서도 실패하여 SDK 이슈로 확정했으나, 실제로는 CSP 문제였음
+
+**근본 원인**:
+1. **다날 카드결제**: 다날이 체크아웃 도메인으로 `checkout.teledit.com`을 사용하는데, CSP `frame-src`에 `*.teledit.com`이 없어서 iframe 차단
+   - 콘솔 에러: `Framing 'https://checkout.teledit.com/' violates the following Content Security Policy directive: "frame-src ..."`
+   - PC/모바일 모두 영향
+2. **카카오페이 모바일**: 모바일 redirect 결제 시 form submit으로 `kakaopay.com` 도메인을 사용하는데, CSP `form-action`에 `*.kakaopay.com`이 없어서 차단
+   - 카카오페이 PC(QR코드/iframe)는 정상이었으나 모바일(redirect)만 차단
+
+**수정 내용**:
+```
+# frame-src에 teledit.com 추가 (다날 카드결제)
+frame-src ... https://*.danal.co.kr https://*.teledit.com https://*.inicis.com ...
+
+# form-action에 kakaopay.com 추가 (카카오페이 모바일)
+form-action 'self' https://kauth.kakao.com https://*.kakaopay.com https://*.iamport.kr https://*.portone.io
+```
+
+**오진 과정과 교훈**:
+- 순수 HTML 테스트 페이지(`payment-test.html`)에서도 동일 증상 → "SDK 이슈 확정"으로 판단했으나, 테스트 페이지도 동일한 CSP 헤더를 받으므로 당연히 같은 증상이 나옴
+- **교훈: 결제 장애 시 브라우저 콘솔의 CSP 에러 메시지를 가장 먼저 확인해야 함**
+- CSP 도입 시 각 PG사의 서브도메인/파트너 도메인까지 파악 필요 (다날→teledit.com 등)
+
+**커밋**:
+- `058757a6` - CSP frame-src에 teledit.com 추가
+- `59ab20e2` - CSP form-action에 kakaopay.com 추가
+
+**관련 파일**: `vercel.json` (CSP 헤더), `src/docs/PORTONE_MOBILE_ISSUE_2026-02-12.md` (장애 기록)
+
+**영향 범위**: 전체 결제 플로우 (PC 다날 카드, 모바일 카카오페이)
 
 ---
 
