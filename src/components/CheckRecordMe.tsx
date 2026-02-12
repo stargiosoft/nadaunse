@@ -1336,13 +1336,31 @@ export default function CheckRecordMe({
             <button
               onClick={async () => {
                 // ⭐ "다음에 할래요" 클릭 시:
-                // 비로그인/태그0개 → 프로모션 바텀시트
-                // 로그인+태그1~4개 → 태그 모으기 유도 바텀시트
-                // 로그인+태그5개 이상 → 바로 스킵
+                // 최초 1회 → 프로모션 바텀시트 노출
+                // 2번째+ → 바텀시트 없이 바로 홈 이동
                 console.log('🔘 [CheckRecordMe] "다음에 할래요" 클릭');
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
 
+                  // ⭐ 프로모션 바텀시트: 최초 1회만 노출 (localStorage 플래그)
+                  const promoShown = localStorage.getItem('tag_promo_shown_once');
+
+                  if (!promoShown) {
+                    // 최초 → 프로모션 바텀시트 노출
+                    console.log('📢 [CheckRecordMe] 최초 스킵 → 프로모션 바텀시트 노출');
+                    localStorage.setItem('tag_promo_shown_once', 'true');
+                    setIsPromoBottomSheetOpen(true);
+                    return;
+                  }
+
+                  // 2번째+ → 바텀시트 없이 바로 스킵 처리 + 홈 이동
+                  console.log('🏠 [CheckRecordMe] 2번째+ 스킵 → 바로 홈 이동');
+                  if (session?.user?.id) {
+                    await executeSkipLogic(session.user.id);
+                  }
+                  if (onSkip) onSkip();
+
+                  /* ⭐ [기존 로직 비활성화 - 재사용 가능] 태그 수/로그인 상태별 바텀시트 분기
                   // 비로그인 → 프로모션 바텀시트
                   if (!session?.user?.id) {
                     console.log('👤 [CheckRecordMe] 비로그인 → 프로모션 바텀시트 노출');
@@ -1389,6 +1407,7 @@ export default function CheckRecordMe({
                   // 0개 → 프로모션 바텀시트
                   console.log('🏷️ [CheckRecordMe] 태그 0개 → 프로모션 바텀시트 노출');
                   setIsPromoBottomSheetOpen(true);
+                  ⭐ 기존 로직 비활성화 끝 */
                 } catch (err) {
                   console.error('❌ [CheckRecordMe] 스킵 처리 실패:', err);
                   if (onSkip) onSkip();
