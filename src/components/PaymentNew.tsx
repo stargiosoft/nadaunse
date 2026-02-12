@@ -116,11 +116,26 @@ export default function PaymentNew({
 
     // 첫 번째 체크에서 오버레이가 있는지 확인 (기준점 설정)
     let overlayWasFound = false;
+    let checkCount = 0;
+    // ⭐ 안전 타임아웃: 오버레이/리다이렉트 없이 15초 경과 시 로딩 해제
+    const MAX_CHECKS_WITHOUT_OVERLAY = 30; // 15초 (500ms × 30)
 
     paymentOverlayCheckRef.current = setInterval(() => {
       // 결제가 진행 중인 상태에서만 체크
       if (!paymentInitiatedRef.current) {
         stopPaymentOverlayWatch();
+        return;
+      }
+
+      checkCount++;
+
+      // ⭐ 안전 타임아웃: 오버레이를 한 번도 못 찾은 채 15초 경과
+      // → 모바일 리다이렉트 실패 또는 PG 연동 오류로 판단
+      if (!overlayWasFound && checkCount >= MAX_CHECKS_WITHOUT_OVERLAY) {
+        console.log('⏰ [PaymentNew] 안전 타임아웃 - 결제 오버레이/리다이렉트 감지 실패 (15초)');
+        stopPaymentOverlayWatch();
+        paymentInitiatedRef.current = false;
+        setIsProcessingPayment(false);
         return;
       }
 
