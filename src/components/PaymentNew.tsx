@@ -123,8 +123,8 @@ export default function PaymentNew({
     // 첫 번째 체크에서 오버레이가 있는지 확인 (기준점 설정)
     let overlayWasFound = false;
     let checkCount = 0;
-    // ⭐ 안전 타임아웃: 오버레이/리다이렉트 없이 15초 경과 시 로딩 해제
-    const MAX_CHECKS_WITHOUT_OVERLAY = 30; // 15초 (500ms × 30)
+    // ⭐ 안전 타임아웃: 오버레이/리다이렉트 없이 5초 경과 시 로딩 해제
+    const MAX_CHECKS_WITHOUT_OVERLAY = 10; // 5초 (500ms × 10)
 
     paymentOverlayCheckRef.current = setInterval(() => {
       // 결제가 진행 중인 상태에서만 체크
@@ -135,7 +135,7 @@ export default function PaymentNew({
 
       checkCount++;
 
-      // ⭐ 안전 타임아웃: 오버레이를 한 번도 못 찾은 채 15초 경과
+      // ⭐ 안전 타임아웃: 오버레이를 한 번도 못 찾은 채 5초 경과
       // → 모바일 리다이렉트 실패 또는 PG 연동 오류로 판단
       if (!overlayWasFound && checkCount >= MAX_CHECKS_WITHOUT_OVERLAY) {
         console.log('⏰ [PaymentNew] 안전 타임아웃 - 결제 오버레이/리다이렉트 감지 실패 (15초)');
@@ -854,6 +854,7 @@ export default function PaymentNew({
     const redirectUrl = `${window.location.origin}/payment/complete?contentId=${finalContentId}&amount=${totalPrice}&payMethod=${selectedPaymentMethod === "kakaopay" ? "kakaopay" : "card"}&userCouponId=${selectedCouponId || ""}`;
 
     // 결제 요청 파라미터 구성
+    // ⭐ popup: false → 모든 결제 수단에서 iframe 모드 사용 (v2026.01.21-보안완성 동일)
     const paymentParams: any = {
       pg: pgProvider,
       pay_method: "card",
@@ -863,12 +864,11 @@ export default function PaymentNew({
       buyer_name: "구매자명",
       buyer_tel: "010-0000-0000",
       m_redirect_url: redirectUrl,
+      popup: false,
     };
 
-    // 카드(다날): iframe 결제창 + 디지털 상품 설정
-    // 카카오페이: popup 미설정 → SDK가 redirect 모드로 동작 (m_redirect_url로 복귀)
+    // 다날 카드결제 시 디지털 상품 설정
     if (selectedPaymentMethod === "card") {
-      paymentParams.popup = false;
       paymentParams.digital = true;
     }
 
@@ -882,18 +882,20 @@ export default function PaymentNew({
     // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
     window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
-    // ⭐ 결제 수단별 오버레이/로딩 처리
-    if (selectedPaymentMethod === 'kakaopay') {
-      // 카카오페이: redirect 방식 → iframe overlay 없음
-      // SDK가 페이지를 redirect하므로 overlay watch 불필요
-      // 로딩은 redirect 시 자동으로 사라짐 (페이지 전환)
-      console.log('🔄 [PaymentNew] 카카오페이 redirect 모드 → overlay watch 스킵');
-    } else {
-      // 카드(다날): iframe 방식 → overlay watch로 결제창 감지
-      setTimeout(() => {
-        startPaymentOverlayWatch(finalContentId);
-      }, 1000);
-    }
+    // ⭐ 결제 오버레이 감지 시작 (모든 결제 수단 공통 - v2026.01.21-보안완성 동일)
+    // iframe이 로드될 시간 확보 후 시작
+    setTimeout(() => {
+      startPaymentOverlayWatch(finalContentId);
+    }, 1000);
+
+    // ⭐ 안전 장치: 2초 후 로딩 오버레이 강제 해제
+    // overlay watch가 iframe을 감지하지 못해도 결제 UI가 가려지지 않도록 보장
+    setTimeout(() => {
+      if (paymentInitiatedRef.current) {
+        console.log('⏰ [PaymentNew] 2초 안전 타임아웃 → 로딩 오버레이 강제 해제');
+        setIsProcessingPayment(false);
+      }
+    }, 2000);
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
     console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
