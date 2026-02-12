@@ -106,6 +106,10 @@ export default function PaymentNew({
   const paymentInitiatedRef = useRef(false);
   // ⭐ 결제 오버레이 감지용 interval ref
   const paymentOverlayCheckRef = useRef<NodeJS.Timeout | null>(null);
+  // ⭐ request_pay 호출 시각 (grace period 판단용)
+  const paymentRequestedAtRef = useRef<number>(0);
+  // ⭐ 결제 시작 후 grace period (ms) - 이 시간 동안 visibilitychange/popstate 무시
+  const PAYMENT_GRACE_PERIOD_MS = 5000;
 
   // ⭐ 결제 오버레이 감지 시작/중지 함수
   const startPaymentOverlayWatch = (finalContentId: string | undefined) => {
@@ -285,11 +289,24 @@ export default function PaymentNew({
       onBack();
     };
 
+    // ⭐ grace period 체크: request_pay 직후 SDK 처리 시간 동안 이벤트 무시
+    const isInGracePeriod = () => {
+      if (paymentRequestedAtRef.current === 0) return false;
+      const elapsed = Date.now() - paymentRequestedAtRef.current;
+      return elapsed < PAYMENT_GRACE_PERIOD_MS;
+    };
+
     // ⭐ popstate: 브라우저 뒤로가기/앞으로가기 버튼 클릭 시 발생
     const handlePopState = () => {
       console.log('🔄 [PaymentNew] popstate 이벤트, paymentInitiated:', paymentInitiatedRef.current);
 
       if (paymentInitiatedRef.current) {
+        // ⭐ grace period 중이면 무시 (SDK가 아직 처리 중)
+        if (isInGracePeriod()) {
+          console.log('⏳ [PaymentNew] popstate: grace period 중 → 무시');
+          return;
+        }
+
         // ⭐ 결제 오버레이가 아직 열려있으면 리다이렉트하지 않음
         if (isPaymentOverlayOpen()) {
           console.log('⚠️ [PaymentNew] popstate: 결제 오버레이가 아직 열려있음 → 리다이렉트 취소');
@@ -306,6 +323,12 @@ export default function PaymentNew({
       console.log('🔄 [PaymentNew] pageshow 이벤트, persisted:', event.persisted, ', paymentInitiated:', paymentInitiatedRef.current);
 
       if (paymentInitiatedRef.current) {
+        // ⭐ grace period 중이면 무시
+        if (isInGracePeriod()) {
+          console.log('⏳ [PaymentNew] pageshow: grace period 중 → 무시');
+          return;
+        }
+
         // ⭐ 결제 오버레이가 아직 열려있으면 리다이렉트하지 않음
         if (isPaymentOverlayOpen()) {
           console.log('⚠️ [PaymentNew] pageshow: 결제 오버레이가 아직 열려있음 → 리다이렉트 취소');
@@ -327,6 +350,12 @@ export default function PaymentNew({
         console.log('🔄 [PaymentNew] visibilitychange visible, paymentInitiated:', paymentInitiatedRef.current);
 
         if (paymentInitiatedRef.current) {
+          // ⭐ grace period 중이면 무시 (SDK가 결제 처리 중)
+          if (isInGracePeriod()) {
+            console.log('⏳ [PaymentNew] visibilitychange: grace period 중 → 무시');
+            return;
+          }
+
           // ⭐ 결제 오버레이가 아직 열려있으면 리다이렉트하지 않음
           if (isPaymentOverlayOpen()) {
             console.log('⚠️ [PaymentNew] visibilitychange: 결제 오버레이가 아직 열려있음 → 리다이렉트 취소');
@@ -813,6 +842,8 @@ export default function PaymentNew({
     // 포트원 결제 요청
     // ⭐ PG 팝업/리다이렉트 전에 ref 설정 (뒤로가기 감지용)
     paymentInitiatedRef.current = true;
+    // ⭐ grace period 시작 (visibilitychange/popstate가 SDK 처리를 방해하지 않도록)
+    paymentRequestedAtRef.current = Date.now();
 
     // ⭐ 결제창 열기 전 history에 상태 푸시 (뒤로가기 시 popstate 이벤트 발생 보장)
     window.history.pushState({ paymentInProgress: true }, '', window.location.href);
@@ -833,6 +864,7 @@ export default function PaymentNew({
         // ⭐ 콜백 실행 = 정상 플로우 → ref 리셋 및 오버레이 감지 중지
         stopPaymentOverlayWatch();
         paymentInitiatedRef.current = false;
+        paymentRequestedAtRef.current = 0;
         setIsProcessingPayment(false);
         console.log('🔄 [PaymentNew] 포트원 콜백 수신, success:', response.success);
 
