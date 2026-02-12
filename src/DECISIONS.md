@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-11
-> **주요 결정**: Google OAuth 팝업 모드 전환, MyReportList 히스토리 잔류 버그, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-02-12
+> **주요 결정**: IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,30 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-12
+
+### IndexNow 프로토콜 도입 (검색엔진 인덱싱 촉진)
+
+**결정**: IndexNow Edge Function을 생성하여 콘텐츠 배포/업데이트 시 검색엔진에 즉시 URL 제출
+
+**배경**:
+- 네이버: 220+ 페이지 중 12개만 색인, 사이트맵 제출 후에도 크롤링이 느림
+- 구글: 브랜드 키워드("나다운세")만 유입, 콘텐츠 키워드 유입 없음
+- 기존 방식(사이트맵 제출 + 수동 URL 수집 요청)은 수일~수주 소요
+
+**구현**:
+- `supabase/functions/index-now/index.ts`: POST로 URL 배열을 받아 `api.indexnow.org`에 제출
+- `public/e32ae15605104f698d20fde140bc8e83.txt`: 키 검증 파일
+- 환경변수: `INDEXNOW_API_KEY`
+
+**호출 타이밍**: 콘텐츠 deploy 후, Vercel 빌드 완료 후
+
+**한계**: 구글은 IndexNow 미지원 → Google Search Console에서 별도 URL 검사 필요
+
+**영향 범위**: Edge Function 1개 추가 (31 → 32), 배포 스크립트 업데이트
 
 ---
 

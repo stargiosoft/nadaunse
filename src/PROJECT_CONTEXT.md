@@ -17,7 +17,7 @@
     - Google: Supabase OAuth 팝업 모드 (`window.open` + `getGoogleOAuthUrl`)
     - Kakao: Kakao SDK 팝업 모드 (커스텀 구현, `signInWithPassword` 기반)
   - Database: PostgreSQL + RLS
-  - Edge Functions: Deno runtime (31개)
+  - Edge Functions: Deno runtime (32개)
   - **자동화**: pg_cron + pg_net (주간 보고서 발송)
 - **AI**:
   - OpenAI GPT-4o, GPT-5.1 (주간 보고서)
@@ -47,8 +47,8 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 75개 (활성화, backup 제외) - 주간 보고서 11개 + 통계 대시보드 1개 포함
-- **Edge Functions**: 31개 (주간 보고서 4개 포함)
+- **컴포넌트**: 72개 (활성화, backup 제외) - 주간 보고서 9개 + 통계 대시보드 2개 추가
+- **Edge Functions**: 32개 (주간 보고서 4개 포함)
 - **페이지 컴포넌트**: 42개
 - **UI 컴포넌트 (shadcn/ui)**: 52개
 - **스켈레톤**: 5개
