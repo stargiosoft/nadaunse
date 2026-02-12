@@ -1378,7 +1378,7 @@ export default function HomePage() {
       // 🚀 모든 필터에서 캐시 확인
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        const { data: cachedData } = JSON.parse(cached);
+        const { data: cachedData, totalCount: cachedTotalCount } = JSON.parse(cached);
 
         // 캐시에 요청한 범위의 데이터가 있는지 확인
         if (cachedData.length > endIndex) {
@@ -1395,10 +1395,12 @@ export default function HomePage() {
             });
 
             setCurrentPage(prev => prev + 1);
-            setHasMore(endIndex < cachedData.length - 1);
+            // totalCount 기반으로 hasMore 판단 (cachedData.length는 프리페치 진행 중이라 부정확)
+            const total = cachedTotalCount ?? cachedData.length;
+            setHasMore(endIndex < total - 1);
             setIsLoading(false);
 
-            console.log(`✅ [Cache] ${newContents.length}개 콘텐츠 캐시에서 로드 완료`);
+            console.log(`✅ [Cache] ${newContents.length}개 콘텐츠 캐시에서 로드 완료 (totalCount: ${total})`);
             return; // 캐시에서 로드했으므로 DB 쿼리 스킵
           }
         }
