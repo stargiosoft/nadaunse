@@ -55,7 +55,7 @@ function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
     }
 
     const startTime = Date.now();
-    const duration = 120000; // 120초
+    const duration = 300000; // 300초
 
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
