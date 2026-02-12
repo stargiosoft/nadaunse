@@ -402,7 +402,7 @@ export default function FreeSajuDetail({
                   <div className="content-stretch flex gap-[12px] items-center relative shrink-0 w-full">
                     <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px]">
                       <div className="absolute inset-0 overflow-hidden rounded-[12px]">
-                        <img alt="" className="absolute h-full left-0 max-w-none top-0 w-full object-cover" src={productImage} />
+                        <img alt="운세 콘텐츠 썸네일" className="absolute h-full left-0 max-w-none top-0 w-full object-cover" src={productImage} />
                       </div>
                       <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
                     </div>

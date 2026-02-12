@@ -246,10 +246,14 @@ Sitemap: https://nadaunse.com/sitemap.xml
 ### SEO 개선 작업
 - [x] 콘텐츠별 메타 태그 동적 설정 → **prerender로 해결 (2026-02-10)**
 - [x] 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`) **(2026-02-10)**
-- [ ] 이미지 alt 속성 누락 수정 (네이버 진단 5건)
-- [ ] 네이버 블로그/카페 백링크 확보
-- [ ] IndexNow 프로토콜 적용 검토
+- [x] 이미지 alt 속성 누락 수정 (네이버 진단 5건) → **(2026-02-12)**
+- [x] IndexNow 프로토콜 적용 → **Edge Function 생성 (2026-02-12)**
+- [x] 홈페이지 프리렌더 + ItemList JSON-LD 추가 **(2026-02-12)**
+- [x] BreadcrumbList JSON-LD 추가 (콘텐츠 페이지) **(2026-02-12)**
+- [x] SEO body 강화 (article 태그, 내부 링크, h1/h2 구조) **(2026-02-12)**
 - [ ] prerender 배포 후 네이버 사이트맵 재제출 및 주요 URL 수집 요청
+- [ ] IndexNow Edge Function 배포 후 주요 URL 제출
+- [ ] 네이버 블로그/카페 백링크 확보
 
 ---
 
@@ -293,10 +297,12 @@ SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를
 1. `vite build` 완료 후 `scripts/prerender.mjs` 자동 실행
 2. Supabase REST API로 `master_contents` 테이블에서 deployed 콘텐츠 조회
 3. `build/index.html`을 템플릿으로 사용하여 페이지별 HTML 생성:
+   - `/` (홈페이지): ItemList JSON-LD + 콘텐츠 목록 SEO body
    - `/terms-of-service`, `/privacy-policy`: 정적 메타 태그 주입
-   - `/product/{id}`: 유료 콘텐츠 메타 태그 + Product JSON-LD 주입
-   - `/free/content/{id}`: 무료 콘텐츠 메타 태그 주입 (제목에 `[무료]` 접두사)
-4. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
+   - `/product/{id}`: 유료 콘텐츠 메타 태그 + Product JSON-LD + BreadcrumbList JSON-LD
+   - `/free/content/{id}`: 무료 콘텐츠 메타 태그 + BreadcrumbList JSON-LD (제목에 `[무료]` 접두사)
+4. 콘텐츠 페이지는 article 태그로 감싸고, 관련 콘텐츠 내부 링크를 포함
+5. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
 
 ### 환경변수
 - `VITE_SUPABASE_PROJECT_ID`: Supabase URL 구성에 사용
@@ -317,12 +323,100 @@ SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를
 ### 생성되는 파일 구조
 ```
 build/
-├── index.html                     (홈 - 기존 그대로)
+├── index.html                     (홈 - ItemList JSON-LD + 콘텐츠 목록)
 ├── terms-of-service/index.html    (이용약관)
 ├── privacy-policy/index.html      (개인정보처리방침)
-├── product/{id}/index.html        (유료 콘텐츠)
-└── free/content/{id}/index.html   (무료 콘텐츠)
+├── product/{id}/index.html        (유료 콘텐츠 - Product + BreadcrumbList JSON-LD)
+└── free/content/{id}/index.html   (무료 콘텐츠 - BreadcrumbList JSON-LD)
 ```
+
+---
+
+## IndexNow 프로토콜
+
+### 개요
+IndexNow는 웹사이트가 검색엔진에 URL 변경을 즉시 알릴 수 있는 프로토콜입니다. 콘텐츠 배포/업데이트 시 네이버, Bing, Yandex에 즉시 인덱싱을 요청합니다.
+
+### 지원 검색엔진
+- **네이버** (searchadvisor.naver.com)
+- **Bing** (bing.com)
+- **Yandex** (yandex.com)
+- ⚠️ **구글은 IndexNow 미지원** → Google Search Console에서 별도로 URL 검사 요청 필요
+
+### Edge Function
+- **파일**: `supabase/functions/index-now/index.ts`
+- **환경변수**: `INDEXNOW_API_KEY` (Supabase Dashboard에서 설정)
+- **키 파일**: `public/{api-key}.txt` (빌드 시 public 폴더에 배포)
+
+### 설정 절차
+
+1. **API 키 생성**
+   - [IndexNow 키 생성기](https://www.bing.com/indexnow/getstarted)에서 키 생성
+   - 또는 직접 32자 이상의 영숫자 문자열 생성
+
+2. **키 파일 배포**
+   - `public/indexnow-key.txt` 파일 내용을 실제 API 키로 교체
+   - 파일명도 `public/{실제API키}.txt`로 변경
+   - 빌드 후 `https://nadaunse.com/{API키}.txt`로 접근 가능한지 확인
+
+3. **환경변수 설정**
+   ```bash
+   # Supabase Dashboard → Settings → Edge Functions → Environment Variables
+   INDEXNOW_API_KEY=실제API키값
+   ```
+
+4. **Edge Function 배포**
+   ```bash
+   npx supabase functions deploy index-now --project-ref kcthtpmxffppfbkjjkub
+   ```
+
+### 사용 방법
+
+```bash
+# 단일 URL 제출
+curl -X POST https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/index-now \
+  -H "Authorization: Bearer {SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"urls": ["/product/123", "/free/content/456"]}'
+
+# 전체 사이트 제출 (빌드 후)
+curl -X POST https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/index-now \
+  -H "Authorization: Bearer {SUPABASE_ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"urls": ["/", "/product/1", "/product/2", "/free/content/1"]}'
+```
+
+### 호출 타이밍
+- 새 콘텐츠 배포 후 (master_contents deploy 시)
+- 빌드 완료 후 (Vercel 배포 완료 시)
+- 기존 콘텐츠 업데이트 후
+
+---
+
+## 네이버 수집 요청 절차
+
+### 사이트맵 재제출
+1. [네이버 서치어드바이저](https://searchadvisor.naver.com/console/site/summary?site=https%3A%2F%2Fnadaunse.com) 접속
+2. **요청** → **사이트맵 제출** → `https://nadaunse.com/sitemap.xml` 입력
+3. 제출 후 수집 상태 모니터링 (보통 1-3일 소요)
+
+### 주요 URL 수집 요청
+1. **요청** → **웹 페이지 수집** → URL 입력
+2. 우선 수집 요청할 URL:
+   - `https://nadaunse.com/` (홈페이지)
+   - 유료 콘텐츠 상위 5개 URL
+   - 무료 콘텐츠 상위 3개 URL
+3. ⚠️ 하루 수집 요청 제한: 일반 10건, 주요 URL 10건
+
+### 프리렌더 빌드 후 체크리스트
+1. `npx vite build` 실행 (prerender.mjs 자동 실행)
+2. `build/index.html`에 ItemList JSON-LD 포함 확인
+3. `build/product/*/index.html`에 BreadcrumbList JSON-LD 포함 확인
+4. Vercel 배포 완료 확인
+5. 네이버 사이트맵 재제출
+6. 주요 URL 수집 요청 (홈페이지 + 주요 콘텐츠)
+7. IndexNow Edge Function으로 전체 URL 제출
+8. 1-3일 후 네이버 서치어드바이저에서 색인 변화 확인
 
 ---
 
@@ -330,6 +424,7 @@ build/
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-12 | **SEO 즉시 강화 작업** - 홈페이지 프리렌더 (ItemList JSON-LD + 콘텐츠 목록), BreadcrumbList JSON-LD 추가, SEO body 강화 (article 태그, 내부 링크, h1/h2 구조), IndexNow Edge Function 생성, 이미지 alt 속성 5건 수정 |
 | 2026-02-10 | **prerender 파이프라인 활성화** - `package.json` 빌드에 prerender 연결, 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`). 네이버 진단: description 동일 12건, 색인 12/220+ |
 | 2026-02-06 | **빌드 타임 프리렌더 적용** - `scripts/prerender.mjs` 추가, 빌드 시 콘텐츠별 고유 메타 태그 주입된 정적 HTML 생성 (Google/Naver 크롤러 대응) |
 | 2026-02-06 | **SEO 키워드 다양화 개선** - title/description/keywords 전면 개편, FAQPage JSON-LD 추가, SEO.tsx 기본값 강화, 페이지별 keywords 추가 (HomePage, FreeContentDetail, MasterContentDetailPage) |

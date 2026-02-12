@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-09 (v2.8.0 - 초개인화 프로덕션 배포, 미션성공쿠폰 추가)
+> **최종 업데이트**: 2026-02-12 (v2.9.0 - Google OAuth 팝업 모드 전환, 컴포넌트/UI 수치 현행화)
 
 ---
 
@@ -14,8 +14,8 @@
 - **Build Tool**: Vite 6.3.5
 - **Backend**: Supabase
   - **Auth**:
-    - Google: Supabase OAuth (`signInWithOAuth`)
-    - Kakao: Kakao SDK (커스텀 구현, `signInWithPassword` 기반)
+    - Google: Supabase OAuth 팝업 모드 (`window.open` + `getGoogleOAuthUrl`)
+    - Kakao: Kakao SDK 팝업 모드 (커스텀 구현, `signInWithPassword` 기반)
   - Database: PostgreSQL + RLS
   - Edge Functions: Deno runtime (31개)
   - **자동화**: pg_cron + pg_net (주간 보고서 발송)
@@ -47,10 +47,10 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 72개 (활성화, backup 제외) - 주간 보고서 9개 + 통계 대시보드 2개 추가
+- **컴포넌트**: 75개 (활성화, backup 제외) - 주간 보고서 11개 + 통계 대시보드 1개 포함
 - **Edge Functions**: 31개 (주간 보고서 4개 포함)
 - **페이지 컴포넌트**: 42개
-- **UI 컴포넌트 (shadcn/ui)**: 48개
+- **UI 컴포넌트 (shadcn/ui)**: 52개
 - **스켈레톤**: 5개
 - **타로 카드 덱**: 78장 (메이저 22장 + 마이너 56장)
 
@@ -72,7 +72,7 @@
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  React SPA (Vite 6.3.5)                                              │   │
 │  │  ├── Pages (41개) ─────────────── 라우팅 (React Router v7)           │   │
-│  │  ├── Components (55개) ────────── UI 렌더링 (Tailwind v4)            │   │
+│  │  ├── Components (75개) ────────── UI 렌더링 (Tailwind v4)            │   │
 │  │  ├── Hooks ────────────────────── 상태 관리 (useState, useEffect)    │   │
 │  │  ├── Services (/lib/) ─────────── 비즈니스 로직 (싱글톤 패턴)         │   │
 │  │  └── Utils ────────────────────── 순수 유틸리티 함수                  │   │
@@ -99,8 +99,8 @@
 │  ┌─────────────────────┐      ┌─────────────────────────────────────────┐  │
 │  │   Supabase Auth     │      │         Edge Functions (Deno)           │  │
 │  │   ───────────────   │      │         ─────────────────────           │  │
-│  │   • Google OAuth    │      │   AI 생성 (10개)                         │  │
-│  │   • Kakao OAuth     │      │   ├── generate-free-preview             │  │
+│  │   • Google (팝업)   │      │   AI 생성 (10개)                         │  │
+│  │   • Kakao (팝업)    │      │   ├── generate-free-preview             │  │
 │  │   • Session 관리    │      │   ├── generate-master-content           │  │
 │  │   • JWT 토큰        │      │   ├── generate-saju-answer/preview      │  │
 │  └─────────────────────┘      │   ├── generate-tarot-answer/preview     │  │
@@ -161,9 +161,10 @@
 │                         1. 인증 플로우 (OAuth)                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  [사용자] → [로그인 버튼] → [OAuth Provider (Google/Kakao)]                  │
+│  [사용자] → [로그인 버튼] → [팝업(새 탭)으로 OAuth Provider 열기]             │
 │      ↓                              ↓                                        │
-│  [AuthCallback.tsx] ← ─ ─ ─ ─ [리다이렉트 + 토큰]                            │
+│  [AuthCallback.tsx] ← ─ ─ ─ ─ [팝업에서 인증 완료 + localStorage 신호]       │
+│  ※ Google/Kakao 모두 팝업 모드 → 부모 탭 히스토리 오염 없음                   │
 │      ↓                                                                       │
 │  [clearUserCaches()] → pending_trait_tags 있으면 cached_saju_info 보존      │
 │      ↓                                                                       │
@@ -438,7 +439,7 @@
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │       ↓                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                   Components Layer (55개)                            │   │
+│  │                   Components Layer (75개)                            │   │
 │  │  ┌───────────────────────────────────────────────────────────────┐ │   │
 │  │  │ Feature Components (도메인별)                                   │ │   │
 │  │  │ • FreeContent*    - 무료 콘텐츠 (6개)                          │ │   │
@@ -449,7 +450,7 @@
 │  │  │ • Auth*           - 인증 (5개)                                 │ │   │
 │  │  └───────────────────────────────────────────────────────────────┘ │   │
 │  │  ┌───────────────────────────────────────────────────────────────┐ │   │
-│  │  │ UI Components (/components/ui/) - shadcn/ui 기반 (48개)        │ │   │
+│  │  │ UI Components (/components/ui/) - shadcn/ui 기반 (52개)        │ │   │
 │  │  │ • Button, Input, Dialog, Sheet, Toast, Skeleton 등            │ │   │
 │  │  └───────────────────────────────────────────────────────────────┘ │   │
 │  │  ┌───────────────────────────────────────────────────────────────┐ │   │
@@ -545,7 +546,7 @@
 ### 3. 파일 구조
 - ✅ **React Router v6** 사용 (`/App.tsx`가 라우터)
 - ✅ 페이지 컴포넌트: `/pages/*.tsx`, `/components/*Page.tsx`
-- ✅ 재사용 컴포넌트: `/components/*.tsx` (51개)
+- ✅ 재사용 컴포넌트: `/components/*.tsx` (75개)
 - ✅ 비즈니스 로직: `/lib/*.ts` (서비스 클래스)
 - ✅ 유틸리티: `/utils/*.ts`
 
@@ -675,7 +676,6 @@ const sajuResponse = await fetch(sajuApiUrl, {
 /components/FreeContentLoading.tsx      → 무료 로딩 (공통 로딩으로도 사용)
 /components/FreeSajuDetail.tsx          → 사주 결과 (전체)
 /components/CheckRecordMe.tsx           → 나다움 기록하기 (태그 선택/저장)
-/components/RecordMePhoneBottomSheet.tsx → 전화번호 입력 바텀시트
 /lib/freeContentService.ts              → 비즈니스 로직
 ```
 </details>
@@ -774,6 +774,8 @@ interface TarotGameProps {
 /components/PurchaseHistoryPage.tsx     → 구매 내역
 /components/NadaumTagsList.tsx          → 나다움 태그 페이지 (라우트: /profile/nadaum-tags)
 /components/NadaumTags.tsx              → 나다움 태그 표시 컴포넌트
+/components/ReceiveMyAnalysis.tsx       → "나의 분석 보고서" 탭 클릭 시 전화번호 입력 (최초 1회)
+/components/RecordMePhoneBottomSheet.tsx → 전화번호 입력 바텀시트 (프로필에서 사용)
 ```
 </details>
 
@@ -860,7 +862,7 @@ interface TarotGameProps {
 <summary><b>공통 UI</b></summary>
 
 ```
-/components/ui/*                        → shadcn/ui 재사용 컴포넌트 (26개)
+/components/ui/*                        → shadcn/ui 재사용 컴포넌트 (52개)
 /components/skeletons/*                 → 로딩 스켈레톤 (5개)
 /components/NavigationHeader.tsx        → 헤더
 /components/Footer.tsx                  → 푸터
@@ -894,7 +896,7 @@ App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태�
 
 ### 🎨 UI 컴포넌트
 ```
-/components/ui/                 → shadcn/ui 기반 재사용 컴포넌트 (26개)
+/components/ui/                 → shadcn/ui 기반 재사용 컴포넌트 (52개)
 /components/skeletons/          → 로딩 스켈레톤 UI (5개)
 /components/figma/              → Figma 전용 컴포넌트 (보호 파일)
 /imports/                       → Figma 디자인 임포트 파일
@@ -1107,9 +1109,9 @@ AI 생성 요청 (Edge Function)
     - 오버레이 감지: display:none iframe 무시
          ↓
     쿠폰 적용 (선택)
-    - 웰컴 쿠폰 (3000원)
-    - 재방문 쿠폰 (2000원)
-    - 미션성공 쿠폰
+    - 웰컴 쿠폰 (5000원)
+    - 재방문 쿠폰 (3000원)
+    - 미션성공 쿠폰 (12900원)
          ↓
     결제 완료 → orders 생성
     (0원 결제는 PG 호출 없이 바로 처리)
@@ -1682,6 +1684,7 @@ useEffect(() => {
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| 2.9.0 | 2026-02-12 | **Google OAuth 팝업 모드 반영** - Auth 플로우 다이어그램 업데이트 (redirect→팝업), 컴포넌트 75개/UI 52개 수치 현행화 | AI Assistant |
 | 2.8.0 | 2026-02-09 | **초개인화 프로덕션 배포** - generate-content-answers/saju-answer/tarot-answer 초개인화 프롬프트 프로덕션 배포. **미션성공쿠폰 추가** - coupons 테이블에 mission 타입 추가, CompletionCoupon 발급 로직 변경 (1회차: mission, 2회차+: revisit). 유료 콘텐츠 플로우에 초개인화 데이터 흐름 반영 | AI Assistant |
 | 2.7.0 | 2026-02-09 | **rejected_tags 시스템 추가** - CheckRecordMe 미선택 태그 누적 저장, extract-trait-tags rejectedTags 파라미터 추가. **last_login_at 통합** - HomePage → auth.ts recordTodayVisit()로 이동. **anonymous_free_views INSERT 전환** - upsert→INSERT, UNIQUE 제약 제거. TagCouponBottomSheet 추가 | AI Assistant |
 | 2.6.0 | 2026-02-03 | **계정 불일치 처리 플로우 추가** - 알림톡 링크 접속 시 다른 계정이면 소유자 마스킹 이메일 표시, get-order-owner/get-report-owner Edge Function 추가 | AI Assistant |
@@ -1831,12 +1834,12 @@ useEffect(() => {
 - **[AI_ONBOARDING.md](./AI_ONBOARDING.md)** - AI 작업 가이드 (필독!)
 - **[DECISIONS.md](./DECISIONS.md)** - 아키텍처 결정 기록
 - **[DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)** - DB 스키마 상세
-- **[components-inventory.md](./components-inventory.md)** - 컴포넌트 목록 (51개)
+- **[components-inventory.md](./components-inventory.md)** - 컴포넌트 목록 (75개)
 - **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** - Edge Functions 가이드 (20개)
 - **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** - Database Triggers & Functions
 
 ---
 
-**문서 버전**: 2.3.0
-**최종 업데이트**: 2026-01-23
+**문서 버전**: 2.9.0
+**최종 업데이트**: 2026-02-12
 **문서 끝**

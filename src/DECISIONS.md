@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-10
-> **주요 결정**: iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-02-11
+> **주요 결정**: Google OAuth 팝업 모드 전환, MyReportList 히스토리 잔류 버그, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,90 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-11
+
+### MyReportList → 홈 이동 시 히스토리 잔류 버그 (iOS 스와이프 뒤로가기)
+
+**결정**: MyReportList에서 홈으로 이동하는 3곳 모두 `navigate('/', { replace: true })` 적용
+
+**문제**:
+- 프로필 → "나의 분석 보고서" → 보고서 전체 읽기 → 홈 → 콘텐츠 상세 → iOS 스와이프 뒤로가기 시 **홈이 아닌 `/my-report-list`로 이동**
+
+**원인 분석**:
+- 보고서 플로우 내부는 모두 `{ replace: true }` 사용 → 히스토리 1슬롯 차지 (정상)
+- ProfilePage → MyReportList도 `{ replace: true }` 사용 (정상)
+- **MyReportList → 홈(`/`) 이동만 `replace: true` 누락** → `/my-report-list`가 히스토리에 잔류
+
+```
+히스토리 스택 (버그 상태):
+[/my-report-list] ← replace 없이 push해서 잔류
+[/]               ← 홈
+[/free/content/x] ← 현재
+
+스와이프 뒤로가기: /free/content/x → / → /my-report-list 도달!
+```
+
+**수정**:
+```
+수정 파일: src/components/MyReportList.tsx (3곳)
+- 라인 78:   WeeklyTagSummary "나다움 태그 모으기" 버튼
+- 라인 140:  WeeklyEmptySummary "나다움 태그 모으기" 버튼
+- 라인 1413: ArrowLeft 뒤로가기 화살표
+
+변경: navigate('/') → navigate('/', { replace: true })
+```
+
+**교훈**:
+- 플로우 페이지(보고서, 회원가입, 사주 등)에서 홈으로 이동 시 반드시 `{ replace: true }` 사용
+- 플로우 내부만 `replace: true`로 처리하고 마지막 탈출 지점을 놓치면 히스토리에 잔류
+- iOS Safari 스와이프 뒤로가기는 데스크톱에서 재현 불가 → 실기기 테스트 필수
+
+**영향 범위**: `src/components/MyReportList.tsx`
+
+**상세 문서**: `src/docs/IOS_SWIPE_BACK_BUG_BRIEFING.md` → "버그 2: MyReportList 히스토리 잔류"
+
+---
+
+### Google OAuth를 팝업(새 탭) 모드로 전환하여 iOS 스와이프 뒤로가기 근본 해결
+
+**결정**: Google OAuth를 redirect 방식에서 **팝업(새 탭) 방식**으로 전환
+
+**문제**:
+- 홈 → 무료/유료 콘텐츠 상세 → iOS 스와이프 뒤로가기 → **Google OAuth 로그인 페이지로 이동**
+- Google 계정 로그인 후 홈 ↔ 콘텐츠 상세를 2~3회 왕복하면 재현
+
+**근본 원인**:
+- Google OAuth redirect 모드는 브라우저 히스토리에 **제거 불가능한** 엔트리를 3~4개 추가 (accounts.google.com 내부 리다이렉트)
+- `window.location.replace()`, History Guard Entry, popstate 핸들러 등 7가지 시도 모두 실패
+- Google 내부 리다이렉트(계정 선택, consent, CheckCookie)는 앱에서 제어 불가
+
+**핵심 인사이트**: 카카오 로그인은 이미 팝업 기반(`window.Kakao.Auth.login`)이라 이 문제가 없었음
+
+**해결 방법**:
+```
+1. window.open('about:blank') → 새 탭 즉시 열기 (동기, iOS 팝업 차단 회피)
+2. getGoogleOAuthUrl() → OAuth URL 획득 (비동기)
+3. 새 탭에서 Google OAuth 전체 플로우 진행
+4. AuthCallback이 팝업 모드 감지 → 세션 처리 → localStorage 신호 → window.close()
+5. 부모 탭이 storage 이벤트로 결과 수신 → 콜백 실행
+```
+
+**수정 파일**:
+- `src/lib/auth.ts` → `signInWithGoogle` 3분할: `getGoogleOAuthUrl()`, `signInWithGooglePopup()`, `signInWithGoogleRedirect()` (fallback)
+- `src/pages/AuthCallback.tsx` → 팝업 모드 감지 (`google_oauth_popup_mode`) + `window.close()`
+- `src/components/LoginPageNew.tsx` → `handleGoogleLogin` 재작성: 팝업 우선, 차단 시 redirect fallback
+
+**교훈**:
+- OAuth redirect 방식은 히스토리 오염이 불가피 → 팝업/새 탭 방식이 SPA에 적합
+- `window.open()`은 반드시 사용자 이벤트 핸들러 내에서 동기 호출해야 iOS 팝업 차단 회피 가능
+- fallback(redirect) 경로를 항상 유지하여 팝업 차단 브라우저에서도 동작 보장
+
+**영향 범위**: `src/lib/auth.ts`, `src/pages/AuthCallback.tsx`, `src/components/LoginPageNew.tsx`, `src/components/ExistingAccountPageNew.tsx`
+
+**상세 문서**: `src/docs/IOS_SWIPE_BACK_BUG_BRIEFING.md` → "버그 1: Google OAuth 히스토리 오염"
 
 ---
 

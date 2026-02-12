@@ -1,185 +1,73 @@
-# iOS Safari 스와이프 뒤로가기 버그 - 다음 세션 브리핑
+# iOS Safari 스와이프 뒤로가기 버그 - 종합 브리핑
 
-> **상태**: ✅ 해결 (2026-02-11) — Google OAuth를 팝업(새 탭) 모드로 전환하여 근본 해결
-> **해결 방법**: 부모 탭의 히스토리를 오염시키지 않도록 Google OAuth를 `window.open()` 팝업에서 진행
-> **재현 환경**: iOS Safari, 스테이징 배포 후 테스트
-> **브랜치**: production (staging에 force push)
-
----
-
-## 1. 버그 설명
-
-**증상**: 홈 → 무료/유료 콘텐츠 상세 페이지 → iOS 스와이프 뒤로가기 → **홈이 아닌 Google OAuth 로그인 페이지로 이동**
-
-**재현 조건**:
-- Google 계정으로 회원가입/로그인 후
-- 홈 ↔ 콘텐츠 상세를 2~3회 왕복
-- 스와이프 뒤로가기 시 Google OAuth consent 페이지가 나타남
-
-**사용자 기대**: 스와이프 뒤로가기 = 항상 홈(/)으로 이동
+> **상태**: ✅ 해결 완료 (2026-02-11)
+> **재현 환경**: iOS Safari, 스테이징/프로덕션
+> **브랜치**: production
 
 ---
 
-## 2. 현재 코드에 적용된 수정들 (모두 실패)
+## 요약
 
-### 수정 1: navigate('/', { replace: true }) - 버튼 핸들러
-- **파일**: `src/App.tsx`
-- FreeContentDetailWrapper, ProductDetailPage의 onBack/onHome을 `navigate('/', { replace: true })`로 변경
-- **결과**: 버튼 클릭은 정상, **스와이프 뒤로가기에는 효과 없음** (JS가 개입할 수 없음)
+이 프로젝트에서 iOS Safari 스와이프 뒤로가기는 **두 가지 별개의 버그**로 발생했다.
+각각 근본 원인이 다르며, 독립적인 해결이 필요했다.
 
-### 수정 2: History Guard Entry 패턴
-- **파일**: `src/components/FreeContentDetail.tsx` (99~117줄), `src/components/MasterContentDetailPage.tsx` (174~192줄)
-- 콘텐츠 상세 마운트 시 `replaceState('/')` + `pushState(currentUrl)`로 히스토리에 홈 엔트리 삽입
-- **원리**: 스와이프 뒤로가기 → 바로 앞 엔트리가 '/' → 홈으로 이동
-- **결과**: 이론상 맞지만, 실제로는 Guard Entry가 소모되거나 Google OAuth 엔트리가 너무 많아서 돌파됨
-
-### 수정 3: DirectEntryHistoryGuard 수정
-- **파일**: `src/App.tsx` (101~127줄)
-- `replaceState(null)` → `replaceState(currentState)` (React Router state 보존)
-- **결과**: 부분 개선, 근본 해결 안 됨
-
-### 수정 4: Google OAuth replace 모드
-- **파일**: `src/lib/auth.ts` (signInWithGoogle 함수)
-- `skipBrowserRedirect: true` + `window.location.replace(data.url)` 사용
-- **의도**: OAuth 페이지가 히스토리에 남지 않게
-- **결과**: Google 내부 리다이렉트(계정 선택, consent)가 여전히 3~4개 엔트리를 추가함
-
-### 수정 5: popstate 핸들러 (추가 후 제거)
-- popstate 이벤트로 스와이프 감지 → `navigate('/', { replace: true })`
-- **결과**: Guard Entry와 충돌. popstate가 guard entry의 내부 상태 변경까지 가로채서 엔트리 소모 → 오히려 악화
-- **현재 상태**: 제거됨 (FreeContentDetail.tsx 83~85줄에 주석만 남음)
-
-### 수정 6: contentId 변경 감지 가드
-- **파일**: `src/components/FreeContentDetail.tsx` (72~81줄)
-- 같은 컴포넌트 인스턴스에서 contentId가 바뀌면 홈으로 리다이렉트
-- **결과**: contentId가 바뀌는 경우(같은 /free/content/:id 라우트 내 다른 id)에만 동작. Google OAuth로 이탈하는 건 막지 못함
-
-### 수정 7: bfcache 핸들러
-- **파일**: 두 컴포넌트 모두
-- `pageshow` 이벤트의 `event.persisted` 체크
-- **결과**: bfcache 복원 시에만 동작. 일반 스와이프 뒤로가기에는 트리거 안 됨
+| # | 버그 | 근본 원인 | 해결 방법 | 해결일 |
+|---|------|----------|----------|--------|
+| 1 | 스와이프 시 Google OAuth 페이지로 이동 | Google OAuth redirect가 히스토리에 제거 불가능한 엔트리 3~4개 추가 | Google OAuth를 팝업(새 탭) 모드로 전환 | 2026-02-11 |
+| 2 | 보고서 읽은 후 스와이프 시 `/my-report-list`로 이동 | MyReportList → 홈 이동 시 `replace: true` 누락 | `navigate('/', { replace: true })` 적용 (3곳) | 2026-02-11 |
 
 ---
 
-## 3. 근본적 문제 분석
+## 버그 1: Google OAuth 히스토리 오염
 
-### 핵심 원인: Google OAuth가 브라우저 히스토리에 제거 불가능한 엔트리를 추가
+### 증상
+- 홈 → 무료/유료 콘텐츠 상세 → iOS 스와이프 뒤로가기 → **Google OAuth 로그인 페이지로 이동**
+- Google 계정 로그인 후 홈 ↔ 콘텐츠 상세를 2~3회 왕복하면 재현
+
+### 근본 원인
+
+Google OAuth redirect 모드는 브라우저 히스토리에 **제거 불가능한** 엔트리를 3~4개 추가한다:
 
 ```
-실제 히스토리 스택 (Google 로그인 후):
+히스토리 스택 (Google 로그인 후):
 [1] 이전 페이지들...
 [2] accounts.google.com/o/oauth2/auth   ← 제거 불가
 [3] accounts.google.com/signin/oauth    ← 제거 불가
 [4] accounts.google.com/CheckCookie     ← 제거 불가
 [5] nadaunse.com/auth/callback          ← replace로 처리 가능
 [6] nadaunse.com/ (홈)
-[7] nadaunse.com/free/content/123       ← Guard Entry로 홈 삽입
+[7] nadaunse.com/free/content/123
 ```
 
-- `window.location.replace()`는 **나다운세→Google** 이동 시 1개만 제거
-- Google 내부에서 발생하는 리다이렉트(계정 선택, consent, CheckCookie 등)는 **제어 불가**
-- 결과: 히스토리에 3~4개의 Google 엔트리가 항상 존재
-- Guard Entry 1개로는 부족: 홈 왕복 2~3회 = guard entry 소모 → Google 엔트리에 도달
+- `window.location.replace()`는 나다운세→Google 이동 시 1개만 제거
+- Google 내부 리다이렉트(계정 선택, consent, CheckCookie)는 **제어 불가**
+- Guard Entry 1개로는 부족: 홈 왕복 2~3회 시 소모 → Google 엔트리에 도달
 
-### 왜 Guard Entry가 소모되는가?
+### 실패한 시도들 (7가지)
 
-Guard Entry 패턴: `[/, /free/content/123]`
-1. 스와이프 뒤로가기 → `/` (guard entry) 도달 → React Router가 홈 렌더링
-2. 다시 콘텐츠 상세 진입 → 새 guard entry 삽입: `[/, /, /free/content/456]`
-3. 스와이프 뒤로가기 → `/` (새 guard)
-4. 다시 진입 → 또 guard 삽입
+| # | 시도 | 결과 |
+|---|------|------|
+| 1 | `navigate('/', { replace: true })` 버튼 핸들러 | 버튼 클릭은 정상, 스와이프에는 효과 없음 |
+| 2 | History Guard Entry 패턴 (`replaceState('/')` + `pushState`) | Guard Entry가 소모되면 Google 엔트리 돌파 |
+| 3 | DirectEntryHistoryGuard state 보존 | 부분 개선, 근본 해결 안 됨 |
+| 4 | Google OAuth `window.location.replace()` | Google 내부 리다이렉트 제어 불가 |
+| 5 | popstate 핸들러 | Guard Entry와 충돌, pushState가 popstate 트리거 → 악화 |
+| 6 | contentId 변경 감지 가드 | 같은 라우트 내 id 변경만 감지, OAuth 이탈 감지 불가 |
+| 7 | bfcache 핸들러 (`pageshow`) | bfcache 복원 시에만 동작, 일반 스와이프에 무효 |
 
-**문제**: 매번 guard entry를 push하므로 `history.length`가 계속 증가.
-하지만 **guard entry의 '/' URL이 React Router에게 실제로 홈 라우트를 매칭시키는지**가 핵심 의문점.
+### 해결: Google OAuth 팝업(새 탭) 모드 전환
 
-Guard Entry는 `window.history.state`를 현재 페이지의 state 그대로 복사함. 즉:
-- URL은 `/` 이지만
-- React Router state의 `idx`는 **콘텐츠 상세 페이지 시점의 idx**
-- React Router가 이 `idx`와 내부 카운터를 비교하여 delta를 계산
-- delta가 예상과 다르면 올바른 라우트로 이동하지 못할 수 있음
+**핵심 인사이트**: 카카오 로그인은 이미 팝업 기반(`window.Kakao.Auth.login`)이라 이 문제가 없었음.
+Google도 팝업/새 탭으로 전환하면 부모 탭의 히스토리가 오염되지 않는다.
 
-### 아직 시도하지 않은 접근법
-
-1. **Guard Entry에 올바른 React Router state 설정**:
-   - 현재: guard entry에 콘텐츠 상세의 state를 그대로 복사 (idx가 같음)
-   - 문제: React Router는 같은 idx를 가진 두 엔트리를 구분 못함
-   - 시도: guard entry의 idx를 `현재idx - 1`로 설정? (이전에 시도했다가 React Router 깨짐)
-
-2. **React Router의 history 스택 직접 조작**:
-   - `createBrowserRouter`의 내부 history 객체에 접근하여 조작
-
-3. **서비스 워커로 Google OAuth URL 가로채기**:
-   - 스와이프로 Google URL에 도달하면 서비스 워커가 홈으로 리다이렉트하는 응답 반환
-
-4. **완전히 다른 접근: popstate + 조건부 처리**:
-   - popstate에서 `window.location.pathname`이 콘텐츠 상세가 아니면 무시
-   - 콘텐츠 상세이면서 사용자가 방금 뒤로가기를 한 경우에만 처리
-   - 이전 시도에서 Guard Entry와 충돌한 이유: Guard Entry 삽입 시 발생하는 내부 popstate까지 가로챔
-
-5. **Guard Entry를 여러 개 삽입**:
-   - 1개가 아닌 3~4개의 guard entry를 삽입하여 Google 엔트리 도달 방지
-   - 부작용: history.length 더 빠르게 100 도달
-
-6. **visibilitychange + 위치 체크**:
-   - 페이지가 visible로 돌아왔을 때 현재 URL이 콘텐츠 상세가 아니면 홈으로 리다이렉트
-
-7. **Google OAuth를 팝업으로 변경**:
-   - 팝업 창에서 OAuth 진행 → 메인 윈도우 히스토리 오염 없음
-   - Supabase Auth에서 팝업 모드 지원 여부 확인 필요
-
----
-
-## 4. 현재 코드 위치
-
-| 파일 | 내용 |
-|------|------|
-| `src/App.tsx:101-127` | DirectEntryHistoryGuard (외부 진입 시 홈 삽입) |
-| `src/App.tsx:2458-2459` | FreeContentDetailWrapper onBack/onHome (replace) |
-| `src/App.tsx:518-519, 677-678` | ProductDetailPage onBack/onHome (replace) |
-| `src/components/FreeContentDetail.tsx:68-117` | useFreeContentDetail 훅 (contentId가드, bfcache, guard entry) |
-| `src/components/MasterContentDetailPage.tsx:160-192` | bfcache + guard entry |
-| `src/lib/auth.ts:133-162` | signInWithGoogle (skipBrowserRedirect + replace) |
-
----
-
-## 5. 테스트 방법
-
-1. `npx vite build` (프로젝트 루트에서)
-2. `git add . && git commit -m "fix: ..." && git push origin production:staging --force`
-3. Vercel 스테이징 빌드 완료 대기
-4. iOS Safari에서:
-   - 모든 탭 닫기
-   - 스테이징 URL 접속
-   - Google 계정으로 로그인
-   - 홈 → 무료 콘텐츠 상세 → 스와이프 뒤로가기 (2~3회 반복)
-   - Google OAuth 페이지로 이동하지 않는지 확인
-
----
-
-## 6. 주의사항
-
-- **popstate 핸들러는 절대 사용하지 마세요**: Guard Entry 패턴과 100% 충돌. pushState/replaceState가 내부적으로 popstate를 트리거하여 guard entry를 소모함.
-- **React Router state의 idx를 절대 변경하지 마세요**: React Router v6는 내부 카운터와 state.idx를 비교하여 delta 계산. idx 변경 시 전체 라우팅 깨짐.
-- **navigate('/')는 push**: 항상 `navigate('/', { replace: true })` 사용 필수.
-- **window.history.state는 항상 null이 아닌 현재 state**: replaceState/pushState 시 반드시 현재 state 보존.
-- **iOS Safari에서만 테스트 가능**: 데스크톱 브라우저에서는 스와이프 뒤로가기를 재현할 수 없음.
-
----
-
-## 7. 해결 — Google OAuth 팝업(새 탭) 모드 전환 (2026-02-11)
-
-### 핵심 인사이트
-카카오 로그인은 이미 팝업 기반(`window.Kakao.Auth.login({ throughTalk: false })`)이라 이 문제가 없었음.
-Google도 팝업/새 탭으로 전환하면 부모 탭의 히스토리가 오염되지 않음.
-
-### 수정 파일
+**수정 파일**:
 | 파일 | 변경 내용 |
 |------|----------|
 | `src/lib/auth.ts` | `signInWithGoogle` → `getGoogleOAuthUrl()`, `signInWithGooglePopup()`, `signInWithGoogleRedirect()` 3분할 |
 | `src/pages/AuthCallback.tsx` | 팝업 모드 감지 (`google_oauth_popup_mode`) → localStorage 신호 전송 + `window.close()` |
 | `src/components/LoginPageNew.tsx` | `handleGoogleLogin` 재작성: `window.open()` → 팝업 모드, 차단 시 redirect fallback |
 
-### 플로우
+**플로우**:
 ```
 1. 사용자 "Google 로그인" 클릭
 2. window.open('about:blank') → 새 탭 즉시 열기 (동기, iOS 팝업 차단 회피)
@@ -191,9 +79,174 @@ Google도 팝업/새 탭으로 전환하면 부모 탭의 히스토리가 오염
 8. 부모 탭이 storage 이벤트로 결과 수신 → 콜백 실행
 ```
 
-### 기존 defense-in-depth 코드 (유지)
-- `DirectEntryHistoryGuard` (App.tsx)
-- Guard entries (FreeContentDetail, MasterContentDetailPage)
-- HomePage 버퍼 전략 (5개 pushState)
-- bfcache 핸들러
-- 모든 `navigate(..., { replace: true })`
+---
+
+## 버그 2: MyReportList 히스토리 잔류
+
+### 증상
+- 프로필 → "나의 분석 보고서" 탭 → 보고서 전체 읽기 → 홈으로 이동
+- 홈에서 무료/유료 콘텐츠 상세 진입
+- iOS 스와이프 뒤로가기 → **홈이 아닌 `/my-report-list`(보고서 목록)로 이동**
+
+### 근본 원인
+
+보고서 플로우의 navigate 패턴을 추적하면 원인이 명확하다:
+
+```
+✅ ProfilePage → /my-report-list   : navigate('/my-report-list', { replace: true })  → 정상
+✅ MyReportList → 보고서 상세       : navigate('/report-weekly-detail/:id', { replace: true }) → 정상
+✅ 보고서 상세 → 타로 → 마음처방 → 응원글 : 모두 { replace: true } → 정상
+✅ 보고서 플로우 → /my-report-list  : navigate('/my-report-list', { replace: true }) → 정상
+❌ MyReportList → 홈 /             : navigate('/')  ← replace 없음! 문제!
+```
+
+**보고서 플로우 내부는 전부 `replace: true`를 사용**하여 히스토리 1슬롯만 차지한다.
+그런데 마지막에 MyReportList에서 홈으로 돌아갈 때만 `replace: true`가 빠져있었다.
+
+결과적으로 히스토리 스택이 이렇게 된다:
+
+```
+히스토리 스택 (보고서 읽고 홈으로 돌아온 후):
+[1] ... 이전 페이지들
+[2] /my-report-list     ← replace 없이 push해서 잔류!
+[3] /                   ← 현재 (홈)
+[4] /free/content/:id   ← 콘텐츠 클릭
+
+스와이프 뒤로가기: [4] → [3] → [2] /my-report-list 도달!
+```
+
+FreeContentDetail의 History Guard Entry가 있으면 히스토리가 더 복잡해진다:
+
+```
+[1] ... 이전 페이지들
+[2] /my-report-list          ← 잔류
+[3] /                        ← 홈
+[4] / (Guard Entry)          ← Guard가 삽입한 홈 URL
+[5] /free/content/:id        ← 현재
+
+스와이프 1회: [5] → [4] (Guard) → React Router가 / 렌더링
+스와이프 2회: [4] → [3] / (동일, 변화 없어 보임)
+스와이프 3회: [3] → [2] /my-report-list 도달!
+```
+
+실제 사용에서는 Guard Entry 소모와 bfcache 동작이 겹쳐서 스와이프 1~2회만에 `/my-report-list`에 도달하는 경우도 있다.
+
+### 해결: `navigate('/', { replace: true })` 적용
+
+**수정 파일**: `src/components/MyReportList.tsx` (3곳)
+
+| 위치 | 컴포넌트 | 용도 | 수정 전 → 수정 후 |
+|------|----------|------|-------------------|
+| 라인 78 | `WeeklyTagSummary` | "나다움 태그 모으기" 버튼 | `navigate('/')` → `navigate('/', { replace: true })` |
+| 라인 140 | `WeeklyEmptySummary` | "나다움 태그 모으기" 버튼 | `navigate('/')` → `navigate('/', { replace: true })` |
+| 라인 1413 | ArrowLeft (뒤로가기) | 상단 뒤로가기 화살표 | `navigate('/')` → `navigate('/', { replace: true })` |
+
+**수정 후 히스토리**:
+```
+[1] ... 이전 페이지들
+[2] /                   ← /my-report-list를 replace하여 홈으로 교체
+[3] /free/content/:id   ← 콘텐츠 클릭
+
+스와이프 뒤로가기: [3] → [2] / (홈) ✅ 정상
+```
+
+---
+
+## Defense-in-Depth 계층 (현재 적용 중)
+
+이 프로젝트에서 iOS 스와이프 뒤로가기 문제를 방지하기 위해 여러 방어 계층이 적용되어 있다:
+
+| 계층 | 위치 | 역할 |
+|------|------|------|
+| **Google OAuth 팝업** | `auth.ts`, `LoginPageNew.tsx`, `AuthCallback.tsx` | OAuth 히스토리 오염 원천 차단 |
+| **History Guard Entry** | `FreeContentDetail.tsx`, `MasterContentDetailPage.tsx` | 콘텐츠 상세 진입 시 홈 엔트리 삽입 |
+| **DirectEntryHistoryGuard** | `App.tsx` | 외부 링크(알림톡 등)로 직접 진입 시 홈 엔트리 삽입 |
+| **replace: true 일관 적용** | 보고서 플로우, 회원가입 플로우, 사주 수정 등 | 플로우 완료 후 히스토리에 잔류하지 않도록 |
+| **bfcache 핸들러** | `FreeContentDetail.tsx`, `PaymentNew.tsx` 등 | iOS bfcache 복원 시 상태 리셋 |
+| **contentId 변경 감지** | `FreeContentDetail.tsx` | 같은 라우트에서 id 변경 시 홈으로 리다이렉트 |
+
+---
+
+## 주의사항 (향후 개발 시)
+
+### 반드시 지켜야 할 규칙
+
+1. **플로우 페이지에서 홈으로 이동 시 반드시 `{ replace: true }` 사용**
+   - 보고서, 회원가입, 사주 입력/수정 등 "플로우"를 거친 후 홈으로 이동할 때
+   - `navigate('/')` ❌ → `navigate('/', { replace: true })` ✅
+   - 이유: replace 없이 push하면 플로우 페이지가 히스토리에 남아서 스와이프 시 도달
+
+2. **popstate 핸들러 사용 금지**
+   - Guard Entry 패턴과 100% 충돌
+   - `pushState`/`replaceState`가 내부적으로 popstate를 트리거하여 Guard Entry 소모
+
+3. **React Router state의 idx 변경 금지**
+   - React Router v7은 내부 카운터와 `state.idx`를 비교하여 delta 계산
+   - idx 변경 시 전체 라우팅 깨짐
+
+4. **`window.history.state`는 항상 보존**
+   - `replaceState`/`pushState` 시 반드시 현재 state를 전달
+   - `replaceState(null, ...)` ❌ → `replaceState(window.history.state, ...)` ✅
+
+### 체크리스트: 새 페이지/플로우 추가 시
+
+- [ ] 플로우 내부 페이지 간 이동에 `{ replace: true }` 적용했는가?
+- [ ] 플로우 완료 후 홈/이전 페이지로 이동 시 `{ replace: true }` 적용했는가?
+- [ ] `navigate('/')` 또는 `navigate('/some-page')`가 replace 없이 사용된 곳이 없는가?
+- [ ] iOS Safari 실기기에서 스와이프 뒤로가기 테스트했는가?
+
+---
+
+## 테스트 방법
+
+1. `npx vite build` (프로젝트 루트)
+2. 스테이징 배포 후 iOS Safari에서 테스트
+3. 테스트 시나리오:
+
+### 시나리오 A: Google OAuth 오염 테스트
+1. iOS Safari에서 모든 탭 닫기
+2. 스테이징 URL 접속 → Google 계정으로 로그인
+3. 홈 → 무료 콘텐츠 상세 → 스와이프 뒤로가기 (3~5회 반복)
+4. ✅ Google OAuth 페이지로 이동하지 않아야 함
+
+### 시나리오 B: MyReportList 잔류 테스트
+1. 프로필 → "나의 분석 보고서" 탭 클릭
+2. 보고서 1개 선택 → 전체 플로우 진행 (상세 → 타로 → 마음처방 → 응원글 → 완료)
+3. 보고서 목록 → 뒤로가기 (홈으로 이동)
+4. 홈에서 무료/유료 콘텐츠 상세 진입
+5. 스와이프 뒤로가기
+6. ✅ 홈(/)으로 이동해야 하며, `/my-report-list`로 이동하면 안 됨
+
+### 시나리오 C: 복합 테스트
+1. Google 로그인 → 보고서 읽기 → 홈 → 콘텐츠 상세 → 스와이프 뒤로가기 반복
+2. ✅ 항상 홈으로 돌아와야 함
+
+---
+
+## 관련 파일 참조
+
+| 파일 | 내용 |
+|------|------|
+| `src/lib/auth.ts` | Google OAuth 팝업 모드 (`getGoogleOAuthUrl`, `signInWithGooglePopup`) |
+| `src/pages/AuthCallback.tsx` | 팝업 모드 감지 + localStorage 신호 |
+| `src/components/LoginPageNew.tsx` | Google 로그인 버튼 핸들러 (팝업 → fallback redirect) |
+| `src/components/MyReportList.tsx` | 보고서 목록 → 홈 이동 시 `replace: true` 적용 (3곳) |
+| `src/components/FreeContentDetail.tsx:100-118` | History Guard Entry 패턴 |
+| `src/components/MasterContentDetailPage.tsx` | History Guard Entry + bfcache |
+| `src/App.tsx:101-127` | DirectEntryHistoryGuard |
+| `src/App.tsx` | 보고서 플로우 Wrapper들 (모두 `replace: true`) |
+
+---
+
+## 수정 이력
+
+| 날짜 | 변경 내용 |
+|------|----------|
+| 2026-02-11 | **버그 2 해결** - MyReportList → 홈 이동 시 `navigate('/', { replace: true })` 적용 (3곳) |
+| 2026-02-11 | **버그 1 해결** - Google OAuth를 팝업(새 탭) 모드로 전환하여 히스토리 오염 원천 차단 |
+| 2026-02-10 | popstate 핸들러 제거 (Guard Entry와 충돌) |
+| 2026-01-07~02-10 | 7가지 시도 (모두 실패 또는 부분 해결) |
+
+---
+
+**문서 최종 업데이트**: 2026-02-11

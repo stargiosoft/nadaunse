@@ -319,7 +319,10 @@ function GAInit() {
         '/signup/terms': '회원가입 약관',
         '/auth/callback': '로그인 처리 중',
         '/alimtalk/input': '알림톡 정보 입력',
+        '/pending-tags-check': '태그 확인 중',
+        '/paid/tag-loading': '태그 추출 중',
         '/master/content': '콘텐츠 관리',
+        '/master/stats': '통계 대시보드',
         '/master/content/create': '콘텐츠 생성',
         '/master/content/create/questions': '질문 작성',
         '/error/404': '페이지를 찾을 수 없음',
@@ -336,6 +339,9 @@ function GAInit() {
       }
 
       // 동적 라우트 패턴 매칭
+      if (pathname.startsWith('/product/') && pathname.endsWith('/tag-loading')) {
+        return `태그 추출 중 | ${BASE_TITLE}`;
+      }
       if (pathname.startsWith('/product/') && pathname.endsWith('/payment')) {
         return `결제 | ${BASE_TITLE}`;
       }

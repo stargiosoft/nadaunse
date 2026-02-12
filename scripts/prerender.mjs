@@ -134,13 +134,16 @@ function injectMetaTags(template, { title, description, keywords, canonicalUrl, 
     );
   }
 
-  // JSON-LD 추가 (기존 JSON-LD 마지막 script 뒤에 삽입)
+  // JSON-LD 추가 (단일 객체 또는 배열 지원)
   if (jsonLd) {
-    const jsonLdScript = `\n    <script type="application/ld+json">\n    ${JSON.stringify(jsonLd, null, 2).split('\n').join('\n    ')}\n    </script>`;
-    // 마지막 </script> (JSON-LD 영역) 바로 전에 삽입 → </head> 앞에 삽입
+    const jsonLdItems = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+    const jsonLdScripts = jsonLdItems
+      .filter(Boolean)
+      .map(item => `\n    <script type="application/ld+json">\n    ${JSON.stringify(item, null, 2).split('\n').join('\n    ')}\n    </script>`)
+      .join('');
     html = html.replace(
       /(\s*)<\/head>/,
-      `${jsonLdScript}$1</head>`
+      `${jsonLdScripts}$1</head>`
     );
   }
 
@@ -171,8 +174,18 @@ function escapeAttr(str) {
 /**
  * 크롤러용 본문 HTML 생성
  * React 마운트 시 대체되므로 스타일 없이 시맨틱 구조만 제공
+ *
+ * @param {Object} options
+ * @param {string} options.heading - h1 제목
+ * @param {string} options.description - 페이지 설명
+ * @param {Array} options.breadcrumbs - 브레드크럼 [{label, url}]
+ * @param {string} options.extraText - 추가 텍스트
+ * @param {boolean} options.isArticle - article 태그로 감쌀지 여부
+ * @param {string} options.subHeading - h2 부제목
+ * @param {Array} options.contentList - 콘텐츠 목록 [{title, url, description}] (홈페이지용)
+ * @param {Array} options.internalLinks - 내부 링크 [{label, url}]
  */
-function buildBodyContent({ heading, description, breadcrumbs, extraText }) {
+function buildBodyContent({ heading, description, breadcrumbs, extraText, isArticle, subHeading, contentList, internalLinks }) {
   const parts = [];
 
   // 네비게이션 (breadcrumb)
@@ -193,12 +206,43 @@ function buildBodyContent({ heading, description, breadcrumbs, extraText }) {
     parts.push(`<p>${escapeHtml(description)}</p>`);
   }
 
+  // 부제목
+  if (subHeading) {
+    parts.push(`<h2>${escapeHtml(subHeading)}</h2>`);
+  }
+
   // 추가 텍스트 (키워드 풍부화용)
   if (extraText) {
     parts.push(`<p>${escapeHtml(extraText)}</p>`);
   }
 
-  return parts.join('\n');
+  // 콘텐츠 목록 (홈페이지용)
+  if (contentList && contentList.length > 0) {
+    const listItems = contentList
+      .map((item) => {
+        const desc = item.description ? ` - ${escapeHtml(item.description)}` : '';
+        return `<li><a href="${escapeAttr(item.url)}">${escapeHtml(item.title)}</a>${desc}</li>`;
+      })
+      .join('\n');
+    parts.push(`<ul>\n${listItems}\n</ul>`);
+  }
+
+  // 내부 링크
+  if (internalLinks && internalLinks.length > 0) {
+    const links = internalLinks
+      .map((link) => `<a href="${escapeAttr(link.url)}">${escapeHtml(link.label)}</a>`)
+      .join(' | ');
+    parts.push(`<nav aria-label="관련 콘텐츠">${links}</nav>`);
+  }
+
+  const content = parts.join('\n');
+
+  // article 태그로 감싸기 (콘텐츠 페이지)
+  if (isArticle) {
+    return `<article>${content}</article>`;
+  }
+
+  return content;
 }
 
 /**
@@ -355,8 +399,32 @@ function generateContentPages(template, contents) {
     // OG 이미지
     const ogImage = content.thumbnail_url || DEFAULT_OG_IMAGE;
 
-    // Product JSON-LD (유료 콘텐츠만)
-    const jsonLd = isPaid ? {
+    // BreadcrumbList JSON-LD (모든 콘텐츠 페이지)
+    const breadcrumbItems = isPaid
+      ? [
+          { position: 1, name: '홈', item: `${SITE_URL}/` },
+          { position: 2, name: '운세 콘텐츠', item: `${SITE_URL}/#contents` },
+          { position: 3, name: content.title, item: `${SITE_URL}/${route}` },
+        ]
+      : [
+          { position: 1, name: '홈', item: `${SITE_URL}/` },
+          { position: 2, name: '무료 운세', item: `${SITE_URL}/free` },
+          { position: 3, name: content.title, item: `${SITE_URL}/${route}` },
+        ];
+
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: breadcrumbItems.map((b) => ({
+        '@type': 'ListItem',
+        position: b.position,
+        name: b.name,
+        item: b.item,
+      })),
+    };
+
+    // Product JSON-LD (유료 콘텐츠만) + BreadcrumbList (모두)
+    const productJsonLd = isPaid ? {
       '@context': 'https://schema.org',
       '@type': 'Product',
       name: content.title,
@@ -373,6 +441,8 @@ function generateContentPages(template, contents) {
         availability: 'https://schema.org/InStock',
       },
     } : null;
+
+    const jsonLd = [breadcrumbJsonLd, productJsonLd].filter(Boolean);
 
     // SEO 본문 콘텐츠 생성
     const contentTypeLabel = isPaid ? '프리미엄 운세' : '무료 운세';
@@ -391,6 +461,15 @@ function generateContentPages(template, contents) {
     const extraText = isPaid
       ? `나다운세 ${contentTypeLabel} - AI가 분석하는 사주풀이, 타로, 신년운세. 정확하고 깊이 있는 운세 결과를 확인하세요.`
       : `나다운세 ${contentTypeLabel} - 무료로 체험하는 AI 운세. 사주, 타로, 오늘의 운세를 지금 바로 확인하세요.`;
+
+    // 내부 링크 (같은 타입의 다른 콘텐츠 최대 5개)
+    const relatedContents = contents
+      .filter((c) => c.id !== content.id && c.content_type === content.content_type)
+      .slice(0, 5)
+      .map((c) => {
+        const relRoute = c.content_type === 'paid' ? `/product/${c.id}` : `/free/content/${c.id}`;
+        return { label: c.title, url: `${SITE_URL}${relRoute}` };
+      });
 
     const html = injectMetaTags(template, {
       title: pageTitle,
@@ -411,6 +490,9 @@ function generateContentPages(template, contents) {
         description: pageDescription,
         breadcrumbs,
         extraText,
+        isArticle: true,
+        subHeading: `${contentTypeLabel} 상세`,
+        internalLinks: relatedContents,
       }),
     });
 
@@ -421,6 +503,91 @@ function generateContentPages(template, contents) {
   }
 
   console.log(`[prerender] 유료 콘텐츠 ${paidCount}개, 무료 콘텐츠 ${freeCount}개 HTML 생성 완료`);
+}
+
+/**
+ * 홈페이지 프리렌더 생성
+ * ItemList JSON-LD로 콘텐츠 목록을 구조화 데이터로 노출
+ * SEO body content로 주요 콘텐츠 목록을 HTML로 삽입
+ */
+function generateHomePage(template, contents) {
+  const paidContents = contents.filter((c) => c.content_type === 'paid');
+  const freeContents = contents.filter((c) => c.content_type === 'free');
+
+  // ItemList JSON-LD: 모든 콘텐츠를 구조화 데이터로 노출
+  const allItems = contents.map((content, index) => {
+    const urlPath = content.content_type === 'paid'
+      ? `/product/${content.id}`
+      : `/free/content/${content.id}`;
+    return {
+      '@type': 'ListItem',
+      position: index + 1,
+      name: content.title,
+      url: `${SITE_URL}${urlPath}`,
+    };
+  });
+
+  const itemListJsonLd = contents.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: '나다운세 운세 콘텐츠',
+    description: 'AI가 분석하는 사주, 타로, 운세 콘텐츠 모음',
+    numberOfItems: contents.length,
+    itemListElement: allItems,
+  } : null;
+
+  // 콘텐츠 목록 (SEO body용)
+  const contentList = [];
+
+  // 유료 콘텐츠
+  for (const c of paidContents) {
+    contentList.push({
+      title: c.title,
+      url: `${SITE_URL}/product/${c.id}`,
+      description: c.description || 'AI 프리미엄 운세',
+    });
+  }
+
+  // 무료 콘텐츠
+  for (const c of freeContents) {
+    contentList.push({
+      title: `[무료] ${c.title}`,
+      url: `${SITE_URL}/free/content/${c.id}`,
+      description: c.description || '무료 AI 운세',
+    });
+  }
+
+  const homeTitle = '나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세';
+  const homeDescription = '무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요.';
+  const homeKeywords = '나다운세, 운세, 무료사주, 무료운세, 신년운세, 사주, 타로, 궁합, 오늘의운세, 띠별오늘의운세, 띠별운세, AI 운세, 별자리운세, 챗지피티사주, 챗gpt사주, 사주GPT, 신점, 사주팔자, 사주풀이, 인터넷사주, 자기이해';
+
+  const html = injectMetaTags(template, {
+    title: homeTitle,
+    description: homeDescription,
+    keywords: homeKeywords,
+    canonicalUrl: `${SITE_URL}/`,
+    ogType: 'website',
+    ogTitle: homeTitle,
+    ogDescription: homeDescription,
+    ogUrl: `${SITE_URL}/`,
+    ogImage: DEFAULT_OG_IMAGE,
+    twitterTitle: homeTitle,
+    twitterDescription: homeDescription,
+    twitterImage: DEFAULT_OG_IMAGE,
+    jsonLd: itemListJsonLd,
+    bodyContent: buildBodyContent({
+      heading: '나다운세 - AI 운세 서비스',
+      description: homeDescription,
+      subHeading: paidContents.length > 0 ? `운세 콘텐츠 ${contents.length}개` : null,
+      extraText: 'AI가 분석하는 사주풀이, 타로, 궁합, 신년운세. 무료운세부터 프리미엄 운세까지 나다운세에서 만나보세요.',
+      contentList,
+    }),
+  });
+
+  // 홈페이지는 build/index.html을 직접 덮어쓰기
+  const homePath = resolve(BUILD_DIR, 'index.html');
+  writeFileSync(homePath, html, 'utf-8');
+  console.log(`[prerender] 홈페이지 index.html 프리렌더 완료 (콘텐츠 ${contents.length}개 목록 포함)`);
 }
 
 /**
@@ -448,7 +615,10 @@ async function main() {
     generateContentPages(template, contents);
   }
 
-  // 5. 정적 sitemap.xml 생성 (Edge Function rewrite 대신 정적 파일로 서빙)
+  // 5. 홈페이지 프리렌더 (ItemList JSON-LD + SEO body content)
+  generateHomePage(template, contents);
+
+  // 6. 정적 sitemap.xml 생성 (Edge Function rewrite 대신 정적 파일로 서빙)
   generateSitemap(contents);
 
   console.log('[prerender] 프리렌더 완료!');

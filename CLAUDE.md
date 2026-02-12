@@ -14,8 +14,9 @@
 ### Tech Stack
 | 분류 | 기술 |
 |------|------|
-| Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
+| Frontend | React 18 + TypeScript + Tailwind CSS v4.1 + Vite 6 |
 | Backend | Supabase (PostgreSQL + Edge Functions 31개) |
+| 인증 | Google OAuth (팝업 모드) + Kakao SDK (팝업 모드) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne (구 아임포트) v2 |
@@ -24,10 +25,10 @@
 | 배포 | Vercel |
 
 ### 주요 통계
-- **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
+- **컴포넌트**: 75개 (주간 보고서 11개 + 통계 대시보드 1개 포함)
 - **Edge Functions**: 31개 (주간 보고서 4개 포함)
 - **페이지**: 41개
-- **UI 컴포넌트 (shadcn/ui)**: 48개
+- **UI 컴포넌트 (shadcn/ui)**: 52개
 - **타로 카드 덱**: 78장
 
 ---
@@ -110,7 +111,7 @@ const bgImage = "/background.jpg";
 
 ### 7. 컴포넌트 재사용
 - 새 컴포넌트 만들기 전 `components-inventory.md` 확인
-- `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (48개)
+- `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (52개)
 
 ### 8. Edge Functions
 - **소스 코드 위치**: `/supabase/functions/` (Supabase CLI 기본 경로)
@@ -131,7 +132,7 @@ npm run deploy:prod:core
 npm run deploy:staging
 ```
 
-**🚨 --no-verify-jwt 필수 함수 (내부 호출 또는 공개 접근용)**:
+**🚨 --no-verify-jwt 필수 함수 (내부 호출, 외부 서버 콜백, pg_cron, 공개 접근용) - 총 10개**:
 | 함수 | 이유 |
 |------|------|
 | `generate-saju-answer` | `generate-content-answers`에서 내부 호출 |
@@ -139,9 +140,13 @@ npm run deploy:staging
 | `send-alimtalk` | `generate-content-answers`에서 내부 호출 |
 | `generate-weekly-report` | `generate-weekly-reports-batch`에서 내부 호출 |
 | `send-report-alimtalk` | `generate-weekly-report`에서 내부 호출 |
+| `generate-weekly-reports-batch` | pg_cron 스케줄러 호출 (사용자 JWT 없음) |
+| `cleanup-unconfirmed-tags` | pg_cron 스케줄러 호출 (사용자 JWT 없음) |
+| `payment-webhook` | PortOne 서버 콜백 (외부 결제 서버, JWT 없음) |
+| `sentry-slack-webhook` | Sentry 서버 콜백 (외부 모니터링 서버, JWT 없음) |
 | `generate-sitemap` | Google 크롤러가 인증 없이 sitemap.xml 접근 필요 |
 
-- 위 함수들은 Service Role Key로 호출되거나 공개 접근이 필요하므로 JWT 검증 비활성화 필수
+- 위 함수들은 Service Role Key로 호출되거나, 외부 서버 콜백이거나, pg_cron 스케줄러 호출이므로 JWT 검증 비활성화 필수
 - **수동 배포 시 `--no-verify-jwt` 누락하면 "Invalid JWT" 401 에러 발생**
 - 배포 스크립트 사용하면 자동으로 플래그 적용됨
 
@@ -777,7 +782,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 |------|-------------|----------|
 | **[DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md)** | DB 작업 시 | 테이블 구조, 컬럼, 타입, 제약조건, 인덱스 |
 | **[supabase/RLS_POLICIES.md](./supabase/RLS_POLICIES.md)** | 권한 문제 디버깅 시 | 9개 테이블의 26개 RLS 정책, Staging↔Production 동기화 |
-| **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | DB 자동화 작업 시 | 5개 Triggers, 5개 Functions, updated_at 자동 갱신 패턴 |
+| **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | DB 자동화 작업 시 | 5개 Triggers, 8개 Functions, 4개 pg_cron Jobs, updated_at 자동 갱신 패턴 |
 
 ### ⚡ Supabase Edge Functions
 
@@ -789,7 +794,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 | 문서 | 언제 읽나요? | 주요 내용 |
 |------|-------------|----------|
-| **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 찾기, 재사용 검토 시 | 51개 컴포넌트 분류, 파일 위치, shadcn/ui 48개 |
+| **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 찾기, 재사용 검토 시 | 75개 컴포넌트 분류, 파일 위치, shadcn/ui 52개 |
 
 ### 🚀 시작 가이드
 
@@ -837,4 +842,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-02-09
+**최종 업데이트**: 2026-02-12

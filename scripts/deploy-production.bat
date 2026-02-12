@@ -128,13 +128,18 @@ call npx supabase functions deploy users --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [25/25] trigger-rebuild
+echo [25/26] trigger-rebuild
 call npx supabase functions deploy trigger-rebuild --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo [26/26] index-now
+call npx supabase functions deploy index-now --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 프로덕션 배포 완료! (25개 함수)
+echo ✅ 프로덕션 배포 완료! (26개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 echo 📌 --no-verify-jwt 적용된 함수:

@@ -1088,7 +1088,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full mt-0 pt-0">
                 <div className="aspect-[391/270] relative shrink-0 w-full bg-[#f0f0f0]">
                   {content.thumbnail_url ? (
-                    <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={content.thumbnail_url} />
+                    <img alt={`${content.title} 썸네일`} className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={content.thumbnail_url} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[16px] text-[#999999]">이미지 없음</p>
@@ -1575,7 +1575,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             </div>
                             <div className="h-[65px] relative shrink-0 w-[50px]">
                               <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                                <img alt="" className="absolute h-[123.53%] left-[-13.78%] max-w-none top-[-11.76%] w-[125.64%]" src={characterImg} />
+                                <img alt="나다운세 캐릭터" className="absolute h-[123.53%] left-[-13.78%] max-w-none top-[-11.76%] w-[125.64%]" src={characterImg} />
                               </div>
                             </div>
                           </div>

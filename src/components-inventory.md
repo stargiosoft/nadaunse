@@ -1,8 +1,8 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-02-10
-> **총 컴포넌트 수**: 71개 (활성화) - 주간 보고서 9개 + 통계 대시보드 2개 포함
-> **UI 컴포넌트 (shadcn/ui)**: 48개
+> **최종 업데이트**: 2026-02-12
+> **총 컴포넌트 수**: 75개 (활성화) - 주간 보고서 11개 + 통계 대시보드 1개 포함
+> **UI 컴포넌트 (shadcn/ui)**: 52개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 
@@ -10,18 +10,18 @@
 
 ## 📋 목차
 
-- [UI 컴포넌트 (7개)](#ui-컴포넌트)
+- [UI 컴포넌트 (11개)](#ui-컴포넌트)
 - [인증 관련 (4개)](#인증-관련)
 - [결제 관련 (4개)](#결제-관련)
-- [무료 콘텐츠 관련 (9개)](#무료-콘텐츠-관련)
+- [무료 콘텐츠 관련 (11개)](#무료-콘텐츠-관련)
 - [마스터 콘텐츠 관리 (6개)](#마스터-콘텐츠-관리)
 - [통계 관리 (1개)](#통계-관리-1개)
 - [사주 정보 관리 (10개)](#사주-정보-관리)
 - [타로 콘텐츠 (5개)](#타로-콘텐츠)
 - [나다움 태그 (3개)](#나다움-태그-3개)
-- [주간 보고서 (9개)](#주간-보고서-9개)
+- [주간 보고서 (11개)](#주간-보고서-11개)
 - [프로필 및 구매 내역 (4개)](#프로필-및-구매-내역)
-- [유틸리티 컴포넌트 (2개)](#유틸리티-컴포넌트)
+- [유틸리티 컴포넌트 (4개)](#유틸리티-컴포넌트)
 - [약관 페이지 (3개)](#약관-페이지)
 - [에러 처리 (2개)](#에러-처리)
 - [백업 컴포넌트 (9개)](#백업된-컴포넌트-사용-중지)
@@ -80,6 +80,30 @@
 - **타입**: Modal Component
 - **파일 경로**: `/components/ConfirmDialog.tsx`
 
+### ButtonSquareButton.tsx
+- **역할**: 정사각형 모양 버튼 컴포넌트 (Framer Motion 애니메이션 포함)
+- **사용처**: 홈 화면 등
+- **타입**: Presentational Component
+- **파일 경로**: `/components/ButtonSquareButton.tsx`
+
+### ImageWithFallback.tsx
+- **역할**: 이미지 로드 실패 시 fallback SVG 표시하는 공통 이미지 컴포넌트
+- **사용처**: 콘텐츠 썸네일, 카드 등 이미지 표시 전역
+- **타입**: Presentational Component
+- **파일 경로**: `/components/ImageWithFallback.tsx`
+
+### NavigationTabBar.tsx
+- **역할**: 마이페이지 탭바 (프로필 | 나의 분석 보고서 탭 전환)
+- **사용처**: ProfilePage
+- **타입**: Navigation Component
+- **파일 경로**: `/components/NavigationTabBar.tsx`
+
+### SEO.tsx
+- **역할**: 페이지별 SEO 메타태그 설정 (React Helmet)
+- **사용처**: 콘텐츠 상세 페이지 등
+- **타입**: Utility Component
+- **파일 경로**: `/components/SEO.tsx`
+
 ---
 
 ## 🔐 인증 관련
@@ -131,7 +155,7 @@
 - **타입**: Page Component
 - **주요 기능**:
   - 심화 해석판 결제
-  - 쿠폰 적용 (웰컴 쿠폰 3000원, 재방문 쿠폰 2000원)
+  - 쿠폰 적용 (웰컴 쿠폰 5000원, 재방문 쿠폰 3000원, 미션성공 쿠폰 12900원)
   - 0원 결제 최적화 (불필요한 로딩 제거)
   - 약관 동의
   - PortOne v2 결제 연동
@@ -291,6 +315,19 @@
   - 자동 리디렉션
 - **파일 경로**: `/components/GlobalAIMonitor.tsx`
 
+### FreeContentResult.tsx
+- **역할**: 무료 콘텐츠 AI 생성 결과 표시 페이지
+- **사용처**: 무료 콘텐츠 로딩 완료 후
+- **타입**: Page Component
+- **주요 기능**: 하단 '다음' 버튼으로 나다움 기록하기 페이지 이동
+- **파일 경로**: `/components/FreeContentResult.tsx`
+
+### ContentTags.tsx
+- **역할**: 콘텐츠 태그 표시 (New, 심화/무료, 읽어봄)
+- **사용처**: 홈 화면, 유료/무료 콘텐츠 상세 페이지
+- **타입**: Presentational Component
+- **파일 경로**: `/components/ContentTags.tsx`
+
 ---
 
 ## 📝 마스터 콘텐츠 관리
@@ -349,14 +386,8 @@
 - **파일 경로**: `/components/MasterContentList.tsx`
 - **최근 업데이트**: 2026-01-13 - 실시간 썸네일 업데이트 캐시 버스팅 추가
 
-### MasterContentLoadingPage.tsx
-- **역할**: 마스터 콘텐츠 AI 생성 로딩 페이지
-- **사용처**: 마스터 콘텐츠 생성 중
-- **타입**: Page Component
-- **주요 기능**:
-  - AI 썸네일 생성 진행률 표시
-  - Google Gemini API 호출 상태
-- **파일 경로**: `/components/MasterContentLoadingPage.tsx`
+### ~~MasterContentLoadingPage.tsx~~ (삭제됨)
+- **상태**: 파일 삭제됨 (AI 썸네일 생성 로딩 기능이 다른 컴포넌트로 통합)
 
 ---
 
@@ -456,15 +487,8 @@
   - 수정 기능
 - **파일 경로**: `/components/SajuDetail.tsx`
 
-### SajuResultPage.tsx
-- **역할**: 사주 운세 결과 페이지
-- **사용처**: `/saju/result` 라우트
-- **타입**: Page Component
-- **주요 기능**: 
-  - 사주 기반 운세 결과 표시
-  - 질문별 답변 표시
-  - 목차 기능 (TableOfContentsBottomSheet)
-- **파일 경로**: `/components/SajuResultPage.tsx`
+### ~~SajuResultPage.tsx~~ (백업됨)
+- **상태**: `_backup/`으로 이동 (UnifiedResultPage로 대체됨)
 
 ### SajuKebabMenu.tsx
 - **역할**: 사주 관리 케밥 메뉴 드롭다운
@@ -541,16 +565,20 @@
 - **파일 경로**: `/components/TarotGame.tsx`
 - **최근 업데이트**: 2026-01-21 - 배경 이미지 CSP 수정, 모바일 전체 화면 배경 대응
 
-### TarotResultPage.tsx
-- **역할**: 타로 운세 결과 페이지
-- **사용처**: `/result/tarot` 라우트
+### ~~TarotResultPage.tsx~~ (백업됨)
+- **상태**: `_backup/`으로 이동 (UnifiedResultPage로 대체됨)
+
+### UnifiedResultPage.tsx
+- **역할**: 사주/타로 통합 결과 페이지
+- **사용처**: `/result` 라우트
 - **타입**: Page Component
 - **주요 기능**:
-  - 타로 카드 해석 결과 표시
-  - AI 생성 해석 내용
-  - 다음 질문이 있으면 `/tarot/shuffle`로 이동
-  - 모든 질문 완료 시 홈 또는 구매내역으로 이동
-- **파일 경로**: `/components/TarotResultPage.tsx`
+  - 사주/타로 결과 통합 표시 (SajuResultPage + TarotResultPage 통합)
+  - 타로 카드 이미지 + AI 해석 표시
+  - 목차 바텀시트 (TableOfContentsBottomSheet)
+  - 나다움 기록하기 (CheckRecordMe) 연동
+  - 계정 불일치 감지 (알림톡 링크 접속 시)
+- **파일 경로**: `/components/UnifiedResultPage.tsx`
 
 ### TestTarotPage.tsx
 - **역할**: 테스트용 타로 셔플 페이지 (로그인 불필요)
@@ -611,11 +639,11 @@
 
 ---
 
-## 📊 주간 보고서 (9개)
+## 📊 주간 보고서 (11개)
 
 ### MyReportList.tsx
 - **역할**: 주간 보고서 목록 페이지 + UI (병합됨)
-- **사용처**: `/test/my-report-list` 라우트
+- **사용처**: `/my-report-list` 라우트
 - **타입**: Page Component
 - **주요 기능**:
   - 이번 주 태그 수 요약 (WeeklyTagSummary)
@@ -625,9 +653,10 @@
   - 캐싱 시스템 (localStorage, 5분 만료)
   - 동기적 캐시 초기화 (로딩 플래시 방지)
   - 관리자 패널: 실패 보고서 조회/재발송 (selfContinue fire-and-forget)
+  - **iOS 스와이프 대응**: 홈 이동 시 `navigate('/', { replace: true })` 사용 (3곳)
 - **파일 경로**: `/components/MyReportList.tsx`
 - **추가일**: 2026-01-29
-- **최근 업데이트**: 2026-02-09 - 재발송 fire-and-forget 전환 (서버 selfContinue)
+- **최근 업데이트**: 2026-02-11 - 홈 이동 시 `{ replace: true }` 적용 (iOS 스와이프 뒤로가기 버그 수정)
 
 ### ReportWeeklyDetail.tsx
 - **역할**: 주간 운세 요약 페이지
@@ -725,6 +754,26 @@
 - **파일 경로**: `/components/CompletionCoupon.tsx`
 - **추가일**: 2026-01-29
 - **최근 업데이트**: 2026-02-09 - 쿠폰 발급 로직 변경 (mission/revisit 분기)
+
+### MyReportEmpty.tsx
+- **역할**: 보고서 없을 때 초기 빈 상태 화면
+- **사용처**: MyReportList (보고서 0개일 때)
+- **타입**: Presentational Component
+- **파일 경로**: `/components/MyReportEmpty.tsx`
+
+### WeeklyReportLoading.tsx
+- **역할**: 주간 보고서 전체 화면 로딩 페이지
+- **사용처**: 보고서 다시보기 / 알림톡 링크 진입 시
+- **타입**: Page Component
+- **주요 기능**: FreeContentLoading.tsx 스타일과 동일한 전체 화면 로딩
+- **파일 경로**: `/components/WeeklyReportLoading.tsx`
+
+### ReceiveMyAnalysis.tsx
+- **역할**: "나의 분석 받기" 카드 스와이프 컴포넌트
+- **사용처**: 프로필 또는 보고서 관련 페이지
+- **타입**: Interactive Component
+- **주요 기능**: Framer Motion 드래그 인터랙션
+- **파일 경로**: `/components/ReceiveMyAnalysis.tsx`
 
 ---
 
@@ -987,35 +1036,61 @@
 
 ## 🎨 디자인 시스템
 
-### shadcn/ui 컴포넌트 (48개)
+### shadcn/ui 컴포넌트 (52개)
 위치: `/components/ui/`
 
+- Radio.tsx
+- Toast.tsx
 - accordion.tsx
 - alert-dialog.tsx
 - alert.tsx
+- aspect-ratio.tsx
 - avatar.tsx
 - badge.tsx
+- breadcrumb.tsx
 - button.tsx
 - calendar.tsx
 - card.tsx
+- carousel.tsx
+- chart.tsx
 - checkbox.tsx
+- collapsible.tsx
+- command.tsx
+- context-menu.tsx
 - dialog.tsx
 - drawer.tsx
 - dropdown-menu.tsx
+- FlowerPotIcon.tsx
 - form.tsx
+- hover-card.tsx
+- input-otp.tsx
 - input.tsx
 - label.tsx
+- LoadingWithMessage.tsx
+- menubar.tsx
+- navigation-menu.tsx
+- PageLoader.tsx
+- pagination.tsx
 - popover.tsx
+- progress.tsx
 - radio-group.tsx
+- resizable.tsx
+- scroll-area.tsx
+- SearchPillIcon.tsx
 - select.tsx
 - separator.tsx
 - sheet.tsx
+- sidebar.tsx
 - skeleton.tsx
+- slider.tsx
+- sonner.tsx
 - switch.tsx
 - table.tsx
 - tabs.tsx
 - textarea.tsx
-- toast.tsx (sonner)
+- toggle-group.tsx
+- toggle.tsx
+- tooltip.tsx
 
 ### 스켈레톤 컴포넌트 (5개)
 위치: `/components/skeletons/`
@@ -1029,6 +1104,13 @@
 ---
 
 ## 🔄 업데이트 이력
+
+### 2026-02-12
+- **인벤토리 현행화** (75개 활성, 52개 UI)
+  - 누락 컴포넌트 10개 추가: ButtonSquareButton, ContentTags, FreeContentResult, ImageWithFallback, MyReportEmpty, NavigationTabBar, ReceiveMyAnalysis, SEO, UnifiedResultPage, WeeklyReportLoading
+  - shadcn/ui 전체 목록 52개로 갱신 (FlowerPotIcon, LoadingWithMessage, PageLoader, SearchPillIcon 등 추가)
+  - SajuResultPage, TarotResultPage → 백업 처리 (UnifiedResultPage로 대체됨)
+  - MasterContentLoadingPage → 삭제 처리 (파일 삭제됨)
 
 ### 2026-02-10
 - **ReportWeeklyMemoQuickEdit.tsx 컴포넌트 추가**
