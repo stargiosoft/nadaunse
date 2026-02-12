@@ -4,6 +4,13 @@ import { motion } from 'framer-motion';
 import { MasterContent } from '../types/masterContent';
 import { supabase } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
+
+/** 썸네일 URL에 updated_at 기반 캐시 버스터 추가 */
+function withCacheBuster(url: string | null, updatedAt?: string): string | null {
+  if (!url) return null;
+  const ts = updatedAt ? new Date(updatedAt).getTime() : '';
+  return ts ? `${url}${url.includes('?') ? '&' : '?'}v=${ts}` : url;
+}
 import { preloadImages } from '../lib/imagePreloader';
 import { preloadThumbnails } from '../lib/thumbnailCache';
 import HomeSkeleton from '../components/skeletons/HomeSkeleton';
@@ -866,7 +873,7 @@ export default function HomePage() {
 
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate')
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate')
           .eq('status', 'deployed');
 
         // 필터 적용
@@ -892,7 +899,7 @@ export default function HomePage() {
         if (data && data.length > 0) {
           const newContents = data.map((item: any) => ({
             ...item,
-            thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
+            thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
           })) as MasterContent[];
 
           // 기존 캐시 데이터에 추가
@@ -978,7 +985,7 @@ export default function HomePage() {
 
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
           .eq('status', 'deployed');
 
         // 카테고리 필터
@@ -1057,7 +1064,7 @@ export default function HomePage() {
         // 🎯 쿼리 빌더 시작
         let query = supabase
           .from('master_contents')
-          .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
           .eq('status', 'deployed');
 
         // 🔍 카테고리 필터 적용
@@ -1088,7 +1095,7 @@ export default function HomePage() {
           const contents = data.map((item: any) => ({
             ...item,
             // 🎨 썸네일 최적화 (리스트용)
-            thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
+            thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
           })) as MasterContent[];
 
           // 💾 캐시에 저장 (모든 필터에서 캐시)
@@ -1440,7 +1447,10 @@ export default function HomePage() {
 
         // 캐시에 요청한 범위의 데이터가 있는지 확인
         if (cachedData.length > endIndex) {
-          const newContents = cachedData.slice(startIndex, endIndex + 1) as MasterContent[];
+          const newContents = (cachedData.slice(startIndex, endIndex + 1) as MasterContent[]).map((item: MasterContent) => ({
+            ...item,
+            thumbnail_url: withCacheBuster(item.thumbnail_url, item.updated_at),
+          }));
 
           if (newContents.length > 0) {
             console.log(`✅ [Cache Hit] 캐시에서 ${newContents.length}개 로드 (${startIndex} ~ ${endIndex})`);
@@ -1469,7 +1479,7 @@ export default function HomePage() {
       // 🎯 캐시에 없으면 DB에서 쿼리
       let query = supabase
         .from('master_contents')
-        .select('id, content_type, title, status, created_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
+        .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
         .eq('status', 'deployed');
       
       // 🔍 카테고리 필터 적용
@@ -1496,7 +1506,7 @@ export default function HomePage() {
         const newContents = data.map((item: any) => ({
           ...item,
           // 🎨 썸네일 최적화 (리스트용)
-          thumbnail_url: getThumbnailUrl(item.thumbnail_url, 'list'),
+          thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
         })) as MasterContent[];
         
         // 전체 콘텐츠에 추가
