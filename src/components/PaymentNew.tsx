@@ -82,7 +82,7 @@ export default function PaymentNew({
   const [selectedCoupon, setSelectedCoupon] =
     useState<Coupon | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<"kakaopay" | "card">("card");
+    useState<"kakaopay" | "card">("kakaopay");
   const [contentData, setContentData] = useState<any>(null);
   const [userCoupons, setUserCoupons] = useState<Coupon[]>([]);
   // ⭐ contentId가 있으면 초기 로딩 상태를 true로 설정 (스켈레톤 즉시 표시)
