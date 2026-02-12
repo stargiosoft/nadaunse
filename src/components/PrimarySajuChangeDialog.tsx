@@ -7,19 +7,20 @@ import React from 'react';
 
 interface PrimarySajuChangeDialogProps {
   isOpen: boolean;
+  isLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function PrimarySajuChangeDialog({ isOpen, onConfirm, onCancel }: PrimarySajuChangeDialogProps) {
+export function PrimarySajuChangeDialog({ isOpen, isLoading = false, onConfirm, onCancel }: PrimarySajuChangeDialogProps) {
   if (!isOpen) return null;
 
   return (
     <>
       {/* Background Overlay */}
-      <div 
+      <div
         className="fixed inset-0 bg-[rgba(0,0,0,0.8)] z-[9998]"
-        onClick={onCancel}
+        onClick={isLoading ? undefined : onCancel}
       />
 
       {/* Dialog */}
@@ -46,6 +47,7 @@ export function PrimarySajuChangeDialog({ isOpen, onConfirm, onCancel }: Primary
                   {/* 아니요 버튼 */}
                   <button
                     onClick={onCancel}
+                    disabled={isLoading}
                     className="bg-[#f3f3f3] basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 hover:bg-[#e8e8e8] transition-colors"
                   >
                     <div className="flex flex-row items-center justify-center size-full">
@@ -62,6 +64,7 @@ export function PrimarySajuChangeDialog({ isOpen, onConfirm, onCancel }: Primary
                   {/* 네 버튼 */}
                   <button
                     onClick={onConfirm}
+                    disabled={isLoading}
                     className="bg-[#48b2af] basis-0 grow h-[48px] min-h-px min-w-px relative rounded-[12px] shrink-0 hover:bg-[#3fa3a0] transition-colors"
                   >
                     <div className="flex flex-row items-center justify-center size-full">
