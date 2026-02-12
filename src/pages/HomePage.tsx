@@ -824,9 +824,13 @@ export default function HomePage() {
           setAllContents(contents);
           // ⭐ 캐시에 저장된 totalCount 기반으로 hasMore 설정
           // totalCount가 없으면 (이전 버전 캐시) contents.length > 10으로 판단
-          const hasMoreData = totalCount !== undefined ? totalCount > 10 : contents.length > 10;
+          const hasMoreData = totalCount !== undefined ? totalCount > contents.length : contents.length > 10;
           console.log(`🔍 [Cache] hasMore 설정: ${hasMoreData} (totalCount: ${totalCount}, contents: ${contents.length})`);
           setHasMore(hasMoreData);
+          // ⭐ 캐시에서 이미 로드된 데이터만큼 currentPage 동기화 (중복 로드 방지)
+          const syncedPage = Math.max(0, Math.floor(contents.length / 10) - 1);
+          setCurrentPage(syncedPage);
+          console.log(`🔍 [Cache] currentPage 동기화: ${syncedPage} (캐시 ${contents.length}개 로드됨)`);
           return true;
         } else {
           console.log(`⏰ 캐시 만료됨 (${category}/${type})`);
@@ -1628,7 +1632,7 @@ export default function HomePage() {
         observer.unobserve(currentTarget);
       }
     };
-  }, [hasMore, isLoading, isInitialLoading]); // 🚀 loadMoreContents 의존성 제거
+  }, [hasMore, isLoading, isInitialLoading, currentPage]); // 🚀 currentPage 추가: 페이지 로드 후 observer 재생성으로 확실한 재트리거
 
   const handleUserIconClick = () => {
     // localStorage 기준으로 즉시 체크 (비동기 세션 체크 지연 문제 해결)
