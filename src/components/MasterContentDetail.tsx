@@ -306,7 +306,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
           console.log('✅ 캐시에서 데이터 로드 (콘텐츠 수정)');
           setContentData(data.content);
           setQuestions(data.questions);
-          setOriginalQuestions(data.questions); // 원본 저장
+          setOriginalQuestions(data.questions.map((q: MasterContentQuestion) => ({ ...q }))); // 원본 deep copy
           // Form 데이터도 캐시에서 복원
           setTitle(data.content.title || '');
           setContentType(data.content.content_type as 'paid' | 'free');
@@ -522,7 +522,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         
         setContentData(content);
         setQuestions(finalQuestionsData);
-        setOriginalQuestions(finalQuestionsData); // 원본 저장
+        setOriginalQuestions(finalQuestionsData.map((q: MasterContentQuestion) => ({ ...q }))); // 원본 deep copy
 
         // 폼 데이터 초기화
         setTitle(content.title || '');
