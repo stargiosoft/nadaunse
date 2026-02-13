@@ -1644,7 +1644,12 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
   uniqueOwnRecords.forEach(r => {
     if (!r.birth_date) return;
     const birthDate = new Date(r.birth_date);
-    const age = now.getFullYear() - birthDate.getFullYear();
+    let age = now.getFullYear() - birthDate.getFullYear();
+    // 생일이 아직 안 지났으면 1살 빼기 (SQL AGE() 함수와 동일)
+    const monthDiff = now.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthDate.getDate())) {
+      age--;
+    }
     let group: string;
     if (age < 20) group = '10대';
     else if (age < 30) group = '20대';
