@@ -326,13 +326,10 @@ export default function PaymentNew({
           return;
         }
 
-        // ⭐ 카카오페이는 외부 앱 전환 방식이므로 popstate에서 뒤로가기하지 않음
-        // pushState로 추가된 entry가 pop되면 상태만 초기화하고 페이지에 머무름
+        // ⭐ 카카오페이도 뒤로가기 시 상품 상세로 리다이렉트 (다날과 동일)
         if (paymentMethodRef.current === 'kakaopay') {
-          console.log('⏳ [PaymentNew] popstate: 카카오페이 → 상태 초기화 (페이지 유지)');
-          paymentInitiatedRef.current = false;
-          paymentMethodRef.current = null;
-          setIsProcessingPayment(false);
+          console.log('✅ [PaymentNew] popstate: 카카오페이 → 상품 상세로 리다이렉트');
+          redirectToProductDetail();
           return;
         }
 
@@ -358,9 +355,10 @@ export default function PaymentNew({
           return;
         }
 
-        // ⭐ 카카오페이는 외부 앱 전환 방식이므로 뒤로가기하지 않음
+        // ⭐ 카카오페이도 뒤로가기 시 상품 상세로 리다이렉트 (다날과 동일)
         if (paymentMethodRef.current === 'kakaopay') {
-          console.log('⏳ [PaymentNew] pageshow: 카카오페이 → 콜백 대기 (페이지 유지)');
+          console.log('✅ [PaymentNew] pageshow: 카카오페이 → 상품 상세로 리다이렉트');
+          redirectToProductDetail();
           return;
         }
 
@@ -391,14 +389,10 @@ export default function PaymentNew({
             return;
           }
 
-          // ⭐ 카카오페이는 외부 앱 전환 방식이므로 즉시 뒤로가기하지 않음
-          // 앱에서 복귀 → 로딩만 해제하고 페이지에 머무름
-          // PortOne 콜백이 나중에 도착하면 정상 처리됨 (성공 시 onPurchase, 실패 시 alert)
+          // ⭐ 카카오페이도 뒤로가기 시 상품 상세로 리다이렉트 (다날과 동일)
           if (paymentMethodRef.current === 'kakaopay') {
-            console.log('⏳ [PaymentNew] visibilitychange: 카카오페이 앱 복귀 → 로딩 해제 (콜백 대기)');
-            setIsProcessingPayment(false);
-            // paymentInitiatedRef는 유지 → 콜백 도착 시 처리
-            // (다시 구매 버튼 클릭 시 isProcessingPayment가 false이므로 재시도 가능)
+            console.log('✅ [PaymentNew] visibilitychange: 카카오페이 → 상품 상세로 리다이렉트');
+            redirectToProductDetail();
             return;
           }
 
