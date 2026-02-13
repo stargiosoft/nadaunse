@@ -637,6 +637,25 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
       .single()
 
     if (reportError) {
+      // UNIQUE 제약 조건 위반 (race condition으로 동시 INSERT된 경우) → 이미 존재하는 보고서 반환
+      if (reportError.code === '23505') {
+        console.log('⚠️ UNIQUE 제약 위반 - 동시 생성된 기존 보고서 반환')
+        const { data: existingAfterConflict } = await supabase
+          .from('weekly_reports')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('week_start_date', weekRange.startDateStr)
+          .single()
+        return new Response(
+          JSON.stringify({
+            success: true,
+            reportId: existingAfterConflict?.id,
+            message: '이미 해당 주차 보고서가 존재합니다.',
+            alreadyExists: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       console.error('❌ weekly_reports 저장 실패:', reportError)
       return new Response(
         JSON.stringify({ success: false, error: '보고서 저장에 실패했습니다.' }),
@@ -672,7 +691,7 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
       report_id: reportId,
       card_order: index + 1,
       card_name: card,
-      card_image_url: `https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/assets/tarot%20cards/${encodeURIComponent(card)}.webp`,
+      card_image_url: `${supabaseUrl}/storage/v1/object/public/assets/tarot%20cards/${encodeURIComponent(card)}.webp`,
       interpretation: index === 0 ? reportData.report_sections[1]?.card_1_interpretation :
                      index === 1 ? reportData.report_sections[1]?.card_2_interpretation :
                      reportData.report_sections[1]?.card_3_interpretation,

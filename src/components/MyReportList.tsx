@@ -1172,7 +1172,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
       const summary = data.summary;
       const statusMsg = data.isPartial
-        ? `첫 배치 처리 완료 (${summary.processedCount}/${failedReportInfo.failedCount}명)\n나머지는 서버에서 자동 처리됩니다.\n결과는 Slack에서 확인하세요.`
+        ? `첫 배치 처리 완료 (${summary.processedCount}/${failedReportInfo.failedCount}명)\n나머지는 서버에서 자동 처리됩니다.`
         : `전체 완료!\n• 성공: ${summary.successCount}명\n• 실패: ${summary.failCount}명`;
 
       alert(`📊 ${statusMsg}`);

@@ -5,7 +5,7 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
 // TalkDream API 설정
 const TALKDREAM_CONFIG = {
-  authToken: 'tOFI8RZQD2qibU/ggEWvqw==',
+  authToken: Deno.env.get('TALKDREAM_AUTH_TOKEN') || '',
   serverName: 'starsaju1',
   paymentType: 'P', // 후불충전회원 파라미터 (필수)
   service: '2500109900', // 알림톡 Service No

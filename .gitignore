@@ -29,3 +29,6 @@ Thumbs.db
 testsprite_tests/
 tmpclaude-*
 env.local
+
+# Supabase CLI cache
+supabase/.temp/

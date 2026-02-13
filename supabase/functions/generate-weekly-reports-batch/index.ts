@@ -36,29 +36,6 @@ function getLastWeekRange(): { start: Date; end: Date; startDateStr: string; end
   return { start: startUTC, end: endUTC, startDateStr, endDateStr }
 }
 
-// Slack 알림 (배치 결과 리포트)
-async function sendSlackNotification(_message: string, _isError: boolean = false) {
-  return // 슬랙 알림 임시 비활성화
-  const slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL')
-  if (!slackWebhookUrl) {
-    console.warn('⚠️ SLACK_WEBHOOK_URL 미설정 - Slack 알림 스킵')
-    return
-  }
-
-  try {
-    await fetch(slackWebhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: message,
-        attachments: isError ? [{ color: 'danger' }] : [{ color: 'good' }]
-      })
-    })
-  } catch (e) {
-    console.error('❌ Slack 알림 실패:', e)
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req)
@@ -144,8 +121,6 @@ serve(async (req) => {
 
     if (targetUserIds.length === 0) {
       console.log('ℹ️ 대상 사용자가 없습니다.')
-      await sendSlackNotification('📊 *주간 보고서 배치 완료*\n대상 사용자: 0명 (전주 태그 없음)')
-
       return new Response(
         JSON.stringify({
           success: true,
@@ -172,7 +147,6 @@ serve(async (req) => {
 
     if (filteredUserIds.length === 0) {
       console.log('ℹ️ 모든 대상 사용자의 보고서가 이미 생성되었습니다.')
-      await sendSlackNotification('📊 *주간 보고서 배치 완료*\n대상 사용자: 0명 (모두 이미 생성됨)')
 
       return new Response(
         JSON.stringify({
@@ -288,20 +262,7 @@ serve(async (req) => {
     console.log(`📊 결과: 성공 ${successCount}명, 실패 ${failCount}명`)
     console.log(`⏱️ 소요 시간: ${elapsedTime}초`)
 
-    // 6. Slack 알림
-    const statusEmoji = stoppedByTimeLimit ? '⏳' : '📊'
-    const statusText = stoppedByTimeLimit ? '부분 완료 (시간 제한)' : '배치 완료'
-    const slackMessage = `${statusEmoji} *주간 보고서 ${statusText}*
-• 대상: ${filteredUserIds.length}명 (이번 호출 처리: ${processedCount}명)
-• 성공: ${successCount}명
-• 실패: ${failCount}명${stoppedByTimeLimit ? `\n• 미처리: ${remainingCount}명 (다음 호출에서 이어서 처리)` : ''}
-• 기존 생성됨: ${existingUserIds.size}명 (스킵)
-• 소요 시간: ${elapsedTime}초
-• 기간: ${weekRange.start.toISOString().split('T')[0]} ~ ${weekRange.end.toISOString().split('T')[0]}`
-
-    await sendSlackNotification(slackMessage, failCount > 0)
-
-    // 7. 실패 건이 있으면 상세 로그
+    // 6. 실패 건이 있으면 상세 로그
     if (failCount > 0) {
       const failedUsers = results.filter(r => !r.success)
       console.error('❌ 실패 사용자 목록:')
@@ -362,8 +323,6 @@ serve(async (req) => {
     console.error('❌ 배치 실행 오류:', error)
 
     const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-    await sendSlackNotification(`🚨 *주간 보고서 배치 실패*\n\`\`\`${errorMessage}\`\`\``, true)
-
     return new Response(
       JSON.stringify({
         success: false,
