@@ -3293,9 +3293,10 @@ export default function App() {
   // 🔐 세션 만료 감지 및 모든 사용자 캐시 정리
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        // 세션 만료/로그아웃 → 모든 사용자 캐시 삭제
-        console.log('🧹 세션 만료 → 사용자 캐시 전체 삭제');
+      if (event === 'SIGNED_OUT') {
+        // 명시적 로그아웃/세션 무효화 → 모든 사용자 캐시 삭제
+        // ※ !session 조건 제거: INITIAL_SESSION 이벤트의 일시적 null session으로 오작동 방지
+        console.log('🧹 로그아웃 감지 → 사용자 캐시 전체 삭제');
         clearUserCaches();
       } else if (event === 'SIGNED_IN' && session) {
         // 로그인/가입 완료 → 오늘 방문 기록 (가입 첫날 visit_dates 누락 방지)
