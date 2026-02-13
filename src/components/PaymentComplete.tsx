@@ -106,6 +106,10 @@ export default function PaymentComplete() {
             console.log('✅ 저장된 주문 pstatus:', savedOrder?.pstatus);
             console.log('✅ 저장된 주문 content_id:', savedOrder?.content_id);
 
+            // ⭐ pendingOrderId 저장 (모바일 결제 시 SajuSelectPage에서 정확한 주문 매칭 필수)
+            localStorage.setItem('pendingOrderId', savedOrder.id);
+            console.log('📦 [PaymentComplete] pendingOrderId 저장:', savedOrder.id);
+
             // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
             localStorage.removeItem('purchase_history_cache');
             // ⭐ 사주 캐시 무효화 (결제 후 사주 선택/입력 시 프로필 갱신 보장)
