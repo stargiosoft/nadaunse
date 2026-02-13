@@ -15,6 +15,7 @@ interface PurchaseItem {
   paid_amount: number;
   created_at: string;
   pstatus: string;
+  gname: string | null;
   full_name: string | null;
   birth_date: string | null;
   ai_generation_completed: boolean | null;
@@ -188,6 +189,7 @@ export default function PurchaseHistoryPage() {
           paid_amount,
           created_at,
           pstatus,
+          gname,
           full_name,
           birth_date,
           ai_generation_completed,
@@ -755,7 +757,7 @@ export default function PurchaseHistoryPage() {
                         <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
                           {item.master_contents.thumbnail_url ? (
                             <img
-                              alt={item.master_contents.title}
+                              alt={item.gname || item.master_contents.title}
                               className="w-full h-full object-cover"
                               src={item.master_contents.thumbnail_url}
                             />
@@ -781,7 +783,7 @@ export default function PurchaseHistoryPage() {
                               color: '#4da0ee',
                               textDecoration: 'underline'
                             }} className="line-clamp-2">
-                              {item.master_contents.title}
+                              {item.gname || item.master_contents.title}
                             </span>
                           </button>
 
