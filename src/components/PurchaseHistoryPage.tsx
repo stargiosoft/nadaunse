@@ -34,6 +34,7 @@ interface PurchaseItem {
 interface FreeContentRecord {
   id: string;
   content_id: string;
+  content_title: string | null;
   full_name: string;
   birth_date: string;
   created_at: string;
@@ -281,6 +282,7 @@ export default function PurchaseHistoryPage() {
         .select(`
           id,
           content_id,
+          content_title,
           full_name,
           birth_date,
           created_at,
@@ -591,7 +593,7 @@ export default function PurchaseHistoryPage() {
         contentId: record.content_id,  // ⭐ contentId 명시적 전달 (태그 조회용)
         product: {
           id: record.content_id,
-          title: record.master_contents.title,
+          title: record.content_title || record.master_contents.title,
           type: 'free',
           image: record.master_contents.thumbnail_url || ''
         },
@@ -923,7 +925,7 @@ export default function PurchaseHistoryPage() {
                         <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
                           {record.master_contents.thumbnail_url ? (
                             <img
-                              alt={record.master_contents.title}
+                              alt={record.content_title || record.master_contents.title}
                               className="w-full h-full object-cover"
                               src={record.master_contents.thumbnail_url}
                             />
@@ -949,7 +951,7 @@ export default function PurchaseHistoryPage() {
                               color: '#4da0ee',
                               textDecoration: 'underline'
                             }} className="line-clamp-2">
-                              {record.master_contents.title}
+                              {record.content_title || record.master_contents.title}
                             </span>
                           </button>
 

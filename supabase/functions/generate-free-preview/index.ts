@@ -432,6 +432,7 @@ ${fullQuestionerInfo}
           .insert({
             user_id: userId,
             content_id: contentId,
+            content_title: content.title,
             saju_record_id: sajuRecordId || null,
             full_name: sajuInfo.full_name,
             gender: sajuInfo.gender,
