@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-02-03
+> **최종 업데이트**: 2026-02-13
 
 ## 개요
 
@@ -92,6 +92,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
+| Master can view all saju records | SELECT | authenticated | `users.role = 'master'` |
 | Service role can manage saju records | ALL | service_role | `true` |
 | Users can delete their own saju records | DELETE | public | `auth.uid() = user_id` |
 | Users can insert own saju records | INSERT | authenticated | `auth.uid() = user_id` |
@@ -252,14 +253,14 @@ const { count } = await supabase
 | master_contents | 2 | Disabled |
 | order_results | 2 | Enabled |
 | orders | 5 | Enabled |
-| saju_records | 5 | Enabled |
+| saju_records | 6 | Enabled |
 | user_coupons | 3 | Enabled |
 | users | 4 | Enabled |
 | weekly_reports | 3 | Enabled |
 | weekly_report_sections | 2 | Enabled |
 | report_tarot_selections | 3 | Enabled |
 | anonymous_free_views | 0 | Enabled (Service Role 전용) |
-| **총계** | **39** | - |
+| **총계** | **40** | - |
 
 ---
 

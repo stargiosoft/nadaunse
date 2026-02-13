@@ -8,12 +8,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Clock, Copy, ExternalLink, BarChart3, Trophy } from 'lucide-react';
 import svgPathsBack from "../imports/svg-ct14exwyb3";
 import svgPathsHome from "../imports/svg-sg7rn8f2dm";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid, PieChart, Pie } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportTrendStats } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -129,8 +129,8 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
 }
 
 // 대시보드 탭 타입
-type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서';
-const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서'];
+type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서' | '고객';
+const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서', '고객'];
 
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -186,6 +186,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportTrendPreset, setReportTrendPreset] = useState<TrendRangePreset>('30days');
+
+  // 고객 탭 상태
+  const [customerStats, setCustomerStats] = useState<CustomerStatsData | null>(null);
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -539,6 +544,54 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     loadReportData(preset);
   };
 
+  // 고객 데이터 로드 함수
+  const loadCustomerData = async () => {
+    setCustomerLoading(true);
+    setCustomerError(null);
+    try {
+      const data = await fetchCustomerStats();
+      setCustomerStats(data);
+    } catch (err) {
+      console.error('고객 데이터 로드 오류:', err);
+      setCustomerError('고객 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setCustomerLoading(false);
+    }
+  };
+
+  // 고객 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '고객' && !customerStats && !customerLoading) {
+      loadCustomerData();
+    }
+  }, [selectedTab]);
+
+  // 클립보드 복사 함수 - 고객
+  const copyCustomerData = async () => {
+    if (!customerStats) return;
+    const data = {
+      tab: '고객',
+      timestamp: new Date().toISOString(),
+      summary: {
+        totalSajuUsers: customerStats.totalSajuUsers,
+        totalSajuRecords: customerStats.totalSajuRecords,
+        avgRecordsPerUser: customerStats.avgRecordsPerUser,
+      },
+      genderDistribution: customerStats.genderDistribution,
+      ageGroupDistribution: customerStats.ageGroupDistribution,
+      providerDistribution: customerStats.providerDistribution,
+      zodiacDistribution: customerStats.zodiacDistribution,
+      relationshipDistribution: customerStats.relationshipDistribution,
+      paidConversionByGender: customerStats.paidConversionByGender,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
   // 클립보드 복사 함수 - 개요
   const copyOverviewData = async () => {
     if (!stats || !gaStats) return;
@@ -883,9 +936,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             </div>
           </div>
 
-          {/* 탭 필터 - 개요/추세/비교 */}
+          {/* 탭 필터 - 개요/추세/비교/콘텐츠/보고서/고객 */}
           <div className="shrink-0 bg-white px-4 py-2" style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto">
               {DASHBOARD_TABS.map((tab) => (
                 <motion.button
                   key={tab}
@@ -2683,6 +2736,225 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             )}
           </div>
         )}{/* 보고서 탭 닫기 */}
+
+        {/* ========== 고객 탭 ========== */}
+        {selectedTab === '고객' && (
+          <div style={{ paddingTop: '16px' }}>
+            {/* 에러 상태 */}
+            {customerError && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
+                <p style={{ ...typography.label, marginBottom: '16px' }}>{customerError}</p>
+                <button
+                  onClick={() => loadCustomerData()}
+                  className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                  style={{ ...typography.button, padding: '10px 16px', backgroundColor: '#3FB5B3', color: '#ffffff' }}
+                >
+                  <RefreshCw size={16} />
+                  다시 시도
+                </button>
+              </div>
+            )}
+
+            {/* 로딩 상태 */}
+            {customerLoading && !customerError && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+                </div>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '200px' }} />
+                ))}
+              </div>
+            )}
+
+            {/* 데이터 표시 */}
+            {!customerLoading && !customerError && customerStats && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+              >
+                {/* 헤더 + 복사 버튼 */}
+                <div className="flex items-center justify-between">
+                  <h2 style={{ ...typography.sectionTitle, margin: 0 }}>고객 인사이트</h2>
+                  <button
+                    onClick={copyCustomerData}
+                    className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                    style={{
+                      width: '36px', height: '36px',
+                      backgroundColor: '#f5f5f5',
+                      border: 'none',
+                    }}
+                  >
+                    <Copy size={16} color="#666" />
+                  </button>
+                </div>
+
+                {/* 요약 카드 3개 */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  <StatCard icon={Users} label="사주 등록자" value={customerStats.totalSajuUsers} color="#3FB5B3" subValue="본인 사주 기준" />
+                  <StatCard icon={BarChart3} label="전체 기록" value={customerStats.totalSajuRecords} color="#6366F1" />
+                  <StatCard icon={Activity} label="인당 평균" value={customerStats.avgRecordsPerUser} unit="건" color="#EC4899" />
+                </div>
+
+                {/* 성별 분포 - 도넛 차트 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <SectionHeader icon="👤" title="성별 분포" />
+                  <div className="flex items-center justify-center" style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: '남성', value: customerStats.genderDistribution.male },
+                            { name: '여성', value: customerStats.genderDistribution.female },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={75}
+                          paddingAngle={3}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                          labelLine={false}
+                        >
+                          <Cell fill="#6366F1" />
+                          <Cell fill="#EC4899" />
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} formatter={(value: number) => [`${value}명`, '']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex justify-center gap-6" style={{ marginTop: '8px' }}>
+                    <div className="flex items-center gap-2">
+                      <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#6366F1' }} />
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', color: '#666' }}>남성 {customerStats.genderDistribution.male}명 ({customerStats.genderDistribution.maleRate}%)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#EC4899' }} />
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', color: '#666' }}>여성 {customerStats.genderDistribution.female}명 ({customerStats.genderDistribution.femaleRate}%)</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 연령대 분포 - 가로 바 차트 */}
+                {customerStats.ageGroupDistribution.length > 0 && (
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                    <SectionHeader icon="📊" title="연령대 분포" />
+                    <div style={{ width: '100%', height: Math.max(150, customerStats.ageGroupDistribution.length * 40) }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={customerStats.ageGroupDistribution} layout="vertical" margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
+                          <XAxis type="number" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                          <YAxis type="category" dataKey="group" tick={{ fontSize: 13, fill: '#333' }} tickLine={false} axisLine={false} width={45} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} formatter={(value: number, _name: string, props: { payload: { rate: number } }) => [`${value}명 (${props.payload.rate}%)`, '인원']} />
+                          <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={20}>
+                            {customerStats.ageGroupDistribution.map((_, index) => (
+                              <Cell key={`age-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </section>
+                )}
+
+                {/* 가입 채널 - 세로 바 차트 */}
+                {customerStats.providerDistribution.length > 0 && (
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                    <SectionHeader icon="📱" title="가입 채널" />
+                    <div style={{ width: '100%', height: 200 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={customerStats.providerDistribution} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                          <XAxis dataKey="provider" tick={{ fontSize: 13, fill: '#333' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                          <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} formatter={(value: number, _name: string, props: { payload: { rate: number } }) => [`${value}명 (${props.payload.rate}%)`, '가입자']} />
+                          <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
+                            {customerStats.providerDistribution.map((_, index) => (
+                              <Cell key={`provider-${index}`} fill={index === 0 ? '#FEE500' : '#4285F4'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </section>
+                )}
+
+                {/* 띠 분포 - 가로 바 차트 */}
+                {customerStats.zodiacDistribution.length > 0 && (
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                    <SectionHeader icon="🐉" title="띠 분포" />
+                    <div style={{ width: '100%', height: Math.max(200, customerStats.zodiacDistribution.length * 32) }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={customerStats.zodiacDistribution} layout="vertical" margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
+                          <XAxis type="number" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                          <YAxis type="category" dataKey="zodiac" tick={{ fontSize: 12, fill: '#333' }} tickLine={false} axisLine={false} width={60} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} formatter={(value: number, _name: string, props: { payload: { rate: number } }) => [`${value}명 (${props.payload.rate}%)`, '인원']} />
+                          <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={18}>
+                            {customerStats.zodiacDistribution.map((_, index) => (
+                              <Cell key={`zodiac-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </section>
+                )}
+
+                {/* 관계 사주 분포 - 가로 바 차트 */}
+                {customerStats.relationshipDistribution.length > 0 && (
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                    <SectionHeader icon="💑" title="관계 사주 분포" />
+                    <div style={{ width: '100%', height: Math.max(150, customerStats.relationshipDistribution.length * 36) }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={customerStats.relationshipDistribution} layout="vertical" margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
+                          <XAxis type="number" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                          <YAxis type="category" dataKey="relationship" tick={{ fontSize: 12, fill: '#333' }} tickLine={false} axisLine={false} width={45} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} formatter={(value: number, _name: string, props: { payload: { rate: number } }) => [`${value}건 (${props.payload.rate}%)`, '기록']} />
+                          <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={20}>
+                            {customerStats.relationshipDistribution.map((_, index) => (
+                              <Cell key={`rel-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </section>
+                )}
+
+                {/* 성별 유료 전환율 - 테이블 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '40px' }}>
+                  <SectionHeader icon="💳" title="성별 유료 전환율" />
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Pretendard Variable, sans-serif' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666' }}>성별</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666' }}>전체</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666' }}>유료 결제</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666' }}>전환율</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #f5f5f5' }}>
+                          <td style={{ padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: '#333' }}>남성</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', color: '#333' }}>{customerStats.paidConversionByGender.male.total}명</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', color: '#3FB5B3', fontWeight: 500 }}>{customerStats.paidConversionByGender.male.paid}명</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', color: '#6366F1', fontWeight: 600 }}>{customerStats.paidConversionByGender.male.rate}%</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: '#333' }}>여성</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', color: '#333' }}>{customerStats.paidConversionByGender.female.total}명</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', color: '#3FB5B3', fontWeight: 500 }}>{customerStats.paidConversionByGender.female.paid}명</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', color: '#EC4899', fontWeight: 600 }}>{customerStats.paidConversionByGender.female.rate}%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </motion.div>
+            )}
+          </div>
+        )}{/* 고객 탭 닫기 */}
 
           </div>{/* 스크롤 영역 닫기 */}
 

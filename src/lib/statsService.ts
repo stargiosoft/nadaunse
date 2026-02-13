@@ -1535,6 +1535,215 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
 /**
  * 보고서 추세 주별→월별 집계
  */
+// ========== 고객 통계 타입 및 함수 ==========
+
+/** 고객 통계 데이터 */
+export interface CustomerStatsData {
+  totalSajuUsers: number;        // 본인 사주 등록 유저 수
+  totalSajuRecords: number;      // 전체 사주 기록 수
+  avgRecordsPerUser: number;     // 유저당 평균 기록 수
+  genderDistribution: {
+    male: number;
+    female: number;
+    total: number;
+    maleRate: number;
+    femaleRate: number;
+  };
+  ageGroupDistribution: { group: string; count: number; rate: number }[];
+  providerDistribution: { provider: string; count: number; rate: number }[];
+  zodiacDistribution: { zodiac: string; count: number; rate: number }[];
+  relationshipDistribution: { relationship: string; count: number; rate: number }[];
+  paidConversionByGender: {
+    male: { total: number; paid: number; rate: number };
+    female: { total: number; paid: number; rate: number };
+  };
+}
+
+/**
+ * 고객 통계 데이터 조회
+ * saju_records + users + orders 기반 고객 인사이트
+ */
+export async function fetchCustomerStats(): Promise<CustomerStatsData> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 4개 쿼리 병렬 실행
+  const [
+    sajuOwnResult,
+    sajuAllResult,
+    usersResult,
+    ordersResult,
+  ] = await Promise.all([
+    // 1. 본인 사주 레코드 (notes='본인' 또는 notes IS NULL)
+    supabase
+      .from('saju_records')
+      .select('user_id, gender, birth_date, zodiac, notes')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .or('notes.eq.본인,notes.is.null'),
+
+    // 2. 전체 사주 레코드
+    supabase
+      .from('saju_records')
+      .select('user_id, notes')
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 3. 유저 데이터 (provider 정보)
+    supabase
+      .from('users')
+      .select('id, provider')
+      .not('id', 'in', `(${adminFilter})`),
+
+    // 4. 완료된 주문 데이터 (성별 유료 전환율용)
+    supabase
+      .from('orders')
+      .select('user_id')
+      .eq('pstatus', 'completed')
+      .not('user_id', 'in', `(${adminFilter})`),
+  ]);
+
+  if (sajuOwnResult.error) throw new Error('본인 사주 데이터 조회에 실패했습니다.');
+  if (sajuAllResult.error) throw new Error('전체 사주 데이터 조회에 실패했습니다.');
+  if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
+  if (ordersResult.error) throw new Error('주문 데이터 조회에 실패했습니다.');
+
+  const sajuOwn = sajuOwnResult.data || [];
+  const sajuAll = sajuAllResult.data || [];
+  const users = usersResult.data || [];
+  const orders = ordersResult.data || [];
+
+  // 본인 사주 user 중복 제거 (user_id 기준 첫 레코드)
+  const seenUserIds = new Set<string>();
+  const uniqueOwnRecords: typeof sajuOwn = [];
+  for (const record of sajuOwn) {
+    if (!seenUserIds.has(record.user_id)) {
+      seenUserIds.add(record.user_id);
+      uniqueOwnRecords.push(record);
+    }
+  }
+
+  const totalSajuUsers = uniqueOwnRecords.length;
+  const totalSajuRecords = sajuAll.length;
+  const avgRecordsPerUser = totalSajuUsers > 0
+    ? Math.round(totalSajuRecords / totalSajuUsers * 10) / 10
+    : 0;
+
+  // 성별 분포 (본인 사주 기준)
+  const male = uniqueOwnRecords.filter(r => r.gender === 'male').length;
+  const female = uniqueOwnRecords.filter(r => r.gender === 'female').length;
+  const genderTotal = male + female;
+  const genderDistribution = {
+    male,
+    female,
+    total: genderTotal,
+    maleRate: genderTotal > 0 ? Math.round(male / genderTotal * 1000) / 10 : 0,
+    femaleRate: genderTotal > 0 ? Math.round(female / genderTotal * 1000) / 10 : 0,
+  };
+
+  // 연령대 분포 (본인 사주 기준)
+  const now = new Date();
+  const ageGroups: Record<string, number> = {};
+  uniqueOwnRecords.forEach(r => {
+    if (!r.birth_date) return;
+    const birthDate = new Date(r.birth_date);
+    const age = now.getFullYear() - birthDate.getFullYear();
+    let group: string;
+    if (age < 20) group = '10대';
+    else if (age < 30) group = '20대';
+    else if (age < 40) group = '30대';
+    else if (age < 50) group = '40대';
+    else if (age < 60) group = '50대';
+    else group = '60대+';
+    ageGroups[group] = (ageGroups[group] || 0) + 1;
+  });
+
+  const ageOrder = ['10대', '20대', '30대', '40대', '50대', '60대+'];
+  const ageGroupDistribution = ageOrder
+    .filter(group => ageGroups[group])
+    .map(group => ({
+      group,
+      count: ageGroups[group],
+      rate: totalSajuUsers > 0 ? Math.round(ageGroups[group] / totalSajuUsers * 1000) / 10 : 0,
+    }));
+
+  // 가입 채널 분포 (users.provider)
+  const providerCounts: Record<string, number> = {};
+  users.forEach(u => {
+    const p = u.provider || 'unknown';
+    providerCounts[p] = (providerCounts[p] || 0) + 1;
+  });
+  const totalUsers = users.length;
+  const providerDistribution = Object.entries(providerCounts)
+    .map(([provider, count]) => ({
+      provider: provider === 'kakao' ? '카카오' : provider === 'google' ? '구글' : provider,
+      count,
+      rate: totalUsers > 0 ? Math.round(count / totalUsers * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  // 띠 분포 (본인 사주 기준)
+  const zodiacCounts: Record<string, number> = {};
+  uniqueOwnRecords.forEach(r => {
+    if (!r.zodiac) return;
+    zodiacCounts[r.zodiac] = (zodiacCounts[r.zodiac] || 0) + 1;
+  });
+  const zodiacDistribution = Object.entries(zodiacCounts)
+    .map(([zodiac, count]) => ({
+      zodiac,
+      count,
+      rate: totalSajuUsers > 0 ? Math.round(count / totalSajuUsers * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  // 관계 사주 분포 (전체 레코드 기준)
+  const relationCounts: Record<string, number> = {};
+  sajuAll.forEach(r => {
+    const rel = r.notes || '본인';
+    relationCounts[rel] = (relationCounts[rel] || 0) + 1;
+  });
+  const relationshipDistribution = Object.entries(relationCounts)
+    .map(([relationship, count]) => ({
+      relationship,
+      count,
+      rate: totalSajuRecords > 0 ? Math.round(count / totalSajuRecords * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  // 성별 유료 전환율
+  const paidUserIds = new Set(orders.map(o => o.user_id));
+  // 본인 사주 기준 성별별 유저
+  const maleUsers = uniqueOwnRecords.filter(r => r.gender === 'male');
+  const femaleUsers = uniqueOwnRecords.filter(r => r.gender === 'female');
+  const malePaid = maleUsers.filter(r => paidUserIds.has(r.user_id)).length;
+  const femalePaid = femaleUsers.filter(r => paidUserIds.has(r.user_id)).length;
+
+  const paidConversionByGender = {
+    male: {
+      total: maleUsers.length,
+      paid: malePaid,
+      rate: maleUsers.length > 0 ? Math.round(malePaid / maleUsers.length * 1000) / 10 : 0,
+    },
+    female: {
+      total: femaleUsers.length,
+      paid: femalePaid,
+      rate: femaleUsers.length > 0 ? Math.round(femalePaid / femaleUsers.length * 1000) / 10 : 0,
+    },
+  };
+
+  return {
+    totalSajuUsers,
+    totalSajuRecords,
+    avgRecordsPerUser,
+    genderDistribution,
+    ageGroupDistribution,
+    providerDistribution,
+    zodiacDistribution,
+    relationshipDistribution,
+    paidConversionByGender,
+  };
+}
+
+/**
+ * 보고서 추세 주별→월별 집계
+ */
 function aggregateReportTrendData(weeklyData: ReportTrendData[], granularity: 'monthly'): ReportTrendData[] {
   if (weeklyData.length === 0) return weeklyData;
 
