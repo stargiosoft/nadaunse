@@ -13,4 +13,6 @@ export interface MasterContent {
   price_original: number;
   price_discount: number;
   discount_rate: number;
+  is_read?: boolean;
+  total_count?: number;
 }

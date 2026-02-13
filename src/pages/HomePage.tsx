@@ -857,7 +857,17 @@ export default function HomePage() {
       console.error('캐시 저장 실패');
     }
   }, [getCacheKey]);
-  
+
+  // 🎯 서버 사이드 읽음 상태 + 정렬 RPC 호출 헬퍼
+  const fetchHomeContents = useCallback(async (category: TabCategory, type: string, offset: number, limit: number) => {
+    return supabase.rpc('get_home_contents', {
+      p_category: category,
+      p_content_type: type,
+      p_offset: offset,
+      p_limit: limit
+    });
+  }, []);
+
   // 🚀 백그라운드에서 나머지 콘텐츠 프리페칭 (현재 필터 기준)
   const prefetchRemainingContents = useCallback(async (totalCount: number, category: TabCategory, type: 'all' | 'paid' | 'free') => {
     try {
@@ -873,27 +883,9 @@ export default function HomePage() {
         const startIndex = 10 + loadedCount;
         const endIndex = Math.min(startIndex + batchSize - 1, totalCount - 1);
 
-        console.log(`🔮 [Prefetch] 배치 로드 중... (${startIndex} ~ ${endIndex})`);
+        console.log(`🔮 [Prefetch] 배치 로드 중... (${startIndex} ~ ${startIndex + batchSize - 1})`);
 
-        let query = supabase
-          .from('master_contents')
-          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate')
-          .eq('status', 'deployed');
-
-        // 필터 적용
-        if (category !== '전체') {
-          query = query.eq('category_main', category);
-        }
-        if (type === 'paid') {
-          query = query.eq('content_type', 'paid');
-        } else if (type === 'free') {
-          query = query.eq('content_type', 'free');
-        }
-
-        const { data, error } = await query
-          .order('weekly_clicks', { ascending: false })
-          .order('created_at', { ascending: false })
-          .range(startIndex, endIndex);
+        const { data, error } = await fetchHomeContents(category, type, startIndex, batchSize);
 
         if (error) {
           console.error(`❌ [Prefetch] 배치 로드 실패 (${startIndex} ~ ${endIndex}):`, error);
@@ -954,7 +946,7 @@ export default function HomePage() {
     } catch (error) {
       console.error('❌ [Prefetch] 프리페칭 중 오류:', error);
     }
-  }, [saveToCache, getCacheKey]);
+  }, [saveToCache, getCacheKey, fetchHomeContents]);
 
   // 🚀 다른 카테고리들 백그라운드 프리페치 (카테고리 변경 속도 개선)
   const prefetchOtherCategories = useCallback(async (
@@ -987,27 +979,7 @@ export default function HomePage() {
       try {
         console.log(`📥 [Category Prefetch] ${category}/${currentType} 로드 중...`);
 
-        let query = supabase
-          .from('master_contents')
-          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
-          .eq('status', 'deployed');
-
-        // 카테고리 필터
-        if (category !== '전체') {
-          query = query.eq('category_main', category);
-        }
-
-        // 타입 필터
-        if (currentType === 'paid') {
-          query = query.eq('content_type', 'paid');
-        } else if (currentType === 'free') {
-          query = query.eq('content_type', 'free');
-        }
-
-        const { data, error, count } = await query
-          .order('weekly_clicks', { ascending: false })
-          .order('created_at', { ascending: false })
-          .range(0, 9); // 첫 10개만 로드 (캐시용)
+        const { data, error } = await fetchHomeContents(category, currentType, 0, 10);
 
         if (error) {
           console.error(`❌ [Category Prefetch] ${category} 로드 실패:`, error);
@@ -1015,8 +987,9 @@ export default function HomePage() {
         }
 
         if (data && data.length > 0) {
-          saveToCache(data, category, currentType, count ?? undefined);
-          console.log(`✅ [Category Prefetch] ${category}/${currentType} 캐시 저장 (${data.length}개, totalCount: ${count})`);
+          const totalCount = (data[0] as MasterContent)?.total_count;
+          saveToCache(data, category, currentType, totalCount ?? undefined);
+          console.log(`✅ [Category Prefetch] ${category}/${currentType} 캐시 저장 (${data.length}개, totalCount: ${totalCount})`);
         }
 
         // 서버 부하 방지를 위한 딜레이
@@ -1027,7 +1000,7 @@ export default function HomePage() {
     }
 
     console.log(`🎉 [Category Prefetch] 카테고리 프리페칭 완료!`);
-  }, [getCacheKey, saveToCache]);
+  }, [getCacheKey, saveToCache, fetchHomeContents]);
 
   // Load published contents from Supabase (모든 필터에서 캐시 활용)
   useEffect(() => {
@@ -1065,31 +1038,11 @@ export default function HomePage() {
           console.warn('디버그 쿼리 실패 (무시):', debugError);
         }
 
-        // 🎯 쿼리 빌더 시작
-        let query = supabase
-          .from('master_contents')
-          .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
-          .eq('status', 'deployed');
+        // 🎯 RPC 호출 (서버 사이드 읽음 상태 + 정렬)
+        const { data, error } = await fetchHomeContents(selectedCategory, selectedType, 0, 10);
 
-        // 🔍 카테고리 필터 적용
-        if (selectedCategory !== '전체') {
-          query = query.eq('category_main', selectedCategory);
-        }
-
-        // 🔍 타입 필터 적용
-        if (selectedType === 'paid') {
-          query = query.eq('content_type', 'paid');
-        } else if (selectedType === 'free') {
-          query = query.eq('content_type', 'free');
-        }
-
-        // 정렬 및 범위 설정 (타임아웃 없이 실행)
-        const { data, error, count } = await query
-          .order('weekly_clicks', { ascending: false })
-          .order('created_at', { ascending: false })
-          .range(0, 9); // 🎯 처음 10개만 로드
-
-        console.log('🔍 [HomePage] 쿼리 결과:', { data, error, count });
+        const count = (data as MasterContent[] | null)?.[0]?.total_count;
+        console.log('🔍 [HomePage] RPC 쿼리 결과:', { dataLen: data?.length, error, count });
 
         if (error) {
           throw error;
@@ -1156,7 +1109,7 @@ export default function HomePage() {
     };
 
     fetchPublishedContents();
-  }, [loadFromCache, saveToCache, selectedCategory, selectedType, prefetchRemainingContents]);
+  }, [loadFromCache, saveToCache, selectedCategory, selectedType, prefetchRemainingContents, fetchHomeContents]);
 
   // 🚀 최초 로드 완료 후 다른 카테고리들 백그라운드 프리페치
   const hasPrefetchedCategoriesRef = useRef(false);
@@ -1480,49 +1433,29 @@ export default function HomePage() {
         console.log(`📭 [Cache Miss] 캐시에 데이터 부족 (요청: ${endIndex}, 캐시: ${cachedData.length})`);
       }
       
-      // 🎯 캐시에 없으면 DB에서 쿼리
-      let query = supabase
-        .from('master_contents')
-        .select('id, content_type, title, status, created_at, updated_at, thumbnail_url, weekly_clicks, view_count, category_main, category_sub, price_original, price_discount, discount_rate', { count: 'exact' })
-        .eq('status', 'deployed');
-      
-      // 🔍 카테고리 필터 적용
-      if (selectedCategory !== '전체') {
-        query = query.eq('category_main', selectedCategory);
-      }
-      
-      // 🔍 타입 필터 적용
-      if (selectedType === 'paid') {
-        query = query.eq('content_type', 'paid');
-      } else if (selectedType === 'free') {
-        query = query.eq('content_type', 'free');
-      }
-      
-      // 정렬 및 범위 설정
-      const { data, error, count } = await query
-        .order('weekly_clicks', { ascending: false })
-        .order('created_at', { ascending: false })
-        .range(startIndex, endIndex);
-      
+      // 🎯 캐시에 없으면 RPC로 쿼리
+      const { data, error } = await fetchHomeContents(selectedCategory, selectedType, startIndex, 10);
+      const count = (data as MasterContent[] | null)?.[0]?.total_count;
+
       if (error) throw error;
-      
+
       if (data && data.length > 0) {
         const newContents = data.map((item: any) => ({
           ...item,
           // 🎨 썸네일 최적화 (리스트용)
           thumbnail_url: withCacheBuster(getThumbnailUrl(item.thumbnail_url, 'list'), item.updated_at),
         })) as MasterContent[];
-        
+
         // 전체 콘텐츠에 추가
         setAllContents(prev => {
           const existingIds = new Set(prev.map(c => c.id));
           const uniqueNewContents = newContents.filter(c => !existingIds.has(c.id));
           return [...prev, ...uniqueNewContents];
         });
-        
+
         setCurrentPage(prev => prev + 1);
-        setHasMore(count ? endIndex < count : false);
-        
+        setHasMore(count ? (startIndex + 10) < count : false);
+
         console.log(`✅ ${newContents.length}개 콘텐츠 추가 로드 완료 (전체: ${count}개, 필터: ${selectedCategory}/${selectedType})`);
       } else {
         setHasMore(false);
@@ -1570,7 +1503,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, hasMore, isLoading, selectedCategory, selectedType]);
+  }, [currentPage, hasMore, isLoading, selectedCategory, selectedType, fetchHomeContents]);
   
   // Reset when filters change
   useEffect(() => {
