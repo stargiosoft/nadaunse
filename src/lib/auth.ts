@@ -406,7 +406,39 @@ export const recordTodayVisit = async () => {
       .single();
 
     if (fetchError) {
-      logger.debug('방문 기록 조회 실패:', fetchError.message);
+      // 신규 가입 직후: DB trigger가 users 행을 아직 생성 중일 수 있음 → 2초 후 재시도
+      logger.debug('방문 기록 조회 실패 (재시도 예정):', fetchError.message);
+      await new Promise(r => setTimeout(r, 2000));
+      const { data: retryData, error: retryError } = await supabase
+        .from('users')
+        .select('visit_dates, visit_count')
+        .eq('id', user.id)
+        .single();
+      if (retryError) {
+        logger.debug('방문 기록 재시도도 실패:', retryError.message);
+        return;
+      }
+      // 재시도 성공 시 userData 대신 retryData 사용
+      const retryDates: string[] = retryData?.visit_dates || [];
+      if (!retryDates.includes(todayKST)) {
+        const retryCount = (retryData?.visit_count || 0) + 1;
+        await supabase
+          .from('users')
+          .update({
+            visit_dates: [...retryDates, todayKST],
+            visit_count: retryCount,
+            last_login_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        localStorage.setItem(lastVisitKey, todayKST);
+        logger.debug('방문 기록 완료 (재시도):', todayKST);
+      } else {
+        await supabase
+          .from('users')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', user.id);
+        localStorage.setItem(lastVisitKey, todayKST);
+      }
       return;
     }
 
