@@ -566,6 +566,47 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   }, [selectedTab]);
 
+  // 클립보드 복사 함수 - 콘텐츠
+  const copyContentData = async () => {
+    if (!categoryRanking || categoryRanking.length === 0) return;
+
+    const periodLabel = contentPeriod === 'this_week' ? '이번주' : contentPeriod === 'last_week' ? '저번주' : '전체';
+    const typeLabel = contentTypeFilter === 'all' ? '종합' : contentTypeFilter === 'paid' ? '심화 해석판' : '무료 체험판';
+
+    const data = {
+      tab: '콘텐츠',
+      period: periodLabel,
+      contentType: typeLabel,
+      timestamp: new Date().toISOString(),
+      totalViews: categoryRanking.reduce((sum, c) => sum + c.totalViews, 0),
+      categoryRanking: categoryRanking.map((cat, index) => {
+        const cacheKey = `${cat.category}_${contentTypeFilter}_${contentPeriod}`;
+        const contents = topContents[cacheKey];
+        return {
+          rank: index + 1,
+          category: cat.category,
+          totalViews: cat.totalViews,
+          contentCount: cat.contentCount,
+          ...(contents && contents.length > 0 ? {
+            topContents: contents.map((c, cIdx) => ({
+              rank: cIdx + 1,
+              title: c.title,
+              type: c.contentType,
+              viewCount: c.viewCount,
+            })),
+          } : {}),
+        };
+      }),
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
   // 클립보드 복사 함수 - 고객
   const copyCustomerData = async () => {
     if (!customerStats) return;
@@ -2232,11 +2273,24 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         {/* ========== 콘텐츠 탭 ========== */}
         {selectedTab === '콘텐츠' && (
           <div>
-            {/* 기간 필터 */}
+            {/* 기간 필터 + 복사 버튼 */}
             <div style={{ marginBottom: '20px' }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
-                <Calendar size={16} color="#666" />
-                <span style={{ ...typography.label }}>조회 기간</span>
+              <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} color="#666" />
+                  <span style={{ ...typography.label }}>조회 기간</span>
+                </div>
+                <button
+                  onClick={copyContentData}
+                  className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                  style={{
+                    width: '36px', height: '36px',
+                    backgroundColor: '#f5f5f5',
+                    border: 'none',
+                  }}
+                >
+                  <Copy size={16} color="#666" />
+                </button>
               </div>
               <div className="flex gap-2">
                 {([
