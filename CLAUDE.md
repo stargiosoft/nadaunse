@@ -118,6 +118,8 @@ const bgImage = "/background.jpg";
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
 - **총 32개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(2), 소유자 확인(2), 유틸리티(2)
+- **⚠️ Request Timeout**: 150초 (모든 플랜 동일, Pro도 동일). Wall clock(Pro 400초)과 별개
+- **Self-Continue 패턴**: 장시간 함수(`generate-content-answers`, `generate-weekly-reports-batch`)는 timeout 전에 안전 종료 후 자기 재호출로 미완료 작업을 이어서 처리
 
 **⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
 ```bash

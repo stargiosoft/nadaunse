@@ -71,7 +71,7 @@
 9. `generate-tarot-answer` - 타로 답변 생성 (GPT-4.1)
 
 #### 유료 콘텐츠 - 통합 (1개)
-10. `generate-content-answers` - 콘텐츠 답변 병렬 생성 (주문 완료 후)
+10. `generate-content-answers` - 콘텐츠 답변 병렬 생성 (주문 완료 후, Self-Continue 패턴 적용)
 
 #### 썸네일/이미지 (2개)
 11. `generate-image-prompt` - 이미지 프롬프트 생성 (GPT-5-nano)
@@ -171,10 +171,11 @@
 ```
 결제 완료
     ↓
-generate-content-answers (병렬 처리)
+generate-content-answers (병렬 처리 + Self-Continue)
     ├─→ user_trait_tags 조회 (초개인화 데이터)
     ├─→ generate-saju-answer (사주 답변 + personalizationData)
     ├─→ generate-tarot-answer (타로 답변 + personalizationData)
+    ├─→ [120초 경과 시] 자기 재호출 (미완료 질문만 이어서 처리)
     └─→ send-alimtalk (완료 알림)
 ```
 
@@ -360,7 +361,7 @@ BirthInfoInput → generate-master-content (Edge Function)
 
 ### 3. `generate-content-answers`
 
-**역할**: 유료 콘텐츠 답변 병렬 생성 (주문 완료 후)
+**역할**: 유료 콘텐츠 답변 병렬 생성 (주문 완료 후, Self-Continue 패턴 적용)
 
 **호출 시점**:
 - 결제 완료 후 사주 입력/선택 완료 시
@@ -373,8 +374,16 @@ BirthInfoInput → generate-master-content (Edge Function)
   orderId: string,             // 주문 ID
   sajuRecordId: string,        // 사주 레코드 ID
   sajuApiData?: SajuApiData    // ⭐ 프론트엔드에서 전달받은 사주 데이터 (NEW!)
+  selfContinueCount?: number   // ⭐ 자기 재호출 횟수 (0부터 시작, 내부 전용)
 }
 ```
+
+**⭐ Self-Continue 패턴 (2026-02-12 추가)**:
+- **문제**: 10개 질문 처리 시 request timeout(150초, 모든 플랜 동일) 초과로 shutdown
+- **해결**: 120초(30초 안전 마진) 경과 시 안전 종료 후 자기 자신을 fire-and-forget 재호출
+- **멱등성**: `processQuestion()`이 이미 `order_results`에서 기존 답변을 체크하므로 완료된 질문은 자동 스킵
+- **최대 재호출**: 5회 (120초 × 5 = 최대 10분)
+- **클라이언트 영향 없음**: `LoadingPage`가 `ai_generation_completed` 폴링하므로 변경 불필요
 
 **⭐ 사주 API 백엔드 서버 직접 호출 (최종 해결) (2026-01-13)**:
 - **문제**: Edge Function에서 Stargio 사주 API 호출 시 HTTP 200이지만 빈 데이터 `{}` 반환
@@ -1759,7 +1768,7 @@ curl -X POST https://hyltbeewxaqashyivilu.supabase.co/functions/v1/index-now \
 |--------|---------|--------|---------|----------|
 | `generate-free-preview` | 🤖 AI 생성 | POST | GPT-4.1-nano | 무료 사주 입력 후 |
 | `generate-master-content` | 🤖 AI 생성 | POST | Claude-3.5-Sonnet | 유료 사주 입력 후 |
-| `generate-content-answers` | 🤖 AI 생성 | POST | - | (deprecated?) |
+| `generate-content-answers` | 🤖 AI 생성 | POST | - | 결제 완료 후 (Self-Continue) |
 | `generate-saju-preview` | 🤖 AI 생성 | POST | GPT-5.1 | 마스터 콘텐츠 미리보기 |
 | `generate-saju-answer` | 🤖 AI 생성 | POST | GPT-5.1 | 사주 질문별 답변 |
 | `generate-tarot-preview` | 🤖 AI 생성 | POST | GPT-4.1 | 타로 미리보기 |

@@ -22,27 +22,10 @@ interface FreeContent {
   created_at: string;
 }
 
-// ⭐ 무료 콘텐츠 캐시 키 (5분 만료)
-const FREE_CONTENTS_CACHE_KEY = 'free_contents_cache_v1';
+// ⭐ 무료 콘텐츠 캐시 (카테고리별, 5분 만료)
 const CACHE_EXPIRY = 5 * 60 * 1000; // 5분
-
-// 🚀 동기적 캐시 확인 함수 (useState 초기화 시점)
-function getInitialFreeContents(): FreeContent[] {
-  try {
-    const cachedData = localStorage.getItem(FREE_CONTENTS_CACHE_KEY);
-    if (cachedData) {
-      const { contents, timestamp } = JSON.parse(cachedData);
-      const now = Date.now();
-      if (now - timestamp < CACHE_EXPIRY && Array.isArray(contents) && contents.length > 0) {
-        console.log('🚀 [LoadingPage] 초기화 시 캐시 발견 → 즉시 렌더링:', contents.length, '개');
-        return contents;
-      }
-    }
-  } catch (e) {
-    console.error('❌ [LoadingPage] 초기 캐시 파싱 실패:', e);
-  }
-  return [];
-}
+const getFreeContentsCacheKey = (category: string | null) =>
+  category ? `free_contents_cache_${category}_v1` : 'free_contents_cache_all_v1';
 
 // ⭐ Progress Bar 컴포넌트 분리 (100ms 리렌더링 격리)
 function ProgressBar({ isCompleted }: { isCompleted: boolean }) {
@@ -112,14 +95,14 @@ export default function LoadingPage() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [devNextUrl, setDevNextUrl] = useState<string | null>(null);
 
-  // 🚀 무료 콘텐츠 state - 캐시에서 동기적 초기화
-  const initialFreeContents = getInitialFreeContents();
-  const [freeContents, setFreeContents] = useState<FreeContent[]>(initialFreeContents);
-  const [isLoadingFreeContents, setIsLoadingFreeContents] = useState(initialFreeContents.length === 0);
+  // 🚀 무료 콘텐츠 state (카테고리 로드 후 fetch)
+  const [freeContents, setFreeContents] = useState<FreeContent[]>([]);
+  const [isLoadingFreeContents, setIsLoadingFreeContents] = useState(true);
   const [loadedThumbnails, setLoadedThumbnails] = useState<Set<string>>(new Set());
 
-  // ⭐ 현재 콘텐츠의 카테고리 (다른 운세 보기 클릭 시 홈 필터에 사용)
+  // ⭐ 현재 콘텐츠의 카테고리 (다른 운세 보기 클릭 시 홈 필터에 사용 + 무료 콘텐츠 필터)
   const [contentCategory, setContentCategory] = useState<string | null>(null);
+  const [categoryLoaded, setCategoryLoaded] = useState(false);
 
   // ⭐ 읽기 기록 (ContentTags용) - 캐시에서 동기 초기화
   const [readContentIds, setReadContentIds] = useState<Set<string>>(() => {
@@ -187,7 +170,10 @@ export default function LoadingPage() {
 
   // ⭐ 현재 콘텐츠의 카테고리 조회
   useEffect(() => {
-    if (!contentId) return;
+    if (!contentId) {
+      setCategoryLoaded(true);
+      return;
+    }
 
     const fetchContentCategory = async () => {
       try {
@@ -210,6 +196,8 @@ export default function LoadingPage() {
         }
       } catch (error) {
         console.error('❌ [LoadingPage] 콘텐츠 카테고리 조회 중 오류:', error);
+      } finally {
+        setCategoryLoaded(true);
       }
     };
 
@@ -263,35 +251,21 @@ export default function LoadingPage() {
     }
   }, []);
 
-  // ⭐ 무료 콘텐츠 로드 (인기도 순 - weekly_clicks 기준)
+  // ⭐ 무료 콘텐츠 로드 (카테고리 필터 + 인기도 순)
   useEffect(() => {
+    // 카테고리 로드 완료 후에만 실행
+    if (!categoryLoaded) return;
+
+    const cacheKey = getFreeContentsCacheKey(contentCategory);
+
     const fetchFreeContents = async () => {
       try {
-        // 🚀 이미 초기화 시점에 캐시에서 로드되었으면 스킵
-        if (freeContents.length > 0) {
-          console.log('✅ [무료콘텐츠] 이미 캐시에서 로드됨 → API 스킵');
-          setIsLoadingFreeContents(false);
-
-          // 🚀 이미지 프리로드만 수행
-          const thumbnails = freeContents
-            .slice(0, 3)
-            .map((c: FreeContent) => c.thumbnail_url)
-            .filter(Boolean) as string[];
-          if (thumbnails.length > 0) {
-            preloadImages(thumbnails, 'high');
-          }
-          return;
-        }
-
-        console.log('🔍 [무료콘텐츠] 로드 시작');
-
         // 캐시 확인
-        const cachedData = localStorage.getItem(FREE_CONTENTS_CACHE_KEY);
+        const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           const { contents, timestamp } = JSON.parse(cachedData);
-          const now = Date.now();
-          if (now - timestamp < CACHE_EXPIRY) {
-            console.log('✅ [무료콘텐츠] 캐시 사용:', contents.length, '개');
+          if (Date.now() - timestamp < CACHE_EXPIRY) {
+            console.log(`✅ [무료콘텐츠] 캐시 사용 (${contentCategory || '전체'}):`, contents.length, '개');
             setFreeContents(contents);
             setIsLoadingFreeContents(false);
 
@@ -299,35 +273,41 @@ export default function LoadingPage() {
               .slice(0, 3)
               .map((c: FreeContent) => c.thumbnail_url)
               .filter(Boolean) as string[];
-            if (thumbnails.length > 0) {
-              preloadImages(thumbnails, 'high');
-            }
+            if (thumbnails.length > 0) preloadImages(thumbnails, 'high');
             return;
           }
         }
 
-        // ⭐ master_contents에서 무료 콘텐츠 조회 (weekly_clicks 내림차순 정렬)
-        const { data: contents, error: contentsError } = await supabase
+        console.log(`🔍 [무료콘텐츠] 로드 시작 (카테고리: ${contentCategory || '전체'})`);
+
+        // ⭐ 카테고리 필터 적용: 유료 콘텐츠와 동일 카테고리의 무료 콘텐츠만 조회
+        let query = supabase
           .from('master_contents')
           .select('id, title, thumbnail_url, weekly_clicks, created_at')
           .eq('content_type', 'free')
           .order('weekly_clicks', { ascending: false });
 
+        if (contentCategory) {
+          query = query.eq('category_main', contentCategory);
+        }
+
+        const { data: contents, error: contentsError } = await query;
+
         if (contentsError) throw contentsError;
         if (!contents || contents.length === 0) {
-          console.log('⚠️ [무료콘텐츠] 데이터 없음');
+          console.log(`⚠️ [무료콘텐츠] ${contentCategory || '전체'} 카테고리 데이터 없음`);
           setIsLoadingFreeContents(false);
           return;
         }
 
-        console.log('✅ [무료콘텐츠] 인기순 정렬 완료:', contents.map(c => `${c.title}(${c.weekly_clicks})`));
+        console.log(`✅ [무료콘텐츠] ${contentCategory || '전체'} 카테고리 ${contents.length}개 로드`);
 
         setFreeContents(contents);
         setIsLoadingFreeContents(false);
 
-        // 캐시 저장
-        localStorage.setItem(FREE_CONTENTS_CACHE_KEY, JSON.stringify({
-          contents: contents,
+        // 캐시 저장 (카테고리별)
+        localStorage.setItem(cacheKey, JSON.stringify({
+          contents,
           timestamp: Date.now()
         }));
 
@@ -336,9 +316,7 @@ export default function LoadingPage() {
           .slice(0, 3)
           .map(c => c.thumbnail_url)
           .filter(Boolean) as string[];
-        if (thumbnails.length > 0) {
-          preloadImages(thumbnails, 'high');
-        }
+        if (thumbnails.length > 0) preloadImages(thumbnails, 'high');
 
         // 🚀 4-6번째 썸네일 백그라운드 프리페칭
         const remainingThumbnails = contents
@@ -346,9 +324,7 @@ export default function LoadingPage() {
           .map(c => c.thumbnail_url)
           .filter(Boolean) as string[];
         if (remainingThumbnails.length > 0) {
-          setTimeout(() => {
-            preloadImages(remainingThumbnails, 'low');
-          }, 500);
+          setTimeout(() => preloadImages(remainingThumbnails, 'low'), 500);
         }
       } catch (error) {
         console.error('❌ [무료콘텐츠] 로드 실패:', error);
@@ -357,7 +333,7 @@ export default function LoadingPage() {
     };
 
     fetchFreeContents();
-  }, []);
+  }, [categoryLoaded, contentCategory]);
 
   // ⭐️ AI 생성 완료 폴링 (2초마다 체크)
   useEffect(() => {

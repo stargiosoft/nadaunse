@@ -1342,18 +1342,47 @@ export default function CheckRecordMe({
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
 
-                  // ⭐ 프로모션 바텀시트: 최초 1회만 노출 (localStorage 플래그)
-                  const promoShown = localStorage.getItem('tag_promo_shown_once');
+                  // ⭐ 미션 쿠폰 이미 받은 사람 → 바로 스킵 (체리피커 방지)
+                  if (hasMissionCoupon) {
+                    console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 바로 스킵');
+                    if (session?.user?.id) {
+                      await executeSkipLogic(session.user.id);
+                    }
+                    if (onSkip) onSkip();
+                    return;
+                  }
 
+                  // ⭐ 서버에서 확정 태그 수 조회 (로그인 시)
+                  if (session?.user?.id) {
+                    const { count: tagCount } = await supabase
+                      .from('user_trait_tags')
+                      .select('id', { count: 'exact', head: true })
+                      .eq('user_id', session.user.id)
+                      .eq('is_confirmed', true)
+                      .neq('tag_name', '__SKIPPED__');
+
+                    const confirmedTags = tagCount ?? 0;
+                    console.log(`🏷️ [CheckRecordMe] 확정 태그 수: ${confirmedTags}`);
+
+                    if (confirmedTags >= 5) {
+                      // 5개 이상 → 프로모션 불필요, 바로 스킵
+                      console.log('✅ [CheckRecordMe] 태그 5개 이상 → 바로 스킵');
+                      await executeSkipLogic(session.user.id);
+                      if (onSkip) onSkip();
+                      return;
+                    }
+                  }
+
+                  // ⭐ 태그 5개 미만 (또는 비로그인): 최초 1회만 프로모션 바텀시트 노출
+                  const promoShown = localStorage.getItem('tag_promo_shown_once');
                   if (!promoShown) {
-                    // 최초 → 프로모션 바텀시트 노출
-                    console.log('📢 [CheckRecordMe] 최초 스킵 → 프로모션 바텀시트 노출');
+                    console.log('📢 [CheckRecordMe] 최초 스킵 + 태그 5개 미만 → 프로모션 바텀시트 노출');
                     localStorage.setItem('tag_promo_shown_once', 'true');
                     setIsPromoBottomSheetOpen(true);
                     return;
                   }
 
-                  // 2번째+ → 바텀시트 없이 바로 스킵 처리 + 홈 이동
+                  // 2번째+ → 바로 스킵
                   console.log('🏠 [CheckRecordMe] 2번째+ 스킵 → 바로 홈 이동');
                   if (session?.user?.id) {
                     await executeSkipLogic(session.user.id);

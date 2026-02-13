@@ -8,6 +8,14 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// ⭐ Self-Continue 설정 (shutdown 방지)
+// Supabase Edge Functions request timeout: 150초 (모든 플랜 동일)
+// 120초에 안전 종료 후 자기 재호출로 나머지 질문 이어서 처리
+const SELF_CONTINUE_CONFIG = {
+  maxExecutionMs: 120_000, // 120초 (request timeout 150초, 30초 안전 마진)
+  maxContinueCount: 5,     // 최대 자기 재호출 횟수 (120초씩 5회 = 최대 10분)
+}
+
 serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -19,6 +27,7 @@ serve(async (req) => {
       contentId,      // 콘텐츠 ID
       orderId,        // 주문 ID
       sajuRecordId,   // 사주 정보 ID
+      selfContinueCount = 0,  // ⭐ 자기 재호출 횟수 (shutdown 방지)
     } = await req.json()
 
     if (!contentId || !orderId || !sajuRecordId) {
@@ -28,7 +37,8 @@ serve(async (req) => {
       )
     }
 
-    console.log('🚀 콘텐츠 답변 생성 시작')
+    const functionStartTime = Date.now()
+    console.log(`🚀 콘텐츠 답변 생성 시작${selfContinueCount > 0 ? ` (selfContinue #${selfContinueCount})` : ''}`)
     console.log('📦 contentId:', contentId)
     console.log('📦 orderId:', orderId)
     console.log('📦 sajuRecordId:', sajuRecordId)
@@ -461,6 +471,9 @@ serve(async (req) => {
       return { questionId: question.id, success: false, error: lastError?.message, attempts: maxRetries }
     }
 
+    // ⭐ shutdown 방지: 시간 제한 플래그
+    let stoppedByTimeLimit = false
+
     // ⭐ 그룹별 직렬 처리 함수
     async function processGroupSerially(groupQuestions: any[], groupName: string) {
       const results: any[] = []
@@ -469,6 +482,15 @@ serve(async (req) => {
       console.log(`🔄 ${groupName} 그룹 직렬 처리 시작 (${groupQuestions.length}개)`)
 
       for (const question of groupQuestions) {
+        // ⭐ 시간 제한 체크 (shutdown 방지)
+        const elapsed = Date.now() - functionStartTime
+        if (elapsed > SELF_CONTINUE_CONFIG.maxExecutionMs) {
+          const remaining = groupQuestions.length - results.length
+          console.log(`⏰ ${groupName} 그룹: ${(elapsed / 1000).toFixed(0)}초 경과 - 안전 종료 (남은 질문 ${remaining}개)`)
+          stoppedByTimeLimit = true
+          break
+        }
+
         const result = await processQuestion(question, accumulatedAnswers)
         results.push(result)
 
@@ -495,16 +517,76 @@ serve(async (req) => {
 
     const results = [...sajuResults, ...tarotResults]
 
+    // ⭐ 시간 제한으로 중단된 경우: self-continue 처리
+    if (stoppedByTimeLimit) {
+      const { data: completedResults } = await supabase
+        .from('order_results')
+        .select('question_id')
+        .eq('order_id', orderId)
+
+      const completedCount = completedResults?.length || 0
+      const remainingCount = questions.length - completedCount
+
+      console.log(`⏰ 시간 제한 도달: ${completedCount}/${questions.length}개 완료, ${remainingCount}개 남음`)
+
+      if (remainingCount > 0 && selfContinueCount < SELF_CONTINUE_CONFIG.maxContinueCount) {
+        console.log(`🔄 [selfContinue] 자기 재호출 시작 (#${selfContinueCount + 1}, ${remainingCount}개 남음)...`)
+
+        // fire-and-forget 자기 재호출
+        fetch(`${supabaseUrl}/functions/v1/generate-content-answers`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contentId,
+            orderId,
+            sajuRecordId,
+            selfContinueCount: selfContinueCount + 1,
+          })
+        }).catch(err => console.error('❌ [selfContinue] 재호출 실패:', err))
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            selfContinue: true,
+            selfContinueCount: selfContinueCount + 1,
+            completedCount,
+            totalQuestions: questions.length,
+            remainingCount,
+            message: `시간 제한으로 ${remainingCount}개 질문 미완료, 자동 이어하기 #${selfContinueCount + 1} 시작`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (remainingCount > 0) {
+        console.error(`❌ selfContinue 최대 횟수(${SELF_CONTINUE_CONFIG.maxContinueCount}) 도달, ${remainingCount}개 질문 미완료`)
+      }
+    }
+
     console.log('🎉 모든 답변 생성 완료')
     console.log('📊 결과:', results)
 
-    // 실패한 질문 확인
-    const failedQuestions = results.filter(r => !r.success)
-    const allSucceeded = failedQuestions.length === 0
+    // 실패한 질문 확인 (⭐ 시간 제한 시 DB 기반 체크)
+    const successCount = results.filter(r => r.success).length
+    const failedCount = questions.length - successCount
+    let allSucceeded: boolean
 
-    if (failedQuestions.length > 0) {
-      console.warn('⚠️ 일부 질문 처리 실패:', failedQuestions)
-      console.warn(`📊 실패 요약: ${failedQuestions.length}/${questions.length}개 질문 실패`)
+    if (stoppedByTimeLimit) {
+      // 시간 제한 후 fall-through: DB에서 실제 완료 상태 확인
+      const { data: finalCheck } = await supabase
+        .from('order_results')
+        .select('question_id')
+        .eq('order_id', orderId)
+      allSucceeded = (finalCheck?.length || 0) >= questions.length
+    } else {
+      allSucceeded = failedCount === 0
+    }
+
+    if (failedCount > 0 && !stoppedByTimeLimit) {
+      console.warn(`⚠️ 일부 질문 처리 실패: ${failedCount}/${questions.length}개`)
     }
 
     // 5. orders 테이블 업데이트 (⭐ 모든 질문이 성공한 경우에만 완료 표시)
@@ -642,15 +724,15 @@ serve(async (req) => {
     if (allSucceeded) {
       console.log('✅ 전체 프로세스 완료! 모든 질문 생성 성공')
     } else {
-      console.warn(`⚠️ 전체 프로세스 완료하였으나 일부 질문 실패 (${failedQuestions.length}/${questions.length})`)
+      console.warn(`⚠️ 전체 프로세스 완료하였으나 일부 질문 실패 (${failedCount}/${questions.length})`)
     }
 
     return new Response(
       JSON.stringify({
         success: allSucceeded,  // ⭐ 모든 질문이 성공한 경우에만 true
         totalQuestions: questions.length,
-        successCount: results.filter(r => r.success).length,
-        failedCount: failedQuestions.length,
+        successCount,
+        failedCount,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

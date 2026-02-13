@@ -248,11 +248,13 @@
 │  [사주 입력/선택] → [LoadingPage (폴링)]                                     │
 │         ↓                                                                   │
 │  ┌──────────────────────────────────────────────────────────────────┐       │
-│  │  generate-content-answers                                         │       │
+│  │  generate-content-answers (Self-Continue 패턴)                     │       │
 │  │      ↓                                                           │       │
 │  │  [user_trait_tags 조회] → [초개인화 데이터 구성]                    │       │
 │  │      ↓                                                           │       │
 │  │  [Stargio 사주 API] → [AI 운세 생성 (초개인화)] → [order_results]  │       │
+│  │      ↓                                                           │       │
+│  │  [120초 경과 시] → 자기 재호출 (미완료 질문만 이어서 처리)          │       │
 │  │      ↓                                                           │       │
 │  │  [orders.ai_generation_completed = true]                          │       │
 │  └──────────────────────────────────────────────────────────────────┘       │
@@ -270,12 +272,13 @@
 │  [결제 완료] → [LoadingPage]                                                 │
 │       ↓                                                                      │
 │  ┌──────────────────────────────────────────────────────────────────┐       │
-│  │  generate-content-answers                                         │       │
+│  │  generate-content-answers (Self-Continue 패턴)                     │       │
 │  │      ↓                                                           │       │
 │  │  [getTarotCardsForQuestions()] → 78장 덱에서 카드 사전 선택        │       │
 │  │      ↓                                                           │       │
 │  │  [AI 타로 해석 생성] → [order_results 저장]                        │       │
 │  │  ※ 카드는 이 시점에 이미 결정됨!                                   │       │
+│  │  ※ 120초 초과 시 자기 재호출로 이어서 처리                          │       │
 │  └──────────────────────────────────────────────────────────────────┘       │
 │       ↓                                                                      │
 │  [TarotShufflePage] → [TarotGame]                                           │

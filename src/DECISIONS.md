@@ -40,6 +40,67 @@
 
 ---
 
+### generate-content-answers Self-Continue 패턴 도입 (shutdown 방지)
+
+**결정**: Edge Function이 request timeout(150초) 도달 전에 처리 경과 시간을 체크하여 안전 종료하고, 이미 DB에 저장된 완료 결과는 스킵하면서 미완료 질문만 이어서 처리하도록 동일 파라미터로 자기 자신을 fire-and-forget 재호출하는 idempotent self-continue 패턴 적용
+
+**문제**:
+- 유료 콘텐츠(10개 질문: 사주 8개 + 타로 2개) AI 생성 시 `generate-content-answers`가 shutdown으로 강제 종료
+- 로그 분석: 시작(23:47:41) → shutdown(23:50:26), 약 2분 45초(165초)에 종료
+- 질문 7개 완료, 3개 미완료 → `ai_generation_completed = false` → 사용자에게 결과 미제공
+
+**근본 원인 (중요한 발견)**:
+- Supabase Edge Functions에는 **두 가지 타임아웃**이 존재:
+  - **Request idle timeout: 150초** (모든 플랜 동일, Free/Pro 무관)
+  - **Wall clock: Free 150초 / Pro 400초** (응답 후 백그라운드 처리 포함)
+- `generate-content-answers`는 모든 질문 처리 완료 후에야 HTTP 응답을 반환
+- **Pro Plan이어도 request timeout 150초에 걸림** (wall clock 400초는 응답 후 백그라운드에만 해당)
+- `--wall-clock-timeout` 같은 CLI 플래그는 존재하지 않음
+
+**구현**:
+```typescript
+// 120초에 안전 종료 (request timeout 150초, 30초 안전 마진)
+const SELF_CONTINUE_CONFIG = {
+  maxExecutionMs: 120_000,
+  maxContinueCount: 5,  // 최대 5회 재호출 (120초 × 5 = 최대 10분)
+}
+
+// 그룹별 직렬 처리 루프에서 시간 체크
+for (const question of groupQuestions) {
+  const elapsed = Date.now() - functionStartTime
+  if (elapsed > SELF_CONTINUE_CONFIG.maxExecutionMs) {
+    stoppedByTimeLimit = true
+    break
+  }
+  // ... 질문 처리
+}
+
+// 시간 초과 시: DB에서 미완료 질문 확인 → fire-and-forget 자기 재호출
+if (stoppedByTimeLimit && remainingCount > 0) {
+  fetch(`${supabaseUrl}/functions/v1/generate-content-answers`, {
+    body: JSON.stringify({ contentId, orderId, sajuRecordId, selfContinueCount: selfContinueCount + 1 })
+  })
+}
+```
+
+**기존 코드 활용 (변경 최소화)**:
+- `processQuestion()` 내부에 이미 `order_results` 중복 체크 로직이 존재 → 재호출 시 완료된 질문 자동 스킵
+- `orders.ai_generation_completed` 중복 호출 방지 → 이미 완료된 주문은 즉시 리턴
+- 클라이언트(LoadingPage) 변경 없음 → `ai_generation_completed` 폴링만 하므로 self-continue 투명
+
+**기존 선례**: `generate-weekly-reports-batch`에 동일 패턴 이미 구현됨 (maxExecutionMs: 60초, selfContinue 자동 이어하기)
+
+**교훈**:
+1. **Supabase Pro Plan의 400초는 wall clock이지 request timeout이 아님** — HTTP 응답은 150초 안에 보내야 함
+2. **장시간 AI 생성 함수는 반드시 self-continue 필요** — 질문 10개 × 질문당 20~30초 = 200~300초로 150초 초과 확실
+3. **idempotent 설계가 핵심** — DB에 중간 결과를 저장하고, 재호출 시 기존 결과 스킵하는 구조여야 안전한 재시도 가능
+
+**관련 파일**: `supabase/functions/generate-content-answers/index.ts`
+
+**영향 범위**: 유료 콘텐츠 AI 생성 플로우 (generate-content-answers)
+
+---
+
 ### CSP(Content Security Policy)로 인한 결제 장애 해결 (3주간 매출 손실)
 
 **결정**: `vercel.json` CSP 헤더에 누락된 결제 도메인 2개 추가
