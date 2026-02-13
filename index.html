@@ -117,6 +117,16 @@
     <!-- FOUC 방지: React 첫 렌더 완료 전까지 흰색 오버레이 -->
     <div id="fouc-guard" style="position:fixed;inset:0;background:#fff;z-index:99999"></div>
     <div id="root"></div>
+    <!-- ⭐ PG 리다이렉트 복귀 감지 (React 로드 전 즉시 실행 - 가장 빠른 인터셉트) -->
+    <script>
+    (function(){
+      var f=sessionStorage.getItem('pg_payment_in_progress');
+      if(f&&location.pathname.indexOf('/payment')!==-1&&location.pathname!=='/payment/complete'){
+        sessionStorage.removeItem('pg_payment_in_progress');
+        location.replace(f);
+      }
+    })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
 
     <!-- Naver Analytics -->

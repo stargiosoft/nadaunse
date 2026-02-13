@@ -284,21 +284,35 @@ export default function PaymentNew({
     const finalContentId = contentId || productId;
 
     const redirectToProductDetail = () => {
-      console.log('🔄 [PaymentNew] 결제 중 뒤로가기/복귀 감지 → 뒤로가기');
       stopPaymentOverlayWatch();
       paymentInitiatedRef.current = false;
       paymentMethodRef.current = null;
+      paymentRequestedAtRef.current = 0;
       setIsProcessingPayment(false);
-      // ⭐ pushState로 추가된 history entry 정리
-      window.history.replaceState({}, '', window.location.href);
-      onBack();
+      sessionStorage.removeItem('pg_payment_in_progress');
+
+      // ⭐ 모바일: location.replace로 확실하게 상품 상세 이동 + forward 히스토리(PG 중간 페이지) 정리
+      // navigate(-1)은 PG 중간 페이지로 갈 수 있으므로 직접 URL 지정
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobileDevice) {
+        const productPath = window.location.pathname.replace(/\/payment.*$/, '') || `/product/${finalContentId}`;
+        console.log('🔄 [PaymentNew] 모바일 PG 복귀 → location.replace:', productPath);
+        window.location.replace(productPath);
+      } else {
+        console.log('🔄 [PaymentNew] PC 결제 중 뒤로가기 감지 → onBack');
+        window.history.replaceState({}, '', window.location.href);
+        onBack();
+      }
     };
 
     // ⭐ grace period 체크: request_pay 직후 SDK 처리 시간 동안 이벤트 무시
+    // 모바일은 SDK가 즉시 redirect하므로 짧은 grace period (1.5초)
     const isInGracePeriod = () => {
       if (paymentRequestedAtRef.current === 0) return false;
       const elapsed = Date.now() - paymentRequestedAtRef.current;
-      return elapsed < PAYMENT_GRACE_PERIOD_MS;
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const gracePeriod = isMobileDevice ? 1500 : PAYMENT_GRACE_PERIOD_MS;
+      return elapsed < gracePeriod;
     };
 
     // ⭐ popstate: 브라우저 뒤로가기/앞으로가기 버튼 클릭 시 발생
@@ -905,12 +919,20 @@ export default function PaymentNew({
         }
       }, 2000);
     }
-    // ⭐ 모바일: PG 리다이렉트 뒤로가기 루프 방지
-    // SDK redirect 후 뒤로가기 시 앱으로 복귀하면 상품 상세로 이동하기 위한 플래그
+    // ⭐ 모바일: PG 리다이렉트 뒤로가기 루프 방지 (3중 안전장치)
     if (isMobile) {
+      const currentUrl = window.location.pathname + window.location.search;
       const productDetailPath = window.location.pathname.replace(/\/payment.*$/, '');
+
+      // 1) sessionStorage 플래그 (앱 fresh load 시 감지용)
       sessionStorage.setItem('pg_payment_in_progress', productDetailPath);
-      console.log('🛡️ [PaymentNew] 모바일 PG 리다이렉트 플래그 설정:', productDetailPath);
+
+      // 2) 히스토리 안전망: 현재 엔트리를 상품 상세 URL로 교체 후 결제 URL 재추가
+      //    뒤로가기로 PG 루프를 탈출하면 상품 상세 페이지로 랜딩됨
+      window.history.replaceState(null, '', productDetailPath);
+      window.history.pushState(null, '', currentUrl);
+
+      console.log('🛡️ [PaymentNew] 모바일 PG 루프 방지: 플래그 + 히스토리 안전망 설정');
     }
     // 모바일: SDK가 redirect하므로 로딩은 페이지 전환 시 자연스럽게 사라짐
     // m_redirect_url로 복귀 시 PaymentComplete 페이지가 결과 처리
