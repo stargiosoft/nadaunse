@@ -108,7 +108,11 @@ export default function PaymentComplete() {
 
             // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
             localStorage.removeItem('purchase_history_cache');
-            console.log('🗑️ 구매내역 캐시 무효화 완료');
+            // ⭐ 사주 캐시 무효화 (결제 후 사주 선택/입력 시 프로필 갱신 보장)
+            localStorage.removeItem('primary_saju');
+            localStorage.removeItem('saju_records_cache');
+            localStorage.removeItem('saju_cache_checked');
+            console.log('🗑️ 구매내역 + 사주 캐시 무효화 완료');
 
             // 📊 GA4: 구매 완료 이벤트 (purchase)
             if (contentId) {

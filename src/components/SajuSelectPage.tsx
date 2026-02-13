@@ -386,10 +386,11 @@ export default function SajuSelectPage() {
         console.log('✅ [사주선택] 휴대폰 번호 확인 완료');
       }
 
-      // ⭐ 대표 사주 업데이트 + 캐시 무효화 (백그라운드, 비차단)
+      // ⭐ 대표 사주 캐시 업데이트 + DB 반영 (백그라운드, 비차단)
       console.log('🔄 [사주선택] 대표 사주 업데이트 (백그라운드)...');
-      localStorage.removeItem('primary_saju');
+      localStorage.setItem('primary_saju', JSON.stringify({ ...selectedSaju, is_primary: true }));
       localStorage.removeItem('saju_records_cache');
+      localStorage.removeItem('saju_cache_checked');
 
       // 비동기로 실행 (await 없이)
       Promise.all([

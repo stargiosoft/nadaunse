@@ -632,6 +632,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         // 모든 사주가 삭제된 경우
         localStorage.removeItem('primary_saju');
         localStorage.removeItem('saju_records_cache');
+        localStorage.removeItem('saju_cache_checked');
         setSajuList([]);
         setMySaju(null);
         setOtherSajuList([]);
@@ -641,6 +642,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
         // 조회 실패 시 기존 방식대로 무효화
         localStorage.removeItem('primary_saju');
         localStorage.removeItem('saju_records_cache');
+        localStorage.removeItem('saju_cache_checked');
         console.log('🗑️ [사주삭제] primary_saju, saju_records_cache 캐시 무효화');
       }
 
@@ -733,10 +735,12 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
           // 캐시 파싱 실패 시 무효화
           localStorage.removeItem('primary_saju');
           localStorage.removeItem('saju_records_cache');
+          localStorage.removeItem('saju_cache_checked');
           console.log('🗑️ [대표사주변경] 캐시 무효화 (파싱 실패)');
         }
       } else {
         localStorage.removeItem('primary_saju');
+        localStorage.removeItem('saju_cache_checked');
         console.log('🗑️ [대표사주변경] 캐시 무효화 (캐시 없음)');
       }
 
