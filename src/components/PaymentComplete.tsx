@@ -178,10 +178,10 @@ export default function PaymentComplete() {
             }
           }
 
-          // ⭐️ 사주 정보 존재 여부 확인 (모든 사주 레코드)
+          // ⭐️ 사주 정보 존재 여부 확인 + 캐시 미리 저장
           const { data: sajuRecords, error: sajuError } = await supabase
             .from('saju_records')
-            .select('id')
+            .select('*')
             .eq('user_id', userId);
 
           if (sajuError) {
@@ -190,8 +190,13 @@ export default function PaymentComplete() {
 
           console.log('🔮 사주 정보:', sajuRecords);
 
-          // ⭐️ 바로 적절한 페이지로 이동
+          // ⭐ 사주 캐시 미리 저장 (프로필 페이지 플래시 방지)
           if (sajuRecords && sajuRecords.length > 0) {
+            const primary = sajuRecords.find((s: Record<string, unknown>) => s.is_primary) || sajuRecords[0];
+            localStorage.setItem('primary_saju', JSON.stringify(primary));
+            localStorage.setItem('saju_records_cache', JSON.stringify(sajuRecords));
+            console.log('🚀 [PaymentComplete] 사주 캐시 미리 저장:', primary.name || primary.id);
+
             // 사주 정보 있음 → 사주 정보 선택 페이지
             console.log('✅ 결제 완료 → 사주 정보 있음 → 사주 선택 페이지로 이동');
             navigate(`/product/${contentId}/saju-select`);

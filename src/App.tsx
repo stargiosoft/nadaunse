@@ -774,15 +774,21 @@ function PaymentNewPage() {
             // 🔍 2순위: 캐시 없을 때만 API 쿼리 (폴백)
             if (!hasSaju) {
               console.log('🔍 [PaymentNew→onPurchase] 캐시 없음 → API 쿼리 실행');
-              // ⭐ is_primary 조건 제거: 사주 정보가 하나라도 있으면 선택 페이지로 이동
               const { data: mySajuList } = await supabase
                 .from('saju_records')
-                .select('id')
-                .eq('user_id', user.id)
-                .limit(1);
+                .select('*')
+                .eq('user_id', user.id);
 
               hasSaju = mySajuList && mySajuList.length > 0;
               console.log('🔍 [PaymentNew→onPurchase] API 쿼리 결과:', { hasSaju, count: mySajuList?.length });
+
+              // ⭐ 사주 캐시 미리 저장 (프로필 페이지 플래시 방지)
+              if (hasSaju && mySajuList) {
+                const primary = mySajuList.find((s: Record<string, unknown>) => s.is_primary) || mySajuList[0];
+                localStorage.setItem('primary_saju', JSON.stringify(primary));
+                localStorage.setItem('saju_records_cache', JSON.stringify(mySajuList));
+                console.log('🚀 [onPurchase] 사주 캐시 미리 저장:', primary.name || primary.id);
+              }
             }
 
             if (hasSaju) {
@@ -830,15 +836,21 @@ function PaymentNewPage() {
       // 🔍 2순위: 캐시 없을 때만 API 쿼리 (폴백)
       if (!hasSaju) {
         console.log('🔍 [handlePurchaseComplete] 캐시 없음 → API 쿼리 실행');
-        // ⭐ is_primary 조건 제거: 사주 정보가 하나라도 있으면 선택 페이지로 이동
         const { data: mySajuList } = await supabase
           .from('saju_records')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1);
+          .select('*')
+          .eq('user_id', user.id);
 
         hasSaju = mySajuList && mySajuList.length > 0;
         console.log('🔍 [handlePurchaseComplete] API 쿼리 결과:', { hasSaju, count: mySajuList?.length });
+
+        // ⭐ 사주 캐시 미리 저장 (프로필 페이지 플래시 방지)
+        if (hasSaju && mySajuList) {
+          const primary = mySajuList.find((s: Record<string, unknown>) => s.is_primary) || mySajuList[0];
+          localStorage.setItem('primary_saju', JSON.stringify(primary));
+          localStorage.setItem('saju_records_cache', JSON.stringify(mySajuList));
+          console.log('🚀 [handlePurchaseComplete] 사주 캐시 미리 저장:', primary.name || primary.id);
+        }
       }
 
       if (hasSaju) {
