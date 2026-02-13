@@ -1506,8 +1506,9 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
     const wroteEncouragement = weekReports.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length;
     const couponIssued = weekReports.filter(r => couponReportIds.has(r.id)).length;
 
-    // 라벨: "MM/DD" (week_start_date 기준)
+    // 라벨: "MM/DD" (보고서 발송일 기준 = week_start_date + 7일)
     const d = new Date(wsd + 'T00:00:00');
+    d.setDate(d.getDate() + 7);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
 
