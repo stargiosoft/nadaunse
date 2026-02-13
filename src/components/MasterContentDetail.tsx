@@ -686,26 +686,31 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
 
       if (questionsChanged) {
         console.log('📝 질문이 변경되어 UPDATE+INSERT 수행');
+        console.log('📌 questions state:', questions.map((q, i) => `[${i}] ${q.question_text?.substring(0, 30)}`));
 
         // 기존 질문 조회 (현재 DB 상태)
-        const { data: existingQuestions } = await supabase
+        const { data: existingQuestions, error: selectErr } = await supabase
           .from('master_content_questions')
           .select('id, question_order')
           .eq('content_id', contentId)
           .order('question_order', { ascending: true });
 
+        console.log('📌 existing questions:', existingQuestions?.length, selectErr ? `SELECT ERR: ${selectErr.message}` : 'OK');
+
         const existing = existingQuestions || [];
 
         // 1) 기존 질문 UPDATE (ID 유지 → FK safe)
         for (let i = 0; i < Math.min(questions.length, existing.length); i++) {
-          const { error: updateErr } = await supabase
+          const { data: updateData, error: updateErr } = await supabase
             .from('master_content_questions')
             .update({
               question_order: i + 1,
               question_type: questions[i].question_type,
               question_text: questions[i].question_text,
             })
-            .eq('id', existing[i].id);
+            .eq('id', existing[i].id)
+            .select();
+          console.log(`📌 UPDATE [${i}] id=${existing[i].id}: data=${JSON.stringify(updateData)}, err=${updateErr?.message || 'none'}`);
           if (updateErr) {
             console.error('Update question error:', updateErr);
             alert('질문 수정에 실패했습니다.');
