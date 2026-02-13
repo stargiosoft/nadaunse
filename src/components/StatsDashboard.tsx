@@ -2845,13 +2845,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </button>
                 </div>
 
-                {/* 요약 카드 3개 */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                  <StatCard icon={Users} label="사주 등록자" value={customerStats.totalSajuUsers} color="#3FB5B3" subValue="본인 사주 기준" />
-                  <StatCard icon={BarChart3} label="전체 기록" value={customerStats.totalSajuRecords} color="#6366F1" />
-                  <StatCard icon={Activity} label="인당 평균" value={customerStats.avgRecordsPerUser} unit="건" color="#EC4899" />
-                </div>
-
                 {/* 성별 분포 - 도넛 차트 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <SectionHeader icon="👤" title="성별 분포" />
