@@ -882,8 +882,12 @@ export default function PaymentNew({
 
     // ⭐ PC에서만 popup: false (iframe 모드)
     // 모바일에서는 popup 미설정 → SDK가 자동으로 redirect 모드 사용
-    // PortOne SDK 3.43.0: 모바일에서 popup:false가 iframe을 강제하면 결제 UI가 렌더링 안됨
-    if (!isMobile) {
+    // ⭐ 결제창 모드 설정
+    // PC: iframe (popup: false)
+    // 모바일: 새 창/탭 (popup: true) - redirect 모드는 PG 중간 페이지 뒤로가기 루프 발생
+    if (isMobile) {
+      paymentParams.popup = true;
+    } else {
       paymentParams.popup = false;
     }
 
@@ -892,7 +896,7 @@ export default function PaymentNew({
       paymentParams.digital = true;
     }
 
-    console.log('🔄 [PaymentNew] 환경:', isMobile ? '모바일(redirect)' : 'PC(iframe)', ', 결제수단:', selectedPaymentMethod);
+    console.log('🔄 [PaymentNew] 환경:', isMobile ? '모바일(popup/새탭)' : 'PC(iframe)', ', 결제수단:', selectedPaymentMethod);
 
     // 포트원 결제 요청
     // ⭐ PG 팝업/리다이렉트 전에 ref 설정 (뒤로가기 감지용)
@@ -901,41 +905,32 @@ export default function PaymentNew({
     // ⭐ grace period 시작 (visibilitychange/popstate가 SDK 처리를 방해하지 않도록)
     paymentRequestedAtRef.current = Date.now();
 
-    // ⭐ PC에서만 history pushState + overlay watch (iframe 모드용)
-    // 모바일 redirect 모드에서는 pushState가 SDK와 충돌할 수 있으므로 스킵
-    if (!isMobile) {
-      window.history.pushState({ paymentInProgress: true }, '', window.location.href);
+    // ⭐ PC/모바일 공통: popup/iframe 모드에서 페이지 유지되므로 history pushState + 로딩 해제 필요
+    window.history.pushState({ paymentInProgress: true }, '', window.location.href);
 
+    if (!isMobile) {
       // iframe 감지 시작 (PC 전용)
       setTimeout(() => {
         startPaymentOverlayWatch(finalContentId);
       }, 1000);
-
-      // 안전 장치: 2초 후 로딩 오버레이 강제 해제
-      setTimeout(() => {
-        if (paymentInitiatedRef.current) {
-          console.log('⏰ [PaymentNew] 2초 안전 타임아웃 → 로딩 오버레이 강제 해제');
-          setIsProcessingPayment(false);
-        }
-      }, 2000);
     }
-    // ⭐ 모바일: PG 리다이렉트 뒤로가기 루프 방지 (3중 안전장치)
+
+    // 안전 장치: 2초 후 로딩 오버레이 강제 해제 (PC iframe / 모바일 popup 공통)
+    setTimeout(() => {
+      if (paymentInitiatedRef.current) {
+        console.log('⏰ [PaymentNew] 2초 안전 타임아웃 → 로딩 오버레이 강제 해제');
+        setIsProcessingPayment(false);
+      }
+    }, 2000);
+    // ⭐ 모바일: popup 모드 fallback용 sessionStorage 플래그
+    // popup이 차단되거나 redirect로 fallback될 경우를 대비
     if (isMobile) {
-      const currentUrl = window.location.pathname + window.location.search;
       const productDetailPath = window.location.pathname.replace(/\/payment.*$/, '');
-
-      // 1) sessionStorage 플래그 (앱 fresh load 시 감지용)
       sessionStorage.setItem('pg_payment_in_progress', productDetailPath);
-
-      // 2) 히스토리 안전망: 현재 엔트리를 상품 상세 URL로 교체 후 결제 URL 재추가
-      //    뒤로가기로 PG 루프를 탈출하면 상품 상세 페이지로 랜딩됨
-      window.history.replaceState(null, '', productDetailPath);
-      window.history.pushState(null, '', currentUrl);
-
-      console.log('🛡️ [PaymentNew] 모바일 PG 루프 방지: 플래그 + 히스토리 안전망 설정');
+      console.log('🛡️ [PaymentNew] 모바일 PG fallback 플래그 설정:', productDetailPath);
     }
-    // 모바일: SDK가 redirect하므로 로딩은 페이지 전환 시 자연스럽게 사라짐
-    // m_redirect_url로 복귀 시 PaymentComplete 페이지가 결과 처리
+    // 모바일 popup 모드: 새 탭에서 결제 진행, 현재 페이지 유지
+    // 결제 결과는 callback으로 수신 (m_redirect_url은 popup 닫힌 후 fallback용)
 
     console.log('🔄 [PaymentNew] 포트원 결제 요청 시작, paymentInitiated:', paymentInitiatedRef.current);
     console.log('🔄 [PaymentNew] 결제 파라미터:', JSON.stringify(paymentParams));
