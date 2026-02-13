@@ -685,40 +685,61 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
       })();
 
       if (questionsChanged) {
-        console.log('📝 질문이 변경되어 DELETE-INSERT 수행');
+        console.log('📝 질문이 변경되어 UPDATE+INSERT 수행');
 
-        // 기존 질문 삭제
-        const { error: deleteError } = await supabase
+        // 기존 질문 조회 (현재 DB 상태)
+        const { data: existingQuestions } = await supabase
           .from('master_content_questions')
-          .delete()
-          .eq('content_id', contentId);
+          .select('id, question_order')
+          .eq('content_id', contentId)
+          .order('question_order', { ascending: true });
 
-        if (deleteError) {
-          console.error('Delete questions error:', deleteError);
-          // FK constraint 에러인 경우 안내 메시지
-          if (deleteError.code === '23503') {
-            alert('이미 주문이 완료된 콘텐츠의 질문은 수정할 수 없습니다.\n(기본 정보만 수정됨)');
-          } else {
+        const existing = existingQuestions || [];
+
+        // 1) 기존 질문 UPDATE (ID 유지 → FK safe)
+        for (let i = 0; i < Math.min(questions.length, existing.length); i++) {
+          const { error: updateErr } = await supabase
+            .from('master_content_questions')
+            .update({
+              question_order: i + 1,
+              question_type: questions[i].question_type,
+              question_text: questions[i].question_text,
+            })
+            .eq('id', existing[i].id);
+          if (updateErr) {
+            console.error('Update question error:', updateErr);
             alert('질문 수정에 실패했습니다.');
             return;
           }
-        } else {
-          // 새 질문 추가 (삭제 성공 시에만)
-          const questionsToInsert = questions.map((q, index) => ({
+        }
+
+        // 2) 새 질문 추가 (기존보다 많을 때)
+        if (questions.length > existing.length) {
+          const newQuestions = questions.slice(existing.length).map((q, idx) => ({
             content_id: contentId,
-            question_order: index + 1,
+            question_order: existing.length + idx + 1,
             question_type: q.question_type,
             question_text: q.question_text,
           }));
-
-          const { error: insertError } = await supabase
+          const { error: insertErr } = await supabase
             .from('master_content_questions')
-            .insert(questionsToInsert);
-
-          if (insertError) {
-            console.error('Insert questions error:', insertError);
+            .insert(newQuestions);
+          if (insertErr) {
+            console.error('Insert questions error:', insertErr);
             alert('질문 저장에 실패했습니다.');
             return;
+          }
+        }
+
+        // 3) 초과 질문 삭제 (기존보다 적을 때) - FK 있으면 스킵
+        if (existing.length > questions.length) {
+          const idsToDelete = existing.slice(questions.length).map(q => q.id);
+          const { error: delErr } = await supabase
+            .from('master_content_questions')
+            .delete()
+            .in('id', idsToDelete);
+          if (delErr) {
+            console.warn('일부 질문 삭제 불가 (주문 참조):', delErr.message);
           }
         }
       } else {
