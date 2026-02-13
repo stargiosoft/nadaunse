@@ -770,9 +770,12 @@ export default function PaymentNew({
           couponAmount: selectedCoupon?.discount || 0,
         });
 
-        // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
+        // ⭐ 구매내역 + 사주 캐시 무효화 (새 구매 즉시 반영)
         localStorage.removeItem('purchase_history_cache');
-        console.log('🗑️ 구매내역 캐시 무효화 완료');
+        localStorage.removeItem('primary_saju');
+        localStorage.removeItem('saju_records_cache');
+        localStorage.removeItem('saju_cache_checked');
+        console.log('🗑️ 구매내역 + 사주 캐시 무효화 완료');
 
         // ⭐️ orderId를 localStorage에 저장
         if (savedOrder?.id) {
@@ -979,9 +982,12 @@ export default function PaymentNew({
               couponAmount: selectedCoupon?.discount || 0,
             });
 
-            // ⭐ 구매내역 캐시 무효화 (새 구매 즉시 반영)
+            // ⭐ 구매내역 + 사주 캐시 무효화 (새 구매 즉시 반영)
             localStorage.removeItem('purchase_history_cache');
-            console.log('🗑️ 구매내역 캐시 무효화 완료');
+            localStorage.removeItem('primary_saju');
+            localStorage.removeItem('saju_records_cache');
+            localStorage.removeItem('saju_cache_checked');
+            console.log('🗑️ 구매내역 + 사주 캐시 무효화 완료');
 
             // ⭐️ orderId를 localStorage에 저장
             if (savedOrder?.id) {
