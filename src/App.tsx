@@ -3285,6 +3285,9 @@ export default function App() {
         // 세션 만료/로그아웃 → 모든 사용자 캐시 삭제
         console.log('🧹 세션 만료 → 사용자 캐시 전체 삭제');
         clearUserCaches();
+      } else if (event === 'SIGNED_IN' && session) {
+        // 로그인/가입 완료 → 오늘 방문 기록 (가입 첫날 visit_dates 누락 방지)
+        recordTodayVisit();
       }
     });
 
