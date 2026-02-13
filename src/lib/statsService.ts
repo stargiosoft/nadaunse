@@ -1593,11 +1593,12 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .select('id, provider')
       .not('id', 'in', `(${adminFilter})`),
 
-    // 4. 완료된 주문 데이터 (성별 유료 전환율용)
+    // 4. 완료된 주문 데이터 (성별 유료 전환율용, 0원 쿠폰 결제 제외)
     supabase
       .from('orders')
       .select('user_id')
       .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
       .not('user_id', 'in', `(${adminFilter})`),
   ]);
 
