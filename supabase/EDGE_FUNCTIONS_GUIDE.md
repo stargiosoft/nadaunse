@@ -292,7 +292,8 @@ process-refund (환불 처리)
 ```
 
 **출력**:
-- `free_content_answers` 테이블에 답변 저장
+- `free_content_records` 테이블에 답변 저장 (로그인 사용자)
+  - `content_title`: 이용 당시 콘텐츠 제목도 함께 저장 (제목 변경 시 이용기록 보존)
 - 로그인: DB에 영구 저장
 - 로그아웃: localStorage 캐시 (임시 ID)
 

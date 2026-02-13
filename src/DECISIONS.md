@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-12
-> **주요 결정**: CSP 결제 도메인 누락으로 3주간 결제 장애 해결 (teledit.com, kakaopay.com form-action), IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-02-13
+> **주요 결정**: 마스터 콘텐츠 질문 수정 FK constraint 우회 (UPDATE 방식), 이용기록 제목 스냅샷 보존 (orders.gname + free_content_records.content_title), 모바일 PG 결제 뒤로가기 루프 해결 (popup 모드 전환), CSP 결제 도메인 누락으로 3주간 결제 장애 해결 (teledit.com, kakaopay.com form-action), IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,67 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-13
+
+### 마스터 콘텐츠 질문 수정 FK constraint 우회 (UPDATE 방식)
+
+**문제**: 주문이 발생한 콘텐츠의 질문을 수정하면 `order_results.question_id → master_content_questions.id` FK constraint(23503)로 DELETE가 실패. 기존 코드가 alert만 표시하고 질문 수정을 건너뜀.
+
+**해결**: DELETE-INSERT → **UPDATE + INSERT + soft-handle DELETE** 방식으로 변경.
+- 기존 질문 row의 `id`를 유지한 채 `question_text`, `question_type`, `question_order`만 UPDATE → FK 참조 깨지지 않음
+- 질문이 추가된 경우만 INSERT, 줄어든 경우 DELETE 시도 (FK 참조 시 console.warn으로 스킵)
+
+**영향**: `MasterContentDetail.tsx` handleSave 함수
+
+**추가 수정**: `originalQuestions`를 shallow copy로 저장하여 질문 변경 감지(`questionsChanged`)가 항상 false가 되는 버그도 함께 수정 (deep copy로 변경).
+
+---
+
+### 이용기록 제목 스냅샷 보존
+
+**문제**: 콘텐츠 제목을 변경하면 과거 주문/무료 이용기록까지 새 제목으로 표시됨 (master_contents JOIN으로 현재 제목을 가져오기 때문).
+
+**해결**:
+- **유료 주문**: `orders.gname` (구매 당시 저장된 상품명) 우선 표시, 없으면 `master_contents.title` fallback
+- **무료 기록**: `free_content_records.content_title` 컬럼 추가 (이용 당시 제목 저장). 기존 데이터는 `master_contents.title`로 backfill 완료
+- **Edge Function**: `generate-free-preview`에서 무료 기록 저장 시 `content_title` 함께 저장
+
+**영향**: `PurchaseHistoryPage.tsx`, `generate-free-preview` Edge Function, `free_content_records` 테이블
+
+---
+
+### 모바일 PG 결제 뒤로가기 루프 해결 (popup 모드 전환)
+
+**결정**: 모바일 결제 시 PortOne SDK의 redirect 모드 대신 `popup: true` (새 탭) 모드를 사용하고, 카카오페이/다날 모두 뒤로가기 시 상품 상세 페이지로 리다이렉트
+
+**문제**:
+- iOS Safari에서 다날 카드결제 후 뒤로가기 누르면 PG 중간 페이지(PortOne gateway ↔ Danal)로 무한 루프
+- 카카오페이도 뒤로가기 시 결제 페이지에 머물러 사용자가 상품 상세로 돌아갈 수 없음
+
+**시도한 방법들 (실패)**:
+1. **sessionStorage 플래그 + React 인터셉트**: `pg_payment_in_progress` 플래그 설정 후 PaymentNewPage/App.tsx에서 감지하여 리다이렉트 → 실패. PG 중간 페이지 간 루프는 React 앱이 로드되기 전에 발생하므로 인터셉트 불가
+2. **3중 안전망 (history 조작 + index.html 인라인 스크립트 + grace period 단축)**: `replaceState` + `pushState`로 히스토리 조작, index.html에 React 로드 전 즉시 실행 스크립트 추가, 모바일 grace period 1.5초로 단축 → 실패. 루프가 외부 도메인(portone ↔ danal) 간에서 발생하므로 우리 앱의 히스토리 조작과 무관
+
+**최종 해결 (성공)**:
+- `popup: true` 모드로 PG를 새 탭에서 열도록 변경
+- 현재 결제 페이지가 그대로 유지되므로 뒤로가기 루프 원천 차단
+- popstate/pageshow/visibilitychange 핸들러에서 카카오페이/다날 모두 동일하게 `redirectToProductDetail()` 호출
+
+**핵심 교훈**:
+- **모바일 redirect 모드의 구조적 한계**: PG redirect 모드는 현재 페이지 URL을 PG 도메인으로 교체하므로, 브라우저 히스토리에 외부 PG 페이지가 쌓임. 이 외부 페이지들 간의 뒤로가기 루프는 우리 앱 코드로 제어 불가
+- **popup 모드가 모바일에서도 동작**: iOS Safari/Chrome 모두 `popup: true` 시 새 탭으로 열림. 결제 완료 시 콜백으로 결과 수신, 결제 취소 시 사용자가 탭을 닫고 돌아오면 visibilitychange/popstate로 감지
+- **sessionStorage/history 조작은 같은 오리진 내에서만 유효**: 외부 도메인으로 redirect된 후에는 우리 앱의 sessionStorage나 history 조작이 의미 없음
+
+**수정 파일**:
+- `src/components/PaymentNew.tsx`: `popup: true` 모바일 설정, 카카오페이/다날 뒤로가기 핸들러 통합
+- `src/App.tsx`: PG 리다이렉트 복귀 감지 (sessionStorage fallback)
+- `src/components/PaymentComplete.tsx`: sessionStorage 플래그 정리
+- `index.html`: React 로드 전 PG 리다이렉트 인터셉트 (fallback용)
+
+**영향 범위**: PaymentNew.tsx (결제 플로우 전체), 모바일 iOS/Android 결제 UX
 
 ---
 

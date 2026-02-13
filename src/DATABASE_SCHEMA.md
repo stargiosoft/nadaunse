@@ -257,6 +257,7 @@
 | `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 레코드 고유 ID |
 | `user_id` | uuid | FOREIGN KEY | - | 사용자 ID (users.id) |
 | `content_id` | uuid | FOREIGN KEY, NOT NULL | - | 콘텐츠 ID (master_contents.id) |
+| `content_title` | text | - | - | 이용 당시 콘텐츠 제목 (제목 변경 시에도 이용기록에 원래 제목 유지) |
 | `saju_record_id` | uuid | FOREIGN KEY | - | 사주 정보 ID (saju_records.id) |
 | `full_name` | text | NOT NULL | - | 이름 |
 | `gender` | text | NOT NULL | - | 성별 (male, female) |
