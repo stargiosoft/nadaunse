@@ -726,6 +726,15 @@ function PaymentNewPage() {
   // ⭐ 로그인 체크 (모든 hooks 이후에 조기 반환)
   if (loginAuth === 'checking') return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // ⭐ PG 리다이렉트에서 뒤로가기로 복귀한 경우 → 상품 상세로 이동 (모바일 다날 PG 루프 방지)
+  const pgRedirectPath = sessionStorage.getItem('pg_payment_in_progress');
+  if (pgRedirectPath) {
+    sessionStorage.removeItem('pg_payment_in_progress');
+    console.log('🛡️ [PaymentNewPage] PG 리다이렉트 복귀 감지 → 상품 상세로 이동:', pgRedirectPath);
+    // location.replace로 forward 히스토리(PG 중간 페이지)도 정리
+    window.location.replace(pgRedirectPath);
+    return null;
+  }
   // ⭐ 로그인 상태에서 중간 경로 직접 접속 시 홈으로 리다이렉트
   if (location.key === 'default') return <Navigate to="/" replace />;
 
@@ -2813,6 +2822,15 @@ function FreeSajuAddPageWrapper() {
 function MasterContentPaymentPageWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // ⭐ PG 리다이렉트에서 뒤로가기로 복귀한 경우 → 콘텐츠 상세로 이동 (모바일 다날 PG 루프 방지)
+  const pgRedirectPath = sessionStorage.getItem('pg_payment_in_progress');
+  if (pgRedirectPath) {
+    sessionStorage.removeItem('pg_payment_in_progress');
+    console.log('🛡️ [MasterContentPayment] PG 리다이렉트 복귀 감지 → 콘텐츠 상세로 이동:', pgRedirectPath);
+    window.location.replace(pgRedirectPath);
+    return null;
+  }
 
   if (!id) {
     return <Navigate to="/" replace />;

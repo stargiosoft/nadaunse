@@ -905,6 +905,13 @@ export default function PaymentNew({
         }
       }, 2000);
     }
+    // ⭐ 모바일: PG 리다이렉트 뒤로가기 루프 방지
+    // SDK redirect 후 뒤로가기 시 앱으로 복귀하면 상품 상세로 이동하기 위한 플래그
+    if (isMobile) {
+      const productDetailPath = window.location.pathname.replace(/\/payment.*$/, '');
+      sessionStorage.setItem('pg_payment_in_progress', productDetailPath);
+      console.log('🛡️ [PaymentNew] 모바일 PG 리다이렉트 플래그 설정:', productDetailPath);
+    }
     // 모바일: SDK가 redirect하므로 로딩은 페이지 전환 시 자연스럽게 사라짐
     // m_redirect_url로 복귀 시 PaymentComplete 페이지가 결과 처리
 
@@ -921,6 +928,7 @@ export default function PaymentNew({
         paymentMethodRef.current = null;
         paymentRequestedAtRef.current = 0;
         setIsProcessingPayment(false);
+        sessionStorage.removeItem('pg_payment_in_progress'); // ⭐ PG 리다이렉트 플래그 정리
         console.log('🔄 [PaymentNew] 포트원 콜백 수신, success:', response.success);
 
         if (response.success) {

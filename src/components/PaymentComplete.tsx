@@ -10,6 +10,11 @@ export default function PaymentComplete() {
   const [status, setStatus] = useState<'loading' | 'success' | 'fail'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // ⭐ PG 리다이렉트 플래그 정리 (정상 결제 완료 시)
+  useEffect(() => {
+    sessionStorage.removeItem('pg_payment_in_progress');
+  }, []);
+
   // ⭐ 뒤로가기 감지 - 콘텐츠 상세 페이지로 리다이렉트
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
