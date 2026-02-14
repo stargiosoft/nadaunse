@@ -305,33 +305,10 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
       const contentIds: string[] = [];
       
       for (const content of processedContents) {
-        // 카테고리별 자동 가격 설정
-        const getPriceByCategory = (categoryMain: string, categorySub: string) => {
-          // 고가 카테고리: 연애, 이별, 궁합, 건강(성건강만) -> 29,800원 / 12,900원 (57% 할인)
-          const isHighPrice = 
-            ['연애', '이별', '궁합'].includes(categoryMain) ||
-            (categoryMain === '건강' && categorySub === '성(성) 건강');
-          
-          if (isHighPrice) {
-            return {
-              priceOriginal: 29800,
-              priceDiscount: 12900,
-              discountRate: 57
-            };
-          }
-          
-          // 일반 카테고리 -> 19,800원 / 9,900원 (50% 할인)
-          return {
-            priceOriginal: 19800,
-            priceDiscount: 9900,
-            discountRate: 50
-          };
-        };
-
-        const { priceOriginal, priceDiscount, discountRate } = getPriceByCategory(
-          content.category_main,
-          content.category_sub
-        );
+        // 유료 콘텐츠 통일 가격
+        const priceOriginal = 19800;
+        const priceDiscount = 9900;
+        const discountRate = 50;
 
         // 🔐 현재 세션의 JWT 토큰 가져오기
         const { data: { session } } = await supabase.auth.getSession();

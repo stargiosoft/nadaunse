@@ -219,29 +219,10 @@ export default function MasterContentQuestions({
       const user = JSON.parse(userStr);
       console.log('현재 사용자:', user);
 
-      // 카테고리별 자동 가격 설정
-      const getPriceByCategory = (categoryMain: string, categorySub: string) => {
-        // 고가 카테고리: 연애, 이별, 궁합, 건강(성건강만) -> 29,800원 / 12,900원 (57% 할인)
-        const isHighPrice = 
-          ['연애', '이별', '궁합'].includes(categoryMain) ||
-          (categoryMain === '건강' && categorySub === '성(성) 건강');
-        
-        if (isHighPrice) {
-          const priceOriginal = 29800;
-          const priceDiscount = 12900;
-          const discountRate = Math.round((1 - priceDiscount / priceOriginal) * 100);
-          return { priceOriginal, priceDiscount, discountRate };
-        }
-        
-        // 일반 카테고리(개인운세, 재물, 직업, 시험/학업, 인간관계, 자녀, 이사/매매, 건강(성건강 제외), 기타) 
-        // -> 19,800원 / 9,900원 (50% 할인)
-        const priceOriginal = 19800;
-        const priceDiscount = 9900;
-        const discountRate = Math.round((1 - priceDiscount / priceOriginal) * 100);
-        return { priceOriginal, priceDiscount, discountRate };
-      };
-
-      const { priceOriginal, priceDiscount, discountRate } = getPriceByCategory(formData.category_main, formData.category_sub);
+      // 유료 콘텐츠 통일 가격
+      const priceOriginal = 19800;
+      const priceDiscount = 9900;
+      const discountRate = 50;
 
       // 1. 질문 데이터 준비 (무료 콘텐츠는 모든 질문이 사주(saju)로 고정)
       const isFree = formData.content_type === 'free';

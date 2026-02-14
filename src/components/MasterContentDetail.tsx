@@ -620,35 +620,10 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
     }
 
     try {
-      // 카테고리별 자동 가격 설정
-      const getPriceByCategory = (categoryMain: string, categorySub: string) => {
-        // 연애, 이별, 궁합 -> 29,800원 / 12,900원 (57% 할인)
-        const highPriceCategories = ['연애', '이별', '궁합'];
-        
-        // 건강 > 성(性) 건강 -> 29,800원 / 12,900원 (57% 할인)
-        if (categoryMain === '건강' && categorySub === '성(性) 건강') {
-          const priceOriginal = 29800;
-          const priceDiscount = 12900;
-          const discountRate = Math.round((1 - priceDiscount / priceOriginal) * 100);
-          return { priceOriginal, priceDiscount, discountRate };
-        }
-        
-        if (highPriceCategories.includes(categoryMain)) {
-          const priceOriginal = 29800;
-          const priceDiscount = 12900;
-          const discountRate = Math.round((1 - priceDiscount / priceOriginal) * 100);
-          return { priceOriginal, priceDiscount, discountRate };
-        }
-        
-        // 나머지 카테고리(개인운세, 재물, 직업, 시험/학업, 건강(성 건강 제외), 인간관계, 자녀, 이사/매매, 기타) 
-        // -> 19,800원 / 9,900원 (50% 할인)
-        const priceOriginal = 19800;
-        const priceDiscount = 9900;
-        const discountRate = Math.round((1 - priceDiscount / priceOriginal) * 100);
-        return { priceOriginal, priceDiscount, discountRate };
-      };
-
-      const { priceOriginal, priceDiscount, discountRate } = getPriceByCategory(mainCategory, subCategory);
+      // 유료 콘텐츠 통일 가격
+      const priceOriginal = 19800;
+      const priceDiscount = 9900;
+      const discountRate = 50;
 
       // 1. master_contents 업데이트 (status를 'ready'로 변경)
       const { error: updateError } = await supabase
