@@ -979,12 +979,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
           {/* 탭 필터 - 개요/추세/비교/콘텐츠/보고서/고객 */}
           <div className="shrink-0 bg-white px-4 py-2" style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <div className="flex items-center gap-1 overflow-x-auto">
+            <div className="flex items-center gap-1 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
               {DASHBOARD_TABS.map((tab) => (
                 <motion.button
                   key={tab}
                   onClick={() => setSelectedTab(tab)}
-                  className="relative px-4 py-2 rounded-xl transition-colors"
+                  className="relative px-4 py-2 rounded-xl transition-colors shrink-0"
                   style={{
                     fontFamily: 'Pretendard Variable, sans-serif',
                     fontSize: '15px',
