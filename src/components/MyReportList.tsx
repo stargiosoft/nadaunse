@@ -705,6 +705,14 @@ interface WeekOption {
   weekEndDate: string;
 }
 
+// 로컬 날짜를 YYYY-MM-DD 문자열로 변환 (KST 기준, toISOString은 UTC 변환되어 날짜가 밀림)
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function getRecentWeeks(count: number): WeekOption[] {
   const weeks: WeekOption[] = [];
   const now = new Date();
@@ -726,8 +734,8 @@ function getRecentWeeks(count: number): WeekOption[] {
 
     weeks.push({
       label,
-      weekStartDate: weekStart.toISOString().split('T')[0],
-      weekEndDate: weekEnd.toISOString().split('T')[0]
+      weekStartDate: toLocalDateStr(weekStart),
+      weekEndDate: toLocalDateStr(weekEnd)
     });
   }
 
