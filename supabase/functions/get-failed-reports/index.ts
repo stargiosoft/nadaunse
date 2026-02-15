@@ -28,14 +28,22 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // KST→UTC 변환 (created_at은 UTC 타임스탬프이므로 KST 날짜를 UTC로 변환해야 정확)
+    const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+    const startKST = new Date(weekStartDate + 'T00:00:00.000Z')
+    const endKST = new Date(weekEndDate + 'T00:00:00.000Z')
+    const startUTC = new Date(startKST.getTime() - KST_OFFSET_MS).toISOString()
+    const endUTC = new Date(endKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1).toISOString()
+    console.log('📅 UTC 범위:', startUTC, '~', endUTC)
+
     // 1. 해당 주에 확정 태그가 있는 사용자 목록
     const { data: usersWithTags, error: tagsError } = await supabase
       .from('user_trait_tags')
       .select('user_id')
       .eq('is_confirmed', true)
       .neq('tag_name', '__SKIPPED__')
-      .gte('created_at', weekStartDate)
-      .lte('created_at', weekEndDate + 'T23:59:59.999Z')
+      .gte('created_at', startUTC)
+      .lte('created_at', endUTC)
 
     if (tagsError) {
       console.error('❌ 태그 조회 실패:', tagsError)

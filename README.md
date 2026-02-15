@@ -84,6 +84,26 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 - **GitHub**: https://github.com/stargiosoft/nadaunse
 - **Vercel**: https://vercel.com/stargiosofts-projects/nadaunse
 
+## 🆕 최근 주요 변경사항 (2026-02-15)
+
+### 스테이징/프로덕션 주간 보고서 일정 분리
+- **WEEK_START_DAY 환경변수**: 프로덕션=0(일~토), 스테이징=3(수~화)
+- **pg_cron 스케줄**: 프로덕션 일요일 `*/10 3-12 * * 0`, 스테이징 수요일 `*/10 3-12 * * 3`
+- **영향**: `generate-weekly-reports-batch`, `generate-weekly-report`
+
+### 알림톡 SITE_URL 환경변수 적용
+- **기능**: `send-alimtalk`, `send-report-alimtalk`에서 SITE_URL 환경변수 사용
+- **효과**: 스테이징에서 프로덕션 URL 발송 방지
+- **스테이징**: `SITE_URL=https://staging.nadaunse.com`
+
+### get-failed-reports KST→UTC 타임존 수정
+- **문제**: 관리자 패널 실패 보고서 조회 시 날짜 필터가 KST→UTC 변환 없이 사용되어 18명이 잘못 카운트됨
+- **수정**: `weekStartDate`/`weekEndDate`를 UTC로 변환 후 `created_at` 비교
+
+### deploy-staging.bat --no-verify-jwt 누락 수정
+- **수정**: 6개 함수에 누락된 `--no-verify-jwt` 플래그 추가
+- **함수**: `generate-weekly-report`, `generate-weekly-reports-batch`, `send-report-alimtalk`, `payment-webhook`, `cleanup-unconfirmed-tags`, `sentry-slack-webhook`
+
 ## 🆕 최근 주요 변경사항 (2026-02-10~11)
 
 ### Google OAuth 팝업 모드 전환
@@ -179,4 +199,4 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ---
 
-**최종 업데이트**: 2026-02-12
+**최종 업데이트**: 2026-02-15

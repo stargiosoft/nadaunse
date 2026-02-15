@@ -419,18 +419,37 @@ PostgreSQL 스케줄링 확장을 사용한 자동화 작업입니다.
 
 ### 1. `weekly-report-batch` (주간 보고서 자동 발송)
 
-- **스케줄**: 매주 일요일 12:00 KST부터 10분 간격 반복 호출
+- **스케줄 (프로덕션)**: `*/10 3-12 * * 0` — 매주 일요일 12:00~21:00 KST, 10분 간격 반복 호출
+- **스케줄 (스테이징)**: `*/10 3-12 * * 3` — 매주 수요일 12:00~21:00 KST, 10분 간격 반복 호출
 - **용도**: 주간 보고서 일괄 생성 및 알림톡 발송
 - **호출 대상**: `generate-weekly-reports-batch` Edge Function
 - **인증**: Vault에 저장된 `service_role_key` 사용
-- **배치 설정**: concurrency 3, 60초 시간 제한, 이미 처리된 유저 자동 스킵
-- **selfContinue**: 관리자 수동 재발송 시 서버 자동 이어하기 (pg_cron에서는 불필요)
+- **배치 설정**: concurrency 3, 120초 시간 제한, 이미 처리된 유저 자동 스킵
+- **selfContinue**: 시간 제한 종료 시 자동으로 자기 자신 재호출 (pg_cron, 관리자 수동 재발송 모두)
+- **환경변수**: `WEEK_START_DAY` (프로덕션: 0=일요일~토요일, 스테이징: 3=수요일~화요일)
 
 ```sql
--- 스케줄 등록
+-- 프로덕션 스케줄 등록
 SELECT cron.schedule(
   'weekly-report-batch',
-  '30 6 * * 2',
+  '*/10 3-12 * * 0',
+  $$
+  SELECT net.http_post(
+    url := 'https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/generate-weekly-reports-batch',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key' LIMIT 1)
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 300000
+  );
+  $$
+);
+
+-- 스테이징 스케줄 등록
+SELECT cron.schedule(
+  'weekly-report-batch',
+  '*/10 3-12 * * 3',
   $$
   SELECT net.http_post(
     url := 'https://hyltbeewxaqashyivilu.supabase.co/functions/v1/generate-weekly-reports-batch',
@@ -567,7 +586,7 @@ END $$;
 
 | Job Name | 스케줄 | 용도 |
 |----------|--------|------|
-| `weekly-report-batch` | 매주 화 06:30 UTC (15:30 KST) | 주간 보고서 일괄 생성 |
+| `weekly-report-batch` | 프로덕션: `*/10 3-12 * * 0` (일요일 12:00~21:00 KST), 스테이징: `*/10 3-12 * * 3` (수요일) | 주간 보고서 일괄 생성 |
 | `cleanup-unconfirmed-tags` | 매일 00:00 UTC (09:00 KST) | 미확인 태그 자동 삭제 |
 | `cleanup-anonymous-free-views` | 매일 00:00 UTC (09:00 KST) | 비회원 조회 기록 자동 삭제 |
 | `weekly-clicks-reset` | 매주 일 15:00 UTC (월 00:00 KST) | 주간 클릭수 리셋 |

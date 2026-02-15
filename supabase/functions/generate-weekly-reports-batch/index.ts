@@ -1,5 +1,5 @@
 // Supabase Edge Function: 주간 보고서 배치 생성
-// 매주 일요일 오후 12시부터 pg_cron 10분 간격 반복 호출
+// pg_cron으로 매주 실행 (프로덕션: 일요일, 스테이징: 수요일) 10분 간격 반복 호출
 // 전주 태그를 쌓은 모든 사용자에게 보고서 생성 + 알림톡 발송
 // ※ 이미 보고서가 있는 사용자는 자동 스킵 → 반복 호출로 전체 처리 (이어하기 패턴)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -10,28 +10,35 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 const BATCH_CONFIG = {
   concurrency: 3, // 동시 처리 수 (5→3, 503 방지)
   delayBetweenBatches: 2000, // 배치 간 딜레이 (ms)
-  maxExecutionMs: 60_000, // 최대 실행 시간 60초 (마지막 배치 포함 ~90초 이내 종료, shutdown 방지)
+  maxExecutionMs: 120_000, // 최대 실행 시간 120초 (request timeout 150초, 30초 안전 마진)
 }
 
 // KST (한국 시간) 오프셋
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-// 전주 일~토 날짜 범위 계산 (KST 기준)
+// 주차 시작 요일 (환경변수로 오버라이드 가능)
+// 프로덕션: 0 (일요일~토요일), 스테이징: 3 (수요일~화요일)
+const WEEK_START_DAY = parseInt(Deno.env.get('WEEK_START_DAY') || '0', 10)
+
+// 전주 날짜 범위 계산 (KST 기준, WEEK_START_DAY에 따라 주차 시작일 변경)
 function getLastWeekRange(): { start: Date; end: Date; startDateStr: string; endDateStr: string } {
   const kstNow = new Date(Date.now() + KST_OFFSET_MS)
   const dayOfWeek = kstNow.getUTCDay() // 0=일요일
 
-  // KST 기준 전주 일요일/토요일
-  const sundayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 7))
-  const saturdayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 1))
+  // 현재 주차 시작일로부터 며칠 경과했는지 계산
+  const daysFromStart = (dayOfWeek - WEEK_START_DAY + 7) % 7
+
+  // KST 기준 전주 시작일/종료일
+  const weekStartKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - daysFromStart - 7))
+  const weekEndKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - daysFromStart - 1))
 
   // KST 날짜 문자열 (YYYY-MM-DD)
-  const startDateStr = sundayKST.toISOString().split('T')[0]
-  const endDateStr = saturdayKST.toISOString().split('T')[0]
+  const startDateStr = weekStartKST.toISOString().split('T')[0]
+  const endDateStr = weekEndKST.toISOString().split('T')[0]
 
   // DB 쿼리용 UTC 타임스탬프
-  const startUTC = new Date(sundayKST.getTime() - KST_OFFSET_MS)
-  const endUTC = new Date(saturdayKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1)
+  const startUTC = new Date(weekStartKST.getTime() - KST_OFFSET_MS)
+  const endUTC = new Date(weekEndKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1)
 
   return { start: startUTC, end: endUTC, startDateStr, endDateStr }
 }
@@ -50,7 +57,7 @@ serve(async (req) => {
     let testUserIds: string[] = []
     let customWeekStartDate: string | undefined  // YYYY-MM-DD
     let customWeekEndDate: string | undefined    // YYYY-MM-DD
-    let selfContinue = false  // true면 시간 제한 시 자동으로 자기 자신 재호출 (클라이언트 개입 불필요)
+    let selfContinue = true  // 기본 true: 시간 제한 시 자동으로 자기 자신 재호출 (pg_cron/수동 모두)
 
     try {
       const body = await req.json()
@@ -58,7 +65,7 @@ serve(async (req) => {
       testUserIds = body.testUserIds || []
       customWeekStartDate = body.weekStartDate
       customWeekEndDate = body.weekEndDate
-      selfContinue = body.selfContinue || false
+      selfContinue = body.selfContinue ?? true  // 명시적 false만 비활성화, 미지정 시 true 유지
     } catch {
       // body 없으면 정상 배치 모드
     }
@@ -190,13 +197,12 @@ serve(async (req) => {
           console.log(`  👤 사용자 ${userId} 보고서 생성 시작...`)
 
           // generate-weekly-report Edge Function 호출
+          // 항상 주차 날짜를 명시적으로 전달 (타이밍 불일치 방지)
           const invokeBody: Record<string, unknown> = {
             userId,
-            sendAlimtalk: true // 알림톡 발송
-          }
-          if (customWeekStartDate && customWeekEndDate) {
-            invokeBody.weekStartDate = customWeekStartDate
-            invokeBody.weekEndDate = customWeekEndDate
+            sendAlimtalk: true,
+            weekStartDate: customWeekStartDate || weekRange.startDateStr,
+            weekEndDate: customWeekEndDate || weekRange.endDateStr
           }
           const response = await supabase.functions.invoke('generate-weekly-report', {
             body: invokeBody
@@ -289,8 +295,8 @@ serve(async (req) => {
           body: JSON.stringify({
             testMode: true,
             testUserIds: remainingIds,
-            weekStartDate: customWeekStartDate,
-            weekEndDate: customWeekEndDate,
+            weekStartDate: customWeekStartDate || weekRange.startDateStr,
+            weekEndDate: customWeekEndDate || weekRange.endDateStr,
             selfContinue: true
           })
         }).catch(err => console.error('❌ [selfContinue] 셀프 호출 실패:', err))

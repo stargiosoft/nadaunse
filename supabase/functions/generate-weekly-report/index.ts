@@ -1,5 +1,5 @@
 // Supabase Edge Function: 주간 보고서 생성 (GPT-5.1)
-// 전주 일~토 태그 데이터 기반, 금주 일요일 오후 9시 발간
+// 전주 태그 데이터 기반 (프로덕션: 일~토, 스테이징: 수~화), WEEK_START_DAY 환경변수로 주차 조정
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
@@ -35,44 +35,52 @@ function getRandomTarotCards(count: number): string[] {
   return shuffled.slice(0, Math.min(count, TAROT_DECK.length))
 }
 
-// 재시도 설정
+// 재시도 설정 (배치 환경에서 과도한 딜레이 방지: 기존 5회 62초 → 2회 6초)
 const RETRY_CONFIG = {
-  maxRetries: 5,
-  delays: [2000, 4000, 8000, 16000, 32000] // 2초, 4초, 8초, 16초, 32초
+  maxRetries: 2,
+  delays: [2000, 4000] // 2초, 4초
 }
 
 // KST (한국 시간) 오프셋
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-// 전주 일~토 날짜 범위 계산 (KST 기준, 토요일 기준 월/주차)
+// 주차 시작 요일 (환경변수로 오버라이드 가능)
+// 프로덕션: 0 (일요일~토요일), 스테이징: 3 (수요일~화요일)
+const WEEK_START_DAY = parseInt(Deno.env.get('WEEK_START_DAY') || '0', 10)
+
+// 전주 날짜 범위 계산 (KST 기준, 종료일 기준 월/주차)
+// WEEK_START_DAY=0: 일~토, WEEK_START_DAY=3: 수~화
 function getLastWeekRange(): { start: Date; end: Date; year: number; month: number; week: number; startDateStr: string; endDateStr: string } {
   // KST 기준 현재 날짜 (UTC 메서드로 KST 값 접근)
   const kstNow = new Date(Date.now() + KST_OFFSET_MS)
   const dayOfWeek = kstNow.getUTCDay() // 0=일요일
 
-  // KST 기준 전주 일요일/토요일 (Date.UTC로 정확한 날짜 계산)
-  const sundayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 7))
-  const saturdayKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - dayOfWeek - 1))
+  // 현재 주차 시작일로부터 며칠 경과했는지 계산
+  const daysFromStart = (dayOfWeek - WEEK_START_DAY + 7) % 7
+
+  // KST 기준 전주 시작일/종료일 (Date.UTC로 정확한 날짜 계산)
+  const weekStartKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - daysFromStart - 7))
+  const weekEndKST = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - daysFromStart - 1))
 
   // KST 날짜 문자열 (YYYY-MM-DD) - DB week_start_date/week_end_date 저장용
-  const startDateStr = sundayKST.toISOString().split('T')[0]
-  const endDateStr = saturdayKST.toISOString().split('T')[0]
+  const startDateStr = weekStartKST.toISOString().split('T')[0]
+  const endDateStr = weekEndKST.toISOString().split('T')[0]
 
   // DB 쿼리용 UTC 타임스탬프 (created_at 필터링)
-  const startUTC = new Date(sundayKST.getTime() - KST_OFFSET_MS)     // 일요일 00:00 KST → UTC
-  const endUTC = new Date(saturdayKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1) // 토요일 23:59:59.999 KST → UTC
+  const startUTC = new Date(weekStartKST.getTime() - KST_OFFSET_MS)
+  const endUTC = new Date(weekEndKST.getTime() - KST_OFFSET_MS + 24 * 60 * 60 * 1000 - 1)
 
-  // 토요일 기준 월/주차 계산 (월 경계 주차 문제 해결)
-  const satYear = saturdayKST.getUTCFullYear()
-  const satMonth = saturdayKST.getUTCMonth() + 1
-  const firstDayOfMonth = new Date(Date.UTC(saturdayKST.getUTCFullYear(), saturdayKST.getUTCMonth(), 1))
-  const week = Math.ceil((saturdayKST.getUTCDate() + firstDayOfMonth.getUTCDay()) / 7)
+  // 종료일 기준 월/주차 계산 (월 경계 주차 문제 해결)
+  const endYear = weekEndKST.getUTCFullYear()
+  const endMonth = weekEndKST.getUTCMonth() + 1
+  const firstDayOfMonth = new Date(Date.UTC(weekEndKST.getUTCFullYear(), weekEndKST.getUTCMonth(), 1))
+  const week = Math.ceil((weekEndKST.getUTCDate() + firstDayOfMonth.getUTCDay()) / 7)
 
   return {
     start: startUTC,
     end: endUTC,
-    year: satYear,
-    month: satMonth,
+    year: endYear,
+    month: endMonth,
     week,
     startDateStr,
     endDateStr

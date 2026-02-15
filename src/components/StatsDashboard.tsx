@@ -5,15 +5,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Clock, Copy, ExternalLink, BarChart3, Trophy } from 'lucide-react';
+import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Clock, Copy, ExternalLink, BarChart3, Trophy, ShoppingCart } from 'lucide-react';
 import svgPathsBack from "../imports/svg-ct14exwyb3";
 import svgPathsHome from "../imports/svg-sg7rn8f2dm";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid, PieChart, Pie } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid, PieChart, Pie, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -129,8 +129,8 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
 }
 
 // 대시보드 탭 타입
-type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서' | '고객';
-const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서', '고객'];
+type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서' | '구매' | '고객';
+const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서', '구매', '고객'];
 
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -186,6 +186,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportTrendPreset, setReportTrendPreset] = useState<TrendRangePreset>('30days');
+
+  // 구매 탭 상태
+  const [purchaseStats, setPurchaseStats] = useState<PurchaseStatsData | null>(null);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   // 고객 탭 상태
   const [customerStats, setCustomerStats] = useState<CustomerStatsData | null>(null);
@@ -544,6 +549,28 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     loadReportData(preset);
   };
 
+  // 구매 데이터 로드 함수
+  const loadPurchaseData = async () => {
+    setPurchaseLoading(true);
+    setPurchaseError(null);
+    try {
+      const data = await fetchPurchaseStats();
+      setPurchaseStats(data);
+    } catch (err) {
+      console.error('구매 데이터 로드 오류:', err);
+      setPurchaseError('구매 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setPurchaseLoading(false);
+    }
+  };
+
+  // 구매 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '구매' && !purchaseStats && !purchaseLoading) {
+      loadPurchaseData();
+    }
+  }, [selectedTab]);
+
   // 고객 데이터 로드 함수
   const loadCustomerData = async () => {
     setCustomerLoading(true);
@@ -624,6 +651,44 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       zodiacDistribution: customerStats.zodiacDistribution,
       relationshipDistribution: customerStats.relationshipDistribution,
       paidConversionByGender: customerStats.paidConversionByGender,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert('클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
+  };
+
+  // 클립보드 복사 함수 - 구매
+  const copyPurchaseData = async () => {
+    if (!purchaseStats) return;
+    const data = {
+      tab: '구매',
+      timestamp: new Date().toISOString(),
+      summary: {
+        totalOrders: purchaseStats.totalOrders,
+        totalRevenue: purchaseStats.totalRevenue,
+        uniqueBuyers: purchaseStats.uniqueBuyers,
+        avgPurchasesPerBuyer: purchaseStats.avgPurchasesPerBuyer,
+      },
+      recentOrders: purchaseStats.recentOrders.map(o => ({
+        orderedAt: o.orderedAt,
+        nickname: o.nickname,
+        contentTitle: o.contentTitle,
+        categoryMain: o.categoryMain,
+        paidAmount: o.paidAmount,
+        payMethod: o.payMethod,
+        pstatus: o.pstatus,
+      })),
+      customerSummary: purchaseStats.customerSummary.map(c => ({
+        nickname: c.nickname,
+        totalPurchases: c.totalPurchases,
+        totalSpent: c.totalSpent,
+        totalTags: c.totalTags,
+        weeklyTags: c.weeklyTags,
+        visitCount: c.visitCount,
+      })),
     };
     try {
       await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -2790,6 +2855,206 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             )}
           </div>
         )}{/* 보고서 탭 닫기 */}
+
+        {/* ========== 구매 탭 ========== */}
+        {selectedTab === '구매' && (
+          <div style={{ paddingTop: '16px' }}>
+            {/* 에러 상태 */}
+            {purchaseError && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
+                <p style={{ ...typography.label, marginBottom: '16px' }}>{purchaseError}</p>
+                <button
+                  onClick={() => loadPurchaseData()}
+                  className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                  style={{ ...typography.button, padding: '10px 16px', backgroundColor: '#3FB5B3', color: '#ffffff' }}
+                >
+                  <RefreshCw size={16} /> 다시 시도
+                </button>
+              </div>
+            )}
+
+            {/* 로딩 상태 */}
+            {purchaseLoading && !purchaseError && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
+                </div>
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            )}
+
+            {/* 데이터 표시 */}
+            {!purchaseLoading && !purchaseError && purchaseStats && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+              >
+                {/* 섹션 1: 최근 구매 내역 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between">
+                    <SectionHeader icon="🛒" title="최근 구매 내역" />
+                    <button
+                      onClick={copyPurchaseData}
+                      className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                      style={{
+                        width: '36px', height: '36px',
+                        backgroundColor: '#f5f5f5',
+                        border: 'none',
+                      }}
+                    >
+                      <Copy size={16} color="#666" />
+                    </button>
+                  </div>
+
+                  {/* 개요 StatCard 4개 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                    <StatCard icon={ShoppingCart} label="총 주문" value={purchaseStats.totalOrders} unit="건" color="#3FB5B3" />
+                    <StatCard icon={DollarSign} label="총 매출" value={purchaseStats.totalRevenue.toLocaleString()} unit="원" color="#6366F1" />
+                    <StatCard icon={Users} label="구매 고객" value={purchaseStats.uniqueBuyers} unit="명" color="#EC4899" />
+                    <StatCard icon={BarChart3} label="인당 평균" value={purchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
+                  </div>
+
+                  {/* 가로 스크롤 테이블 */}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontFamily: 'Pretendard Variable, sans-serif' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>주문일시</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>닉네임</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>콘텐츠</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>카테고리</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>결제금액</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>결제수단</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>상태</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {purchaseStats.recentOrders.map((order, idx) => {
+                          const d = new Date(order.orderedAt);
+                          const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                          return (
+                            <tr key={order.orderId} style={{ borderBottom: idx < purchaseStats.recentOrders.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                              <td style={{ padding: '10px 12px', fontSize: '13px', color: '#666', whiteSpace: 'nowrap' }}>{dateStr}</td>
+                              <td style={{ padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: '#333', whiteSpace: 'nowrap', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.nickname || '-'}</td>
+                              <td style={{ padding: '10px 12px', fontSize: '13px', color: '#333', whiteSpace: 'nowrap', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.contentTitle || '-'}</td>
+                              <td style={{ padding: '10px 12px', fontSize: '13px', color: '#666', whiteSpace: 'nowrap' }}>{order.categoryMain || '-'}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', fontWeight: 500, color: '#3FB5B3', whiteSpace: 'nowrap' }}>{order.paidAmount.toLocaleString()}원</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', color: '#666', whiteSpace: 'nowrap' }}>{order.payMethod || '-'}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  display: 'inline-block', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 500,
+                                  backgroundColor: order.pstatus === 'completed' ? '#E8F5E9' : '#FFF3E0',
+                                  color: order.pstatus === 'completed' ? '#2E7D32' : '#E65100',
+                                }}>
+                                  {order.pstatus === 'completed' ? '완료' : order.pstatus}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {purchaseStats.recentOrders.length === 0 && (
+                    <p style={{ textAlign: 'center', fontSize: '14px', color: '#999', padding: '24px 0' }}>구매 내역이 없습니다.</p>
+                  )}
+                </section>
+
+                {/* 섹션 2: 고객별 구매 종합 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <SectionHeader icon="📊" title="고객별 구매 종합" />
+
+                  {/* 산점도 차트: X=방문횟수, Y=구매횟수, 점크기=태그수 */}
+                  {purchaseStats.customerSummary.length > 0 && (
+                    <div style={{ width: '100%', height: 280, marginBottom: '16px' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis
+                            type="number"
+                            dataKey="visitCount"
+                            name="방문횟수"
+                            tick={{ fontSize: 11, fill: '#999' }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#f0f0f0' }}
+                            label={{ value: '방문횟수', position: 'insideBottom', offset: -2, fontSize: 12, fill: '#999' }}
+                          />
+                          <YAxis
+                            type="number"
+                            dataKey="totalPurchases"
+                            name="구매횟수"
+                            tick={{ fontSize: 11, fill: '#999' }}
+                            tickLine={false}
+                            axisLine={{ stroke: '#f0f0f0' }}
+                            label={{ value: '구매횟수', angle: -90, position: 'insideLeft', offset: 20, fontSize: 12, fill: '#999' }}
+                          />
+                          <ZAxis type="number" dataKey="totalTags" name="태그수" range={[40, 400]} />
+                          <Tooltip
+                            contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }}
+                            formatter={(value: number, name: string) => {
+                              const label = name === '방문횟수' ? '방문' : name === '구매횟수' ? '구매' : '태그';
+                              return [`${value}${name === '태그수' ? '개' : '회'}`, label];
+                            }}
+                            labelFormatter={() => ''}
+                          />
+                          <Scatter
+                            data={purchaseStats.customerSummary}
+                            fill="#3FB5B3"
+                            fillOpacity={0.6}
+                          />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* 가로 스크롤 테이블 */}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontFamily: 'Pretendard Variable, sans-serif' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>닉네임</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>구매횟수</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>총결제액</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>태그수</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>주간태그</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>방문수</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>가입일</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>마지막접속</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {purchaseStats.customerSummary.map((customer, idx) => {
+                          const signedUp = customer.signedUpAt ? new Date(customer.signedUpAt) : null;
+                          const signedUpStr = signedUp ? `${String(signedUp.getMonth() + 1).padStart(2, '0')}/${String(signedUp.getDate()).padStart(2, '0')}` : '-';
+                          const lastLogin = customer.lastLoginAt ? new Date(customer.lastLoginAt) : null;
+                          const lastLoginStr = lastLogin ? `${String(lastLogin.getMonth() + 1).padStart(2, '0')}/${String(lastLogin.getDate()).padStart(2, '0')}` : '-';
+                          return (
+                            <tr key={customer.userId} style={{ borderBottom: idx < purchaseStats.customerSummary.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                              <td style={{ padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: '#333', whiteSpace: 'nowrap', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customer.nickname || '-'}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', fontWeight: 600, color: '#3FB5B3', whiteSpace: 'nowrap' }}>{customer.totalPurchases}회</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', fontWeight: 500, color: '#333', whiteSpace: 'nowrap' }}>{customer.totalSpent.toLocaleString()}원</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: '#666', whiteSpace: 'nowrap' }}>{customer.totalTags}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: customer.weeklyTags > 0 ? '#3FB5B3' : '#999', whiteSpace: 'nowrap' }}>{customer.weeklyTags}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: '#666', whiteSpace: 'nowrap' }}>{customer.visitCount}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', color: '#999', whiteSpace: 'nowrap' }}>{signedUpStr}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center', fontSize: '13px', color: '#999', whiteSpace: 'nowrap' }}>{lastLoginStr}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {purchaseStats.customerSummary.length === 0 && (
+                    <p style={{ textAlign: 'center', fontSize: '14px', color: '#999', padding: '24px 0' }}>구매 고객이 없습니다.</p>
+                  )}
+                </section>
+              </motion.div>
+            )}
+          </div>
+        )}{/* 구매 탭 닫기 */}
 
         {/* ========== 고객 탭 ========== */}
         {selectedTab === '고객' && (

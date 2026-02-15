@@ -120,6 +120,9 @@ const bgImage = "/background.jpg";
 - **총 32개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(2), 소유자 확인(2), 유틸리티(2)
 - **⚠️ Request Timeout**: 150초 (모든 플랜 동일, Pro도 동일). Wall clock(Pro 400초)과 별개
 - **Self-Continue 패턴**: 장시간 함수(`generate-content-answers`, `generate-weekly-reports-batch`)는 timeout 전에 안전 종료 후 자기 재호출로 미완료 작업을 이어서 처리
+- **환경변수 (Edge Functions)**:
+  - `SITE_URL`: 알림톡 버튼 URL 도메인 (프로덕션: `https://nadaunse.com`, 스테이징: `https://staging.nadaunse.com`). `send-alimtalk`, `send-report-alimtalk`에서 사용
+  - `WEEK_START_DAY`: 주간 보고서 주차 시작 요일 (프로덕션: `0`=일요일, 스테이징: `3`=수요일). `generate-weekly-reports-batch`, `generate-weekly-report`에서 사용
 
 **⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
 ```bash
@@ -843,4 +846,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-02-12
+**최종 업데이트**: 2026-02-15

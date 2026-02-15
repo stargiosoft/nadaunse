@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 31개
-> **최종 업데이트**: 2026-02-12
+> **총 함수 수**: 32개
+> **최종 업데이트**: 2026-02-15
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -38,11 +38,11 @@
 | 👤 **사용자 관리** | 1개 | 3% | JWT 인증, RLS |
 | 💳 **결제/환불** | 3개 | 10% | PortOne API, PostgreSQL Function |
 | 📊 **모니터링/통계** | 2개 | 6% | Sentry, Slack, Google Analytics |
-| 🔍 **SEO** | 1개 | 3% | 동적 Sitemap 생성 |
+| 🔍 **SEO** | 2개 | 6% | 동적 Sitemap 생성, IndexNow |
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
 | 🧹 **유틸리티** | 2개 | 6% | 태그 정리, Vercel 재빌드 |
 
-**총 31개** (로컬 함수 기준)
+**총 32개** (로컬 함수 기준)
 
 ---
 
@@ -93,19 +93,23 @@
 
 15. `generate-weekly-reports-batch` - 주간 보고서 배치 생성
     - pg_cron에서 매주 호출 (10분 간격 반복, 이어하기 패턴)
-    - concurrency: 3, 2초 간격, 60초 시간 제한 (shutdown 방지)
+    - concurrency: 3, 2초 간격, 120초 시간 제한 (shutdown 방지)
     - `selfContinue: true` → 시간 제한 시 자기 자신 재호출 (fire-and-forget)
     - 관리자 재발송: 1회 호출로 서버 자동 처리 (브라우저 닫아도 됨)
     - 전주 태그 있는 모든 사용자 대상, 기존 보고서 있으면 스킵
+    - **`WEEK_START_DAY` 환경변수**: 주차 시작 요일 (프로덕션: 0=일요일, 스테이징: 3=수요일)
+    - **pg_cron 스케줄**: 프로덕션 `*/10 3-12 * * 0` (일요일), 스테이징 `*/10 3-12 * * 3` (수요일)
 
 16. `send-report-alimtalk` - 보고서 알림톡 발송
     - TalkDream API 사용
     - 최대 5회 재시도
     - `--no-verify-jwt` 필수 (내부 호출)
+    - **`SITE_URL` 환경변수**: 보고서 URL 도메인 (스테이징에서 프로덕션 URL 발송 방지)
 
 17. `get-failed-reports` - 실패 보고서 조회 (관리자용)
     - 태그 있는데 보고서 없는 사용자 조회
     - 마스터 계정 관리자 패널에서 사용
+    - KST→UTC 타임존 변환 적용 (`created_at`은 UTC이므로 KST 날짜를 UTC로 변환 후 비교)
 
 ---
 
@@ -119,6 +123,7 @@
 ### 5️⃣ **알림** (1개)
 
 20. `send-alimtalk` - 알림톡 발송 (TalkDream API, 재시도 로직 포함)
+    - **`SITE_URL` 환경변수**: 버튼 URL 도메인 (프로덕션: `https://nadaunse.com`, 스테이징: `https://staging.nadaunse.com`)
 
 ---
 
@@ -1125,6 +1130,10 @@ OAuth 콜백 → users (Edge Function)
 - 성공 시 `success`, 실패 시 `failed` 상태 UPDATE
 - `retry_count`, `error_code`, `error_message` 기록
 
+**환경변수**:
+- `SITE_URL`: 버튼 URL 도메인 (프로덕션: `https://nadaunse.com`, 스테이징: `https://staging.nadaunse.com`)
+  - 미설정 시 `https://nadaunse.com` 기본값 사용
+
 **플로우**:
 ```
 AI 생성 완료 → send-alimtalk
@@ -1132,7 +1141,7 @@ AI 생성 완료 → send-alimtalk
   → TalkDream API 호출
   → 성공/실패에 따라 로그 UPDATE
   → 사용자 휴대폰에 알림톡 수신
-  → 버튼 클릭 시 /result/saju 페이지로 이동
+  → 버튼 클릭 시 ${SITE_URL}/result/saju 페이지로 이동
 ```
 
 **API**: LG CNS TalkDream (알림톡 전송 서비스)
@@ -1846,6 +1855,7 @@ supabase functions deploy generate-master-content
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 2.1.0 | 2026-02-15 | `WEEK_START_DAY` 환경변수 추가 (프로덕션/스테이징 주간 보고서 일정 분리), `SITE_URL` 환경변수 추가 (send-alimtalk, send-report-alimtalk), `get-failed-reports` KST→UTC 타임존 수정, 총 함수 수 32개로 수정 |
 | 2.0.0 | 2026-02-12 | `index-now` 함수 추가 (IndexNow 프로토콜로 검색엔진 URL 즉시 제출), SEO 카테고리 2개로 확장 |
 | 1.9.0 | 2026-02-09 | `extract-trait-tags`에 `rejectedTags` 파라미터 추가, `generate-free-preview` upsert→INSERT 변경 |
 | 1.8.0 | 2026-02-03 | `get-order-owner`, `get-report-owner` 함수 추가 (계정 불일치 시 소유자 정보 마스킹 표시), 총 32개 |

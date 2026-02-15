@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-13
-> **주요 결정**: 마스터 콘텐츠 질문 수정 FK constraint 우회 (UPDATE 방식), 이용기록 제목 스냅샷 보존 (orders.gname + free_content_records.content_title), 모바일 PG 결제 뒤로가기 루프 해결 (popup 모드 전환), CSP 결제 도메인 누락으로 3주간 결제 장애 해결 (teledit.com, kakaopay.com form-action), IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-02-15
+> **주요 결정**: 스테이징/프로덕션 주간 보고서 일정 분리 (WEEK_START_DAY), 알림톡 SITE_URL 환경변수 적용, 마스터 콘텐츠 질문 수정 FK constraint 우회 (UPDATE 방식), 이용기록 제목 스냅샷 보존 (orders.gname + free_content_records.content_title), 모바일 PG 결제 뒤로가기 루프 해결 (popup 모드 전환), CSP 결제 도메인 누락으로 3주간 결제 장애 해결 (teledit.com, kakaopay.com form-action), IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,26 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-15
+
+### 스테이징/프로덕션 주간 보고서 일정 분리 (WEEK_START_DAY)
+
+**문제**: 프로덕션 주간 보고서가 매주 일요일에 발송되는데, 스테이징도 동일한 일요일에 실행되면 버그 디버깅 시 프로덕션/스테이징 로그가 섞여 원인 파악이 어려움. 또한 스테이징 pg_cron이 실제 사용자에게 프로덕션 URL이 포함된 알림톡을 발송하는 사고 발생.
+
+**해결**:
+- `WEEK_START_DAY` 환경변수 도입 (프로덕션: 0=일요일~토요일, 스테이징: 3=수요일~화요일)
+- `getLastWeekRange()` 함수를 `(dayOfWeek - WEEK_START_DAY + 7) % 7` 공식으로 변경
+- pg_cron 스케줄: 프로덕션 `*/10 3-12 * * 0` (일요일), 스테이징 `*/10 3-12 * * 3` (수요일)
+- `SITE_URL` 환경변수: `send-alimtalk`, `send-report-alimtalk`에서 사용하여 스테이징이 프로덕션 URL 발송 방지
+
+**영향**: `generate-weekly-reports-batch`, `generate-weekly-report`, `send-alimtalk`, `send-report-alimtalk`, `get-failed-reports`
+
+**추가 수정**:
+- `get-failed-reports`: KST→UTC 타임존 변환 누락 수정 (관리자 패널에서 18명 오차 발생 원인)
+- `deploy-staging.bat`: 6개 함수에 누락된 `--no-verify-jwt` 플래그 추가
 
 ---
 

@@ -1537,6 +1537,200 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
 /**
  * 보고서 추세 주별→월별 집계
  */
+// ========== 구매 통계 타입 및 함수 ==========
+
+/** 개별 주문 데이터 (최근 구매 리스트용) */
+export interface PurchaseOrderData {
+  orderId: string;
+  userId: string;
+  email: string;
+  nickname: string;
+  contentTitle: string;
+  categoryMain: string;
+  paidAmount: number;
+  payMethod: string;
+  pgProvider: string;
+  pstatus: string;
+  orderedAt: string;
+}
+
+/** 고객별 구매 종합 데이터 (상관관계 분석용) */
+export interface PurchaseCustomerData {
+  userId: string;
+  email: string;
+  nickname: string;
+  totalPurchases: number;
+  totalSpent: number;
+  totalTags: number;
+  weeklyTags: number;
+  lastTagDate: string | null;
+  visitCount: number;
+  signedUpAt: string;
+  lastLoginAt: string | null;
+}
+
+/** 구매 탭 전체 데이터 */
+export interface PurchaseStatsData {
+  recentOrders: PurchaseOrderData[];
+  customerSummary: PurchaseCustomerData[];
+  totalOrders: number;
+  totalRevenue: number;
+  uniqueBuyers: number;
+  avgPurchasesPerBuyer: number;
+}
+
+/**
+ * 구매 통계 데이터 조회
+ * orders + users + master_contents + user_trait_tags 기반 구매 분석
+ */
+export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 5개 쿼리 병렬 실행
+  const [
+    recentOrdersResult,
+    allOrdersResult,
+    usersResult,
+    tagStatsResult,
+    contentsResult,
+  ] = await Promise.all([
+    // 1. 최근 완료 주문 50건
+    supabase
+      .from('orders')
+      .select('id, user_id, content_id, paid_amount, pay_method, pg_provider, pstatus, created_at')
+      .eq('pstatus', 'completed')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .order('created_at', { ascending: false })
+      .limit(50),
+
+    // 2. 전체 완료 주문 (고객별 구매 통계)
+    supabase
+      .from('orders')
+      .select('user_id, paid_amount')
+      .eq('pstatus', 'completed')
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 3. 유저 데이터
+    supabase
+      .from('users')
+      .select('id, email, nickname, visit_count, created_at, last_login_at')
+      .not('id', 'in', `(${adminFilter})`),
+
+    // 4. 태그 통계 (확인된 태그만, neutral 제외)
+    supabase
+      .from('user_trait_tags')
+      .select('user_id, created_at')
+      .eq('is_confirmed', true)
+      .neq('tag_type', 'neutral')
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 5. 콘텐츠 정보 (최근 주문의 콘텐츠명/카테고리)
+    supabase
+      .from('master_contents')
+      .select('id, title, category_main'),
+  ]);
+
+  if (recentOrdersResult.error) throw new Error('최근 주문 데이터 조회에 실패했습니다.');
+  if (allOrdersResult.error) throw new Error('전체 주문 데이터 조회에 실패했습니다.');
+  if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
+  if (tagStatsResult.error) throw new Error('태그 데이터 조회에 실패했습니다.');
+  if (contentsResult.error) throw new Error('콘텐츠 데이터 조회에 실패했습니다.');
+
+  const recentOrders = recentOrdersResult.data || [];
+  const allOrders = allOrdersResult.data || [];
+  const users = usersResult.data || [];
+  const tagStatsData = tagStatsResult.data || [];
+  const contents = contentsResult.data || [];
+
+  // Lookup Maps
+  const userMap = new Map(users.map(u => [u.id, u]));
+  const contentMap = new Map(contents.map(c => [c.id, c]));
+
+  // 1. 최근 주문 리스트 구성
+  const recentPurchaseOrders: PurchaseOrderData[] = recentOrders.map(order => {
+    const user = userMap.get(order.user_id);
+    const content = contentMap.get(order.content_id);
+    return {
+      orderId: order.id,
+      userId: order.user_id,
+      email: user?.email || '',
+      nickname: user?.nickname || '',
+      contentTitle: content?.title || '',
+      categoryMain: content?.category_main || '',
+      paidAmount: order.paid_amount || 0,
+      payMethod: order.pay_method || '',
+      pgProvider: order.pg_provider || '',
+      pstatus: order.pstatus || '',
+      orderedAt: order.created_at,
+    };
+  });
+
+  // 2. 고객별 구매 통계
+  const customerPurchaseMap = new Map<string, { totalPurchases: number; totalSpent: number }>();
+  allOrders.forEach(order => {
+    const existing = customerPurchaseMap.get(order.user_id) || { totalPurchases: 0, totalSpent: 0 };
+    existing.totalPurchases++;
+    existing.totalSpent += order.paid_amount || 0;
+    customerPurchaseMap.set(order.user_id, existing);
+  });
+
+  // 3. 태그 통계 (고객별)
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const customerTagMap = new Map<string, { totalTags: number; weeklyTags: number; lastTagDate: string | null }>();
+  tagStatsData.forEach(tag => {
+    const existing = customerTagMap.get(tag.user_id) || { totalTags: 0, weeklyTags: 0, lastTagDate: null };
+    existing.totalTags++;
+    if (new Date(tag.created_at) >= oneWeekAgo) {
+      existing.weeklyTags++;
+    }
+    if (!existing.lastTagDate || tag.created_at > existing.lastTagDate) {
+      existing.lastTagDate = tag.created_at;
+    }
+    customerTagMap.set(tag.user_id, existing);
+  });
+
+  // 4. 고객별 구매 종합 데이터 병합
+  const customerSummary: PurchaseCustomerData[] = [];
+  customerPurchaseMap.forEach((purchase, userId) => {
+    const user = userMap.get(userId);
+    const tagData = customerTagMap.get(userId) || { totalTags: 0, weeklyTags: 0, lastTagDate: null };
+    customerSummary.push({
+      userId,
+      email: user?.email || '',
+      nickname: user?.nickname || '',
+      totalPurchases: purchase.totalPurchases,
+      totalSpent: purchase.totalSpent,
+      totalTags: tagData.totalTags,
+      weeklyTags: tagData.weeklyTags,
+      lastTagDate: tagData.lastTagDate,
+      visitCount: user?.visit_count || 0,
+      signedUpAt: user?.created_at || '',
+      lastLoginAt: user?.last_login_at || null,
+    });
+  });
+
+  // 정렬: totalPurchases 내림차순
+  customerSummary.sort((a, b) => b.totalPurchases - a.totalPurchases);
+
+  // 5. 요약 통계
+  const totalOrders = allOrders.length;
+  const totalRevenue = allOrders.reduce((sum, o) => sum + (o.paid_amount || 0), 0);
+  const uniqueBuyers = customerPurchaseMap.size;
+  const avgPurchasesPerBuyer = uniqueBuyers > 0
+    ? Math.round(totalOrders / uniqueBuyers * 10) / 10
+    : 0;
+
+  return {
+    recentOrders: recentPurchaseOrders,
+    customerSummary,
+    totalOrders,
+    totalRevenue,
+    uniqueBuyers,
+    avgPurchasesPerBuyer,
+  };
+}
+
 // ========== 고객 통계 타입 및 함수 ==========
 
 /** 고객 통계 데이터 */

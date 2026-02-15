@@ -13,6 +13,9 @@ const TALKDREAM_CONFIG = {
   templateId: '10002' // 구매 결과 안내 템플릿
 }
 
+// 사이트 URL (환경변수로 오버라이드 가능, 스테이징에서 프로덕션 URL 발송 방지)
+const SITE_URL = Deno.env.get('SITE_URL') || 'https://nadaunse.com'
+
 // 재시도 설정 (최대 4회 시도: 1회 + 3회 재시도)
 const RETRY_CONFIG = {
   maxRetries: 3, // 재시도 횟수 (1회 실패 + 3회 재시도 = 최대 4회)
@@ -140,8 +143,8 @@ serve(async (req) => {
               type: 'WL', // 웹링크
               name: '나만의 이야기 보기',
               // ⭐ 템플릿 검수된 URL (/result/saju)로 발송 후 리다이렉트
-              url_mobile: `https://nadaunse.com/result/saju?orderId=${orderId}&contentId=${contentId}&from=purchase`,
-              url_pc: `https://nadaunse.com/result/saju?orderId=${orderId}&contentId=${contentId}&from=purchase`
+              url_mobile: `${SITE_URL}/result/saju?orderId=${orderId}&contentId=${contentId}&from=purchase`,
+              url_pc: `${SITE_URL}/result/saju?orderId=${orderId}&contentId=${contentId}&from=purchase`
             }
           ]
         }

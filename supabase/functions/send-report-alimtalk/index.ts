@@ -14,6 +14,9 @@ const TALKDREAM_CONFIG = {
   templateId: '10003' // ⭐ 주간 보고서 도착 안내 템플릿
 }
 
+// 사이트 URL (환경변수로 오버라이드 가능, 스테이징에서 프로덕션 URL 발송 방지)
+const SITE_URL = Deno.env.get('SITE_URL') || 'https://nadaunse.com'
+
 // 재시도 설정 (최대 4회 시도: 1회 + 3회 재시도)
 const RETRY_CONFIG = {
   maxRetries: 3,
@@ -132,8 +135,8 @@ serve(async (req) => {
             {
               type: 'WL', // 웹링크
               name: '다시보기',
-              url_mobile: `https://nadaunse.com/report-weekly-detail/${reportId}`,
-              url_pc: `https://nadaunse.com/report-weekly-detail/${reportId}`
+              url_mobile: `${SITE_URL}/report-weekly-detail/${reportId}`,
+              url_pc: `${SITE_URL}/report-weekly-detail/${reportId}`
             }
           ]
         }

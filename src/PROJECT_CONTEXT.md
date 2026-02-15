@@ -355,9 +355,10 @@
 │       │ 무료/유료 콘텐츠 결과 페이지에서 태그 선택                            │
 │       │ → user_trait_tags 테이블에 저장 (is_confirmed = true)               │
 │       ↓                                                                      │
-│  [보고서 생성 단계] (일요일 pg_cron 자동 또는 관리자 수동 재발송)            │
+│  [보고서 생성 단계] (pg_cron 자동: 프로덕션 일요일/스테이징 수요일, 또는 관리자 수동 재발송) │
 │       │ generate-weekly-reports-batch → generate-weekly-report 호출          │
-│       │ concurrency 3, 60초 제한, selfContinue 자동 이어하기                │
+│       │ concurrency 3, 120초 제한, selfContinue 자동 이어하기               │
+│       │ WEEK_START_DAY: 프로덕션=0(일~토), 스테이징=3(수~화)               │
 │       │ → OpenAI API로 보고서 콘텐츠 생성                                    │
 │       │ → weekly_reports + weekly_report_sections 저장                       │
 │       │ → report_tarot_selections에 타로 카드 사전 선택                      │
