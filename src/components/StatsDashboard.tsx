@@ -191,6 +191,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [purchaseStats, setPurchaseStats] = useState<PurchaseStatsData | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [purchaseTypeFilter, setPurchaseTypeFilter] = useState<ContentTypeFilter>('all');
 
   // 고객 탭 상태
   const [customerStats, setCustomerStats] = useState<CustomerStatsData | null>(null);
@@ -2885,13 +2886,70 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             )}
 
             {/* 데이터 표시 */}
-            {!purchaseLoading && !purchaseError && purchaseStats && (
+            {!purchaseLoading && !purchaseError && purchaseStats && (() => {
+              // 필터 적용
+              const filteredOrders = purchaseTypeFilter === 'all'
+                ? purchaseStats.recentOrders
+                : purchaseStats.recentOrders.filter(o => o.contentType === purchaseTypeFilter);
+              const filteredCustomers = purchaseTypeFilter === 'all'
+                ? purchaseStats.customerSummary
+                : purchaseStats.customerSummary
+                    .map(c => ({
+                      ...c,
+                      totalPurchases: purchaseTypeFilter === 'paid' ? c.paidPurchases : c.freePurchases,
+                    }))
+                    .filter(c => c.totalPurchases > 0)
+                    .sort((a, b) => b.totalPurchases - a.totalPurchases);
+              const filteredTotalOrders = filteredOrders.length === purchaseStats.recentOrders.length
+                ? purchaseStats.totalOrders
+                : filteredCustomers.reduce((sum, c) => sum + c.totalPurchases, 0);
+              const filteredRevenue = purchaseTypeFilter === 'all'
+                ? purchaseStats.totalRevenue
+                : filteredOrders.reduce((sum, o) => sum + o.paidAmount, 0);
+              const filteredBuyers = filteredCustomers.length;
+              const filteredAvg = filteredBuyers > 0
+                ? Math.round(filteredTotalOrders / filteredBuyers * 10) / 10
+                : 0;
+
+              return (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
               >
+                {/* 콘텐츠 타입 필터 (종합/심화 해석판/무료 체험판) */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                    <BarChart3 size={16} color="#666" />
+                    <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 400, color: '#666666' }}>콘텐츠 유형</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {([
+                      { value: 'all' as ContentTypeFilter, label: '종합' },
+                      { value: 'paid' as ContentTypeFilter, label: '심화 해석판' },
+                      { value: 'free' as ContentTypeFilter, label: '무료 체험판' },
+                    ]).map((filter) => (
+                      <button
+                        key={filter.value}
+                        onClick={() => setPurchaseTypeFilter(filter.value)}
+                        className="rounded-xl transition-colors active:opacity-80"
+                        style={{
+                          fontFamily: 'Pretendard Variable, sans-serif',
+                          fontSize: '14px',
+                          fontWeight: purchaseTypeFilter === filter.value ? 500 : 400,
+                          padding: '8px 16px',
+                          backgroundColor: purchaseTypeFilter === filter.value ? '#3FB5B3' : '#f5f5f5',
+                          color: purchaseTypeFilter === filter.value ? '#ffffff' : '#666666',
+                          border: 'none',
+                        }}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
                 {/* 섹션 1: 최근 구매 내역 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between">
@@ -2911,10 +2969,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
                   {/* 개요 StatCard 4개 */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
-                    <StatCard icon={ShoppingCart} label="총 주문" value={purchaseStats.totalOrders} unit="건" color="#3FB5B3" />
-                    <StatCard icon={DollarSign} label="총 매출" value={purchaseStats.totalRevenue.toLocaleString()} unit="원" color="#6366F1" />
-                    <StatCard icon={Users} label="구매 고객" value={purchaseStats.uniqueBuyers} unit="명" color="#EC4899" />
-                    <StatCard icon={BarChart3} label="인당 평균" value={purchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
+                    <StatCard icon={ShoppingCart} label="총 주문" value={filteredTotalOrders} unit="건" color="#3FB5B3" />
+                    <StatCard icon={DollarSign} label="총 매출" value={filteredRevenue.toLocaleString()} unit="원" color="#6366F1" />
+                    <StatCard icon={Users} label="구매 고객" value={filteredBuyers} unit="명" color="#EC4899" />
+                    <StatCard icon={BarChart3} label="인당 평균" value={filteredAvg} unit="회" color="#F59E0B" />
                   </div>
 
                   {/* 가로+세로 스크롤 테이블 (고정 높이) */}
@@ -2932,11 +2990,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         </tr>
                       </thead>
                       <tbody>
-                        {purchaseStats.recentOrders.map((order, idx) => {
+                        {filteredOrders.map((order, idx) => {
                           const d = new Date(order.orderedAt);
                           const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                           return (
-                            <tr key={order.orderId} style={{ borderBottom: idx < purchaseStats.recentOrders.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                            <tr key={order.orderId} style={{ borderBottom: idx < filteredOrders.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
                               <td style={{ padding: '10px 12px', fontSize: '13px', color: '#666', whiteSpace: 'nowrap' }}>{dateStr}</td>
                               <td style={{ padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: '#333', whiteSpace: 'nowrap', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.nickname || '-'}</td>
                               <td style={{ padding: '10px 12px', fontSize: '13px', color: '#333', whiteSpace: 'nowrap', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.contentTitle || '-'}</td>
@@ -2958,7 +3016,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       </tbody>
                     </table>
                   </div>
-                  {purchaseStats.recentOrders.length === 0 && (
+                  {filteredOrders.length === 0 && (
                     <p style={{ textAlign: 'center', fontSize: '14px', color: '#999', padding: '24px 0' }}>구매 내역이 없습니다.</p>
                   )}
                 </section>
@@ -2968,7 +3026,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <SectionHeader icon="📊" title="고객별 구매 종합" />
 
                   {/* 산점도 차트: X=방문횟수, Y=구매횟수, 점크기=태그수 */}
-                  {purchaseStats.customerSummary.length > 0 && (
+                  {filteredCustomers.length > 0 && (
                     <div style={{ width: '100%', height: 280, marginBottom: '16px' }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <ScatterChart margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
@@ -3001,7 +3059,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             labelFormatter={() => ''}
                           />
                           <Scatter
-                            data={purchaseStats.customerSummary}
+                            data={filteredCustomers}
                             fill="#3FB5B3"
                             fillOpacity={0.6}
                           />
@@ -3026,13 +3084,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         </tr>
                       </thead>
                       <tbody>
-                        {purchaseStats.customerSummary.map((customer, idx) => {
+                        {filteredCustomers.map((customer, idx) => {
                           const signedUp = customer.signedUpAt ? new Date(customer.signedUpAt) : null;
                           const signedUpStr = signedUp ? `${String(signedUp.getMonth() + 1).padStart(2, '0')}/${String(signedUp.getDate()).padStart(2, '0')}` : '-';
                           const lastLogin = customer.lastLoginAt ? new Date(customer.lastLoginAt) : null;
                           const lastLoginStr = lastLogin ? `${String(lastLogin.getMonth() + 1).padStart(2, '0')}/${String(lastLogin.getDate()).padStart(2, '0')}` : '-';
                           return (
-                            <tr key={customer.userId} style={{ borderBottom: idx < purchaseStats.customerSummary.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                            <tr key={customer.userId} style={{ borderBottom: idx < filteredCustomers.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
                               <td style={{ padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: '#333', whiteSpace: 'nowrap', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customer.nickname || '-'}</td>
                               <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', fontWeight: 600, color: '#3FB5B3', whiteSpace: 'nowrap' }}>{customer.totalPurchases}회</td>
                               <td style={{ padding: '10px 12px', textAlign: 'right', fontSize: '14px', fontWeight: 500, color: '#333', whiteSpace: 'nowrap' }}>{customer.totalSpent.toLocaleString()}원</td>
@@ -3047,12 +3105,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       </tbody>
                     </table>
                   </div>
-                  {purchaseStats.customerSummary.length === 0 && (
+                  {filteredCustomers.length === 0 && (
                     <p style={{ textAlign: 'center', fontSize: '14px', color: '#999', padding: '24px 0' }}>구매 고객이 없습니다.</p>
                   )}
                 </section>
               </motion.div>
-            )}
+              );
+            })()}
           </div>
         )}{/* 구매 탭 닫기 */}
 

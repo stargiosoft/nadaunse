@@ -1547,6 +1547,7 @@ export interface PurchaseOrderData {
   nickname: string;
   contentTitle: string;
   categoryMain: string;
+  contentType: 'free' | 'paid' | '';
   paidAmount: number;
   payMethod: string;
   pgProvider: string;
@@ -1560,6 +1561,8 @@ export interface PurchaseCustomerData {
   email: string;
   nickname: string;
   totalPurchases: number;
+  paidPurchases: number;
+  freePurchases: number;
   totalSpent: number;
   totalTags: number;
   weeklyTags: number;
@@ -1606,7 +1609,7 @@ export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
     // 2. 전체 완료 주문 (고객별 구매 통계)
     supabase
       .from('orders')
-      .select('user_id, paid_amount')
+      .select('user_id, content_id, paid_amount')
       .eq('pstatus', 'completed')
       .not('user_id', 'in', `(${adminFilter})`),
 
@@ -1624,10 +1627,10 @@ export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
       .neq('tag_type', 'neutral')
       .not('user_id', 'in', `(${adminFilter})`),
 
-    // 5. 콘텐츠 정보 (최근 주문의 콘텐츠명/카테고리)
+    // 5. 콘텐츠 정보 (최근 주문의 콘텐츠명/카테고리/타입)
     supabase
       .from('master_contents')
-      .select('id, title, category_main'),
+      .select('id, title, category_main, content_type'),
   ]);
 
   if (recentOrdersResult.error) throw new Error('최근 주문 데이터 조회에 실패했습니다.');
@@ -1657,6 +1660,7 @@ export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
       nickname: user?.nickname || '',
       contentTitle: content?.title || '',
       categoryMain: content?.category_main || '',
+      contentType: (content?.content_type as 'free' | 'paid') || '',
       paidAmount: order.paid_amount || 0,
       payMethod: order.pay_method || '',
       pgProvider: order.pg_provider || '',
@@ -1666,11 +1670,14 @@ export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
   });
 
   // 2. 고객별 구매 통계
-  const customerPurchaseMap = new Map<string, { totalPurchases: number; totalSpent: number }>();
+  const customerPurchaseMap = new Map<string, { totalPurchases: number; paidPurchases: number; freePurchases: number; totalSpent: number }>();
   allOrders.forEach(order => {
-    const existing = customerPurchaseMap.get(order.user_id) || { totalPurchases: 0, totalSpent: 0 };
+    const existing = customerPurchaseMap.get(order.user_id) || { totalPurchases: 0, paidPurchases: 0, freePurchases: 0, totalSpent: 0 };
     existing.totalPurchases++;
     existing.totalSpent += order.paid_amount || 0;
+    const ct = contentMap.get(order.content_id)?.content_type;
+    if (ct === 'paid') existing.paidPurchases++;
+    else if (ct === 'free') existing.freePurchases++;
     customerPurchaseMap.set(order.user_id, existing);
   });
 
@@ -1700,6 +1707,8 @@ export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
       email: user?.email || '',
       nickname: user?.nickname || '',
       totalPurchases: purchase.totalPurchases,
+      paidPurchases: purchase.paidPurchases,
+      freePurchases: purchase.freePurchases,
       totalSpent: purchase.totalSpent,
       totalTags: tagData.totalTags,
       weeklyTags: tagData.weeklyTags,
