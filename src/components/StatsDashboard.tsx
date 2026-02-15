@@ -2917,10 +2917,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     <StatCard icon={BarChart3} label="인당 평균" value={purchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
                   </div>
 
-                  {/* 가로 스크롤 테이블 */}
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* 가로+세로 스크롤 테이블 (고정 높이) */}
+                  <div style={{ overflow: 'auto', maxHeight: '360px', border: '1px solid #f0f0f0', borderRadius: '8px' }}>
                     <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontFamily: 'Pretendard Variable, sans-serif' }}>
-                      <thead>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#ffffff' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
                           <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>주문일시</th>
                           <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>닉네임</th>
@@ -3010,10 +3010,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     </div>
                   )}
 
-                  {/* 가로 스크롤 테이블 */}
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* 가로+세로 스크롤 테이블 (고정 높이) */}
+                  <div style={{ overflow: 'auto', maxHeight: '400px', border: '1px solid #f0f0f0', borderRadius: '8px' }}>
                     <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontFamily: 'Pretendard Variable, sans-serif' }}>
-                      <thead>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#ffffff' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
                           <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>닉네임</th>
                           <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', fontWeight: 500, color: '#666', whiteSpace: 'nowrap' }}>구매횟수</th>
