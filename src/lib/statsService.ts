@@ -541,6 +541,7 @@ export interface DailyGAData {
   date: string;  // 'YYYYMMDD' 형식
   activeUsers: number;
   newUsers: number;
+  returningUsers: number;
   averageEngagementTime: number;
 }
 
@@ -573,6 +574,7 @@ export interface DailyTrendData {
   // GA 관련 지표
   gaActiveUsers: number;  // 총 방문자 (GA)
   gaNewUsers: number;  // GA 신규 방문자
+  gaReturningUsers: number;  // GA 재방문자 (네이티브 메트릭)
   gaAverageEngagementTime: number;  // 평균 참여 시간 (초)
   signupRate: number;  // 회원가입율 (newCustomers / gaNewUsers * 100)
 }
@@ -814,6 +816,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const gaDayData = gaDataMap.get(gaDateKey);
     const gaActiveUsers = gaDayData?.activeUsers || 0;
     const gaNewUsers = gaDayData?.newUsers || 0;
+    const gaReturningUsers = gaDayData?.returningUsers || 0;
     const gaAverageEngagementTime = gaDayData?.averageEngagementTime || 0;
 
     // 비율 계산
@@ -861,6 +864,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       // GA 관련 지표
       gaActiveUsers,
       gaNewUsers,
+      gaReturningUsers,
       gaAverageEngagementTime,
       signupRate,
     };
@@ -1064,6 +1068,7 @@ export interface GAStats {
   realtimeActiveUsers?: number;
   activeUsers?: number;
   newUsers?: number;
+  returningUsers?: number;  // GA4 네이티브 재방문자 수
   averageEngagementTime?: number;  // 활성 사용자당 평균 참여 시간 (초)
   freeResultPageViews?: number;    // 무료 운세 결과 페이지 조회수
   freeResultPageViewsPerUser?: number;  // 활성 사용자당 무료 운세 결과 조회수
@@ -1141,6 +1146,7 @@ export async function fetchGAStats(
       realtimeActiveUsers: result.realtimeActiveUsers,
       activeUsers: result.activeUsers,
       newUsers: result.newUsers,
+      returningUsers: result.returningUsers,
       averageEngagementTime: result.averageEngagementTime,
       freeResultPageViews: result.freeResultPageViews,
       freeResultPageViewsPerUser: result.freeResultPageViewsPerUser,

@@ -152,7 +152,7 @@ async function getActiveUsers(
   propertyId: string,
   startDate: string,
   endDate: string
-): Promise<{ activeUsers: number; newUsers: number; averageEngagementTime: number }> {
+): Promise<{ activeUsers: number; newUsers: number; returningUsers: number; averageEngagementTime: number }> {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
     {
@@ -167,6 +167,7 @@ async function getActiveUsers(
           { name: 'activeUsers' },
           { name: 'newUsers' },
           { name: 'userEngagementDuration' },
+          { name: 'returningUsers' },
         ],
       }),
     }
@@ -183,12 +184,13 @@ async function getActiveUsers(
     const activeUsers = parseInt(data.rows[0].metricValues[0].value, 10);
     const newUsers = parseInt(data.rows[0].metricValues[1].value, 10);
     const totalEngagementSeconds = parseFloat(data.rows[0].metricValues[2].value);
+    const returningUsers = parseInt(data.rows[0].metricValues[3].value, 10);
     // 활성 사용자당 평균 참여 시간 (초)
     const averageEngagementTime = activeUsers > 0 ? Math.round(totalEngagementSeconds / activeUsers) : 0;
-    return { activeUsers, newUsers, averageEngagementTime };
+    return { activeUsers, newUsers, returningUsers, averageEngagementTime };
   }
 
-  return { activeUsers: 0, newUsers: 0, averageEngagementTime: 0 };
+  return { activeUsers: 0, newUsers: 0, returningUsers: 0, averageEngagementTime: 0 };
 }
 
 // GA Data API 호출 - 특정 페이지 조회수 (무료 운세 결과)
@@ -258,6 +260,7 @@ interface DailyGAData {
   date: string;  // YYYYMMDD 형식
   activeUsers: number;
   newUsers: number;
+  returningUsers: number;
   averageEngagementTime: number;
 }
 
@@ -282,6 +285,7 @@ async function getDailyActiveUsers(
           { name: 'activeUsers' },
           { name: 'newUsers' },
           { name: 'userEngagementDuration' },
+          { name: 'returningUsers' },
         ],
         orderBys: [{ dimension: { dimensionName: 'date' } }],
       }),
@@ -302,12 +306,14 @@ async function getDailyActiveUsers(
       const activeUsers = parseInt(row.metricValues[0].value, 10);
       const newUsers = parseInt(row.metricValues[1].value, 10);
       const totalEngagementSeconds = parseFloat(row.metricValues[2].value);
+      const returningUsers = parseInt(row.metricValues[3].value, 10);
       const averageEngagementTime = activeUsers > 0 ? Math.round(totalEngagementSeconds / activeUsers) : 0;
 
       dailyData.push({
         date,
         activeUsers,
         newUsers,
+        returningUsers,
         averageEngagementTime,
       });
     }
