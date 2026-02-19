@@ -79,20 +79,17 @@ export default function CheckRecordMe({
   // 첫 번째 장점(positive) 태그만 기본 선택
   const defaultTags: TagOption[] = [
     { id: '1', label: '설득력 있는', type: 'positive', selected: true },
-    { id: '2', label: '리더십 있는', type: 'positive', selected: false },
-    { id: '3', label: '경쟁심 있는', type: 'negative', selected: false },
+    { id: '2', label: '리더십 있는', type: 'positive', selected: true },
+    { id: '3', label: '경쟁심 있는', type: 'negative', selected: true },
   ];
 
   const [tags, setTags] = useState<TagOption[]>(() => {
     if (initialTags && initialTags.length > 0) {
-      // 첫 번째 positive 태그의 인덱스 찾기
-      const firstPositiveIdx = initialTags.findIndex(tag => tag.type === 'positive');
-
       return initialTags.map((tag, idx) => ({
         id: String(idx + 1),
         label: tag.name,
         type: tag.type,
-        selected: idx === firstPositiveIdx // 첫 번째 positive 태그만 선택
+        selected: true // 전체 선택 - 인지부조화로 태그 저장률 개선
       }));
     }
     return defaultTags;

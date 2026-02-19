@@ -385,9 +385,10 @@ export default function FreeSajuDetail({
           <div className="flex items-center justify-between px-[12px] h-full w-full">
             <div className="opacity-0 p-[4px] size-[44px]" />
             <p className="font-semibold text-[18px] text-black text-center tracking-[-0.36px]">상세 풀이</p>
+            {/* X 버튼 - 미노출 처리 (필요 시 invisible/pointer-events-none 제거하여 복구) */}
             <button
               onClick={onClose}
-              className="group flex items-center justify-center p-[4px] rounded-[12px] size-[44px] bg-transparent border-none cursor-pointer transition-colors duration-200 active:bg-gray-100"
+              className="group flex items-center justify-center p-[4px] rounded-[12px] size-[44px] bg-transparent border-none cursor-pointer transition-colors duration-200 active:bg-gray-100 invisible pointer-events-none"
             >
               <div className="size-[24px] transition-transform duration-200 group-active:scale-90 flex items-center justify-center">
                 <svg className="block size-[20px]" fill="none" viewBox="0 0 24 24">
