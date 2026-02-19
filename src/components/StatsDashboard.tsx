@@ -722,6 +722,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   // 클립보드 복사 함수 - 구매
   const copyPurchaseData = async () => {
     if (!purchaseStats) return;
+    const gaActiveUsers = gaStats?.activeUsers ?? 0;
     const data = {
       tab: '구매',
       timestamp: new Date().toISOString(),
@@ -730,6 +731,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         totalRevenue: purchaseStats.totalRevenue,
         uniqueBuyers: purchaseStats.uniqueBuyers,
         avgPurchasesPerBuyer: purchaseStats.avgPurchasesPerBuyer,
+        conversionRate: gaActiveUsers > 0 ? Math.round(purchaseStats.totalOrders / gaActiveUsers * 1000) / 10 : 0,
+        avgOrderValue: purchaseStats.totalOrders > 0 ? Math.round(purchaseStats.totalRevenue / purchaseStats.totalOrders) : 0,
+        arpu: gaActiveUsers > 0 ? Math.round(purchaseStats.totalRevenue / gaActiveUsers) : 0,
       },
       recentOrders: purchaseStats.recentOrders.map(o => ({
         orderedAt: o.orderedAt,
@@ -915,6 +919,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     if (!currentPeriodStats || !previousPeriodStats) return;
 
     const ranges = getCompareDateRanges(comparePreset, compareCustomDateRange);
+    const currentGaUsers = currentGaStats?.activeUsers ?? 0;
+    const prevGaUsers = previousGaStats?.activeUsers ?? 0;
 
     const data = {
       tab: '비교',
@@ -934,6 +940,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         content: {
           free: currentPeriodStats.freeContentUsage,
           paid: currentPeriodStats.paidContentUsage,
+        },
+        purchase: {
+          orders: currentPeriodStats.paidContentUsage,
+          revenue: currentPeriodStats.totalRevenue,
+          conversionRate: currentGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / currentGaUsers * 1000) / 10 : 0,
+          avgOrderValue: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0,
+          arpu: currentGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / currentGaUsers) : 0,
         },
         tags: {
           userCount: currentPeriodStats.tagUserCount,
@@ -955,6 +968,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         content: {
           free: previousPeriodStats.freeContentUsage,
           paid: previousPeriodStats.paidContentUsage,
+        },
+        purchase: {
+          orders: previousPeriodStats.paidContentUsage,
+          revenue: previousPeriodStats.totalRevenue,
+          conversionRate: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0,
+          avgOrderValue: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0,
+          arpu: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0,
         },
         tags: {
           userCount: previousPeriodStats.tagUserCount,
