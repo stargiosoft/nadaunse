@@ -1259,6 +1259,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 {/* GA 전체 고객 통계 섹션 */}
                 <SectionHeader icon="📈" title="GA 전체 고객 통계" />
 
+                {/* GA 데이터 처리 지연 안내 */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '10px 12px' }}>
+                  <span style={{ fontSize: '14px', flexShrink: 0, marginTop: '1px' }}>⚠️</span>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#92400e', lineHeight: '1.6' }}>
+                    GA4 데이터는 수집 후 최대 72시간 동안 처리·확정됩니다. 최근 2~3일 수치(특히 신규/재방문 분류)는 이후 변동될 수 있으며, 과거 날짜일수록 확정된 값입니다.
+                  </p>
+                </div>
+
                 {/* 1. 방문자 추이 (GA) */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
