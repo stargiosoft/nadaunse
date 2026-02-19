@@ -961,6 +961,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         purchase: {
           orders: currentPeriodStats.paidContentUsage,
           revenue: currentPeriodStats.totalRevenue,
+          avgOrderValue: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0,
           conversionRate: currentGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / currentGaUsers * 1000) / 10 : 0,
           arpu: currentGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / currentGaUsers) : 0,
         },
@@ -990,6 +991,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         purchase: {
           orders: previousPeriodStats.paidContentUsage,
           revenue: previousPeriodStats.totalRevenue,
+          avgOrderValue: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0,
           conversionRate: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0,
           arpu: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0,
         },
@@ -2209,6 +2211,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     const prevGaUsers = previousGaStats?.activeUsers ?? 0;
                     const items = [
                       { label: '기간 매출', current: currentPeriodStats.totalRevenue, previous: previousPeriodStats.totalRevenue, unit: '', prefix: '₩' },
+                      { label: '주문수', current: currentPeriodStats.paidContentUsage, previous: previousPeriodStats.paidContentUsage, unit: '건', prefix: '' },
+                      { label: '객단가', current: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0, previous: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0, unit: '', prefix: '₩' },
                       { label: '구매 전환율', current: curGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / curGaUsers * 1000) / 10 : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0, unit: '%', prefix: '' },
                       { label: 'ARPU', current: curGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / curGaUsers) : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0, unit: '', prefix: '₩' },
                     ];
