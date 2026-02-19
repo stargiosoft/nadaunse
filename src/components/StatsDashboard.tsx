@@ -787,9 +787,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       ga: {
         activeUsers: gaStats.activeUsers,
         newUsers: gaStats.newUsers,
-        returningUsers: gaStats.returningUsers ?? 0,
-        returnRate: gaStats.activeUsers && gaStats.activeUsers > 0
-          ? Math.round((gaStats.returningUsers ?? 0) / gaStats.activeUsers * 1000) / 10 : 0,
+        returningUsers: gaStats.activeUsers && gaStats.newUsers ? gaStats.activeUsers - gaStats.newUsers : 0,
+        returnRate: gaStats.activeUsers && gaStats.newUsers && gaStats.activeUsers > 0
+          ? Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10 : 0,
         avgEngagementTime: gaStats.averageEngagementTime,
         freeResultPageViews: gaStats.freeResultPageViews,
         freeResultPageViewsPerUser: gaStats.freeResultPageViewsPerUser,
@@ -1427,7 +1427,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
-                        data={trendData}
+                        data={trendData.map(d => ({
+                          ...d,
+                          gaReturningUsers: Math.max(0, d.gaActiveUsers - d.gaNewUsers)
+                        }))}
                         margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -1452,7 +1455,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <LineChart
                         data={trendData.map(d => ({
                           ...d,
-                          gaReturnRate: d.gaActiveUsers > 0 ? Math.round(d.gaReturningUsers / d.gaActiveUsers * 1000) / 10 : 0
+                          gaReturnRate: d.gaActiveUsers > 0 ? Math.max(0, Math.round((d.gaActiveUsers - d.gaNewUsers) / d.gaActiveUsers * 1000) / 10) : 0
                         }))}
                         margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
                       >
@@ -2321,10 +2324,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <StatCard
                         icon={UserCheck}
                         label="재방문자"
-                        value={gaStats.returningUsers ?? 0}
+                        value={Math.max(0, gaStats.activeUsers - gaStats.newUsers)}
                         unit="명"
                         color="#368683"
-                        subValue={`재방문율 ${gaStats.activeUsers && gaStats.activeUsers > 0 ? Math.round((gaStats.returningUsers ?? 0) / gaStats.activeUsers * 1000) / 10 : 0}%`}
+                        subValue={`재방문율 ${gaStats.activeUsers > 0 ? Math.max(0, Math.round((gaStats.activeUsers - gaStats.newUsers) / gaStats.activeUsers * 1000) / 10) : 0}%`}
                       />
                       {gaStats.averageEngagementTime !== undefined && (
                         <StatCard
