@@ -1680,8 +1680,21 @@ export interface PurchaseStatsData {
  * 구매 통계 데이터 조회
  * orders + users + master_contents + user_trait_tags 기반 구매 분석
  */
-export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
+export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<PurchaseStatsData> {
   const adminFilter = ADMIN_IDS.join(',');
+
+  // 주문 쿼리 빌더 (dateRange 적용)
+  const buildOrderQuery = (select: string) => {
+    let q = supabase
+      .from('orders')
+      .select(select)
+      .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
+      .not('user_id', 'in', `(${adminFilter})`);
+    if (dateRange?.startDate) q = q.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) q = q.lte('created_at', dateRange.endDate);
+    return q;
+  };
 
   // 5개 쿼리 병렬 실행
   const [
@@ -1692,22 +1705,12 @@ export async function fetchPurchaseStats(): Promise<PurchaseStatsData> {
     contentsResult,
   ] = await Promise.all([
     // 1. 최근 완료 주문 50건 (0원 쿠폰 결제 제외)
-    supabase
-      .from('orders')
-      .select('id, user_id, content_id, paid_amount, pay_method, pg_provider, pstatus, created_at')
-      .eq('pstatus', 'completed')
-      .gt('paid_amount', 0)
-      .not('user_id', 'in', `(${adminFilter})`)
+    buildOrderQuery('id, user_id, content_id, paid_amount, pay_method, pg_provider, pstatus, created_at')
       .order('created_at', { ascending: false })
       .limit(50),
 
     // 2. 전체 완료 주문 (고객별 구매 통계, 0원 쿠폰 결제 제외)
-    supabase
-      .from('orders')
-      .select('user_id, paid_amount')
-      .eq('pstatus', 'completed')
-      .gt('paid_amount', 0)
-      .not('user_id', 'in', `(${adminFilter})`),
+    buildOrderQuery('user_id, paid_amount'),
 
     // 3. 유저 데이터
     supabase
