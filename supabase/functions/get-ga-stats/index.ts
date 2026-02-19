@@ -152,7 +152,7 @@ async function getActiveUsers(
   propertyId: string,
   startDate: string,
   endDate: string
-): Promise<{ activeUsers: number; newUsers: number; returningUsers: number; averageEngagementTime: number }> {
+): Promise<{ activeUsers: number; newUsers: number; averageEngagementTime: number }> {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
     {
@@ -167,7 +167,6 @@ async function getActiveUsers(
           { name: 'activeUsers' },
           { name: 'newUsers' },
           { name: 'userEngagementDuration' },
-          { name: 'returningUsers' },
         ],
       }),
     }
@@ -184,13 +183,12 @@ async function getActiveUsers(
     const activeUsers = parseInt(data.rows[0].metricValues[0].value, 10);
     const newUsers = parseInt(data.rows[0].metricValues[1].value, 10);
     const totalEngagementSeconds = parseFloat(data.rows[0].metricValues[2].value);
-    const returningUsers = parseInt(data.rows[0].metricValues[3].value, 10);
     // 활성 사용자당 평균 참여 시간 (초)
     const averageEngagementTime = activeUsers > 0 ? Math.round(totalEngagementSeconds / activeUsers) : 0;
-    return { activeUsers, newUsers, returningUsers, averageEngagementTime };
+    return { activeUsers, newUsers, averageEngagementTime };
   }
 
-  return { activeUsers: 0, newUsers: 0, returningUsers: 0, averageEngagementTime: 0 };
+  return { activeUsers: 0, newUsers: 0, averageEngagementTime: 0 };
 }
 
 // GA Data API 호출 - 특정 페이지 조회수 (무료 운세 결과)
@@ -285,7 +283,6 @@ async function getDailyActiveUsers(
           { name: 'activeUsers' },
           { name: 'newUsers' },
           { name: 'userEngagementDuration' },
-          { name: 'returningUsers' },
         ],
         orderBys: [{ dimension: { dimensionName: 'date' } }],
       }),
@@ -306,20 +303,103 @@ async function getDailyActiveUsers(
       const activeUsers = parseInt(row.metricValues[0].value, 10);
       const newUsers = parseInt(row.metricValues[1].value, 10);
       const totalEngagementSeconds = parseFloat(row.metricValues[2].value);
-      const returningUsers = parseInt(row.metricValues[3].value, 10);
       const averageEngagementTime = activeUsers > 0 ? Math.round(totalEngagementSeconds / activeUsers) : 0;
 
       dailyData.push({
         date,
         activeUsers,
         newUsers,
-        returningUsers,
+        returningUsers: 0, // 별도 API로 채워짐
         averageEngagementTime,
       });
     }
   }
 
   return dailyData;
+}
+
+// GA Data API 호출 - newVsReturning 디멘션으로 기간별 재방문자 수 조회
+async function getReturningUsersCount(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'newVsReturning' }],
+        metrics: [{ name: 'activeUsers' }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA 재방문자 API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  if (data.rows) {
+    for (const row of data.rows) {
+      if (row.dimensionValues[0].value === 'returning') {
+        return parseInt(row.metricValues[0].value, 10);
+      }
+    }
+  }
+  return 0;
+}
+
+// GA Data API 호출 - newVsReturning 디멘션으로 일별 재방문자 수 조회
+async function getDailyReturningUsers(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<Map<string, number>> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'date' }, { name: 'newVsReturning' }],
+        metrics: [{ name: 'activeUsers' }],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA 일별 재방문자 API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const returningMap = new Map<string, number>();
+
+  if (data.rows) {
+    for (const row of data.rows) {
+      const date = row.dimensionValues[0].value;
+      const userType = row.dimensionValues[1].value;
+      if (userType === 'returning') {
+        returningMap.set(date, parseInt(row.metricValues[0].value, 10));
+      }
+    }
+  }
+
+  return returningMap;
 }
 
 serve(async (req: Request) => {
@@ -356,8 +436,15 @@ serve(async (req: Request) => {
         realtimeActiveUsers: realtimeUsers,
       };
     } else if (type === 'daily') {
-      // 일별 데이터 조회
-      const dailyData = await getDailyActiveUsers(accessToken, propertyId, startDate, endDate);
+      // 일별 데이터 + 재방문자 데이터 병렬 조회
+      const [dailyData, dailyReturning] = await Promise.all([
+        getDailyActiveUsers(accessToken, propertyId, startDate, endDate),
+        getDailyReturningUsers(accessToken, propertyId, startDate, endDate),
+      ]);
+      // 재방문자 수 병합
+      for (const day of dailyData) {
+        day.returningUsers = dailyReturning.get(day.date) || 0;
+      }
       result = {
         success: true,
         type: 'daily',
@@ -366,10 +453,11 @@ serve(async (req: Request) => {
         data: dailyData,
       };
     } else {
-      // 기간별 데이터와 페이지 조회수를 병렬로 조회
-      const [periodData, pageData] = await Promise.all([
+      // 기간별 데이터, 페이지 조회수, 재방문자 수를 병렬로 조회
+      const [periodData, pageData, returningUsers] = await Promise.all([
         getActiveUsers(accessToken, propertyId, startDate, endDate),
         getFreeResultPageViews(accessToken, propertyId, startDate, endDate),
+        getReturningUsersCount(accessToken, propertyId, startDate, endDate),
       ]);
       result = {
         success: true,
@@ -377,6 +465,7 @@ serve(async (req: Request) => {
         startDate,
         endDate,
         ...periodData,
+        returningUsers,
         freeResultPageViews: pageData.pageViews,
         freeResultPageViewsPerUser: pageData.pageViewsPerUser,
       };
