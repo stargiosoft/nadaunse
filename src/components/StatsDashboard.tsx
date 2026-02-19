@@ -1505,40 +1505,99 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
                 {/* 구매 통계 섹션 */}
                 <SectionHeader icon="🛒" title="구매 통계" />
-                {trendPurchaseLoading && !trendPurchaseStats && (
-                  <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontSize: '13px' }}>로딩 중...</div>
-                )}
-                {!trendPurchaseLoading && trendPurchaseStats && (() => {
-                  const trendGaTotal = trendData.reduce((sum, d) => sum + d.gaActiveUsers, 0);
-                  return (
-                    <div className="grid grid-cols-2 gap-3">
-                      <StatCard icon={ShoppingCart} label="총 주문" value={trendPurchaseStats.totalOrders} unit="건" color="#3FB5B3" />
-                      <StatCard icon={DollarSign} label="총 매출" value={trendPurchaseStats.totalRevenue.toLocaleString()} unit="원" color="#6366F1" />
-                      <StatCard icon={Users} label="구매 고객" value={trendPurchaseStats.uniqueBuyers} unit="명" color="#EC4899" />
-                      <StatCard icon={BarChart3} label="인당 평균" value={trendPurchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
-                      {trendGaTotal > 0 && (
-                        <StatCard
-                          icon={Activity}
-                          label="구매 전환율"
-                          value={Math.round(trendPurchaseStats.totalOrders / trendGaTotal * 1000) / 10}
-                          unit="%"
-                          color="#10B981"
-                          subValue="GA 총방문자 대비 구매"
-                        />
-                      )}
-                      {trendPurchaseStats.totalOrders > 0 && (
-                        <StatCard
-                          icon={CreditCard}
-                          label="객단가"
-                          value={Math.round(trendPurchaseStats.totalRevenue / trendPurchaseStats.totalOrders).toLocaleString()}
-                          unit="원"
-                          color="#8B5CF6"
-                          subValue="총매출 / 구매횟수"
-                        />
-                      )}
-                    </div>
-                  );
-                })()}
+
+                {/* 주문 수 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>주문 수 추이</h3>
+                    {trendPurchaseStats && (
+                      <span style={{ ...typography.small, color: '#999' }}>총 {trendPurchaseStats.totalOrders}건</span>
+                    )}
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip formatter={(value: number) => [`${value}건`, '주문 수']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="paidContentUsage" name="주문 수" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 매출 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>매출 추이</h3>
+                    {trendPurchaseStats && (
+                      <span style={{ ...typography.small, color: '#999' }}>총 {trendPurchaseStats.totalRevenue.toLocaleString()}원</span>
+                    )}
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)} />
+                        <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, '매출']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="revenue" name="매출" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+
+                {/* 구매 전환율 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>구매 전환율 추이</h3>
+                    {trendPurchaseStats && (() => {
+                      const totalGa = trendData.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+                      return totalGa > 0 && (
+                        <span style={{ ...typography.small, color: '#999' }}>
+                          평균 {Math.round(trendPurchaseStats.totalOrders / totalGa * 1000) / 10}%
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip formatter={(value: number) => [`${value}%`, '구매 전환율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey={(d) => d.gaActiveUsers > 0 ? Math.round(d.paidContentUsage / d.gaActiveUsers * 1000) / 10 : 0} name="구매 전환율" stroke="#10B981" strokeWidth={2} dot={{ r: 3, fill: '#10B981' }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>GA 총방문자 대비 구매</p>
+                </section>
+
+                {/* 객단가 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>객단가 추이</h3>
+                    {trendPurchaseStats && trendPurchaseStats.totalOrders > 0 && (
+                      <span style={{ ...typography.small, color: '#999' }}>
+                        평균 {Math.round(trendPurchaseStats.totalRevenue / trendPurchaseStats.totalOrders).toLocaleString()}원
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)} />
+                        <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, '객단가']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey={(d) => d.paidContentUsage > 0 ? Math.round(d.revenue / d.paidContentUsage) : 0} name="객단가" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>총매출 / 구매횟수</p>
+                </section>
 
                 {/* 태그 통계 섹션 */}
                 <SectionHeader icon="🏷️" title="태그 통계" />
@@ -1669,24 +1728,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                         <Tooltip formatter={(value: number) => [`${value}%`, '확인율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
                         <Line type="monotone" dataKey="tagConfirmRate" name="확인율" stroke={TREND_COLORS.tertiary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.tertiary }} activeDot={{ r: 5 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </section>
-
-                {/* 9. 매출 추이 */}
-                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
-                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>매출 추이</h3>
-                  </div>
-                  <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
-                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
-                        <Tooltip formatter={(value: number) => [`₩${value.toLocaleString()}`, '매출']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey="revenue" name="매출" stroke={TREND_COLORS.quaternary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.quaternary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -2452,29 +2493,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     </div>
                   </div>
                 )}
-              </div>
-            </section>
-
-            {/* 매출 통계 섹션 */}
-            <section>
-              <SectionHeader icon="💰" title="매출 통계" />
-              <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex items-center justify-center rounded-full"
-                    style={{ width: '48px', height: '48px', backgroundColor: '#E4F7F7' }}
-                  >
-                    <DollarSign size={24} color="#3FB5B3" />
-                  </div>
-                  <div>
-                    <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', color: '#666666' }}>
-                      {selectedPreset === '1year' ? '연간 매출' : '기간 매출'}
-                    </p>
-                    <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '24px', fontWeight: 600, color: '#1a1a1a' }}>
-                      ₩{stats.totalRevenue.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
               </div>
             </section>
 
