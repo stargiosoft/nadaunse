@@ -193,7 +193,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [reportCountFunnel, setReportCountFunnel] = useState<ReportFunnelData | null>(null);
   const [reportCountFunnelLoading, setReportCountFunnelLoading] = useState(false);
 
-  // 구매 탭 상태
+  // 개요 탭 구매 통계 (기간 필터 적용)
+  const [overviewPurchaseStats, setOverviewPurchaseStats] = useState<PurchaseStatsData | null>(null);
+  const [overviewPurchaseLoading, setOverviewPurchaseLoading] = useState(false);
+
+  // 구매 탭 상태 (전체 기간, 필터 없음)
   const [purchaseStats, setPurchaseStats] = useState<PurchaseStatsData | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -291,8 +295,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         freeResultPageViews: gaPeriodData?.freeResultPageViews,
         freeResultPageViewsPerUser: gaPeriodData?.freeResultPageViewsPerUser,
       } as GAStats);
-      // 구매 탭은 기간 필터 없이 전체 데이터 표시
-      loadPurchaseData();
+      // 개요 탭 구매 통계: 기간 필터 적용
+      loadOverviewPurchaseData(dateRangeFilter);
     } catch (err) {
       console.error('통계 로드 오류:', err);
       setError('통계 데이터를 불러오는데 실패했습니다.');
@@ -590,12 +594,25 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     loadReportData(preset);
   };
 
-  // 구매 데이터 로드 함수
-  const loadPurchaseData = async (dateRange?: DateRangeFilter) => {
+  // 개요 탭 구매 데이터 로드 함수 (기간 필터 적용)
+  const loadOverviewPurchaseData = async (dateRange: DateRangeFilter) => {
+    setOverviewPurchaseLoading(true);
+    try {
+      const data = await fetchPurchaseStats(dateRange);
+      setOverviewPurchaseStats(data);
+    } catch (err) {
+      console.error('개요 구매 통계 로드 오류:', err);
+    } finally {
+      setOverviewPurchaseLoading(false);
+    }
+  };
+
+  // 구매 탭 데이터 로드 함수 (전체 기간)
+  const loadPurchaseData = async () => {
     setPurchaseLoading(true);
     setPurchaseError(null);
     try {
-      const data = await fetchPurchaseStats(dateRange);
+      const data = await fetchPurchaseStats();
       setPurchaseStats(data);
     } catch (err) {
       console.error('구매 데이터 로드 오류:', err);
@@ -605,7 +622,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 구매 탭 선택 시 데이터 로드
+  // 구매 탭 선택 시 데이터 로드 (전체 기간)
   useEffect(() => {
     if (selectedTab === '구매' && !purchaseStats && !purchaseLoading) {
       loadPurchaseData();
@@ -765,8 +782,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const copyOverviewData = async () => {
     if (!stats || !gaStats) return;
 
-    // 구매 통계가 아직 로드 안 됐으면 먼저 로드
-    let latestPurchaseStats = purchaseStats;
+    // 개요 탭 구매 통계 (기간 필터 적용된 데이터 사용)
+    let latestPurchaseStats = overviewPurchaseStats;
     if (!latestPurchaseStats) {
       try {
         const dateRangeFilter = selectedPreset === 'custom' && dateRange?.from
@@ -2443,46 +2460,46 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
               </div>
             </section>
 
-            {/* 구매 통계 섹션 */}
+            {/* 구매 통계 섹션 (개요 탭: 기간 필터 적용) */}
             <section>
               <SectionHeader icon="🛒" title="구매 통계" />
-              {purchaseLoading && !purchaseStats && (
+              {overviewPurchaseLoading && !overviewPurchaseStats && (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontSize: '13px' }}>로딩 중...</div>
               )}
-              {!purchaseLoading && purchaseStats && (
+              {!overviewPurchaseLoading && overviewPurchaseStats && (
                 <div className="grid grid-cols-2 gap-3">
                   <StatCard
                     icon={ShoppingCart}
                     label="총 주문"
-                    value={purchaseStats.totalOrders}
+                    value={overviewPurchaseStats.totalOrders}
                     unit="건"
                     color="#3FB5B3"
                   />
                   <StatCard
                     icon={DollarSign}
                     label="총 매출"
-                    value={purchaseStats.totalRevenue.toLocaleString()}
+                    value={overviewPurchaseStats.totalRevenue.toLocaleString()}
                     unit="원"
                     color="#6366F1"
                   />
                   <StatCard
                     icon={Users}
                     label="구매 고객"
-                    value={purchaseStats.uniqueBuyers}
+                    value={overviewPurchaseStats.uniqueBuyers}
                     unit="명"
                     color="#EC4899"
                   />
                   <StatCard
                     icon={BarChart3}
                     label="인당 평균"
-                    value={purchaseStats.avgPurchasesPerBuyer}
+                    value={overviewPurchaseStats.avgPurchasesPerBuyer}
                     unit="회"
                     color="#F59E0B"
                   />
                   <StatCard
                     icon={Activity}
                     label="구매 전환율"
-                    value={(gaStats?.activeUsers ?? 0) > 0 ? Math.round(purchaseStats.totalOrders / gaStats!.activeUsers * 1000) / 10 : 0}
+                    value={(gaStats?.activeUsers ?? 0) > 0 ? Math.round(overviewPurchaseStats.totalOrders / gaStats!.activeUsers * 1000) / 10 : 0}
                     unit="%"
                     color="#10B981"
                     subValue="GA 총방문자 대비 구매"
@@ -2490,7 +2507,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <StatCard
                     icon={CreditCard}
                     label="객단가"
-                    value={purchaseStats.totalOrders > 0 ? Math.round(purchaseStats.totalRevenue / purchaseStats.totalOrders).toLocaleString() : 0}
+                    value={overviewPurchaseStats.totalOrders > 0 ? Math.round(overviewPurchaseStats.totalRevenue / overviewPurchaseStats.totalOrders).toLocaleString() : 0}
                     unit="원"
                     color="#8B5CF6"
                     subValue="총매출 / 구매횟수"
@@ -2498,7 +2515,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <StatCard
                     icon={TrendingUp}
                     label="ARPU"
-                    value={(gaStats?.activeUsers ?? 0) > 0 ? Math.round(purchaseStats.totalRevenue / gaStats!.activeUsers).toLocaleString() : 0}
+                    value={(gaStats?.activeUsers ?? 0) > 0 ? Math.round(overviewPurchaseStats.totalRevenue / gaStats!.activeUsers).toLocaleString() : 0}
                     unit="원"
                     color="#F43F5E"
                     subValue="총매출 / 총 방문자수"
