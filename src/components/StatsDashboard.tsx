@@ -2975,7 +2975,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                             <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                             <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                            <Tooltip content={({ active, payload, label }) => {
+                              if (!active || !payload || payload.length === 0) return null;
+                              const d = payload[0].payload as ReportTrendData;
+                              return (
+                                <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5', padding: '10px 14px', fontFamily: 'Pretendard Variable', fontSize: '13px' }}>
+                                  <p style={{ fontWeight: 600, color: '#333', margin: '0 0 6px' }}>{label}</p>
+                                  <p style={{ color: TREND_COLORS.primary, margin: '2px 0' }}>타로 완료율 : {d.tarotCompletionRate}%</p>
+                                  <p style={{ color: '#666', margin: '2px 0' }}>타로 3장 완료 : {d.tarotCompleted}건</p>
+                                  <p style={{ color: '#999', margin: '2px 0' }}>보고서 발행 : {d.totalReports}건</p>
+                                </div>
+                              );
+                            }} />
                             <Line type="monotone" dataKey="tarotCompletionRate" name="타로 완료율" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
                           </LineChart>
                         </ResponsiveContainer>
@@ -2991,7 +3002,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                             <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                             <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                            <Tooltip content={({ active, payload, label }) => {
+                              if (!active || !payload || payload.length === 0) return null;
+                              const d = payload[0].payload as ReportTrendData;
+                              return (
+                                <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5', padding: '10px 14px', fontFamily: 'Pretendard Variable', fontSize: '13px' }}>
+                                  <p style={{ fontWeight: 600, color: '#333', margin: '0 0 6px' }}>{label}</p>
+                                  <p style={{ color: TREND_COLORS.secondary, margin: '2px 0' }}>응원글 작성율 : {d.encouragementRate}%</p>
+                                  <p style={{ color: '#666', margin: '2px 0' }}>응원글 작성 : {d.wroteEncouragement}건</p>
+                                  <p style={{ color: '#999', margin: '2px 0' }}>보고서 발행 : {d.totalReports}건</p>
+                                </div>
+                              );
+                            }} />
                             <Line type="monotone" dataKey="encouragementRate" name="응원글 작성율" stroke={TREND_COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.secondary }} activeDot={{ r: 5 }} />
                           </LineChart>
                         </ResponsiveContainer>
@@ -3007,7 +3029,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                             <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                             <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                            <Tooltip content={({ active, payload, label }) => {
+                              if (!active || !payload || payload.length === 0) return null;
+                              const d = payload[0].payload as ReportTrendData;
+                              return (
+                                <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5', padding: '10px 14px', fontFamily: 'Pretendard Variable', fontSize: '13px' }}>
+                                  <p style={{ fontWeight: 600, color: '#333', margin: '0 0 6px' }}>{label}</p>
+                                  <p style={{ color: TREND_COLORS.tertiary, margin: '2px 0' }}>쿠폰 발급율 : {d.couponIssuedRate}%</p>
+                                  <p style={{ color: '#666', margin: '2px 0' }}>쿠폰 발급 : {d.couponIssued}건</p>
+                                  <p style={{ color: '#999', margin: '2px 0' }}>보고서 발행 : {d.totalReports}건</p>
+                                </div>
+                              );
+                            }} />
                             <Line type="monotone" dataKey="couponIssuedRate" name="쿠폰 발급율" stroke={TREND_COLORS.tertiary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.tertiary }} activeDot={{ r: 5 }} />
                           </LineChart>
                         </ResponsiveContainer>
