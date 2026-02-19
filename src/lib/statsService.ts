@@ -1238,6 +1238,24 @@ export interface ContentViewStats {
   categoryMain: string;
 }
 
+// DB에 혼재하는 카테고리명 이형(異形)을 정규화하는 매핑 테이블
+const CATEGORY_ALIASES: Record<string, string> = {
+  '이사매매': '이사/매매',
+};
+
+/** 카테고리명을 정규화된 표준 이름으로 변환 */
+function normalizeCategoryName(cat: string): string {
+  return CATEGORY_ALIASES[cat] ?? cat;
+}
+
+/** 정규화된 카테고리명에 해당하는 모든 원본 이름(이형 포함) 반환 */
+function getCategoryOriginalNames(normalizedCat: string): string[] {
+  const aliases = Object.entries(CATEGORY_ALIASES)
+    .filter(([, v]) => v === normalizedCat)
+    .map(([k]) => k);
+  return [normalizedCat, ...aliases];
+}
+
 /**
  * 카테고리별 콘텐츠 뷰수 랭킹 조회 (기간 필터 기반)
  * - 'this_week': weekly_clicks 기준
@@ -1268,7 +1286,7 @@ export async function fetchCategoryViewRanking(
 
     const categoryMap = new Map<string, { totalViews: number; contentCount: number }>();
     for (const item of data) {
-      const cat = item.category_main || '기타';
+      const cat = normalizeCategoryName(item.category_main || '기타');
       const existing = categoryMap.get(cat) || { totalViews: 0, contentCount: 0 };
       existing.totalViews += (item as Record<string, unknown>)[viewColumn] as number || 0;
       existing.contentCount += 1;
@@ -1309,7 +1327,7 @@ export async function fetchTopContentsByCategory(
       .from('master_contents')
       .select(`id, title, content_type, ${viewColumn}, category_main`)
       .eq('status', 'deployed')
-      .eq('category_main', category)
+      .in('category_main', getCategoryOriginalNames(category))
       .order(viewColumn, { ascending: false })
       .limit(limit);
 
