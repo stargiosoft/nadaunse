@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Clock, Copy, ExternalLink, BarChart3, Trophy, ShoppingCart } from 'lucide-react';
+import { Users, UserPlus, UserCheck, Eye, Gift, CreditCard, DollarSign, RefreshCw, Calendar, X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Activity, Clock, Copy, ExternalLink, BarChart3, Trophy, ShoppingCart, TrendingUp } from 'lucide-react';
 import svgPathsBack from "../imports/svg-ct14exwyb3";
 import svgPathsHome from "../imports/svg-sg7rn8f2dm";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, CartesianGrid, PieChart, Pie, ScatterChart, Scatter, ZAxis } from 'recharts';
@@ -761,6 +761,21 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const copyOverviewData = async () => {
     if (!stats || !gaStats) return;
 
+    // 구매 통계가 아직 로드 안 됐으면 먼저 로드
+    let latestPurchaseStats = purchaseStats;
+    if (!latestPurchaseStats) {
+      try {
+        const dateRangeFilter = selectedPreset === 'custom' && dateRange?.from
+          ? { startDate: dateRange.from.toISOString(), endDate: (dateRange.to ?? dateRange.from).toISOString() }
+          : getDateRangeFromPreset(selectedPreset);
+        latestPurchaseStats = await fetchPurchaseStats(dateRangeFilter);
+      } catch (err) {
+        console.error('구매 통계 로드 실패:', err);
+      }
+    }
+
+    const gaActiveUsers = gaStats.activeUsers ?? 0;
+
     const data = {
       tab: '개요',
       period: selectedPreset === 'custom' ? getDateLabel() : DATE_PRESETS.find(p => p.value === selectedPreset)?.label,
@@ -798,6 +813,15 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         overallTagConfirmRate: stats.overallTagConfirmRate,
         avgTagsPerUser: stats.avgTagsPerUser,
       },
+      purchase: latestPurchaseStats ? {
+        totalOrders: latestPurchaseStats.totalOrders,
+        totalRevenue: latestPurchaseStats.totalRevenue,
+        uniqueBuyers: latestPurchaseStats.uniqueBuyers,
+        avgPurchasesPerBuyer: latestPurchaseStats.avgPurchasesPerBuyer,
+        conversionRate: gaActiveUsers > 0 ? Math.round(latestPurchaseStats.totalOrders / gaActiveUsers * 1000) / 10 : 0,
+        avgOrderValue: latestPurchaseStats.totalOrders > 0 ? Math.round(latestPurchaseStats.totalRevenue / latestPurchaseStats.totalOrders) : 0,
+        arpu: gaActiveUsers > 0 ? Math.round(latestPurchaseStats.totalRevenue / gaActiveUsers) : 0,
+      } : null,
     };
 
     try {
@@ -1599,6 +1623,34 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>총매출 / 구매횟수</p>
                 </section>
 
+                {/* ARPU 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>ARPU 추이</h3>
+                    {(() => {
+                      const totalGa = trendData.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+                      const totalRev = trendData.reduce((sum, d) => sum + d.revenue, 0);
+                      return totalGa > 0 && (
+                        <span style={{ ...typography.small, color: '#999' }}>
+                          평균 {Math.round(totalRev / totalGa).toLocaleString()}원
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)} />
+                        <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, 'ARPU']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey={(d) => d.gaActiveUsers > 0 ? Math.round(d.revenue / d.gaActiveUsers) : 0} name="ARPU" stroke="#F43F5E" strokeWidth={2} dot={{ r: 3, fill: '#F43F5E' }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>총매출 / 총 방문자수 (GA)</p>
+                </section>
+
                 {/* 태그 통계 섹션 */}
                 <SectionHeader icon="🏷️" title="태그 통계" />
 
@@ -2365,26 +2417,30 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     unit="회"
                     color="#F59E0B"
                   />
-                  {(gaStats?.activeUsers ?? 0) > 0 && (
-                    <StatCard
-                      icon={Activity}
-                      label="구매 전환율"
-                      value={Math.round(purchaseStats.totalOrders / gaStats!.activeUsers * 1000) / 10}
-                      unit="%"
-                      color="#10B981"
-                      subValue={`GA 총방문자 대비 구매`}
-                    />
-                  )}
-                  {purchaseStats.totalOrders > 0 && (
-                    <StatCard
-                      icon={CreditCard}
-                      label="객단가"
-                      value={Math.round(purchaseStats.totalRevenue / purchaseStats.totalOrders).toLocaleString()}
-                      unit="원"
-                      color="#8B5CF6"
-                      subValue="총매출 / 구매횟수"
-                    />
-                  )}
+                  <StatCard
+                    icon={Activity}
+                    label="구매 전환율"
+                    value={(gaStats?.activeUsers ?? 0) > 0 ? Math.round(purchaseStats.totalOrders / gaStats!.activeUsers * 1000) / 10 : 0}
+                    unit="%"
+                    color="#10B981"
+                    subValue="GA 총방문자 대비 구매"
+                  />
+                  <StatCard
+                    icon={CreditCard}
+                    label="객단가"
+                    value={purchaseStats.totalOrders > 0 ? Math.round(purchaseStats.totalRevenue / purchaseStats.totalOrders).toLocaleString() : 0}
+                    unit="원"
+                    color="#8B5CF6"
+                    subValue="총매출 / 구매횟수"
+                  />
+                  <StatCard
+                    icon={TrendingUp}
+                    label="ARPU"
+                    value={(gaStats?.activeUsers ?? 0) > 0 ? Math.round(purchaseStats.totalRevenue / gaStats!.activeUsers).toLocaleString() : 0}
+                    unit="원"
+                    color="#F43F5E"
+                    subValue="총매출 / 총 방문자수"
+                  />
                 </div>
               )}
             </section>
