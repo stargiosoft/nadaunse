@@ -3167,14 +3167,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     </button>
                   </div>
 
-                  {/* 개요 StatCard 4개 */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
-                    <StatCard icon={ShoppingCart} label="총 주문" value={purchaseStats.totalOrders} unit="건" color="#3FB5B3" />
-                    <StatCard icon={DollarSign} label="총 매출" value={purchaseStats.totalRevenue.toLocaleString()} unit="원" color="#6366F1" />
-                    <StatCard icon={Users} label="구매 고객" value={purchaseStats.uniqueBuyers} unit="명" color="#EC4899" />
-                    <StatCard icon={BarChart3} label="인당 평균" value={purchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
-                  </div>
-
                   {/* 가로+세로 스크롤 테이블 (고정 높이) */}
                   <div style={{ overflow: 'auto', maxHeight: '360px', border: '1px solid #f0f0f0', borderRadius: '8px' }}>
                     <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontFamily: 'Pretendard Variable, sans-serif' }}>
