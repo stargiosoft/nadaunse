@@ -13,7 +13,7 @@ import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportFunnelByCount, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -186,6 +186,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportTrendPreset, setReportTrendPreset] = useState<TrendRangePreset>('30days');
+
+  // 보고서 횟수별 퍼널 상태
+  const [reportCountFilter, setReportCountFilter] = useState<number | 'custom'>(1);
+  const [customReportCountInput, setCustomReportCountInput] = useState('');
+  const [reportCountFunnel, setReportCountFunnel] = useState<ReportFunnelData | null>(null);
+  const [reportCountFunnelLoading, setReportCountFunnelLoading] = useState(false);
 
   // 구매 탭 상태
   const [purchaseStats, setPurchaseStats] = useState<PurchaseStatsData | null>(null);
@@ -536,12 +542,35 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
+  const loadReportCountFunnel = async (count: number) => {
+    setReportCountFunnelLoading(true);
+    try {
+      const data = await fetchReportFunnelByCount(count);
+      setReportCountFunnel(data);
+    } catch (err) {
+      console.error('보고서 횟수별 퍼널 로드 오류:', err);
+    } finally {
+      setReportCountFunnelLoading(false);
+    }
+  };
+
   // 보고서 탭 선택 시 데이터 로드
   useEffect(() => {
     if (selectedTab === '보고서' && !reportFunnel && !reportLoading) {
       loadReportData();
     }
+    if (selectedTab === '보고서' && !reportCountFunnel && !reportCountFunnelLoading) {
+      loadReportCountFunnel(1);
+    }
   }, [selectedTab]);
+
+  // 횟수별 퍼널 필터 변경 핸들러
+  const handleReportCountFilterChange = (count: number | 'custom') => {
+    setReportCountFilter(count);
+    if (count !== 'custom') {
+      loadReportCountFunnel(count);
+    }
+  };
 
   // 보고서 기간 변경 핸들러
   const handleReportTrendPresetChange = (preset: TrendRangePreset) => {
@@ -2783,8 +2812,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <tbody>
                         {[
                           { label: '보고서 발행', value: reportFunnel.totalReports, rate: 100 },
-                          { label: '타로 카드 생성', value: reportFunnel.tarotGenerated, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotGenerated / reportFunnel.totalReports * 1000) / 10 : 0 },
-                          { label: '타로 1장 이상 확인', value: reportFunnel.tarotStarted, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotStarted / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '타로 3장 완료', value: reportFunnel.tarotCompleted, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotCompleted / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '응원글 작성', value: reportFunnel.wroteEncouragement, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.wroteEncouragement / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '쿠폰 발급', value: reportFunnel.couponIssued, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.couponIssued / reportFunnel.totalReports * 1000) / 10 : 0 },
@@ -2798,6 +2825,117 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       </tbody>
                     </table>
                   </div>
+                </section>
+
+                {/* 보고서 발행 횟수별 퍼널 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '16px' }}>
+                    <BarChart3 size={16} color="#3FB5B3" />
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>보고서 발행 횟수별 퍼널</h3>
+                  </div>
+
+                  {/* 횟수 필터 */}
+                  <div className="flex gap-2 overflow-x-auto" style={{ paddingBottom: '8px', marginBottom: '16px' }}>
+                    {([1, 2, 3] as const).map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => handleReportCountFilterChange(n)}
+                        className="rounded-full whitespace-nowrap transition-colors"
+                        style={{
+                          ...typography.preset,
+                          padding: '8px 16px',
+                          fontWeight: reportCountFilter === n ? 500 : 400,
+                          backgroundColor: reportCountFilter === n ? '#3FB5B3' : '#ffffff',
+                          color: reportCountFilter === n ? '#ffffff' : '#666666',
+                        }}
+                      >
+                        {n}회
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => handleReportCountFilterChange('custom')}
+                      className="rounded-full whitespace-nowrap transition-colors"
+                      style={{
+                        ...typography.preset,
+                        padding: '8px 16px',
+                        fontWeight: reportCountFilter === 'custom' ? 500 : 400,
+                        backgroundColor: reportCountFilter === 'custom' ? '#3FB5B3' : '#ffffff',
+                        color: reportCountFilter === 'custom' ? '#ffffff' : '#666666',
+                      }}
+                    >
+                      직접 입력
+                    </button>
+                  </div>
+
+                  {/* 직접 입력 필드 */}
+                  {reportCountFilter === 'custom' && (
+                    <div className="flex gap-2 items-center" style={{ marginBottom: '16px' }}>
+                      <input
+                        type="number"
+                        min={1}
+                        value={customReportCountInput}
+                        onChange={(e) => setCustomReportCountInput(e.target.value)}
+                        placeholder="횟수 입력"
+                        style={{
+                          fontFamily: 'Pretendard Variable, sans-serif',
+                          fontSize: '14px',
+                          padding: '8px 12px',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          width: '100px',
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          const n = parseInt(customReportCountInput, 10);
+                          if (n >= 1) loadReportCountFunnel(n);
+                        }}
+                        className="rounded-full transition-colors"
+                        style={{
+                          fontFamily: 'Pretendard Variable, sans-serif',
+                          fontSize: '13px',
+                          padding: '8px 16px',
+                          backgroundColor: '#3FB5B3',
+                          color: '#ffffff',
+                          fontWeight: 500,
+                        }}
+                      >
+                        조회
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 퍼널 테이블 */}
+                  {reportCountFunnelLoading ? (
+                    <div className="animate-pulse" style={{ height: '120px', backgroundColor: '#f5f5f5', borderRadius: '8px' }} />
+                  ) : reportCountFunnel ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>단계</th>
+                            <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>수</th>
+                            <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>전환율</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { label: '보고서 발행', value: reportCountFunnel.totalReports, rate: 100 },
+                            { label: '타로 3장 완료', value: reportCountFunnel.tarotCompleted, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.tarotCompleted / reportCountFunnel.totalReports * 1000) / 10 : 0 },
+                            { label: '응원글 작성', value: reportCountFunnel.wroteEncouragement, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.wroteEncouragement / reportCountFunnel.totalReports * 1000) / 10 : 0 },
+                            { label: '쿠폰 발급', value: reportCountFunnel.couponIssued, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.couponIssued / reportCountFunnel.totalReports * 1000) / 10 : 0 },
+                          ].map((row, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, color: '#1a1a1a', padding: '10px 12px', borderBottom: '1px solid #f8f8f8' }}>{row.label}</td>
+                              <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 600, color: '#3FB5B3', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.value.toLocaleString()}</td>
+                              <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 400, color: '#666', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.rate}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
                 </section>
 
                 {/* 기간 필터 */}

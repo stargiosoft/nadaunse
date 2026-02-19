@@ -1449,6 +1449,85 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
 }
 
 /**
+ * 보고서 발행 횟수별 퍼널 조회
+ * count: 사용자별 N번째 보고서를 대상으로 집계
+ * (예: count=1 → 각 사용자의 첫 번째 보고서들의 퍼널)
+ */
+export async function fetchReportFunnelByCount(count: number): Promise<ReportFunnelData> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 1. 완료된 보고서 전체 조회 (user_id, 날짜 포함, 날짜 오름차순)
+  const { data: allReports, error: reportsError } = await supabase
+    .from('weekly_reports')
+    .select('id, user_id, week_start_date, self_encouragement')
+    .eq('status', 'completed')
+    .not('user_id', 'in', `(${adminFilter})`)
+    .order('week_start_date', { ascending: true });
+
+  if (reportsError) {
+    console.error('보고서 퍼널(횟수별) 조회 오류:', reportsError);
+    throw new Error('보고서 데이터 조회에 실패했습니다.');
+  }
+
+  // 2. 사용자별 그룹핑 (week_start_date ASC 이미 정렬됨)
+  const byUser = new Map<string, { id: string; self_encouragement: string | null }[]>();
+  for (const r of allReports ?? []) {
+    if (!byUser.has(r.user_id)) byUser.set(r.user_id, []);
+    byUser.get(r.user_id)!.push({ id: r.id, self_encouragement: r.self_encouragement });
+  }
+
+  // 3. N번째 보고서만 추출 (해당 횟수 이상의 보고서를 가진 사용자만)
+  const targetReports: { id: string; self_encouragement: string | null }[] = [];
+  for (const reports of byUser.values()) {
+    if (reports.length >= count) {
+      targetReports.push(reports[count - 1]);
+    }
+  }
+
+  const totalReports = targetReports.length;
+  const reportIds = targetReports.map(r => r.id);
+  const wroteEncouragement = targetReports.filter(
+    r => r.self_encouragement && r.self_encouragement.trim().length > 0
+  ).length;
+
+  if (reportIds.length === 0) {
+    return { totalReports: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
+  }
+
+  // 4. 타로 선택 데이터 조회
+  const { data: tarotSelections, error: tarotError } = await supabase
+    .from('report_tarot_selections')
+    .select('report_id, user_viewed')
+    .in('report_id', reportIds);
+
+  if (tarotError) throw new Error('타로 선택 데이터 조회에 실패했습니다.');
+
+  const tarotByReport: Record<string, { total: number; viewed: number }> = {};
+  tarotSelections?.forEach(ts => {
+    if (!tarotByReport[ts.report_id]) tarotByReport[ts.report_id] = { total: 0, viewed: 0 };
+    tarotByReport[ts.report_id].total++;
+    if (ts.user_viewed) tarotByReport[ts.report_id].viewed++;
+  });
+
+  const tarotGenerated = Object.keys(tarotByReport).length;
+  const tarotStarted = Object.values(tarotByReport).filter(t => t.viewed >= 1).length;
+  const tarotCompleted = Object.values(tarotByReport).filter(t => t.viewed >= 3).length;
+
+  // 5. 쿠폰 발급 조회
+  const { data: coupons, error: couponError } = await supabase
+    .from('user_coupons')
+    .select('source_order_id')
+    .not('user_id', 'in', `(${adminFilter})`)
+    .in('source_order_id', reportIds);
+
+  if (couponError) throw new Error('쿠폰 데이터 조회에 실패했습니다.');
+
+  const couponIssued = new Set(coupons?.map(c => c.source_order_id) || []).size;
+
+  return { totalReports, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
+}
+
+/**
  * 보고서 추세 데이터 조회 (주별 집계 - 일~토 기준)
  * week_start_date로 그룹핑하여 주 단위 데이터 생성
  * 1년 프리셋은 월별로 추가 집계
