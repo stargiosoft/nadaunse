@@ -1100,11 +1100,21 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     <div className="box-border content-stretch flex flex-col gap-[16px] items-end px-[20px] py-0 relative w-full">
                       <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
                         <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                          <ContentTags
-                            isPaid={isPaid}
-                            isNew={isContentNew(content.created_at)}
-                            isRead={isRead}
-                          />
+                          <div className="flex items-center justify-between w-full">
+                            <ContentTags
+                              isPaid={isPaid}
+                              isNew={isContentNew(content.created_at)}
+                              isRead={isRead}
+                            />
+                            {content.view_count > 0 && (
+                              <div className="flex items-center gap-[3px] shrink-0">
+                                <img src="/eye-icon.svg" width="14" height="14" alt="" aria-hidden="true" />
+                                <span style={{ fontSize: '12px', fontWeight: 300, color: '#151515', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
+                                  {content.view_count.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                           <div className="relative shrink-0 w-full">
                             <div className="size-full">
                               <div className="box-border content-stretch flex flex-col gap-[10px] items-start px-[2px] py-0 relative w-full">

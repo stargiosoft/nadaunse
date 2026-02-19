@@ -525,10 +525,20 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0, isNew = 
 
       <div className="relative shrink-0 w-full overflow-hidden">
         <div className="box-border flex flex-col gap-[5px] items-start px-[4px]">
-          <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
           <p className="text-[15px] font-medium line-clamp-2 pl-[2px]">
             {content.title}
           </p>
+          <div className="flex items-center justify-between w-full">
+            <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
+            {content.view_count > 0 && (
+              <div className="flex items-center gap-[3px] shrink-0">
+                <img src="/eye-icon.svg" width="14" height="14" alt="" aria-hidden="true" />
+                <span style={{ fontSize: '12px', fontWeight: 300, color: '#151515', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
+                  {content.view_count.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -571,7 +581,6 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0, isNew = 
           <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
         </div>
         <div className="basis-0 content-stretch flex flex-col gap-[3px] grow items-start min-h-px min-w-px relative shrink-0 overflow-hidden" data-name="Card / PriceBlock">
-          <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
           <div className="relative shrink-0 w-full" data-name="Container">
             <div className="flex flex-row items-center justify-center size-full">
               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full overflow-hidden">
@@ -580,6 +589,17 @@ function ContentCard({ content, onClick, isFeatured = false, index = 0, isNew = 
                 </p>
               </div>
             </div>
+          </div>
+          <div className="flex items-center justify-between w-full">
+            <ContentTags isPaid={isPaid} isNew={isNew} isRead={isRead} />
+            {content.view_count > 0 && (
+              <div className="flex items-center gap-[3px] shrink-0">
+                <img src="/eye-icon.svg" width="14" height="14" alt="" aria-hidden="true" />
+                <span style={{ fontSize: '12px', fontWeight: 300, color: '#151515', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
+                  {content.view_count.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
