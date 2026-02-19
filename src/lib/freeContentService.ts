@@ -19,6 +19,7 @@ export interface MasterContent {
   title: string;
   description: string | null;
   thumbnail_url: string | null;
+  view_count: number;
   price_original: number;
   price_discount: number;
   discount_rate: number;
