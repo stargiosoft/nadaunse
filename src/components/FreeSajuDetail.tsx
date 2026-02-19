@@ -388,7 +388,7 @@ export default function FreeSajuDetail({
             {/* X 버튼 - 미노출 처리 (필요 시 invisible/pointer-events-none 제거하여 복구) */}
             <button
               onClick={onClose}
-              className="group flex items-center justify-center p-[4px] rounded-[12px] size-[44px] bg-transparent border-none cursor-pointer transition-colors duration-200 active:bg-gray-100 invisible pointer-events-none"
+              className="group flex items-center justify-center p-[4px] rounded-[12px] size-[44px] bg-transparent border-none cursor-pointer transition-colors duration-200 opacity-0 pointer-events-none"
             >
               <div className="size-[24px] transition-transform duration-200 group-active:scale-90 flex items-center justify-center">
                 <svg className="block size-[20px]" fill="none" viewBox="0 0 24 24">
