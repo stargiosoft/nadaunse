@@ -291,8 +291,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         freeResultPageViews: gaPeriodData?.freeResultPageViews,
         freeResultPageViewsPerUser: gaPeriodData?.freeResultPageViewsPerUser,
       } as GAStats);
-      // 개요 탭 구매 통계도 같은 기간으로 갱신
-      loadPurchaseData(dateRangeFilter);
+      // 구매 탭은 기간 필터 없이 전체 데이터 표시
+      loadPurchaseData();
     } catch (err) {
       console.error('통계 로드 오류:', err);
       setError('통계 데이터를 불러오는데 실패했습니다.');
@@ -945,12 +945,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           orders: currentPeriodStats.paidContentUsage,
           revenue: currentPeriodStats.totalRevenue,
           conversionRate: currentGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / currentGaUsers * 1000) / 10 : 0,
-          avgOrderValue: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0,
           arpu: currentGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / currentGaUsers) : 0,
         },
         tags: {
           userCount: currentPeriodStats.tagUserCount,
           confirmedCount: currentPeriodStats.confirmedTagCount,
+          tagUserRate: currentPeriodStats.tagUserRate,
+          avgTagsPerUser: currentPeriodStats.avgTagsPerUser,
         },
       },
       previousPeriod: {
@@ -973,12 +974,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           orders: previousPeriodStats.paidContentUsage,
           revenue: previousPeriodStats.totalRevenue,
           conversionRate: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0,
-          avgOrderValue: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0,
           arpu: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0,
         },
         tags: {
           userCount: previousPeriodStats.tagUserCount,
           confirmedCount: previousPeriodStats.confirmedTagCount,
+          tagUserRate: previousPeriodStats.tagUserRate,
+          avgTagsPerUser: previousPeriodStats.avgTagsPerUser,
         },
       },
     };
@@ -2182,16 +2184,52 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   })}
                 </section>
 
-                {/* 태그 통계 비교 */}
+                {/* 매출 통계 비교 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>💰 매출 통계</h3>
+                  {(() => {
+                    const curGaUsers = currentGaStats?.activeUsers ?? 0;
+                    const prevGaUsers = previousGaStats?.activeUsers ?? 0;
+                    const items = [
+                      { label: '기간 매출', current: currentPeriodStats.totalRevenue, previous: previousPeriodStats.totalRevenue, unit: '', prefix: '₩' },
+                      { label: '구매 전환율', current: curGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / curGaUsers * 1000) / 10 : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0, unit: '%', prefix: '' },
+                      { label: 'ARPU', current: curGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / curGaUsers) : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0, unit: '', prefix: '₩' },
+                    ];
+                    return items.map((item, idx) => {
+                      const change = calcChangePercent(item.current, item.previous);
+                      return (
+                        <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < items.length - 1 ? '12px' : 0 }}>
+                          <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
+                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
+                              {item.prefix}{item.previous.toLocaleString()}{item.unit}
+                            </p>
+                          </div>
+                          <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>{item.label}</p>
+                            <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
+                              {item.prefix}{item.current.toLocaleString()}{item.unit}
+                            </p>
+                            <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                              {change.isPositive ? '▲' : '▼'} {change.value}%
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </section>
+
+                {/* 태그 통계 비교 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
                   <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>🏷️ 태그 통계</h3>
                   {[
                     { label: '태그 저장율', current: currentPeriodStats.tagUserRate, previous: previousPeriodStats.tagUserRate, unit: '%' },
-                    { label: '전체 확인율', current: currentPeriodStats.overallTagConfirmRate, previous: previousPeriodStats.overallTagConfirmRate, unit: '%' },
-                  ].map((item, idx) => {
+                    { label: '회원당 태그 수', current: currentPeriodStats.avgTagsPerUser, previous: previousPeriodStats.avgTagsPerUser, unit: '개' },
+                  ].map((item, idx, arr) => {
                     const change = calcChangePercent(item.current, item.previous);
                     return (
-                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < 1 ? '12px' : 0 }}>
+                      <div key={idx} className="grid grid-cols-2 gap-3" style={{ marginBottom: idx < arr.length - 1 ? '12px' : 0 }}>
                         <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
                           <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>{item.label}</p>
                           <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
@@ -2210,33 +2248,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       </div>
                     );
                   })}
-                </section>
-
-                {/* 매출 통계 비교 */}
-                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
-                  <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>💰 매출 통계</h3>
-                  {(() => {
-                    const change = calcChangePercent(currentPeriodStats.totalRevenue, previousPeriodStats.totalRevenue);
-                    return (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-xl" style={{ backgroundColor: '#EEF2FF', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#818CF8', marginBottom: '4px' }}>기간 매출</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#4F46E5' }}>
-                            ₩{previousPeriodStats.totalRevenue.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-xl" style={{ backgroundColor: '#F0FDFA', padding: '12px' }}>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', color: '#666', marginBottom: '4px' }}>기간 매출</p>
-                          <p style={{ fontSize: '20px', fontFamily: 'Pretendard Variable', fontWeight: 600, color: '#1a1a1a' }}>
-                            ₩{currentPeriodStats.totalRevenue.toLocaleString()}
-                          </p>
-                          <p style={{ fontSize: '12px', fontFamily: 'Pretendard Variable', fontWeight: 500, color: change.isPositive ? '#10B981' : '#EF4444', marginTop: '4px' }}>
-                            {change.isPositive ? '▲' : '▼'} {change.value}%
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </section>
               </motion.div>
             )}
