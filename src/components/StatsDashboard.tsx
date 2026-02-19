@@ -836,10 +836,35 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const copyTrendData = async () => {
     if (!trendData || trendData.length === 0) return;
 
+    // 구매 통계가 아직 로드 안 됐으면 먼저 로드
+    let latestTrendPurchaseStats = trendPurchaseStats;
+    if (!latestTrendPurchaseStats) {
+      try {
+        const dateRangeFilter = trendCustomDateRange.start
+          ? { startDate: trendCustomDateRange.start.toISOString(), endDate: (trendCustomDateRange.end ?? trendCustomDateRange.start).toISOString() }
+          : getTrendDateRange(trendPreset);
+        latestTrendPurchaseStats = await fetchPurchaseStats(dateRangeFilter);
+      } catch (err) {
+        console.error('추세 구매 통계 로드 실패:', err);
+      }
+    }
+
+    const totalGa = trendData.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+    const totalRev = trendData.reduce((sum, d) => sum + d.revenue, 0);
+
     const data = {
       tab: '추세',
       period: trendCustomDateRange.start ? getTrendDateLabel() : TREND_PRESETS.find(p => p.value === trendPreset)?.label,
       timestamp: new Date().toISOString(),
+      purchase: latestTrendPurchaseStats ? {
+        totalOrders: latestTrendPurchaseStats.totalOrders,
+        totalRevenue: latestTrendPurchaseStats.totalRevenue,
+        uniqueBuyers: latestTrendPurchaseStats.uniqueBuyers,
+        avgPurchasesPerBuyer: latestTrendPurchaseStats.avgPurchasesPerBuyer,
+        conversionRate: totalGa > 0 ? Math.round(latestTrendPurchaseStats.totalOrders / totalGa * 1000) / 10 : 0,
+        avgOrderValue: latestTrendPurchaseStats.totalOrders > 0 ? Math.round(latestTrendPurchaseStats.totalRevenue / latestTrendPurchaseStats.totalOrders) : 0,
+        arpu: totalGa > 0 ? Math.round(totalRev / totalGa) : 0,
+      } : null,
       dailyData: trendData.map(d => ({
         date: d.fullDate,
         ga: {
@@ -867,7 +892,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           confirmRate: d.tagConfirmRate,
           avgPerUser: d.avgTagsPerUser,
         },
-        revenue: d.revenue,
+        purchase: {
+          orders: d.paidContentUsage,
+          revenue: d.revenue,
+          conversionRate: d.gaActiveUsers > 0 ? Math.round(d.paidContentUsage / d.gaActiveUsers * 1000) / 10 : 0,
+          avgOrderValue: d.paidContentUsage > 0 ? Math.round(d.revenue / d.paidContentUsage) : 0,
+          arpu: d.gaActiveUsers > 0 ? Math.round(d.revenue / d.gaActiveUsers) : 0,
+        },
       })),
     };
 
