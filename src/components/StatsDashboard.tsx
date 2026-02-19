@@ -198,6 +198,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
+  // 추세 탭 구매 통계 (추세 기간 필터 적용)
+  const [trendPurchaseStats, setTrendPurchaseStats] = useState<PurchaseStatsData | null>(null);
+  const [trendPurchaseLoading, setTrendPurchaseLoading] = useState(false);
+
   // 고객 탭 상태
   const [customerStats, setCustomerStats] = useState<CustomerStatsData | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -305,6 +309,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const loadTrendStats = async (preset: TrendRangePreset = trendPreset, customRange?: DateRangeFilter) => {
     setTrendLoading(true);
     setTrendError(null);
+    setTrendPurchaseLoading(true);
     try {
       let dateRangeFilter: DateRangeFilter;
       if (preset === 'custom' && customRange) {
@@ -313,13 +318,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         dateRangeFilter = getTrendDateRange(preset);
       }
 
-      const data = await fetchDailyTrendStats(dateRangeFilter, preset);
+      const [data, purchaseData] = await Promise.all([
+        fetchDailyTrendStats(dateRangeFilter, preset),
+        fetchPurchaseStats(dateRangeFilter),
+      ]);
       setTrendData(data);
+      setTrendPurchaseStats(purchaseData);
     } catch (err) {
       console.error('추세 데이터 로드 오류:', err);
       setTrendError('추세 데이터를 불러오는데 실패했습니다.');
     } finally {
       setTrendLoading(false);
+      setTrendPurchaseLoading(false);
     }
   };
 
@@ -1495,37 +1505,40 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
                 {/* 구매 통계 섹션 */}
                 <SectionHeader icon="🛒" title="구매 통계" />
-                {purchaseLoading && !purchaseStats && (
+                {trendPurchaseLoading && !trendPurchaseStats && (
                   <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontSize: '13px' }}>로딩 중...</div>
                 )}
-                {!purchaseLoading && purchaseStats && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <StatCard icon={ShoppingCart} label="총 주문" value={purchaseStats.totalOrders} unit="건" color="#3FB5B3" />
-                    <StatCard icon={DollarSign} label="총 매출" value={purchaseStats.totalRevenue.toLocaleString()} unit="원" color="#6366F1" />
-                    <StatCard icon={Users} label="구매 고객" value={purchaseStats.uniqueBuyers} unit="명" color="#EC4899" />
-                    <StatCard icon={BarChart3} label="인당 평균" value={purchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
-                    {(gaStats?.activeUsers ?? 0) > 0 && (
-                      <StatCard
-                        icon={Activity}
-                        label="구매 전환율"
-                        value={Math.round(purchaseStats.totalOrders / gaStats!.activeUsers * 1000) / 10}
-                        unit="%"
-                        color="#10B981"
-                        subValue="GA 총방문자 대비 구매"
-                      />
-                    )}
-                    {purchaseStats.totalOrders > 0 && (
-                      <StatCard
-                        icon={CreditCard}
-                        label="객단가"
-                        value={Math.round(purchaseStats.totalRevenue / purchaseStats.totalOrders).toLocaleString()}
-                        unit="원"
-                        color="#8B5CF6"
-                        subValue="총매출 / 구매횟수"
-                      />
-                    )}
-                  </div>
-                )}
+                {!trendPurchaseLoading && trendPurchaseStats && (() => {
+                  const trendGaTotal = trendData.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+                  return (
+                    <div className="grid grid-cols-2 gap-3">
+                      <StatCard icon={ShoppingCart} label="총 주문" value={trendPurchaseStats.totalOrders} unit="건" color="#3FB5B3" />
+                      <StatCard icon={DollarSign} label="총 매출" value={trendPurchaseStats.totalRevenue.toLocaleString()} unit="원" color="#6366F1" />
+                      <StatCard icon={Users} label="구매 고객" value={trendPurchaseStats.uniqueBuyers} unit="명" color="#EC4899" />
+                      <StatCard icon={BarChart3} label="인당 평균" value={trendPurchaseStats.avgPurchasesPerBuyer} unit="회" color="#F59E0B" />
+                      {trendGaTotal > 0 && (
+                        <StatCard
+                          icon={Activity}
+                          label="구매 전환율"
+                          value={Math.round(trendPurchaseStats.totalOrders / trendGaTotal * 1000) / 10}
+                          unit="%"
+                          color="#10B981"
+                          subValue="GA 총방문자 대비 구매"
+                        />
+                      )}
+                      {trendPurchaseStats.totalOrders > 0 && (
+                        <StatCard
+                          icon={CreditCard}
+                          label="객단가"
+                          value={Math.round(trendPurchaseStats.totalRevenue / trendPurchaseStats.totalOrders).toLocaleString()}
+                          unit="원"
+                          color="#8B5CF6"
+                          subValue="총매출 / 구매횟수"
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* 태그 통계 섹션 */}
                 <SectionHeader icon="🏷️" title="태그 통계" />
