@@ -287,6 +287,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         freeResultPageViews: gaPeriodData?.freeResultPageViews,
         freeResultPageViewsPerUser: gaPeriodData?.freeResultPageViewsPerUser,
       } as GAStats);
+      // 개요 탭 구매 통계도 같은 기간으로 갱신
+      loadPurchaseData(dateRangeFilter);
     } catch (err) {
       console.error('통계 로드 오류:', err);
       setError('통계 데이터를 불러오는데 실패했습니다.');
@@ -297,7 +299,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
   useEffect(() => {
     loadStats();
-    loadPurchaseData();
   }, []);
 
   // 추세 데이터 로드 함수
@@ -580,11 +581,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   };
 
   // 구매 데이터 로드 함수
-  const loadPurchaseData = async () => {
+  const loadPurchaseData = async (dateRange?: DateRangeFilter) => {
     setPurchaseLoading(true);
     setPurchaseError(null);
     try {
-      const data = await fetchPurchaseStats();
+      const data = await fetchPurchaseStats(dateRange);
       setPurchaseStats(data);
     } catch (err) {
       console.error('구매 데이터 로드 오류:', err);
