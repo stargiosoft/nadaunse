@@ -229,11 +229,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('무료 콘텐츠 이용 횟수 조회에 실패했습니다.');
   }
 
-  // 4. 유료 콘텐츠 이용 횟수 (paid만, 관리자 제외)
+  // 4. 유료 콘텐츠 이용 횟수 (paid만, 0원 제외, 관리자 제외)
   let paidContentQuery = supabase
     .from('orders')
     .select('*', { count: 'exact', head: true })
     .eq('pstatus', 'completed')
+    .gt('paid_amount', 0)
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -250,11 +251,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('유료 콘텐츠 이용 횟수 조회에 실패했습니다.');
   }
 
-  // 5. 총 매출 조회 (paid만, 관리자 제외)
+  // 5. 총 매출 조회 (paid만, 0원 제외, 관리자 제외)
   let revenueQuery = supabase
     .from('orders')
     .select('paid_amount')
     .eq('pstatus', 'completed')
+    .gt('paid_amount', 0)
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -395,11 +397,12 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(uniqueFreeContentUsers / totalCustomers * 1000) / 10
     : 0;
 
-  // 8. 유료 콘텐츠 이용 유저 수 (고유 user_id 수)
+  // 8. 유료 콘텐츠 이용 유저 수 (고유 user_id 수, 0원 제외)
   let paidContentUserQuery = supabase
     .from('orders')
     .select('user_id')
     .eq('pstatus', 'completed')
+    .gt('paid_amount', 0)
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
