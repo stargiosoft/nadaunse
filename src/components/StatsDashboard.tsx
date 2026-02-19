@@ -600,6 +600,26 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     const periodLabel = contentPeriod === 'this_week' ? '이번주' : contentPeriod === 'last_week' ? '저번주' : '전체';
     const typeLabel = contentTypeFilter === 'all' ? '종합' : contentTypeFilter === 'paid' ? '심화 해석판' : '무료 체험판';
 
+    // 아직 로드되지 않은 카테고리의 Top 5 콘텐츠를 일괄 조회
+    const missingCategories = categoryRanking.filter(cat => {
+      const cacheKey = `${cat.category}_${contentTypeFilter}_${contentPeriod}`;
+      return !topContents[cacheKey];
+    });
+
+    let allTopContents = { ...topContents };
+    if (missingCategories.length > 0) {
+      const results = await Promise.all(
+        missingCategories.map(cat =>
+          fetchTopContentsByCategory(cat.category, contentTypeFilter, 5, contentPeriod)
+            .then(data => ({ key: `${cat.category}_${contentTypeFilter}_${contentPeriod}`, data }))
+        )
+      );
+      for (const { key, data } of results) {
+        allTopContents[key] = data;
+      }
+      setTopContents(allTopContents);
+    }
+
     const data = {
       tab: '콘텐츠',
       period: periodLabel,
@@ -608,20 +628,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       totalViews: categoryRanking.reduce((sum, c) => sum + c.totalViews, 0),
       categoryRanking: categoryRanking.map((cat, index) => {
         const cacheKey = `${cat.category}_${contentTypeFilter}_${contentPeriod}`;
-        const contents = topContents[cacheKey];
+        const contents = allTopContents[cacheKey];
         return {
           rank: index + 1,
           category: cat.category,
           totalViews: cat.totalViews,
           contentCount: cat.contentCount,
-          ...(contents && contents.length > 0 ? {
-            topContents: contents.map((c, cIdx) => ({
-              rank: cIdx + 1,
-              title: c.title,
-              type: c.contentType,
-              viewCount: c.viewCount,
-            })),
-          } : {}),
+          topContents: (contents ?? []).map((c, cIdx) => ({
+            rank: cIdx + 1,
+            title: c.title,
+            type: c.contentType,
+            viewCount: c.viewCount,
+          })),
         };
       }),
     };
