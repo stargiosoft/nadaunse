@@ -1743,11 +1743,6 @@ function ProfilePageWrapper() {
 // ⭐ 만세력 Wrapper (로그인 필수)
 function MansePageWrapper() {
   const goBack = useGoBack('/profile');
-  const loginAuth = useLoginRequired();
-
-  if (loginAuth === 'checking') return <PageLoader />;
-  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
-
   return <MansePage onBack={goBack} />;
 }
 
