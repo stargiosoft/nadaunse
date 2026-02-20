@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { NavigationHeader } from './NavigationHeader';
 import SEO from './SEO';
+import { trackPageView } from '../utils/analytics';
 
 interface BlogPost {
   id: string;
@@ -104,6 +105,7 @@ export default function BlogListPage({ onBack }: BlogListPageProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    trackPageView('/blog', '운세 콘텐츠');
     fetchPosts();
   }, []);
 
