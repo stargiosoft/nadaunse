@@ -16,6 +16,13 @@ interface PrimarySaju {
   calendar_type?: string;
 }
 
+// 비로그인용 요청 파라미터
+interface MansePublicParams {
+  birthday: string;  // "199112251430" 형식
+  gender: string;    // "male" | "female"
+  lunar: string;     // "true" | "false"
+}
+
 const CACHE_KEY = 'manse_data_cache';
 
 /**
@@ -146,3 +153,48 @@ export async function getManseData(
     return { success: false, error: '네트워크 연결을 확인해주세요' };
   }
 }
+
+/**
+ * 비로그인용 만세력 데이터 조회 (auth 토큰 없이 anon key만 사용)
+ */
+export async function getManseDataPublic(
+  params: MansePublicParams
+): Promise<{ success: true; data: Record<string, unknown> } | { success: false; error: string }> {
+  // 캐시 확인 (birthday 기반 fingerprint)
+  const fingerprint = `public_${params.birthday}_${params.gender}_${params.lunar}`;
+  const cached = getCachedData(fingerprint);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/get-manse-data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { success: false, error: (errorData as Record<string, string>).error || '만세력 조회에 실패했습니다' };
+    }
+
+    const result = await response.json();
+
+    if (result.success && result.data) {
+      setCachedData(result.data, fingerprint);
+      return { success: true, data: result.data };
+    }
+
+    return { success: false, error: '만세력 데이터를 가져올 수 없습니다' };
+  } catch {
+    return { success: false, error: '네트워크 연결을 확인해주세요' };
+  }
+}
+
+export { formatBirthday };

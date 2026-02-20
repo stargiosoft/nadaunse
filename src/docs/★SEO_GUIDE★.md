@@ -1,7 +1,7 @@
 # SEO 가이드 - 나다운세
 
 > **검색엔진 최적화(SEO) 설정 및 관리 가이드**
-> **최종 업데이트**: 2026-02-10
+> **최종 업데이트**: 2026-02-20
 
 ---
 
@@ -162,6 +162,8 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - 홈페이지 (`/`) - priority: 1.0
 - 유료 콘텐츠 (`/product/{id}`) - priority: 0.9
 - 무료 콘텐츠 (`/free/content/{id}`) - priority: 0.8
+- **블로그 목록** (`/blog`) - priority: 0.7
+- **블로그 상세** (`/blog/{slug}`) - priority: 0.7
 - 정적 페이지 (이용약관, 개인정보처리방침) - priority: 0.3
 
 ---
@@ -243,7 +245,7 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [ ] 사이트맵 오류 확인
 - [ ] 크롤링 오류 확인
 
-### SEO 개선 작업
+### SEO 개선 작업 (완료)
 - [x] 콘텐츠별 메타 태그 동적 설정 → **prerender로 해결 (2026-02-10)**
 - [x] 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`) **(2026-02-10)**
 - [x] 이미지 alt 속성 누락 수정 (네이버 진단 5건) → **(2026-02-12)**
@@ -251,9 +253,27 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [x] 홈페이지 프리렌더 + ItemList JSON-LD 추가 **(2026-02-12)**
 - [x] BreadcrumbList JSON-LD 추가 (콘텐츠 페이지) **(2026-02-12)**
 - [x] SEO body 강화 (article 태그, 내부 링크, h1/h2 구조) **(2026-02-12)**
-- [ ] prerender 배포 후 네이버 사이트맵 재제출 및 주요 URL 수집 요청
-- [ ] IndexNow Edge Function 배포 후 주요 URL 제출
-- [ ] 네이버 블로그/카페 백링크 확보
+- [x] 블로그(운세 콘텐츠) 기능 구현 **(2026-02-20)** → 아래 섹션 참고
+
+### SEO TODO (미완료) - 우선순위순
+
+#### 🔴 높음 (즉시 효과)
+- [ ] **프리렌더 빌드 + 프로덕션 배포** — 현재 블로그 프리렌더 코드는 staging에만 배포됨. `npx vite build`로 블로그 HTML + sitemap 생성 후 프로덕션 배포 필요
+- [ ] **Google Search Console 사이트맵 재제출** — `/blog` + `/blog/{slug}` 24개 URL이 sitemap에 추가되었으므로 재제출
+- [ ] **네이버 서치어드바이저 사이트맵 재제출** — 동일하게 재제출 + 주요 블로그 URL 수집 요청 (하루 10건 제한)
+- [ ] **IndexNow로 블로그 URL 일괄 제출** — Edge Function 호출하여 `/blog` + 24개 slug URL 제출 (Bing, 네이버 즉시 인덱싱)
+
+#### 🟡 중간 (1-2주 내)
+- [ ] **홈페이지에서 블로그로 내부 링크** — 홈 하단 또는 배너에 "운세 콘텐츠" 링크 추가 → 링크 주스 전달 + 크롤링 유도
+- [ ] **블로그 상세에서 관련 글 추천** — 하단 "다른 글 보기" 대신 같은 카테고리 2-3개 글 추천 → 체류시간 + 내부 링크 강화
+- [ ] **블로그 글 본문에 상호 링크 삽입** — HTML content 내에 다른 블로그 글로의 앵커 링크 추가 (수동 또는 자동)
+- [ ] **blog-content CSS 최종 확인** — 3차 수정 후 유저 확인 미완료. 실기기에서 디자인 검수 필요
+
+#### 🟢 낮음 (여유 있을 때)
+- [ ] **FAQ 구조화 데이터** — 일부 블로그 글에 FAQPage JSON-LD 추가 (검색결과 리치 스니펫 노출)
+- [ ] **네이버 블로그/카페 백링크 확보** — 외부 링크를 통한 도메인 권위 향상
+- [ ] **블로그 RSS 피드 생성** — `/blog/feed.xml` → 피드 구독 서비스 + 검색엔진 크롤링 유도
+- [ ] **블로그 OG 이미지 자동 생성** — 글별 고유 OG 이미지 (현재는 공통 이미지 사용)
 
 ---
 
@@ -327,7 +347,9 @@ build/
 ├── terms-of-service/index.html    (이용약관)
 ├── privacy-policy/index.html      (개인정보처리방침)
 ├── product/{id}/index.html        (유료 콘텐츠 - Product + BreadcrumbList JSON-LD)
-└── free/content/{id}/index.html   (무료 콘텐츠 - BreadcrumbList JSON-LD)
+├── free/content/{id}/index.html   (무료 콘텐츠 - BreadcrumbList JSON-LD)
+├── blog/index.html                (블로그 목록 - ItemList JSON-LD)
+└── blog/{slug}/index.html         (블로그 상세 - Article + BreadcrumbList JSON-LD)
 ```
 
 ---
@@ -420,10 +442,109 @@ curl -X POST https://kcthtpmxffppfbkjjkub.supabase.co/functions/v1/index-now \
 
 ---
 
+## 블로그(운세 콘텐츠) SEO
+
+### 개요
+SEO 개선의 핵심 전략으로, 롱테일 키워드 유입을 확보하기 위한 정보성 콘텐츠 페이지입니다.
+현재 "사주", "타로" 등 일반 키워드로 검색 노출이 0인 상태에서, 블로그 콘텐츠를 통해 검색 유입을 만드는 것이 목적입니다.
+
+### 구현 현황 (2026-02-20)
+
+| 항목 | 상태 | 내용 |
+|------|------|------|
+| DB 테이블 | ✅ | `blog_posts` (production + staging) |
+| RLS | ✅ | 누구나 published 글 읽기 가능 (크롤러 대응) |
+| 프론트엔드 | ✅ | `BlogListPage.tsx` + `BlogDetailPage.tsx` |
+| 라우팅 | ✅ | `/blog` (목록), `/blog/:slug` (상세), 비로그인 접근 가능 |
+| 프리렌더 | ✅ | `prerender.mjs`에 블로그 목록/상세 HTML 생성 로직 포함 |
+| JSON-LD | ✅ | 목록: ItemList, 상세: Article + BreadcrumbList |
+| sitemap | ✅ | `/blog` + `/blog/{slug}` URL 자동 포함 |
+| GA 트래킹 | ✅ | 블로그 목록 페이지뷰 이벤트 전송 |
+| 조회수 | ✅ | `view_count` + `weekly_views` + `last_weekly_views` (pg_cron 매주 리셋) |
+| CSS | ✅ | `div.blog-content` 스타일 (Tailwind Preflight 오버라이드, `!important`) |
+| 프로필 메뉴 | ✅ | "운세 콘텐츠" 메뉴 추가 |
+
+### 콘텐츠 현황 (총 24개)
+
+| 카테고리 | 수량 | 대표 키워드 |
+|---------|------|------------|
+| saju (사주) | 18개 | 일간별 성격, 십성, 오행, 대운, 궁합, 연애운, 재물운, 직업적성, 건강운, 바람사주, 반려동물궁합, 12지지, 신살, 자미두수 |
+| tarot (타로) | 3개 | 메이저아르카나, 원카드리딩, 스프레드 종류 |
+| tip (꿀팁) | 3개 | 신년운세, MBTI vs 사주, 띠별운세 |
+
+### 블로그 관련 파일
+
+| 파일 | 역할 |
+|------|------|
+| `src/components/BlogListPage.tsx` | 블로그 목록 (localStorage 캐시 5분) |
+| `src/components/BlogDetailPage.tsx` | 블로그 상세 (HTML 렌더링, 조회수 증가) |
+| `src/styles/globals.css` | `.blog-content` HTML 스타일링 |
+| `scripts/prerender.mjs` | 블로그 프리렌더 + sitemap 생성 |
+| `supabase/migrations/20260220_create_blog_posts.sql` | 참고용 SQL |
+
+### DB 스키마: `blog_posts`
+
+```sql
+id UUID PRIMARY KEY
+title TEXT NOT NULL
+slug TEXT NOT NULL UNIQUE        -- URL 경로 (/blog/{slug})
+excerpt TEXT                     -- 발췌 (목록 표시용)
+content TEXT NOT NULL             -- HTML 본문
+thumbnail_url TEXT               -- 썸네일 이미지 URL
+category TEXT                    -- 'saju', 'tarot', 'tip'
+tags TEXT[]                      -- 태그 배열
+meta_title TEXT                  -- SEO title (없으면 title 사용)
+meta_description TEXT            -- SEO description (없으면 excerpt 사용)
+view_count INTEGER DEFAULT 0     -- 총 조회수
+weekly_views INTEGER DEFAULT 0   -- 이번주 조회수
+last_weekly_views INTEGER DEFAULT 0  -- 저번주 조회수
+status TEXT DEFAULT 'draft'      -- 'draft' | 'published'
+published_at TIMESTAMPTZ
+created_at TIMESTAMPTZ DEFAULT now()
+updated_at TIMESTAMPTZ DEFAULT now()
+```
+
+### RPC 함수
+- `increment_blog_view_count(post_id UUID)` — `view_count + 1`, `weekly_views + 1` 동시 증가 (`SECURITY DEFINER`)
+- `reset_blog_weekly_views()` — 수동 리셋 (테스트용)
+
+### pg_cron 스케줄
+- `blog-weekly-views-reset` — 매주 월요일 00:00 KST (`0 15 * * 0` UTC)
+- `weekly_views → last_weekly_views` 이동 후 0 리셋 (`master_contents`와 동일 패턴)
+
+### 콘텐츠 추가 방법
+Supabase SQL로 직접 삽입 (관리 UI 없음):
+
+```sql
+INSERT INTO blog_posts (title, slug, excerpt, content, category, tags, meta_title, meta_description, status, published_at)
+VALUES (
+  '제목',
+  'url-slug',
+  '발췌문',
+  '<h2>소제목</h2><p>본문 HTML...</p>',
+  'saju',  -- 또는 'tarot', 'tip'
+  ARRAY['태그1', '태그2'],
+  'SEO용 제목 (검색결과 표시)',
+  'SEO용 설명 (검색결과 표시)',
+  'published',
+  NOW()
+);
+```
+
+### 프리렌더 배포 절차
+1. `npx vite build` (prerender.mjs 자동 실행 → 블로그 HTML + sitemap 생성)
+2. Vercel 배포 (git push → 자동 배포)
+3. Google Search Console 사이트맵 재제출
+4. 네이버 서치어드바이저 사이트맵 재제출 + 주요 URL 수집 요청
+5. IndexNow Edge Function으로 블로그 URL 일괄 제출
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-20 | **블로그(운세 콘텐츠) 기능 구현** - BlogListPage/BlogDetailPage 생성, /blog /blog/:slug 라우트 추가, blog-content CSS, prerender 블로그 지원 (Article + ItemList + BreadcrumbList JSON-LD), sitemap 블로그 URL 추가, GA 페이지뷰 트래킹, blog_posts 테이블 (weekly_views/last_weekly_views + pg_cron 리셋), 콘텐츠 24개 작성 (스레드/트위터 트렌드 분석 기반 롱테일 키워드) |
 | 2026-02-12 | **SEO 즉시 강화 작업** - 홈페이지 프리렌더 (ItemList JSON-LD + 콘텐츠 목록), BreadcrumbList JSON-LD 추가, SEO body 강화 (article 태그, 내부 링크, h1/h2 구조), IndexNow Edge Function 생성, 이미지 alt 속성 5건 수정 |
 | 2026-02-10 | **prerender 파이프라인 활성화** - `package.json` 빌드에 prerender 연결, 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`). 네이버 진단: description 동일 12건, 색인 12/220+ |
 | 2026-02-06 | **빌드 타임 프리렌더 적용** - `scripts/prerender.mjs` 추가, 빌드 시 콘텐츠별 고유 메타 태그 주입된 정적 HTML 생성 (Google/Naver 크롤러 대응) |
