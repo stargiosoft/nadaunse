@@ -5,6 +5,7 @@ import ArrowLeft from './ArrowLeft';
 import { PageLoader } from './ui/PageLoader';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { NavigationHeader } from './NavigationHeader';
+import SEO from './SEO';
 import { supabase } from '../lib/supabase';
 import { getManseData, getManseDataPublic, formatBirthday } from '../lib/manseService';
 
@@ -830,6 +831,12 @@ export default function MansePage({ onBack }: MansePageProps) {
 
   return (
     <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
+      <SEO
+        title="무료 만세력 - 사주팔자 원국 대운 세운 조회"
+        description="생년월일시로 사주팔자 원국, 오행, 대운, 세운을 무료로 확인하세요. 일주론, 용신, 물상론까지 AI가 분석해드립니다."
+        keywords="만세력, 무료만세력, 사주만세력, 사주팔자, 원국, 대운, 세운, 오행, 일주론, 용신"
+        canonical="/manse"
+      />
       <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
         {/* 네비게이션 바 */}
         <div className="shrink-0 flex items-center justify-between px-[4px] z-20" style={{ height: '52px' }}>
