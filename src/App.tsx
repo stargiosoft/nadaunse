@@ -330,6 +330,7 @@ function GAInit() {
         '/error/network': '네트워크 오류',
         // 주간 보고서 페이지
         '/my-report-list': '보고서 리스트',
+        '/manse': '만세력',
       };
 
       // 정적 라우트 확인
