@@ -1256,16 +1256,8 @@ export default function ProfilePage({
                     className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                     style={{ width: '100%', marginTop: '-6px' }}
                     onClick={() => {
-                      if (!isLoadingSaju && !primarySaju) {
-                        // 사주 정보 없음 → 바로 사주 입력 페이지로 이동
-                        if (onNavigateToSajuInput) {
-                          onNavigateToSajuInput();
-                        }
-                      } else {
-                        // 사주 있음 또는 로딩 중 → 만세력 페이지로 이동
-                        if (onNavigateToManse) {
-                          onNavigateToManse();
-                        }
+                      if (onNavigateToManse) {
+                        onNavigateToManse();
                       }
                     }}
                   >

@@ -224,7 +224,8 @@ export default function MansePage({ onBack }: MansePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [manseData, setManseData] = useState<ManseData | null>(null);
   const [displayInfo, setDisplayInfo] = useState<{ birthDate: string; gender: string } | null>(null);
-  const [showForm, setShowForm] = useState(false); // 비로그인 폼 표시 여부
+  const [showForm, setShowForm] = useState(false); // 폼 표시 여부
+  const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null); // 로그인 사용자 ID
 
   // 폼 상태 (비로그인용)
   const [birthDate, setBirthDate] = useState('');
@@ -304,6 +305,8 @@ export default function MansePage({ onBack }: MansePageProps) {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
+          setLoggedInUserId(user.id);
+
           // 로그인 사용자 → 대표 사주 확인
           const { data: sajuList, error: sajuError } = await supabase
             .from('saju_records')
@@ -315,8 +318,8 @@ export default function MansePage({ onBack }: MansePageProps) {
           if (sajuError) throw sajuError;
 
           if (!sajuList || sajuList.length === 0) {
-            // 대표 사주 없음 → /saju/input으로 이동
-            navigate('/saju/input', { state: { canGoBack: true, returnTo: '/manse' }, replace: true });
+            // 대표 사주 없음 → 인라인 폼 표시
+            setShowForm(true);
             return;
           }
 
@@ -441,7 +444,7 @@ export default function MansePage({ onBack }: MansePageProps) {
     return birthDateValid && birthTimeValid;
   };
 
-  // ── 폼 제출 (비로그인) ──
+  // ── 폼 제출 ──
   async function handleSubmit() {
     if (!isFormValid()) return;
 
@@ -455,18 +458,71 @@ export default function MansePage({ onBack }: MansePageProps) {
 
       const birthday = formatBirthday(birthDate, finalTime);
 
-      // localStorage에 저장
-      const guestInfo: GuestSajuInfo = { birthDate, birthTime, gender, unknownTime };
-      localStorage.setItem(MANSE_GUEST_KEY, JSON.stringify(guestInfo));
+      if (loggedInUserId) {
+        // ── 로그인 사용자: DB에 대표 사주 저장 → 만세력 API 호출 ──
+        const birthDateForDb = birthDate.replace(/[^\d]/g, '');
+        const formattedBirthDate = `${birthDateForDb.slice(0, 4)}-${birthDateForDb.slice(4, 6)}-${birthDateForDb.slice(6, 8)}`;
 
-      const result = await getManseDataPublic({ birthday, gender, lunar: 'false' });
+        const { data: inserted, error: insertError } = await supabase
+          .from('saju_records')
+          .insert({
+            user_id: loggedInUserId,
+            full_name: '',
+            gender,
+            calendar_type: 'solar',
+            birth_date: formattedBirthDate + 'T00:00:00Z',
+            birth_time: finalTime,
+            notes: '본인',
+            is_primary: true,
+          })
+          .select('id, birth_date, birth_time, gender, calendar_type')
+          .single();
 
-      if (result.success) {
-        setManseData(result.data);
-        setDisplayInfo({ birthDate, gender });
-        setShowForm(false);
+        if (insertError) throw insertError;
+
+        // 캐시 업데이트 (ProfilePage에서 즉시 표시)
+        const { data: updatedSajuList } = await supabase
+          .from('saju_records')
+          .select('*')
+          .eq('user_id', loggedInUserId)
+          .order('created_at', { ascending: true });
+
+        if (updatedSajuList && updatedSajuList.length > 0) {
+          const newPrimary = updatedSajuList.find((s: Record<string, unknown>) => s.is_primary) || updatedSajuList[0];
+          localStorage.setItem('primary_saju', JSON.stringify(newPrimary));
+          localStorage.setItem('saju_records_cache', JSON.stringify(updatedSajuList));
+        }
+
+        // 만세력 API 호출
+        const result = await getManseData({
+          id: inserted.id,
+          birth_date: inserted.birth_date,
+          birth_time: inserted.birth_time,
+          gender: inserted.gender,
+          calendar_type: inserted.calendar_type,
+        });
+
+        if (result.success) {
+          setManseData(result.data);
+          setDisplayInfo({ birthDate, gender });
+          setShowForm(false);
+        } else {
+          setError(result.error);
+        }
       } else {
-        setError(result.error);
+        // ── 비로그인: localStorage에 저장 → 공개 API 호출 ──
+        const guestInfo: GuestSajuInfo = { birthDate, birthTime, gender, unknownTime };
+        localStorage.setItem(MANSE_GUEST_KEY, JSON.stringify(guestInfo));
+
+        const result = await getManseDataPublic({ birthday, gender, lunar: 'false' });
+
+        if (result.success) {
+          setManseData(result.data);
+          setDisplayInfo({ birthDate, gender });
+          setShowForm(false);
+        } else {
+          setError(result.error);
+        }
       }
     } catch {
       setError('네트워크 연결을 확인해주세요');

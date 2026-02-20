@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { DEV } from '../lib/env';
+import SEO from './SEO';
 import svgPaths404 from '../imports/svg-wp3v25qh3h';
 import svgPaths500 from '../imports/svg-47kifjlpzo';
 import svgPaths503 from '../imports/svg-zgc97psg68';
@@ -75,6 +76,7 @@ export default function ErrorPage({ type }: ErrorPageProps) {
 
   return (
     <div className="bg-white relative min-h-screen min-h-[100dvh] w-full flex items-center justify-center">
+      <SEO title={config.title} noIndex={true} />
       <div className="relative w-full max-w-[440px] min-h-screen min-h-[100dvh] flex flex-col bg-white">
 
         {/* Main Content - 중앙 정렬 */}
