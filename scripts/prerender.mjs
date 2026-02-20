@@ -321,12 +321,13 @@ function generateStaticPages(template) {
  * 정적 sitemap.xml 생성
  * Edge Function rewrite 대신 정적 파일로 서빙하여 네이버 봇 접근 보장
  */
-function generateSitemap(contents) {
+function generateSitemap(contents, blogPosts = []) {
   const today = new Date().toISOString().split('T')[0];
 
   // 정적 페이지
   const staticPages = [
     { loc: '/', changefreq: 'daily', priority: '1.0', lastmod: today },
+    { loc: '/blog', changefreq: 'weekly', priority: '0.7' },
     { loc: '/terms-of-service', changefreq: 'monthly', priority: '0.3' },
     { loc: '/privacy-policy', changefreq: 'monthly', priority: '0.3' },
   ];
@@ -343,7 +344,14 @@ function generateSitemap(contents) {
     };
   });
 
-  const allPages = [...staticPages, ...contentPages];
+  // 블로그 글 페이지
+  const blogPages = blogPosts.map((post) => ({
+    loc: `/blog/${post.slug}`,
+    changefreq: 'monthly',
+    priority: '0.7',
+  }));
+
+  const allPages = [...staticPages, ...contentPages, ...blogPages];
 
   const urlEntries = allPages
     .map((page) => {
@@ -506,6 +514,175 @@ function generateContentPages(template, contents) {
 }
 
 /**
+ * Supabase REST API로 published 블로그 글 조회
+ */
+async function fetchPublishedBlogPosts() {
+  if (!SUPABASE_PROJECT_ID || !SUPABASE_ANON_KEY) {
+    console.warn('[prerender] Supabase 환경변수 미설정 - 블로그 프리렌더 건너뜀');
+    return [];
+  }
+
+  const url = `https://${SUPABASE_PROJECT_ID}.supabase.co/rest/v1/blog_posts?status=eq.published&select=id,title,slug,excerpt,content,thumbnail_url,category,meta_title,meta_description,published_at&order=published_at.desc`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`[prerender] 블로그 글 조회 완료: ${data.length}개`);
+    return data;
+  } catch (error) {
+    console.warn(`[prerender] 블로그 글 조회 실패: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * 블로그 목록 페이지 프리렌더
+ */
+function generateBlogListPage(template, blogPosts) {
+  const blogTitle = '운세 콘텐츠 | 나다운세';
+  const blogDescription = '사주, 타로, 운세에 대한 유용한 정보를 만나보세요. 나다운세 블로그에서 운세 꿀팁과 사주 이야기를 확인하세요.';
+  const blogKeywords = '사주 이야기, 타로 가이드, 운세 꿀팁, 사주풀이 팁, 타로 카드 의미, 나다운세 블로그';
+
+  // ItemList JSON-LD
+  const itemListJsonLd = blogPosts.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: '나다운세 운세 콘텐츠',
+    description: blogDescription,
+    numberOfItems: blogPosts.length,
+    itemListElement: blogPosts.map((post, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: post.title,
+      url: `${SITE_URL}/blog/${post.slug}`,
+    })),
+  } : null;
+
+  // SEO body content
+  const contentList = blogPosts.map((post) => ({
+    title: post.title,
+    url: `${SITE_URL}/blog/${post.slug}`,
+    description: post.excerpt || '',
+  }));
+
+  const html = injectMetaTags(template, {
+    title: blogTitle,
+    description: blogDescription,
+    keywords: blogKeywords,
+    canonicalUrl: `${SITE_URL}/blog`,
+    ogType: 'website',
+    ogTitle: blogTitle,
+    ogDescription: blogDescription,
+    ogUrl: `${SITE_URL}/blog`,
+    ogImage: DEFAULT_OG_IMAGE,
+    twitterTitle: blogTitle,
+    twitterDescription: blogDescription,
+    twitterImage: DEFAULT_OG_IMAGE,
+    jsonLd: itemListJsonLd,
+    bodyContent: buildBodyContent({
+      heading: '운세 콘텐츠',
+      description: blogDescription,
+      subHeading: blogPosts.length > 0 ? `${blogPosts.length}개의 글` : null,
+      contentList,
+    }),
+  });
+
+  writeHtmlFile('blog', html);
+  console.log(`[prerender] /blog/index.html 생성 완료 (${blogPosts.length}개 글 목록)`);
+}
+
+/**
+ * 블로그 상세 페이지 프리렌더
+ */
+function generateBlogDetailPages(template, blogPosts) {
+  for (const post of blogPosts) {
+    const pageTitle = (post.meta_title || post.title) + ' | 나다운세';
+    const pageDescription = post.meta_description || post.excerpt || `${post.title} - 나다운세 운세 콘텐츠`;
+    const pageKeywords = `${post.title}, 나다운세, 운세, 사주, 타로, 운세 콘텐츠`;
+    const ogImage = post.thumbnail_url || DEFAULT_OG_IMAGE;
+    const canonicalUrl = `${SITE_URL}/blog/${post.slug}`;
+
+    // BreadcrumbList JSON-LD
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '홈', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: '운세 콘텐츠', item: `${SITE_URL}/blog` },
+        { '@type': 'ListItem', position: 3, name: post.title, item: canonicalUrl },
+      ],
+    };
+
+    // Article JSON-LD
+    const articleJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: post.title,
+      description: pageDescription,
+      image: ogImage,
+      datePublished: post.published_at,
+      author: {
+        '@type': 'Organization',
+        name: '나다운세',
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: '나다운세',
+        url: SITE_URL,
+      },
+      mainEntityOfPage: canonicalUrl,
+    };
+
+    // 관련 글 링크 (최대 5개)
+    const relatedPosts = blogPosts
+      .filter((p) => p.id !== post.id)
+      .slice(0, 5)
+      .map((p) => ({ label: p.title, url: `${SITE_URL}/blog/${p.slug}` }));
+
+    const html = injectMetaTags(template, {
+      title: pageTitle,
+      description: pageDescription,
+      keywords: pageKeywords,
+      canonicalUrl,
+      ogType: 'article',
+      ogTitle: pageTitle,
+      ogDescription: pageDescription,
+      ogUrl: canonicalUrl,
+      ogImage,
+      twitterTitle: pageTitle,
+      twitterDescription: pageDescription,
+      twitterImage: ogImage,
+      jsonLd: [breadcrumbJsonLd, articleJsonLd],
+      bodyContent: buildBodyContent({
+        heading: post.title,
+        description: pageDescription,
+        breadcrumbs: [
+          { label: '홈', url: SITE_URL },
+          { label: '운세 콘텐츠', url: `${SITE_URL}/blog` },
+          { label: post.title, url: canonicalUrl },
+        ],
+        isArticle: true,
+        internalLinks: relatedPosts,
+      }),
+    });
+
+    writeHtmlFile(`blog/${post.slug}`, html);
+  }
+
+  console.log(`[prerender] 블로그 상세 ${blogPosts.length}개 HTML 생성 완료`);
+}
+
+/**
  * 홈페이지 프리렌더 생성
  * ItemList JSON-LD로 콘텐츠 목록을 구조화 데이터로 노출
  * SEO body content로 주요 콘텐츠 목록을 HTML로 삽입
@@ -615,11 +792,18 @@ async function main() {
     generateContentPages(template, contents);
   }
 
-  // 5. 홈페이지 프리렌더 (ItemList JSON-LD + SEO body content)
+  // 5. 블로그 글 조회 + 프리렌더
+  const blogPosts = await fetchPublishedBlogPosts();
+  if (blogPosts.length > 0) {
+    generateBlogListPage(template, blogPosts);
+    generateBlogDetailPages(template, blogPosts);
+  }
+
+  // 6. 홈페이지 프리렌더 (ItemList JSON-LD + SEO body content)
   generateHomePage(template, contents);
 
-  // 6. 정적 sitemap.xml 생성 (Edge Function rewrite 대신 정적 파일로 서빙)
-  generateSitemap(contents);
+  // 7. 정적 sitemap.xml 생성 (Edge Function rewrite 대신 정적 파일로 서빙)
+  generateSitemap(contents, blogPosts);
 
   console.log('[prerender] 프리렌더 완료!');
 }

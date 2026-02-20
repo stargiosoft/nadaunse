@@ -360,6 +360,142 @@ html, body {
   }
 }
 
+/* Blog content - HTML 본문 (Tailwind Preflight 완전 오버라이드) */
+div.blog-content {
+  font-family: 'Pretendard Variable', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  line-height: 1.85 !important;
+  color: #444444 !important;
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
+}
+
+div.blog-content h2 {
+  display: block !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+  line-height: 1.4 !important;
+  margin: 44px 0 16px 0 !important;
+  padding: 14px 16px !important;
+  background-color: #f7fafa !important;
+  border-left: 3px solid #48b2af !important;
+  border-radius: 0 10px 10px 0 !important;
+}
+
+div.blog-content h2:first-child {
+  margin-top: 0 !important;
+}
+
+div.blog-content h3 {
+  display: block !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #2a2a2a !important;
+  line-height: 1.4 !important;
+  margin: 32px 0 12px 0 !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px dashed #e8e8e8 !important;
+}
+
+div.blog-content p {
+  display: block !important;
+  margin: 0 0 20px 0 !important;
+  line-height: 1.85 !important;
+}
+
+div.blog-content ul,
+div.blog-content ol {
+  display: block !important;
+  margin: 12px 0 24px 0 !important;
+  padding-left: 8px !important;
+}
+
+div.blog-content ul {
+  list-style-type: none !important;
+}
+
+div.blog-content ol {
+  list-style-type: none !important;
+  counter-reset: blog-ol !important;
+}
+
+div.blog-content ul > li {
+  display: block !important;
+  position: relative !important;
+  padding: 8px 12px 8px 28px !important;
+  margin-bottom: 6px !important;
+  line-height: 1.7 !important;
+  background-color: #fafafa !important;
+  border-radius: 8px !important;
+}
+
+div.blog-content ul > li::before {
+  content: '•' !important;
+  position: absolute !important;
+  left: 12px !important;
+  color: #48b2af !important;
+  font-weight: 700 !important;
+}
+
+div.blog-content ol > li {
+  display: block !important;
+  position: relative !important;
+  padding: 8px 12px 8px 32px !important;
+  margin-bottom: 6px !important;
+  line-height: 1.7 !important;
+  background-color: #fafafa !important;
+  border-radius: 8px !important;
+  counter-increment: blog-ol !important;
+}
+
+div.blog-content ol > li::before {
+  content: counter(blog-ol) '.' !important;
+  position: absolute !important;
+  left: 10px !important;
+  color: #48b2af !important;
+  font-weight: 600 !important;
+}
+
+div.blog-content img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 12px !important;
+  margin: 24px 0 !important;
+}
+
+div.blog-content blockquote {
+  display: block !important;
+  border-left: 3px solid #48b2af !important;
+  background-color: #f0f9f8 !important;
+  padding: 18px 20px !important;
+  margin: 28px 0 !important;
+  border-radius: 0 12px 12px 0 !important;
+  color: #2d7a78 !important;
+  font-style: normal !important;
+  line-height: 1.75 !important;
+  font-size: 14.5px !important;
+}
+
+div.blog-content a {
+  color: #48b2af !important;
+  text-decoration: underline !important;
+}
+
+div.blog-content strong {
+  font-weight: 600 !important;
+  color: #1a1a1a !important;
+}
+
+div.blog-content hr {
+  display: block !important;
+  border: none !important;
+  border-top: 1px solid #eeeeee !important;
+  margin: 36px 0 !important;
+}
+
 /* Mobile-friendly hover - only applies on devices with hover capability (not touch screens) */
 @media (hover: hover) and (pointer: fine) {
   .hover-bg-gray:hover {
