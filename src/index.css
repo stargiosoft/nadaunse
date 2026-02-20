@@ -5994,3 +5994,260 @@ html {
     transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0));
   }
 }
+
+/* Blog content - HTML 본문 (Tailwind Preflight 완전 오버라이드) */
+div.blog-content {
+  font-family: 'Pretendard Variable', sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  line-height: 1.85 !important;
+  color: #444444 !important;
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
+}
+
+div.blog-content h2 {
+  display: block !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+  line-height: 1.4 !important;
+  margin: 44px 0 16px 0 !important;
+  padding: 14px 16px !important;
+  background-color: #f7fafa !important;
+  border-left: 3px solid #48b2af !important;
+  border-radius: 0 10px 10px 0 !important;
+}
+
+div.blog-content h2:first-child {
+  margin-top: 0 !important;
+}
+
+div.blog-content h3 {
+  display: block !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #2a2a2a !important;
+  line-height: 1.4 !important;
+  margin: 32px 0 12px 0 !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px dashed #e8e8e8 !important;
+}
+
+div.blog-content p {
+  display: block !important;
+  margin: 0 0 20px 0 !important;
+  line-height: 1.85 !important;
+}
+
+div.blog-content ul,
+div.blog-content ol {
+  display: block !important;
+  margin: 12px 0 24px 0 !important;
+  padding-left: 8px !important;
+}
+
+div.blog-content ul {
+  list-style-type: none !important;
+}
+
+div.blog-content ol {
+  list-style-type: none !important;
+  counter-reset: blog-ol !important;
+}
+
+div.blog-content ul > li {
+  display: block !important;
+  position: relative !important;
+  padding: 8px 12px 8px 28px !important;
+  margin-bottom: 6px !important;
+  line-height: 1.7 !important;
+  background-color: #fafafa !important;
+  border-radius: 8px !important;
+}
+
+div.blog-content ul > li::before {
+  content: '•' !important;
+  position: absolute !important;
+  left: 12px !important;
+  color: #48b2af !important;
+  font-weight: 700 !important;
+}
+
+div.blog-content ol > li {
+  display: block !important;
+  position: relative !important;
+  padding: 8px 12px 8px 32px !important;
+  margin-bottom: 6px !important;
+  line-height: 1.7 !important;
+  background-color: #fafafa !important;
+  border-radius: 8px !important;
+  counter-increment: blog-ol !important;
+}
+
+div.blog-content ol > li::before {
+  content: counter(blog-ol) '.' !important;
+  position: absolute !important;
+  left: 10px !important;
+  color: #48b2af !important;
+  font-weight: 600 !important;
+}
+
+div.blog-content img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 12px !important;
+  margin: 24px 0 !important;
+}
+
+div.blog-content blockquote {
+  display: block !important;
+  border-left: 3px solid #48b2af !important;
+  background-color: #f0f9f8 !important;
+  padding: 18px 20px !important;
+  margin: 28px 0 !important;
+  border-radius: 0 12px 12px 0 !important;
+  color: #2d7a78 !important;
+  font-style: normal !important;
+  line-height: 1.75 !important;
+  font-size: 14.5px !important;
+}
+
+div.blog-content a {
+  color: #48b2af !important;
+  text-decoration: underline !important;
+}
+
+div.blog-content strong {
+  font-weight: 600 !important;
+  color: #1a1a1a !important;
+}
+
+div.blog-content hr {
+  display: block !important;
+  border: none !important;
+  border-top: 1px solid #eeeeee !important;
+  margin: 36px 0 !important;
+}
+
+div.blog-content table {
+  display: table !important;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 20px 0 !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+
+div.blog-content thead {
+  background-color: #f7fafa !important;
+}
+
+div.blog-content th,
+div.blog-content td {
+  padding: 10px 14px !important;
+  border: 1px solid #e8e8e8 !important;
+  text-align: left !important;
+}
+
+div.blog-content th {
+  font-weight: 600 !important;
+  color: #1a1a1a !important;
+}
+
+div.blog-content code {
+  font-family: 'Pretendard Variable', monospace !important;
+  font-size: 13.5px !important;
+  background-color: #f4f4f4 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  color: #d14 !important;
+}
+
+div.blog-content pre {
+  display: block !important;
+  background-color: #f7f7f7 !important;
+  padding: 16px !important;
+  border-radius: 10px !important;
+  overflow-x: auto !important;
+  margin: 20px 0 !important;
+  line-height: 1.6 !important;
+}
+
+div.blog-content pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: #444444 !important;
+  font-size: 13px !important;
+}
+
+div.blog-content ul ul,
+div.blog-content ol ul,
+div.blog-content ul ol,
+div.blog-content ol ol {
+  margin: 4px 0 4px 0 !important;
+  padding-left: 4px !important;
+}
+
+div.blog-content ul ul > li,
+div.blog-content ol ul > li {
+  background-color: #f3f3f3 !important;
+  padding: 6px 10px 6px 24px !important;
+  margin-bottom: 4px !important;
+}
+
+div.blog-content ul ul > li::before,
+div.blog-content ol ul > li::before {
+  content: '◦' !important;
+  left: 10px !important;
+  color: #999999 !important;
+}
+
+/* Cross-links block in blog content */
+div.blog-content .blog-crosslinks {
+  margin-top: 36px !important;
+  padding: 20px !important;
+  background-color: #f7fafa !important;
+  border-radius: 12px !important;
+  border: 1px solid #e8f0ef !important;
+}
+
+div.blog-content .blog-crosslinks p {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #2a2a2a !important;
+  margin: 0 0 12px 0 !important;
+}
+
+div.blog-content .blog-crosslinks ul {
+  list-style-type: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+div.blog-content .blog-crosslinks ul li {
+  background-color: transparent !important;
+  padding: 6px 0 !important;
+  margin-bottom: 2px !important;
+}
+
+div.blog-content .blog-crosslinks ul li::before {
+  content: '→' !important;
+  position: relative !important;
+  left: 0 !important;
+  margin-right: 8px !important;
+  color: #48b2af !important;
+}
+
+div.blog-content .blog-crosslinks ul li a {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #48b2af !important;
+  text-decoration: none !important;
+}
+
+div.blog-content .blog-crosslinks ul li a:hover {
+  text-decoration: underline !important;
+}

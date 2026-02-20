@@ -16,6 +16,35 @@
 
 ---
 
+## 2026-02-20
+
+### 만세력 페이지 추가
+
+**배경**: 프로필 페이지에서 본인 사주 기반의 만세력(사주 원국, 분석, 대운, 세운)을 확인할 수 있는 기능 요청.
+
+**결정사항**:
+1. **Edge Function 프록시**: `get-manse-data` - Stargio Saju API를 서버에서 호출 (프론트엔드 직접 호출 금지 원칙 준수)
+   - 3회 재시도 + exponential backoff, 브라우저 헤더 포함
+   - JWT 인증 유지 (`--no-verify-jwt` 불필요)
+2. **캐싱**: localStorage, fingerprint 기반 (`${id}_${birth_date}_${gender}_${calendar_type}`)
+   - 만료 없음 (동일 생년월일 = 동일 결과), fingerprint 변경 시 무효화
+3. **비로그인 접근 허용**: 링크 공유 가능하도록 `useLoginRequired` 미사용
+   - 비로그인 → 로그인 유도 UI, 사주 없음 → 사주 등록 유도 UI
+   - 로그인/등록 후 `/manse`로 자동 복귀 (`returnTo` 패턴)
+4. **아코디언**: Radix UI Accordion + Tailwind v4 호환 chevron 회전 (CSS injection)
+   - 열릴 때 해당 항목 상단으로 자동 스크롤 (`scrollIntoView`)
+   - 세운: `type="multiple"` (여러 연도 동시 열기)
+5. **GA 트래킹**: `staticRoutes`에 `/manse: '만세력'` 추가 → 자동 page_view
+
+**파일**:
+- `supabase/functions/get-manse-data/index.ts` (생성)
+- `src/lib/manseService.ts` (생성)
+- `src/components/MansePage.tsx` (생성)
+- `public/icon-manse.svg` (생성)
+- `src/App.tsx`, `src/components/ProfilePage.tsx`, `src/components/ui/accordion.tsx` (수정)
+
+---
+
 ## 2026-02-15
 
 ### 스테이징/프로덕션 주간 보고서 일정 분리 (WEEK_START_DAY)

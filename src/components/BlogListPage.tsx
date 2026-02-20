@@ -201,10 +201,15 @@ export default function BlogListPage({ onBack }: BlogListPageProps) {
               transition={{ duration: 0.2 }}
             >
               {posts.map((post, index) => (
-                <motion.div
+                <a
                   key={post.id}
+                  href={`/blog/${post.slug}`}
+                  onClick={(e) => { e.preventDefault(); navigate(`/blog/${post.slug}`); }}
+                  className="no-underline"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                <motion.div
                   className="flex gap-[12px] px-[16px] py-[12px] cursor-pointer active:bg-[#f9f9f9] transition-colors"
-                  onClick={() => navigate(`/blog/${post.slug}`)}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.03 }}
@@ -289,6 +294,7 @@ export default function BlogListPage({ onBack }: BlogListPageProps) {
                     </span>
                   </div>
                 </motion.div>
+                </a>
               ))}
             </motion.div>
           )}

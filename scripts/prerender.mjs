@@ -687,7 +687,7 @@ function generateBlogDetailPages(template, blogPosts) {
  * ItemList JSON-LD로 콘텐츠 목록을 구조화 데이터로 노출
  * SEO body content로 주요 콘텐츠 목록을 HTML로 삽입
  */
-function generateHomePage(template, contents) {
+function generateHomePage(template, contents, blogPosts = []) {
   const paidContents = contents.filter((c) => c.content_type === 'paid');
   const freeContents = contents.filter((c) => c.content_type === 'free');
 
@@ -758,6 +758,10 @@ function generateHomePage(template, contents) {
       subHeading: paidContents.length > 0 ? `운세 콘텐츠 ${contents.length}개` : null,
       extraText: 'AI가 분석하는 사주풀이, 타로, 궁합, 신년운세. 무료운세부터 프리미엄 운세까지 나다운세에서 만나보세요.',
       contentList,
+      internalLinks: blogPosts.slice(0, 5).map((post) => ({
+        label: post.title,
+        url: `${SITE_URL}/blog/${post.slug}`,
+      })),
     }),
   });
 
@@ -799,8 +803,8 @@ async function main() {
     generateBlogDetailPages(template, blogPosts);
   }
 
-  // 6. 홈페이지 프리렌더 (ItemList JSON-LD + SEO body content)
-  generateHomePage(template, contents);
+  // 6. 홈페이지 프리렌더 (ItemList JSON-LD + SEO body content + 블로그 링크)
+  generateHomePage(template, contents, blogPosts);
 
   // 7. 정적 sitemap.xml 생성 (Edge Function rewrite 대신 정적 파일로 서빙)
   generateSitemap(contents, blogPosts);

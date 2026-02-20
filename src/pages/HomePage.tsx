@@ -627,6 +627,144 @@ function HomeIndicatorLight() {
   );
 }
 
+interface BlogPreviewPost {
+  id: string;
+  title: string;
+  slug: string;
+  thumbnail_url: string | null;
+  published_at: string | null;
+}
+
+const BLOG_CACHE_KEY = 'blog_posts_cache_v1';
+const BLOG_CACHE_TTL = 5 * 60 * 1000; // 5분
+
+function BlogPreviewSection({ navigate }: { navigate: (path: string) => void }) {
+  const [posts, setPosts] = useState<BlogPreviewPost[]>([]);
+
+  useEffect(() => {
+    async function loadBlogPosts() {
+      // 캐시 확인
+      try {
+        const cached = localStorage.getItem(BLOG_CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached) as { data: BlogPreviewPost[]; timestamp: number };
+          if (Date.now() - timestamp < BLOG_CACHE_TTL && data.length > 0) {
+            setPosts(data.slice(0, 3));
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
+      // fetch from supabase
+      try {
+        const { data } = await supabase
+          .from('blog_posts')
+          .select('id, title, slug, thumbnail_url, published_at')
+          .eq('status', 'published')
+          .order('published_at', { ascending: false })
+          .limit(3);
+
+        if (data && data.length > 0) {
+          setPosts(data);
+          localStorage.setItem(BLOG_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+        }
+      } catch { /* ignore */ }
+    }
+
+    loadBlogPosts();
+  }, []);
+
+  if (posts.length === 0) return null;
+
+  return (
+    <div className="px-[20px] py-[24px]" style={{ borderTop: '8px solid #f5f5f5' }}>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between" style={{ marginBottom: '14px' }}>
+        <p style={{
+          fontFamily: 'Pretendard Variable',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#1a1a1a',
+        }}>
+          운세 콘텐츠
+        </p>
+        <a
+          href="/blog"
+          onClick={(e) => { e.preventDefault(); navigate('/blog'); }}
+          className="cursor-pointer"
+          style={{
+            fontFamily: 'Pretendard Variable',
+            fontSize: '13px',
+            fontWeight: 500,
+            color: '#48b2af',
+            textDecoration: 'none',
+          }}
+        >
+          더보기
+        </a>
+      </div>
+      {/* 카드 목록 */}
+      <div className="flex flex-col gap-[10px]">
+        {posts.map((post) => (
+          <a
+            key={post.id}
+            href={`/blog/${post.slug}`}
+            onClick={(e) => { e.preventDefault(); navigate(`/blog/${post.slug}`); }}
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
+            <div
+              className="flex items-center gap-[12px] rounded-[12px] cursor-pointer overflow-hidden transform-gpu"
+              style={{ backgroundColor: '#fafafa', padding: '10px' }}
+            >
+              {post.thumbnail_url && (
+                <div
+                  className="shrink-0 rounded-[8px] overflow-hidden transform-gpu"
+                  style={{ width: '56px', height: '56px' }}
+                >
+                  <img
+                    src={post.thumbnail_url}
+                    alt={post.title}
+                    className="block w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: '#2a2a2a',
+                  lineHeight: '20px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}>
+                  {post.title}
+                </p>
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  color: '#aaaaaa',
+                  marginTop: '2px',
+                }}>
+                  {post.published_at ? (() => {
+                    const d = new Date(post.published_at);
+                    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+                  })() : ''}
+                </p>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1727,6 +1865,11 @@ export default function HomePage() {
                 <div className="flex items-center justify-center w-full py-[20px]">
                   <DotLoading />
                 </div>
+              )}
+
+              {/* Blog Preview Section - 스크롤 끝에서 표시 */}
+              {!hasMore && !isLoading && (
+                <BlogPreviewSection navigate={navigate} />
               )}
 
               {/* Infinite Scroll Trigger */}

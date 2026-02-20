@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,14 @@ interface BlogPostDetail {
   meta_description: string | null;
   published_at: string | null;
   view_count: number;
+}
+
+interface RelatedPost {
+  id: string;
+  title: string;
+  slug: string;
+  thumbnail_url: string | null;
+  published_at: string | null;
 }
 
 function formatDate(dateString: string | null): string {
@@ -89,6 +97,8 @@ export default function BlogDetailPage() {
   const [post, setPost] = useState<BlogPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [relatedPosts, setRelatedPosts] = useState<RelatedPost[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (slug) {
@@ -99,6 +109,7 @@ export default function BlogDetailPage() {
   async function fetchPost(postSlug: string) {
     setLoading(true);
     setNotFound(false);
+    setRelatedPosts([]);
 
     try {
       const { data, error } = await supabase
@@ -113,8 +124,8 @@ export default function BlogDetailPage() {
         setPost(null);
       } else {
         setPost(data);
-        // 조회수 증가 (비동기, 실패해도 무시)
         incrementViewCount(data.id);
+        fetchRelatedPosts(data.id, data.category);
       }
     } catch (err) {
       console.error('블로그 글 조회 실패:', err);
@@ -124,16 +135,96 @@ export default function BlogDetailPage() {
     }
   }
 
+  async function fetchRelatedPosts(currentId: string, category: string | null) {
+    try {
+      let query = supabase
+        .from('blog_posts')
+        .select('id, title, slug, thumbnail_url, published_at')
+        .eq('status', 'published')
+        .neq('id', currentId)
+        .limit(3);
+
+      if (category) {
+        query = query.eq('category', category);
+      }
+
+      // view_count 순으로 정렬
+      const { data, error } = await query.order('view_count', { ascending: false });
+
+      if (error || !data || data.length === 0) {
+        // fallback: 카테고리 무관 최신순
+        const { data: fallbackData } = await supabase
+          .from('blog_posts')
+          .select('id, title, slug, thumbnail_url, published_at')
+          .eq('status', 'published')
+          .neq('id', currentId)
+          .order('published_at', { ascending: false })
+          .limit(3);
+
+        setRelatedPosts(fallbackData || []);
+      } else {
+        setRelatedPosts(data);
+      }
+    } catch {
+      // 관련 글 조회 실패 무시
+    }
+  }
+
   async function incrementViewCount(postId: string) {
     try {
-      // view_count를 직접 1 증가 (RPC 없이)
-      // RLS SELECT only이므로 anon에서는 업데이트 불가 → 서비스 레벨에서 처리 가능
-      // 일단 클라이언트에서 시도, 실패하면 무시
       await supabase.rpc('increment_blog_view_count', { post_id: postId });
     } catch {
       // 조회수 증가 실패 무시
     }
   }
+
+  // cross-links: relatedPosts 로드 후 blog-content 하단에 "함께 읽어보세요" 삽입
+  const handleCrossLinkClick = useCallback((e: Event) => {
+    const target = e.currentTarget as HTMLAnchorElement;
+    const href = target.getAttribute('href');
+    if (href && href.startsWith('/blog/')) {
+      e.preventDefault();
+      navigate(href);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    const contentEl = contentRef.current;
+    if (!contentEl || relatedPosts.length === 0) return;
+
+    // 이미 삽입되어 있으면 제거
+    const existing = contentEl.querySelector('.blog-crosslinks');
+    if (existing) existing.remove();
+
+    // 크로스링크 블록 생성
+    const crosslinksDiv = document.createElement('div');
+    crosslinksDiv.className = 'blog-crosslinks';
+
+    const heading = document.createElement('p');
+    heading.textContent = '함께 읽어보세요';
+    crosslinksDiv.appendChild(heading);
+
+    const ul = document.createElement('ul');
+    relatedPosts.forEach((rp) => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = `/blog/${rp.slug}`;
+      a.textContent = rp.title;
+      a.addEventListener('click', handleCrossLinkClick);
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    crosslinksDiv.appendChild(ul);
+
+    contentEl.appendChild(crosslinksDiv);
+
+    // 클린업: 이벤트 리스너 제거
+    return () => {
+      const links = crosslinksDiv.querySelectorAll('a');
+      links.forEach((a) => a.removeEventListener('click', handleCrossLinkClick));
+      crosslinksDiv.remove();
+    };
+  }, [relatedPosts, handleCrossLinkClick]);
 
   const handleBack = () => {
     navigate('/blog');
@@ -151,6 +242,12 @@ export default function BlogDetailPage() {
         canonical={slug ? `/blog/${slug}` : undefined}
         ogType="article"
         ogImage={post?.thumbnail_url || undefined}
+        article={post ? {
+          headline: post.title,
+          description: seoDescription,
+          image: post.thumbnail_url || undefined,
+          datePublished: post.published_at || undefined,
+        } : undefined}
       />
 
       <div className="w-full max-w-[440px] mx-auto flex flex-col h-full">
@@ -209,6 +306,7 @@ export default function BlogDetailPage() {
                     alt={post.title}
                     className="block w-full object-cover"
                     style={{ maxHeight: '240px' }}
+                    loading="eager"
                   />
                 </div>
               )}
@@ -240,18 +338,89 @@ export default function BlogDetailPage() {
                 </div>
               </div>
 
-              {/* 본문 - HTML 렌더링 */}
+              {/* 본문 - HTML 렌더링 (cross-links가 여기에 DOM 삽입됨) */}
               <div
+                ref={contentRef}
                 className="blog-content px-[20px] pb-[40px]"
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
 
+              {/* 관련 글 추천 */}
+              {relatedPosts.length > 0 && (
+                <div className="px-[20px] pb-[24px]">
+                  <p style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#1a1a1a',
+                    marginBottom: '14px',
+                  }}>
+                    관련 글
+                  </p>
+                  <div className="flex flex-col gap-[12px]">
+                    {relatedPosts.map((rp) => (
+                      <a
+                        key={rp.id}
+                        href={`/blog/${rp.slug}`}
+                        onClick={(e) => { e.preventDefault(); navigate(`/blog/${rp.slug}`); }}
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div
+                          className="flex items-center gap-[12px] rounded-[12px] cursor-pointer overflow-hidden transform-gpu"
+                          style={{ backgroundColor: '#fafafa', padding: '10px' }}
+                        >
+                          {rp.thumbnail_url && (
+                            <div
+                              className="shrink-0 rounded-[8px] overflow-hidden transform-gpu"
+                              style={{ width: '60px', height: '60px' }}
+                            >
+                              <img
+                                src={rp.thumbnail_url}
+                                alt={rp.title}
+                                className="block w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p style={{
+                              fontFamily: 'Pretendard Variable',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              color: '#2a2a2a',
+                              lineHeight: '20px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}>
+                              {rp.title}
+                            </p>
+                            <p style={{
+                              fontFamily: 'Pretendard Variable',
+                              fontSize: '12px',
+                              fontWeight: 400,
+                              color: '#aaaaaa',
+                              marginTop: '4px',
+                            }}>
+                              {formatDate(rp.published_at)}
+                            </p>
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* 하단 구분선 + 목록 링크 */}
               <div className="px-[20px] pb-[40px]">
                 <div style={{ height: '1px', backgroundColor: '#f0f0f0' }} />
-                <button
-                  onClick={() => navigate('/blog')}
-                  className="w-full cursor-pointer"
+                <a
+                  href="/blog"
+                  onClick={(e) => { e.preventDefault(); navigate('/blog'); }}
+                  className="block w-full cursor-pointer"
                   style={{
                     fontFamily: 'Pretendard Variable',
                     fontSize: '14px',
@@ -263,10 +432,11 @@ export default function BlogDetailPage() {
                     backgroundColor: '#f0f8f8',
                     border: 'none',
                     textAlign: 'center',
+                    textDecoration: 'none',
                   }}
                 >
-                  다른 글 보기
-                </button>
+                  전체 글 보기
+                </a>
               </div>
             </motion.div>
           ) : null}

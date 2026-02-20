@@ -92,7 +92,21 @@
     "url": "https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/assets/search%20logo.png",
     "width": 512,
     "height": 512
-  }
+  },
+  "sameAs": ["http://pf.kakao.com/_xbxkLHn"]
+}
+
+// Article (블로그 상세 - 클라이언트 사이드 SEO.tsx에서 렌더링)
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "글 제목",
+  "description": "글 설명",
+  "image": "썸네일 URL",
+  "datePublished": "2026-02-20T...",
+  "author": { "@type": "Organization", "name": "나다운세" },
+  "publisher": { "@type": "Organization", "name": "나다운세", "url": "https://nadaunse.com" },
+  "mainEntityOfPage": "https://nadaunse.com/blog/{slug}"
 }
 ```
 
@@ -254,6 +268,14 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [x] BreadcrumbList JSON-LD 추가 (콘텐츠 페이지) **(2026-02-12)**
 - [x] SEO body 강화 (article 태그, 내부 링크, h1/h2 구조) **(2026-02-12)**
 - [x] 블로그(운세 콘텐츠) 기능 구현 **(2026-02-20)** → 아래 섹션 참고
+- [x] 홈페이지 → 블로그 내부 링크 (BlogPreviewSection, 홈 스크롤 하단) **(2026-02-20)**
+- [x] 블로그 상세 관련 글 추천 (같은 카테고리 view_count 순 3개, fallback: 최신순) **(2026-02-20)**
+- [x] 블로그 본문 상호 링크 — cross-links "함께 읽어보세요" DOM 삽입 **(2026-02-20)**
+- [x] blog-content CSS 검수 + `index.css` 반영 (테이블, 코드블록, 중첩 리스트 추가) **(2026-02-20)**
+- [x] 블로그 링크 `<a href>` 크롤러 지원 변환 (BlogList/BlogDetail/HomePage) **(2026-02-20)**
+- [x] Article JSON-LD 클라이언트 지원 (`SEO.tsx` article prop) **(2026-02-20)**
+- [x] Organization sameAs 카카오톡 채널 URL 추가 **(2026-02-20)**
+- [x] 이미지 loading 속성 추가 (hero: eager, 하단 썸네일: lazy) **(2026-02-20)**
 
 ### SEO TODO (미완료) - 우선순위순
 
@@ -262,12 +284,7 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [ ] **Google Search Console 사이트맵 재제출** — `/blog` + `/blog/{slug}` 24개 URL이 sitemap에 추가되었으므로 재제출
 - [ ] **네이버 서치어드바이저 사이트맵 재제출** — 동일하게 재제출 + 주요 블로그 URL 수집 요청 (하루 10건 제한)
 - [ ] **IndexNow로 블로그 URL 일괄 제출** — Edge Function 호출하여 `/blog` + 24개 slug URL 제출 (Bing, 네이버 즉시 인덱싱)
-
-#### 🟡 중간 (1-2주 내)
-- [ ] **홈페이지에서 블로그로 내부 링크** — 홈 하단 또는 배너에 "운세 콘텐츠" 링크 추가 → 링크 주스 전달 + 크롤링 유도
-- [ ] **블로그 상세에서 관련 글 추천** — 하단 "다른 글 보기" 대신 같은 카테고리 2-3개 글 추천 → 체류시간 + 내부 링크 강화
-- [ ] **블로그 글 본문에 상호 링크 삽입** — HTML content 내에 다른 블로그 글로의 앵커 링크 추가 (수동 또는 자동)
-- [ ] **blog-content CSS 최종 확인** — 3차 수정 후 유저 확인 미완료. 실기기에서 디자인 검수 필요
+- [ ] **네이버 사이트 인증 코드 발급** — 서치어드바이저에서 메타 태그 인증 코드 발급 후 `index.html`에 추가
 
 #### 🟢 낮음 (여유 있을 때)
 - [ ] **FAQ 구조화 데이터** — 일부 블로그 글에 FAQPage JSON-LD 추가 (검색결과 리치 스니펫 노출)
@@ -461,8 +478,20 @@ SEO 개선의 핵심 전략으로, 롱테일 키워드 유입을 확보하기 �
 | sitemap | ✅ | `/blog` + `/blog/{slug}` URL 자동 포함 |
 | GA 트래킹 | ✅ | 블로그 목록 페이지뷰 이벤트 전송 |
 | 조회수 | ✅ | `view_count` + `weekly_views` + `last_weekly_views` (pg_cron 매주 리셋) |
-| CSS | ✅ | `div.blog-content` 스타일 (Tailwind Preflight 오버라이드, `!important`) |
+| CSS | ✅ | `div.blog-content` 스타일 (`index.css`에 직접 포함, 테이블/코드블록/중첩 리스트 지원) |
+| 관련 글 추천 | ✅ | 블로그 상세 하단, 같은 카테고리 view_count 순 3개 (fallback: 최신순) |
+| 본문 상호 링크 | ✅ | "함께 읽어보세요" cross-links, DOM 삽입 방식 (크롤러 인식 `<a href>`) |
+| 홈→블로그 내부 링크 | ✅ | `BlogPreviewSection` — 홈 스크롤 끝에서 최근 블로그 3개 표시 |
+| 크롤러 링크 지원 | ✅ | 모든 블로그 링크 `<a href>` + `e.preventDefault()` + `navigate()` 패턴 |
+| Article JSON-LD (CSR) | ✅ | `SEO.tsx` article prop → 블로그 상세에서 클라이언트 렌더링 |
+| 이미지 loading 속성 | ✅ | hero: `eager`, 하단 썸네일: `lazy` |
 | 프로필 메뉴 | ✅ | "운세 콘텐츠" 메뉴 추가 |
+
+### ⚠️ blog-content CSS 주의사항
+- `src/styles/globals.css`는 Tailwind 소스 파일로, 앱에서 직접 import되지 않음
+- **실제 로드되는 CSS**: `src/index.css` (main.tsx에서 import)
+- blog-content 스타일은 `index.css` 끝에 직접 추가되어 있음
+- globals.css 수정 시 반드시 index.css에도 동일하게 반영해야 함
 
 ### 콘텐츠 현황 (총 24개)
 
@@ -476,10 +505,13 @@ SEO 개선의 핵심 전략으로, 롱테일 키워드 유입을 확보하기 �
 
 | 파일 | 역할 |
 |------|------|
-| `src/components/BlogListPage.tsx` | 블로그 목록 (localStorage 캐시 5분) |
-| `src/components/BlogDetailPage.tsx` | 블로그 상세 (HTML 렌더링, 조회수 증가) |
-| `src/styles/globals.css` | `.blog-content` HTML 스타일링 |
-| `scripts/prerender.mjs` | 블로그 프리렌더 + sitemap 생성 |
+| `src/components/BlogListPage.tsx` | 블로그 목록 (localStorage 캐시 5분, `<a href>` 크롤러 지원) |
+| `src/components/BlogDetailPage.tsx` | 블로그 상세 (관련 글 추천, cross-links, Article JSON-LD, 이미지 loading) |
+| `src/components/SEO.tsx` | `article` prop으로 Article JSON-LD 스키마 렌더링 |
+| `src/pages/HomePage.tsx` | `BlogPreviewSection` — 홈 하단 블로그 3개 미리보기 |
+| `src/index.css` | `.blog-content` HTML 스타일링 (**⚠️ globals.css 아닌 index.css에 직접 포함**) |
+| `src/styles/globals.css` | `.blog-content` 소스 (참고용, 실제 로드는 index.css) |
+| `scripts/prerender.mjs` | 블로그 프리렌더 + sitemap 생성 + 홈페이지 블로그 링크 |
 | `supabase/migrations/20260220_create_blog_posts.sql` | 참고용 SQL |
 
 ### DB 스키마: `blog_posts`
@@ -511,6 +543,27 @@ updated_at TIMESTAMPTZ DEFAULT now()
 ### pg_cron 스케줄
 - `blog-weekly-views-reset` — 매주 월요일 00:00 KST (`0 15 * * 0` UTC)
 - `weekly_views → last_weekly_views` 이동 후 0 리셋 (`master_contents`와 동일 패턴)
+
+### 크롤러 친화 링크 패턴
+
+블로그 관련 모든 링크는 크롤러가 인식할 수 있도록 `<a href>` 태그를 사용합니다.
+SPA 내비게이션을 유지하면서 크롤러에게 링크를 노출하는 패턴:
+
+```tsx
+// ✅ 크롤러 + SPA 모두 지원
+<a
+  href="/blog/slug"
+  onClick={(e) => { e.preventDefault(); navigate('/blog/slug'); }}
+  style={{ textDecoration: 'none', color: 'inherit' }}
+>
+  카드 내용
+</a>
+
+// ❌ 크롤러 인식 불가 (기존 방식)
+<div onClick={() => navigate('/blog/slug')}>카드 내용</div>
+```
+
+적용된 파일: `BlogListPage.tsx`, `BlogDetailPage.tsx`, `HomePage.tsx`
 
 ### 콘텐츠 추가 방법
 Supabase SQL로 직접 삽입 (관리 UI 없음):
@@ -544,6 +597,7 @@ VALUES (
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-20 | **SEO 내부 링크 강화** - 홈→블로그 내부 링크 (BlogPreviewSection), 관련 글 추천 (같은 카테고리 view_count 순), 본문 cross-links ("함께 읽어보세요"), blog-content CSS 검수 + index.css 반영, 모든 블로그 링크 `<a href>` 크롤러 지원 변환, Article JSON-LD 클라이언트 지원 (SEO.tsx), Organization sameAs 카카오톡 채널 추가, 이미지 loading 속성 (eager/lazy) |
 | 2026-02-20 | **블로그(운세 콘텐츠) 기능 구현** - BlogListPage/BlogDetailPage 생성, /blog /blog/:slug 라우트 추가, blog-content CSS, prerender 블로그 지원 (Article + ItemList + BreadcrumbList JSON-LD), sitemap 블로그 URL 추가, GA 페이지뷰 트래킹, blog_posts 테이블 (weekly_views/last_weekly_views + pg_cron 리셋), 콘텐츠 24개 작성 (스레드/트위터 트렌드 분석 기반 롱테일 키워드) |
 | 2026-02-12 | **SEO 즉시 강화 작업** - 홈페이지 프리렌더 (ItemList JSON-LD + 콘텐츠 목록), BreadcrumbList JSON-LD 추가, SEO body 강화 (article 태그, 내부 링크, h1/h2 구조), IndexNow Edge Function 생성, 이미지 alt 속성 5건 수정 |
 | 2026-02-10 | **prerender 파이프라인 활성화** - `package.json` 빌드에 prerender 연결, 무료 콘텐츠 canonical URL 수정 (`/product/` → `/free/content/`). 네이버 진단: description 동일 12건, 색인 12/220+ |
