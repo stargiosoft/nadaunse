@@ -26,6 +26,8 @@ interface ProfilePageProps {
   onNavigateToPurchaseHistory?: () => void;
   onNavigateToSajuInput?: () => void;
   onNavigateToSajuManagement?: () => void;
+  onNavigateToManse?: () => void;
+  onNavigateToBlog?: () => void;
 }
 
 // 사주 정보 타입
@@ -123,6 +125,20 @@ function MessageCircleIcon() {
   return <img src="/icon-message.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
+function ManseIcon() {
+  return <img src="/icon-manse.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+}
+
+function BlogIcon() {
+  return (
+    <svg className="block size-full" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 15.5V4.5C2 3.12 3.12 2 4.5 2H16v16H4.5C3.12 18 2 16.88 2 15.5Z" stroke="black" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 18H16" stroke="black" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 6.5h8M6 9.5h5" stroke="black" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // 메뉴용 Arrow Right 아이콘 (24px, 회색)
 function MenuArrowRightIcon() {
   return <img src="/icon-arrow-right.svg" alt="" className="block size-full" />;
@@ -154,7 +170,9 @@ export default function ProfilePage({
   onNavigateToPrivacyPolicy,
   onNavigateToPurchaseHistory,
   onNavigateToSajuInput,
-  onNavigateToSajuManagement
+  onNavigateToSajuManagement,
+  onNavigateToManse,
+  onNavigateToBlog
 }: ProfilePageProps) {
   // 🚀 동기적 캐시 확인 (useState 초기화 시점) - 스켈레톤 플래시 방지
   const getInitialState = () => {
@@ -1232,7 +1250,45 @@ export default function ProfilePage({
                       <MenuArrowRightIcon />
                     </div>
                   </motion.div>
-                  {/* 4. 의견 전달하기 */}
+                  {/* 4. 만세력 */}
+                  <motion.div
+                    variants={itemVariants}
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%', marginTop: '-6px' }}
+                    onClick={() => {
+                      if (onNavigateToManse) {
+                        onNavigateToManse();
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-[8px]">
+                      <div className="relative shrink-0 size-[20px]">
+                        <ManseIcon />
+                      </div>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>만세력</p>
+                    </div>
+                    <div className="relative shrink-0 size-[16px]">
+                      <MenuArrowRightIcon />
+                    </div>
+                  </motion.div>
+                  {/* 5. 운세 콘텐츠 (블로그) */}
+                  <motion.div
+                    variants={itemVariants}
+                    className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
+                    style={{ width: '100%', marginTop: '-6px' }}
+                    onClick={onNavigateToBlog}
+                  >
+                    <div className="flex items-center gap-[8px]">
+                      <div className="relative shrink-0 size-[20px]">
+                        <BlogIcon />
+                      </div>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>운세 콘텐츠</p>
+                    </div>
+                    <div className="relative shrink-0 size-[16px]">
+                      <MenuArrowRightIcon />
+                    </div>
+                  </motion.div>
+                  {/* 5. 의견 전달하기 */}
                   <motion.div
                     variants={itemVariants}
                     onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}

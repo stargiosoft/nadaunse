@@ -9,6 +9,7 @@ import BirthInfoInput from './components/BirthInfoInput';
 import SajuDetail from './components/SajuDetail';
 import FreeSajuDetail from './components/FreeSajuDetail';
 import ProfilePage from './components/ProfilePage';
+import MansePage from './components/MansePage';
 import StatsDashboard from './components/StatsDashboard'; // ⭐ 통계 대시보드
 import PurchaseHistoryPage from './components/PurchaseHistoryPage';
 import LoginPageNew from './components/LoginPageNew';
@@ -38,6 +39,8 @@ import UnifiedResultPage from './components/UnifiedResultPage'; // ⭐ 통합 �
 import TarotShufflePage from './components/TarotShufflePage'; // ⭐ 타로 셔플 페이지
 import WelcomeCouponPage from './components/WelcomeCouponPage'; // ⭐ 추가
 import AlimtalkInfoInputPage from './components/AlimtalkInfoInputPage'; // ⭐ 알림톡 정보 입력 페이지
+import BlogListPage from './components/BlogListPage'; // ⭐ 블로그 목록
+import BlogDetailPage from './components/BlogDetailPage'; // ⭐ 블로그 상세
 import ErrorPage from './components/ErrorPage'; // ⭐ 공통 에러 페이지
 import { SessionExpiredDialog } from './components/SessionExpiredDialog'; // ⭐ 로그인 필요 다이얼로그
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
@@ -327,6 +330,7 @@ function GAInit() {
         '/error/network': '네트워크 오류',
         // 주간 보고서 페이지
         '/my-report-list': '보고서 리스트',
+        '/manse': '만세력',
       };
 
       // 정적 라우트 확인
@@ -1730,6 +1734,31 @@ function ProfilePageWrapper() {
       onNavigateToPurchaseHistory={() => navigate('/purchase-history', { state: { canGoBack: true } })}
       onNavigateToSajuInput={() => navigate('/saju/input', { state: { canGoBack: true } })}
       onNavigateToSajuManagement={() => navigate('/saju/management', { state: { canGoBack: true } })}
+      onNavigateToManse={() => navigate('/manse', { state: { canGoBack: true } })}
+      onNavigateToBlog={() => navigate('/blog', { state: { canGoBack: true } })}
+    />
+  );
+}
+
+// ⭐ 만세력 Wrapper (로그인 필수)
+function MansePageWrapper() {
+  const goBack = useGoBack('/profile');
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <MansePage onBack={goBack} />;
+}
+
+// ⭐ 블로그 목록 Wrapper (로그인 불필요)
+function BlogListPageWrapper() {
+  const navigate = useNavigate();
+  const goBack = useGoBack('/');
+
+  return (
+    <BlogListPage
+      onBack={goBack}
     />
   );
 }
@@ -3343,6 +3372,9 @@ export default function App() {
           <Route path="/product/:id/result/free" element={<FreeResultPage />} />
           <Route path="/payment/complete" element={<PaymentComplete />} />
           <Route path="/profile" element={<ProfilePageWrapper />} />
+          <Route path="/manse" element={<MansePageWrapper />} />
+          <Route path="/blog" element={<BlogListPageWrapper />} />
+          <Route path="/blog/:slug" element={<BlogDetailPage />} />
           <Route path="/purchase-history" element={<PurchaseHistoryPageWrapper />} />
           <Route path="/master/content" element={<MasterContentListWrapper />} />
           <Route path="/master/stats" element={<StatsDashboardWrapper />} /> {/* ⭐ 통계 대시보드 */}
