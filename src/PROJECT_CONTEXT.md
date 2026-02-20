@@ -657,6 +657,7 @@ interface TarotGameProps {
 
 ```
 /components/ProfilePage.tsx             → 프로필 메인
+/components/MansePage.tsx               → 만세력 (사주 입력 폼 + 만세력 결과, 로그인 시 DB 저장)
 /components/PurchaseHistoryPage.tsx     → 구매 내역
 /components/NadaumTagsList.tsx          → 나다움 태그 페이지 (라우트: /profile/nadaum-tags)
 /components/NadaumTags.tsx              → 나다움 태그 표시 컴포넌트
