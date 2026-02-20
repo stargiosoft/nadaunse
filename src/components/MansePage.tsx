@@ -301,7 +301,8 @@ export default function MansePage({ onBack }: MansePageProps) {
   // ── 로딩/에러 상태 ──
   if (loading) return <PageLoader message="만세력을 불러오고 있어요" />;
 
-  if (error === 'no_saju') {
+  if (error === 'login_required' || error === 'no_saju') {
+    const isLogin = error === 'login_required';
     return (
       <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
         <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
@@ -309,16 +310,16 @@ export default function MansePage({ onBack }: MansePageProps) {
             <ArrowLeft onClick={onBack} />
           </div>
           <div className="flex-1 flex flex-col items-center justify-center gap-[16px] px-[20px]">
-            <p style={textStyle(18, 600, '#151515')}>사주 정보가 없어요</p>
+            <p style={textStyle(18, 600, '#151515')}>{isLogin ? '로그인이 필요해요' : '사주 정보가 없어요'}</p>
             <p className="text-center" style={textStyle(14, 400, '#6d6d6d', { lineHeight: '22px' })}>
-              만세력을 보려면 먼저 사주 정보를 등록해주세요
+              {isLogin ? '만세력을 보려면 먼저 로그인해주세요' : '만세력을 보려면 먼저 사주 정보를 등록해주세요'}
             </p>
             <button
-              onClick={() => navigate('/saju/input', { state: { canGoBack: true, returnTo: '/manse' } })}
+              onClick={() => navigate(isLogin ? '/login' : '/saju/input', { state: { canGoBack: true, returnTo: '/manse' } })}
               className="rounded-[12px] px-[24px] py-[12px] mt-[8px] cursor-pointer border-none"
               style={{ ...textStyle(15, 600, 'white'), backgroundColor: '#41a09e' }}
             >
-              사주 등록하기
+              {isLogin ? '로그인하기' : '사주 등록하기'}
             </button>
           </div>
         </div>
