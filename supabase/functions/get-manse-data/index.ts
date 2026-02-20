@@ -9,16 +9,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    // JWT 검증 (Supabase가 자동으로 처리)
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: '인증이 필요합니다' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // 입력값 파싱
+    // 입력값 파싱 (인증 없이도 호출 가능)
     const { birthday, gender, lunar } = await req.json()
 
     if (!birthday || !gender) {

@@ -202,8 +202,8 @@ echo.
 echo ──── 만세력 (1개) ────
 echo.
 
-echo [33/33] get-manse-data
-call npx supabase functions deploy get-manse-data --project-ref %PROJECT_REF%
+echo [33/33] get-manse-data (--no-verify-jwt, 비로그인 공개 접근)
+call npx supabase functions deploy get-manse-data --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
@@ -211,7 +211,7 @@ echo ━━━━━━━━━━━━━━━━━━━━━━━━━
 echo ✅ 스테이징 배포 완료! (33개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
-echo 📌 --no-verify-jwt 적용된 함수 (10개):
+echo 📌 --no-verify-jwt 적용된 함수 (11개):
 echo    - generate-saju-answer (내부 호출)
 echo    - generate-tarot-answer (내부 호출)
 echo    - send-alimtalk (내부 호출)
@@ -222,6 +222,7 @@ echo    - cleanup-unconfirmed-tags (pg_cron)
 echo    - payment-webhook (PortOne 콜백)
 echo    - sentry-slack-webhook (Sentry 콜백)
 echo    - generate-sitemap (Google 크롤러)
+echo    - get-manse-data (비로그인 공개 접근)
 echo.
 goto :end
 

@@ -1740,9 +1740,9 @@ function ProfilePageWrapper() {
   );
 }
 
-// ⭐ 만세력 Wrapper (로그인 필수)
+// ⭐ 만세력 Wrapper
 function MansePageWrapper() {
-  const goBack = useGoBack('/profile');
+  const goBack = useGoBack('/');
   return <MansePage onBack={goBack} />;
 }
 
