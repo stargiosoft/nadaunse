@@ -1,10 +1,11 @@
 # 📚 프로젝트 핵심 문서 가이드
 
-> **최종 업데이트**: 2026-01-17
+> **최종 업데이트**: 2026-02-20
 >
-> **중요 변경사항**: AI_ONBOARDING.md가 CLAUDE.md에 통합되었습니다.
-> - **Before**: 10개 문서 (중복 내용 많음)
-> - **After**: 9개 문서 (CLAUDE.md가 개발 규칙 + AI 작업 가이드 통합본)
+> **중요 변경사항**:
+> - AI_ONBOARDING.md가 CLAUDE.md에 통합되었습니다 (2026-01-17)
+> - CLAUDE.md/PROJECT_CONTEXT.md 중복 제거 + 압축 (2026-02-20)
+> - **9개 문서** 체제 유지 (역할 명확화: 규칙은 CLAUDE.md, 구조/흐름은 PROJECT_CONTEXT.md)
 
 ---
 
@@ -17,8 +18,8 @@
 | **PROJECT_CONTEXT.md** | 아키텍처 + 디버깅 | AI + 개발자 |
 | **DECISIONS.md** | 설계 결정 기록 | 개발자 |
 | **DATABASE_SCHEMA.md** | DB 스키마 | 개발자 |
-| **components-inventory.md** | 컴포넌트 목록 (52개) | 개발자 |
-| **supabase/EDGE_FUNCTIONS_GUIDE.md** | Edge Functions (17개) | 개발자 |
+| **components-inventory.md** | 컴포넌트 목록 (72개+) | 개발자 |
+| **supabase/EDGE_FUNCTIONS_GUIDE.md** | Edge Functions (32개) | 개발자 |
 | **supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md** | DB Triggers & Functions | 개발자 |
 | **supabase/RLS_POLICIES.md** | RLS 정책 (26개) | 개발자 |
 
@@ -132,7 +133,7 @@
 
 ### 6. components-inventory.md
 
-**용도**: 컴포넌트 목록 (52개)
+**용도**: 컴포넌트 목록 (72개+)
 
 **타겟**: 개발자
 
@@ -152,7 +153,7 @@
 
 ### 7. supabase/EDGE_FUNCTIONS_GUIDE.md
 
-**용도**: Edge Functions 가이드 (17개)
+**용도**: Edge Functions 가이드 (32개)
 
 **타겟**: 개발자
 
@@ -325,7 +326,7 @@ nadaunse/
 - README.md, PROJECT_CONTEXT.md, DECISIONS.md 등 7개
 
 **After (9개 문서)**:
-- **CLAUDE.md (531줄)** - 개발 규칙 + AI 작업 가이드 통합
+- **CLAUDE.md (~480줄)** - 개발 규칙 + AI 작업 가이드 통합 (2026-02-20 압축 후)
 - README.md, PROJECT_CONTEXT.md, DECISIONS.md 등 8개
 
 **통합된 내용**:
@@ -369,5 +370,5 @@ nadaunse/
 
 ---
 
-**문서 버전**: 3.0 (AI_ONBOARDING.md 통합)
-**최종 업데이트**: 2026-01-17
+**문서 버전**: 3.1 (CLAUDE.md/PROJECT_CONTEXT.md 압축)
+**최종 업데이트**: 2026-02-20

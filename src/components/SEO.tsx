@@ -8,6 +8,13 @@ interface ProductJsonLd {
   priceCurrency?: string;
 }
 
+interface ArticleJsonLd {
+  headline: string;
+  description: string;
+  image?: string;
+  datePublished?: string;
+}
+
 interface SEOProps {
   title?: string;
   description?: string;
@@ -17,6 +24,7 @@ interface SEOProps {
   canonical?: string;
   noIndex?: boolean;
   product?: ProductJsonLd;
+  article?: ArticleJsonLd;
 }
 
 const DEFAULT_TITLE = '나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이';
@@ -34,6 +42,7 @@ export function SEO({
   canonical,
   noIndex = false,
   product,
+  article,
 }: SEOProps) {
   const fullTitle = title ? `${title} | 나다운세` : DEFAULT_TITLE;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined;
@@ -56,6 +65,26 @@ export function SEO({
       availability: 'https://schema.org/InStock',
       url: canonicalUrl
     }
+  } : null;
+
+  // Article JSON-LD 스키마 생성
+  const articleJsonLd = article ? {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.headline,
+    description: article.description,
+    image: article.image || ogImage,
+    datePublished: article.datePublished,
+    author: {
+      '@type': 'Organization',
+      name: '나다운세',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: '나다운세',
+      url: SITE_URL,
+    },
+    mainEntityOfPage: canonicalUrl,
   } : null;
 
   return (
@@ -88,6 +117,13 @@ export function SEO({
       {productJsonLd && (
         <script type="application/ld+json">
           {JSON.stringify(productJsonLd)}
+        </script>
+      )}
+
+      {/* Article JSON-LD */}
+      {articleJsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(articleJsonLd)}
         </script>
       )}
     </Helmet>

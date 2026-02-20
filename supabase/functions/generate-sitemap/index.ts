@@ -3,6 +3,7 @@
  *
  * 동적으로 sitemap.xml을 생성합니다.
  * - master_contents 테이블에서 deployed 상태인 콘텐츠 조회 (유료 + 무료)
+ * - blog_posts 테이블에서 published 상태인 블로그 글 조회
  * - XML 형식으로 sitemap 생성
  * - 1시간 캐싱
  */
@@ -19,6 +20,11 @@ interface ContentItem {
   id: string;
   content_type: 'paid' | 'free';
   updated_at: string;
+}
+
+interface BlogPost {
+  slug: string;
+  published_at: string | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -51,10 +57,23 @@ Deno.serve(async (req: Request) => {
 
     const paidCount = contents?.filter(c => c.content_type === 'paid').length || 0;
     const freeCount = contents?.filter(c => c.content_type === 'free').length || 0;
-    console.log(`✅ 콘텐츠 조회: 유료 ${paidCount}개, 무료 ${freeCount}개`);
+
+    // published 상태인 블로그 글 조회
+    const { data: blogPosts, error: blogError } = await supabase
+      .from('blog_posts')
+      .select('slug, published_at')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false });
+
+    if (blogError) {
+      console.error('⚠️ 블로그 조회 실패 (무시):', blogError);
+    }
+
+    const blogCount = blogPosts?.length || 0;
+    console.log(`✅ 콘텐츠 조회: 유료 ${paidCount}개, 무료 ${freeCount}개, 블로그 ${blogCount}개`);
 
     // XML 생성
-    const xml = generateSitemapXml(contents || []);
+    const xml = generateSitemapXml(contents || [], blogPosts || []);
 
     return new Response(xml, {
       status: 200,
@@ -68,7 +87,7 @@ Deno.serve(async (req: Request) => {
     console.error('❌ Sitemap 생성 실패:', error);
     
     // 에러 시에도 기본 sitemap 반환
-    const fallbackXml = generateSitemapXml([]);
+    const fallbackXml = generateSitemapXml([], []);
     
     return new Response(fallbackXml, {
       status: 200,
@@ -83,7 +102,7 @@ Deno.serve(async (req: Request) => {
 /**
  * Sitemap XML 생성
  */
-function generateSitemapXml(contents: ContentItem[]): string {
+function generateSitemapXml(contents: ContentItem[], blogPosts: BlogPost[]): string {
   const today = new Date().toISOString().split('T')[0];
 
   // 정적 페이지
@@ -102,12 +121,24 @@ function generateSitemapXml(contents: ContentItem[]): string {
     return {
       loc: urlPath,
       changefreq: 'weekly',
-      priority: content.content_type === 'paid' ? '0.9' : '0.8', // 유료 > 무료 우선순위
+      priority: content.content_type === 'paid' ? '0.9' : '0.8',
       lastmod: content.updated_at ? content.updated_at.split('T')[0] : undefined,
     };
   });
 
-  const allPages = [...staticPages, ...contentPages];
+  // 블로그 페이지
+  const blogListPage = blogPosts.length > 0
+    ? [{ loc: '/blog', changefreq: 'weekly', priority: '0.7', lastmod: today }]
+    : [];
+
+  const blogDetailPages = blogPosts.map((post) => ({
+    loc: `/blog/${post.slug}`,
+    changefreq: 'monthly',
+    priority: '0.7',
+    lastmod: post.published_at ? post.published_at.split('T')[0] : undefined,
+  }));
+
+  const allPages = [...staticPages, ...contentPages, ...blogListPage, ...blogDetailPages];
 
   const urlEntries = allPages
     .map((page) => {
