@@ -3,7 +3,7 @@ chcp 65001 > nul
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo 🚀 나다운세 프로덕션 Edge Functions 배포
 echo    Project: kcthtpmxffppfbkjjkub (Production)
-echo    함수: 32개 (--no-verify-jwt: 10개)
+echo    함수: 33개 (--no-verify-jwt: 10개)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set PROJECT_REF=kcthtpmxffppfbkjjkub
@@ -194,13 +194,21 @@ echo.
 echo ──── 유틸리티 (1개) ────
 echo.
 
-echo [32/32] trigger-rebuild
+echo [32/33] trigger-rebuild
 call npx supabase functions deploy trigger-rebuild --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo ──── 만세력 (1개) ────
+echo.
+
+echo [33/33] get-manse-data
+call npx supabase functions deploy get-manse-data --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 프로덕션 배포 완료! (32개 함수)
+echo ✅ 프로덕션 배포 완료! (33개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 echo 📌 --no-verify-jwt 적용된 함수 (10개):
