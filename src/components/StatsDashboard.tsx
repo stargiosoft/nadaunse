@@ -1644,6 +1644,26 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
+                {/* 무료 쿠폰 주문 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>무료 쿠폰 주문 추이</h3>
+                    <span style={{ ...typography.small, color: '#999' }}>총 {trendData.reduce((sum, d) => sum + d.freeCouponOrders, 0)}건</span>
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip formatter={(value: number) => [`${value}건`, '무료 쿠폰 주문']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="freeCouponOrders" name="무료 쿠폰 주문" stroke="#F97316" strokeWidth={2} dot={{ r: 3, fill: '#F97316' }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>0원 결제 주문</p>
+                </section>
+
                 {/* 구매 전환율 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
@@ -2487,6 +2507,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     color="#6366F1"
                   />
                   <StatCard
+                    icon={Gift}
+                    label="무료 쿠폰 주문"
+                    value={overviewPurchaseStats.freeCouponOrders}
+                    unit="건"
+                    color="#F97316"
+                    subValue="0원 결제 주문"
+                  />
+                  <StatCard
                     icon={Users}
                     label="구매 고객"
                     value={overviewPurchaseStats.uniqueBuyers}
@@ -3081,6 +3109,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       <tbody>
                         {[
                           { label: '보고서 발행', value: reportFunnel.totalReports, rate: 100 },
+                          { label: '알림톡 발송', value: reportFunnel.alimtalkSent, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.alimtalkSent / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '타로 3장 완료', value: reportFunnel.tarotCompleted, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotCompleted / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '응원글 작성', value: reportFunnel.wroteEncouragement, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.wroteEncouragement / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '쿠폰 발급', value: reportFunnel.couponIssued, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.couponIssued / reportFunnel.totalReports * 1000) / 10 : 0 },
@@ -3191,6 +3220,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <tbody>
                           {[
                             { label: '보고서 발행', value: reportCountFunnel.totalReports, rate: 100 },
+                            { label: '알림톡 발송', value: reportCountFunnel.alimtalkSent, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.alimtalkSent / reportCountFunnel.totalReports * 1000) / 10 : 0 },
                             { label: '타로 3장 완료', value: reportCountFunnel.tarotCompleted, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.tarotCompleted / reportCountFunnel.totalReports * 1000) / 10 : 0 },
                             { label: '응원글 작성', value: reportCountFunnel.wroteEncouragement, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.wroteEncouragement / reportCountFunnel.totalReports * 1000) / 10 : 0 },
                             { label: '쿠폰 발급', value: reportCountFunnel.couponIssued, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.couponIssued / reportCountFunnel.totalReports * 1000) / 10 : 0 },
@@ -3233,7 +3263,38 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 차트 1: 타로 3장 완료율 */}
+                {/* 차트: 알림톡 발송율 */}
+                {reportTrendData.length > 0 && (
+                  <>
+                    <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+                      <h3 style={{ ...typography.sectionTitle, margin: 0, marginBottom: '16px' }}>알림톡 발송율</h3>
+                      <div style={{ width: '100%', height: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={reportTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                            <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
+                            <Tooltip content={({ active, payload, label }) => {
+                              if (!active || !payload || payload.length === 0) return null;
+                              const d = payload[0].payload as ReportTrendData;
+                              return (
+                                <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5', padding: '10px 14px', fontFamily: 'Pretendard Variable', fontSize: '13px' }}>
+                                  <p style={{ fontWeight: 600, color: '#333', margin: '0 0 6px' }}>{label}</p>
+                                  <p style={{ color: '#F97316', margin: '2px 0' }}>알림톡 발송율 : {d.alimtalkRate}%</p>
+                                  <p style={{ color: '#666', margin: '2px 0' }}>알림톡 발송 : {d.alimtalkSent}건</p>
+                                  <p style={{ color: '#999', margin: '2px 0' }}>보고서 발행 : {d.totalReports}건</p>
+                                </div>
+                              );
+                            }} />
+                            <Line type="monotone" dataKey="alimtalkRate" name="알림톡 발송율" stroke="#F97316" strokeWidth={2} dot={{ r: 3, fill: '#F97316' }} activeDot={{ r: 5 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </section>
+                  </>
+                )}
+
+                {/* 차트: 타로 3장 완료율 */}
                 {reportTrendData.length > 0 && (
                   <>
                     <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
