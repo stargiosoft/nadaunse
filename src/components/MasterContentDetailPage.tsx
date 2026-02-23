@@ -307,6 +307,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               price_discount: data.content.price_discount,
               discount_rate: data.content.discount_rate,
             });
+            data.content.price_original = ab.price_original;
             data.content.price_discount = ab.price_discount;
             data.content.discount_rate = ab.discount_rate;
           }
@@ -541,7 +542,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             price_discount: optimizedContent.price_discount,
             discount_rate: optimizedContent.discount_rate,
           });
-          finalContent = { ...optimizedContent, price_discount: ab.price_discount, discount_rate: ab.discount_rate };
+          finalContent = { ...optimizedContent, price_original: ab.price_original, price_discount: ab.price_discount, discount_rate: ab.discount_rate };
         }
 
         // ✅ 최신 데이터로 UI 업데이트

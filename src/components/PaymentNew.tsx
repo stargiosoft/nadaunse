@@ -588,7 +588,7 @@ export default function PaymentNew({
           image: contentData.thumbnail_url || "",
           description: contentData.description || "",
           fullDescription: contentData.description || "",
-          price: contentData.price_original,
+          price: abPrice.price_original,
           discountPrice: abPrice.price_discount,
           discountPercent: abPrice.discount_rate,
         }

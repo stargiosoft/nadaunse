@@ -58,24 +58,27 @@ function getCurrentUserId(): string | undefined {
   return undefined;
 }
 
-/** AB 그룹에 따라 price_discount, discount_rate 오버라이드 */
+/** AB 그룹에 따라 price_original, price_discount, discount_rate 오버라이드 */
 export function getABPrice(content: {
   price_original: number;
   price_discount: number;
   discount_rate: number;
-}): { price_discount: number; discount_rate: number } {
+}): { price_original: number; price_discount: number; discount_rate: number } {
   const group = getABGroup(getCurrentUserId());
   if (group === 'A') {
     return {
+      price_original: content.price_original,
       price_discount: content.price_discount,
       discount_rate: content.discount_rate,
     };
   }
-  // 그룹 B: 2,900원
-  const newDiscount = content.price_original > 0
-    ? Math.round((1 - AB_TEST_PRICE / content.price_original) * 100)
+  // 그룹 B: 정상가 9,900원, 할인가 2,900원
+  const AB_ORIGINAL_PRICE = 9900;
+  const newDiscount = AB_ORIGINAL_PRICE > 0
+    ? Math.round((1 - AB_TEST_PRICE / AB_ORIGINAL_PRICE) * 100)
     : 0;
   return {
+    price_original: AB_ORIGINAL_PRICE,
     price_discount: AB_TEST_PRICE,
     discount_rate: newDiscount,
   };
