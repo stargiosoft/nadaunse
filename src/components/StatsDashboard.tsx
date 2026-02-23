@@ -1691,10 +1691,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>GA 총방문자 대비 구매</p>
                 </section>
 
-                {/* 객단가 추이 */}
+                {/* AOV 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>객단가 추이</h3>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>AOV 추이</h3>
                     {trendPurchaseStats && trendPurchaseStats.totalOrders > 0 && (
                       <span style={{ ...typography.small, color: '#999' }}>
                         평균 {Math.round(trendPurchaseStats.totalRevenue / trendPurchaseStats.totalOrders).toLocaleString()}원
@@ -1707,12 +1707,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)} />
-                        <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, '객단가']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey={(d) => d.paidContentUsage > 0 ? Math.round(d.revenue / d.paidContentUsage) : 0} name="객단가" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} activeDot={{ r: 5 }} />
+                        <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, 'AOV']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey={(d) => d.paidContentUsage > 0 ? Math.round(d.revenue / d.paidContentUsage) : 0} name="AOV" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>총매출 / 구매횟수</p>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>총매출 / 총주문수</p>
                 </section>
 
                 {/* ARPU 추이 */}
@@ -2232,7 +2232,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     const items = [
                       { label: '기간 매출', current: currentPeriodStats.totalRevenue, previous: previousPeriodStats.totalRevenue, unit: '', prefix: '₩' },
                       { label: '주문수', current: currentPeriodStats.paidContentUsage, previous: previousPeriodStats.paidContentUsage, unit: '건', prefix: '' },
-                      { label: '객단가', current: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0, previous: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0, unit: '', prefix: '₩' },
+                      { label: '객단가', current: currentPeriodStats.uniqueBuyers > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.uniqueBuyers) : 0, previous: previousPeriodStats.uniqueBuyers > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.uniqueBuyers) : 0, unit: '', prefix: '₩' },
+                      { label: 'AOV', current: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0, previous: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0, unit: '', prefix: '₩' },
                       { label: '구매 전환율', current: curGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / curGaUsers * 1000) / 10 : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0, unit: '%', prefix: '' },
                       { label: 'ARPU', current: curGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / curGaUsers) : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0, unit: '', prefix: '₩' },
                     ];
@@ -2539,10 +2540,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <StatCard
                     icon={CreditCard}
                     label="객단가"
-                    value={overviewPurchaseStats.totalOrders > 0 ? Math.round(overviewPurchaseStats.totalRevenue / overviewPurchaseStats.totalOrders).toLocaleString() : 0}
+                    value={overviewPurchaseStats.uniqueBuyers > 0 ? Math.round(overviewPurchaseStats.totalRevenue / overviewPurchaseStats.uniqueBuyers).toLocaleString() : 0}
                     unit="원"
                     color="#8B5CF6"
-                    subValue="총매출 / 구매횟수"
+                    subValue="총매출 / 구매고객수"
+                  />
+                  <StatCard
+                    icon={ShoppingCart}
+                    label="AOV"
+                    value={overviewPurchaseStats.totalOrders > 0 ? Math.round(overviewPurchaseStats.totalRevenue / overviewPurchaseStats.totalOrders).toLocaleString() : 0}
+                    unit="원"
+                    color="#A855F7"
+                    subValue="총매출 / 총주문수"
                   />
                   <StatCard
                     icon={TrendingUp}

@@ -52,6 +52,7 @@ export interface DashboardStats {
   totalTagCount: number;        // 전체 태그 수
   confirmedTagCount: number;    // 확인된 태그 수
   avgTagsPerUser: number;       // 회원 당 평균 태그 저장 개수
+  uniqueBuyers: number;         // 기간 내 구매 고객 수 (고유 user_id)
 }
 
 // 기간 필터 옵션
@@ -416,6 +417,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   if (paidContentUserError) {
     console.error('유료 콘텐츠 유저 조회 오류:', paidContentUserError);
   }
+  // 구매 고객 수 (기간 내 유료 주문한 고유 유저 - 가입 시점 무관)
+  const uniqueBuyers = new Set(paidContentUsers?.map(r => r.user_id) || []).size;
+  // 콘텐츠 이용율 계산용 (가입 고객 중 유료 이용자)
   const uniquePaidContentUsers = new Set(
     paidContentUsers?.map(r => r.user_id).filter(id => totalCustomerIds.has(id)) || []
   ).size;
@@ -511,7 +515,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     tagUserCount,
     totalTagCount: totalContents,  // 전체 콘텐츠 건수 (UI에서 미사용, 태그 확인율 계산에만 사용)
     confirmedTagCount: individualConfirmedTags,  // 개별 확인 태그 수
-    avgTagsPerUser
+    avgTagsPerUser,
+    uniqueBuyers,
   };
 }
 
