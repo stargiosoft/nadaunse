@@ -1150,8 +1150,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                   const welcomeCoupon = userCoupons.find(c => c.coupons.coupon_type === 'welcome' && !c.is_used);
                                   const hasAnyCoupon = userCoupons.length > 0;
 
-                                  // Case 1: 로그인 + 재방문쿠폰 보유 (우선순위 1)
-                                  if (isLoggedIn && revisitCoupon) {
+                                  // Case 1: 로그인 + 재방문쿠폰 보유 (우선순위 1) — AB 그룹 B는 이벤트가 우선
+                                  if (isLoggedIn && revisitCoupon && getABGroup() !== 'B') {
                                     const discountAmount = revisitCoupon.coupons.discount_amount || 3000;
                                     const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
                                     return (
@@ -1168,8 +1168,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     );
                                   }
 
-                                  // Case 2: 로그인 + 웰컴쿠폰 보유 (우선순위 2)
-                                  if (isLoggedIn && welcomeCoupon) {
+                                  // Case 2: 로그인 + 웰컴쿠폰 보유 (우선순위 2) — AB 그룹 B는 이벤트가 우선
+                                  if (isLoggedIn && welcomeCoupon && getABGroup() !== 'B') {
                                     const discountAmount = welcomeCoupon.coupons.discount_amount || 5000;
                                     const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
                                     return (
@@ -1253,8 +1253,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${content.id}` } });
                         };
 
-                        // Case 1: 로그인 + 재방문쿠폰 보유 (우선순위 1)
-                        if (isLoggedIn && revisitCoupon) {
+                        // Case 1: 로그인 + 재방문쿠폰 보유 (우선순위 1) — AB 그룹 B는 이벤트가 우선
+                        if (isLoggedIn && revisitCoupon && getABGroup() !== 'B') {
                           // ✅ 쿠폰의 실제 할인 금액 사용 (하드코딩 제거)
                           const discountAmount = revisitCoupon.coupons.discount_amount || 3000;
                           const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
@@ -1307,8 +1307,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           );
                         }
                         
-                        // Case 2: 로그인 + 웰컴쿠폰 보유 (우선순위 2)
-                        if (isLoggedIn && welcomeCoupon) {
+                        // Case 2: 로그인 + 웰컴쿠폰 보유 (우선순위 2) — AB 그룹 B는 이벤트가 우선
+                        if (isLoggedIn && welcomeCoupon && getABGroup() !== 'B') {
                           // ✅ 쿠폰의 실제 할인 금액 사용 (하드코딩 제거)
                           const discountAmount = welcomeCoupon.coupons.discount_amount || 5000;
                           const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
