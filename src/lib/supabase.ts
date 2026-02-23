@@ -121,6 +121,7 @@ export interface OrderRecord {
   merchant_uid?: string;
   pstatus?: string;
   pg_provider?: string;
+  ab_group?: string;
   // 레거시 필드 제거 (kakao_id, google_id, goods_id, goods_code)
   // gname은 DB Trigger로 자동 채워짐
 }

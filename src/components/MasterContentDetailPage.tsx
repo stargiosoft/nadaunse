@@ -12,6 +12,7 @@ import imgGeminiGeneratedImageEj66M7Ej66M7Ej661 from "@/assets/035bc3188c3deb79d
 import tarotCardImg from "@/assets/2ced5a86877d398cd3930c1ef08e032cadaa48d4.png";
 import { supabase, saveOrder } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
+import { getABPrice } from '../lib/abTestService';
 import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
 import { trackViewItem, trackPurchaseClick, trackPageView } from '../utils/analytics';
@@ -299,6 +300,17 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             return false;
           }
           
+          // A/B 가격 오버라이드
+          if (data.content.content_type === 'paid' && data.content.price_original) {
+            const ab = getABPrice({
+              price_original: data.content.price_original,
+              price_discount: data.content.price_discount,
+              discount_rate: data.content.discount_rate,
+            });
+            data.content.price_discount = ab.price_discount;
+            data.content.discount_rate = ab.discount_rate;
+          }
+
           setContent(data.content);
           setQuestions(data.questions);
           // 🔥 중요: 캐시에서 로드한 content_type으로 즉시 설정
@@ -518,11 +530,22 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
           }
         }
 
-        // 💾 새 캐시 저장 (최신 데이터로 덮어쓰기)
+        // 💾 새 캐시 저장 (원본 가격으로 저장 - AB 오버라이드 전)
         saveToCache(optimizedContent, finalQuestionsData as Question[]);
 
+        // A/B 가격 오버라이드 (캐시 저장 후 적용)
+        let finalContent = optimizedContent as MasterContent;
+        if (optimizedContent.content_type === 'paid' && optimizedContent.price_original) {
+          const ab = getABPrice({
+            price_original: optimizedContent.price_original,
+            price_discount: optimizedContent.price_discount,
+            discount_rate: optimizedContent.discount_rate,
+          });
+          finalContent = { ...optimizedContent, price_discount: ab.price_discount, discount_rate: ab.discount_rate };
+        }
+
         // ✅ 최신 데이터로 UI 업데이트
-        setContent(optimizedContent);
+        setContent(finalContent);
         setQuestions(finalQuestionsData as Question[]);
         // 🔥 중요: DB에서 불러온 최신 content_type으로 업데이트
         setIsFreeContent(optimizedContent.content_type === 'free');
@@ -1185,8 +1208,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     );
                                   }
 
-                                  // Case 3: 로그아웃 상태 + welcomeCouponDiscount 있음 → 첫 구매 혜택가 표시
-                                  if (!isLoggedIn && welcomeCouponDiscount !== null) {
+                                  // Case 3: 로그아웃 상태 + welcomeCouponDiscount 있음 → 첫 구매 혜택가 표시 (A/B 테스트 기간 미노출)
+                                  if (false && !isLoggedIn && welcomeCouponDiscount !== null) {
                                     const finalPrice = Math.max(0, (content.price_discount || 0) - welcomeCouponDiscount);
                                     return (
                                       <motion.div
@@ -1339,8 +1362,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           );
                         }
                         
-                        // Case 3: 로그아웃 상태 + welcomeCouponDiscount 있음 → 첫 구매 버튼 (로그인 유도)
-                        if (!isLoggedIn && welcomeCouponDiscount !== null) {
+                        // Case 3: 로그아웃 상태 + welcomeCouponDiscount 있음 → 첫 구매 버튼 (A/B 테스트 기간 미노출)
+                        if (false && !isLoggedIn && welcomeCouponDiscount !== null) {
                           const finalPrice = Math.max(0, (content.price_discount || 0) - welcomeCouponDiscount);
                           return (
                             <motion.button

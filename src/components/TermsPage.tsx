@@ -194,21 +194,8 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
         document.cookie = `last_login_email=${encodeURIComponent(newUser.email)}; max-age=${60 * 60 * 24 * 365}; path=/`;
       }
 
-      // ⭐ 가입 축하 쿠폰 발급 (백그라운드에서 실행)
-      console.log('🎟️ [회원가입] 가입 축하 쿠폰 발급 시작...');
-      issueWelcomeCoupon(newUser.id)
-        .then((result) => {
-          if (result.success) {
-            console.log('✅ [회원가입] 가입 축하 쿠폰 발급 성공!');
-            // 쿠폰 발급 성공 플래그 저장 (WelcomeCouponPage에서 사용)
-            localStorage.setItem('welcomeCouponIssued', 'true');
-          } else {
-            console.error('❌ [회원가입] 가입 축하 쿠폰 발급 실패:', result.error);
-          }
-        })
-        .catch((error) => {
-          console.error('❌ [회원가입] 가입 축하 쿠폰 발급 예외:', error);
-        });
+      // ⭐ 가입 축하 쿠폰 발급 비활성화 (A/B 가격 테스트 기간)
+      // issueWelcomeCoupon(newUser.id) ...
       
       onComplete();
     } catch (err) {
