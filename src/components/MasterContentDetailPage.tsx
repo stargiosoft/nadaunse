@@ -1222,7 +1222,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                         </p>
                                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                           <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
-                                            한시 이벤트가
+                                            선착순 이벤트가
                                           </p>
                                         </div>
                                       </div>
