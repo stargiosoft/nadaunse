@@ -1470,6 +1470,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>재방문율</h3>
+                    {(() => {
+                      const totalGa = trendData.reduce((sum, d) => sum + d.gaActiveUsers, 0);
+                      const totalNew = trendData.reduce((sum, d) => sum + d.gaNewUsers, 0);
+                      const avg = totalGa > 0 ? Math.max(0, Math.round((totalGa - totalNew) / totalGa * 1000) / 10) : 0;
+                      return totalGa > 0 && (
+                        <span style={{ ...typography.small, color: '#999' }}>평균 {avg}%</span>
+                      );
+                    })()}
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -1560,6 +1568,14 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
                     <h3 style={{ ...typography.sectionTitle, margin: 0 }}>재방문율</h3>
+                    {(() => {
+                      const totalCust = trendData.reduce((sum, d) => sum + d.totalCustomers, 0);
+                      const totalReturn = trendData.reduce((sum, d) => sum + d.returningCustomers, 0);
+                      const avg = totalCust > 0 ? Math.round(totalReturn / totalCust * 1000) / 10 : 0;
+                      return totalCust > 0 && (
+                        <span style={{ ...typography.small, color: '#999' }}>평균 {avg}%</span>
+                      );
+                    })()}
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
