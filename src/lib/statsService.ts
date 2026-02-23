@@ -674,11 +674,12 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 4. 유료 콘텐츠 이용 데이터
+    // 4. 유료 콘텐츠 이용 데이터 (paid만, 0원 제외, 관리자 제외)
     supabase
       .from('orders')
       .select('user_id, created_at, paid_amount')
       .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
