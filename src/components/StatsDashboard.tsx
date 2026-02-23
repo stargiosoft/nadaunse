@@ -1691,6 +1691,30 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>GA 총방문자 대비 구매</p>
                 </section>
 
+                {/* 객단가 추이 */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>객단가 추이</h3>
+                    {trendPurchaseStats && trendPurchaseStats.uniqueBuyers > 0 && (
+                      <span style={{ ...typography.small, color: '#999' }}>
+                        평균 {Math.round(trendPurchaseStats.totalRevenue / trendPurchaseStats.uniqueBuyers).toLocaleString()}원
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)} />
+                        <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, '객단가']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey={(d) => d.uniqueBuyers > 0 ? Math.round(d.revenue / d.uniqueBuyers) : 0} name="객단가" stroke="#EC4899" strokeWidth={2} dot={{ r: 3, fill: '#EC4899' }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>총매출 / 구매고객수</p>
+                </section>
+
                 {/* AOV 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
