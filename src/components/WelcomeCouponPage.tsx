@@ -116,7 +116,6 @@ function Container2() {
   return (
     <div className="content-stretch flex flex-col items-center justify-center relative shrink-0 w-full" data-name="Container">
       <div className="font-['Pretendard_Variable:Regular',sans-serif] font-normal leading-[28.5px] relative shrink-0 text-[#6d6d6d] text-[16px] text-center text-nowrap tracking-[-0.32px]">
-        <p className="mb-0">첫 결제 시 쿠폰이 자동 적용돼요.</p>
         <p>지금부터 당신만의 운세 풀이를 만나보세요!</p>
       </div>
     </div>
@@ -127,7 +126,7 @@ function Container3() {
   return (
     <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="Container">
       <div className="flex flex-col font-['Pretendard_Variable:Bold',sans-serif] font-bold justify-center leading-[0] relative shrink-0 text-[24px] text-black text-center tracking-[-0.48px] w-full">
-        <p className="leading-[35.5px]">가입 축하 쿠폰이 도착했어요!</p>
+        <p className="leading-[35.5px]">가입 축하드려요!</p>
       </div>
       <Container2 />
     </div>

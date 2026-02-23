@@ -14,6 +14,7 @@ import { DEV } from "../lib/env";
 import { preloadLoadingPageImages } from "../lib/imagePreloader";
 import { PageLoader } from "./ui/PageLoader";
 import { trackAddToCart, trackBeginCheckout, trackPaymentMethodSelect, trackCheckoutStart, trackPurchaseComplete } from "../utils/analytics";
+import { getABPrice, getABGroupLabel } from "../lib/abTestService";
 
 // 포트원 타입 선언
 declare global {
@@ -570,9 +571,15 @@ export default function PaymentNew({
   }, []);
 
   // product 또는 contentData에서 가격 정보 추출
+  const abPrice = contentData ? getABPrice({
+    price_original: contentData.price_original,
+    price_discount: contentData.price_discount || contentData.price_original,
+    discount_rate: contentData.discount_rate,
+  }) : null;
+
   const currentProduct =
     product ||
-    (contentData
+    (contentData && abPrice
       ? {
           id: parseInt(contentId || "0"),
           title: contentData.title,
@@ -581,11 +588,9 @@ export default function PaymentNew({
           image: contentData.thumbnail_url || "",
           description: contentData.description || "",
           fullDescription: contentData.description || "",
-          price: contentData.price_original,
-          discountPrice:
-            contentData.price_discount ||
-            contentData.price_original,
-          discountPercent: contentData.discount_rate,
+          price: abPrice.price_original,
+          discountPrice: abPrice.price_discount,
+          discountPercent: abPrice.discount_rate,
         }
       : null);
 
@@ -751,6 +756,7 @@ export default function PaymentNew({
           merchant_uid: merchantUid,
           pstatus: "completed",
           pg_provider: "coupon",
+          ab_group: getABGroupLabel(),
         });
 
         console.log("✅ 0원 주문 저장 완료:", savedOrder);
@@ -959,6 +965,7 @@ export default function PaymentNew({
               merchant_uid: response.merchant_uid,
               pstatus: "completed",
               pg_provider: pgProvider,
+              ab_group: getABGroupLabel(),
             });
 
             console.log(

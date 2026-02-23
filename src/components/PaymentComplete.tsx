@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import PurchaseFailure from './PurchaseFailure';
 import { PageLoader } from './ui/PageLoader';
 import { trackPurchase } from '../utils/analytics';
+import { getABGroupLabel, getABPrice } from '../lib/abTestService';
 
 export default function PaymentComplete() {
   const navigate = useNavigate();
@@ -72,15 +73,20 @@ export default function PaymentComplete() {
           if (!amountParam && contentId) {
             const { data: contentData, error: contentError } = await supabase
               .from('master_contents')
-              .select('price_discount')
+              .select('price_original, price_discount, discount_rate')
               .eq('id', contentId)
               .single();
 
             if (contentError) {
               console.error('❌ 콘텐츠 가격 조회 실패:', contentError);
             } else if (contentData) {
-              paidAmount = contentData.price_discount;
-              console.log('💰 DB에서 조회된 결제 금액:', paidAmount);
+              const ab = getABPrice({
+                price_original: contentData.price_original,
+                price_discount: contentData.price_discount,
+                discount_rate: contentData.discount_rate,
+              });
+              paidAmount = ab.price_discount;
+              console.log('💰 DB에서 조회된 결제 금액 (AB 적용):', paidAmount);
             }
           }
           
@@ -95,6 +101,7 @@ export default function PaymentComplete() {
             pstatus: 'completed',
             paid_amount: paidAmount,
             pay_method: payMethod,
+            ab_group: getABGroupLabel(),
           }, {
             onConflict: 'merchant_uid'
           }).select().single();
