@@ -569,6 +569,7 @@ export interface DailyTrendData {
   contentUsageRate: number;  // 콘텐츠 이용율 (uniqueContentUsers / totalCustomers)
   // 매출
   revenue: number;
+  uniqueBuyers: number;  // 구매 고객 수 (고유 user_id)
   freeCouponOrders: number;  // 무료 쿠폰 주문 수 (paid_amount = 0)
   // 태그 지표
   tagSaved: number;  // 전체 태그 수
@@ -588,6 +589,7 @@ export interface DailyTrendData {
   _returningCustomerIds?: string[];
   _contentUserIds?: string[];
   _tagUserIds?: string[];
+  _buyerIds?: string[];
 }
 
 /**
@@ -789,6 +791,8 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const paidContentList = paidContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const paidContentUsage = paidContentList.length;
     const revenue = paidContentList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
+    const _buyerIds = [...new Set(paidContentList.map(d => d.user_id))];
+    const uniqueBuyers = _buyerIds.length;
     const uniquePaidUsers = new Set(paidContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
 
     // 콘텐츠 이용 고유 유저 (totalCustomers에 포함된 유저만)
@@ -886,6 +890,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       totalContentUsage,
       contentUsageRate,
       revenue,
+      uniqueBuyers,
       freeCouponOrders,
       tagSaved,
       tagConfirmed,
@@ -903,6 +908,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       _returningCustomerIds,
       _contentUserIds,
       _tagUserIds,
+      _buyerIds,
     };
   });
 
@@ -985,6 +991,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     const paidContentUsage = data.reduce((sum, d) => sum + d.paidContentUsage, 0);
     const totalContentUsage = freeContentUsage + paidContentUsage;
     const revenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    const uniqueBuyers = new Set(data.flatMap(d => d._buyerIds || [])).size;
     const freeCouponOrders = data.reduce((sum, d) => sum + d.freeCouponOrders, 0);
     const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
     const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
@@ -1029,6 +1036,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
       totalContentUsage,
       contentUsageRate,
       revenue,
+      uniqueBuyers,
       freeCouponOrders,
       tagSaved,
       tagConfirmed,
