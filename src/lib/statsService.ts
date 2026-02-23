@@ -579,6 +579,10 @@ export interface DailyTrendData {
   gaNewUsers: number;  // GA 신규 방문자
   gaAverageEngagementTime: number;  // 평균 참여 시간 (초)
   signupRate: number;  // 회원가입율 (newCustomers / gaNewUsers * 100)
+  // 내부 집계용 ID 배열 (주별/월별 중복 제거에 사용, UI에서 미사용)
+  _returningCustomerIds?: string[];
+  _contentUserIds?: string[];
+  _tagUserIds?: string[];
 }
 
 /**
@@ -860,6 +864,11 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       ? Math.round(newCustomers / gaNewUsers * 1000) / 10
       : 0;
 
+    // 내부 집계용 ID 배열 (주별/월별 중복 제거용)
+    const _returningCustomerIds = returningCustomersList.map(d => d.id);
+    const _contentUserIds = [...new Set([...uniqueFreeUsers, ...uniquePaidUsers])];
+    const _tagUserIds = [...new Set(confirmedTagList.map(d => d.user_id))];
+
     return {
       date: `${month}/${day}`,
       dateLabel: `${month}/${day}`,
@@ -885,6 +894,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       gaNewUsers,
       gaAverageEngagementTime,
       signupRate,
+      // 내부 집계용 ID 배열
+      _returningCustomerIds,
+      _contentUserIds,
+      _tagUserIds,
     };
   });
 
@@ -959,7 +972,9 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
 
     // 합계 계산
     const newCustomers = data.reduce((sum, d) => sum + d.newCustomers, 0);
-    const returningCustomers = data.reduce((sum, d) => sum + d.returningCustomers, 0);
+    // 유니크 유저 수: ID 배열로 중복 제거 (같은 유저가 여러 날 방문해도 1명으로 집계)
+    const returningCustomerIds = new Set(data.flatMap(d => d._returningCustomerIds || []));
+    const returningCustomers = returningCustomerIds.size;
     const totalCustomers = newCustomers + returningCustomers;
     const freeContentUsage = data.reduce((sum, d) => sum + d.freeContentUsage, 0);
     const paidContentUsage = data.reduce((sum, d) => sum + d.paidContentUsage, 0);
@@ -968,8 +983,8 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     const freeCouponOrders = data.reduce((sum, d) => sum + d.freeCouponOrders, 0);
     const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
     const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
-    const uniqueTagUsers = data.reduce((sum, d) => sum + d.uniqueTagUsers, 0);
-    const uniqueContentUsers = data.reduce((sum, d) => sum + d.uniqueContentUsers, 0);
+    const uniqueTagUsers = new Set(data.flatMap(d => d._tagUserIds || [])).size;
+    const uniqueContentUsers = new Set(data.flatMap(d => d._contentUserIds || [])).size;
     const gaActiveUsers = data.reduce((sum, d) => sum + d.gaActiveUsers, 0);
     const gaNewUsers = data.reduce((sum, d) => sum + d.gaNewUsers, 0);
 
