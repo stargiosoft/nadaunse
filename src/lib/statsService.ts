@@ -1560,12 +1560,13 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
       .select('source_order_id')
       .not('user_id', 'in', `(${adminFilter})`)
       .in('source_order_id', reportIds),
+    // 알림톡: 해당 보고서 ID에 매칭되는 건만 조회 (variables->>'reportId')
     supabase
       .from('alimtalk_logs')
-      .select('user_id', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('template_code', '10003')
       .eq('status', 'success')
-      .in('user_id', targetUserIds),
+      .filter('variables->>reportId', 'in', `(${reportIds.join(',')})`),
   ]);
 
   const { data: tarotSelections, error: tarotError } = tarotResult;
@@ -1624,7 +1625,7 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   // 2. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
   let tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
   let coupons: { source_order_id: string }[] = [];
-  let alimtalkLogs: { user_id: string; sent_at: string | null; created_at: string }[] = [];
+  let alimtalkLogs: { user_id: string; sent_at: string | null; created_at: string; variables: Record<string, string> | null }[] = [];
 
   if (reportIds.length > 0) {
     const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
@@ -1639,7 +1640,7 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
         .in('source_order_id', reportIds),
       supabase
         .from('alimtalk_logs')
-        .select('user_id, sent_at, created_at')
+        .select('user_id, sent_at, created_at, variables')
         .eq('template_code', '10003')
         .eq('status', 'success')
         .in('user_id', reportUserIds),
@@ -1659,8 +1660,12 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   // 쿠폰 발급된 보고서 Set
   const couponReportIds = new Set(coupons.map(c => c.source_order_id));
 
-  // 알림톡 발송된 user_id Set
-  const alimtalkUserIds = new Set(alimtalkLogs.map(a => a.user_id));
+  // 알림톡 발송된 report_id Set (variables JSONB에서 reportId 추출)
+  const alimtalkReportIds = new Set(
+    alimtalkLogs
+      .map(a => a.variables?.reportId)
+      .filter((id): id is string => !!id)
+  );
 
   // week_start_date 기준으로 그룹핑 (주별 집계)
   const weekGroups: Record<string, typeof reports> = {};
@@ -1675,7 +1680,7 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   const weeklyData: ReportTrendData[] = sortedWeeks.map(wsd => {
     const weekReports = weekGroups[wsd]!;
     const totalReports = weekReports.length;
-    const alimtalkSent = weekReports.filter(r => alimtalkUserIds.has(r.user_id)).length;
+    const alimtalkSent = weekReports.filter(r => alimtalkReportIds.has(r.id)).length;
     const tarotCompleted = weekReports.filter(r => (tarotByReport[r.id] || 0) >= 3).length;
     const wroteEncouragement = weekReports.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length;
     const couponIssued = weekReports.filter(r => couponReportIds.has(r.id)).length;
