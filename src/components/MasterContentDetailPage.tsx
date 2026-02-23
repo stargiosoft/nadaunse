@@ -300,18 +300,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             return false;
           }
           
-          // A/B 가격 오버라이드
-          if (data.content.content_type === 'paid' && data.content.price_original) {
-            const ab = getABPrice({
-              price_original: data.content.price_original,
-              price_discount: data.content.price_discount,
-              discount_rate: data.content.discount_rate,
-            });
-            data.content.price_original = ab.price_original;
-            data.content.price_discount = ab.price_discount;
-            data.content.discount_rate = ab.discount_rate;
-          }
-
           setContent(data.content);
           setQuestions(data.questions);
           // 🔥 중요: 캐시에서 로드한 content_type으로 즉시 설정
@@ -534,19 +522,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         // 💾 새 캐시 저장 (원본 가격으로 저장 - AB 오버라이드 전)
         saveToCache(optimizedContent, finalQuestionsData as Question[]);
 
-        // A/B 가격 오버라이드 (캐시 저장 후 적용)
-        let finalContent = optimizedContent as MasterContent;
-        if (optimizedContent.content_type === 'paid' && optimizedContent.price_original) {
-          const ab = getABPrice({
-            price_original: optimizedContent.price_original,
-            price_discount: optimizedContent.price_discount,
-            discount_rate: optimizedContent.discount_rate,
-          });
-          finalContent = { ...optimizedContent, price_original: ab.price_original, price_discount: ab.price_discount, discount_rate: ab.discount_rate };
-        }
-
         // ✅ 최신 데이터로 UI 업데이트
-        setContent(finalContent);
+        setContent(optimizedContent as MasterContent);
         setQuestions(finalQuestionsData as Question[]);
         // 🔥 중요: DB에서 불러온 최신 content_type으로 업데이트
         setIsFreeContent(optimizedContent.content_type === 'free');
@@ -1231,16 +1208,21 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     );
                                   }
 
-                                  // Case 4: AB 그룹 B → 한시 이벤트 가격 표시
+                                  // Case 4: AB 그룹 B → 한시 이벤트가 표시
                                   if (getABGroup() === 'B') {
+                                    const abPrice = getABPrice({
+                                      price_original: content.price_original,
+                                      price_discount: content.price_discount,
+                                      discount_rate: content.discount_rate,
+                                    });
                                     return (
                                       <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
                                         <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
-                                          {(content.price_discount || 0).toLocaleString()}원
+                                          {abPrice.price_discount.toLocaleString()}원
                                         </p>
                                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                           <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
-                                            한시 이벤트
+                                            한시 이벤트가
                                           </p>
                                         </div>
                                       </div>
