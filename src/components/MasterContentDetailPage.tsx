@@ -12,7 +12,7 @@ import imgGeminiGeneratedImageEj66M7Ej66M7Ej661 from "@/assets/035bc3188c3deb79d
 import tarotCardImg from "@/assets/2ced5a86877d398cd3930c1ef08e032cadaa48d4.png";
 import { supabase, saveOrder } from '../lib/supabase';
 import { getThumbnailUrl } from '../lib/image';
-import { getABPrice } from '../lib/abTestService';
+import { getABPrice, getABGroup } from '../lib/abTestService';
 import FreeContentDetail from './FreeContentDetail';
 import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
 import { trackViewItem, trackPurchaseClick, trackPageView } from '../utils/analytics';
@@ -1231,7 +1231,23 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     );
                                   }
 
-                                  // Case 4: 로그인 + 쿠폰 없음 → 혜택가 미표시
+                                  // Case 4: AB 그룹 B → 한시 이벤트 가격 표시
+                                  if (getABGroup() === 'B') {
+                                    return (
+                                      <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
+                                        <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
+                                          {(content.price_discount || 0).toLocaleString()}원
+                                        </p>
+                                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                                          <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
+                                            한시 이벤트
+                                          </p>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Case 5: 그 외 → 혜택가 미표시
                                   return null;
                                 })()}
                               </div>
@@ -1418,7 +1434,58 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           );
                         }
 
-                        // Case 4: 로그인 + 쿠폰 없음 → 버튼 미표시
+                        // Case 4: AB 그룹 B → 초특가 CTA 버튼
+                        if (getABGroup() === 'B') {
+                          return (
+                            <button
+                              onClick={isLoggedIn ? onPurchase : handleLoginRedirect}
+                              onTouchStart={() => {}}
+                              className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
+                            >
+                              <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
+                              <motion.div
+                                whileTap={{ scale: 0.96 }}
+                                transition={{ duration: 0.1 }}
+                                className="flex flex-col items-center justify-center size-full transform-gpu"
+                              >
+                                <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
+                                  <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
+                                    <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
+                                      <div className="relative shrink-0 size-[20px] flex items-center justify-center pt-[1px]">
+                                        <svg className="block w-[20px] h-[17px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 17">
+                                          <g id="Group">
+                                            <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
+                                            <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
+                                          </g>
+                                        </svg>
+                                      </div>
+                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
+                                          초특가 떴을 때<span className="text-[#48b2af]"> </span>
+                                          <span className="font-bold text-[#48b2af]">지금 바로</span>
+                                          <span>{` 풀이 보기`}</span>
+                                        </p>
+                                        <motion.div
+                                          className="relative shrink-0 size-[12px]"
+                                          animate={{ x: [0, 3, 0] }}
+                                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                        >
+                                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
+                                            <g id="arrow-right">
+                                              <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+                                            </g>
+                                          </svg>
+                                        </motion.div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </button>
+                          );
+                        }
+
+                        // Case 5: 그 외 → 버튼 미표시
                         return null;
                       })()}
                       </div>
