@@ -331,6 +331,7 @@ function GAInit() {
         // 주간 보고서 페이지
         '/my-report-list': '보고서 리스트',
         '/manse': '만세력',
+        '/blog': '운세 콘텐츠',
       };
 
       // 정적 라우트 확인
@@ -410,6 +411,11 @@ function GAInit() {
       }
       if (pathname.includes('/cheer-edit')) {
         return `나 응원하기 수정 | ${BASE_TITLE}`;
+      }
+
+      // 블로그 상세 페이지 (/blog/:slug)
+      if (pathname.startsWith('/blog/')) {
+        return `운세 콘텐츠 | ${BASE_TITLE}`;
       }
 
       // 기본값
