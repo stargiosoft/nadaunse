@@ -564,6 +564,7 @@ export interface DailyTrendData {
   contentUsageRate: number;  // 콘텐츠 이용율 (uniqueContentUsers / totalCustomers)
   // 매출
   revenue: number;
+  freeCouponOrders: number;  // 무료 쿠폰 주문 수 (paid_amount = 0)
   // 태그 지표
   tagSaved: number;  // 전체 태그 수
   tagConfirmed: number;  // 확인 태그 수
@@ -648,6 +649,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     returningCustomersResult,
     freeContentResult,
     paidContentResult,
+    freeCouponOrdersResult,
     tagDataResult,
     gaDataResult,
   ] = await Promise.all([
@@ -684,7 +686,17 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 5. 태그 데이터 (Supabase 기본 limit 1000개 제한 우회: range 사용)
+    // 5. 무료 쿠폰 주문 데이터 (paid_amount = 0, 관리자 제외)
+    supabase
+      .from('orders')
+      .select('created_at')
+      .eq('pstatus', 'completed')
+      .eq('paid_amount', 0)
+      .not('user_id', 'in', `(${adminFilter})`)
+      .gte('created_at', dateRange.startDate)
+      .lt('created_at', dateRange.endDate),
+
+    // 6. 태그 데이터 (Supabase 기본 limit 1000개 제한 우회: range 사용)
     // source_type 추가: 콘텐츠 건 기준 그룹핑에 필요
     supabase
       .from('user_trait_tags')
@@ -695,7 +707,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .lt('created_at', dateRange.endDate)
       .range(0, 9999),
 
-    // 6. GA 일별 데이터
+    // 7. GA 일별 데이터
     fetchDailyGAStatsInternal(dateRange),
   ]);
 
@@ -703,6 +715,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
   const returningCustomersData = returningCustomersResult.data;
   const freeContentData = freeContentResult.data;
   const paidContentData = paidContentResult.data;
+  const freeCouponOrdersData = freeCouponOrdersResult.data;
   const tagData = tagDataResult.data;
   const gaData = gaDataResult;
 
@@ -758,6 +771,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const freeContentList = freeContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const freeContentUsage = freeContentList.length;
     const uniqueFreeUsers = new Set(freeContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
+
+    // 무료 쿠폰 주문 (0원)
+    const freeCouponOrdersList = freeCouponOrdersData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
+    const freeCouponOrders = freeCouponOrdersList.length;
 
     // 유료 콘텐츠
     const paidContentList = paidContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
@@ -855,6 +872,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       totalContentUsage,
       contentUsageRate,
       revenue,
+      freeCouponOrders,
       tagSaved,
       tagConfirmed,
       uniqueTagUsers,
@@ -947,6 +965,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     const paidContentUsage = data.reduce((sum, d) => sum + d.paidContentUsage, 0);
     const totalContentUsage = freeContentUsage + paidContentUsage;
     const revenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    const freeCouponOrders = data.reduce((sum, d) => sum + d.freeCouponOrders, 0);
     const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
     const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
     const uniqueTagUsers = data.reduce((sum, d) => sum + d.uniqueTagUsers, 0);
@@ -990,6 +1009,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
       totalContentUsage,
       contentUsageRate,
       revenue,
+      freeCouponOrders,
       tagSaved,
       tagConfirmed,
       uniqueTagUsers,
@@ -1361,6 +1381,7 @@ export async function fetchTopContentsByCategory(
 /** 보고서 퍼널 집계 데이터 */
 export interface ReportFunnelData {
   totalReports: number;       // 완료된 보고서 수
+  alimtalkSent: number;       // 알림톡 발송 성공 수
   tarotGenerated: number;     // 타로 카드 생성된 보고서 수
   tarotStarted: number;       // 타로 1장이라도 확인한 보고서 수
   tarotCompleted: number;     // 타로 3장 모두 확인한 보고서 수
@@ -1373,10 +1394,12 @@ export interface ReportTrendData {
   dateLabel: string;
   fullDate: string;
   totalReports: number;
+  alimtalkSent: number;
   tarotCompleted: number;
   wroteEncouragement: number;
   couponIssued: number;
   // 전환율 (%)
+  alimtalkRate: number;           // alimtalkSent / totalReports
   tarotCompletionRate: number;   // tarotCompleted / totalReports
   encouragementRate: number;     // wroteEncouragement / totalReports
   couponIssuedRate: number;      // couponIssued / totalReports
@@ -1391,7 +1414,7 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
   // 1. 완료된 보고서 조회 (관리자 제외)
   const { data: reports, error: reportsError } = await supabase
     .from('weekly_reports')
-    .select('id, self_encouragement')
+    .select('id, user_id, self_encouragement')
     .eq('status', 'completed')
     .not('user_id', 'in', `(${adminFilter})`);
 
@@ -1405,15 +1428,32 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
   const wroteEncouragement = reports?.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length || 0;
 
   if (reportIds.length === 0) {
-    return { totalReports: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
+    return { totalReports: 0, alimtalkSent: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
   }
 
-  // 2. 타로 선택 데이터 조회
-  const { data: tarotSelections, error: tarotError } = await supabase
-    .from('report_tarot_selections')
-    .select('report_id, user_viewed')
-    .in('report_id', reportIds);
+  // 보고서 user_id 목록 (알림톡 매칭용)
+  const reportUserIds = reports?.map(r => r.user_id) || [];
 
+  // 2. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
+  const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
+    supabase
+      .from('report_tarot_selections')
+      .select('report_id, user_viewed')
+      .in('report_id', reportIds),
+    supabase
+      .from('user_coupons')
+      .select('source_order_id')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .in('source_order_id', reportIds),
+    supabase
+      .from('alimtalk_logs')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('template_code', '10003')
+      .eq('status', 'success')
+      .in('user_id', reportUserIds),
+  ]);
+
+  const { data: tarotSelections, error: tarotError } = tarotResult;
   if (tarotError) {
     console.error('타로 선택 조회 오류:', tarotError);
     throw new Error('타로 선택 데이터 조회에 실패했습니다.');
@@ -1435,21 +1475,16 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
   const tarotStarted = Object.values(tarotByReport).filter(t => t.viewed >= 1).length;
   const tarotCompleted = Object.values(tarotByReport).filter(t => t.viewed >= 3).length;
 
-  // 3. 쿠폰 발급 수 조회 (source_order_id가 report ID에 매칭)
-  const { data: coupons, error: couponError } = await supabase
-    .from('user_coupons')
-    .select('source_order_id')
-    .not('user_id', 'in', `(${adminFilter})`)
-    .in('source_order_id', reportIds);
-
+  const { error: couponError } = couponResult;
   if (couponError) {
     console.error('쿠폰 조회 오류:', couponError);
     throw new Error('쿠폰 데이터 조회에 실패했습니다.');
   }
+  const couponIssued = new Set(couponResult.data?.map(c => c.source_order_id) || []).size;
 
-  const couponIssued = new Set(coupons?.map(c => c.source_order_id) || []).size;
+  const alimtalkSent = alimtalkResult.count || 0;
 
-  return { totalReports, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
+  return { totalReports, alimtalkSent, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
 }
 
 /**
@@ -1474,14 +1509,14 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
   }
 
   // 2. 사용자별 그룹핑 (week_start_date ASC 이미 정렬됨)
-  const byUser = new Map<string, { id: string; self_encouragement: string | null }[]>();
+  const byUser = new Map<string, { id: string; userId: string; self_encouragement: string | null }[]>();
   for (const r of allReports ?? []) {
     if (!byUser.has(r.user_id)) byUser.set(r.user_id, []);
-    byUser.get(r.user_id)!.push({ id: r.id, self_encouragement: r.self_encouragement });
+    byUser.get(r.user_id)!.push({ id: r.id, userId: r.user_id, self_encouragement: r.self_encouragement });
   }
 
   // 3. N번째 보고서만 추출 (해당 횟수 이상의 보고서를 가진 사용자만)
-  const targetReports: { id: string; self_encouragement: string | null }[] = [];
+  const targetReports: { id: string; userId: string; self_encouragement: string | null }[] = [];
   for (const reports of byUser.values()) {
     if (reports.length >= count) {
       targetReports.push(reports[count - 1]);
@@ -1490,20 +1525,35 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
 
   const totalReports = targetReports.length;
   const reportIds = targetReports.map(r => r.id);
+  const targetUserIds = targetReports.map(r => r.userId);
   const wroteEncouragement = targetReports.filter(
     r => r.self_encouragement && r.self_encouragement.trim().length > 0
   ).length;
 
   if (reportIds.length === 0) {
-    return { totalReports: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
+    return { totalReports: 0, alimtalkSent: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
   }
 
-  // 4. 타로 선택 데이터 조회
-  const { data: tarotSelections, error: tarotError } = await supabase
-    .from('report_tarot_selections')
-    .select('report_id, user_viewed')
-    .in('report_id', reportIds);
+  // 4. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
+  const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
+    supabase
+      .from('report_tarot_selections')
+      .select('report_id, user_viewed')
+      .in('report_id', reportIds),
+    supabase
+      .from('user_coupons')
+      .select('source_order_id')
+      .not('user_id', 'in', `(${adminFilter})`)
+      .in('source_order_id', reportIds),
+    supabase
+      .from('alimtalk_logs')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('template_code', '10003')
+      .eq('status', 'success')
+      .in('user_id', targetUserIds),
+  ]);
 
+  const { data: tarotSelections, error: tarotError } = tarotResult;
   if (tarotError) throw new Error('타로 선택 데이터 조회에 실패했습니다.');
 
   const tarotByReport: Record<string, { total: number; viewed: number }> = {};
@@ -1517,18 +1567,13 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
   const tarotStarted = Object.values(tarotByReport).filter(t => t.viewed >= 1).length;
   const tarotCompleted = Object.values(tarotByReport).filter(t => t.viewed >= 3).length;
 
-  // 5. 쿠폰 발급 조회
-  const { data: coupons, error: couponError } = await supabase
-    .from('user_coupons')
-    .select('source_order_id')
-    .not('user_id', 'in', `(${adminFilter})`)
-    .in('source_order_id', reportIds);
-
+  const { error: couponError } = couponResult;
   if (couponError) throw new Error('쿠폰 데이터 조회에 실패했습니다.');
+  const couponIssued = new Set(couponResult.data?.map(c => c.source_order_id) || []).size;
 
-  const couponIssued = new Set(coupons?.map(c => c.source_order_id) || []).size;
+  const alimtalkSent = alimtalkResult.count || 0;
 
-  return { totalReports, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
+  return { totalReports, alimtalkSent, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
 }
 
 /**
@@ -1547,7 +1592,7 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   // 1. 보고서 데이터 조회
   const { data: reports, error: reportsError } = await supabase
     .from('weekly_reports')
-    .select('id, self_encouragement, week_start_date')
+    .select('id, user_id, self_encouragement, week_start_date')
     .eq('status', 'completed')
     .not('user_id', 'in', `(${adminFilter})`)
     .gte('week_start_date', startDateStr)
@@ -1559,26 +1604,34 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   }
 
   const reportIds = reports?.map(r => r.id) || [];
+  const reportUserIds = reports?.map(r => r.user_id) || [];
 
-  // 2. 타로 선택 데이터
+  // 2. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
   let tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
-  if (reportIds.length > 0) {
-    const { data, error } = await supabase
-      .from('report_tarot_selections')
-      .select('report_id, user_viewed')
-      .in('report_id', reportIds);
-    if (!error) tarotSelections = data || [];
-  }
-
-  // 3. 쿠폰 발급 데이터
   let coupons: { source_order_id: string }[] = [];
+  let alimtalkLogs: { user_id: string; sent_at: string | null; created_at: string }[] = [];
+
   if (reportIds.length > 0) {
-    const { data, error } = await supabase
-      .from('user_coupons')
-      .select('source_order_id')
-      .not('user_id', 'in', `(${adminFilter})`)
-      .in('source_order_id', reportIds);
-    if (!error) coupons = data || [];
+    const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
+      supabase
+        .from('report_tarot_selections')
+        .select('report_id, user_viewed')
+        .in('report_id', reportIds),
+      supabase
+        .from('user_coupons')
+        .select('source_order_id')
+        .not('user_id', 'in', `(${adminFilter})`)
+        .in('source_order_id', reportIds),
+      supabase
+        .from('alimtalk_logs')
+        .select('user_id, sent_at, created_at')
+        .eq('template_code', '10003')
+        .eq('status', 'success')
+        .in('user_id', reportUserIds),
+    ]);
+    if (!tarotResult.error) tarotSelections = tarotResult.data || [];
+    if (!couponResult.error) coupons = couponResult.data || [];
+    if (!alimtalkResult.error) alimtalkLogs = alimtalkResult.data || [];
   }
 
   // 보고서별 타로 완료 수 Map
@@ -1590,6 +1643,9 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
 
   // 쿠폰 발급된 보고서 Set
   const couponReportIds = new Set(coupons.map(c => c.source_order_id));
+
+  // 알림톡 발송된 user_id Set
+  const alimtalkUserIds = new Set(alimtalkLogs.map(a => a.user_id));
 
   // week_start_date 기준으로 그룹핑 (주별 집계)
   const weekGroups: Record<string, typeof reports> = {};
@@ -1604,6 +1660,7 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   const weeklyData: ReportTrendData[] = sortedWeeks.map(wsd => {
     const weekReports = weekGroups[wsd]!;
     const totalReports = weekReports.length;
+    const alimtalkSent = weekReports.filter(r => alimtalkUserIds.has(r.user_id)).length;
     const tarotCompleted = weekReports.filter(r => (tarotByReport[r.id] || 0) >= 3).length;
     const wroteEncouragement = weekReports.filter(r => r.self_encouragement && r.self_encouragement.trim().length > 0).length;
     const couponIssued = weekReports.filter(r => couponReportIds.has(r.id)).length;
@@ -1618,9 +1675,11 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
       dateLabel: `${mm}/${dd}`,
       fullDate: wsd,
       totalReports,
+      alimtalkSent,
       tarotCompleted,
       wroteEncouragement,
       couponIssued,
+      alimtalkRate: totalReports > 0 ? Math.round(alimtalkSent / totalReports * 1000) / 10 : 0,
       tarotCompletionRate: totalReports > 0 ? Math.round(tarotCompleted / totalReports * 1000) / 10 : 0,
       encouragementRate: totalReports > 0 ? Math.round(wroteEncouragement / totalReports * 1000) / 10 : 0,
       couponIssuedRate: totalReports > 0 ? Math.round(couponIssued / totalReports * 1000) / 10 : 0,
@@ -1676,6 +1735,7 @@ export interface PurchaseStatsData {
   customerSummary: PurchaseCustomerData[];
   totalOrders: number;
   totalRevenue: number;
+  freeCouponOrders: number;
   uniqueBuyers: number;
   avgPurchasesPerBuyer: number;
 }
@@ -1700,10 +1760,24 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     return q;
   };
 
-  // 5개 쿼리 병렬 실행
+  // 0원 쿠폰 주문 쿼리 빌더
+  const buildFreeCouponQuery = () => {
+    let q = supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('pstatus', 'completed')
+      .eq('paid_amount', 0)
+      .not('user_id', 'in', `(${adminFilter})`);
+    if (dateRange?.startDate) q = q.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) q = q.lte('created_at', dateRange.endDate);
+    return q;
+  };
+
+  // 6개 쿼리 병렬 실행
   const [
     recentOrdersResult,
     allOrdersResult,
+    freeCouponOrdersResult,
     usersResult,
     tagStatsResult,
     contentsResult,
@@ -1716,7 +1790,10 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     // 2. 전체 완료 주문 (고객별 구매 통계, 0원 쿠폰 결제 제외)
     buildOrderQuery('user_id, paid_amount'),
 
-    // 3. 유저 데이터
+    // 3. 무료 쿠폰 주문 수 (paid_amount = 0)
+    buildFreeCouponQuery(),
+
+    // 4. 유저 데이터
     supabase
       .from('users')
       .select('id, email, nickname, visit_count, created_at, last_login_at')
@@ -1738,6 +1815,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
 
   if (recentOrdersResult.error) throw new Error('최근 주문 데이터 조회에 실패했습니다.');
   if (allOrdersResult.error) throw new Error('전체 주문 데이터 조회에 실패했습니다.');
+  if (freeCouponOrdersResult.error) throw new Error('무료 쿠폰 주문 데이터 조회에 실패했습니다.');
   if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
   if (tagStatsResult.error) throw new Error('태그 데이터 조회에 실패했습니다.');
   if (contentsResult.error) throw new Error('콘텐츠 데이터 조회에 실패했습니다.');
@@ -1832,6 +1910,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     customerSummary,
     totalOrders,
     totalRevenue,
+    freeCouponOrders: freeCouponOrdersResult.count || 0,
     uniqueBuyers,
     avgPurchasesPerBuyer,
   };
@@ -2073,6 +2152,7 @@ function aggregateReportTrendData(weeklyData: ReportTrendData[], granularity: 'm
   return sortedKeys.map(key => {
     const { label, data } = groups[key];
     const totalReports = data.reduce((sum, d) => sum + d.totalReports, 0);
+    const alimtalkSent = data.reduce((sum, d) => sum + d.alimtalkSent, 0);
     const tarotCompleted = data.reduce((sum, d) => sum + d.tarotCompleted, 0);
     const wroteEncouragement = data.reduce((sum, d) => sum + d.wroteEncouragement, 0);
     const couponIssued = data.reduce((sum, d) => sum + d.couponIssued, 0);
@@ -2081,9 +2161,11 @@ function aggregateReportTrendData(weeklyData: ReportTrendData[], granularity: 'm
       dateLabel: label,
       fullDate: data[0].fullDate,
       totalReports,
+      alimtalkSent,
       tarotCompleted,
       wroteEncouragement,
       couponIssued,
+      alimtalkRate: totalReports > 0 ? Math.round(alimtalkSent / totalReports * 1000) / 10 : 0,
       tarotCompletionRate: totalReports > 0 ? Math.round(tarotCompleted / totalReports * 1000) / 10 : 0,
       encouragementRate: totalReports > 0 ? Math.round(wroteEncouragement / totalReports * 1000) / 10 : 0,
       couponIssuedRate: totalReports > 0 ? Math.round(couponIssued / totalReports * 1000) / 10 : 0,
