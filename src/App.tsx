@@ -3143,49 +3143,74 @@ function ReportWeeklyMemoWrapper() {
   const location = useLocation();
   const [hasEncouragement, setHasEncouragement] = useState<boolean | null>(null);
   const [hasCoupon, setHasCoupon] = useState<boolean | null>(null);
+  const [isMissionEligible, setIsMissionEligible] = useState<boolean | null>(null);
 
-  // 응원글 존재 여부 + 쿠폰 발급 여부 확인
+  // 응원글 존재 여부 + 쿠폰 발급 여부 + 미션 쿠폰 대상 여부 확인
   useEffect(() => {
     async function checkStatus() {
       if (!id) return;
 
       try {
-        // 1. 응원글 존재 여부 확인
-        const { data: reportData, error: reportError } = await supabase
-          .from('weekly_reports')
-          .select('self_encouragement')
-          .eq('id', id)
-          .single();
+        // 🚀 1차 병렬: 보고서 + 세션 + 미션 쿠폰 마스터 동시 조회
+        const [reportResult, sessionResult, missionMasterResult] = await Promise.all([
+          supabase.from('weekly_reports').select('self_encouragement, tag_count').eq('id', id).single(),
+          supabase.auth.getSession(),
+          supabase.from('coupons').select('id').eq('coupon_type', 'mission').maybeSingle(),
+        ]);
 
-        if (reportError) {
-          console.error('응원글 확인 실패:', reportError);
+        const reportData = reportResult.data;
+        if (reportResult.error) {
+          console.error('응원글 확인 실패:', reportResult.error);
           setHasEncouragement(false);
         } else {
-          const exists = !!reportData?.self_encouragement;
-          setHasEncouragement(exists);
-          console.log(`📝 [응원글] 보고서 ${id} - 응원글 존재 여부:`, exists);
+          setHasEncouragement(!!reportData?.self_encouragement);
         }
 
-        // 2. 쿠폰 발급 여부 확인
-        const { data: session } = await supabase.auth.getSession();
-        if (session?.session?.user) {
-          const { data: couponData } = await supabase
-            .from('user_coupons')
-            .select('id')
-            .eq('user_id', session.session.user.id)
-            .eq('source_order_id', id)
-            .limit(1);
+        const tagCount = reportData?.tag_count ?? 0;
+        const user = sessionResult.data?.session?.user;
+        const missionCouponId = missionMasterResult.data?.id;
 
-          const couponExists = !!(couponData && couponData.length > 0);
-          setHasCoupon(couponExists);
-          console.log(`🎟️ [쿠폰] 보고서 ${id} - 쿠폰 발급 여부:`, couponExists);
-        } else {
+        console.log(`📝 [응원글] 보고서 ${id} - 응원글: ${!!reportData?.self_encouragement}, 태그: ${tagCount}`);
+
+        if (!user) {
           setHasCoupon(false);
+          setIsMissionEligible(false);
+          return;
+        }
+
+        // 🚀 2차 병렬: 쿠폰 발급 여부 + 미션 쿠폰 수령 여부 동시 조회
+        const queries: Promise<{ data: { id: string }[] | { id: string } | null; error: unknown }>[] = [
+          supabase.from('user_coupons').select('id').eq('user_id', user.id).eq('source_order_id', id).limit(1),
+        ];
+
+        if (tagCount >= 5 && missionCouponId) {
+          queries.push(
+            supabase.from('user_coupons').select('id').eq('user_id', user.id).eq('coupon_id', missionCouponId).maybeSingle()
+          );
+        }
+
+        const results = await Promise.all(queries);
+
+        // 쿠폰 발급 여부
+        const couponData = results[0].data as { id: string }[] | null;
+        const couponExists = !!(couponData && couponData.length > 0);
+        setHasCoupon(couponExists);
+        console.log(`🎟️ [쿠폰] 보고서 ${id} - 쿠폰 발급 여부:`, couponExists);
+
+        // 미션 쿠폰 대상 여부
+        if (tagCount >= 5 && missionCouponId && results[1]) {
+          const eligible = !results[1].data;
+          setIsMissionEligible(eligible);
+          console.log(`🎯 [미션쿠폰] 태그 ${tagCount}개, 미수령:`, eligible);
+        } else {
+          setIsMissionEligible(false);
+          if (tagCount < 5) console.log(`🎯 [미션쿠폰] 태그 ${tagCount}개 < 5 → 대상 아님`);
         }
       } catch (err) {
         console.error('상태 확인 중 오류:', err);
         setHasEncouragement(false);
         setHasCoupon(false);
+        setIsMissionEligible(false);
       }
     }
 
@@ -3200,7 +3225,7 @@ function ReportWeeklyMemoWrapper() {
   const fromEdit = (location.state as { fromEdit?: boolean })?.fromEdit;
 
   // 상태 확인 중이면 로딩 상태로 렌더링
-  if (hasEncouragement === null || hasCoupon === null) {
+  if (hasEncouragement === null || hasCoupon === null || isMissionEligible === null) {
     return (
       <ReportWeeklyMemo
         reportId={id}
@@ -3215,7 +3240,8 @@ function ReportWeeklyMemoWrapper() {
   // 1. 수정 페이지에서 왔으면
   // 2. 응원글이 이미 있으면 (view 모드)
   // 3. 쿠폰이 이미 발급되었으면 (두 번째 방문)
-  const shouldGoToProfile = fromEdit || hasEncouragement || hasCoupon;
+  // 4. 미션 쿠폰 대상이 아닌 경우 (태그 5개 미만 or 이미 수령)
+  const shouldGoToProfile = fromEdit || hasEncouragement || hasCoupon || !isMissionEligible;
 
   return (
     <ReportWeeklyMemo
@@ -3224,10 +3250,10 @@ function ReportWeeklyMemoWrapper() {
       onPrev={() => navigate(`/report-weekly-mind-care/${id}`, { replace: true })}
       onNext={() => {
         if (shouldGoToProfile) {
-          console.log('✅ [응원글] 프로필로 이동 (fromEdit:', fromEdit, ', hasEncouragement:', hasEncouragement, ', hasCoupon:', hasCoupon, ')');
+          console.log('✅ [응원글] 프로필로 이동 (fromEdit:', fromEdit, ', hasEncouragement:', hasEncouragement, ', hasCoupon:', hasCoupon, ', isMissionEligible:', isMissionEligible, ')');
           navigate('/my-report-list', { replace: true });
         } else {
-          console.log('🎟️ [응원글] 쿠폰 페이지로 이동');
+          console.log('🎟️ [응원글] 미션 쿠폰 페이지로 이동 (태그 5개↑ & 미션 쿠폰 미수령)');
           navigate(`/report-completion/${id}`, { replace: true });
         }
       }}
