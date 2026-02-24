@@ -1276,6 +1276,7 @@ export interface PurchaseFunnelData {
   paidDetailViews: number;
   paymentViews: number;
   completedOrders: number;
+  freeCouponOrders: number;
 }
 
 /**
@@ -1355,8 +1356,18 @@ export async function fetchPurchaseFunnelStats(
     if (dateRange?.startDate) ordersQuery = ordersQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) ordersQuery = ordersQuery.lte('created_at', dateRange.endDate);
 
-    // GA + orders 병렬 호출
-    const [gaResponse, ordersResult] = await Promise.all([
+    // 0원 쿠폰 주문 쿼리 빌더
+    let freeCouponQuery = supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('pstatus', 'completed')
+      .eq('paid_amount', 0)
+      .not('user_id', 'in', `(${adminFilter})`);
+    if (dateRange?.startDate) freeCouponQuery = freeCouponQuery.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) freeCouponQuery = freeCouponQuery.lte('created_at', dateRange.endDate);
+
+    // GA + orders + freeCoupon 병렬 호출
+    const [gaResponse, ordersResult, freeCouponResult] = await Promise.all([
       fetch(functionUrl, {
         method: 'GET',
         headers: {
@@ -1365,6 +1376,7 @@ export async function fetchPurchaseFunnelStats(
         },
       }),
       ordersQuery,
+      freeCouponQuery,
     ]);
 
     // GA 결과 파싱
@@ -1386,7 +1398,13 @@ export async function fetchPurchaseFunnelStats(
       console.error('구매 퍼널 orders 조회 실패:', ordersResult.error);
     }
 
-    return { paidDetailViews, paymentViews, completedOrders };
+    // 0원 쿠폰 주문 결과
+    const freeCouponOrders = freeCouponResult.count || 0;
+    if (freeCouponResult.error) {
+      console.error('구매 퍼널 freeCoupon 조회 실패:', freeCouponResult.error);
+    }
+
+    return { paidDetailViews, paymentViews, completedOrders, freeCouponOrders };
   } catch (error) {
     console.error('구매 퍼널 통계 조회 예외:', error);
     return null;

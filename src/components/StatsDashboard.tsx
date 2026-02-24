@@ -3507,9 +3507,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     <tbody>
                       {(() => {
                         const base = purchaseFunnel.paidDetailViews;
+                        const adjustedPaymentViews = Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeCouponOrders);
                         return [
                           { label: '유료 상세', value: purchaseFunnel.paidDetailViews, rate: 100 },
-                          { label: '결제', value: purchaseFunnel.paymentViews, rate: base > 0 ? Math.round(purchaseFunnel.paymentViews / base * 1000) / 10 : 0 },
+                          { label: '결제', value: adjustedPaymentViews, rate: base > 0 ? Math.round(adjustedPaymentViews / base * 1000) / 10 : 0 },
                           { label: '결제 완료', value: purchaseFunnel.completedOrders, rate: base > 0 ? Math.round(purchaseFunnel.completedOrders / base * 1000) / 10 : 0 },
                         ].map((row, idx) => (
                           <tr key={idx}>
