@@ -397,6 +397,50 @@ function generateSitemap(contents, blogPosts = []) {
 }
 
 /**
+ * RSS 2.0 피드 생성
+ * 네이버 서치어드바이저 RSS 제출용 + 검색엔진 콘텐츠 발견 촉진
+ */
+function generateRssFeed(blogPosts = []) {
+  if (blogPosts.length === 0) {
+    console.log('[prerender] 블로그 글 없음 - RSS 생성 건너뜀');
+    return;
+  }
+
+  const buildDate = new Date().toUTCString();
+
+  const items = blogPosts.slice(0, 50).map((post) => {
+    const pubDate = post.published_at ? new Date(post.published_at).toUTCString() : buildDate;
+    const link = `${SITE_URL}/blog/${post.slug}`;
+    const description = post.excerpt || post.meta_description || post.title;
+
+    return `    <item>
+      <title><![CDATA[${post.title}]]></title>
+      <link>${link}</link>
+      <guid>${link}</guid>
+      <pubDate>${pubDate}</pubDate>
+      <description><![CDATA[${description}]]></description>
+    </item>`;
+  }).join('\n');
+
+  const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>나다운세 - 운세 콘텐츠</title>
+    <link>${SITE_URL}</link>
+    <description>사주, 타로, 운세에 대한 유용한 정보를 만나보세요. AI가 분석하는 사주풀이, 타로, 궁합, 신년운세.</description>
+    <language>ko</language>
+    <lastBuildDate>${buildDate}</lastBuildDate>
+    <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml" />
+${items}
+  </channel>
+</rss>`;
+
+  const rssPath = resolve(BUILD_DIR, 'rss.xml');
+  writeFileSync(rssPath, rssXml, 'utf-8');
+  console.log(`[prerender] rss.xml 생성 완료 (${Math.min(blogPosts.length, 50)}개 글)`);
+}
+
+/**
  * 콘텐츠 페이지 생성
  */
 function generateContentPages(template, contents) {
@@ -833,6 +877,9 @@ async function main() {
 
   // 7. 정적 sitemap.xml 생성 (Edge Function rewrite 대신 정적 파일로 서빙)
   generateSitemap(contents, blogPosts);
+
+  // 8. RSS 피드 생성 (네이버 서치어드바이저 + 검색엔진 콘텐츠 발견용)
+  generateRssFeed(blogPosts);
 
   console.log('[prerender] 프리렌더 완료!');
 }
