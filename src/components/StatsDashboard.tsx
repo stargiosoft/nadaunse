@@ -767,7 +767,8 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const copyPurchaseData = async () => {
     if (!purchaseStats) return;
     const gaActiveUsers = gaStats?.activeUsers ?? 0;
-    const data = {
+    const periodLabel = purchasePeriod === 'this_week' ? '이번주' : purchasePeriod === 'last_week' ? '저번주' : '전체';
+    const data: Record<string, unknown> = {
       tab: '구매',
       timestamp: new Date().toISOString(),
       summary: {
@@ -779,6 +780,15 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         avgOrderValue: purchaseStats.totalOrders > 0 ? Math.round(purchaseStats.totalRevenue / purchaseStats.totalOrders) : 0,
         arpu: gaActiveUsers > 0 ? Math.round(purchaseStats.totalRevenue / gaActiveUsers) : 0,
       },
+      purchaseFunnel: purchaseFunnel ? {
+        period: periodLabel,
+        paidDetailViews: purchaseFunnel.paidDetailViews,
+        paymentViews: Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeCouponOrders),
+        completedOrders: purchaseFunnel.completedOrders,
+        freeCouponOrders: purchaseFunnel.freeCouponOrders,
+        paymentRate: purchaseFunnel.paidDetailViews > 0 ? Math.round(Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeCouponOrders) / purchaseFunnel.paidDetailViews * 1000) / 10 : 0,
+        completionRate: purchaseFunnel.paidDetailViews > 0 ? Math.round(purchaseFunnel.completedOrders / purchaseFunnel.paidDetailViews * 1000) / 10 : 0,
+      } : null,
       recentOrders: purchaseStats.recentOrders.map(o => ({
         orderedAt: o.orderedAt,
         nickname: o.nickname,
@@ -3465,6 +3475,17 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             {/* 구매 퍼널 섹션 */}
             <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
               <h2 style={{ ...typography.sectionTitle, margin: 0 }}>결제 퍼널</h2>
+              <button
+                onClick={copyPurchaseData}
+                className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                style={{
+                  width: '36px', height: '36px',
+                  backgroundColor: '#f5f5f5',
+                  border: 'none',
+                }}
+              >
+                <Copy size={16} color="#666" />
+              </button>
             </div>
             <div className="flex gap-2" style={{ marginBottom: '16px' }}>
               {([
@@ -3563,17 +3584,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between">
                     <SectionHeader icon="🛒" title="최근 구매 내역" />
-                    <button
-                      onClick={copyPurchaseData}
-                      className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
-                      style={{
-                        width: '36px', height: '36px',
-                        backgroundColor: '#f5f5f5',
-                        border: 'none',
-                      }}
-                    >
-                      <Copy size={16} color="#666" />
-                    </button>
                   </div>
 
                   {/* 가로+세로 스크롤 테이블 (고정 높이) */}
