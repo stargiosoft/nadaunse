@@ -253,6 +253,77 @@ async function getFreeResultPageViews(
   return { pageViews: 0, pageViewsPerUser: 0 };
 }
 
+// GA Data API 호출 - 구매 퍼널 페이지뷰 (유료 상세 + 결제 페이지)
+async function getPurchaseFunnelPageViews(
+  accessToken: string,
+  propertyId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ paidDetailViews: number; paymentViews: number }> {
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'pageTitle' }],
+        metrics: [{ name: 'screenPageViews' }],
+        dimensionFilter: {
+          orGroup: {
+            expressions: [
+              {
+                filter: {
+                  fieldName: 'pageTitle',
+                  stringFilter: {
+                    matchType: 'EXACT',
+                    value: '유료 콘텐츠 상세 | 나다운세',
+                  },
+                },
+              },
+              {
+                filter: {
+                  fieldName: 'pageTitle',
+                  stringFilter: {
+                    matchType: 'EXACT',
+                    value: '결제 | 나다운세',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GA 구매 퍼널 API 호출 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  let paidDetailViews = 0;
+  let paymentViews = 0;
+
+  if (data.rows && data.rows.length > 0) {
+    for (const row of data.rows) {
+      const title = row.dimensionValues[0].value;
+      const views = parseInt(row.metricValues[0].value, 10);
+      if (title === '유료 콘텐츠 상세 | 나다운세') {
+        paidDetailViews = views;
+      } else if (title === '결제 | 나다운세') {
+        paymentViews = views;
+      }
+    }
+  }
+
+  return { paidDetailViews, paymentViews };
+}
+
 // GA Data API 호출 - 일별 데이터
 interface DailyGAData {
   date: string;  // YYYYMMDD 형식
@@ -358,6 +429,16 @@ serve(async (req: Request) => {
         startDate,
         endDate,
         data: dailyData,
+      };
+    } else if (type === 'purchase_funnel') {
+      // 구매 퍼널 페이지뷰 조회
+      const funnelData = await getPurchaseFunnelPageViews(accessToken, propertyId, startDate, endDate);
+      result = {
+        success: true,
+        type: 'purchase_funnel',
+        startDate,
+        endDate,
+        ...funnelData,
       };
     } else {
       // 기간별 데이터와 페이지 조회수를 병렬로 조회

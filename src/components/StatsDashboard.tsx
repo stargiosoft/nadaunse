@@ -13,7 +13,7 @@ import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportFunnelByCount, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportFunnelByCount, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats, PurchasePeriodFilter, PurchaseFunnelData, fetchPurchaseFunnelStats } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -201,6 +201,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [purchaseStats, setPurchaseStats] = useState<PurchaseStatsData | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
+  // 구매 탭 퍼널 상태
+  const [purchasePeriod, setPurchasePeriod] = useState<PurchasePeriodFilter>('all');
+  const [purchaseFunnel, setPurchaseFunnel] = useState<PurchaseFunnelData | null>(null);
+  const [purchaseFunnelLoading, setPurchaseFunnelLoading] = useState(false);
 
   // 추세 탭 구매 통계 (추세 기간 필터 적용)
   const [trendPurchaseStats, setTrendPurchaseStats] = useState<PurchaseStatsData | null>(null);
@@ -622,10 +627,32 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
+  // 구매 퍼널 데이터 로드 함수
+  const loadPurchaseFunnel = async (period?: PurchasePeriodFilter) => {
+    setPurchaseFunnelLoading(true);
+    try {
+      const data = await fetchPurchaseFunnelStats(period ?? purchasePeriod);
+      setPurchaseFunnel(data);
+    } catch (err) {
+      console.error('구매 퍼널 로드 오류:', err);
+    } finally {
+      setPurchaseFunnelLoading(false);
+    }
+  };
+
+  // 구매 퍼널 기간 변경 핸들러
+  const handlePurchasePeriodChange = (period: PurchasePeriodFilter) => {
+    setPurchasePeriod(period);
+    loadPurchaseFunnel(period);
+  };
+
   // 구매 탭 선택 시 데이터 로드 (전체 기간)
   useEffect(() => {
     if (selectedTab === '구매' && !purchaseStats && !purchaseLoading) {
       loadPurchaseData();
+    }
+    if (selectedTab === '구매' && !purchaseFunnel && !purchaseFunnelLoading) {
+      loadPurchaseFunnel();
     }
   }, [selectedTab]);
 
@@ -3435,6 +3462,69 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
         {/* ========== 구매 탭 ========== */}
         {selectedTab === '구매' && (
           <div style={{ paddingTop: '16px' }}>
+            {/* 구매 퍼널 섹션 */}
+            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+              <h2 style={{ ...typography.sectionTitle, margin: 0 }}>결제 퍼널</h2>
+            </div>
+            <div className="flex gap-2" style={{ marginBottom: '16px' }}>
+              {([
+                { value: 'this_week' as PurchasePeriodFilter, label: '이번주' },
+                { value: 'last_week' as PurchasePeriodFilter, label: '저번주' },
+                { value: 'all' as PurchasePeriodFilter, label: '전체' },
+              ]).map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => handlePurchasePeriodChange(filter.value)}
+                  className="rounded-full whitespace-nowrap transition-colors"
+                  style={{
+                    ...typography.preset,
+                    padding: '8px 16px',
+                    fontWeight: purchasePeriod === filter.value ? 500 : 400,
+                    backgroundColor: purchasePeriod === filter.value ? '#3FB5B3' : '#ffffff',
+                    color: purchasePeriod === filter.value ? '#ffffff' : '#666666',
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 퍼널 테이블 */}
+            {purchaseFunnelLoading && (
+              <div className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '180px', marginBottom: '20px' }} />
+            )}
+            {!purchaseFunnelLoading && purchaseFunnel && (
+              <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>단계</th>
+                        <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>수</th>
+                        <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>전환율</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const base = purchaseFunnel.paidDetailViews;
+                        return [
+                          { label: '유료 상세', value: purchaseFunnel.paidDetailViews, rate: 100 },
+                          { label: '결제', value: purchaseFunnel.paymentViews, rate: base > 0 ? Math.round(purchaseFunnel.paymentViews / base * 1000) / 10 : 0 },
+                          { label: '결제 완료', value: purchaseFunnel.completedOrders, rate: base > 0 ? Math.round(purchaseFunnel.completedOrders / base * 1000) / 10 : 0 },
+                        ].map((row, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, color: '#1a1a1a', padding: '10px 12px', borderBottom: '1px solid #f8f8f8' }}>{row.label}</td>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 600, color: '#3FB5B3', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.value.toLocaleString()}</td>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 400, color: '#666', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.rate}%</td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
             {/* 에러 상태 */}
             {purchaseError && (
               <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>

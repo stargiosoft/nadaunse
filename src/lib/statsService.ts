@@ -1266,6 +1266,133 @@ export async function fetchDailyGAStats(
   }
 }
 
+// ========== 구매 퍼널 타입 및 함수 ==========
+
+/** 구매 퍼널 기간 필터 */
+export type PurchasePeriodFilter = 'this_week' | 'last_week' | 'all';
+
+/** 구매 퍼널 데이터 */
+export interface PurchaseFunnelData {
+  paidDetailViews: number;
+  paymentViews: number;
+  completedOrders: number;
+}
+
+/**
+ * 구매 퍼널 기간 필터에 따른 날짜 범위 계산
+ * - this_week: 이번 주 일요일 00:00 ~ 내일 00:00
+ * - last_week: 지난주 일요일 00:00 ~ 이번주 일요일 00:00
+ * - all: 필터 없음
+ */
+function getPurchasePeriodDateRange(period: PurchasePeriodFilter): DateRangeFilter | null {
+  if (period === 'all') return null;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayOfWeek = today.getDay(); // 0=일, 1=월, ...
+
+  // 이번 주 일요일
+  const thisSunday = new Date(today);
+  thisSunday.setDate(today.getDate() - dayOfWeek);
+
+  if (period === 'this_week') {
+    // 이번 주 일요일 00:00 ~ 내일 00:00
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    return {
+      startDate: thisSunday.toISOString(),
+      endDate: tomorrow.toISOString(),
+    };
+  }
+
+  // last_week: 지난주 일요일 00:00 ~ 이번주 일요일 00:00
+  const lastSunday = new Date(thisSunday);
+  lastSunday.setDate(thisSunday.getDate() - 7);
+  return {
+    startDate: lastSunday.toISOString(),
+    endDate: thisSunday.toISOString(),
+  };
+}
+
+/**
+ * 구매 퍼널 통계 조회
+ * GA 페이지뷰(유료 상세, 결제) + orders 완료 건수를 병렬 조회
+ */
+export async function fetchPurchaseFunnelStats(
+  period: PurchasePeriodFilter = 'all'
+): Promise<PurchaseFunnelData | null> {
+  try {
+    const dateRange = getPurchasePeriodDateRange(period);
+
+    // 로컬 날짜 형식 변환 함수 (UTC 시간대 문제 방지)
+    const formatLocalDate = (date: Date): string => {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    // GA Edge Function 호출 파라미터 구성
+    const gaParams = new URLSearchParams({ type: 'purchase_funnel' });
+    if (dateRange) {
+      const startDateObj = new Date(dateRange.startDate!);
+      gaParams.append('startDate', formatLocalDate(startDateObj));
+      const endDateObj = new Date(dateRange.endDate!);
+      endDateObj.setDate(endDateObj.getDate() - 1); // GA API는 endDate inclusive
+      gaParams.append('endDate', formatLocalDate(endDateObj));
+    } else {
+      gaParams.append('startDate', '2026-01-11'); // 서비스 시작일
+      gaParams.append('endDate', 'today');
+    }
+
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ga-stats?${gaParams.toString()}`;
+
+    // orders 쿼리 빌더
+    const adminFilter = ADMIN_IDS.join(',');
+    let ordersQuery = supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
+      .not('user_id', 'in', `(${adminFilter})`);
+    if (dateRange?.startDate) ordersQuery = ordersQuery.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) ordersQuery = ordersQuery.lte('created_at', dateRange.endDate);
+
+    // GA + orders 병렬 호출
+    const [gaResponse, ordersResult] = await Promise.all([
+      fetch(functionUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      }),
+      ordersQuery,
+    ]);
+
+    // GA 결과 파싱
+    let paidDetailViews = 0;
+    let paymentViews = 0;
+    if (gaResponse.ok) {
+      const gaResult = await gaResponse.json();
+      if (gaResult.success) {
+        paidDetailViews = gaResult.paidDetailViews || 0;
+        paymentViews = gaResult.paymentViews || 0;
+      }
+    } else {
+      console.error('구매 퍼널 GA 조회 실패:', gaResponse.status);
+    }
+
+    // orders 결과
+    const completedOrders = ordersResult.count || 0;
+    if (ordersResult.error) {
+      console.error('구매 퍼널 orders 조회 실패:', ordersResult.error);
+    }
+
+    return { paidDetailViews, paymentViews, completedOrders };
+  } catch (error) {
+    console.error('구매 퍼널 통계 조회 예외:', error);
+    return null;
+  }
+}
+
 // ========== 콘텐츠 랭킹 타입 및 함수 ==========
 
 /** 콘텐츠 타입 필터 */
