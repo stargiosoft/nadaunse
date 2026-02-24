@@ -2058,7 +2058,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
                                 <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[16px] tracking-[-0.32px]">
-                                  <span>{`세종대왕부터 현대의 유명 인물까지, 전 세계 인물들의 사주를 분석해왔습니다. 25년 상담 노하우와 10만 건 이상의 실제 사례를 바탕으로, 전문가는 물론 AI와 함께 완성도를 높였습니다. `}</span>
+                                  <span>{`세종대왕부터 현대의 유명 인물까지, 전 세계 인물들의 사주를 분석해왔습니다. 총 경력 200년! 11분의 전문가와 함께 10만 건 이상의 실제 사례를 바탕으로 AI와 함께 완성도를 높였습니다. `}</span>
                                   <span className="font-semibold">단순한 이론이 아니라, 실제 검증된 데이터를 기반으로 신뢰할 수 있는 해석을 제공합니다.</span>
                                 </p>
                               </div>
