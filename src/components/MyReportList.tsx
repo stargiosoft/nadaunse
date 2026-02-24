@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
@@ -70,62 +71,92 @@ export interface MonthlyReport {
 // UI Components (from MyReportWeekly)
 // ============================================
 
-function WeeklyTagSummary({ count }: { count: number }) {
-  const navigate = useNavigate();
+// ============================================
+// "이번 주 모은 태그" 헤더 + 개수 뱃지 (Figma: 14759:25443)
+// ============================================
 
-  const handleGoToTags = () => {
-    localStorage.setItem('homeFilter', JSON.stringify({ category: '전체', contentType: 'free' }));
-    navigate('/', { replace: true });
-  };
-
+function TagCountBadgeIcon() {
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '0px' }}>
-      <div className="flex flex-col items-center pb-0 w-full" style={{ paddingTop: '48px', padding: '48px 20px 0 20px', gap: '36px' }}>
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="shrink-0">
+      <path d="M17.0321 5.40885C16.9717 4.84375 16.7197 4.31635 16.3179 3.91442C15.9161 3.51248 15.3888 3.26025 14.8238 3.19968L11.6421 2.84635C11.2694 2.80345 10.8917 2.84565 10.5377 2.96979C10.1836 3.09392 9.86229 3.29675 9.59793 3.56302L1.9146 11.2463C1.44648 11.7156 1.18359 12.3514 1.18359 13.0143C1.18359 13.6771 1.44648 14.3129 1.9146 14.7822L5.45043 18.3172C5.6819 18.5502 5.95731 18.7351 6.26071 18.8609C6.56411 18.9868 6.88946 19.0512 7.21793 19.0505C7.88543 19.0505 8.51377 18.7897 8.98543 18.3172L16.6688 10.6338C16.9345 10.3695 17.137 10.0484 17.2611 9.6947C17.3852 9.341 17.4277 8.9638 17.3854 8.59135L17.0321 5.40801V5.40885Z" fill="#62C7C4" />
+      <path d="M12.52 9.37679C12.3012 9.37708 12.0844 9.33417 11.8822 9.25051C11.68 9.16686 11.4963 9.0441 11.3417 8.88929C11.0303 8.57635 10.8555 8.15284 10.8555 7.71138C10.8555 7.26991 11.0303 6.8464 11.3417 6.53346C11.6544 6.2208 12.0784 6.04508 12.5207 6.04492C12.9629 6.04477 13.387 6.22018 13.7 6.53263C14.3483 7.18263 14.3483 8.23929 13.7 8.88846C13.375 9.21346 12.9475 9.37679 12.52 9.37679Z" fill="white" />
+    </svg>
+  );
+}
+
+function WeeklyTagHeader({ count }: { count: number }) {
+  return (
+    <div className="flex items-center justify-between w-full" style={{ padding: '16px 20px 0 20px' }}>
+      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '17px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#000000' }}>
+        이번 주 모은 태그
+      </p>
+      <div className="flex items-center" style={{ backgroundColor: '#f8f8f8', borderRadius: '999px', padding: '8px 12px', gap: '6px' }}>
+        <TagCountBadgeIcon />
+        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 700, fontSize: '14px', lineHeight: '22px', letterSpacing: '-0.42px', color: '#151515' }}>
+          {count} 개
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// CTA 버튼 공통 (터치/마우스 피드백 포함)
+function TagCTAButton({ onClick, label = '태그 쌓으러 가기' }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      className="w-full flex items-center justify-center transition-all"
+      style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
+      onClick={onClick}
+      onTouchStart={(e) => {
+        e.currentTarget.style.backgroundColor = '#41a09e';
+        e.currentTarget.style.transform = 'scale(0.99)';
+      }}
+      onTouchEnd={(e) => {
+        e.currentTarget.style.backgroundColor = '#48b2af';
+        e.currentTarget.style.transform = 'scale(1)';
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.backgroundColor = '#41a09e';
+        e.currentTarget.style.transform = 'scale(0.99)';
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.backgroundColor = '#48b2af';
+        e.currentTarget.style.transform = 'scale(1)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = '#48b2af';
+        e.currentTarget.style.transform = 'scale(1)';
+      }}
+    >
+      <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function WeeklyTagSummary({ count, onGenerateReport }: { count: number; onGenerateReport?: () => void }) {
+  return (
+    <div className="flex flex-col w-full bg-white">
+      <WeeklyTagHeader count={count} />
+      <div className="flex flex-col items-center w-full" style={{ padding: '48px 20px 0 20px', gap: '36px' }}>
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
-          <div className="relative" style={{ width: '48px', height: '48px' }}>
+          <div className="relative" style={{ width: '52px', height: '52px' }}>
             <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 48.0038 46.4307">
               <path clipRule="evenodd" d={svgFlowerPaths.p8ff0d80} fill="#FF6678" fillRule="evenodd" />
               <path d={svgFlowerPaths.p3195a000} fill="white" />
             </svg>
           </div>
-          <div className="flex flex-col items-center text-center w-full" style={{ gap: '2px' }}>
+          <div className="flex flex-col items-center text-center w-full" style={{ gap: '1px' }}>
             <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#151515' }} className="w-full">
-              이번 주에 태그 {count}개가 쌓였어요!
+              이번 주 보고서를 받을 수 있어요
             </p>
-            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', letterSpacing: '-0.42px', color: '#b7b7b7' }} className="w-full">
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', letterSpacing: '-0.26px', color: '#b7b7b7' }} className="w-full">
               모인 태그로 일요일에 보고서를 드려요
             </p>
           </div>
         </div>
-        <button
-          className="w-full flex items-center justify-center transition-all"
-          style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
-          onClick={handleGoToTags}
-          onTouchStart={(e) => {
-            e.currentTarget.style.backgroundColor = '#41a09e';
-            e.currentTarget.style.transform = 'scale(0.99)';
-          }}
-          onTouchEnd={(e) => {
-            e.currentTarget.style.backgroundColor = '#48b2af';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.backgroundColor = '#41a09e';
-            e.currentTarget.style.transform = 'scale(0.99)';
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.backgroundColor = '#48b2af';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#48b2af';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
-            태그 쌓으러 가기
-          </span>
-        </button>
+        <TagCTAButton onClick={() => onGenerateReport?.()} label="이번 주 보고서 먼저 받기" />
       </div>
       <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
     </div>
@@ -141,55 +172,100 @@ function WeeklyEmptySummary() {
   };
 
   return (
-    <div className="flex flex-col w-full bg-white" style={{ paddingBottom: '0px' }}>
-      <div className="flex flex-col items-center pb-0 w-full" style={{ paddingTop: '48px', padding: '48px 20px 0 20px', gap: '36px' }}>
+    <div className="flex flex-col w-full bg-white">
+      <WeeklyTagHeader count={0} />
+      <div className="flex flex-col items-center w-full" style={{ padding: '48px 20px 0 20px', gap: '36px' }}>
         <div className="flex flex-col items-center w-full" style={{ gap: '20px' }}>
-          <div className="relative" style={{ width: '48px', height: '48px' }}>
+          <div className="relative" style={{ width: '52px', height: '52px' }}>
             <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 48.0038 46.4307">
               <path clipRule="evenodd" d={svgEmptyPaths.p8ff0d80} fill="#F3F3F3" fillRule="evenodd" />
               <path d={svgEmptyPaths.p3195a000} fill="#D4D4D4" />
             </svg>
           </div>
-          <div className="flex flex-col items-center text-center w-full" style={{ gap: '2px' }}>
+          <div className="flex flex-col items-center text-center w-full" style={{ gap: '1px' }}>
             <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#b7b7b7' }} className="w-full">
-              이번 주 저장한 태그가 없어요
+              이번 주 보고서를 시작해볼까요?
             </p>
-            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '14px', lineHeight: '22px', letterSpacing: '-0.42px', color: '#b7b7b7' }} className="w-full">
-              태그 하나만 있어도 보고서가 만들어져요
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', letterSpacing: '-0.26px', color: '#b7b7b7' }} className="w-full">
+              태그를 모아 첫 보고서를 받아보세요
+            </p>
+          </div>
+        </div>
+        <TagCTAButton onClick={handleGoToTags} />
+      </div>
+      <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
+    </div>
+  );
+}
+
+// 보고서 생성 중 상태 (피그마: 나의 보고서 - 보고서 대기)
+function WeeklyReportGenerating({ count }: { count: number }) {
+  return (
+    <div className="flex flex-col w-full bg-white">
+      <WeeklyTagHeader count={count} />
+      <div className="flex flex-col items-center justify-center w-full" style={{ padding: '40px 20px 20px 20px', gap: '18px' }}>
+        <img src="/report-generating-icon.svg" alt="" style={{ width: '79px', height: '63px' }} />
+        <div className="flex flex-col items-center text-center w-full" style={{ gap: '1px' }}>
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }} className="w-full">
+            보고서를 정리하고 있어요
+          </p>
+          <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', letterSpacing: '-0.26px', color: '#b7b7b7' }} className="w-full">
+            완성되면 알림톡으로 알려드릴게요
+          </p>
+        </div>
+      </div>
+      <div className="w-full" style={{ height: '8px', backgroundColor: '#f9f9f9' }} />
+    </div>
+  );
+}
+
+// 보고서 도착 상태 (피그마: 나의 보고서 - 보고서 도착)
+function WeeklyReportArrived({ count, onViewReport }: { count: number; onViewReport: () => void }) {
+  // 다음 주 일요일 계산
+  const nextWeekStart = (() => {
+    const { end } = getCurrentWeekRange();
+    const next = new Date(end);
+    next.setDate(next.getDate() + 1); // 토요일 다음날 = 일요일
+    return `${next.getMonth() + 1}월 ${next.getDate()}일(일)`;
+  })();
+
+  return (
+    <div className="flex flex-col w-full bg-white">
+      <WeeklyTagHeader count={count} />
+      <div className="flex flex-col items-start w-full" style={{ padding: '40px 20px 20px 20px', gap: '20px' }}>
+        <div className="flex flex-col items-center justify-center w-full" style={{ gap: '18px' }}>
+          <img src="/report-arrived-icon.svg" alt="" style={{ width: '66px', height: '63px' }} />
+          <div className="flex flex-col items-center text-center w-full" style={{ gap: '1px' }}>
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }} className="w-full">
+              이번 주 보고서가 도착했어요
+            </p>
+            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '19px', letterSpacing: '-0.26px', color: '#999999' }} className="w-full">
+              다음 보고서는 {nextWeekStart}부터 받을 수 있어요
             </p>
           </div>
         </div>
         <button
-          className="w-full flex items-center justify-center transition-all"
-          style={{ height: '48px', borderRadius: '12px', backgroundColor: '#48b2af' }}
-          onClick={handleGoToTags}
-          onTouchStart={(e) => {
-            e.currentTarget.style.backgroundColor = '#41a09e';
-            e.currentTarget.style.transform = 'scale(0.99)';
-          }}
-          onTouchEnd={(e) => {
-            e.currentTarget.style.backgroundColor = '#48b2af';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.backgroundColor = '#41a09e';
-            e.currentTarget.style.transform = 'scale(0.99)';
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.backgroundColor = '#48b2af';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#48b2af';
-            e.currentTarget.style.transform = 'scale(1)';
+          onClick={onViewReport}
+          className="flex items-center justify-center w-full"
+          style={{
+            height: '48px',
+            backgroundColor: '#48b2af',
+            borderRadius: '12px',
+            padding: '0 12px',
+            fontFamily: 'Pretendard Variable',
+            fontWeight: 500,
+            fontSize: '15px',
+            lineHeight: '20px',
+            letterSpacing: '-0.45px',
+            color: '#ffffff',
+            border: 'none',
+            cursor: 'pointer',
           }}
         >
-          <span style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
-            태그 쌓으러 가기
-          </span>
+          이번 주 보고서 보기
         </button>
       </div>
-      <div className="w-full" style={{ height: '8px', marginTop: '20px', backgroundColor: '#f9f9f9' }} />
+      <div className="w-full" style={{ height: '8px', backgroundColor: '#f9f9f9' }} />
     </div>
   );
 }
@@ -419,22 +495,39 @@ function MyReportWeeklyContent({
   currentWeekTagsCount,
   filteredReports,
   onReportClick,
-  onEditClick
+  onEditClick,
+  onGenerateReport,
+  reportGenerationStatus,
+  onViewReport
 }: {
   currentWeekTagsCount: number;
   filteredReports: MonthlyReport[];
   onReportClick?: (id: string) => void;
   onEditClick?: (reportId: string, currentMessage: string) => void;
+  onGenerateReport?: () => void;
+  reportGenerationStatus: 'idle' | 'generating' | 'completed';
+  onViewReport?: () => void;
 }) {
   const hasNoReports = filteredReports.length === 0;
 
+  // 보고서 생성 상태에 따라 상단 영역 렌더링
+  const renderTopSection = () => {
+    if (reportGenerationStatus === 'generating') {
+      return <WeeklyReportGenerating count={currentWeekTagsCount} />;
+    }
+    if (reportGenerationStatus === 'completed') {
+      return <WeeklyReportArrived count={currentWeekTagsCount} onViewReport={() => onViewReport?.()} />;
+    }
+    // idle 상태: 기존 로직
+    if (currentWeekTagsCount > 0) {
+      return <WeeklyTagSummary count={currentWeekTagsCount} onGenerateReport={onGenerateReport} />;
+    }
+    return <WeeklyEmptySummary />;
+  };
+
   return (
     <>
-      {currentWeekTagsCount > 0 ? (
-        <WeeklyTagSummary count={currentWeekTagsCount} />
-      ) : (
-        <WeeklyEmptySummary />
-      )}
+      {renderTopSection()}
       {hasNoReports ? (
         // 보고서가 없을 때: 태그 쌓기 좋은 운세 섹션 표시
         <RecommendationCardList />
@@ -759,6 +852,103 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollYRef = useRef(0);
 
+  // ⭐ 보고서 생성 모달 상태 (sessionStorage로 탭 전환 시에도 유지)
+  const REPORT_GEN_KEY = 'report_generation_status';
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportGenerationStatus, setReportGenerationStatus] = useState<'idle' | 'generating' | 'completed'>(() => {
+    try {
+      const saved = sessionStorage.getItem(REPORT_GEN_KEY);
+      if (!saved) return 'idle';
+      const parsed = JSON.parse(saved);
+      // 5분 이상 지난 generating 상태는 만료 처리
+      if (parsed.status === 'generating' && Date.now() - parsed.timestamp > 5 * 60 * 1000) {
+        sessionStorage.removeItem(REPORT_GEN_KEY);
+        return 'idle';
+      }
+      return parsed.status || 'idle';
+    } catch { return 'idle'; }
+  });
+  const [newReportId, setNewReportId] = useState<string | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(REPORT_GEN_KEY);
+      if (!saved) return null;
+      return JSON.parse(saved).reportId || null;
+    } catch { return null; }
+  });
+
+  // ⭐ reportGenerationStatus ↔ sessionStorage 동기화
+  useEffect(() => {
+    if (reportGenerationStatus === 'idle') {
+      sessionStorage.removeItem(REPORT_GEN_KEY);
+    } else {
+      sessionStorage.setItem(REPORT_GEN_KEY, JSON.stringify({
+        status: reportGenerationStatus,
+        reportId: newReportId,
+        timestamp: Date.now()
+      }));
+    }
+  }, [reportGenerationStatus, newReportId]);
+
+  // ⭐ 재마운트 시 generating 상태면 보고서 완료 여부 폴링
+  useEffect(() => {
+    if (reportGenerationStatus !== 'generating') return;
+
+    let cancelled = false;
+
+    const pollForReport = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+
+        const { start } = getCurrentWeekRange();
+        const weekStartDate = toLocalDateStr(start);
+
+        const { data } = await supabase
+          .from('weekly_reports')
+          .select('id')
+          .eq('user_id', user.id)
+          .gte('week_start_date', weekStartDate)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (cancelled) return;
+
+        if (data && data.length > 0) {
+          console.log('✅ [폴링] 보고서 생성 완료 감지:', data[0].id);
+          setNewReportId(data[0].id);
+          setReportGenerationStatus('completed');
+
+          // 보고서 목록 갱신
+          localStorage.removeItem(MY_REPORT_CACHE_KEY);
+          const monthlyReports = await fetchWeeklyReports(user.id);
+          if (!cancelled) {
+            setReports(monthlyReports);
+            setHasAnyTags(true);
+            localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+              userId: user.id,
+              currentWeekTagsCount,
+              hasAnyTags: true,
+              reports: monthlyReports,
+              timestamp: Date.now()
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('❌ [폴링] 보고서 확인 오류:', err);
+      }
+    };
+
+    // 즉시 1회 + 10초 간격 폴링
+    pollForReport();
+    const interval = setInterval(pollForReport, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [reportGenerationStatus]);
+
   // ⭐ 관리자 패널용 상태
   const [isMaster, setIsMaster] = useState(false);
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
@@ -867,6 +1057,25 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         const needsRefresh = localStorage.getItem('my_report_needs_refresh') === 'true';
         if (initialState.hasValidCache && !needsRefresh) {
           console.log('✅ [MyReportList] 유효한 캐시 존재 → API 호출 스킵');
+
+          // ⭐ 캐시 히트 시에도 현재 주차 보고서 존재 여부 체크
+          if (reportGenerationStatus === 'idle') {
+            const { start } = getCurrentWeekRange();
+            const { data: cwReport } = await supabase
+              .from('weekly_reports')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('status', 'completed')
+              .gte('week_start_date', toLocalDateStr(start))
+              .limit(1);
+
+            if (cwReport && cwReport.length > 0) {
+              console.log('📬 [MyReportList] 캐시 히트 + 현재 주차 보고서 존재:', cwReport[0].id);
+              setNewReportId(cwReport[0].id);
+              setReportGenerationStatus('completed');
+            }
+          }
+
           setIsLoading(false);
           return;
         }
@@ -878,10 +1087,11 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
         // 이번 주 범위 계산
         const { start, end } = getCurrentWeekRange();
+        const weekStartDate = toLocalDateStr(start);
         console.log('📅 [MyReportList] 이번 주 범위:', start.toISOString(), '~', end.toISOString());
 
-        // 🚀 API 병렬화: 이번 주 태그 + 전체 태그 동시 조회
-        const [weeklyResult, totalResult] = await Promise.all([
+        // 🚀 API 병렬화: 이번 주 태그 + 전체 태그 + 현재 주차 보고서 동시 조회
+        const [weeklyResult, totalResult, currentWeekReportResult] = await Promise.all([
           supabase
             .from('user_trait_tags')
             .select('*', { count: 'exact', head: true })
@@ -895,8 +1105,24 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
             .eq('is_confirmed', true)
-            .neq('tag_name', '__SKIPPED__')  // ⭐ 스킵 마커 제외
+            .neq('tag_name', '__SKIPPED__'),  // ⭐ 스킵 마커 제외
+          supabase
+            .from('weekly_reports')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('status', 'completed')
+            .gte('week_start_date', weekStartDate)
+            .order('created_at', { ascending: false })
+            .limit(1)
         ]);
+
+        // ⭐ 현재 주차 보고서 존재 시 → 도착 안내 표시
+        const currentWeekReport = currentWeekReportResult.data;
+        if (currentWeekReport && currentWeekReport.length > 0) {
+          console.log('📬 [MyReportList] 현재 주차 보고서 존재:', currentWeekReport[0].id);
+          setNewReportId(currentWeekReport[0].id);
+          setReportGenerationStatus('completed');
+        }
 
         const weeklyTagCount = weeklyResult.count || 0;
         const totalTagCount = totalResult.count || 0;
@@ -1085,6 +1311,109 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     } else {
       // 기본 동작: 주간 보고서 상세 페이지로 이동 (replace: 보고서 플로우가 히스토리 1슬롯만 차지)
       navigate(`/report-weekly-detail/${reportId}`, { replace: true });
+    }
+  };
+
+  // ⭐ "이번 주 보고서 먼저 받기" → 보고서 생성 + 안내 바텀시트
+  const handleGenerateReport = async () => {
+    if (isGeneratingReport) return;
+    setIsGeneratingReport(true);
+    setReportGenerationStatus('generating');
+    setShowReportModal(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { start } = getCurrentWeekRange();
+      const today = new Date();
+      const weekStartDate = toLocalDateStr(start);
+      const weekEndDate = toLocalDateStr(today);
+
+      console.log('🚀 [MyReportList] 보고서 생성 시작:', weekStartDate, '~', weekEndDate);
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // fire-and-forget: 바텀시트는 즉시 표시, 백그라운드에서 생성
+      fetch(
+        `${supabaseUrl}/functions/v1/generate-weekly-reports-batch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            testMode: true,
+            testUserIds: [user.id],
+            weekStartDate,
+            weekEndDate
+          }),
+        }
+      ).then(async (response) => {
+        if (!response.ok) {
+          console.error('❌ [MyReportList] 보고서 생성 실패');
+          setReportGenerationStatus('idle');
+          return;
+        }
+        const data = await response.json();
+        console.log('✅ [MyReportList] 보고서 생성 결과:', data);
+
+        if (data?.success) {
+          const results = data.results || [];
+          const successResults = results.filter((r: { success: boolean }) => r.success);
+          if (successResults.length > 0) {
+            // 새 보고서 ID 저장 (API 응답에서 가져오기)
+            const firstSuccess = successResults[0];
+            if (firstSuccess?.reportId) {
+              setNewReportId(firstSuccess.reportId);
+            }
+
+            localStorage.removeItem(MY_REPORT_CACHE_KEY);
+            const monthlyReports = await fetchWeeklyReports(user.id);
+            setReports(monthlyReports);
+            setHasAnyTags(true);
+            localStorage.setItem(MY_REPORT_CACHE_KEY, JSON.stringify({
+              userId: user.id,
+              currentWeekTagsCount,
+              hasAnyTags: true,
+              reports: monthlyReports,
+              timestamp: Date.now()
+            }));
+
+            // API 응답에 reportId가 없으면 갱신된 목록에서 찾기
+            if (!firstSuccess?.reportId && monthlyReports.length > 0) {
+              const firstMonth = monthlyReports[0];
+              if (firstMonth.reports && firstMonth.reports.length > 0) {
+                setNewReportId(firstMonth.reports[0].id);
+              }
+            }
+
+            setReportGenerationStatus('completed');
+            console.log('✅ [MyReportList] 보고서 생성 완료, 목록 갱신');
+          } else {
+            setReportGenerationStatus('idle');
+          }
+        } else {
+          setReportGenerationStatus('idle');
+        }
+      }).catch((error) => {
+        console.error('❌ [MyReportList] 보고서 생성 오류:', error);
+        setReportGenerationStatus('idle');
+      }).finally(() => {
+        setIsGeneratingReport(false);
+      });
+    } catch (error) {
+      console.error('❌ [MyReportList] 보고서 생성 초기화 오류:', error);
+      setIsGeneratingReport(false);
+      setReportGenerationStatus('idle');
+    }
+  };
+
+  // ⭐ "이번 주 보고서 보기" → 생성된 보고서 상세 페이지로 이동
+  const handleViewNewReport = () => {
+    if (newReportId) {
+      navigate(`/report-weekly-detail/${newReportId}`, { replace: true });
     }
   };
 
@@ -1460,14 +1789,15 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
             {isLoading ? (
               // 로딩 상태 - LoadingWithMessage 사용
               <LoadingWithMessage message="보고서를 불러오는 중이에요!" />
-            ) : isInitialEmptyState ? (
-              <MyReportEmpty />
             ) : (
               <MyReportWeeklyContent
                 currentWeekTagsCount={currentWeekTagsCount}
                 filteredReports={filteredReports}
                 onReportClick={handleReportClick}
                 onEditClick={handleEditClick}
+                onGenerateReport={handleGenerateReport}
+                reportGenerationStatus={reportGenerationStatus}
+                onViewReport={handleViewNewReport}
               />
             )}
 
@@ -1815,6 +2145,95 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
             )}
           </div>
         </div>
+
+        {/* 보고서 생성 안내 바텀시트 (LoginBottomSheet 패턴) */}
+        {createPortal(
+          <AnimatePresence>
+            {showReportModal && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  key="report-backdrop"
+                  className="fixed inset-0 z-[9999] bg-black/50"
+                  onClick={() => setShowReportModal(false)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ touchAction: 'none' }}
+                />
+
+                {/* Bottom sheet */}
+                <motion.div
+                  key="report-sheet"
+                  className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-[440px] z-[10000] bg-white rounded-t-[16px] flex flex-col overflow-hidden transform-gpu"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                  drag="y"
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={0.2}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.y > 80) {
+                      setShowReportModal(false);
+                    }
+                  }}
+                >
+                  {/* Handle bar */}
+                  <div className="shrink-0 flex items-center justify-center py-[12px] cursor-grab active:cursor-grabbing">
+                    <div style={{ width: '48px', height: '4px', backgroundColor: '#d4d4d4', borderRadius: '9999px' }} />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex flex-col items-center w-full" style={{ padding: '36px 20px 34px 20px', gap: '32px' }}>
+                    <img
+                      src="/report-modal-icon.svg"
+                      alt=""
+                      style={{ width: '94px', height: '91px' }}
+                    />
+                    <div className="flex flex-col items-center w-full" style={{ gap: '12px', padding: '0 2px' }}>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '22px', lineHeight: '32.5px', letterSpacing: '-0.22px', color: '#151515', textAlign: 'center' }}>
+                        보고서를 정리하고 있어요
+                      </p>
+                      <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '25px', letterSpacing: '-0.32px', color: '#999999', textAlign: 'center' }}>
+                        완성되면 알림톡으로 알려드릴게요
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Bottom Button */}
+                  <div className="flex items-center justify-center w-full" style={{ padding: '12px 20px', boxShadow: '0px -8px 16px 0px rgba(255, 255, 255, 0.76)' }}>
+                    <button
+                      onClick={() => setShowReportModal(false)}
+                      className="flex items-center justify-center w-full"
+                      style={{
+                        height: '56px',
+                        backgroundColor: '#48b2af',
+                        borderRadius: '16px',
+                        padding: '0 12px',
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: 500,
+                        fontSize: '16px',
+                        lineHeight: '25px',
+                        letterSpacing: '-0.32px',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      확인
+                    </button>
+                  </div>
+
+                  {/* Safe area */}
+                  <div style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
       </div>
     </div>
