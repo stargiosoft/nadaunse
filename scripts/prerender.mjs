@@ -184,8 +184,9 @@ function escapeAttr(str) {
  * @param {string} options.subHeading - h2 부제목
  * @param {Array} options.contentList - 콘텐츠 목록 [{title, url, description}] (홈페이지용)
  * @param {Array} options.internalLinks - 내부 링크 [{label, url}]
+ * @param {string} options.rawHtmlContent - 이미 HTML인 본문 콘텐츠 (블로그 글 등, 이스케이프 없이 삽입)
  */
-function buildBodyContent({ heading, description, breadcrumbs, extraText, isArticle, subHeading, contentList, internalLinks }) {
+function buildBodyContent({ heading, description, breadcrumbs, extraText, isArticle, subHeading, contentList, internalLinks, rawHtmlContent }) {
   const parts = [];
 
   // 네비게이션 (breadcrumb)
@@ -225,6 +226,11 @@ function buildBodyContent({ heading, description, breadcrumbs, extraText, isArti
       })
       .join('\n');
     parts.push(`<ul>\n${listItems}\n</ul>`);
+  }
+
+  // 블로그 본문 HTML (이미 HTML이므로 이스케이프 없이 삽입)
+  if (rawHtmlContent) {
+    parts.push(`<div class="blog-content">${rawHtmlContent}</div>`);
   }
 
   // 내부 링크
@@ -680,6 +686,7 @@ function generateBlogDetailPages(template, blogPosts) {
           { label: post.title, url: canonicalUrl },
         ],
         isArticle: true,
+        rawHtmlContent: post.content,
         internalLinks: relatedPosts,
       }),
     });
