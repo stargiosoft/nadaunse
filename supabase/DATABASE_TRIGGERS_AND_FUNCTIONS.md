@@ -722,8 +722,8 @@ CREATE TRIGGER on_auth_user_created
 3. 응원글 저장 (사용자)
    └─ weekly_reports UPDATE (self_encouragement 필드)
 
-4. 쿠폰 발급
-   └─ user_coupons INSERT (1회차: mission, 2회차+: revisit)
+4. 쿠폰 발급 (tag_count≥5인 경우만)
+   └─ user_coupons INSERT (mission 쿠폰, 서버 사이드 tag_count 검증)
 ```
 
 ### user_viewed 패턴
