@@ -460,9 +460,11 @@ function generateContentPages(template, contents) {
     const titlePrefix = isFree ? '[무료] ' : '';
     const pageTitle = `${titlePrefix}${content.title} | 나다운세`;
 
-    // description (없으면 기본값)
-    const pageDescription = content.description
-      || `${content.title} - 나다운세에서 AI 운세를 확인하세요.`;
+    // description (없으면 제목 + 타입 기반 고유 설명 생성)
+    const fallbackDesc = isPaid
+      ? `${content.title} - AI가 분석하는 프리미엄 운세. 사주팔자 기반 정확한 풀이를 나다운세에서 확인하세요.`
+      : `${content.title} - 무료로 체험하는 AI 운세. 나다운세에서 지금 바로 확인해보세요.`;
+    const pageDescription = content.description || fallbackDesc;
 
     // keywords
     const baseKeywords = '나다운세, 운세, AI 운세, 사주, 타로';

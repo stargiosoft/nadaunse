@@ -204,7 +204,7 @@ function WeeklyReportGenerating({ count }: { count: number }) {
     <div className="flex flex-col w-full bg-white">
       <WeeklyTagHeader count={count} />
       <div className="flex flex-col items-center justify-center w-full" style={{ padding: '40px 20px 20px 20px', gap: '18px' }}>
-        <img src="/report-generating-icon.svg" alt="" style={{ width: '79px', height: '63px' }} />
+        <img src="/report-generating-icon.svg" alt="보고서 생성 중" style={{ width: '79px', height: '63px' }} />
         <div className="flex flex-col items-center text-center w-full" style={{ gap: '1px' }}>
           <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }} className="w-full">
             보고서를 정리하고 있어요
@@ -234,7 +234,7 @@ function WeeklyReportArrived({ count, onViewReport }: { count: number; onViewRep
       <WeeklyTagHeader count={count} />
       <div className="flex flex-col items-start w-full" style={{ padding: '40px 20px 20px 20px', gap: '20px' }}>
         <div className="flex flex-col items-center justify-center w-full" style={{ gap: '18px' }}>
-          <img src="/report-arrived-icon.svg" alt="" style={{ width: '66px', height: '63px' }} />
+          <img src="/report-arrived-icon.svg" alt="보고서 도착" style={{ width: '66px', height: '63px' }} />
           <div className="flex flex-col items-center text-center w-full" style={{ gap: '1px' }}>
             <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }} className="w-full">
               이번 주 보고서가 도착했어요
@@ -2189,7 +2189,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
                   <div className="flex flex-col items-center w-full" style={{ padding: '36px 20px 34px 20px', gap: '32px' }}>
                     <img
                       src="/report-modal-icon.svg"
-                      alt=""
+                      alt="주간 보고서 안내"
                       style={{ width: '94px', height: '91px' }}
                     />
                     <div className="flex flex-col items-center w-full" style={{ gap: '12px', padding: '0 2px' }}>

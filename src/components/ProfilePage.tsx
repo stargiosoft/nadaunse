@@ -106,27 +106,27 @@ function TextDivider() {
 
 // ⭐ 메뉴 아이콘들 (Figma 디자인 - 이미지 사용)
 function TagIcon() {
-  return <img src="/icon-tag.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+  return <img src="/icon-tag.svg" alt="" aria-hidden="true" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
 function ReceiptIcon() {
-  return <img src="/icon-receipt.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+  return <img src="/icon-receipt.svg" alt="" aria-hidden="true" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
 function FolderIcon() {
-  return <img src="/icon-folder.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+  return <img src="/icon-folder.svg" alt="" aria-hidden="true" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
 function LogoutIcon() {
-  return <img src="/icon-logout.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+  return <img src="/icon-logout.svg" alt="" aria-hidden="true" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
 function MessageCircleIcon() {
-  return <img src="/icon-message.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+  return <img src="/icon-message.svg" alt="" aria-hidden="true" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
 function ManseIcon() {
-  return <img src="/icon-manse.svg" alt="" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
+  return <img src="/icon-manse.svg" alt="" aria-hidden="true" className="block size-full" style={{ filter: 'brightness(0) saturate(100%)' }} />;
 }
 
 function BlogIcon() {
@@ -141,7 +141,7 @@ function BlogIcon() {
 
 // 메뉴용 Arrow Right 아이콘 (24px, 회색)
 function MenuArrowRightIcon() {
-  return <img src="/icon-arrow-right.svg" alt="" className="block size-full" />;
+  return <img src="/icon-arrow-right.svg" alt="" aria-hidden="true" className="block size-full" />;
 }
 
 // 생년월일시 포맷팅 (예: "양력 1991.12.25")
