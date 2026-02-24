@@ -1,7 +1,7 @@
 # SEO 가이드 - 나다운세
 
 > **검색엔진 최적화(SEO) 설정 및 관리 가이드**
-> **최종 업데이트**: 2026-02-20
+> **최종 업데이트**: 2026-02-24
 
 ---
 
@@ -20,6 +20,7 @@
 |------|-----|------|
 | robots.txt | https://nadaunse.com/robots.txt | ✅ |
 | sitemap.xml | https://nadaunse.com/sitemap.xml | ✅ |
+| rss.xml | https://nadaunse.com/rss.xml | ✅ (2026-02-24 추가) |
 
 ---
 
@@ -33,10 +34,13 @@
 ```html
 <!-- 기본 메타 정보 -->
 <title>나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세</title>
-<meta name="description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요." />
+<meta name="description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 오늘의운세, 사주풀이까지 나다운세에서 만나보세요." />
 <meta name="keywords" content="나다운세, 운세, 무료사주, 무료운세, 신년운세, 사주, 타로, 궁합, 오늘의운세, 띠별오늘의운세, 띠별운세, AI 운세, 별자리운세, 챗지피티사주, 챗gpt사주, 사주GPT, 신점, 사주팔자, 사주풀이, 인터넷사주, 자기이해" />
 <meta name="robots" content="index,follow" />
 <meta name="author" content="나다운세" />
+
+<!-- 검색엔진 인증 -->
+<meta name="naver-site-verification" content="8644df672025dac3aa852950dc53e0a1c776d9b2" />
 
 <!-- Canonical URL -->
 <link rel="canonical" href="https://nadaunse.com/" />
@@ -45,20 +49,25 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="나다운세" />
 <meta property="og:title" content="나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세" />
-<meta property="og:description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요." />
+<meta property="og:description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 오늘의운세, 사주풀이까지 나다운세에서 만나보세요." />
 <meta property="og:url" content="https://nadaunse.com/" />
 <meta property="og:image" content="https://hyltbeewxaqashyivilu.supabase.co/storage/v1/object/public/assets/OG%20image/OG%20KakaoTalk.png" />
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세" />
-<meta name="twitter:description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 띠별운세, 오늘의운세, 별자리운세, 사주풀이까지 나다운세에서 무료로 만나보세요." />
+<meta name="twitter:description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 오늘의운세, 사주풀이까지 나다운세에서 만나보세요." />
 ```
+
+> **⚠️ description 80자 제한**: 네이버 서치어드바이저 권장 길이. 2026-02-24에 기존 82자 → ~60자로 축소
 
 ### JSON-LD 구조화 데이터
 
+> **⚠️ 홈페이지 전용**: WebSite, FAQPage, Organization JSON-LD는 **홈페이지(`/`)에만** 포함됩니다.
+> 다른 페이지에서는 `prerender.mjs`의 `isHomePage` 파라미터로 템플릿의 기존 JSON-LD가 자동 제거됩니다. (2026-02-24 적용)
+
 ```json
-// WebSite
+// WebSite (홈페이지 전용)
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -70,7 +79,7 @@
   "keywords": "무료운세, 사주, 타로, 궁합, AI 운세, 사주풀이, 신년운세, 띠별운세, 오늘의운세"
 }
 
-// FAQPage (리치 스니펫)
+// FAQPage - 리치 스니펫 (홈페이지 전용)
 {
   "@context": "https://schema.org",
   "@type": "FAQPage",
@@ -81,7 +90,7 @@
   ]
 }
 
-// Organization (구글 검색 로고용)
+// Organization - 구글 검색 로고용 (홈페이지 전용)
 {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -96,7 +105,7 @@
   "sameAs": ["http://pf.kakao.com/_xbxkLHn"]
 }
 
-// Article (블로그 상세 - 클라이언트 사이드 SEO.tsx에서 렌더링)
+// Article (블로그 상세 - 프리렌더 + 클라이언트 사이드 SEO.tsx)
 {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -156,6 +165,10 @@ Disallow: /purchase-history
 Disallow: /error/
 Disallow: /test/
 
+# 무료 콘텐츠 - 입력 페이지 제외, 콘텐츠 상세만 허용
+Disallow: /free
+Allow: /free/content/
+
 # 결제/결과 페이지 제외
 Disallow: /*/payment
 Disallow: /*/birthinfo
@@ -173,12 +186,15 @@ Sitemap: https://nadaunse.com/sitemap.xml
 `scripts/prerender.mjs`가 빌드 시 Supabase에서 deployed 콘텐츠를 조회하여 자동 생성
 
 ### 포함되는 페이지
-- 홈페이지 (`/`) - priority: 1.0
-- 유료 콘텐츠 (`/product/{id}`) - priority: 0.9
-- 무료 콘텐츠 (`/free/content/{id}`) - priority: 0.8
-- **블로그 목록** (`/blog`) - priority: 0.7
-- **블로그 상세** (`/blog/{slug}`) - priority: 0.7
+- 홈페이지 (`/`) - priority: 1.0, lastmod: 빌드일
+- 유료 콘텐츠 (`/product/{id}`) - priority: 0.9, lastmod: 빌드일
+- 무료 콘텐츠 (`/free/content/{id}`) - priority: 0.8, lastmod: 빌드일
+- **만세력** (`/manse`) - priority: 0.8, lastmod: 빌드일 **(2026-02-24 추가)**
+- **블로그 목록** (`/blog`) - priority: 0.7, lastmod: 빌드일
+- **블로그 상세** (`/blog/{slug}`) - priority: 0.7, lastmod: published_at
 - 정적 페이지 (이용약관, 개인정보처리방침) - priority: 0.3
+
+> **lastmod 날짜**: 2026-02-24에 모든 sitemap 항목에 `<lastmod>` 추가. 블로그는 `published_at` 사용, 나머지는 빌드일 사용.
 
 ---
 
@@ -186,58 +202,57 @@ Sitemap: https://nadaunse.com/sitemap.xml
 
 ### 네이버 서치어드바이저
 
-**현재 상태** (2026-02-10 기준):
-- ✅ 사이트 등록 완료
-- ✅ 소유권 인증 완료
+**현재 상태** (2026-02-24 기준):
+- ✅ 사이트 등록 완료 (2026-02-24 새 계정으로 재등록)
+- ✅ 소유권 인증 완료 (HTML 메타 태그 방식)
 - ✅ 사이트맵 제출 완료
+- ✅ RSS 피드 제출 완료
 - ✅ HTTPS 리다이렉션 정상
 - ✅ 보안 인증서 정상
 
-**사이트 진단 결과** (2026-02-10):
+**사이트 진단 결과** (2026-02-24):
 | 항목 | 수치 | 비고 |
 |------|------|------|
-| 색인 | 12 페이지 | 220+ 중 12개만 인덱싱 |
-| 수집제한 | 0 | |
-| 색인제외 | 0 | |
-| SEO 경고 | 17건 | description 동일(12) + alt 누락(5) |
+| 색인 | 73 페이지 | 이전 12 → 73으로 증가 |
+| 수집제한 | 1 | |
+| SEO 경고 | 32건 | description 동일(16) + alt 누락(16) → 수정 완료 |
 
-**SEO 경고 상세**:
-- `<meta name="description">` 태그에 동일 설명문 발견: **12건** → prerender 배포로 해결 예정
-- Alt 속성 누락: **5건**
+**SEO 경고 수정 내역** (2026-02-24):
+- `<meta name="description">` 동일: **16건** → 콘텐츠 description fallback 개선 (유료/무료 차별화)
+- Alt 속성 누락: **16건** → ProfilePage.tsx 7건 (`aria-hidden="true"`), MyReportList.tsx 3건 (의미 있는 alt 텍스트)
+- Description 80자 초과: **index.html + prerender.mjs** 둘 다 축소 (~60자)
 
-**성과 데이터** (최근 30일):
+**성과 데이터** (최근 30일, 2026-02-24 기준):
 | 지표 | 값 |
 |------|-----|
-| 총 클릭수 | 2 |
-| 총 노출수 | 9 |
-| 평균 CTR | 22.2% |
+| 총 클릭수 | 9 |
+| 총 노출수 | 77 |
+| 평균 CTR | 11.7% |
 
-**주요 검색어**: "nadaunse.com", "결혼할수있을까 팩폭사주", "나는 언제결혼할까 무료타로"
-
-**인증 방법**: HTML 파일 또는 메타 태그
+**인증 방법**: HTML 메타 태그
 
 ```html
-<!-- 네이버 인증 (필요 시 index.html에 추가) -->
-<meta name="naver-site-verification" content="인증코드" />
+<!-- 네이버 인증 (index.html에 적용됨) -->
+<meta name="naver-site-verification" content="8644df672025dac3aa852950dc53e0a1c776d9b2" />
 ```
 
 ### 구글 Search Console
 
-**현재 상태** (2026-02-10 기준):
+**현재 상태** (2026-02-24 기준):
 - ✅ 사이트 등록 완료
 - ✅ 소유권 인증 완료
 - ✅ 사이트맵 제출 완료
 - ✅ 검색 결과에 노출 중
 
-**성과 데이터** (최근 28일):
+**성과 데이터** (최근 28일, 2026-02-24 기준):
 | 지표 | 값 |
 |------|-----|
-| 총 클릭수 | 6 |
-| 총 노출수 | 22 |
-| 평균 CTR | 27.3% |
-| 평균 게재순위 | 4.5위 |
+| 총 클릭수 | 75 |
+| 총 노출수 | 180 |
+| 평균 CTR | - |
+| 평균 게재순위 | - |
 
-**주요 검색어**: "나다운세" (브랜드명 검색만 유입 → prerender로 콘텐츠 키워드 유입 개선 예정)
+**주요 검색어**: "나다운세" + 블로그 롱테일 키워드 유입 시작
 
 ```html
 <!-- 구글 인증 (필요 시 index.html에 추가) -->
@@ -276,20 +291,26 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [x] Article JSON-LD 클라이언트 지원 (`SEO.tsx` article prop) **(2026-02-20)**
 - [x] Organization sameAs 카카오톡 채널 URL 추가 **(2026-02-20)**
 - [x] 이미지 loading 속성 추가 (hero: eager, 하단 썸네일: lazy) **(2026-02-20)**
+- [x] 프리렌더 빌드 + 프로덕션 배포 **(2026-02-24)**
+- [x] Google Search Console 사이트맵 재제출 **(2026-02-24)**
+- [x] 네이버 서치어드바이저 사이트맵 + RSS 재제출 **(2026-02-24)**
+- [x] 네이버 사이트 인증 코드 발급 + `index.html` 메타 태그 적용 **(2026-02-24)**
+- [x] `/manse` sitemap 추가 **(2026-02-24)**
+- [x] JSON-LD 중복 제거 — 홈페이지 외 페이지에서 WebSite/FAQPage/Organization 제거 (`isHomePage` 파라미터) **(2026-02-24)**
+- [x] sitemap `<lastmod>` 날짜 추가 — 블로그: published_at, 기타: 빌드일 **(2026-02-24)**
+- [x] RSS 2.0 피드 생성 (`/rss.xml`) **(2026-02-24)**
+- [x] 이미지 alt 속성 수정 16건 (ProfilePage 7건 `aria-hidden`, MyReportList 3건 의미 있는 alt) **(2026-02-24)**
+- [x] 콘텐츠 description fallback 개선 — 유료/무료 차별화 **(2026-02-24)**
+- [x] description 80자 제한 준수 — index.html + prerender.mjs 축소 **(2026-02-24)**
 
 ### SEO TODO (미완료) - 우선순위순
 
 #### 🔴 높음 (즉시 효과)
-- [ ] **프리렌더 빌드 + 프로덕션 배포** — 현재 블로그 프리렌더 코드는 staging에만 배포됨. `npx vite build`로 블로그 HTML + sitemap 생성 후 프로덕션 배포 필요
-- [ ] **Google Search Console 사이트맵 재제출** — `/blog` + `/blog/{slug}` 24개 URL이 sitemap에 추가되었으므로 재제출
-- [ ] **네이버 서치어드바이저 사이트맵 재제출** — 동일하게 재제출 + 주요 블로그 URL 수집 요청 (하루 10건 제한)
 - [ ] **IndexNow로 블로그 URL 일괄 제출** — Edge Function 호출하여 `/blog` + 24개 slug URL 제출 (Bing, 네이버 즉시 인덱싱)
-- [ ] **네이버 사이트 인증 코드 발급** — 서치어드바이저에서 메타 태그 인증 코드 발급 후 `index.html`에 추가
 
 #### 🟢 낮음 (여유 있을 때)
 - [ ] **FAQ 구조화 데이터** — 일부 블로그 글에 FAQPage JSON-LD 추가 (검색결과 리치 스니펫 노출)
 - [ ] **네이버 블로그/카페 백링크 확보** — 외부 링크를 통한 도메인 권위 향상
-- [ ] **블로그 RSS 피드 생성** — `/blog/feed.xml` → 피드 구독 서비스 + 검색엔진 크롤링 유도
 - [ ] **블로그 OG 이미지 자동 생성** — 글별 고유 OG 이미지 (현재는 공통 이미지 사용)
 
 ---
@@ -332,14 +353,18 @@ SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를
 
 ### 동작 방식
 1. `vite build` 완료 후 `scripts/prerender.mjs` 자동 실행
-2. Supabase REST API로 `master_contents` 테이블에서 deployed 콘텐츠 조회
+2. Supabase REST API로 `master_contents` + `blog_posts` 테이블에서 콘텐츠 조회
 3. `build/index.html`을 템플릿으로 사용하여 페이지별 HTML 생성:
-   - `/` (홈페이지): ItemList JSON-LD + 콘텐츠 목록 SEO body
+   - `/` (홈페이지): ItemList JSON-LD + 콘텐츠 목록 SEO body (**`isHomePage: true` → 템플릿 JSON-LD 보존**)
    - `/terms-of-service`, `/privacy-policy`: 정적 메타 태그 주입
    - `/product/{id}`: 유료 콘텐츠 메타 태그 + Product JSON-LD + BreadcrumbList JSON-LD
    - `/free/content/{id}`: 무료 콘텐츠 메타 태그 + BreadcrumbList JSON-LD (제목에 `[무료]` 접두사)
+   - `/blog`, `/blog/{slug}`: 블로그 목록/상세 HTML
 4. 콘텐츠 페이지는 article 태그로 감싸고, 관련 콘텐츠 내부 링크를 포함
-5. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
+5. **`isHomePage` 파라미터**: 홈페이지 외 페이지에서 템플릿의 기존 JSON-LD(WebSite, FAQPage, Organization) 자동 제거 (2026-02-24)
+6. **sitemap.xml 생성**: 모든 페이지에 `<lastmod>` 포함 (블로그: published_at, 기타: 빌드일)
+7. **rss.xml 생성**: 블로그 최신 50개 포스트를 RSS 2.0 형식으로 생성 (2026-02-24)
+8. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
 
 ### 환경변수
 - `VITE_SUPABASE_PROJECT_ID`: Supabase URL 구성에 사용
@@ -360,13 +385,15 @@ SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를
 ### 생성되는 파일 구조
 ```
 build/
-├── index.html                     (홈 - ItemList JSON-LD + 콘텐츠 목록)
+├── index.html                     (홈 - ItemList JSON-LD + 콘텐츠 목록, isHomePage=true)
 ├── terms-of-service/index.html    (이용약관)
 ├── privacy-policy/index.html      (개인정보처리방침)
 ├── product/{id}/index.html        (유료 콘텐츠 - Product + BreadcrumbList JSON-LD)
 ├── free/content/{id}/index.html   (무료 콘텐츠 - BreadcrumbList JSON-LD)
 ├── blog/index.html                (블로그 목록 - ItemList JSON-LD)
-└── blog/{slug}/index.html         (블로그 상세 - Article + BreadcrumbList JSON-LD)
+├── blog/{slug}/index.html         (블로그 상세 - Article + BreadcrumbList JSON-LD)
+├── sitemap.xml                    (사이트맵 - lastmod 포함)
+└── rss.xml                        (RSS 2.0 피드 - 블로그 최신 50개)
 ```
 
 ---
@@ -597,6 +624,7 @@ VALUES (
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-24 | **SEO 종합 개선** - `/manse` sitemap 추가, JSON-LD 중복 제거 (홈페이지 외 WebSite/FAQPage/Organization 제거, `isHomePage` 파라미터), sitemap `<lastmod>` 날짜 추가, RSS 2.0 피드 생성 (`/rss.xml`), 네이버 서치어드바이저 새 계정 재등록 (인증 메타 태그 `index.html` 적용), 이미지 alt 속성 16건 수정 (ProfilePage `aria-hidden` 7건, MyReportList 의미 있는 alt 3건), 콘텐츠 description fallback 유료/무료 차별화, description 80자 제한 준수 (index.html + prerender.mjs 축소), 사이트맵/RSS 네이버 재제출 |
 | 2026-02-20 | **SEO 내부 링크 강화** - 홈→블로그 내부 링크 (BlogPreviewSection), 관련 글 추천 (같은 카테고리 view_count 순), 본문 cross-links ("함께 읽어보세요"), blog-content CSS 검수 + index.css 반영, 모든 블로그 링크 `<a href>` 크롤러 지원 변환, Article JSON-LD 클라이언트 지원 (SEO.tsx), Organization sameAs 카카오톡 채널 추가, 이미지 loading 속성 (eager/lazy) |
 | 2026-02-20 | **블로그(운세 콘텐츠) 기능 구현** - BlogListPage/BlogDetailPage 생성, /blog /blog/:slug 라우트 추가, blog-content CSS, prerender 블로그 지원 (Article + ItemList + BreadcrumbList JSON-LD), sitemap 블로그 URL 추가, GA 페이지뷰 트래킹, blog_posts 테이블 (weekly_views/last_weekly_views + pg_cron 리셋), 콘텐츠 24개 작성 (스레드/트위터 트렌드 분석 기반 롱테일 키워드) |
 | 2026-02-12 | **SEO 즉시 강화 작업** - 홈페이지 프리렌더 (ItemList JSON-LD + 콘텐츠 목록), BreadcrumbList JSON-LD 추가, SEO body 강화 (article 태그, 내부 링크, h1/h2 구조), IndexNow Edge Function 생성, 이미지 alt 속성 5건 수정 |
