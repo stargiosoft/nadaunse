@@ -62,8 +62,14 @@ async function fetchDeployedContents() {
 /**
  * HTML 템플릿에서 메타 태그를 교체하여 새 HTML 생성
  */
-function injectMetaTags(template, { title, description, keywords, canonicalUrl, ogType, ogTitle, ogDescription, ogUrl, ogImage, twitterTitle, twitterDescription, twitterImage, jsonLd, bodyContent }) {
+function injectMetaTags(template, { title, description, keywords, canonicalUrl, ogType, ogTitle, ogDescription, ogUrl, ogImage, twitterTitle, twitterDescription, twitterImage, jsonLd, bodyContent, isHomePage }) {
   let html = template;
+
+  // 홈페이지가 아닌 페이지에서는 템플릿의 기존 JSON-LD(WebSite, FAQPage, Organization) 제거
+  // 홈페이지에만 사이트 전체 스키마를 유지하고, 개별 페이지는 페이지별 스키마만 사용
+  if (!isHomePage) {
+    html = html.replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '');
+  }
 
   // <title> 교체
   html = html.replace(
@@ -341,7 +347,8 @@ function generateSitemap(contents, blogPosts = []) {
   // 정적 페이지
   const staticPages = [
     { loc: '/', changefreq: 'daily', priority: '1.0', lastmod: today },
-    { loc: '/blog', changefreq: 'weekly', priority: '0.7' },
+    { loc: '/blog', changefreq: 'weekly', priority: '0.7', lastmod: today },
+    { loc: '/manse', changefreq: 'monthly', priority: '0.8', lastmod: today },
     { loc: '/terms-of-service', changefreq: 'monthly', priority: '0.3' },
     { loc: '/privacy-policy', changefreq: 'monthly', priority: '0.3' },
   ];
@@ -355,14 +362,16 @@ function generateSitemap(contents, blogPosts = []) {
       loc: urlPath,
       changefreq: 'weekly',
       priority: content.content_type === 'paid' ? '0.9' : '0.8',
+      lastmod: today,
     };
   });
 
-  // 블로그 글 페이지
+  // 블로그 글 페이지 (published_at을 lastmod로 활용)
   const blogPages = blogPosts.map((post) => ({
     loc: `/blog/${post.slug}`,
     changefreq: 'monthly',
     priority: '0.7',
+    lastmod: post.published_at ? post.published_at.split('T')[0] : today,
   }));
 
   const allPages = [...staticPages, ...contentPages, ...blogPages];
@@ -766,6 +775,7 @@ function generateHomePage(template, contents, blogPosts = []) {
     twitterTitle: homeTitle,
     twitterDescription: homeDescription,
     twitterImage: DEFAULT_OG_IMAGE,
+    isHomePage: true,
     jsonLd: itemListJsonLd,
     bodyContent: buildBodyContent({
       heading: '나다운세 - AI 운세 서비스',
