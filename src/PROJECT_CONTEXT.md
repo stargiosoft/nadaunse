@@ -112,7 +112,7 @@
 │  │   • users           │←────→│   ├── get-available-coupons             │  │
 │  │   • saju_records    │      │   ├── apply-coupon-to-order             │  │
 │  │   • master_contents │      │   ├── issue-welcome-coupon              │  │
-│  │   • orders          │      │   └── issue-revisit-coupon              │  │
+│  │   • orders          │      │   └── issue-revisit-coupon (미션쿠폰)   │  │
 │  │   • order_results   │      │                                         │  │
 │  │   • coupons         │      │   결제/환불 (3개)                        │  │
 │  │   • user_coupons    │      │   ├── payment-webhook                   │  │
@@ -366,6 +366,9 @@
 │  [MyReportList] ─────────────────────────────────────────────────────────  │
 │       │ 프로필 > "나의 분석 보고서" 탭                                        │
 │       │ 이번 주 태그 수 + 월별 보고서 목록 표시                               │
+│       │ 보고서 생성 상태 sessionStorage 유지 + 10초 폴링                     │
+│       │ 현재 주차 보고서 존재 시 "이번 주 보고서가 도착했어요" 표시            │
+│       │ 바텀시트: framer-motion spring 애니메이션 + drag-to-dismiss           │
 │       ↓                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │  보고서 열람 플로우 (최초 1회)                                        │   │
@@ -380,7 +383,7 @@
 │  │       ↓                                                               │   │
 │  │  [ReportWeeklyMemo] → "나 응원하기" 작성 (write 모드)                 │   │
 │  │       ↓                                                               │   │
-│  │  [CompletionCoupon] → 쿠폰 발급 (1회차: 미션성공쿠폰, 2회차+: 재방문쿠폰) │   │
+│  │  [CompletionCoupon] → 미션 쿠폰 발급 (tag_count≥5인 경우만, 미달 시 스킵) │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │       ↓                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │

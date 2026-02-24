@@ -5236,26 +5236,24 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ### 미션성공쿠폰 추가 및 쿠폰 발급 프로세스 변경
 
-**결정**: `coupons` 테이블에 `mission` 타입 쿠폰 추가, 주간 보고서 쿠폰 발급 로직 변경
+**결정**: `coupons` 테이블에 `mission` 타입 쿠폰 추가, 태그 5개 이상 수집 시만 미션 쿠폰 발급
 
 **배경**:
 - 기존: 주간 보고서 완료 시 항상 재방문 쿠폰 (revisit) 발급
-- 변경: 1회차 보고서 → 미션성공쿠폰 (mission), 2회차 이후 → 재방문쿠폰 (revisit)
-- 쿠폰 이름: "미션쿠폰" → "미션성공쿠폰"으로 명칭 변경
+- 1차 변경: 1회차 → 미션성공쿠폰, 2회차+ → 재방문쿠폰
+- **2차 변경 (2026-02-24)**: 재방문 쿠폰 로직 완전 제거, 미션 쿠폰만 유지. 발급 조건을 `reportData.tag_count >= 5`로 변경 (보고서 생성 시점 태그 수 기준)
 
 **구현**:
-- `coupons` 테이블에 `coupon_type = 'mission'` 레코드 추가 (프로덕션 + 스테이징)
-- CompletionCoupon에서 보고서 차수에 따라 쿠폰 타입 분기 (스테이징)
+- `coupons` 테이블에 `coupon_type = 'mission'` 레코드 추가
+- `ReportWeeklyMemoWrapper` (App.tsx): `isMissionEligible` = tag_count≥5 AND 미수령 → true면 쿠폰 페이지, false면 나의분석보고서로 이동
+- `issue-revisit-coupon` Edge Function: 서버 사이드 tag_count≥5 검증, 재방문 쿠폰 로직 제거, 쿼리 병렬화 (Promise.all)
 
-**배포 상태**:
-- **프로덕션**: 미션성공쿠폰 데이터 + 발급 로직 모두 배포 완료 (2026-02-10)
-- **스테이징**: 동일
+**배포 상태**: 프로덕션 + 스테이징 모두 배포 완료 (2026-02-24)
 
 **영향 범위**:
-- `coupons` 테이블 - mission 타입 레코드 추가
-- `supabase/migrations/20260206_add_mission_coupon.sql` - 마이그레이션 파일
-- `src/components/CompletionCoupon.tsx` - 쿠폰 발급 분기 로직
-- `supabase/functions/issue-revisit-coupon/` - 미션/재방문 쿠폰 분기 처리
+- `src/App.tsx` - ReportWeeklyMemoWrapper 쿠폰 라우팅 로직
+- `src/components/CompletionCoupon.tsx` - 쿠폰 발급 UI
+- `supabase/functions/issue-revisit-coupon/` - 미션 쿠폰 전용 (서버 검증)
 
 ---
 
@@ -5338,6 +5336,30 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.3.0
-**최종 업데이트**: 2026-02-10
+---
+
+## [2026-02-24] MyReportList 보고서 생성 플로우 개선
+
+**결정 사항**:
+- 보고서 생성 상태(generating/completed) sessionStorage 영속화 + 10초 폴링
+- 현재 주차 보고서 존재 시 "이번 주 보고서가 도착했어요" 안내 화면 상시 노출
+- 바텀시트에 framer-motion spring 애니메이션 + drag-to-dismiss 적용
+
+**근거**:
+- 탭 전환 시 React 상태 초기화 → 생성 중인데도 "보고서 먼저 받기" 버튼 노출 버그
+- DB 컬럼명 `week_start_date` (기존 코드의 `week_start`는 존재하지 않는 컬럼)
+- LoginBottomSheet 패턴 일관성 유지
+
+**구현**:
+- sessionStorage `report_generation_status` 키 (5분 만료)
+- 폴링: `weekly_reports` status='completed' + `week_start_date >= currentWeekStart` (10초 간격)
+- 바텀시트: `createPortal` + `AnimatePresence` + `motion.div` (spring: damping 30, stiffness 300)
+
+**영향 범위**:
+- `src/components/MyReportList.tsx` - sessionStorage 영속화, 폴링, 현재 주차 감지, 바텀시트 애니메이션
+
+---
+
+**문서 버전**: 3.4.0
+**최종 업데이트**: 2026-02-24
 **문서 끝**

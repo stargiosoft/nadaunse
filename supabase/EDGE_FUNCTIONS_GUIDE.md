@@ -51,7 +51,7 @@
 ### 1️⃣ **쿠폰** (4개)
 
 1. `issue-welcome-coupon` - 웰컴 쿠폰 발급 (신규 가입자)
-2. `issue-revisit-coupon` - 재방문 쿠폰 발급
+2. `issue-revisit-coupon` - 미션 쿠폰 발급 (태그 5개 이상)
 3. `get-available-coupons` - 사용 가능한 쿠폰 조회
 4. `apply-coupon-to-order` - 주문에 쿠폰 적용
 
@@ -205,11 +205,11 @@ generate-master-content (백그라운드)
     ↓
 issue-welcome-coupon (웰컴 쿠폰 발급)
 
-재방문 / 미션 완료
+미션 완료 (태그 5개 이상)
     ↓
-issue-revisit-coupon (재방문 쿠폰 또는 미션성공 쿠폰 발급)
-    ※ 주간 보고서 1회차 → 미션성공쿠폰 (mission)
-    ※ 주간 보고서 2회차+ → 재방문쿠폰 (revisit)
+issue-revisit-coupon (미션성공쿠폰 발급)
+    ※ 보고서 생성 시점 tag_count >= 5 → 미션성공쿠폰 (mission)
+    ※ tag_count < 5 → 쿠폰 미발급
 
 결제 시
     ↓
@@ -240,11 +240,10 @@ ReportWeeklyMindCare: 마음 챙김 메시지
 ReportWeeklyMemo: 나에게 응원 한마디
     │  └─ 저장 시 my_report_cache 삭제 (캐시 무효화)
     ↓
-CompletionCoupon: 쿠폰 발급
-    │  ├─ 1회차 보고서: 미션성공쿠폰 (coupon_type: 'mission')
-    │  └─ 2회차+ 보고서: 재방문쿠폰 (coupon_type: 'revisit')
+CompletionCoupon: 미션 쿠폰 발급 (tag_count >= 5인 경우만)
+    │  └─ tag_count < 5: 쿠폰 페이지 스킵 → 나의분석보고서로 이동
     ↓
-user_coupons 테이블에 쿠폰 INSERT
+user_coupons 테이블에 쿠폰 INSERT (서버 사이드 tag_count 검증)
 ```
 
 **캐시 무효화 지점**:
@@ -874,21 +873,22 @@ PaymentNew → get-available-coupons
 
 ### 3. `issue-revisit-coupon`
 
-**역할**: 재방문 쿠폰 또는 미션성공 쿠폰 발급
+**역할**: 미션성공쿠폰 발급 (태그 5개 이상 수집 시)
 
 **호출 시점**:
-- 주간 보고서 완료 시 (CompletionCoupon)
-  - 1회차 보고서: 미션성공쿠폰 (coupon_type: 'mission')
-  - 2회차 이후: 재방문쿠폰 (coupon_type: 'revisit')
-- 관리자가 특정 이벤트로 발급
-- 또는 자동 발급 로직 (예: 30일 후 재방문 시)
+- 주간 보고서 완료 시 (CompletionCoupon) — `reportData.tag_count >= 5`인 경우만
+
+**서버 사이드 검증**:
+- `weekly_reports.tag_count >= 5` 확인 (보고서 생성 시점 기준)
+- tag_count < 5 → 403 반환
+- 이미 미션 쿠폰 수령 → 409 반환
+- 같은 보고서 중복 발급 → 409 반환
 
 **입력**:
 ```typescript
 {
   user_id: string,
-  coupon_name?: string,        // 기본값: "재방문 쿠폰"
-  discount_amount?: number     // 기본값: 2,000원
+  source_order_id: string      // weekly_reports.id
 }
 ```
 
@@ -897,14 +897,15 @@ PaymentNew → get-available-coupons
 {
   success: boolean,
   coupon?: UserCoupon,
+  couponType?: 'mission',
+  discountAmount?: number,
   error?: string
 }
 ```
 
 **쿠폰 정보**:
-- 재방문 쿠폰: 이름 "재방문 쿠폰", 2,000원 할인
-- 미션성공 쿠폰: 이름 "미션성공쿠폰" (coupons 테이블에서 mission 타입 조회)
-- 유효기간: 발급일로부터 30일
+- 미션성공쿠폰: `coupons` 테이블에서 `coupon_type = 'mission'` 조회
+- 쿼리 최적화: 2단계 `Promise.all` 병렬 처리 (3 RTT)
 
 ---
 
@@ -1787,7 +1788,7 @@ curl -X POST https://hyltbeewxaqashyivilu.supabase.co/functions/v1/index-now \
 | `generate-thumbnail` | 🤖 AI 생성 | POST | Gemini 2.5 Flash Image | 썸네일 이미지 생성 |
 | `get-available-coupons` | 🎟️ 쿠폰 | GET | - | 결제 페이지 진입 |
 | `issue-welcome-coupon` | 🎟️ 쿠폰 | POST | - | 회원가입 후 |
-| `issue-revisit-coupon` | 🎟️ 쿠폰 | POST | - | 재방문 프로모션 |
+| `issue-revisit-coupon` | 🎟️ 쿠폰 | POST | - | 보고서 완료 시 미션 쿠폰 발급 (tag≥5) |
 | `apply-coupon-to-order` | 🎟️ 쿠폰 | POST | - | 결제 완료 후 |
 | `users` | 👤 사용자 | POST | - | OAuth 콜백 |
 | `master-content` | 👤 관리 | POST | - | 콘텐츠 생성 |
@@ -1848,13 +1849,14 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.8.0
+**문서 버전**: 2.2.0
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-02-03
+**최종 업데이트**: 2026-02-24
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 2.2.0 | 2026-02-24 | `issue-revisit-coupon` 재방문 쿠폰 로직 제거 → 미션 쿠폰 전용으로 변경, 서버 사이드 tag_count≥5 검증 추가, 쿼리 병렬화 (Promise.all) |
 | 2.1.0 | 2026-02-15 | `WEEK_START_DAY` 환경변수 추가 (프로덕션/스테이징 주간 보고서 일정 분리), `SITE_URL` 환경변수 추가 (send-alimtalk, send-report-alimtalk), `get-failed-reports` KST→UTC 타임존 수정, 총 함수 수 32개로 수정 |
 | 2.0.0 | 2026-02-12 | `index-now` 함수 추가 (IndexNow 프로토콜로 검색엔진 URL 즉시 제출), SEO 카테고리 2개로 확장 |
 | 1.9.0 | 2026-02-09 | `extract-trait-tags`에 `rejectedTags` 파라미터 추가, `generate-free-preview` upsert→INSERT 변경 |
