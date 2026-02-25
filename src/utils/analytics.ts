@@ -479,3 +479,16 @@ export const trackRevisitCouponIssued = (orderId: string, couponAmount: number =
     coupon_amount: couponAmount,
   });
 };
+
+// 33. 주간 보고서 열람 (미리 받은 보고서 판별 포함)
+export const trackWeeklyReportView = (
+  reportId: string,
+  isEarlyReport: boolean,
+  weekRange?: string
+) => {
+  trackEvent('weekly_report_view', {
+    report_id: reportId,
+    is_early_report: isEarlyReport,
+    week_range: weekRange,
+  });
+};
