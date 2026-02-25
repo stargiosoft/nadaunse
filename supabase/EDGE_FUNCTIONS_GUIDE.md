@@ -1,7 +1,7 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 32개
+> **총 함수 수**: 34개
 > **최종 업데이트**: 2026-02-15
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -30,19 +30,21 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 콘텐츠 생성** | 9개 | 29% | OpenAI GPT, Gemini |
+| 🤖 **AI 콘텐츠 생성** | 10개 | 29% | OpenAI GPT, Gemini |
 | 📊 **주간 보고서** | 4개 | 13% | GPT-5.1, pg_cron, TalkDream |
 | 🎟️ **쿠폰 관리** | 4개 | 13% | Supabase DB |
 | 🔧 **마스터 콘텐츠 관리** | 2개 | 6% | OpenAI, Gemini 통합 |
 | 📨 **알림** | 1개 | 3% | TalkDream API (카카오 알림톡) |
 | 👤 **사용자 관리** | 1개 | 3% | JWT 인증, RLS |
 | 💳 **결제/환불** | 3개 | 10% | PortOne API, PostgreSQL Function |
-| 📊 **모니터링/통계** | 2개 | 6% | Sentry, Slack, Google Analytics |
+| 📊 **모니터링/통계** | 3개 | 9% | Sentry, Slack, Google Analytics |
 | 🔍 **SEO** | 2개 | 6% | 동적 Sitemap 생성, IndexNow |
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
-| 🧹 **유틸리티** | 2개 | 6% | 태그 정리, Vercel 재빌드 |
+| 🧹 **유틸리티** | 1개 | 3% | Vercel 재빌드 |
+| 🛒 **구매 가이드** | 1개 | 3% | OpenAI gpt-4.1-nano, 개인화 |
+| 🔮 **만세력** | 1개 | 3% | Saju API 프록시 |
 
-**총 32개** (로컬 함수 기준)
+**총 34개** (로컬 함수 기준)
 
 ---
 
@@ -89,6 +91,7 @@
     - 사주 정보 + 주간 태그 + 이용 콘텐츠 기반
     - 3카드 타로 + 마음 처방 + To-Do List 생성
     - 복수 "본인" 사주 대응 (is_primary 우선, 최신순 fallback)
+    - `weekly_reports` 저장 + `user_situation_summaries`에도 심리 상태 INSERT (통합 관리)
     - `--no-verify-jwt` 필수 (배치에서 내부 호출)
 
 15. `generate-weekly-reports-batch` - 주간 보고서 배치 생성
@@ -166,6 +169,18 @@
 
 31. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
 32. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
+
+---
+
+### 1️⃣2️⃣ **구매 가이드** (1개)
+
+33. `generate-purchase-guide` - AI 개인화 구매 가이드 생성 (JWT 필수, gpt-4.1-nano, 나다움 태그 기반 맞춤 후킹 멘트 2줄)
+
+---
+
+### 1️⃣3️⃣ **만세력** (1개)
+
+34. `get-manse-data` - 만세력 데이터 조회 (--no-verify-jwt, Saju API 프록시)
 
 ---
 
@@ -429,9 +444,12 @@ for (let sajuAttempt = 1; sajuAttempt <= 3; sajuAttempt++) {
 }
 ```
 
-**⭐ 초개인화 데이터 조회 (2026-02-09)**:
-- 로그인 사용자의 `user_trait_tags`에서 최근 4주/전체 태그 + 심리 흐름 조회
-- 태그가 1개 이상 있으면 `personalizationData`로 `generate-saju-answer`, `generate-tarot-answer`에 전달
+**⭐ 초개인화 데이터 조회 (2026-02-09, 2026-02-25 확장)**:
+- **발동 조건**: 태그 1개+ OR 최근 1주 콘텐츠 이용 기록 존재 (기존: 태그 1개+만)
+- `user_trait_tags` 태그 + `free_content_records`/`orders` 이용 내역 조회
+- 이용 내역 있으면 gpt-4.1-nano로 심리 상태 추출 → `user_situation_summaries` 저장
+- 심리 흐름: `user_situation_summaries` 통합 테이블에서 주차별 최신 1건씩 조회 (최대 4주)
+- `personalizationData`에 `currentSituationSummary` + `recentSituationSummaries` 포함하여 전달
 - 조회 실패 시 무시하고 기본 프롬프트로 진행 (graceful degradation)
 
 **출력**:
@@ -553,14 +571,15 @@ response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-an
     recentNegativeTags: string[],   // 최근 4주 단점 태그
     allPositiveTags: string[],      // 누적 강점 태그
     allNegativeTags: string[],      // 누적 단점 태그
-    recentSituationSummaries: { week: number; summary: string }[]  // 최근 4주 심리 흐름
+    currentSituationSummary: string | null,  // 현재 추출된 심리 상태 (nano)
+    recentSituationSummaries: { week: number; summary: string }[]  // 주차별 심리 흐름 (최신 1건/주)
   }
 }
 ```
 
-**초개인화 분기 조건**: `recentPositiveTags.length > 0 || allPositiveTags.length > 0`
-- 조건 충족 시: 태그 + 심리 흐름 포함 프롬프트
-- 미충족 시: 기본 프롬프트 (`questionerInfo`만 사용)
+**초개인화 분기 조건**: `personalizationData`가 존재하면 적용 (조건 판단은 `generate-content-answers`에서 완료)
+- 심리 상태: `currentSituationSummary` 우선, 없으면 `recentSituationSummaries` fallback (주차 포맷)
+- 프롬프트에 "1주차가 가장 최신" 명시하여 AI가 최신 심리를 우선 반영
 
 **출력**:
 ```typescript
@@ -622,12 +641,13 @@ response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-an
     recentNegativeTags: string[],
     allPositiveTags: string[],
     allNegativeTags: string[],
+    currentSituationSummary: string | null,
     recentSituationSummaries: { week: number; summary: string }[]
   }
 }
 ```
 
-**초개인화 분기 조건**: `recentPositiveTags.length > 0 || allPositiveTags.length > 0`
+**초개인화 분기 조건**: `personalizationData`가 존재하면 적용 (generate-saju-answer와 동일)
 
 **출력**:
 ```typescript
@@ -1849,13 +1869,15 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 2.2.0
+**문서 버전**: 2.3.0
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-02-24
+**최종 업데이트**: 2026-02-25
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 2.4.0 | 2026-02-25 | `generate-purchase-guide` 함수 추가 (AI 개인화 구매 가이드, gpt-4.1-nano, 나다움 태그 기반), 총 34개 |
+| 2.3.0 | 2026-02-25 | 초개인화 리팩토링: 발동 조건 확장 (태그 OR 콘텐츠 이용), gpt-4.1-nano 심리 추출, `user_situation_summaries` 통합 테이블, 주차별 포맷 + 최신 우선 안내 |
 | 2.2.0 | 2026-02-24 | `issue-revisit-coupon` 재방문 쿠폰 로직 제거 → 미션 쿠폰 전용으로 변경, 서버 사이드 tag_count≥5 검증 추가, 쿼리 병렬화 (Promise.all) |
 | 2.1.0 | 2026-02-15 | `WEEK_START_DAY` 환경변수 추가 (프로덕션/스테이징 주간 보고서 일정 분리), `SITE_URL` 환경변수 추가 (send-alimtalk, send-report-alimtalk), `get-failed-reports` KST→UTC 타임존 수정, 총 함수 수 32개로 수정 |
 | 2.0.0 | 2026-02-12 | `index-now` 함수 추가 (IndexNow 프로토콜로 검색엔진 URL 즉시 제출), SEO 카테고리 2개로 확장 |

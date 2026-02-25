@@ -44,6 +44,7 @@ export interface CachedData {
   content: MasterContent;
   questions: Question[];
   recommended: MasterContent[];
+  recommendedPaid?: MasterContent | null;
 }
 
 /**
@@ -94,7 +95,8 @@ export class FreeContentService {
 
       if (now - timestamp < this.CACHE_EXPIRY) {
         console.log('✅ 캐시에서 데이터 로드 (무료 콘텐츠 상세)');
-        return data;
+        // 구 캐시 호환: recommendedPaid 필드가 없으면 null로 설정
+        return { ...data, recommendedPaid: data.recommendedPaid ?? null };
       } else {
         console.log('⏰ 캐시 만료됨 (무료 콘텐츠 상세)');
         localStorage.removeItem(cacheKey);
@@ -226,6 +228,95 @@ export class FreeContentService {
   }
 
   /**
+   * 유료 추천 콘텐츠 1개 조회 (무료 결과 페이지 하단용)
+   * 우선순위: 1) 동일 category_sub 인기 1위 → 2) 동일 category_main 인기 1위
+   * @param contentId 현재 콘텐츠 ID
+   * @param userId 로그인 사용자 ID (없으면 읽기 기록 무시)
+   * @returns 유료 콘텐츠 1개 또는 null
+   */
+  public async fetchRecommendedPaidContent(
+    contentId: string,
+    userId?: string
+  ): Promise<MasterContent | null> {
+    try {
+      // 1. 현재 콘텐츠의 카테고리 조회
+      const { data: currentContent, error: contentError } = await supabase
+        .from('master_contents')
+        .select('category_main, category_sub')
+        .eq('id', contentId)
+        .single();
+
+      if (contentError || !currentContent) {
+        console.error('❌ [추천유료] 현재 콘텐츠 조회 실패:', contentError);
+        return null;
+      }
+
+      // 2. 이미 읽은 콘텐츠 ID 수집 (로그인 시)
+      const readIds: string[] = [];
+      if (userId) {
+        const [ordersRes, freeRes] = await Promise.all([
+          supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed'),
+          supabase.from('free_content_records').select('content_id').eq('user_id', userId)
+        ]);
+        if (ordersRes.data) ordersRes.data.forEach((o: { content_id: string | null }) => { if (o.content_id) readIds.push(o.content_id); });
+        if (freeRes.data) freeRes.data.forEach((r: { content_id: string | null }) => { if (r.content_id) readIds.push(r.content_id); });
+      }
+
+      const excludeIds = [contentId, ...readIds];
+
+      // 3. 1순위: 동일 category_sub 유료 콘텐츠 인기 1위
+      if (currentContent.category_sub) {
+        let query = supabase
+          .from('master_contents')
+          .select('*')
+          .eq('category_sub', currentContent.category_sub)
+          .eq('content_type', 'paid')
+          .eq('status', 'deployed')
+          .order('weekly_clicks', { ascending: false })
+          .limit(1);
+
+        for (const id of excludeIds) {
+          query = query.neq('id', id);
+        }
+
+        const { data } = await query;
+        if (data && data.length > 0) {
+          console.log('✅ [추천유료] 1순위(category_sub) 매칭:', data[0].title);
+          return data[0];
+        }
+      }
+
+      // 4. 2순위: 동일 category_main 유료 콘텐츠 인기 1위
+      if (currentContent.category_main) {
+        let query = supabase
+          .from('master_contents')
+          .select('*')
+          .eq('category_main', currentContent.category_main)
+          .eq('content_type', 'paid')
+          .eq('status', 'deployed')
+          .order('weekly_clicks', { ascending: false })
+          .limit(1);
+
+        for (const id of excludeIds) {
+          query = query.neq('id', id);
+        }
+
+        const { data } = await query;
+        if (data && data.length > 0) {
+          console.log('✅ [추천유료] 2순위(category_main) 매칭:', data[0].title);
+          return data[0];
+        }
+      }
+
+      console.log('ℹ️ [추천유료] 추천 가능한 유료 콘텐츠 없음');
+      return null;
+    } catch (error) {
+      console.error('❌ [추천유료] 조회 중 예외:', error);
+      return null;
+    }
+  }
+
+  /**
    * 사주 정보 조회
    * @param sajuRecordId 사주 레코드 ID
    * @returns 사주 데이터
@@ -282,37 +373,41 @@ export class FreeContentService {
   /**
    * 전체 콘텐츠 데이터 로드 (캐시 우선)
    * @param contentId 콘텐츠 ID
-   * @returns 콘텐츠, 질문지, 추천 콘텐츠
+   * @param userId 로그인 사용자 ID (추천유료 읽기 기록 필터용)
+   * @returns 콘텐츠, 질문지, 추천 콘텐츠, 추천 유료 콘텐츠
    */
-  public async loadContentData(contentId: string): Promise<CachedData> {
+  public async loadContentData(contentId: string, userId?: string): Promise<CachedData> {
     // 1. 캐시 확인
     const cachedData = this.loadFromCache(contentId);
     if (cachedData) {
       // 백그라운드에서 업데이트 (비동기, await 없이)
-      this.updateDataInBackground(contentId);
+      this.updateDataInBackground(contentId, userId);
       return cachedData;
     }
 
     // 2. DB에서 조회
-    return await this.fetchDataFromDB(contentId);
+    return await this.fetchDataFromDB(contentId, userId);
   }
 
   /**
    * DB에서 데이터 조회 (캐시 저장 포함)
    * @param contentId 콘텐츠 ID
-   * @returns 콘텐츠, 질문지, 추천 콘텐츠
+   * @param userId 로그인 사용자 ID (추천유료 읽기 기록 필터용)
+   * @returns 콘텐츠, 질문지, 추천 콘텐츠, 추천 유료 콘텐츠
    */
-  private async fetchDataFromDB(contentId: string): Promise<CachedData> {
-    const [content, questions, recommended] = await Promise.all([
+  private async fetchDataFromDB(contentId: string, userId?: string): Promise<CachedData> {
+    const [content, questions, recommended, recommendedPaid] = await Promise.all([
       this.fetchContent(contentId),
       this.fetchQuestions(contentId),
-      this.fetchRecommendedContents(contentId)
+      this.fetchRecommendedContents(contentId),
+      this.fetchRecommendedPaidContent(contentId, userId)
     ]);
 
     const cachedData: CachedData = {
       content,
       questions,
-      recommended
+      recommended,
+      recommendedPaid
     };
 
     // 캐시 저장
@@ -324,13 +419,16 @@ export class FreeContentService {
   /**
    * 백그라운드에서 데이터 업데이트
    * @param contentId 콘텐츠 ID
+   * @param userId 로그인 사용자 ID
    */
-  private async updateDataInBackground(contentId: string): Promise<void> {
+  public async updateDataInBackground(contentId: string, userId?: string): Promise<CachedData | null> {
     try {
-      const freshData = await this.fetchDataFromDB(contentId);
+      const freshData = await this.fetchDataFromDB(contentId, userId);
       console.log('🔄 백그라운드 업데이트 완료');
+      return freshData;
     } catch (error) {
       console.error('백그라운드 업데이트 실패:', error);
+      return null;
     }
   }
 

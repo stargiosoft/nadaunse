@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-12 (v2.9.0 - Google OAuth 팝업 모드 전환, 컴포넌트/UI 수치 현행화)
+> **최종 업데이트**: 2026-02-25 (무료 결과 유료 추천 카드 1개 교체, 컴포넌트/UI 수치 현행화)
 
 ---
 
@@ -17,7 +17,7 @@
     - Google: Supabase OAuth 팝업 모드 (`window.open` + `getGoogleOAuthUrl`)
     - Kakao: Kakao SDK 팝업 모드 (커스텀 구현, `signInWithPassword` 기반)
   - Database: PostgreSQL + RLS
-  - Edge Functions: Deno runtime (32개)
+  - Edge Functions: Deno runtime (34개)
   - **자동화**: pg_cron + pg_net (주간 보고서 발송)
 - **AI**:
   - OpenAI GPT-4o, GPT-5.1 (주간 보고서)
@@ -48,7 +48,7 @@
 
 ### 주요 통계
 - **컴포넌트**: 72개 (활성화, backup 제외) - 주간 보고서 9개 + 통계 대시보드 2개 추가
-- **Edge Functions**: 32개 (주간 보고서 4개 포함)
+- **Edge Functions**: 34개 (주간 보고서 4개 포함)
 - **페이지 컴포넌트**: 42개
 - **UI 컴포넌트 (shadcn/ui)**: 52개
 - **스켈레톤**: 5개
@@ -250,7 +250,9 @@
 │  ┌──────────────────────────────────────────────────────────────────┐       │
 │  │  generate-content-answers (Self-Continue 패턴)                     │       │
 │  │      ↓                                                           │       │
-│  │  [user_trait_tags 조회] → [초개인화 데이터 구성]                    │       │
+│  │  [태그 + 콘텐츠 이용 내역 조회] → [초개인화 조건 판단]             │       │
+│  │      ↓ (이용 내역 있으면)                                         │       │
+│  │  [gpt-4.1-nano 심리 추출] → [user_situation_summaries 저장/조회]  │       │
 │  │      ↓                                                           │       │
 │  │  [Stargio 사주 API] → [AI 운세 생성 (초개인화)] → [order_results]  │       │
 │  │      ↓                                                           │       │
@@ -471,7 +473,7 @@
 │  │                    Services Layer (/lib/)                            │   │
 │  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐       │   │
 │  │  │freeContentService│ │  coupon.ts     │ │    auth.ts      │       │   │
-│  │  │ (싱글톤)        │ │  쿠폰 로직      │ │  인증 헬퍼      │       │   │
+│  │  │(싱글톤+유료추천)│ │  쿠폰 로직      │ │  인증 헬퍼      │       │   │
 │  │  └─────────────────┘ └─────────────────┘ └─────────────────┘       │   │
 │  │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐       │   │
 │  │  │ tarotCards.ts   │ │tarotImageCache  │ │thumbnailCache   │       │   │
@@ -563,9 +565,10 @@
 /components/FreeBirthInfoInput.tsx      → 사주 입력
 /components/FreeSajuSelectPage.tsx      → 사주 선택
 /components/FreeContentLoading.tsx      → 무료 로딩 (공통 로딩으로도 사용)
-/components/FreeSajuDetail.tsx          → 사주 결과 (전체)
+/components/FreeSajuDetail.tsx          → 사주 결과 (전체) + 유료 추천 카드
+/components/FreeContentResult.tsx       → 사주 결과 (대체 UI) + 유료 추천 카드
 /components/CheckRecordMe.tsx           → 나다움 기록하기 (태그 선택/저장)
-/lib/freeContentService.ts              → 비즈니스 로직
+/lib/freeContentService.ts              → 비즈니스 로직 + 유료 추천 (캐시/추천 로직)
 ```
 </details>
 
@@ -774,7 +777,7 @@ interface TarotGameProps {
 
 > **파일별 상세 위치**: [components-inventory.md](./components-inventory.md) 참조
 
-### Supabase Edge Functions (32개)
+### Supabase Edge Functions (34개)
 | 만세력 | 1개 | Saju API 프록시 (get-manse-data) |
 | 기타 | 2개 | 서버 상태, 콘텐츠 답변 생성 |
 
@@ -832,7 +835,9 @@ AI 생성 요청 (Edge Function)
 로딩 페이지 (FreeContentLoading)
     │ (폴링: 2초마다)
     ↓
-결과 페이지 (FreeSajuDetail / TarotResultPage)
+결과 페이지 (FreeSajuDetail / FreeContentResult)
+    ↓
+유료 추천 카드 1개 (동일 카테고리 인기순, 이미 읽은 것 제외)
 ```
 
 **핵심 클래스**: `FreeContentService` (`/lib/freeContentService.ts`)
@@ -843,7 +848,8 @@ AI 생성 요청 (Edge Function)
 - `/components/FreeBirthInfoInput.tsx` - 사주 입력 (로그인/로그아웃 분기)
 - `/components/FreeSajuSelectPage.tsx` - 사주 선택 (로그인 사용자만)
 - `/components/FreeContentLoading.tsx` - 로딩 (폴링)
-- `/components/FreeSajuDetail.tsx` - 사주 결과 페이지
+- `/components/FreeSajuDetail.tsx` - 사주 결과 페이지 (유료 추천 카드 포함)
+- `/components/FreeContentResult.tsx` - 사주 결과 (대체 UI, 유료 추천 카드 포함)
 - `/components/TarotResultPage.tsx` - 타로 결과 페이지
 
 **Edge Functions**: 
@@ -1222,11 +1228,11 @@ NO  → 추가 로드 후 재시도
 - **[DECISIONS.md](./DECISIONS.md)** - 아키텍처 결정 기록
 - **[DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)** - DB 스키마 상세
 - **[components-inventory.md](./components-inventory.md)** - 컴포넌트 목록
-- **[supabase/EDGE_FUNCTIONS_GUIDE.md](../supabase/EDGE_FUNCTIONS_GUIDE.md)** - Edge Functions 가이드 (32개)
+- **[supabase/EDGE_FUNCTIONS_GUIDE.md](../supabase/EDGE_FUNCTIONS_GUIDE.md)** - Edge Functions 가이드 (34개)
 - **[supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md](../supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** - Database Triggers & Functions
 
 ---
 
 **문서 버전**: 3.0.0
-**최종 업데이트**: 2026-02-20
+**최종 업데이트**: 2026-02-25
 **문서 끝**

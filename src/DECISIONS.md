@@ -3,7 +3,7 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-15
+> **최종 업데이트**: 2026-02-25
 > **주요 결정**: 스테이징/프로덕션 주간 보고서 일정 분리 (WEEK_START_DAY), 알림톡 SITE_URL 환경변수 적용, 마스터 콘텐츠 질문 수정 FK constraint 우회 (UPDATE 방식), 이용기록 제목 스냅샷 보존 (orders.gname + free_content_records.content_title), 모바일 PG 결제 뒤로가기 루프 해결 (popup 모드 전환), CSP 결제 도메인 누락으로 3주간 결제 장애 해결 (teledit.com, kakaopay.com form-action), IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
@@ -13,6 +13,25 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-02-25
+
+### AI 개인화 구매 가이드 (generate-purchase-guide)
+
+**배경**: 무료 콘텐츠에서 유료 상세 페이지에 랜딩한 유저가 무료/유료 차이를 직관적으로 이해하지 못해 구매 전환이 낮음.
+
+**결정사항**:
+- 가격 영역과 "운세 설명" 사이에 AI 개인화 benefit 메시지 2줄 표시
+- `gpt-4.1-nano` 사용 (최경량 모델, 빠른 응답)
+- 나다움 태그(기질/성향) 기반 맞춤 후킹 멘트 생성 → "변화된 모습"을 파는 카피
+- `trait_tags_cache`로 태그 유무를 동기 판단 → 태그 없으면 스켈레톤/API 호출 모두 스킵
+- localStorage 24시간 캐시 (`purchase_guide_v1_{userId}_{contentId}`)
+- 콘텐츠 로드와 가이드 fetch 병렬 실행 (체감 속도 개선)
+- `?from=free` 파라미터로 무료→유료 전환 추적
+
+**영향 범위**: `MasterContentDetailPage.tsx`, `FreeSajuDetail.tsx`, `FreeContentResult.tsx`, 배포 스크립트
 
 ---
 
@@ -5360,6 +5379,33 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.4.0
-**최종 업데이트**: 2026-02-24
+## [2026-02-25] 초개인화 시스템 리팩토링 - 개인화 커버리지 확장 + 심리 상태 통합 테이블
+
+**결정 사항**:
+- 초개인화 발동 조건을 "태그 1개 이상"에서 "태그 1개+ OR 최근 1주 콘텐츠 이용 기록"으로 확장
+- `user_situation_summaries` 통합 테이블 신설 (weekly_report + content_answer 심리 상태 통합)
+- gpt-4.1-nano로 콘텐츠 이용 패턴에서 심리 상태 실시간 추출
+
+**근거**:
+- 전체 사용자의 ~30%만 태그를 모으고 있어 70%가 개인화 풀이를 받지 못함
+- `situation_summary`는 주간 보고서 수신자(태그 5개+)에게만 존재하여 심리 파악 범위가 제한적
+- 콘텐츠 이용 내역(무료/유료)은 대부분의 사용자가 보유하므로 커버리지 대폭 향상 가능
+
+**구현**:
+1. `generate-content-answers`: 태그 조회 + 콘텐츠 이용 내역 조회 → 조건 확장, gpt-4.1-nano로 심리 추출 → `user_situation_summaries` 저장 + 조회 (주차별 최신 1건)
+2. `generate-saju-answer` / `generate-tarot-answer`: 발동 조건 `if (pData)` 완화, 프롬프트에 "1주차=최신" 명시
+3. `generate-weekly-report`: 기존 `weekly_reports` 저장 유지 + `user_situation_summaries`에도 INSERT
+4. 심리 흐름 포맷: 주차별(1~4주차) 최신 1건만 AI에게 전달, `currentSituationSummary` 우선 fallback
+
+**영향 범위**:
+- `supabase/migrations/20260225_create_user_situation_summaries.sql` - 신규 테이블
+- `supabase/functions/generate-content-answers/index.ts` - 핵심 로직 변경
+- `supabase/functions/generate-saju-answer/index.ts` - 조건 + 프롬프트
+- `supabase/functions/generate-tarot-answer/index.ts` - 조건 + 프롬프트
+- `supabase/functions/generate-weekly-report/index.ts` - 새 테이블 INSERT
+
+---
+
+**문서 버전**: 3.5.0
+**최종 업데이트**: 2026-02-25
 **문서 끝**

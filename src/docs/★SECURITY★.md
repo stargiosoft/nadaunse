@@ -1,8 +1,8 @@
 # 나다운세 보안 가이드
 
-> **최종 업데이트**: 2026-01-21
-> **보안 감사 수행**: Claude Opus 4.5
-> **적용 환경**: Staging (프로덕션 배포 전 테스트 필요)
+> **최종 업데이트**: 2026-02-25
+> **보안 감사 수행**: Claude Opus 4.6
+> **적용 환경**: Production + Staging
 
 ---
 
@@ -43,7 +43,7 @@
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 Supabase Edge Functions (21개)                   │
+│                 Supabase Edge Functions (32개)                   │
 │  - CORS 화이트리스트 적용                                        │
 │  - JWT 인증 검증                                                 │
 │  - RLS (Row Level Security) 적용                                │
@@ -75,11 +75,38 @@
 |---|------|------|-----------|------|
 | 1 | 하드코딩된 시크릿 제거 | ✅ 완료 | - | 환경변수로 이전 |
 | 2 | build 폴더 Git 제외 | ✅ 완료 | - | `.gitignore` 추가 |
-| 3 | CORS 화이트리스트 | ✅ 완료 | `e6ae360d` | 21개 Edge Function 적용 |
+| 3 | CORS 화이트리스트 | ✅ 완료 | `e6ae360d` | 32개 Edge Function 적용 |
 | 4 | npm 취약점 해결 | ✅ 완료 | `68964614` | 6개 → 0개 |
 | 5 | 보안 헤더 추가 | ✅ 완료 | `26fd8539` | 5개 헤더 |
 | 6 | CSP 정책 추가 | ✅ 완료 | `d6271279` | XSS 방지 |
 | 7 | 에러 메시지 보안 | ✅ 완료 | `a7b0e8cb` | 상세 에러 숨김 |
+
+### 2026-02-25 보안 감사 결과
+
+| # | 항목 | 상태 | 커밋 해시 | 설명 |
+|---|------|------|-----------|------|
+| 1 | `.env.local.staging.backup` git 추적 제거 | ✅ 완료 | `5955051e` | `VITE_KAKAO_AUTH_SECRET` 노출 파일 제거 |
+| 2 | `.gitignore` 포괄 패턴 적용 | ✅ 완료 | `5955051e` | `.env*` 패턴으로 모든 환경파일 커버 |
+| 3 | `VITE_KAKAO_AUTH_SECRET` 로테이션 | ✅ 완료 | - | 새 시크릿 생성 + 카카오 사용자 750명 비밀번호 마이그레이션 |
+| 4 | Vercel 환경변수 동기화 | ✅ 완료 | - | production/preview/development 3개 환경 업데이트 |
+
+#### 인시던트 상세: `.env` 파일 git 노출
+
+**발견**: `.env.local.staging.backup` 파일이 git에 커밋되어 `VITE_KAKAO_AUTH_SECRET=nadaunse_secret_2025` 노출
+**원인**: `.gitignore`의 `.env*.local` 패턴이 `.backup`으로 끝나는 파일을 커버하지 못함
+**영향**: 리포지토리 접근 권한이 있는 사용자가 카카오 로그인 비밀번호 생성 패턴(`kakao_{id}_{secret}`)을 알 수 있음
+**대응**:
+1. `git rm --cached` 로 추적 제거
+2. `.gitignore`를 `.env` / `.env.*` 포괄 패턴으로 변경
+3. 새 시크릿 생성 후 Supabase Auth에서 카카오 사용자 750명 비밀번호 일괄 업데이트
+4. Vercel 전 환경(production/preview/development) 환경변수 업데이트
+5. 재배포 트리거
+
+**잔존 위험**: git 히스토리에 이전 시크릿 값 잔존 (private repo이므로 즉각적 위험은 낮음). 추후 `git filter-branch` 또는 BFG Repo-Cleaner로 히스토리 정리 권장.
+
+#### 추가 발견: git 히스토리 내 Vercel OIDC 토큰
+
+커밋 `5782a9c6`에 `.env.production.check` 파일이 기록됨 (이후 `507d3aec`에서 삭제). Vercel OIDC JWT 토큰이 포함되어 있으나, 토큰은 단시간 만료되므로 실질적 위험은 낮음.
 
 ---
 
@@ -100,16 +127,20 @@ const ALLOWED_ORIGINS = [
 // http://localhost:*
 ```
 
-### 적용된 Edge Functions (21개)
+### 적용된 Edge Functions (32개)
 
 | 카테고리 | Functions |
 |----------|-----------|
 | **AI 생성** | generate-content-answers, generate-saju-answer, generate-tarot-answer, generate-saju-preview, generate-tarot-preview, generate-free-preview, generate-master-content, generate-image-prompt, generate-thumbnail |
+| **주간 보고서** | generate-weekly-reports-batch, generate-weekly-report, send-report-alimtalk, check-owner-status |
 | **쿠폰** | apply-coupon-to-order, get-available-coupons, issue-revisit-coupon, issue-welcome-coupon |
 | **결제** | process-payment, process-refund, payment-webhook |
 | **사용자** | users, master-content |
 | **알림** | send-alimtalk |
-| **모니터링** | sentry-slack-webhook |
+| **모니터링** | sentry-slack-webhook, ga-stats |
+| **SEO** | generate-sitemap, index-now |
+| **유틸리티** | get-manse-data, cleanup-unconfirmed-tags |
+| **소유자 확인** | check-owner-phone, verify-owner-code |
 
 ### CORS 검증 방법
 
@@ -260,9 +291,16 @@ USING (auth.uid() = user_id);
 |--------|------|----------|
 | `VITE_SUPABASE_PROJECT_ID` | Supabase 연결 | Vercel Env |
 | `VITE_SUPABASE_ANON_KEY` | 클라이언트 인증 | Vercel Env |
-| `VITE_KAKAO_AUTH_SECRET` | 카카오 인증 암호화 | Vercel Env |
+| `VITE_KAKAO_AUTH_SECRET` | 카카오 인증 비밀번호 생성 | Vercel Env |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge Function 전용 | Supabase Secrets |
 | `OPENAI_API_KEY` | AI 생성 | Supabase Secrets |
+| `INDEXNOW_API_KEY` | IndexNow URL 제출 | Supabase Secrets |
+| `SAJU_API_KEY` | 사주 API 호출 | Supabase Secrets |
+| `TALKDREAM_AUTH_TOKEN` | 카카오 알림톡 발송 | Supabase Secrets |
+| `PORTONE_API_KEY` | 결제 검증 | Supabase Secrets |
+| `PORTONE_API_SECRET` | 결제 검증 | Supabase Secrets |
+| `SLACK_WEBHOOK_URL` | Sentry 알림 전달 | Supabase Secrets |
+| `GOOGLE_API_KEY` | Gemini AI | Supabase Secrets |
 
 ### 하드코딩 금지 항목
 
@@ -455,9 +493,16 @@ interface SecurityLog {
    - 해당 IP/사용자 차단 검토
 
 2. **API 키 유출 시**
-   - 즉시 키 재발급
-   - 영향 받은 서비스 점검
+   - 즉시 키 재발급 (로테이션)
+   - 영향 받은 서비스 점검 (사용자 비밀번호 마이그레이션 등)
    - 관련 로그 분석
+   - Vercel + Supabase Secrets 환경변수 동기 업데이트
+
+3. **`.env` 파일 git 커밋 시**
+   - `git rm --cached <파일>` 로 추적 제거
+   - `.gitignore` 패턴 보강 (`.env*` 포괄 패턴 권장)
+   - 노출된 시크릿 즉시 로테이션
+   - 필요 시 `BFG Repo-Cleaner` 또는 `git filter-branch`로 히스토리 정리
 
 ---
 
@@ -470,5 +515,5 @@ interface SecurityLog {
 
 ---
 
-**문서 작성**: Claude Opus 4.5
-**검토 필요**: 프로덕션 배포 전 테스트 완료 후
+**문서 작성**: Claude Opus 4.5 (초안), Claude Opus 4.6 (2026-02-25 업데이트)
+**최종 감사**: 2026-02-25 시크릿 노출 감사 + 로테이션 완료

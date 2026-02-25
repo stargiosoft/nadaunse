@@ -162,6 +162,18 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false); // ⭐ 초기값 false
   const [isRead, setIsRead] = useState(false); // ⭐ 읽기 기록 여부
 
+  // ⭐ AI 개인화 구매 가이드
+  const [purchaseGuide, setPurchaseGuide] = useState<string | null>(null);
+  const [isPurchaseGuideLoading, setIsPurchaseGuideLoading] = useState(false);
+  // 태그 유무를 동기적으로 확인 (스켈레톤 표시 판단용)
+  const [hasTraitTags] = useState(() => {
+    try {
+      const cache = localStorage.getItem('trait_tags_cache');
+      if (cache) return (JSON.parse(cache).totalCount || 0) > 0;
+    } catch { /* ignore */ }
+    return false;
+  });
+
   // ⭐ 읽기 기록 확인 (orders + free_content_records)
   useEffect(() => {
     const checkReadHistory = async () => {
@@ -581,6 +593,58 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
     fetchContent();
   }, [contentId, loadFromCache, saveToCache]);
+
+  // ⭐ AI 개인화 구매 가이드 로드 (콘텐츠 로드와 동시 시작)
+  useEffect(() => {
+    // 비로그인 또는 태그 없음 → 스킵
+    if (!hasTraitTags) return;
+    const userJson = localStorage.getItem('user');
+    if (!userJson) return;
+
+    let userId: string;
+    try {
+      userId = JSON.parse(userJson).id;
+    } catch {
+      return;
+    }
+
+    // localStorage 캐시 확인 (24시간 TTL)
+    const cacheKey = `purchase_guide_v1_${userId}_${contentId}`;
+    const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached && !needsRefresh) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          setPurchaseGuide(parsed.guide);
+          return;
+        }
+      }
+    } catch {
+      // 캐시 파싱 실패 → 무시하고 API 호출
+    }
+
+    setIsPurchaseGuideLoading(true);
+    supabase.functions.invoke('generate-purchase-guide', {
+      body: { contentId }
+    }).then(({ data, error }) => {
+      if (error) {
+        console.error('❌ [purchase-guide] Edge Function 오류:', error);
+        return;
+      }
+      if (data?.success && data.guide) {
+        setPurchaseGuide(data.guide);
+        localStorage.setItem(cacheKey, JSON.stringify({
+          guide: data.guide,
+          timestamp: Date.now()
+        }));
+      }
+    }).catch(err => {
+      console.error('❌ [purchase-guide] 예외:', err);
+    }).finally(() => {
+      setIsPurchaseGuideLoading(false);
+    });
+  }, [contentId]);
 
   // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
   useEffect(() => {
@@ -1480,6 +1544,29 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
               <div className="bg-[#f9f9f9] h-[12px] w-full mt-[24px] mb-[28px]" />
               </motion.div>
+
+              {/* AI 개인화 구매 가이드 섹션 */}
+              {hasTraitTags && (isPurchaseGuideLoading || purchaseGuide) && (
+                <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
+                <div className="px-[20px] mb-[28px]">
+                  <div className="rounded-[16px] px-[20px] py-[20px]" style={{ backgroundColor: '#f0f8f8' }}>
+                    <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: '22px', letterSpacing: '-0.3px', color: '#368683', marginBottom: '12px' }}>
+                      ✨ 맞춤 안내
+                    </p>
+                    {isPurchaseGuideLoading ? (
+                      <div className="flex flex-col gap-[8px]">
+                        <div className="h-[18px] rounded-[4px] animate-pulse" style={{ backgroundColor: '#d4eceb', width: '90%' }} />
+                        <div className="h-[18px] rounded-[4px] animate-pulse" style={{ backgroundColor: '#d4eceb', width: '80%' }} />
+                      </div>
+                    ) : purchaseGuide ? (
+                      <p style={{ fontSize: '14px', fontWeight: 400, lineHeight: '22px', letterSpacing: '-0.28px', color: '#2d2d2d', margin: 0, whiteSpace: 'pre-line' }}>
+                        {purchaseGuide}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+                </motion.div>
+              )}
 
               {/* Description Section */}
               <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>

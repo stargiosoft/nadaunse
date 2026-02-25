@@ -8,25 +8,17 @@
  * @updated 2026-01-28 - 나다움 기록하기 연결을 위한 '다음' 버튼 추가
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home } from 'lucide-react';
 import { Button } from './ui/button';
 import svgPaths from "../imports/svg-z3xcg5m9wk";
-import { supabase } from '../lib/supabase';
 import { ContentTags, isContentNew } from './ContentTags';
+import type { MasterContent } from '../lib/freeContentService';
 
 interface Question {
   question_text: string;
   answer_text: string;
-}
-
-interface RecommendedContent {
-  id: string;
-  title: string;
-  content_type: 'paid' | 'free';
-  thumbnail_url: string | null;
-  created_at: string;
 }
 
 interface FreeContentResultProps {
@@ -38,6 +30,7 @@ interface FreeContentResultProps {
   onHome: () => void;
   onPurchase?: () => void;
   onNext?: () => void; // 나다움 기록하기로 이동
+  recommendedPaidContent?: MasterContent | null; // ⭐ 유료 추천 콘텐츠 1개
 }
 
 // 아이콘 컴포넌트
@@ -63,38 +56,10 @@ export default function FreeContentResult({
   onBack,
   onHome,
   onPurchase,
-  onNext
+  onNext,
+  recommendedPaidContent
 }: FreeContentResultProps) {
   const navigate = useNavigate();
-  const [recommendedContents, setRecommendedContents] = useState<RecommendedContent[]>([]);
-  const [readContentIds, setReadContentIds] = useState<Set<string>>(new Set());
-
-  // ⭐ 추천 콘텐츠 + 읽기 기록 fetch
-  useEffect(() => {
-    const fetchData = async () => {
-      // 추천 콘텐츠 조회 (인기순, 최대 4개, 현재 콘텐츠 제외)
-      const { data: contents } = await supabase
-        .from('master_contents')
-        .select('id, title, content_type, thumbnail_url, created_at')
-        .eq('status', 'deployed')
-        .neq('id', contentId)
-        .order('weekly_clicks', { ascending: false })
-        .limit(4);
-      if (contents) setRecommendedContents(contents as RecommendedContent[]);
-
-      // 읽기 기록 조회
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      const userId = session.user.id;
-      const ids = new Set<string>();
-      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed');
-      if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
-      const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
-      if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
-      setReadContentIds(ids);
-    };
-    fetchData();
-  }, [contentId]);
 
   // questions가 string[]인 경우와 Question[]인 경우 모두 처리
   const normalizedQuestions = questions.map((q, idx) => {
@@ -224,55 +189,67 @@ export default function FreeContentResult({
               </div>
             ))}
 
-            {/* 추천 콘텐츠 섹션 (이런 운세는 어때요?) */}
-            <div className="mt-4">
-              <div className="bg-[#f9f9f9] h-3 -mx-5 mb-8" />
+            {/* ⭐ 유료 추천 콘텐츠 카드 1개 */}
+            {recommendedPaidContent && (
+              <div className="mt-4">
+                <div className="bg-[#f9f9f9] h-3 -mx-5 mb-8" />
 
-              <p style={{
-                fontFamily: 'Pretendard Variable',
-                fontWeight: 600,
-                fontSize: '16px',
-                color: '#151515',
-                marginBottom: '16px'
-              }}>
-                이런 운세는 어때요?
-              </p>
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  color: '#151515',
+                  marginBottom: '16px'
+                }}>
+                  이런 운세는 어때요?
+                </p>
 
-              {/* 추천 콘텐츠 카드 리스트 */}
-              <div className="flex flex-col w-full">
-                {recommendedContents.map((item) => {
-                  const isPaid = item.content_type === 'paid';
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => navigate(`/product/${item.id}`)}
-                      className="flex gap-[10px] items-start py-[10px] w-full cursor-pointer active:bg-gray-50 rounded-[12px]"
-                    >
-                      <div className="h-[54px] relative rounded-[12px] shrink-0 w-[80px]" style={{ backgroundColor: '#f0f0f0' }}>
-                        {item.thumbnail_url && (
-                          <img
-                            alt={item.title}
-                            className="absolute inset-0 object-cover rounded-[12px] size-full"
-                            src={item.thumbnail_url}
-                          />
-                        )}
-                        <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
+                {/* 대형 썸네일 카드 (홈 Featured Card 스타일) */}
+                <div
+                  onClick={() => navigate(`/product/${recommendedPaidContent.id}?from=free`)}
+                  className="flex flex-col gap-[12px] items-start w-full cursor-pointer transition-all duration-150 ease-out active:bg-gray-50 rounded-[16px]"
+                >
+                  <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full" style={{ backgroundColor: '#f0f0f0' }}>
+                    {recommendedPaidContent.thumbnail_url ? (
+                      <img
+                        alt={recommendedPaidContent.title}
+                        className="absolute inset-0 object-cover rounded-[16px] size-full"
+                        src={recommendedPaidContent.thumbnail_url}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 rounded-[16px] flex items-center justify-center">
+                        <p style={{ fontSize: '14px', color: '#999' }}>이미지 없음</p>
                       </div>
-                      <div className="flex flex-col gap-[3px] grow min-w-0">
-                        <ContentTags
-                          isPaid={isPaid}
-                          isNew={isContentNew(item.created_at)}
-                          isRead={readContentIds.has(item.id)}
-                        />
-                        <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: '23.5px', letterSpacing: '-0.3px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-1 overflow-hidden">
-                          {item.title}
-                        </p>
-                      </div>
+                    )}
+                    <div aria-hidden="true" className="absolute inset-[-1px] rounded-[17px] border border-[#f9f9f9]" />
+                  </div>
+                  <div className="flex flex-col gap-[4px] w-full">
+                    <ContentTags
+                      isPaid={true}
+                      isNew={isContentNew((recommendedPaidContent as MasterContent & { created_at?: string }).created_at)}
+                    />
+                    <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '24px', letterSpacing: '-0.32px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-2 overflow-hidden">
+                      {recommendedPaidContent.title}
+                    </p>
+                    <div className="flex items-center gap-[6px]">
+                      {recommendedPaidContent.discount_rate > 0 && (
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#ef6878', fontFamily: 'Pretendard Variable' }}>
+                          {recommendedPaidContent.discount_rate}%
+                        </span>
+                      )}
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#151515', fontFamily: 'Pretendard Variable' }}>
+                        {recommendedPaidContent.price_discount.toLocaleString()}원
+                      </span>
+                      {recommendedPaidContent.discount_rate > 0 && (
+                        <span style={{ fontSize: '13px', fontWeight: 400, color: '#999', textDecoration: 'line-through', fontFamily: 'Pretendard Variable' }}>
+                          {recommendedPaidContent.price_original.toLocaleString()}원
+                        </span>
+                      )}
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

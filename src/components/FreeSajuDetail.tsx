@@ -1,12 +1,9 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from "motion/react";
-import svgPaths from '../imports/svg-e15u41g853';
-import img from "@/assets/5615ff21216f93eb47cac8ee15adee136174d7be.png";
-import img2 from "@/assets/67f3616aab1dcdea805228bdd4e698e8f57dd487.png";
-import { AdBanner } from './FreeContentDetailComponents';
 import { supabase } from '../lib/supabase';
 import { ContentTags, isContentNew } from './ContentTags';
+import type { MasterContent } from '../lib/freeContentService';
 
 interface FreeSajuDetailProps {
   recordId: string;  // localStorage key (resultKey)
@@ -15,15 +12,7 @@ interface FreeSajuDetailProps {
   productImage: string;
   contentId?: string;  // 🔙 시스템 뒤로가기 시 콘텐츠 상세로 이동하기 위한 ID
   onClose: () => void;
-  recommendedProducts?: Array<{
-    id: number;
-    title: string;
-    type: 'free' | 'paid';
-    image: string;
-    created_at?: string;
-  }>;
-  onProductClick?: (productId: number) => void;
-  onBannerClick?: (productId: string) => void;
+  recommendedPaidContent?: MasterContent | null;  // ⭐ 유료 추천 콘텐츠 1개
   onUserIconClick?: () => void;
   // DB 조회 모드 (운세 기록 페이지에서 진입 시)
   fromDB?: boolean;
@@ -79,9 +68,7 @@ export default function FreeSajuDetail({
   productImage,
   contentId,
   onClose,
-  recommendedProducts = [],
-  onProductClick,
-  onBannerClick,
+  recommendedPaidContent,
   onUserIconClick,
   fromDB = false,
   dbRecordId,
@@ -91,42 +78,6 @@ export default function FreeSajuDetail({
   isNextLoading = false
 }: FreeSajuDetailProps) {
   const navigate = useNavigate();
-  const [visibleCount, setVisibleCount] = useState(3); // ⭐️ 표시할 콘텐츠 개수
-  const observerTarget = useRef<HTMLDivElement>(null);
-  const [readContentIds, setReadContentIds] = useState<Set<string>>(() => {
-    try {
-      const cached = localStorage.getItem('read_content_ids_cache');
-      if (cached) return new Set(JSON.parse(cached) as string[]);
-    } catch { /* ignore */ }
-    return new Set();
-  });
-
-  // ⭐ 읽기 기록 조회 (읽어봄 태그용)
-  useEffect(() => {
-    const fetchReadHistory = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-      const userId = session.user.id;
-      const ids = new Set<string>();
-      const { data: orders } = await supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed');
-      if (orders) orders.forEach((o: { content_id: string | null }) => { if (o.content_id) ids.add(o.content_id); });
-      const { data: freeRecords } = await supabase.from('free_content_records').select('content_id').eq('user_id', userId);
-      if (freeRecords) freeRecords.forEach((r: { content_id: string | null }) => { if (r.content_id) ids.add(r.content_id); });
-      setReadContentIds(ids);
-      localStorage.setItem('read_content_ids_cache', JSON.stringify([...ids]));
-    };
-    fetchReadHistory();
-  }, []);
-
-  // ⭐ 정렬: 인기순(미확인) 1순위, 인기순(읽어봄) 2순위
-  const sortedRecommendedProducts = useMemo(() => {
-    return [...recommendedProducts].sort((a, b) => {
-      const aRead = readContentIds.has(String(a.id)) ? 1 : 0;
-      const bRead = readContentIds.has(String(b.id)) ? 1 : 0;
-      if (aRead !== bRead) return aRead - bRead;
-      return 0; // DB에서 이미 인기순으로 정렬되어 옴
-    });
-  }, [recommendedProducts, readContentIds]);
 
   // ⭐️ localStorage에서 결과 데이터 즉시 로드 (동기 작업이므로 로딩 불필요)
   const loadCachedData = (): { data: CachedData | null; error: boolean } => {
@@ -296,58 +247,6 @@ export default function FreeSajuDetail({
     setDataLoadError(result.error);
   }, [recordId, fromDB, dbRecordId]);
 
-  /**
-   * ⭐ 백그라운드 프리페칭: 사용자가 콘텐츠를 보는 동안 10개 미리 로드
-   */
-  useEffect(() => {
-    if (recommendedProducts.length > 3 && visibleCount === 3) {
-      const timer = setTimeout(() => {
-        const prefetchCount = Math.min(10, recommendedProducts.length);
-        console.log('🚀 [백그라운드 프리페칭] 추천 콘텐츠 10개 미리 로드:', prefetchCount);
-        setVisibleCount(prefetchCount);
-      }, 500); // 0.5초 후 실행 (초기 렌더링 완료 후)
-
-      return () => clearTimeout(timer);
-    }
-  }, [recommendedProducts.length, visibleCount]);
-
-  /**
-   * ⭐ 무한 스크롤: Intersection Observer 설정 (10개씩 로드)
-   */
-  useEffect(() => {
-    // visibleCount가 10 미만이면 observer 설정 안함 (프리페칭 대기 중)
-    if (visibleCount < 10 || !observerTarget.current) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0];
-        if (target.isIntersecting && visibleCount < recommendedProducts.length) {
-          const nextCount = Math.min(visibleCount + 10, recommendedProducts.length);
-          console.log('📜 [무한 스크롤] 다음 10개 콘텐츠 로드:', nextCount);
-          setVisibleCount(nextCount);
-        }
-      },
-      {
-        root: null,
-        rootMargin: '200px', // 200px 전에 미리 로드
-        threshold: 0.1
-      }
-    );
-
-    const currentRef = observerTarget.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, [visibleCount, recommendedProducts.length]);
-
   // ⭐️ DB 로딩 중 화면 (운세 기록에서 진입 시)
   if (isLoadingFromDB) {
     return (
@@ -501,97 +400,67 @@ export default function FreeSajuDetail({
                     </div>
                   </motion.div>
                 ))}
+
               </div>
 
-              {/* Promotion Banner */}
-              <motion.div
-                className="relative shrink-0 w-full"
-                variants={itemVariants}
-              >
-                <AdBanner onBannerClick={onBannerClick} />
-              </motion.div>
-
-              {/* Recommended Products - 추천 콘텐츠가 있을 때만 표시 */}
-              {sortedRecommendedProducts.length > 0 && (
+              {/* 궁금증 유발 마무리 문구 + 유료 추천 콘텐츠 카드 */}
+              {recommendedPaidContent && (
                 <motion.div
-                  className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full px-[20px]"
-                  variants={containerVariants}
+                  className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full px-[20px]"
+                  variants={itemVariants}
                 >
-                  <motion.div
-                    className="content-stretch flex items-center justify-between relative shrink-0 w-full"
-                    variants={itemVariants}
+                  <p className="leading-[28.5px] text-[16px] text-[#41a09e] tracking-[-0.32px]" style={{ fontWeight: 500 }}>
+                    구체적인 흐름이 궁금하다면...
+                  </p>
+                  <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#000', fontFamily: 'Pretendard Variable' }}>
+                    이런 운세는 어때요?
+                  </p>
+                  <div
+                    onClick={() => navigate(`/product/${recommendedPaidContent.id}?from=free`)}
+                    className="flex flex-col gap-[12px] items-start w-full cursor-pointer transition-all duration-150 ease-out active:bg-gray-50 rounded-[16px]"
                   >
-                    <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                      <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px]">이런 운세는 어때요?</p>
-                    </div>
-                  </motion.div>
-
-                  {/* ⭐ 수직 스크롤 영역 */}
-                  <motion.div
-                    className="relative w-full flex flex-col"
-                    variants={containerVariants}
-                  >
-                    {sortedRecommendedProducts.slice(0, visibleCount).map((product, index) => (
-                      <motion.div
-                        key={product.id}
-                        variants={itemVariants}
-                      >
-                        {/* 구분선 (첫 번째 아이템 제외) */}
-                        {index > 0 && (
-                          <div className="relative shrink-0 w-full py-[4px]">
-                            <svg className="block w-full h-[1px]" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                              <path d="M0 0.5H350" stroke="#F9F9F9" />
-                            </svg>
-                          </div>
-                        )}
-
-                        <div className="w-full relative shrink-0">
-                          <div
-                            onClick={() => onProductClick?.(product.id)}
-                            className="box-border content-stretch flex gap-[10px] items-start justify-start px-0 py-[10px] relative rounded-[16px] shrink-0 w-full cursor-pointer transition-all duration-150 ease-out origin-center active:scale-[0.96] active:bg-gray-50"
-                          >
-                            {/* ⭐ 썸네일 이미지 - 직사각형 80x54 */}
-                            <div className="h-[54px] pointer-events-none relative rounded-[12px] shrink-0 w-[80px]">
-                              {product.image ? (
-                                <img
-                                  alt={product.title}
-                                  loading="lazy"
-                                  className="absolute inset-0 max-w-none object-center object-cover rounded-[12px] size-full"
-                                  src={product.image}
-                                />
-                              ) : (
-                                <div className="absolute inset-0 bg-gray-200 rounded-[12px] flex items-center justify-center">
-                                  <p className="text-gray-400 text-[12px]">이미지 없음</p>
-                                </div>
-                              )}
-                              <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[13px]" />
-                            </div>
-
-                            {/* ⭐ 콘텐츠 정보 (ContentTags + 제목) */}
-                            <div className="flex flex-col gap-[3px] grow min-w-0">
-                              <ContentTags
-                                isPaid={product.type === 'paid'}
-                                isNew={isContentNew(product.created_at)}
-                                isRead={readContentIds.has(String(product.id))}
-                              />
-                              <p style={{ fontSize: '15px', fontWeight: 500, lineHeight: '23.5px', letterSpacing: '-0.3px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-1 overflow-hidden">
-                                {product.title}
-                              </p>
-                            </div>
-                          </div>
+                    {/* 대형 썸네일 (홈 카드 스타일) */}
+                    <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full" style={{ backgroundColor: '#f0f0f0' }}>
+                      {recommendedPaidContent.thumbnail_url ? (
+                        <img
+                          alt={recommendedPaidContent.title}
+                          className="absolute inset-0 object-cover rounded-[16px] size-full"
+                          src={recommendedPaidContent.thumbnail_url}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 rounded-[16px] flex items-center justify-center">
+                          <p style={{ fontSize: '14px', color: '#999' }}>이미지 없음</p>
                         </div>
-                      </motion.div>
-                    ))}
-
-                    {/* ⭐ 무한 스크롤 트리거 */}
-                    {visibleCount < sortedRecommendedProducts.length && (
-                      <div
-                        ref={observerTarget}
-                        className="h-[1px] w-full"
-                        aria-hidden="true"
+                      )}
+                      <div aria-hidden="true" className="absolute inset-[-1px] rounded-[17px] border border-[#f9f9f9]" />
+                    </div>
+                    {/* 콘텐츠 정보 */}
+                    <div className="flex flex-col gap-[4px] w-full">
+                      <ContentTags
+                        isPaid={true}
+                        isNew={isContentNew((recommendedPaidContent as MasterContent & { created_at?: string }).created_at)}
                       />
-                    )}
-                  </motion.div>
+                      <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '24px', letterSpacing: '-0.32px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-2 overflow-hidden">
+                        {recommendedPaidContent.title}
+                      </p>
+                      {/* 가격 정보 */}
+                      <div className="flex items-center gap-[6px]">
+                        {recommendedPaidContent.discount_rate > 0 && (
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#ef6878', fontFamily: 'Pretendard Variable' }}>
+                            {recommendedPaidContent.discount_rate}%
+                          </span>
+                        )}
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#151515', fontFamily: 'Pretendard Variable' }}>
+                          {recommendedPaidContent.price_discount.toLocaleString()}원
+                        </span>
+                        {recommendedPaidContent.discount_rate > 0 && (
+                          <span style={{ fontSize: '13px', fontWeight: 400, color: '#999', textDecoration: 'line-through', fontFamily: 'Pretendard Variable' }}>
+                            {recommendedPaidContent.price_original.toLocaleString()}원
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </motion.div>

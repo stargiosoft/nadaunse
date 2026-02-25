@@ -33,6 +33,7 @@ serve(async (req) => {
       recentNegativeTags: string[]
       allPositiveTags: string[]
       allNegativeTags: string[]
+      currentSituationSummary: string | null
       recentSituationSummaries: { week: number; summary: string }[]
     }
     const pData = personalizationData as PersonalizationData | null
@@ -128,8 +129,8 @@ serve(async (req) => {
     // ⭐ 초개인화 프롬프트 섹션 생성
     let questionerInfoSection = ''
 
-    if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.length > 0)) {
-      // 초개인화 데이터가 있는 경우 - 기획서 형식 적용
+    if (pData) {
+      // 초개인화 데이터가 있는 경우 (조건 판단은 generate-content-answers에서 완료)
       console.log('✅ 초개인화 프롬프트 적용')
 
       // 최근 4주 태그 포맷팅
@@ -148,14 +149,16 @@ serve(async (req) => {
         ? pData.allNegativeTags.map(t => `"${t}"`).join(', ')
         : '없음'
 
-      // 심리 흐름 포맷팅
-      let situationSummaryStr = ''
-      if (pData.recentSituationSummaries.length > 0) {
-        situationSummaryStr = pData.recentSituationSummaries
-          .map(s => `**${s.week}주차**: ${s.summary}`)
-          .join('\n\n')
+      // 심리 상태 포맷팅: currentSituationSummary 우선, fallback으로 recentSituationSummaries
+      let situationStr = ''
+      if (pData.currentSituationSummary) {
+        situationStr = pData.currentSituationSummary
+      } else if (pData.recentSituationSummaries.length > 0) {
+        situationStr = pData.recentSituationSummaries
+          .map(s => `${s.week}주차: ${s.summary}`)
+          .join('\n')
       } else {
-        situationSummaryStr = '없음'
+        situationStr = '없음'
       }
 
       questionerInfoSection = `## 질문자 정보
@@ -173,8 +176,9 @@ ${questionerInfo || '없음'}
     - 본인이 생각하는 강점: ${allPositiveStr}
     - 본인이 생각하는 단점: ${allNegativeStr}
 
-### 질문자의 최근 4주간 심리 흐름
-${situationSummaryStr}`
+### 질문자의 현재 심리 상태
+(1주차가 가장 최신입니다. 최신 주차의 심리 상태를 최우선으로 반영하여 풀이하십시오.)
+${situationStr}`
     } else {
       // 초개인화 데이터가 없는 경우 - 기존 형식 유지
       console.log('ℹ️ 초개인화 데이터 없음, 기본 프롬프트 사용')

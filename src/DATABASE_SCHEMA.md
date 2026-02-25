@@ -18,9 +18,10 @@
 6. [무료 콘텐츠 기록 테이블](#무료-콘텐츠-기록-테이블)
 7. [나다움 태그 테이블](#나다움-태그-테이블)
 8. [주간 보고서 테이블](#주간-보고서-테이블)
-9. [알림톡 로그 테이블](#알림톡-로그-테이블)
-10. [백업 테이블](#백업-테이블)
-11. [테이블 관계도](#테이블-관계도)
+9. [심리 상태 통합 테이블](#심리-상태-통합-테이블)
+10. [알림톡 로그 테이블](#알림톡-로그-테이블)
+11. [백업 테이블](#백업-테이블)
+12. [테이블 관계도](#테이블-관계도)
 
 ---
 
@@ -462,6 +463,39 @@
 
 ---
 
+## 심리 상태 통합 테이블
+
+### `user_situation_summaries`
+
+주간 보고서와 유료 콘텐츠 풀이에서 생성되는 situation_summary를 통합 관리하는 테이블.
+`generate-weekly-report`(GPT-5.1)과 `generate-content-answers`(gpt-4.1-nano)에서 INSERT.
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 고유 ID |
+| `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (users.id) |
+| `situation_summary` | text | NOT NULL | - | AI가 추출한 심리 상태 요약 (150-200자) |
+| `source_type` | text | NOT NULL, CHECK | - | 출처 ('weekly_report' 또는 'content_answer') |
+| `source_id` | uuid | - | - | 출처 레코드 ID (weekly_reports.id 또는 orders.id) |
+| `period_start` | date | NOT NULL | - | 분석 대상 기간 시작 |
+| `period_end` | date | NOT NULL | - | 분석 대상 기간 종료 |
+| `model_used` | text | - | - | 사용된 AI 모델 ('gpt-4.1-nano', 'gpt-5.1') |
+| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
+
+**외래키**:
+- `user_id` → `users(id)` (ON DELETE CASCADE)
+
+**인덱스**:
+- `idx_user_situation_summaries_user_created`: (`user_id`, `created_at DESC`)
+
+**RLS 정책**:
+- Service Role Key 전용 (Edge Function에서만 접근)
+
+**제약조건**:
+- `source_type` CHECK: `'weekly_report'` 또는 `'content_answer'`만 허용
+
+---
+
 ## 알림톡 로그 테이블
 
 ### `alimtalk_logs`
@@ -582,6 +616,7 @@ weekly_reports (주간 보고서)
 | 1.9.0 | 2026-02-06 | anonymous_free_views 테이블 추가, pg_cron cleanup-anonymous-free-views 스케줄 등록 | AI Assistant |
 | 2.0.0 | 2026-02-09 | users 테이블에 rejected_tags 컬럼 추가, last_login_at 갱신 로직 변경 (HomePage → App.tsx recordTodayVisit) | AI Assistant |
 | 2.1.0 | 2026-02-09 | coupons.coupon_type에 mission 타입 추가 (미션성공쿠폰) | AI Assistant |
+| 2.2.0 | 2026-02-25 | user_situation_summaries 테이블 추가 (주간 보고서 + 콘텐츠 풀이 심리 상태 통합 관리) | AI Assistant |
 
 ---
 

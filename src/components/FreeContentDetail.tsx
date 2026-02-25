@@ -125,6 +125,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
   const [generatedResults, setGeneratedResults] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [recommendedContents, setRecommendedContents] = useState<MasterContent[]>([]);
+  const [recommendedPaidContent, setRecommendedPaidContent] = useState<MasterContent | null>(null);
   const [visibleCount, setVisibleCount] = useState(3); // ⭐ 처음에는 3개 표시
   const [visiblePaidCount, setVisiblePaidCount] = useState(6); // ⭐ 유료 콘텐츠는 6개씩
   const scrollObserverRef = useRef<HTMLDivElement>(null);
@@ -172,34 +173,37 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
           setContent(cachedData.content);
           setQuestions(cachedData.questions);
           setRecommendedContents(cachedData.recommended);
+          setRecommendedPaidContent(cachedData.recommendedPaid ?? null);
           setLoading(false); // ⭐ 캐시 로드 시 즉시 로딩 해제
-          
+
           // 백그라운드에서 최신 데이터 업데이트 (비동기, 사용자는 기다리지 않음)
           freeContentService.updateDataInBackground(contentId).then(freshData => {
             if (freshData) {
               setContent(freshData.content);
               setQuestions(freshData.questions);
               setRecommendedContents(freshData.recommended);
+              setRecommendedPaidContent(freshData.recommendedPaid ?? null);
             }
           });
-          
+
           // AI 생성 플래그 확인
           const flagData = freeContentService.checkGenerationFlag(contentId);
           if (flagData && flagData.sajuRecordId) {
             console.log('🆓 무료 콘텐츠 AI 생성 플래그 감지 - 생성 시작');
             startGeneration(flagData.sajuRecordId, cachedData.content, cachedData.questions);
           }
-          
+
           return; // ⭐ 조기 종료
         }
-        
+
         // ⭐ 캐시가 없을 때만 로딩 표시
         setLoading(true);
         const data = await freeContentService.loadContentData(contentId);
-        
+
         setContent(data.content);
         setQuestions(data.questions);
         setRecommendedContents(data.recommended);
+        setRecommendedPaidContent(data.recommendedPaid ?? null);
 
         // AI 생성 플래그 확인
         const flagData = freeContentService.checkGenerationFlag(contentId);
@@ -435,6 +439,7 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     content,
     questions,
     recommendedContents,
+    recommendedPaidContent,
     loading,
     isGenerating,
     generatedResults,
@@ -571,6 +576,7 @@ export default function FreeContentDetail({
     content,
     questions,
     recommendedContents,
+    recommendedPaidContent,
     loading,
     isGenerating,
     generatedResults,
@@ -632,6 +638,7 @@ export default function FreeContentDetail({
         onBack={() => setShowResult(false)}
         onHome={onHome}
         onNext={onNext}
+        recommendedPaidContent={recommendedPaidContent}
       />
     );
   }

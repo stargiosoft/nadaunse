@@ -118,13 +118,14 @@ serve(async (req) => {
     console.log('🕐 birth_time:', sajuRecord.birth_time)
     console.log('👤 gender:', sajuRecord.gender)
 
-    // 4. 초개인화를 위한 태그 + 심리 흐름 조회 (user_id 필요)
-    // ⭐ 사용자가 나다움 태그를 1개 이상 모은 경우에만 적용
+    // 4. 초개인화를 위한 태그 + 콘텐츠 이용 내역 + 심리 상태 조회 (user_id 필요)
+    // ⭐ 조건 확장: 태그 1개 이상 OR 최근 1주 콘텐츠 이용 기록 존재
     let personalizationData: {
       recentPositiveTags: string[]
       recentNegativeTags: string[]
       allPositiveTags: string[]
       allNegativeTags: string[]
+      currentSituationSummary: string | null
       recentSituationSummaries: { week: number; summary: string }[]
     } | null = null
 
@@ -142,10 +143,14 @@ serve(async (req) => {
         const userId = orderUserData.user_id
         console.log('🔍 초개인화 데이터 조회 시작 (user_id:', userId, ')')
 
-        // 4-2. 최근 4주 기준일 계산 (오늘 기준 28일 전)
+        // 4-2. 최근 4주 / 1주 기준일 계산
         const fourWeeksAgo = new Date()
         fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
         const fourWeeksAgoISO = fourWeeksAgo.toISOString()
+
+        const oneWeekAgo = new Date()
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+        const oneWeekAgoISO = oneWeekAgo.toISOString()
 
         // 4-3. 태그 조회 (is_confirmed = true인 것만)
         const { data: allTags, error: tagsError } = await supabase
@@ -157,39 +162,159 @@ serve(async (req) => {
 
         if (tagsError) {
           console.warn('⚠️ 태그 조회 실패:', tagsError)
-        } else if (allTags && allTags.length > 0) {
-          console.log(`✅ 태그 조회 완료: ${allTags.length}개`)
+        }
 
-          // 최근 4주 태그 분류
-          const recentTags = allTags.filter(t => new Date(t.created_at) >= fourWeeksAgo)
-          const recentPositiveTags = [...new Set(recentTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
-          const recentNegativeTags = [...new Set(recentTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
+        // 4-4. 최근 1주 콘텐츠 이용 기록 조회
+        const { data: recentFreeContents } = await supabase
+          .from('free_content_records')
+          .select('created_at, master_contents:content_id (title, description)')
+          .eq('user_id', userId)
+          .gte('created_at', oneWeekAgoISO)
+          .order('created_at', { ascending: false })
 
-          // 전체 태그 분류 (중복 제거)
-          const allPositiveTags = [...new Set(allTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
-          const allNegativeTags = [...new Set(allTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
+        const { data: recentPaidContents } = await supabase
+          .from('orders')
+          .select('created_at, master_contents (title, description)')
+          .eq('user_id', userId)
+          .eq('pstatus', 'completed')
+          .neq('id', orderId)
+          .gte('created_at', oneWeekAgoISO)
+          .order('created_at', { ascending: false })
 
-          console.log(`📊 최근 4주 태그: 강점 ${recentPositiveTags.length}개, 단점 ${recentNegativeTags.length}개`)
-          console.log(`📊 전체 태그: 강점 ${allPositiveTags.length}개, 단점 ${allNegativeTags.length}개`)
+        const hasTags = allTags && allTags.length > 0
+        const hasContentRecords = (recentFreeContents?.length || 0) > 0 || (recentPaidContents?.length || 0) > 0
 
-          // 4-4. 최근 4주 심리 흐름 조회 (weekly_reports.situation_summary)
-          const { data: recentReports, error: reportsError } = await supabase
-            .from('weekly_reports')
-            .select('week, situation_summary, week_start_date')
+        console.log(`📊 초개인화 조건: 태그=${hasTags ? allTags!.length + '개' : '없음'}, 콘텐츠이용=${hasContentRecords ? '있음' : '없음'}`)
+
+        if (hasTags || hasContentRecords) {
+          // 태그 분류
+          let recentPositiveTags: string[] = []
+          let recentNegativeTags: string[] = []
+          let allPositiveTags: string[] = []
+          let allNegativeTags: string[] = []
+
+          if (hasTags) {
+            console.log(`✅ 태그 조회 완료: ${allTags!.length}개`)
+            const recentTags = allTags!.filter(t => new Date(t.created_at) >= fourWeeksAgo)
+            recentPositiveTags = [...new Set(recentTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
+            recentNegativeTags = [...new Set(recentTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
+            allPositiveTags = [...new Set(allTags!.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
+            allNegativeTags = [...new Set(allTags!.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
+            console.log(`📊 최근 4주 태그: 강점 ${recentPositiveTags.length}개, 단점 ${recentNegativeTags.length}개`)
+            console.log(`📊 전체 태그: 강점 ${allPositiveTags.length}개, 단점 ${allNegativeTags.length}개`)
+          }
+
+          // 4-5. 콘텐츠 이용 내역 기반 situation_summary 추출 (gpt-4.1-nano)
+          let currentSituationSummary: string | null = null
+
+          if (hasContentRecords) {
+            try {
+              console.log('🧠 콘텐츠 이용 내역 기반 심리 상태 추출 시작 (gpt-4.1-nano)')
+
+              const formatDate = (date: string) => {
+                const d = new Date(date)
+                return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`
+              }
+
+              const paidList = (recentPaidContents || []).map((c: Record<string, unknown>) => {
+                const mc = c.master_contents as Record<string, string> | null
+                return `created_at: ${formatDate(c.created_at as string)}\ntitle: ${mc?.title || '제목 없음'}\ndescription: ${mc?.description || '설명 없음'}`
+              }).join('\n\n') || '없음'
+
+              const freeList = (recentFreeContents || []).map((c: Record<string, unknown>) => {
+                const mc = c.master_contents as Record<string, string> | null
+                return `created_at: ${formatDate(c.created_at as string)}\ntitle: ${mc?.title || '제목 없음'}\ndescription: ${mc?.description || '설명 없음'}`
+              }).join('\n\n') || '없음'
+
+              const apiKey = Deno.env.get('OPENAI_API_KEY')
+              const nanoPrompt = `다음은 사용자가 최근 1주간 이용한 운세 콘텐츠 목록입니다.
+
+### 최근 1주간 사용자가 이용한 콘텐츠
+
+[유료]
+${paidList}
+
+[무료]
+${freeList}
+
+위 콘텐츠 이용 내역을 분석하여, 사용자의 현재 고민과 심리 상태를 150-200자로 요약해주세요.
+- 3인칭 보고서 형태로 작성 (예: "이 사용자는 ~한 상황이다")
+- 무료는 가벼운 관심, 유료는 핵심 고민으로 가중치
+- 반드시 JSON 형식으로만 응답: {"situation_summary": "..."}`
+
+              const nanoResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'gpt-4.1-nano',
+                  messages: [{ role: 'user', content: nanoPrompt }],
+                  response_format: { type: 'json_object' },
+                  temperature: 0.3
+                })
+              })
+
+              if (nanoResponse.ok) {
+                const nanoData = await nanoResponse.json()
+                const nanoText = nanoData.choices?.[0]?.message?.content
+                if (nanoText) {
+                  const parsed = JSON.parse(nanoText)
+                  currentSituationSummary = parsed.situation_summary || null
+                  console.log('✅ 심리 상태 추출 완료:', currentSituationSummary?.substring(0, 50) + '...')
+                }
+              } else {
+                console.warn('⚠️ gpt-4.1-nano 호출 실패:', nanoResponse.status)
+              }
+            } catch (nanoError) {
+              console.warn('⚠️ 심리 상태 추출 실패 (무시하고 계속):', nanoError)
+            }
+          }
+
+          // 4-6. 새 테이블에 situation_summary 저장
+          if (currentSituationSummary) {
+            const today = new Date()
+            const periodStart = new Date(today)
+            periodStart.setDate(today.getDate() - 7)
+            await supabase.from('user_situation_summaries').insert({
+              user_id: userId,
+              situation_summary: currentSituationSummary,
+              source_type: 'content_answer',
+              source_id: orderId,
+              period_start: periodStart.toISOString().split('T')[0],
+              period_end: today.toISOString().split('T')[0],
+              model_used: 'gpt-4.1-nano'
+            })
+            console.log('✅ user_situation_summaries 저장 완료')
+          }
+
+          // 4-7. 최근 4주 심리 흐름 조회 (user_situation_summaries 통합 테이블)
+          // 주차별 최신 1건만 AI에게 전달 (같은 주에 여러 건이면 가장 최근 것)
+          const { data: recentSummaries, error: summariesError } = await supabase
+            .from('user_situation_summaries')
+            .select('situation_summary, created_at')
             .eq('user_id', userId)
-            .eq('status', 'completed')
-            .gte('week_start_date', fourWeeksAgoISO.split('T')[0])
-            .order('week_start_date', { ascending: true })
-            .limit(4)
+            .gte('created_at', fourWeeksAgoISO)
+            .order('created_at', { ascending: true })
 
           let recentSituationSummaries: { week: number; summary: string }[] = []
-          if (reportsError) {
-            console.warn('⚠️ 심리 흐름 조회 실패:', reportsError)
-          } else if (recentReports && recentReports.length > 0) {
-            recentSituationSummaries = recentReports
-              .filter(r => r.situation_summary)
-              .map((r, idx) => ({ week: idx + 1, summary: r.situation_summary! }))
-            console.log(`✅ 심리 흐름 조회 완료: ${recentSituationSummaries.length}주`)
+          if (summariesError) {
+            console.warn('⚠️ 심리 흐름 조회 실패:', summariesError)
+          } else if (recentSummaries && recentSummaries.length > 0) {
+            // 주차별 그룹핑: 오늘 기준 0~6일=1주차, 7~13일=2주차, ...
+            const now = new Date()
+            const weekMap = new Map<number, string>()
+            for (const s of recentSummaries) {
+              const daysAgo = Math.floor((now.getTime() - new Date(s.created_at).getTime()) / (1000 * 60 * 60 * 24))
+              const weekNum = Math.floor(daysAgo / 7) + 1
+              if (weekNum >= 1 && weekNum <= 4) {
+                weekMap.set(weekNum, s.situation_summary) // ASC 순서이므로 나중 것이 덮어씀 = 최신
+              }
+            }
+            for (let w = 1; w <= 4; w++) {
+              if (weekMap.has(w)) {
+                recentSituationSummaries.push({ week: w, summary: weekMap.get(w)! })
+              }
+            }
+            console.log(`✅ 심리 흐름 조회 완료: ${recentSummaries.length}건 → 주차별 ${recentSituationSummaries.length}건`)
           }
 
           // 초개인화 데이터 설정
@@ -198,11 +323,12 @@ serve(async (req) => {
             recentNegativeTags,
             allPositiveTags,
             allNegativeTags,
+            currentSituationSummary,
             recentSituationSummaries
           }
           console.log('✅ 초개인화 데이터 준비 완료')
         } else {
-          console.log('ℹ️ 태그 없음, 초개인화 스킵')
+          console.log('ℹ️ 태그 없음 + 콘텐츠 이용 기록 없음, 초개인화 스킵')
         }
       }
     } catch (personalizationError) {

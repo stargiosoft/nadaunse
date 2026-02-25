@@ -50,7 +50,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 32개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 34개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne v2 |
@@ -61,7 +61,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 ## 📊 주요 통계
 
 - **컴포넌트**: 75개 (주간 보고서 11개 + 통계 대시보드 1개 포함)
-- **Edge Functions**: 32개 (주간 보고서 4개 포함)
+- **Edge Functions**: 34개 (주간 보고서 4개 포함)
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 52개
 
@@ -74,7 +74,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | [DECISIONS.md](./src/DECISIONS.md) | 아키텍처 결정 기록 |
 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) | DB 스키마 |
 | [components-inventory.md](./src/components-inventory.md) | 컴포넌트 목록 (69개) |
-| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (32개) |
+| [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) | Edge Functions (34개) |
 
 > **참고**: AI_ONBOARDING.md는 CLAUDE.md에 통합되었습니다.
 
