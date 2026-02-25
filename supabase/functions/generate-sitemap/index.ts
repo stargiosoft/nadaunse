@@ -110,7 +110,7 @@ function generateSitemapXml(contents: ContentItem[], blogPosts: BlogPost[]): str
     { loc: '/', changefreq: 'daily', priority: '1.0', lastmod: today },
     { loc: '/terms-of-service', changefreq: 'monthly', priority: '0.3' },
     { loc: '/privacy-policy', changefreq: 'monthly', priority: '0.3' },
-    { loc: '/manse', changefreq: 'monthly', priority: '0.6' },
+    { loc: '/manse', changefreq: 'monthly', priority: '0.8', lastmod: today },
   ];
 
   // 동적 콘텐츠 페이지 (유료: /product/:id, 무료: /free/content/:id)

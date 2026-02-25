@@ -8,6 +8,7 @@ Allow: /
 Disallow: /free
 Allow: /free/content/
 Disallow: /login
+Allow: /terms-of-service
 Disallow: /terms
 Disallow: /signup
 Disallow: /auth/
