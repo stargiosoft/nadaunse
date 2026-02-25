@@ -48,9 +48,7 @@ serve(async (req) => {
     // 2. 병렬 DB 조회
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString()
-
-    const [weeklyTagsResult, allTagsResult, paidOrdersResult, freeRecordsResult, contentResult, situationResult] = await Promise.all([
+    const [weeklyTagsResult, allTagsResult, paidOrdersResult, freeRecordsResult, contentResult] = await Promise.all([
       // a. 최근 7일 confirmed 태그
       supabaseClient
         .from('user_trait_tags')
@@ -88,15 +86,7 @@ serve(async (req) => {
         .from('master_contents')
         .select('title, description, master_content_questions(question_text)')
         .eq('id', contentId)
-        .single(),
-
-      // f. 최근 4주 심리 상태
-      supabaseClient
-        .from('user_situation_summaries')
-        .select('situation_summary, created_at')
-        .eq('user_id', userId)
-        .gte('created_at', fourWeeksAgo)
-        .order('created_at', { ascending: true })
+        .single()
     ])
 
     // 3. 태그 0개 → 즉시 반환
@@ -142,26 +132,6 @@ serve(async (req) => {
 
     const formatTags = (tags: string[]) => tags.length > 0 ? tags.map(t => `"${t}"`).join(', ') : '없음'
 
-    // 심리 상태 주차별 포맷팅
-    let situationStr = '없음'
-    const situationData = situationResult.data || []
-    if (situationData.length > 0) {
-      const now = new Date()
-      const weekMap = new Map<number, string>()
-      for (const s of situationData) {
-        const daysAgo = Math.floor((now.getTime() - new Date(s.created_at).getTime()) / (1000 * 60 * 60 * 24))
-        const weekNum = Math.floor(daysAgo / 7) + 1
-        if (weekNum >= 1 && weekNum <= 4) {
-          weekMap.set(weekNum, s.situation_summary)
-        }
-      }
-      const summaries: string[] = []
-      for (let w = 1; w <= 4; w++) {
-        if (weekMap.has(w)) summaries.push(`${w}주차: ${weekMap.get(w)!}`)
-      }
-      if (summaries.length > 0) situationStr = summaries.join('\n')
-    }
-
     // 5. gpt-4.1-nano 호출
     const apiKey = Deno.env.get('OPENAI_API_KEY')
     if (!apiKey) {
@@ -179,10 +149,6 @@ serve(async (req) => {
 ## 사용자 성향
 - 강점: ${formatTags(weeklyPositive.length > 0 ? weeklyPositive : allPositive)}
 - 단점: ${formatTags(weeklyNegative.length > 0 ? weeklyNegative : allNegative)}
-
-### 질문자의 현재 심리 상태
-(1주차가 가장 최신입니다. 최신 주차의 심리 상태를 최우선으로 반영하세요.)
-${situationStr}
 
 ## 콘텐츠 정보
 - 제목: ${contentData.title}
