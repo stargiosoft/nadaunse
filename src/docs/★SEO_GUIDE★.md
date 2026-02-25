@@ -149,7 +149,10 @@ User-agent: *
 Allow: /
 
 # 인덱싱 제외 경로
+Disallow: /free
+Allow: /free/content/
 Disallow: /login
+Allow: /terms-of-service
 Disallow: /terms
 Disallow: /signup
 Disallow: /auth/
@@ -165,10 +168,6 @@ Disallow: /purchase-history
 Disallow: /error/
 Disallow: /test/
 
-# 무료 콘텐츠 - 입력 페이지 제외, 콘텐츠 상세만 허용
-Disallow: /free
-Allow: /free/content/
-
 # 결제/결과 페이지 제외
 Disallow: /*/payment
 Disallow: /*/birthinfo
@@ -177,6 +176,10 @@ Disallow: /*/result
 
 Sitemap: https://nadaunse.com/sitemap.xml
 ```
+
+> **⚠️ robots.txt 접두사 매칭 주의**: `Disallow: /terms`는 `/terms`로 시작하는 모든 URL을 차단합니다.
+> `/terms-of-service`가 차단되지 않도록 `Allow: /terms-of-service`를 반드시 `Disallow: /terms` 위에 배치해야 합니다.
+> (Google은 더 구체적인 경로가 우선하지만, 순서를 맞추는 것이 다른 크롤러 호환성에 안전합니다.)
 
 ---
 
@@ -302,6 +305,8 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [x] 이미지 alt 속성 수정 16건 (ProfilePage 7건 `aria-hidden`, MyReportList 3건 의미 있는 alt) **(2026-02-24)**
 - [x] 콘텐츠 description fallback 개선 — 유료/무료 차별화 **(2026-02-24)**
 - [x] description 80자 제한 준수 — index.html + prerender.mjs 축소 **(2026-02-24)**
+- [x] robots.txt `Disallow: /terms` → `/terms-of-service` 차단 버그 수정 (`Allow: /terms-of-service` 추가) **(2026-02-25)**
+- [x] Edge Function sitemap `/manse` priority 0.6 → 0.8 + lastmod 추가 (prerender와 일치) **(2026-02-25)**
 
 ### SEO TODO (미완료) - 우선순위순
 
@@ -624,6 +629,7 @@ VALUES (
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-02-25 | **Google Search Console 색인 문제 수정** - robots.txt `Disallow: /terms`가 `/terms-of-service` 차단하는 버그 수정 (`Allow: /terms-of-service` 추가), Edge Function sitemap `/manse` priority 0.6→0.8 + lastmod 추가 (prerender와 정합성) |
 | 2026-02-24 | **SEO 종합 개선** - `/manse` sitemap 추가, JSON-LD 중복 제거 (홈페이지 외 WebSite/FAQPage/Organization 제거, `isHomePage` 파라미터), sitemap `<lastmod>` 날짜 추가, RSS 2.0 피드 생성 (`/rss.xml`), 네이버 서치어드바이저 새 계정 재등록 (인증 메타 태그 `index.html` 적용), 이미지 alt 속성 16건 수정 (ProfilePage `aria-hidden` 7건, MyReportList 의미 있는 alt 3건), 콘텐츠 description fallback 유료/무료 차별화, description 80자 제한 준수 (index.html + prerender.mjs 축소), 사이트맵/RSS 네이버 재제출 |
 | 2026-02-20 | **SEO 내부 링크 강화** - 홈→블로그 내부 링크 (BlogPreviewSection), 관련 글 추천 (같은 카테고리 view_count 순), 본문 cross-links ("함께 읽어보세요"), blog-content CSS 검수 + index.css 반영, 모든 블로그 링크 `<a href>` 크롤러 지원 변환, Article JSON-LD 클라이언트 지원 (SEO.tsx), Organization sameAs 카카오톡 채널 추가, 이미지 loading 속성 (eager/lazy) |
 | 2026-02-20 | **블로그(운세 콘텐츠) 기능 구현** - BlogListPage/BlogDetailPage 생성, /blog /blog/:slug 라우트 추가, blog-content CSS, prerender 블로그 지원 (Article + ItemList + BreadcrumbList JSON-LD), sitemap 블로그 URL 추가, GA 페이지뷰 트래킹, blog_posts 테이블 (weekly_views/last_weekly_views + pg_cron 리셋), 콘텐츠 24개 작성 (스레드/트위터 트렌드 분석 기반 롱테일 키워드) |
