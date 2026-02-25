@@ -861,6 +861,13 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       const saved = sessionStorage.getItem(REPORT_GEN_KEY);
       if (!saved) return 'idle';
       const parsed = JSON.parse(saved);
+      // ⭐ userId 검증: 다른 계정의 보고서 상태가 남아있으면 무효화
+      const currentUserJson = localStorage.getItem('user');
+      const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
+      if (parsed.userId && parsed.userId !== currentUserId) {
+        sessionStorage.removeItem(REPORT_GEN_KEY);
+        return 'idle';
+      }
       // 5분 이상 지난 generating 상태는 만료 처리
       if (parsed.status === 'generating' && Date.now() - parsed.timestamp > 5 * 60 * 1000) {
         sessionStorage.removeItem(REPORT_GEN_KEY);
@@ -882,9 +889,12 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
     if (reportGenerationStatus === 'idle') {
       sessionStorage.removeItem(REPORT_GEN_KEY);
     } else {
+      let currentUserId: string | null = null;
+      try { currentUserId = JSON.parse(localStorage.getItem('user') || '{}')?.id || null; } catch {}
       sessionStorage.setItem(REPORT_GEN_KEY, JSON.stringify({
         status: reportGenerationStatus,
         reportId: newReportId,
+        userId: currentUserId,
         timestamp: Date.now()
       }));
     }
@@ -1122,6 +1132,11 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
           console.log('📬 [MyReportList] 현재 주차 보고서 존재:', currentWeekReport[0].id);
           setNewReportId(currentWeekReport[0].id);
           setReportGenerationStatus('completed');
+        } else if (reportGenerationStatus === 'completed') {
+          // ⭐ 다른 계정의 상태가 잔존하는 경우 리셋
+          console.log('⚠️ [MyReportList] 현재 주차 보고서 없음 → 상태 리셋');
+          setNewReportId(null);
+          setReportGenerationStatus('idle');
         }
 
         const weeklyTagCount = weeklyResult.count || 0;
