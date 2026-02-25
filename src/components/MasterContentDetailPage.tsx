@@ -586,67 +586,56 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     fetchContent();
   }, [contentId, loadFromCache, saveToCache]);
 
-  // ⭐ AI 개인화 구매 가이드 로드
+  // ⭐ AI 개인화 구매 가이드 로드 (콘텐츠 로드와 동시 시작)
   useEffect(() => {
-    const fetchPurchaseGuide = async () => {
-      // 비로그인 → 스킵
-      const userJson = localStorage.getItem('user');
-      if (!userJson) return;
+    // 비로그인 → 스킵
+    const userJson = localStorage.getItem('user');
+    if (!userJson) return;
 
-      let userId: string;
-      try {
-        userId = JSON.parse(userJson).id;
-      } catch {
-        return;
-      }
+    let userId: string;
+    try {
+      userId = JSON.parse(userJson).id;
+    } catch {
+      return;
+    }
 
-      // localStorage 캐시 확인 (24시간 TTL)
-      const cacheKey = `purchase_guide_v1_${userId}_${contentId}`;
-      const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached && !needsRefresh) {
-          const parsed = JSON.parse(cached);
-          if (parsed.timestamp && Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
-            setPurchaseGuide(parsed.guide);
-            return;
-          }
-        }
-      } catch {
-        // 캐시 파싱 실패 → 무시하고 API 호출
-      }
-
-      setIsPurchaseGuideLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-purchase-guide', {
-          body: { contentId }
-        });
-
-        if (error) {
-          console.error('❌ [purchase-guide] Edge Function 오류:', error);
+    // localStorage 캐시 확인 (24시간 TTL)
+    const cacheKey = `purchase_guide_v1_${userId}_${contentId}`;
+    const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached && !needsRefresh) {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          setPurchaseGuide(parsed.guide);
           return;
         }
-
-        if (data?.success && data.guide) {
-          setPurchaseGuide(data.guide);
-          // 캐시 저장
-          localStorage.setItem(cacheKey, JSON.stringify({
-            guide: data.guide,
-            timestamp: Date.now()
-          }));
-        }
-        // success: false (no_tags) → 섹션 숨김 (purchaseGuide stays null)
-      } catch (err) {
-        console.error('❌ [purchase-guide] 예외:', err);
-      } finally {
-        setIsPurchaseGuideLoading(false);
       }
-    };
-
-    if (content && !content.content_type?.includes('free')) {
-      fetchPurchaseGuide();
+    } catch {
+      // 캐시 파싱 실패 → 무시하고 API 호출
     }
-  }, [content, contentId]);
+
+    setIsPurchaseGuideLoading(true);
+    supabase.functions.invoke('generate-purchase-guide', {
+      body: { contentId }
+    }).then(({ data, error }) => {
+      if (error) {
+        console.error('❌ [purchase-guide] Edge Function 오류:', error);
+        return;
+      }
+      if (data?.success && data.guide) {
+        setPurchaseGuide(data.guide);
+        localStorage.setItem(cacheKey, JSON.stringify({
+          guide: data.guide,
+          timestamp: Date.now()
+        }));
+      }
+    }).catch(err => {
+      console.error('❌ [purchase-guide] 예외:', err);
+    }).finally(() => {
+      setIsPurchaseGuideLoading(false);
+    });
+  }, [contentId]);
 
   // 🔝 페이지 진입 시 스크롤을 최상단으로 이동
   useEffect(() => {
