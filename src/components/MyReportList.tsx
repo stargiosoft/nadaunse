@@ -865,7 +865,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
       // ⭐ userId 검증: 다른 계정의 보고서 상태가 남아있으면 무효화
       const currentUserJson = localStorage.getItem('user');
       const currentUserId = currentUserJson ? JSON.parse(currentUserJson)?.id : null;
-      if (parsed.userId && parsed.userId !== currentUserId) {
+      if (!parsed.userId || parsed.userId !== currentUserId) {
         sessionStorage.removeItem(REPORT_GEN_KEY);
         return 'idle';
       }
@@ -1069,8 +1069,8 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         if (initialState.hasValidCache && !needsRefresh) {
           console.log('✅ [MyReportList] 유효한 캐시 존재 → API 호출 스킵');
 
-          // ⭐ 캐시 히트 시에도 현재 주차 보고서 존재 여부 체크
-          if (reportGenerationStatus === 'idle') {
+          // ⭐ 캐시 히트 시에도 현재 주차 보고서 존재 여부를 서버에서 검증
+          {
             const { start } = getCurrentWeekRange();
             const { data: cwReport } = await supabase
               .from('weekly_reports')
@@ -1084,6 +1084,11 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
               console.log('📬 [MyReportList] 캐시 히트 + 현재 주차 보고서 존재:', cwReport[0].id);
               setNewReportId(cwReport[0].id);
               setReportGenerationStatus('completed');
+            } else if (reportGenerationStatus !== 'generating') {
+              // 서버에 보고서 없으면 무조건 리셋 (다른 계정 잔존 데이터 방지)
+              console.log('⚠️ [MyReportList] 캐시 히트 + 서버에 보고서 없음 → 상태 리셋');
+              setNewReportId(null);
+              setReportGenerationStatus('idle');
             }
           }
 
