@@ -165,6 +165,14 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   // ⭐ AI 개인화 구매 가이드
   const [purchaseGuide, setPurchaseGuide] = useState<string | null>(null);
   const [isPurchaseGuideLoading, setIsPurchaseGuideLoading] = useState(false);
+  // 태그 유무를 동기적으로 확인 (스켈레톤 표시 판단용)
+  const [hasTraitTags] = useState(() => {
+    try {
+      const cache = localStorage.getItem('trait_tags_cache');
+      if (cache) return (JSON.parse(cache).totalCount || 0) > 0;
+    } catch { /* ignore */ }
+    return false;
+  });
 
   // ⭐ 읽기 기록 확인 (orders + free_content_records)
   useEffect(() => {
@@ -588,7 +596,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
   // ⭐ AI 개인화 구매 가이드 로드 (콘텐츠 로드와 동시 시작)
   useEffect(() => {
-    // 비로그인 → 스킵
+    // 비로그인 또는 태그 없음 → 스킵
+    if (!hasTraitTags) return;
     const userJson = localStorage.getItem('user');
     if (!userJson) return;
 
@@ -1537,7 +1546,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               </motion.div>
 
               {/* AI 개인화 구매 가이드 섹션 */}
-              {(isPurchaseGuideLoading || purchaseGuide) && (
+              {hasTraitTags && (isPurchaseGuideLoading || purchaseGuide) && (
                 <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
                 <div className="px-[20px] mb-[28px]">
                   <div className="rounded-[16px] px-[20px] py-[20px]" style={{ backgroundColor: '#f0f8f8' }}>
