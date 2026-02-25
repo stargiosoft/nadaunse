@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-02-13
+> **최종 업데이트**: 2026-02-25
 
 ## 개요
 
@@ -26,6 +26,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 |--------|------|------|------|
 | System can insert alimtalk_logs | INSERT | public | `true` (누구나 삽입 가능) |
 | Users can view own alimtalk_logs | SELECT | public | `auth.uid() = user_id` |
+| Master can view all alimtalk_logs | SELECT | authenticated | `users.role = 'master'` (통계 대시보드용) |
 
 **RLS 상태**: Enabled
 
@@ -241,11 +242,29 @@ const { count } = await supabase
 
 ---
 
+### 16. `user_situation_summaries` (심리 상태 통합) - NEW 2026-02-25
+
+| 정책명 | 명령 | 대상 | 조건 |
+|--------|------|------|------|
+| Service role full access | ALL | public | `true` |
+
+**RLS 상태**: Enabled (Service Role Key 전용)
+
+**용도**:
+- 주간 보고서(`generate-weekly-report`) + 유료 콘텐츠 풀이(`generate-content-answers`)에서 생성되는 심리 상태 통합 관리
+- `generate-content-answers`에서 최근 4주 심리 흐름 조회
+
+**접근 방식**:
+- 클라이언트 직접 접근 불필요 (Edge Function에서만 INSERT/SELECT)
+- Service Role Key로만 접근
+
+---
+
 ## 정책 요약
 
 | 테이블 | 정책 수 | RLS 상태 |
 |--------|---------|----------|
-| alimtalk_logs | 2 | Enabled |
+| alimtalk_logs | 3 | Enabled |
 | coupons | 1 | Enabled |
 | free_content_records | 2 | Enabled |
 | user_trait_tags | 3 | Enabled |
@@ -260,7 +279,8 @@ const { count } = await supabase
 | weekly_report_sections | 2 | Enabled |
 | report_tarot_selections | 3 | Enabled |
 | anonymous_free_views | 0 | Enabled (Service Role 전용) |
-| **총계** | **40** | - |
+| user_situation_summaries | 1 | Enabled (Service Role 전용) |
+| **총계** | **41** | - |
 
 ---
 

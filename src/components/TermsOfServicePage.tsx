@@ -66,7 +66,7 @@ export default function TermsOfServicePage() {
               transition={{ duration: 0.5, delay: 0 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                최종 업데이트일: 2026년 2월 4일
+                최종 업데이트일: 2026년 3월 ○일
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
                 본 약관은 주식회사 스타지오소프트(이하 "회사")가 제공하는 운세 서비스 '나다운'(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항 등을 규정합니다. 서비스를 이용하기 전 반드시 본 약관을 숙지하여 주시기 바랍니다.
@@ -106,16 +106,25 @@ export default function TermsOfServicePage() {
                   "이용자"란 본 약관에 따라 회사가 제공하는 서비스를 이용하는 자를 말합니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
-                  "회원"이란 카카오 로그인을 통해 유료 서비스를 이용하는 자를 의미합니다.
+                  "회원"이란 카카오 또는 구글 로그인을 통해 서비스를 이용하는 자를 의미합니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
                   "비회원"이란 회원 가입 없이 무료 서비스를 이용하는 자를 의미합니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
-                  "유료 서비스"란 로그인 후 결제하여 이용 가능한 프리미엄 콘텐츠를 포함한 모든 서비스입니다.
+                  "유료 서비스"란 로그인 후 결제하거나 새싹을 사용하여 이용 가능한 프리미엄 콘텐츠를 포함한 모든 서비스입니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  "콘텐츠"란 사주, 타로, 운세 관련 정보, 글, 이미지, 동영상 등 회사가 제공하는 모든 자료를 의미합니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  "새싹"이란 회원이 유료로 구매하거나 회사로부터 무료로 지급받아 서비스 내에서 유료 콘텐츠를 이용하기 위해 사용할 수 있는 전자적 지급수단을 말합니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  "유상 새싹"이란 회원이 결제를 통해 유료로 구매한 새싹을 말합니다.
                 </li>
                 <li className="leading-[23.5px]">
-                  "컨텐츠"란 사주, 타로, 운세 관련 정보, 글, 이미지, 동영상 등 회사가 제공하는 모든 자료를 의미합니다.
+                  "무상 새싹"이란 이벤트, 프로모션, 보상 등을 통해 회사가 무료로 지급한 새싹을 말합니다.
                 </li>
               </ol>
             </motion.div>
@@ -213,26 +222,93 @@ export default function TermsOfServicePage() {
                   이용자는 무료로 제공되는 콘텐츠를 회원가입 없이 이용할 수 있습니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
-                  유료 콘텐츠는 로그인을 통해 회원 인증을 거친 후 결제하여 이용할 수 있습니다.
+                  유료 콘텐츠는 로그인을 통해 회원 인증을 거친 후 직접 결제하거나 새싹을 사용하여 이용할 수 있습니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
                   결제 수단은 카카오페이, 신용카드 등이며, 결제 시스템은 외부 결제 대행사인 '포트원'을 통해 운영됩니다.
                 </li>
-                <li className="leading-[23.5px]">
+                <li className="mb-0 leading-[23.5px]">
                   유료 서비스와 무료 서비스는 서로 다른 방식으로 제공될 수 있으며, 결과 내용이 다를 수 있습니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  새싹의 구매, 적립 및 사용에 관한 사항은 제7조 및 제8조에 따릅니다.
+                </li>
+                <li className="leading-[23.5px]">
+                  새싹 사용 시 무상 새싹이 유상 새싹보다 먼저 차감되며, 같은 종류의 새싹은 유효기간이 임박한 것부터 차감됩니다.
                 </li>
               </ol>
             </motion.div>
 
-            {/* 제7조 [이용자의 의무] */}
-            <motion.div 
+            {/* 제7조 [새싹의 구매 및 적립] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.35 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제7조 [이용자의 의무]
+                제7조 [새싹의 구매 및 적립]
+              </p>
+              <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
+                <li className="mb-0 leading-[23.5px]">
+                  새싹은 회사가 정한 결제 수단(카카오페이, 신용카드 등)을 통해 유료로 구매할 수 있으며, 표시된 결제 금액에는 부가가치세(10%)가 포함되어 있습니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  회사는 이벤트, 프로모션 등을 통해 회원에게 무상 새싹을 지급할 수 있으며, 무상 새싹의 지급 조건 및 사용 조건은 각 이벤트 안내에 따릅니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  새싹은 서비스 내에서 유료 콘텐츠 이용 목적으로만 사용할 수 있으며, 현금으로 환급되거나 다른 회원에게 양도, 매매, 상속, 대여, 담보 등의 목적으로 사용할 수 없습니다. 다만, 제10조에 따른 환불은 예외로 합니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  만 19세 미만의 미성년자가 새싹을 유료 구매하는 경우, 법정대리인의 동의를 얻어야 합니다. 법정대리인의 동의 없이 이루어진 결제는 미성년자 본인 또는 법정대리인이 취소할 수 있습니다. 다만, 미성년자가 법정대리인이 범위를 정하여 처분을 허락한 재산으로 구매한 경우 또는 속임수로써 성년자로 믿게 한 경우에는 취소가 제한됩니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  회사는 새싹의 종류, 가격, 지급 수량 등을 변경할 수 있으며, 변경 사항이 회원에게 불리한 경우 최소 30일 전에 공지합니다.
+                </li>
+                <li className="leading-[23.5px]">
+                  회사는 새싹 구매 시 거래 조건(종류, 가격, 이용 방법, 환불 조건 등)을 명확하게 고지합니다.
+                </li>
+              </ol>
+            </motion.div>
+
+            {/* 제8조 [새싹의 유효기간 및 소멸] */}
+            <motion.div
+              className="flex flex-col gap-[8px]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.38 }}
+            >
+              <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
+                제8조 [새싹의 유효기간 및 소멸]
+              </p>
+              <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
+                <li className="mb-0 leading-[23.5px]">
+                  유상 새싹의 유효기간은 구매일로부터 5년입니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  무상 새싹의 유효기간은 지급 시 안내한 조건에 따르며, 별도의 안내가 없는 경우 지급일로부터 180일입니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  유효기간이 경과한 새싹은 자동으로 소멸되며, 소멸된 새싹은 복구되지 않습니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  회사는 새싹 소멸 예정일 30일 전까지 회원에게 소멸 예정 사실을 알림톡, 서비스 내 알림 등의 방법으로 통지합니다.
+                </li>
+                <li className="leading-[23.5px]">
+                  새싹에 오류가 발생한 경우, 회원은 오류 발생일로부터 30일 이내에 회사에 정정을 요청할 수 있으며, 회사는 정당한 요청임이 확인된 경우 30일 이내에 정정합니다.
+                </li>
+              </ol>
+            </motion.div>
+
+            {/* 제9조 [이용자의 의무] */}
+            <motion.div
+              className="flex flex-col gap-[8px]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.41 }}
+            >
+              <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
+                제9조 [이용자의 의무]
               </p>
               <div className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
                 <p className="mb-[8px]">1. 이용자는 서비스 이용 시 다음 행위를 해서는 안 됩니다:</p>
@@ -242,44 +318,61 @@ export default function TermsOfServicePage() {
                   <li className="mb-0">서비스의 정상적인 운영을 방해하는 행위</li>
                   <li className="mb-0">스크립트 등을 이용하여 회사의 서버 리소스 등을 무단으로 사용하는 행위</li>
                   <li className="mb-0">서비스 취약점을 악용하여 부정하게 이용하는 행위</li>
+                  <li className="mb-0">매크로, 다중 계정 등 부정한 방법으로 새싹을 구매하거나 적립하는 행위</li>
+                  <li className="mb-0">새싹을 현금, 재화 등으로 환전하거나 제3자에게 양도, 매매하는 행위</li>
                 </ul>
                 <p className="mb-[8px]">2. 이용자는 본인의 정보가 변경된 경우 즉시 수정해야 하며, 이를 소홀히 하여 발생한 불이익에 대해 회사는 책임지지 않습니다.</p>
                 <p>3. 이용자는 본 약관 및 관련 법령에서 규정한 사항을 준수해야 합니다.</p>
               </div>
             </motion.div>
 
-            {/* 제8조 [청약 철회 및 환불] */}
-            <motion.div 
+            {/* 제10조 [청약 철회 및 환불] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              transition={{ duration: 0.5, delay: 0.44 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제8조 [청약 철회 및 환불]
+                제10조 [청약 철회 및 환불]
               </p>
-              <div className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
-                <p className="mb-[8px]">1. 유료 콘텐츠의 경우, 콘텐츠 특성상 "이용 즉시 제공"되는 디지털 상품으로 콘텐츠 조회 이력이 있는 경우 환불이 불가능합니다.</p>
-                <p className="mb-[8px]">2. 다음의 경우에는 환불이 가능합니다:</p>
-                <ul className="list-disc ml-[22.5px] mb-[8px]">
-                  <li className="mb-0">기술적 오류로 콘텐츠를 제공받지 못한 경우</li>
-                  <li className="mb-0">정보 오류로 정상적인 결과가 나오지 않은 경우</li>
-                  <li className="mb-0">기타 오류로 정상적인 서비스를 받지 못한 경우</li>
-                </ul>
-                <p className="mb-[8px]">3. 환불을 원하는 경우, 고객센터(이메일: stargiosoft2@gmail.com)를 통해 요청할 수 있습니다. 회사는 이에 대한 사실을 확인한 후 환불 여부를 결정합니다.</p>
-                <p>4. 환불은 회사의 과실로 발생한 문제에 대해서만 가능하며, 결제일로부터 7일 이내에 요청해야 합니다.</p>
-              </div>
+              <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
+                <li className="mb-0 leading-[23.5px]">
+                  유료 콘텐츠(직접 결제 또는 새싹 사용)는 콘텐츠 특성상 "이용 즉시 제공"되는 디지털 상품으로, 콘텐츠를 조회한 경우 청약 철회가 제한됩니다. 단, 콘텐츠를 조회하지 않은 경우 결제일로부터 7일 이내에 청약 철회를 요청할 수 있습니다. 회사는 결제 전 콘텐츠의 요약 등 시험사용 기회를 제공하며, 결제 과정에서 "제공 개시 후 청약철회가 제한된다"는 사실을 이용자에게 명확히 고지합니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  유상 새싹은 구매일로부터 7일 이내에 미사용 새싹에 대하여 전액 환불을 요청할 수 있습니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  구매일로부터 7일이 경과한 유상 새싹은 미사용 잔여분에 대해 환불을 요청할 수 있으며, 이 경우 환불 금액에서 결제 대행 수수료(10%)를 차감한 금액이 환불됩니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  다음의 경우에는 기간에 관계없이 전액 환불이 가능합니다: 기술적 오류로 콘텐츠를 제공받지 못한 경우, 회사의 귀책 사유로 서비스 이용이 불가능한 경우, 표시·광고의 내용과 다르게 서비스가 제공된 경우
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  회원이 표시·광고에 위반되는 서비스를 제공받았다고 판단하는 경우, 콘텐츠를 제공받은 날로부터 3개월 이내 또는 그 사실을 안 날로부터 30일 이내에 청약 철회를 요청할 수 있습니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  무상 새싹은 환불 대상에서 제외됩니다.
+                </li>
+                <li className="mb-0 leading-[23.5px]">
+                  환불은 고객센터(이메일: stargiosoft2@gmail.com)를 통해 요청할 수 있으며, 회사는 환불 요청을 받은 날로부터 3영업일 이내에 결제 수단으로 환불을 처리합니다.
+                </li>
+                <li className="leading-[23.5px]">
+                  환불에 관한 기타 사항은 전자상거래 등에서의 소비자보호에 관한 법률 및 콘텐츠산업 진흥법에 따릅니다.
+                </li>
+              </ol>
             </motion.div>
 
-            {/* 제9조 [지적 재산권] */}
-            <motion.div 
+            {/* 제11조 [지적 재산권] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.45 }}
+              transition={{ duration: 0.5, delay: 0.47 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제9조 [지적 재산권]
+                제11조 [지적 재산권]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
@@ -294,15 +387,15 @@ export default function TermsOfServicePage() {
               </ol>
             </motion.div>
 
-            {/* 제10조 [개인정보 보호] */}
-            <motion.div 
+            {/* 제12조 [개인정보 보호] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제10조 [개인정보 보호]
+                제12조 [개인정보 보호]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
@@ -315,7 +408,7 @@ export default function TermsOfServicePage() {
                   이용자는 언제든지 개인정보 열람, 수정 및 삭제를 요청할 수 있습니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
-                  회사가 타 업체와 제휴, 인수, 분사, 합병 시 이용자의 정보는 공유될 수 있으며, 이 경우 회사는 이용자에게 해당 사실을 공지합니다.
+                  영업의 양도, 인수, 합병 등으로 개인정보가 이전되는 경우, 회사는 관련 법령에서 정한 절차에 따라 이용자에게 사전 고지하며, 이용자는 개인정보 이전에 대한 동의를 철회할 수 있습니다.
                 </li>
                 <li className="leading-[23.5px]">
                   이용자는 회사에 제공한 개인정보의 수집과 이용에 대한 동의를 언제든지 철회할 수 있습니다.
@@ -323,30 +416,31 @@ export default function TermsOfServicePage() {
               </ol>
             </motion.div>
 
-            {/* 제11조 [서비스 중단] */}
-            <motion.div 
+            {/* 제13조 [서비스 중단] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.55 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제11조 [서비스 중단]
+                제13조 [서비스 중단]
               </p>
-              <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
-                회사는 다음과 같은 경우 서비스의 제공을 일시적으로 중단할 수 있습니다: 시스템 정기 점검 또는 유지보수가 필요한 경우, 천재지변, 통신 장애 등 불가항력적 사유가 발생한 경우, 기타 회사의 판단에 따라 서비스 제공이 어려운 경우
-              </p>
+              <div className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
+                <p className="mb-[8px]">회사는 다음과 같은 경우 서비스의 제공을 일시적으로 중단할 수 있습니다: 시스템 정기 점검 또는 유지보수가 필요한 경우, 천재지변, 통신 장애 등 불가항력적 사유가 발생한 경우, 기타 회사의 판단에 따라 서비스 제공이 어려운 경우</p>
+                <p>회사가 서비스를 영구적으로 종료하는 경우, 종료일 기준 미사용 유상 새싹에 대해서는 환불 절차를 진행하며, 종료 최소 30일 전에 환불 방법 및 절차를 공지합니다.</p>
+              </div>
             </motion.div>
 
-            {/* 제12조 [운세 서비스의 한계 및 신뢰성] */}
-            <motion.div 
+            {/* 제14조 [운세 서비스의 한계 및 신뢰성] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제12조 [운세 서비스의 한계 및 신뢰성]
+                제14조 [운세 서비스의 한계 및 신뢰성]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
@@ -359,20 +453,20 @@ export default function TermsOfServicePage() {
                   회사는 이용자의 결정에 따라 해석된 운세 결과로 인해 발생하는 행위나 판단에 대해 일절 책임을 지지 않습니다.
                 </li>
                 <li className="leading-[23.5px]">
-                  운세 콘텐츠는 엔터테인먼트적 목적이며, 특정한 결정이나 진단, 치료의 근거로 사용해서는  됩니다.
+                  운세 콘텐츠는 엔터테인먼트적 목적이며, 진단, 치료, 법률·재정 자문 등의 대체 수단으로 사용해서는 안 되며, 전문적인 상담이 필요한 경우 반드시 해당 분야 전문가와 상의해야 합니다.
                 </li>
               </ol>
             </motion.div>
 
-            {/* 제13조 [서비스 이용제한] */}
-            <motion.div 
+            {/* 제15조 [서비스 이용제한] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.65 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제13조 [서비스 이용제한]
+                제15조 [서비스 이용제한]
               </p>
               <div className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
                 <p className="mb-[8px]">1. 회사는 다음에 해당하는 경우 사전통지 없이 이용자의 이용계약을 해지하거나 일정기간 서비스 이용을 제한할 수 있습니다.</p>
@@ -382,22 +476,23 @@ export default function TermsOfServicePage() {
                   <li className="mb-0">공공질서 및 미풍양속에 반하는 경우</li>
                   <li className="mb-0">타인의 명예를 훼손하거나 불이익을 주는 경우</li>
                   <li className="mb-0">서비스에 위해를 가하는 등 건전한 이용을 저해하는 경우</li>
-                  <li className="mb-0">회사의 서버 리소스 등을 무단으 사용하는 경</li>
+                  <li className="mb-0">회사의 서버 리소스 등을 무단으로 사용하는 경우</li>
                   <li className="mb-0">기타 관계법령에 위배되는 경우</li>
                 </ul>
-                <p>2. 제한된 이용자는 서비스 이용 정지에 대해 회사에 이의를 제기할 수 있으며, 회사는 이를 검토하여 적절한 조치를 취합니다.</p>
+                <p className="mb-[8px]">2. 제한된 이용자는 서비스 이용 정지에 대해 회사에 이의를 제기할 수 있으며, 회사는 이를 검토하여 적절한 조치를 취합니다.</p>
+                <p>3. 이용이 제한되거나 계약이 해지된 회원의 미사용 유상 새싹은 제10조에 따라 환불 처리됩니다. 다만, 회원의 귀책 사유로 인한 제한의 경우 환불 수수료가 부과될 수 있습니다.</p>
               </div>
             </motion.div>
 
-            {/* 제14조 [회사 리소스 무단 사용에 대한 조치] */}
-            <motion.div 
+            {/* 제16조 [회사 리소스 무단 사용에 대한 조치] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.7 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제14조 [회사 리소스 무단 사용에 대한 조치]
+                제16조 [회사 리소스 무단 사용에 대한 조치]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
@@ -406,15 +501,15 @@ export default function TermsOfServicePage() {
               </ol>
             </motion.div>
 
-            {/* 제15조 [시스템 보안 및 해킹 방지] */}
-            <motion.div 
+            {/* 제17조 [시스템 보안 및 해킹 방지] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.75 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제15조 [시스템 보안 및 해킹 방지]
+                제17조 [시스템 보안 및 해킹 방지]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
@@ -426,42 +521,45 @@ export default function TermsOfServicePage() {
               </ol>
             </motion.div>
 
-            {/* 제16조 [책임의 제한] */}
-            <motion.div 
+            {/* 제18조 [책임의 제한] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.8 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제16조 [책임의 제한]
+                제18조 [책임의 제한]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
-                  회사는 서비스의 중단, 지연, 오류 등으로 인한 이용자의 손해에 대해 책임을 지지 않으며, 이용자는 이를 감수하고 서비스 이용에 동의하는 것으로 간주됩니다.
+                  회사 또는 그 피용자의 고의 또는 중대한 과실이 없는 한, 서비스의 중단, 지연, 오류 등으로 인한 통상 손해 외의 간접·특별 손해에 대해서는 책임을 지지 않습니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
                   회사는 천재지변 및 이에 준하는 불가항력으로 인하여 서비스를 제공할 수 없는 경우, 서비스 제공에 관한 책임이 면제됩니다.
                 </li>
-                <li className="leading-[23.5px]">
+                <li className="mb-0 leading-[23.5px]">
                   회사는 이용자가 서비스에 입력한 정보 및 자료의 신뢰성, 정확성 등 내용에 관하여 책임을 지지 않습니다.
+                </li>
+                <li className="leading-[23.5px]">
+                  본 조의 책임 제한은 제10조(청약 철회 및 환불)에서 정한 회사의 의무에 영향을 미치지 않습니다.
                 </li>
               </ol>
             </motion.div>
 
-            {/* 제17조 [회사의 의무] */}
-            <motion.div 
+            {/* 제19조 [회사의 의무] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.85 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제17조 [회사의 의무]
+                제19조 [회사의 의무]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
-                  회사는 제11조 및 기타 특별한 사유가 없는 한 이용자가 신청한 서비스를 이용할 수 있도록 합니다.
+                  회사는 제13조 및 기타 특별한 사유가 없는 한 이용자가 신청한 서비스를 이용할 수 있도록 합니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
                   회사는 본 약관에서 정한 바에 따라 지속적, 안정적으로 서비스를 제공할 의무가 있습니다.
@@ -472,22 +570,22 @@ export default function TermsOfServicePage() {
               </ol>
             </motion.div>
 
-            {/* 제18조 [준거법 및 관할] */}
-            <motion.div 
+            {/* 제20조 [준거법 및 관할] */}
+            <motion.div
               className="flex flex-col gap-[8px]"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.9 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                제18조 [준거법 및 관할]
+                제20조 [준거법 및 관할]
               </p>
               <ol className="font-['Pretendard_Variable:Regular',sans-serif] list-decimal text-[#5f5f5f] text-[15px] tracking-[-0.3px] ml-[22.5px]">
                 <li className="mb-0 leading-[23.5px]">
                   본 약관은 대한민국 법령에 따라 해석됩니다.
                 </li>
                 <li className="mb-0 leading-[23.5px]">
-                  서비스와 관련된 분쟁은 회사의 본점 소재지를 관할하는 법원을 제1심 관할 법원으로 합니다.
+                  서비스와 관련된 분쟁의 관할 법원은 민사소송법 등 관련 법령에 따릅니다.
                 </li>
                 <li className="leading-[23.5px]">
                   분쟁 발생 시, 우선적으로 회사와 이용자는 원만한 해결을 위해 상호 협력해야 하며, 협의가 되지 않을 경우 법적 절차를 진행할 수 있습니다.
@@ -521,7 +619,7 @@ export default function TermsOfServicePage() {
                 부 칙
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
-                (시행일) 이 약관은 2026년 2월 4일부터 시행합니다.
+                (시행일) 이 약관은 2026년 3월 ○일부터 시행합니다.
               </p>
             </motion.div>
           </div>

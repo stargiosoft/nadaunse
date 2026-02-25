@@ -25,7 +25,7 @@ import MasterContentDetail from './components/MasterContentDetail';
 import MasterContentDetailPage from './components/MasterContentDetailPage';
 import FreeContentDetail from './components/FreeContentDetail';
 import PaidContentDetailSkeleton from './components/skeletons/PaidContentDetailSkeleton'; // ⭐ 스켈레톤 로딩
-import { freeContentService } from './lib/freeContentService'; // ⭐ 무료 콘텐츠 캐시 체크
+import { freeContentService, type MasterContent } from './lib/freeContentService'; // ⭐ 무료 콘텐츠 캐시 체크
 import SajuInputPage from './components/SajuInputPage';
 import SajuManagementPage from './components/SajuManagementPage';
 import SajuAddPage from './components/SajuAddPage';
@@ -1465,6 +1465,7 @@ function FreeResultPage() {
   // ⭐️ product가 이미 있으면 로딩 불필요 (state 전달 or allProducts 조회 완료)
   const [isLoading, setIsLoading] = useState(!initialProduct);
   const [recommendedContents, setRecommendedContents] = useState<any[]>([]);
+  const [recommendedPaidContent, setRecommendedPaidContent] = useState<MasterContent | null>(null);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -1473,10 +1474,16 @@ function FreeResultPage() {
         console.log('✅ [FreeResultPage] product 이미 있음 → product 조회 스킵:', initialProduct);
         console.log('  - 출처:', productFromState ? 'FreeContentLoading state' : 'allProducts');
 
-        // ⭐ 추천 콘텐츠만 조회
+        // ⭐ 추천 콘텐츠 조회
         try {
           const { freeContentService } = await import('./lib/freeContentService');
-          const recommended = await freeContentService.fetchRecommendedContents(initialProduct.id);
+          const [recommended, paidRec] = await Promise.all([
+            freeContentService.fetchRecommendedContents(initialProduct.id),
+            (async () => {
+              const { data: { session } } = await supabase.auth.getSession();
+              return freeContentService.fetchRecommendedPaidContent(initialProduct.id, session?.user?.id);
+            })()
+          ]);
           console.log('✅ [FreeResultPage] 추천 콘텐츠 로드 (initialProduct):', recommended.length, '개');
 
           const formattedRecommended = recommended.map(content => ({
@@ -1488,6 +1495,7 @@ function FreeResultPage() {
           }));
 
           setRecommendedContents(formattedRecommended);
+          setRecommendedPaidContent(paidRec);
         } catch (error) {
           console.error('❌ [FreeResultPage] 추천 콘텐츠 조회 실패:', error);
         }
@@ -1537,9 +1545,13 @@ function FreeResultPage() {
 
             // ⭐️ 추천 콘텐츠 조회 (동일한 카테고리, 인기도 순)
             const { freeContentService } = await import('./lib/freeContentService');
-            const recommended = await freeContentService.fetchRecommendedContents(data.id);
+            const { data: { session } } = await supabase.auth.getSession();
+            const [recommended, paidRec] = await Promise.all([
+              freeContentService.fetchRecommendedContents(data.id),
+              freeContentService.fetchRecommendedPaidContent(data.id, session?.user?.id)
+            ]);
             console.log('✅ [FreeResultPage] 추천 콘텐츠 로드:', recommended.length, '개');
-            
+
             // FreeSajuDetail 형식에 맞게 변환
             const formattedRecommended = recommended.map(content => ({
               id: content.id,
@@ -1548,8 +1560,9 @@ function FreeResultPage() {
               image: content.thumbnail_url || '',
               created_at: (content as MasterContent & { created_at?: string }).created_at || ''
             }));
-            
+
             setRecommendedContents(formattedRecommended);
+            setRecommendedPaidContent(paidRec);
             setIsLoading(false);
           } else {
             console.error('❌ [FreeResultPage] 상품 없음');
@@ -1659,11 +1672,7 @@ function FreeResultPage() {
       productImage={product.image}
       contentId={id}
       onClose={handleClose}
-      recommendedProducts={recommendedContents}
-      onProductClick={(productId) => {
-        navigate(`/product/${productId}`);
-      }}
-      onBannerClick={(productId) => navigate(`/product/${productId}`)}
+      recommendedPaidContent={recommendedPaidContent}
       onUserIconClick={() => navigate('/profile')}
       fromDB={effectiveFromDB}
       dbRecordId={effectiveDbRecordId}

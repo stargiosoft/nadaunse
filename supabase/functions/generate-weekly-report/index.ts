@@ -674,6 +674,24 @@ ${sajuData ? JSON.stringify(sajuData, null, 2) : '사주 정보를 불러오지 
     const reportId = reportRecord.id
     console.log('✅ weekly_reports 저장 완료:', reportId)
 
+    // 13-1. user_situation_summaries에도 저장 (통합 심리 상태 관리)
+    if (reportData.situation_summary) {
+      const { error: situationError } = await supabase.from('user_situation_summaries').insert({
+        user_id: userId,
+        situation_summary: reportData.situation_summary,
+        source_type: 'weekly_report',
+        source_id: reportId,
+        period_start: weekRange.startDateStr,
+        period_end: weekRange.endDateStr,
+        model_used: 'gpt-5.1'
+      })
+      if (situationError) {
+        console.warn('⚠️ user_situation_summaries 저장 실패 (무시하고 계속):', situationError)
+      } else {
+        console.log('✅ user_situation_summaries 저장 완료')
+      }
+    }
+
     // 13. DB 저장 - weekly_report_sections
     const sectionsToInsert = reportData.report_sections.map((section: any) => ({
       report_id: reportId,
