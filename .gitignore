@@ -5,13 +5,9 @@ node_modules/
 .vercel
 
 # Environment files
-.env*.local
-.env.staging
-.env.preview
-.env.check
-.env.verify
-.env.production.check*
-nul
+.env
+.env.*
+!.env.example
 
 # Build output
 dist/
