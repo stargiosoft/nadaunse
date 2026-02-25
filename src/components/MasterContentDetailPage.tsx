@@ -1542,13 +1542,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 <div className="px-[20px] mb-[28px]">
                   <div className="rounded-[16px] px-[20px] py-[20px]" style={{ backgroundColor: '#f0f8f8' }}>
                     <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: '22px', letterSpacing: '-0.3px', color: '#368683', marginBottom: '12px' }}>
-                      {(() => {
-                        try {
-                          const u = localStorage.getItem('user');
-                          if (u) return `✨ ${JSON.parse(u).nickname || '회원'}님을 위한 맞춤 안내`;
-                        } catch { /* ignore */ }
-                        return '✨ 회원님을 위한 맞춤 안내';
-                      })()}
+                      ✨ 맞춤 안내
                     </p>
                     {isPurchaseGuideLoading ? (
                       <div className="flex flex-col gap-[8px]">
