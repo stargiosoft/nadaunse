@@ -677,7 +677,7 @@ function BlogPreviewSection({ navigate }: { navigate: (path: string) => void }) 
   if (posts.length === 0) return null;
 
   return (
-    <div className="px-[20px] py-[24px]" style={{ borderTop: '8px solid #f5f5f5' }}>
+    <div aria-hidden="true" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}>
       {/* 헤더 */}
       <div className="flex items-center justify-between" style={{ marginBottom: '14px' }}>
         <p style={{
