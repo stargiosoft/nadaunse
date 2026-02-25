@@ -10,6 +10,7 @@ import svgFlowerPaths from "@/imports/svg-cgnjs4xrxp";
 import svgEmptyPaths from "@/imports/svg-mzaxb1u3cp";
 import editSvgPaths from "@/imports/svg-4xnmni03a0";
 import svgArrowPaths from "@/imports/svg-nh8ftbb7rx";
+import { trackEarlyReportRequest } from '@/utils/analytics';
 
 // New 뱃지 그라데이션 애니메이션 스타일
 const newBadgeStyle = document.createElement('style');
@@ -1332,6 +1333,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   // ⭐ "이번 주 보고서 먼저 받기" → 보고서 생성 + 안내 바텀시트
   const handleGenerateReport = async () => {
     if (isGeneratingReport) return;
+    trackEarlyReportRequest(currentWeekTagsCount);
     setIsGeneratingReport(true);
     setReportGenerationStatus('generating');
     setShowReportModal(true);

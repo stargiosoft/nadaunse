@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,7 +8,6 @@ import { DotLoading } from './ui/PageLoader';
 import WeeklyReportLoading from './WeeklyReportLoading';
 import { supabase } from '@/lib/supabase';
 import FlowerPotIcon from './ui/FlowerPotIcon';
-import { trackWeeklyReportView } from '@/utils/analytics';
 
 function Icon() {
   return (
@@ -477,9 +476,6 @@ export default function ReportWeeklyDetail({
   const navigate = useNavigate();
   const location = useLocation();
 
-  // GA 트래킹 중복 방지
-  const trackedRef = useRef<string | null>(null);
-
   // ⭐ 계정 불일치 상태
   const [isWrongAccount, setIsWrongAccount] = useState(false);
   const [ownerInfo, setOwnerInfo] = useState<{
@@ -540,19 +536,6 @@ export default function ReportWeeklyDetail({
   const report = externalReport || fetchedReport;
   const myStorySection = externalSection || sections.find(s => s.section_type === 'my_story');
   const tags = externalTags || weeklyTags;
-
-  // ⭐ 주간 보고서 GA 트래킹 (미리 받은 보고서 판별)
-  useEffect(() => {
-    if (!report || !report.id) return;
-    if (trackedRef.current === report.id) return;
-    trackedRef.current = report.id;
-
-    const today = new Date().toISOString().slice(0, 10);
-    const isEarly = today <= report.week_end_date;
-    const weekRange = `${report.week_start_date} ~ ${report.week_end_date}`;
-
-    trackWeeklyReportView(report.id, isEarly, weekRange);
-  }, [report]);
 
   // ⭐ 보고서가 로드되면 캐시에 없는 경우 refresh 플래그 설정
   useEffect(() => {

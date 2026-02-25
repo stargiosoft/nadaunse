@@ -480,15 +480,9 @@ export const trackRevisitCouponIssued = (orderId: string, couponAmount: number =
   });
 };
 
-// 33. 주간 보고서 열람 (미리 받은 보고서 판별 포함)
-export const trackWeeklyReportView = (
-  reportId: string,
-  isEarlyReport: boolean,
-  weekRange?: string
-) => {
-  trackEvent('weekly_report_view', {
-    report_id: reportId,
-    is_early_report: isEarlyReport,
-    week_range: weekRange,
+// 33. 이번 주 보고서 먼저 받기 클릭
+export const trackEarlyReportRequest = (tagCount: number) => {
+  trackEvent('early_report_request', {
+    tag_count: tagCount,
   });
 };
