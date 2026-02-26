@@ -41,7 +41,9 @@ export interface DashboardStats {
   freeContentUsage: number;
   paidContentUsage: number;
   freeContentUserRate: number;  // 무료 콘텐츠 이용 유저 비율 (%)
+  freeContentPerUser: number;   // 무료 콘텐츠 1인당 평균 이용 횟수
   paidContentUserRate: number;  // 유료 콘텐츠 이용 유저 비율 (%)
+  paidContentPerUser: number;   // 유료 콘텐츠 1인당 평균 이용 횟수
   contentUsageRate: number;     // 콘텐츠 이용율 (무료 또는 유료 1개라도 이용한 유저 비율 %)
   totalRevenue: number;
   tagStats: TagStat[];
@@ -397,6 +399,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   const freeContentUserRate = totalCustomers > 0
     ? Math.round(uniqueFreeContentUsers / totalCustomers * 1000) / 10
     : 0;
+  const freeContentPerUser = uniqueFreeContentUsers > 0
+    ? Math.round((freeContentUsage || 0) / uniqueFreeContentUsers * 100) / 100
+    : 0;
 
   // 8. 유료 콘텐츠 이용 유저 수 (고유 user_id 수, 0원 제외)
   let paidContentUserQuery = supabase
@@ -425,6 +430,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   ).size;
   const paidContentUserRate = totalCustomers > 0
     ? Math.round(uniquePaidContentUsers / totalCustomers * 1000) / 10
+    : 0;
+  const paidContentPerUser = uniquePaidContentUsers > 0
+    ? Math.round((paidContentUsage || 0) / uniquePaidContentUsers * 100) / 100
     : 0;
 
   // 8-1. 콘텐츠 이용율: 무료 또는 유료 1개라도 이용한 고유 유저 수 (totalCustomers에 포함된 유저만)
@@ -505,7 +513,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     freeContentUsage: freeContentUsage || 0,
     paidContentUsage: paidContentUsage || 0,
     freeContentUserRate,
+    freeContentPerUser,
     paidContentUserRate,
+    paidContentPerUser,
     contentUsageRate,
     totalRevenue,
     tagStats,

@@ -2549,7 +2549,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.freeContentUsage}
                   unit="건"
                   color="#48B2AF"
-                  subValue={`이용율 ${stats.freeContentUserRate}%`}
+                  subValue={`이용율 ${stats.freeContentUserRate}% / 1인당 ${stats.freeContentPerUser}회`}
                 />
                 <StatCard
                   icon={CreditCard}
@@ -2557,7 +2557,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   value={stats.paidContentUsage}
                   unit="건"
                   color="#368683"
-                  subValue={`이용율 ${stats.paidContentUserRate}%`}
+                  subValue={`이용율 ${stats.paidContentUserRate}% / 1인당 ${stats.paidContentPerUser}회`}
                 />
               </div>
             </section>
