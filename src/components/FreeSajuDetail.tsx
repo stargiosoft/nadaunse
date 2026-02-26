@@ -443,22 +443,11 @@ export default function FreeSajuDetail({
                       <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '24px', letterSpacing: '-0.32px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-2 overflow-hidden">
                         {recommendedPaidContent.title}
                       </p>
-                      {/* 가격 정보 */}
-                      <div className="flex items-center gap-[6px]">
-                        {recommendedPaidContent.discount_rate > 0 && (
-                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#ef6878', fontFamily: 'Pretendard Variable' }}>
-                            {recommendedPaidContent.discount_rate}%
-                          </span>
-                        )}
-                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#151515', fontFamily: 'Pretendard Variable' }}>
-                          {recommendedPaidContent.price_discount.toLocaleString()}원
-                        </span>
-                        {recommendedPaidContent.discount_rate > 0 && (
-                          <span style={{ fontSize: '13px', fontWeight: 400, color: '#999', textDecoration: 'line-through', fontFamily: 'Pretendard Variable' }}>
-                            {recommendedPaidContent.price_original.toLocaleString()}원
-                          </span>
-                        )}
-                      </div>
+                      {recommendedPaidContent.description && (
+                        <p className="line-clamp-3" style={{ fontSize: '14px', fontWeight: 400, lineHeight: '22px', color: '#555', fontFamily: 'Pretendard Variable', margin: 0 }}>
+                          {recommendedPaidContent.description}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>

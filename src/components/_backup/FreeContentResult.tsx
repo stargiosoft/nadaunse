@@ -1,23 +1,36 @@
 /**
  * 무료 콘텐츠 결과 페이지
- * Figma 디자인 시안 기반 (390-238-3546), DB 연동
+ * - 무료 콘텐츠 AI 생성 결과 표시
+ * - 하단 '다음' 버튼으로 나다움 기록하기 페이지로 이동
+ *
+ * @author Figma Make
+ * @since 2024-12-16
+ * @updated 2026-01-28 - 나다움 기록하기 연결을 위한 '다음' 버튼 추가
  */
 
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home } from 'lucide-react';
+import { Button } from './ui/button';
 import svgPaths from "../imports/svg-z3xcg5m9wk";
+import { ContentTags, isContentNew } from './ContentTags';
+import type { MasterContent } from '../lib/freeContentService';
 
 interface Question {
-  id: string;
   question_text: string;
-  preview_text: string;
+  answer_text: string;
 }
 
 interface FreeContentResultProps {
+  contentId: string;
   contentTitle: string;
-  questions: Question[];
+  contentThumbnail?: string;
+  questions: string[] | Question[];
   onBack: () => void;
   onHome: () => void;
   onPurchase?: () => void;
+  onNext?: () => void; // 나다움 기록하기로 이동
+  recommendedPaidContent?: MasterContent | null; // ⭐ 유료 추천 콘텐츠 1개
 }
 
 // 아이콘 컴포넌트
@@ -35,48 +48,63 @@ function Icons() {
   );
 }
 
-// 홈 인디케이터
-function HomeIndicator() {
-  return (
-    <div className="bg-white h-[28px] relative shrink-0 w-full">
-      <div className="absolute bg-black bottom-[8px] h-[5px] left-1/2 rounded-[100px] translate-x-[-50%] w-[134px]" />
-    </div>
-  );
-}
-
 export default function FreeContentResult({
+  contentId,
   contentTitle,
+  contentThumbnail,
   questions,
   onBack,
   onHome,
-  onPurchase
+  onPurchase,
+  onNext,
+  recommendedPaidContent
 }: FreeContentResultProps) {
-  // 첫 3개는 카드로 표시
-  const cardQuestions = questions.slice(0, 3);
-  // 나머지는 리스트로 표시
-  const listQuestions = questions.slice(3);
+  const navigate = useNavigate();
+
+  // questions가 string[]인 경우와 Question[]인 경우 모두 처리
+  const normalizedQuestions = questions.map((q, idx) => {
+    if (typeof q === 'string') {
+      return {
+        question_text: `Q${idx + 1}`,
+        answer_text: q
+      };
+    }
+    return {
+      question_text: q.question_text,
+      answer_text: q.answer_text
+    };
+  });
 
   return (
-    <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[390px] relative">
+    <div className="bg-white fixed inset-0 flex flex-col w-full">
+      <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
         {/* Top Navigation */}
-        <div className="fixed content-stretch flex flex-col items-start left-1/2 -translate-x-1/2 top-0 w-full max-w-[390px] z-10 bg-white">
+        <div className="sticky top-0 flex flex-col w-full z-10 bg-white">
           <div className="bg-white h-[52px] relative shrink-0 w-full">
             <div className="flex flex-col justify-center size-full">
-              <div className="box-border content-stretch flex flex-col gap-[10px] h-[52px] items-start justify-center px-[12px] py-[4px] relative w-full">
-                <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                  <div 
+              <div className="box-border flex flex-col gap-[10px] h-[52px] justify-center px-[12px] py-[4px] relative w-full">
+                <div className="flex items-center justify-between relative shrink-0 w-full">
+                  <div
                     onClick={onBack}
-                    className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer hover:bg-gray-100"
+                    className="box-border flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer hover:bg-gray-100 active:bg-gray-100"
                   >
                     <ArrowLeft className="w-6 h-6 text-[#848484]" />
                   </div>
-                  <p className="basis-0 grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
-                    {contentTitle}
+                  <p
+                    className="basis-0 grow leading-[25.5px] min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-center text-nowrap"
+                    style={{
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: 600,
+                      fontSize: '18px',
+                      color: '#000000',
+                      letterSpacing: '-0.36px'
+                    }}
+                  >
+                    상세 풀이
                   </p>
-                  <div 
+                  <div
                     onClick={onHome}
-                    className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer hover:bg-gray-100"
+                    className="box-border flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer hover:bg-gray-100 active:bg-gray-100"
                   >
                     <Home className="w-6 h-6 text-[#848484]" />
                   </div>
@@ -86,163 +114,156 @@ export default function FreeContentResult({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="pt-[52px] pb-[120px]">
-          {/* 상단 안내 문구 */}
-          <div className="relative shrink-0 w-full">
-            <div className="flex flex-row items-center justify-center size-full">
-              <div className="content-stretch flex items-center justify-center pb-[20px] pt-[32px] px-[20px] relative w-full">
-                <p className="basis-0 grow leading-[25.5px] min-h-px min-w-px relative shrink-0 text-[17px] text-black text-center tracking-[-0.34px]">
-                  아래는 일부 예시 해석입니다
-                </p>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* 상단 콘텐츠 정보 */}
+          <div className="flex items-center gap-3 px-5 py-4 bg-[#f9f9f9]">
+            {contentThumbnail && (
+              <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
+                <img
+                  src={contentThumbnail}
+                  alt={contentTitle}
+                  className="w-full h-full object-cover"
+                />
               </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
-
-          {/* 카드 질문 리스트 (01, 02, 03) */}
-          <div className="content-stretch flex flex-col gap-[48px] items-center relative shrink-0 w-full px-[20px] mt-[40px]">
-            {cardQuestions.map((question, index) => (
-              <div key={question.id} className="w-full">
-                {/* Answer Preview Card - Figma 구조 정확히 따름 */}
-                <div className={`${index === 2 ? 'h-[441px]' : 'h-[293px]'} relative shrink-0 w-full`}>
-                  {/* 카드 내용 컨테이너 */}
-                  <div className="absolute content-stretch flex flex-col inset-0 items-start">
-                    {/* 질문 제목 */}
-                    <div className="content-stretch flex flex-col gap-[12px] items-center relative shrink-0 w-full">
-                      <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                        <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                          <p className="basis-0 grow leading-[28.5px] min-h-px min-w-px relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">
-                            {String(index + 1).padStart(2, '0')}. {question.question_text}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 답변 카드 배경 */}
-                    <div className={`bg-[#f9f9f9] ${index === 2 ? 'h-[400px]' : 'h-[252px]'} relative rounded-[12px] shrink-0 w-full`}>
-                      <div className="size-full">
-                        <div className="content-stretch flex items-start px-[20px] py-[16px] relative size-full">
-                          <div className="basis-0 content-stretch flex flex-col gap-[8px] grow items-start min-h-px min-w-px relative shrink-0">
-                            {/* [맛보기] 라벨 */}
-                            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-                              <p className="leading-[25.5px] relative shrink-0 text-[#151515] text-[15px] tracking-[-0.3px] w-full">
-                                [맛보기]
-                              </p>
-                            </div>
-                            {/* 답변 텍스트 */}
-                            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-                              <p className="font-normal leading-[25.5px] relative shrink-0 text-[#525252] text-[15px] tracking-[-0.3px] w-full">
-                                {question.preview_text}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* "여기까지만 공개돼요" 오버레이 - Figma inset 정확히 사용 */}
-                  <div className={`absolute bg-[#f9f9f9] content-stretch flex flex-col ${index === 2 ? 'inset-[calc(100%-57px)_0_0_0]' : 'inset-[80.55%_0_0_0]'} items-center justify-center p-[16px] rounded-bl-[16px] rounded-br-[16px]`}>
-                    <div aria-hidden="true" className="absolute border-[#f3f3f3] border-[1px_0px_0px] border-solid inset-0 pointer-events-none rounded-bl-[16px] rounded-br-[16px] shadow-[0px_-26px_26px_0px_#f9f9f9]" />
-                    <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 z-10">
-                      <Icons />
-                      <div className="content-stretch flex flex-col items-center justify-center relative shrink-0">
-                        <div className="content-stretch flex items-center justify-center pb-0 pt-[3px] px-0 relative shrink-0">
-                          <p className="leading-[22px] relative shrink-0 text-[#41a09e] text-[14px] text-nowrap tracking-[-0.42px]">
-                            여기까지만 공개돼요
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                {index < cardQuestions.length - 1 && (
-                  <div className="h-0 relative shrink-0 w-full my-[48px]">
-                    <div className="absolute inset-[-0.5px_0]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 390 1">
-                        <path d="M0 0.5H390" stroke="#F3F3F3" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* 나머지 질문 리스트 (04~) */}
-          {listQuestions.length > 0 && (
-            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full px-[20px] mt-[48px]">
-              <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                {listQuestions.map((question, idx) => (
-                  <div key={question.id}>
-                    {/* 리스트 아이템 */}
-                    <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
-                      <Icons />
-                      <div className="basis-0 content-stretch flex grow items-center min-h-px min-w-px pb-0 pt-[3px] px-0 relative shrink-0">
-                        <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">
-                          {String(idx + 4).padStart(2, '0')}. {question.question_text}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    {idx < listQuestions.length - 1 && (
-                      <div className="h-0 relative shrink-0 w-full my-[12px]">
-                        <div className="absolute inset-[-0.5px_0]">
-                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                            <path d="M0 0.5H350" stroke="#F3F3F3" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Divider */}
-          <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full mt-[48px]" />
-
-          {/* 하단 안내 문구 */}
-          <div className="bg-[#f0f8f8] content-stretch flex items-center justify-center px-[16px] py-[12px] relative rounded-[12px] shrink-0 mx-[20px] mt-[40px]">
-            <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
-            <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0">
-              <p className="leading-[25.5px] relative shrink-0 text-[#41a09e] text-[15px] text-center tracking-[-0.3px] w-full">
-                더 깊은 풀이는 구매 후 확인할 수 있습니다
+            )}
+            <div className="flex flex-col gap-1">
+              <ContentTags isPaid={false} isNew={false} isRead={true} />
+              <p style={{
+                fontFamily: 'Pretendard Variable',
+                fontWeight: 500,
+                fontSize: '15px',
+                color: '#151515',
+                letterSpacing: '-0.3px'
+              }}>
+                {contentTitle}
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Bottom Button */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 content-stretch flex flex-col items-start shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] w-full max-w-[390px] z-10">
-          <div className="bg-white relative shrink-0 w-full">
-            <div className="flex flex-col items-center justify-center size-full">
-              <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
-                <div 
-                  onClick={onPurchase}
-                  className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer hover:bg-[#3a9794] transition-colors"
+          {/* 질문 및 답변 리스트 */}
+          <div className="flex flex-col gap-8 px-5 py-8" style={{ paddingBottom: '180px' }}>
+            {normalizedQuestions.map((question, index) => (
+              <div key={index} className="flex flex-col gap-3">
+                {/* 질문 번호 및 텍스트 */}
+                <div className="flex items-start gap-2">
+                  <span style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    color: '#41a09e',
+                    minWidth: '24px'
+                  }}>
+                    Q{index + 1}
+                  </span>
+                  <p style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: 500,
+                    fontSize: '15px',
+                    color: '#151515',
+                    lineHeight: '24px',
+                    letterSpacing: '-0.3px'
+                  }}>
+                    {question.question_text}
+                  </p>
+                </div>
+
+                {/* 답변 카드 */}
+                <div className="bg-[#f9f9f9] rounded-xl p-4">
+                  <p style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: 400,
+                    fontSize: '15px',
+                    color: '#525252',
+                    lineHeight: '25.5px',
+                    letterSpacing: '-0.3px'
+                  }}>
+                    {question.answer_text}
+                  </p>
+                </div>
+
+                {/* Divider */}
+                {index < normalizedQuestions.length - 1 && (
+                  <div className="h-px bg-[#f3f3f3] mt-4" />
+                )}
+              </div>
+            ))}
+
+            {/* ⭐ 유료 추천 콘텐츠 카드 1개 */}
+            {recommendedPaidContent && (
+              <div className="mt-4">
+                <div className="bg-[#f9f9f9] h-3 -mx-5 mb-8" />
+
+                <p style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  color: '#151515',
+                  marginBottom: '16px'
+                }}>
+                  이런 운세는 어때요?
+                </p>
+
+                {/* 대형 썸네일 카드 (홈 Featured Card 스타일) */}
+                <div
+                  onClick={() => navigate(`/product/${recommendedPaidContent.id}?from=free`)}
+                  className="flex flex-col gap-[12px] items-start w-full cursor-pointer transition-all duration-150 ease-out active:bg-gray-50 rounded-[16px]"
                 >
-                  <div className="flex flex-row items-center justify-center size-full">
-                    <div className="content-stretch flex h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
-                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                        <p className="leading-[25px] relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px]">
-                          구매하기
-                        </p>
+                  <div className="aspect-[350/220] pointer-events-none relative rounded-[16px] shrink-0 w-full" style={{ backgroundColor: '#f0f0f0' }}>
+                    {recommendedPaidContent.thumbnail_url ? (
+                      <img
+                        alt={recommendedPaidContent.title}
+                        className="absolute inset-0 object-cover rounded-[16px] size-full"
+                        src={recommendedPaidContent.thumbnail_url}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 rounded-[16px] flex items-center justify-center">
+                        <p style={{ fontSize: '14px', color: '#999' }}>이미지 없음</p>
                       </div>
-                    </div>
+                    )}
+                    <div aria-hidden="true" className="absolute inset-[-1px] rounded-[17px] border border-[#f9f9f9]" />
+                  </div>
+                  <div className="flex flex-col gap-[4px] w-full">
+                    <ContentTags
+                      isPaid={true}
+                      isNew={isContentNew((recommendedPaidContent as MasterContent & { created_at?: string }).created_at)}
+                    />
+                    <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '24px', letterSpacing: '-0.32px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-2 overflow-hidden">
+                      {recommendedPaidContent.title}
+                    </p>
+                    {recommendedPaidContent.description && (
+                      <p className="line-clamp-3" style={{ fontSize: '14px', fontWeight: 400, lineHeight: '22px', color: '#555', fontFamily: 'Pretendard Variable', margin: 0 }}>
+                        {recommendedPaidContent.description}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
-          <HomeIndicator />
+        </div>
+
+        {/* Bottom Fixed Button - '다음' 버튼 */}
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-white"
+          style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}
+        >
+          <div className="flex flex-col items-center justify-center px-5 py-3 pb-8">
+            <Button
+              onClick={onNext}
+              className="w-full h-14 rounded-2xl transition-all active:scale-[0.99]"
+              style={{
+                backgroundColor: '#48b2af',
+                fontFamily: 'Pretendard Variable',
+                fontWeight: 500,
+                fontSize: '16px',
+                color: '#ffffff',
+                letterSpacing: '-0.32px'
+              }}
+            >
+              다음
+            </Button>
+          </div>
         </div>
       </div>
     </div>

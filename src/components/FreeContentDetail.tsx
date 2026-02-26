@@ -45,7 +45,7 @@ import {
   PaidContentCard
 } from './FreeContentDetailComponents';
 import { trackPageView, trackViewItem } from '../utils/analytics';
-import FreeContentResult from './FreeContentResult';
+
 import LoginBottomSheet from './LoginBottomSheet';
 
 /**
@@ -625,22 +625,6 @@ export default function FreeContentDetail({
     const user = userJson ? JSON.parse(userJson) : null;
     
     return <FreeContentLoading userName={user?.name || '홍길동'} />;
-  }
-
-  // Result State
-  if (showResult && generatedResults.length > 0) {
-    return (
-      <FreeContentResult
-        contentId={contentId}
-        contentTitle={content.title}
-        contentThumbnail={content.thumbnail_url}
-        questions={generatedResults}
-        onBack={() => setShowResult(false)}
-        onHome={onHome}
-        onNext={onNext}
-        recommendedPaidContent={recommendedPaidContent}
-      />
-    );
   }
 
   // Main Content
