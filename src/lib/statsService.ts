@@ -17,7 +17,8 @@ const ADMIN_IDS = [
   '9fb0b23b-b65b-4fb5-a356-b9969a842c55',
   '2ad4d963-d51e-4a17-a7ca-5ca533585627',  // beaverj594@gmail.com
   'fa39bffa-fe66-4146-aedc-9e891e6afe6e',
-  '78086751-8a01-4fdc-805f-13e4dc14bec9'
+  '78086751-8a01-4fdc-805f-13e4dc14bec9',
+  '3bce6597-f27b-467d-b52d-6d0881b6ece5'   // gksrufk813@stargio.co.kr
 ];
 
 // 기간 프리셋 타입
