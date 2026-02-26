@@ -315,13 +315,6 @@
   - 자동 리디렉션
 - **파일 경로**: `/components/GlobalAIMonitor.tsx`
 
-### FreeContentResult.tsx
-- **역할**: 무료 콘텐츠 AI 생성 결과 표시 페이지
-- **사용처**: 무료 콘텐츠 로딩 완료 후
-- **타입**: Page Component
-- **주요 기능**: 하단 '다음' 버튼으로 나다움 기록하기 페이지 이동
-- **파일 경로**: `/components/FreeContentResult.tsx`
-
 ### ContentTags.tsx
 - **역할**: 콘텐츠 태그 표시 (New, 심화/무료, 읽어봄)
 - **사용처**: 홈 화면, 유료/무료 콘텐츠 상세 페이지
@@ -966,8 +959,8 @@
 
 ### FreeContentResult.tsx
 - **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 실제 코드 플로우에서 사용되지 않음 (FreeSajuDetail로 직접 이동)
-- **백업 날짜**: 2026-01-17
+- **사유**: 실제 코드 플로우에서 사용되지 않음 (FreeSajuDetail로 직접 이동). 모든 무료 콘텐츠가 사주 기반이라 미사용 확인
+- **백업 날짜**: 2026-02-26
 - **파일 경로**: `/components/_backup/FreeContentResult.tsx`
 
 ### ProfilePageWithSaju.tsx

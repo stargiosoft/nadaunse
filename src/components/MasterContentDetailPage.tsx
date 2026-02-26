@@ -165,6 +165,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   // ⭐ AI 개인화 구매 가이드
   const [purchaseGuide, setPurchaseGuide] = useState<string | null>(null);
   const [isPurchaseGuideLoading, setIsPurchaseGuideLoading] = useState(false);
+  const [primarySajuName, setPrimarySajuName] = useState<string | null>(null);
   // 태그 유무를 동기적으로 확인 (스켈레톤 표시 판단용)
   const [hasTraitTags] = useState(() => {
     try {
@@ -594,6 +595,22 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     fetchContent();
   }, [contentId, loadFromCache, saveToCache]);
 
+  // ⭐ 본인 사주 닉네임 조회
+  useEffect(() => {
+    const fetchPrimarySajuName = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data } = await supabase
+        .from('saju_records')
+        .select('full_name')
+        .eq('user_id', session.user.id)
+        .eq('is_primary', true)
+        .maybeSingle();
+      if (data?.full_name) setPrimarySajuName(data.full_name);
+    };
+    fetchPrimarySajuName();
+  }, []);
+
   // ⭐ AI 개인화 구매 가이드 로드 (콘텐츠 로드와 동시 시작)
   useEffect(() => {
     // 비로그인 또는 태그 없음 → 스킵
@@ -616,7 +633,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       if (cached && !needsRefresh) {
         const parsed = JSON.parse(cached);
         if (parsed.timestamp && Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
-          setPurchaseGuide(parsed.guide);
+          setPurchaseGuide(parsed.guide.replace(/\\n/g, '\n'));
           return;
         }
       }
@@ -633,7 +650,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         return;
       }
       if (data?.success && data.guide) {
-        setPurchaseGuide(data.guide);
+        setPurchaseGuide(data.guide.replace(/\\n/g, '\n'));
         localStorage.setItem(cacheKey, JSON.stringify({
           guide: data.guide,
           timestamp: Date.now()
@@ -1194,16 +1211,25 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                         <div className={`relative shrink-0 w-full mt-[-8px] mb-[-4px] ${isCouponLoaded ? '' : 'hidden'}`}>
                           <div className="size-full">
                             <div className="box-border content-stretch flex flex-col gap-0 items-start px-[2px] py-0 relative w-full">
-                                {/* 할인율 + 할인가격 + 정상가격(취소선) */}
-                                <div className="content-stretch flex gap-[6px] items-center relative shrink-0">
-                                  <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#ff6b6b] text-[20px] text-nowrap tracking-[-0.4px] mr-[-2px]">
-                                    {content.discount_rate || 0}%
-                                  </p>
-                                  <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#151515] text-[22px] text-nowrap tracking-[-0.22px]">
-                                    {content.price_discount?.toLocaleString() || '0'}원
-                                  </p>
-                                  <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#999999] text-[14px] text-nowrap tracking-[-0.28px]">
-                                    <s>{content.price_original?.toLocaleString() || '0'}원</s>
+                                {/* 할인율 + 정상가격(취소선) + 할인가격 (새싹 포인트) */}
+                                <div className="content-stretch flex flex-col gap-px items-start relative shrink-0 w-full">
+                                  <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
+                                    <div className="flex items-center relative shrink-0">
+                                      <div className="flex items-center justify-center relative shrink-0" style={{ width: '14px', height: '14px' }}>
+                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                          <path d="M10.0074 2.60754C9.97776 2.52141 9.92196 2.44669 9.84779 2.3938C9.77363 2.34091 9.6848 2.31249 9.59371 2.3125C7.59488 2.3125 5.99637 2.71391 4.84219 3.50605C3.44766 4.46309 2.6968 5.97273 2.60356 8L0.406212 8C0.320545 8.00001 0.236764 8.02517 0.165264 8.07235C0.0937644 8.11954 0.0376915 8.18668 0.00400163 8.26545C-0.0296882 8.34421 -0.0395124 8.43113 -0.0242523 8.51543C-0.00899221 8.59973 0.0306808 8.67769 0.0898449 8.73965L4.68359 13.5521C4.72444 13.5949 4.77354 13.629 4.82792 13.6522C4.88229 13.6755 4.94082 13.6875 4.99996 13.6875C5.0591 13.6875 5.11763 13.6755 5.17201 13.6522C5.22638 13.629 5.27548 13.5949 5.31633 13.5521L9.91008 8.73965C9.96924 8.67769 10.0089 8.59973 10.0242 8.51543C10.0394 8.43114 10.0296 8.34421 9.99592 8.26545C9.96223 8.18668 9.90616 8.11954 9.83466 8.07235C9.76316 8.02517 9.67938 8.00001 9.59371 8L7.4125 8C7.44969 6.76953 7.64902 5.83984 8.03156 5.09965C8.445 4.29984 9.0627 3.71988 9.86359 3.09481C9.9354 3.03873 9.9879 2.96164 10.0138 2.87428C10.0397 2.78693 10.0376 2.69368 10.008 2.60754L10.0074 2.60754Z" fill="#FF6678"/>
+                                        </svg>
+                                      </div>
+                                      <p style={{ fontSize: '14px', fontWeight: 500, lineHeight: '22px', color: '#ff6678', letterSpacing: '-0.42px' }}>
+                                        {content.discount_rate || 0}%할인
+                                      </p>
+                                    </div>
+                                    <p style={{ fontSize: '13px', fontWeight: 400, lineHeight: '19px', color: '#999', letterSpacing: '-0.26px', textDecoration: 'line-through' }}>
+                                      {content.price_original?.toLocaleString() || '0'}새싹
+                                    </p>
+                                  </div>
+                                  <p style={{ fontSize: '20px', fontWeight: 700, lineHeight: '28px', color: '#151515', letterSpacing: '-0.2px' }}>
+                                    {content.price_discount?.toLocaleString() || '0'}새싹
                                   </p>
                                 </div>
                                 
@@ -1221,7 +1247,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     return (
                                       <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
                                         <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
-                                          {finalPrice.toLocaleString()}원
+                                          {finalPrice.toLocaleString()}새싹
                                         </p>
                                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                           <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
@@ -1239,7 +1265,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     return (
                                       <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
                                         <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
-                                          {finalPrice.toLocaleString()}원
+                                          {finalPrice.toLocaleString()}새싹
                                         </p>
                                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                           <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
@@ -1261,7 +1287,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                         className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full"
                                       >
                                         <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
-                                          {finalPrice.toLocaleString()}원
+                                          {finalPrice.toLocaleString()}새싹
                                         </p>
                                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                           <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
@@ -1282,7 +1308,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                     return (
                                       <div className="content-stretch flex gap-[6px] items-center relative shrink-0 w-full">
                                         <p className="font-bold leading-[32.5px] not-italic relative shrink-0 text-[#48b2af] text-[22px] text-nowrap tracking-[-0.22px] whitespace-pre">
-                                          {abPrice.price_discount.toLocaleString()}원
+                                          {abPrice.price_discount.toLocaleString()}새싹
                                         </p>
                                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                           <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#48b2af] text-[13px] text-nowrap whitespace-pre">
@@ -1348,7 +1374,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                       <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                         <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
                                           재구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
+                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}새싹으로</span>
                                           <span>{` 풀이 보기`}</span>
                                         </p>
                                         <motion.div 
@@ -1377,7 +1403,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           const discountAmount = welcomeCoupon.coupons.discount_amount || 5000;
                           const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
                           return (
-                            <button 
+                            <button
                               onClick={onPurchase}
                               onTouchStart={() => {}} // 모바일 active 상태 활성화
                               className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
@@ -1402,10 +1428,10 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                       <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                         <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
                                           첫 구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
+                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}새싹으로</span>
                                           <span>{` 풀이 보기`}</span>
                                         </p>
-                                        <motion.div 
+                                        <motion.div
                                           className="relative shrink-0 size-[12px]"
                                           animate={{ x: [0, 3, 0] }}
                                           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
@@ -1457,7 +1483,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                                       <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
                                         <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
                                           첫 구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
+                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}새싹으로</span>
                                           <span>{` 풀이 보기`}</span>
                                         </p>
                                         <motion.div
@@ -1551,7 +1577,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 <div className="px-[20px] mb-[28px]">
                   <div className="rounded-[16px] px-[20px] py-[20px]" style={{ backgroundColor: '#f0f8f8' }}>
                     <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: '22px', letterSpacing: '-0.3px', color: '#368683', marginBottom: '12px' }}>
-                      ✨ 맞춤 안내
+                      ✨ {primarySajuName ? `${primarySajuName}님을 위한 맞춤 안내` : '맞춤 안내'}
                     </p>
                     {isPurchaseGuideLoading ? (
                       <div className="flex flex-col gap-[8px]">
@@ -2374,7 +2400,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     <div className="flex flex-row items-center justify-center size-full">
                       <div className="box-border content-stretch flex gap-[10px] h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                          <p className="font-medium leading-[25px] not-italic relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px] whitespace-pre select-none [-webkit-touch-callout:none]">구매하기</p>
+                          <p className="font-medium leading-[25px] not-italic relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px] whitespace-pre select-none [-webkit-touch-callout:none]">지금 풀이 확인하기</p>
                         </div>
                       </div>
                     </div>
