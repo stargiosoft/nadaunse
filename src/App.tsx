@@ -1818,7 +1818,7 @@ function SproutChargingStationPage() {
             paid_amount: requiredAmount,
             pay_method: 'sprout',
             pg_provider: 'sprout',
-            pstatus: 'paid',
+            pstatus: 'completed',
             success: true,
             gname,
           })

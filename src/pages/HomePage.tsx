@@ -1423,7 +1423,7 @@ export default function HomePage() {
           .from('orders')
           .select('content_id')
           .eq('user_id', userId)
-          .eq('pstatus', 'completed');
+          .in('pstatus', ['completed', 'paid']);
 
         if (orders) {
           orders.forEach((o: { content_id: string | null }) => {
