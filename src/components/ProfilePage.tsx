@@ -211,9 +211,9 @@ export default function ProfilePage({
           // 캐시 데이터는 있으니 로딩 상태는 false (API는 백그라운드에서 호출)
         }
 
-        // ⭐ 유효성 검사: user 정보 + (사주 있음 OR 사주 조회 완료)면 캐시 유효
-        // → 사주가 없어도 한번 조회했으면 캐시로 간주 (로딩 스킵)
-        const hasValidCache = !!(cachedUser && (cachedSaju || sajuCacheChecked));
+        // ⭐ 유효성 검사: primary_saju 데이터가 실제로 있어야 캐시 유효
+        // sajuCacheChecked만으로는 API 스킵 안 함 (다른 페이지에서 primary_saju만 삭제되는 경우 방어)
+        const hasValidCache = !!(cachedUser && cachedSaju);
 
         console.log('🚀 [ProfilePage] 초기화 시 캐시 확인');
         console.log('  - User 정보:', cachedUser ? '있음' : '없음');
@@ -228,8 +228,8 @@ export default function ProfilePage({
           user: cachedUser,
           isMaster: cachedUser.role === 'master',
           primarySaju: cachedSaju,
-          isLoadingSaju: !hasValidCache, // 유효한 캐시가 없으면 로딩 표시
-          hasCache: hasValidCache, // user + (사주 있음 OR 조회 완료)면 true
+          isLoadingSaju: !hasValidCache, // 캐시 없으면 API 호출 동안 로딩 표시
+          hasCache: hasValidCache, // primary_saju가 실제로 있어야 API 스킵
           traitTags: cachedTags,
           totalTagCount: cachedTotalCount,
           // 🚀 Stale-While-Revalidate: 캐시 데이터가 있으면 로딩 없이 바로 표시
