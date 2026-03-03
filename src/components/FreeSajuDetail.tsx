@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from "motion/react";
 import { supabase } from '../lib/supabase';
 import { ContentTags, isContentNew } from './ContentTags';
 import type { MasterContent } from '../lib/freeContentService';
@@ -37,17 +36,6 @@ interface CachedData {
   results: ResultItem[];
   createdAt: string;
 }
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.4,
-      ease: "easeOut"
-    }
-  }
-};
 
 export default function FreeSajuDetail({
   recordId,
@@ -288,14 +276,11 @@ export default function FreeSajuDetail({
         </div>
 
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지 */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ scrollbarGutter: 'stable' }}>
           {/* Content Area */}
           <div className="px-0 pb-[100px] pt-[12px]">
-          <motion.div 
+          <div
             className="content-stretch flex flex-col gap-[40px] items-start relative shrink-0 w-full"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
           >
             {/* Product Info Card */}
             <div
@@ -437,7 +422,7 @@ export default function FreeSajuDetail({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
         </div>{/* ⭐ Scrollable Container 닫기 */}
 
