@@ -210,12 +210,20 @@ export default function AuthCallback() {
         console.log('⚠️ 신규 사용자 → 약관 페이지로 이동');
 
         // 🌱 신규 가입 초기 새싹 확인 로그
-        const { data: sproutData } = await supabase
-          .from('users')
-          .select('sprout_balance')
-          .eq('id', session.user.id)
-          .single();
-        console.log(`🌱 [회원가입] ${session.user.app_metadata?.provider || 'google'} 신규 가입 - 초기 새싹: ${sproutData?.sprout_balance}개`);
+        try {
+          const { data: sproutData, error: sproutError } = await supabase
+            .from('users')
+            .select('sprout_balance')
+            .eq('id', session.user.id)
+            .single();
+          if (sproutError) {
+            console.warn('🌱 [회원가입] 새싹 조회 실패:', sproutError.message);
+          } else {
+            console.log(`🌱 [회원가입] ${session.user.app_metadata?.provider || 'google'} 신규 가입 - 초기 새싹: ${sproutData?.sprout_balance}개`);
+          }
+        } catch (e) {
+          console.warn('🌱 [회원가입] 새싹 조회 예외:', e);
+        }
 
         // 🔗 레퍼럴 처리 (non-blocking: 결과 기다리지 않음)
         // 신규 가입자만 레퍼럴 대상. auth.users는 이미 생성됨 → FK 제약 충족
