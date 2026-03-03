@@ -19,6 +19,44 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts';
 
+// PortOne API 엔드포인트
+const PORTONE_API_URL = 'https://api.iamport.kr';
+
+/** PortOne 액세스 토큰 발급 */
+async function getPortOneAccessToken(): Promise<string> {
+  const apiKey = Deno.env.get('PORTONE_API_KEY');
+  const apiSecret = Deno.env.get('PORTONE_API_SECRET');
+
+  if (!apiKey || !apiSecret) {
+    throw new Error('PortOne API 키가 설정되지 않았습니다');
+  }
+
+  const response = await fetch(`${PORTONE_API_URL}/users/getToken`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imp_key: apiKey, imp_secret: apiSecret }),
+  });
+
+  const data = await response.json();
+  if (data.code !== 0) {
+    throw new Error(`PortOne 인증 실패: ${data.message}`);
+  }
+  return data.response.access_token;
+}
+
+/** PortOne 결제 정보 조회 */
+async function getPaymentInfo(impUid: string, accessToken: string) {
+  const response = await fetch(`${PORTONE_API_URL}/payments/${impUid}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+  });
+
+  const data = await response.json();
+  if (data.code !== 0) {
+    throw new Error(`결제 정보 조회 실패: ${data.message}`);
+  }
+  return data.response as { imp_uid: string; merchant_uid: string; amount: number; status: string };
+}
+
 Deno.serve(async (req) => {
   // CORS 프리플라이트 처리
   if (req.method === 'OPTIONS') {
@@ -92,6 +130,43 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: '유효하지 않은 패키지입니다' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ⭐ PortOne 결제 검증 (위변조 방지)
+    try {
+      const accessToken = await getPortOneAccessToken();
+      const paymentInfo = await getPaymentInfo(imp_uid, accessToken);
+
+      console.log('🔍 [새싹충전] PortOne 결제 검증:', {
+        imp_uid: paymentInfo.imp_uid,
+        amount: paymentInfo.amount,
+        status: paymentInfo.status,
+      });
+
+      if (paymentInfo.status !== 'paid') {
+        console.error('❌ [새싹충전] 결제 미완료 상태:', paymentInfo.status);
+        return new Response(
+          JSON.stringify({ success: false, error: `결제 미완료 상태: ${paymentInfo.status}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (paymentInfo.amount !== pkg.price_krw) {
+        console.error('❌ [새싹충전] 결제 금액 불일치:', {
+          expected: pkg.price_krw,
+          actual: paymentInfo.amount,
+        });
+        return new Response(
+          JSON.stringify({ success: false, error: '결제 금액이 일치하지 않습니다' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (verifyError) {
+      console.error('❌ [새싹충전] PortOne 검증 실패:', verifyError);
+      return new Response(
+        JSON.stringify({ success: false, error: '결제 검증에 실패했습니다' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

@@ -67,6 +67,7 @@ import ReportWeeklyMemoQuickEdit from './components/ReportWeeklyMemoQuickEdit';
 import CompletionCoupon from './components/CompletionCoupon';
 import AuthCallback from './pages/AuthCallback';
 import SproutChargingStation from './components/SproutChargingStation'; // ⭐ 새싹 충전소
+import ShareRewardInfoPage from './components/ShareRewardInfoPage'; // ⭐ 공유 새싹 지급 안내
 import { useSproutBalance, writeSproutBalanceCache } from './hooks/useSproutBalance'; // ⭐ 새싹 잔액 훅
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
@@ -335,6 +336,7 @@ function GAInit() {
         '/my-report-list': '보고서 리스트',
         '/manse': '만세력',
         '/blog': '운세 콘텐츠',
+        '/share-reward-info': '공유 새싹 지급 안내',
       };
 
       // 정적 라우트 확인
@@ -1729,6 +1731,7 @@ function SproutChargingStationPage() {
   const location = useLocation();
   const loginAuth = useLoginRequired();
   const { balance, loading: balanceLoading } = useSproutBalance();
+  const [isDeducting, setIsDeducting] = useState(false);
 
   // ⭐ PortOne 모바일 결제 리다이렉트 감지
   const searchParams = new URLSearchParams(location.search);
@@ -1762,6 +1765,7 @@ function SproutChargingStationPage() {
 
     // 충전 후 잔액이 필요량 이상이면 차감 → 사주 플로우 이동
     if (newBalance >= requiredAmount) {
+      setIsDeducting(true);
       // 사주 보유 여부를 차감 전에 미리 판단 (캐시 활용)
       const sajuCacheJson = localStorage.getItem('saju_records_cache');
       let hasSajuFromCache: boolean | null = null;
@@ -1886,6 +1890,16 @@ function SproutChargingStationPage() {
     pgProvider: decodeURIComponent(searchParams.get('pgProvider') || ''),
   } : undefined;
 
+  if (isDeducting) {
+    return (
+      <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
+        <div className="w-full max-w-[440px]">
+          <LoadingWithMessage message="운세 준비 중이에요!" padding="0 20px" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SproutChargingStation
       contentId={contentId}
@@ -1939,6 +1953,13 @@ function ProfilePageWrapper() {
 function MansePageWrapper() {
   const goBack = useGoBack('/');
   return <MansePage onBack={goBack} />;
+}
+
+// ⭐ 공유 새싹 지급 안내 Wrapper
+function ShareRewardInfoPageWrapper() {
+  const navigate = useNavigate();
+  const goBack = () => navigate(-1);
+  return <ShareRewardInfoPage onBack={goBack} />;
 }
 
 // ⭐ 블로그 목록 Wrapper (로그인 불필요)
@@ -3594,6 +3615,7 @@ export default function App() {
           <Route path="/payment/complete" element={<PaymentComplete />} />
           <Route path="/profile" element={<ProfilePageWrapper />} />
           <Route path="/manse" element={<MansePageWrapper />} />
+          <Route path="/share-reward-info" element={<ShareRewardInfoPageWrapper />} /> {/* ⭐ 공유 새싹 지급 안내 */}
           <Route path="/blog" element={<BlogListPageWrapper />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
           <Route path="/purchase-history" element={<PurchaseHistoryPageWrapper />} />

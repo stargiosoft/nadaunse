@@ -1,8 +1,8 @@
 # 공유 리워드 기능 구현 계획서
 
 > **작성일**: 2026-02-26
-> **최종 업데이트**: 2026-02-27
-> **상태**: Phase 1~2 코드 구현 완료 → Staging 배포 대기
+> **최종 업데이트**: 2026-03-03
+> **상태**: Phase 1~2 완료 (백엔드 + 프론트 UI 포함) → Phase 3 안내 페이지 진행 필요
 > **관련 문서**: CLAUDE.md, PROJECT_CONTEXT.md, DATABASE_SCHEMA.md
 
 ---
@@ -233,7 +233,7 @@ CREATE TABLE share_rewards (
 | 6 | **Staging에 마이그레이션 적용** | ⬜ 미완료 | Supabase Dashboard에서 SQL 실행 |
 | 7 | **Staging에 Edge Functions 배포** | ⬜ 미완료 | `npm run deploy:staging` 또는 수동 배포 |
 
-### Phase 2: 프론트엔드 (Core) — ✅ 핵심 로직 완료 / ⬜ UI 미완료
+### Phase 2: 프론트엔드 (Core + UI) — ✅ 완료
 
 | # | 작업 | 상태 | 파일 |
 |---|------|------|------|
@@ -241,8 +241,30 @@ CREATE TABLE share_rewards (
 | 9 | `useShareRewardStatus` Hook 구현 | ✅ 완료 | `src/hooks/useShareRewardStatus.ts` |
 | 10 | `AuthCallback.tsx`에 레퍼럴 처리 로직 추가 | ✅ 완료 | `src/pages/AuthCallback.tsx` |
 | 11 | `App.tsx`에 URL ref 파라미터 캡처 추가 | ✅ 완료 | `src/App.tsx` |
-| 12 | **`ShareRewardModal` 컴포넌트 구현** | ⬜ 미완료 | `src/components/ShareRewardModal.tsx` |
-| 13 | **`MasterContentDetailPage`에 공유 버튼 추가** | ⬜ 미완료 | `src/components/MasterContentDetailPage.tsx` |
+| 12 | `ShareRewardModal` 컴포넌트 구현 | ✅ 완료 (03-03) | `src/components/ShareRewardModal.tsx` |
+| 13 | `MasterContentDetailPage`에 공유 버튼 추가 | ✅ 완료 (03-03) | `src/components/MasterContentDetailPage.tsx` |
+| 12a | `drawer.tsx` Tailwind v4 호환 수정 | ✅ 완료 (03-03) | `src/components/ui/drawer.tsx` |
+
+#### Phase 2 UI 구현 상세 (2026-03-03)
+
+**#13 MasterContentDetailPage — 공유 버튼**
+- 가격 섹션 아래에 "공유하고 30새싹 받기" 버튼 추가
+- 새싹 아이콘(SVG) + 텍스트 + chevron 구성
+- 유료 콘텐츠(`!isFreeContent`)에만 노출
+- 클릭 시 `ShareRewardModal` open
+
+**#12 ShareRewardModal — 공유 바텀시트**
+- vaul `Drawer` 공통 컴포넌트 기반 (`src/components/ui/drawer.tsx`)
+- 로그인/로그아웃 분기:
+  - **로그인**: 타이틀 + "친구 1명이 가입하면 바로 적립돼요" + "자세히 보기" pill 버튼 + 공유 채널
+  - **로그아웃**: 타이틀 + "로그인 후 공유하면 바로 적립돼요" + 공유 채널 + "로그인하고 30새싹 받기" CTA
+- 공유 채널: 링크 복사 (Clipboard API + fallback) / 카카오톡 (SDK 동적 로드)
+- 공유 링크: 로그인 시 `?ref={referralCode}` 포함, 비로그인 시 일반 링크
+- 디자인: 88px 둥근 사각형(squircle) 버튼, pill형 "자세히 보기", theme-color 딤 처리
+
+**#12a drawer.tsx — Tailwind v4 호환 수정**
+- `DrawerOverlay`: `data-[state=open]:animate-in` 등 미지원 클래스 제거 → 인라인 `backgroundColor: rgba(0,0,0,0.5)` 적용
+- `DrawerContent`: `data-[vaul-drawer-direction=bottom]:*` 데이터 variant가 Tailwind v4에서 CSS 미생성 → 인라인 `bottom/left/right/backgroundColor/borderRadius` 적용
 
 ### Phase 3: 안내 페이지 — ⬜ 미완료
 
@@ -298,11 +320,16 @@ CREATE TABLE share_rewards (
 | `src/lib/shareRewardService.ts` | ref 캡처, 처리, 링크 생성, 상태 조회 | ✅ |
 | `src/hooks/useShareRewardStatus.ts` | 리워드 상태 조회 Hook | ✅ |
 
+### 신규 생성 — ✅ 완료
+
+| 파일 | 역할 | 상태 |
+|------|------|------|
+| `src/components/ShareRewardModal.tsx` | 공유 바텀시트 (카카오톡/링크복사, 로그인/로그아웃 분기) | ✅ |
+
 ### 신규 생성 — ⬜ 미완료
 
 | 파일 | 역할 | 상태 |
 |------|------|------|
-| `src/components/ShareRewardModal.tsx` | 공유 모달 (카카오톡/링크복사 + 회차 진행률) | ⬜ |
 | `src/components/ShareRewardInfoPage.tsx` | 리워드 안내 페이지 | ⬜ |
 
 ### 수정 — ✅ 완료
@@ -312,12 +339,13 @@ CREATE TABLE share_rewards (
 | `supabase/functions/users/index.ts` | 신규 사용자 생성 시 `referral_code` 자동 생성 | ✅ |
 | `src/pages/AuthCallback.tsx` | 신규 사용자 감지 시 `processReferral()` non-blocking 호출 | ✅ |
 | `src/App.tsx` | 앱 마운트 시 `captureReferralFromUrl()` 호출 | ✅ |
+| `src/components/MasterContentDetailPage.tsx` | "공유하고 30새싹 받기" 버튼 + ShareRewardModal 연동 | ✅ (03-03) |
+| `src/components/ui/drawer.tsx` | Tailwind v4 호환 수정 (인라인 스타일 fallback) | ✅ (03-03) |
 
 ### 수정 — ⬜ 미완료
 
 | 파일 | 변경 내용 | 상태 |
 |------|----------|------|
-| `src/components/MasterContentDetailPage.tsx` | "공유하고 30새싹 받기" 버튼 추가 | ⬜ |
 | `src/App.tsx` | ShareRewardInfoPage 라우트 추가 | ⬜ |
 | `scripts/deploy-production.bat` | 신규 Edge Function 2개 추가 | ⬜ |
 | `scripts/deploy-staging.bat` | 신규 Edge Function 2개 추가 | ⬜ |
@@ -328,11 +356,11 @@ CREATE TABLE share_rewards (
 
 ### 즉시 시작 가능한 작업 (우선순위순)
 
-1. **Staging 마이그레이션 적용** → Supabase Dashboard에서 `20260227_add_share_reward_system.sql` 실행
-2. **Staging Edge Functions 배포** → `process-referral`, `get-share-reward-status`, `users` (수정됨) 배포
-3. **ShareRewardModal 컴포넌트 구현** → 기존 리워드 안내 페이지 디자인 참고
-4. **MasterContentDetailPage에 공유 버튼 추가** → ShareRewardModal 연동
-5. **ShareRewardInfoPage 리뉴얼** → "꼭 확인해주세요" 영역 교체
+1. **ShareRewardInfoPage 구현** → "자세히 보기" 클릭 시 이동할 안내 페이지 (Section 6 콘텐츠 참고)
+2. **App.tsx에 `/share-reward-info` 라우트 추가**
+3. **Staging 마이그레이션 적용** → Supabase Dashboard에서 `20260227_add_share_reward_system.sql` 실행
+4. **Staging Edge Functions 배포** → `process-referral`, `get-share-reward-status`, `users` (수정됨) 배포
+5. **E2E 테스트** → 공유 링크 생성 → 가입 → 리워드 적립 전체 플로우 검증
 
 ### 핵심 로직 요약 (이미 구현됨)
 
@@ -348,7 +376,7 @@ process_share_reward()   → 검증 → referral_signups 기록 → 카운트 �
 ```
 
 ### 빌드 상태
-- **Vite 빌드**: ✅ 성공 (2026-02-27 확인)
+- **Vite 빌드**: ✅ 성공 (2026-03-03 확인)
 - **TypeScript 에러**: 없음
 
 ---

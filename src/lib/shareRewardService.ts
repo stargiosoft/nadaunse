@@ -92,20 +92,11 @@ export function clearPendingReferral(): void {
 }
 
 /**
- * IP+UA 기반 fingerprint 생성 (부정 방지)
- * 비회원 무료 콘텐츠 제한과 동일한 방식
- */
-async function generateFingerprint(): Promise<string> {
-  const raw = `${navigator.userAgent}|${navigator.language}|${screen.width}x${screen.height}`;
-  const encoded = new TextEncoder().encode(raw);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
  * 레퍼럴 처리 (회원가입 완료 후 호출)
  * AuthCallback에서 신규 사용자 감지 시 호출
+ *
+ * fingerprint는 서버(Edge Function)에서 IP+UA 기반으로 생성
+ * → 클라이언트 조작 불가, generate-free-preview와 동일 방식
  */
 export async function processReferral(accessToken: string): Promise<boolean> {
   const refCode = getPendingReferral();
@@ -113,7 +104,6 @@ export async function processReferral(accessToken: string): Promise<boolean> {
 
   try {
     console.log('🔗 [레퍼럴] 처리 시작:', refCode);
-    const fingerprint = await generateFingerprint();
 
     const response = await fetch(
       `https://${projectId}.supabase.co/functions/v1/process-referral`,
@@ -125,7 +115,6 @@ export async function processReferral(accessToken: string): Promise<boolean> {
         },
         body: JSON.stringify({
           referral_code: refCode,
-          ip_fingerprint: fingerprint,
         }),
       }
     );

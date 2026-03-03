@@ -3,8 +3,11 @@
 -- 2026-02-27
 -- ============================================================
 
--- 1. users 테이블에 referral_code 컬럼 추가
+-- 1. users 테이블에 referral_code + is_suspicious_referral 컬럼 추가
 ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspicious_referral BOOLEAN NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN users.is_suspicious_referral IS '부정 레퍼럴 가입 의심 유저 (동일 IP+UA fingerprint 3건 이상)';
 
 -- 2. 기존 사용자에게 레퍼럴 코드 일괄 생성
 -- 형식: NDS-{랜덤6자} (영문 대소문자 + 숫자)
@@ -87,7 +90,8 @@ $$;
 CREATE OR REPLACE FUNCTION process_share_reward(
   p_referrer_id UUID,
   p_referred_id UUID,
-  p_ip_fingerprint TEXT DEFAULT NULL
+  p_ip_fingerprint TEXT DEFAULT NULL,
+  p_is_suspicious BOOLEAN DEFAULT false
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -99,7 +103,6 @@ DECLARE
   v_required_count INTEGER;
   v_new_count INTEGER;
   v_reward_granted BOOLEAN := false;
-  v_fingerprint_count INTEGER;
   v_balance_before INTEGER;
   v_balance_after INTEGER;
 BEGIN
@@ -118,19 +121,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'REFERRER_NOT_FOUND');
   END IF;
 
-  -- 4. 동일 fingerprint 부정 방지 (같은 추천인에 대해 동일 기기 3개 이상 차단)
-  IF p_ip_fingerprint IS NOT NULL THEN
-    SELECT COUNT(*) INTO v_fingerprint_count
-    FROM referral_signups
-    WHERE referrer_id = p_referrer_id
-      AND ip_fingerprint = p_ip_fingerprint;
-
-    IF v_fingerprint_count >= 3 THEN
-      RETURN jsonb_build_object('success', false, 'error', 'SUSPICIOUS_ACTIVITY');
-    END IF;
-  END IF;
-
-  -- 5. 현재 진행 중인 회차 조회 (없으면 1회차 생성)
+  -- 4. 현재 진행 중인 회차 조회 (없으면 1회차 생성)
   SELECT round, required_count INTO v_current_round, v_required_count
   FROM share_rewards
   WHERE user_id = p_referrer_id AND achieved_at IS NULL
@@ -144,11 +135,27 @@ BEGIN
     VALUES (p_referrer_id, 1, v_required_count, 0);
   END IF;
 
-  -- 6. referral_signups 기록
+  -- 5. referral_signups 기록 (의심 여부와 무관하게 항상 기록)
   INSERT INTO referral_signups (referrer_id, referred_id, reward_round, ip_fingerprint)
   VALUES (p_referrer_id, p_referred_id, v_current_round, p_ip_fingerprint);
 
-  -- 7. 현재 회차 카운트 증가
+  -- 6. 부정 의심 유저: 카운트/리워드 없이 조용히 성공 반환
+  --    (Edge Function에서 fingerprint 체크 → users.is_suspicious_referral 설정 후 전달)
+  IF p_is_suspicious THEN
+    SELECT current_count INTO v_new_count
+    FROM share_rewards
+    WHERE user_id = p_referrer_id AND round = v_current_round AND achieved_at IS NULL;
+
+    RETURN jsonb_build_object(
+      'success', true,
+      'reward_granted', false,
+      'current_round', v_current_round,
+      'current_count', v_new_count,
+      'required_count', v_required_count
+    );
+  END IF;
+
+  -- 7. 정상 가입: 현재 회차 카운트 증가
   UPDATE share_rewards
   SET current_count = current_count + 1
   WHERE user_id = p_referrer_id AND round = v_current_round AND achieved_at IS NULL
@@ -156,27 +163,22 @@ BEGIN
 
   -- 8. 회차 달성 체크
   IF v_new_count >= v_required_count THEN
-    -- 달성 처리
     UPDATE share_rewards
     SET achieved_at = now()
     WHERE user_id = p_referrer_id AND round = v_current_round;
 
-    -- 현재 잔액 조회
     SELECT sprout_balance INTO v_balance_before
     FROM users WHERE id = p_referrer_id FOR UPDATE;
 
-    -- 새싹 적립
     UPDATE users SET sprout_balance = sprout_balance + 30
     WHERE id = p_referrer_id;
 
     v_balance_after := v_balance_before + 30;
 
-    -- sprout_transactions 기록
     INSERT INTO sprout_transactions (user_id, transaction_type, amount, balance_before, balance_after, description)
     VALUES (p_referrer_id, 'reward', 30, v_balance_before, v_balance_after,
             '공유 리워드 ' || v_current_round || '회차 달성');
 
-    -- 다음 회차 생성
     INSERT INTO share_rewards (user_id, round, required_count, current_count)
     VALUES (p_referrer_id, v_current_round + 1, get_fibonacci(v_current_round + 1), 0);
 

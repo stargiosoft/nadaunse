@@ -68,8 +68,7 @@ BEGIN
     COALESCE(NEW.raw_app_meta_data->>'provider', 'google'),
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
-    10
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email)
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

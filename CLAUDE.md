@@ -11,24 +11,7 @@
 - **URL**: https://nadaunse.com
 - **GitHub**: https://github.com/stargiosoft/nadaunse
 
-### Tech Stack
-| 분류 | 기술 |
-|------|------|
-| Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 36개) |
-| AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
-| 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
-| 결제 | PortOne (구 아임포트) v2 |
-| 알림 | TalkDream API (카카오 알림톡) |
-| 에러 모니터링 | Sentry |
-| 배포 | Vercel |
-
-### 주요 통계
-- **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 36개 (주간 보고서 4개 + 새싹 충전소 2개 포함)
-- **페이지**: 41개
-- **UI 컴포넌트 (shadcn/ui)**: 52개
-- **타로 카드 덱**: 78장
+> Tech Stack → [README.md](./README.md) 참조 | 통계 → [components-inventory.md](./src/components-inventory.md) 참조
 
 ---
 
@@ -77,27 +60,8 @@ import { DEV } from '../lib/env';
 ```
 
 ### 5. 이미지 처리 (CSP 제한)
-- **외부 이미지 URL 사용 금지**: CSP(Content Security Policy)로 인해 외부 도메인 이미지가 차단됨
-- **이미지 저장 위치**: `/public` 폴더에 저장
-- **참조 방법**: 절대 경로 사용 (예: `/my-image.jpg`)
-- **잘못된 예시**: `https://i.postimg.cc/...`, `https://cdn.example.com/...`
-
-```tsx
-// ❌ 잘못된 예시 - CSP에 의해 차단됨
-const bgImage = "https://i.postimg.cc/WzwkjYXT/background.jpg";
-
-// ✅ 올바른 예시 - public 폴더에 저장 후 절대 경로 사용
-// 파일 위치: /Users/star/nadaunse/public/background.jpg
-const bgImage = "/background.jpg";
-
-<img src={bgImage} alt="Background" />
-```
-
-**CSP 허용 도메인**:
-- `self` (같은 도메인)
-- `data:`, `blob:` (인라인 데이터)
-- `https://*.supabase.co` (Supabase Storage)
-- `https://*.kakaocdn.net` (카카오 이미지)
+- **외부 이미지 URL 사용 금지** → `/public` 폴더에 저장 후 절대 경로 사용 (`/my-image.jpg`)
+- **CSP 허용 도메인**: `self`, `data:`, `blob:`, `*.supabase.co`, `*.kakaocdn.net`
 
 ### 6. Supabase 환경 분리
 | 환경 | Project ID | 용도 |
@@ -113,30 +77,14 @@ const bgImage = "/background.jpg";
 - `/components/ui/` 에 shadcn/ui 컴포넌트 존재 (52개)
 
 ### 8. Edge Functions
-- **소스 코드 위치**: `/supabase/functions/` (Supabase CLI 기본 경로)
-- Deno runtime 사용
-- CORS 헤더 필수 포함
-- 에러 핸들링 + 구조화된 로깅
-- **총 36개**: AI 생성(10), 주간 보고서(4), 쿠폰 관리(4), 결제/환불(3), 모니터링/통계(3), 새싹 충전소(2), 마스터 콘텐츠(2), SEO(2), 소유자 확인(2), 알림(1), 사용자(1), 구매 가이드(1), 유틸리티(1), 만세력(1)
-- **⚠️ Request Timeout**: 150초 (모든 플랜 동일, Pro도 동일). Wall clock(Pro 400초)과 별개
-- **Self-Continue 패턴**: 장시간 함수(`generate-content-answers`, `generate-weekly-reports-batch`)는 timeout 전에 안전 종료 후 자기 재호출로 미완료 작업을 이어서 처리
-- **환경변수 (Edge Functions)**:
-  - `SITE_URL`: 알림톡 버튼 URL 도메인 (프로덕션: `https://nadaunse.com`, 스테이징: `https://staging.nadaunse.com`). `send-alimtalk`, `send-report-alimtalk`에서 사용
-  - `WEEK_START_DAY`: 주간 보고서 주차 시작 요일 (프로덕션: `0`=일요일, 스테이징: `3`=수요일). `generate-weekly-reports-batch`, `generate-weekly-report`에서 사용
+- **소스 코드**: `/supabase/functions/` (Deno runtime, CORS 필수, 에러 핸들링 + 구조화된 로깅)
+- **⚠️ Request Timeout**: 150초. Self-Continue 패턴으로 장시간 함수 처리
+- **환경변수**: `SITE_URL` (알림톡 도메인), `WEEK_START_DAY` (주간 보고서 주차 시작 요일)
+- **배포**: `npm run deploy:prod` / `npm run deploy:staging` (수동 배포 금지)
+- **상세**: [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) 참조
 
-**⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
-```bash
-# 프로덕션 전체 배포 (권장)
-npm run deploy:prod
+**🚨 --no-verify-jwt 필수 함수 (11개)** — 수동 배포 시 누락하면 401 에러:
 
-# 또는 핵심 함수만 빠르게 배포
-npm run deploy:prod:core
-
-# 스테이징 전체 배포
-npm run deploy:staging
-```
-
-**🚨 --no-verify-jwt 필수 함수 (내부 호출, 외부 서버 콜백, pg_cron, 공개 접근용) - 총 11개**:
 | 함수 | 이유 |
 |------|------|
 | `generate-saju-answer` | `generate-content-answers`에서 내부 호출 |
@@ -144,34 +92,12 @@ npm run deploy:staging
 | `send-alimtalk` | `generate-content-answers`에서 내부 호출 |
 | `generate-weekly-report` | `generate-weekly-reports-batch`에서 내부 호출 |
 | `send-report-alimtalk` | `generate-weekly-report`에서 내부 호출 |
-| `generate-weekly-reports-batch` | pg_cron 스케줄러 호출 (사용자 JWT 없음) |
-| `cleanup-unconfirmed-tags` | pg_cron 스케줄러 호출 (사용자 JWT 없음) |
-| `payment-webhook` | PortOne 서버 콜백 (외부 결제 서버, JWT 없음) |
-| `sentry-slack-webhook` | Sentry 서버 콜백 (외부 모니터링 서버, JWT 없음) |
-| `generate-sitemap` | Google 크롤러가 인증 없이 sitemap.xml 접근 필요 |
-| `get-manse-data` | 비로그인 사용자 만세력 공개 접근 |
-
-- 위 함수들은 Service Role Key로 호출되거나, 외부 서버 콜백이거나, pg_cron 스케줄러 호출이므로 JWT 검증 비활성화 필수
-- **수동 배포 시 `--no-verify-jwt` 누락하면 "Invalid JWT" 401 에러 발생**
-- 배포 스크립트 사용하면 자동으로 플래그 적용됨
-
-**배포 스크립트 위치**: `/scripts/`
-```
-scripts/
-├── deploy-production.bat   # 프로덕션 전체 배포 (36개)
-├── deploy-staging.bat      # 스테이징 전체 배포 (36개)
-├── deploy-core.bat         # 핵심 함수만 배포 (4개)
-└── README.md               # 상세 가이드
-```
-
-**특정 함수만 배포해야 할 때**:
-```bash
-# 프로덕션 (일반 함수)
-npx supabase functions deploy <함수명> --project-ref kcthtpmxffppfbkjjkub
-
-# 프로덕션 (내부 호출 함수 - --no-verify-jwt 필수!)
-npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
-```
+| `generate-weekly-reports-batch` | pg_cron 스케줄러 호출 |
+| `cleanup-unconfirmed-tags` | pg_cron 스케줄러 호출 |
+| `payment-webhook` | PortOne 서버 콜백 |
+| `sentry-slack-webhook` | Sentry 서버 콜백 |
+| `generate-sitemap` | 공개 접근 (SEO) |
+| `get-manse-data` | 비로그인 공개 접근 |
 
 ### 9. 사주 API 호출 (중요!)
 - **Edge Function에서 서버 직접 호출**: `SAJU_API_KEY` 환경변수 사용 (IP 화이트리스트 + 키 인증)
@@ -202,14 +128,7 @@ npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref
 - Serena 인덱싱 안 된 파일: `.md`, `.yaml`, `.txt` 등 문서 파일
 - 단순 텍스트 파일: `README.md`, `CHANGELOG.md` 등
 
-#### 토큰 절약 효과
-```
-기존 방식: Read "src/components/UserProfile.tsx" → 500줄 전체 로드
-Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로드
-→ 94% 토큰 절약!
-```
-
-**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 36개)에서 Serena는 필수입니다.
+→ Serena는 파일 전체 대신 필요한 심볼만 로드하여 **~94% 토큰 절약**
 
 ### 11. 캐싱 전략 (Cache Strategy)
 
@@ -254,52 +173,8 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 | **입력값 검증** | 사용자 입력은 항상 서버에서 재검증 |
 | **CORS 화이트리스트** | Edge Function은 `server/cors.ts` 사용 필수 |
 
-#### 코드 작성 시 체크리스트
-
-```typescript
-// ❌ 잘못된 예시
-alert('에러: ' + error.message);  // 에러 상세 노출
-const API_KEY = 'sk-xxxx';         // 시크릿 하드코딩
-fetch(userInput);                  // 입력값 미검증
-
-// ✅ 올바른 예시
-console.error('에러:', error);     // 콘솔에만 상세 기록
-alert('처리에 실패했습니다.');      // 일반 메시지 표시
-const API_KEY = Deno.env.get('API_KEY');  // 환경변수 사용
-```
-
-#### Edge Function 보안 템플릿
-
-```typescript
-import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts';
-
-serve(async (req) => {
-  // 1. CORS 처리
-  if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest(req);
-  }
-  const corsHeaders = getCorsHeaders(req);
-
-  // 2. 인증 검증 (필요한 경우)
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(
-      JSON.stringify({ error: '인증이 필요합니다' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // 3. 입력값 검증
-  // 4. 비즈니스 로직
-  // 5. 에러 처리 (상세 정보는 로그에만)
-});
-```
-
 #### 보안 문서
-
-- **상세 가이드**: `src/docs/★SECURITY★.md`
-- **적용된 보안 조치**: CORS, CSP, 보안 헤더, npm 취약점 해결
-- **향후 TODO**: Rate Limiting, CSP Nonce, SRI
+- **상세 가이드**: `src/docs/★SECURITY★.md` (CORS, CSP, 보안 헤더, Edge Function 템플릿 포함)
 
 ---
 
@@ -314,6 +189,7 @@ serve(async (req) => {
 | `/lib/freeContentService.ts` | 무료 콘텐츠 비즈니스 로직 + 유료 추천 (캐시/추천 로직) |
 | `/lib/freeContentLimitService.ts` | 비회원 무료 콘텐츠 일일 제한 (localStorage 기반) |
 | `/lib/coupon.ts` | 쿠폰 관리 로직 |
+| `/lib/shareRewardService.ts` | 공유 리워드 (레퍼럴 캡처/처리, 리워드 상태 조회) |
 
 ---
 
@@ -321,8 +197,8 @@ serve(async (req) => {
 
 ```
 /src
-├── components/     # React 컴포넌트 (55개)
-├── pages/          # 페이지 컴포넌트 (41개)
+├── components/     # React 컴포넌트
+├── pages/          # 페이지 컴포넌트
 ├── lib/            # 비즈니스 로직, 유틸리티
 ├── utils/          # 순수 유틸리티 함수
 ├── hooks/          # Custom hooks
@@ -330,7 +206,7 @@ serve(async (req) => {
 └── imports/        # SVG, 이미지 임포트
 
 supabase/
-├── functions/      # Edge Functions (36개)
+├── functions/      # Edge Functions
 ├── migrations/     # SQL 마이그레이션 파일
 └── *.md            # Supabase 관련 문서
 ```
@@ -388,15 +264,7 @@ chore:    기타 변경
 | 간격 (gap, padding, margin) | Tailwind 클래스 OK (arbitrary value는 inline style) |
 | 크기 (width, height, maxWidth) | inline style 권장 |
 
-```tsx
-// ❌ className="text-[15px] text-[#368683] font-medium bg-[#f0f8f8]"
-// ✅ style={{ fontSize: '15px', color: '#368683', fontWeight: 500, backgroundColor: '#f0f8f8' }}
-// ✅ className="flex gap-4 items-center rounded-2xl px-6 py-4" (레이아웃 OK)
-```
-
-### 통합 체크리스트
-- [ ] `text-[*]`, `font-[*]`, `leading-[*]`, `bg-[#...]`, `border-[#...]` → inline style
-- [ ] SVG 경로 → `src/imports/` 폴더로 분리
+→ `text-[*]`, `font-[*]`, `leading-[*]`, `bg-[#...]`, `border-[#...]` → **inline style** 변환 필수. SVG → `src/imports/` 분리
 
 ---
 
@@ -415,25 +283,9 @@ chore:    기타 변경
 
 ## 핵심 시나리오
 
-### 시나리오 1: iOS에서 둥근 모서리가 안 보여요
-**해결**: `overflow-hidden rounded-*` 조합에 `transform-gpu` 추가
-```tsx
-<div className="overflow-hidden rounded-2xl transform-gpu">
-  <img src="..." alt="..." />
-</div>
-```
-
-### 시나리오 2: 개발용 버튼이 프로덕션에 보여요
-**해결**: `DEV` 플래그로 감싸기 (디버깅 버튼, 테스트 버튼, 개발자 로그 등)
-```tsx
-import { DEV } from '../lib/env';
-{DEV && <button onClick={handleTest}>테스트 버튼</button>}
-```
-
-### 시나리오 3: 버그 수정 작업 흐름
-1. `PROJECT_CONTEXT.md` → "주요 버그 유형 & 체크리스트" 확인
-2. Serena `find_symbol` / `find_referencing_symbols`로 관련 코드 탐색
-3. 수정 코드 작성 (TypeScript, 구조화된 로깅 준수)
+- **iOS 둥근 모서리 안 보임** → `overflow-hidden rounded-*` 조합에 `transform-gpu` 추가
+- **개발용 버튼 프로덕션 노출** → `import { DEV } from '../lib/env'` + `{DEV && <button>}`
+- **버그 수정** → PROJECT_CONTEXT.md "주요 버그 유형" 확인 → Serena로 코드 탐색 → TypeScript + 구조화된 로깅
 
 ---
 
@@ -469,10 +321,10 @@ import { DEV } from '../lib/env';
 | **[DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md)** | 테이블 구조, 타입, 제약조건, 인덱스 |
 | **[RLS_POLICIES.md](./supabase/RLS_POLICIES.md)** | 9개 테이블 26개 RLS 정책 |
 | **[DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | Triggers, Functions, pg_cron Jobs |
-| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | 36개 Edge Function 목록, 배포 방법 |
+| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | 38개 Edge Function 목록, 배포 방법 |
 | **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 분류, 파일 위치, shadcn/ui |
 | **[★SECURITY★.md](./src/docs/★SECURITY★.md)** | CORS, CSP, 보안 헤더, 에러 처리 |
 
 ---
 
-**최종 업데이트**: 2026-02-26
+**최종 업데이트**: 2026-03-03

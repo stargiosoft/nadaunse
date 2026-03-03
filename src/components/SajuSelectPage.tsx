@@ -779,7 +779,7 @@ export default function SajuSelectPage() {
     });
 
   if (isLoading) {
-    return <PageLoader />;
+    return <PageLoader message="운세 준비 중이에요!" />;
   }
 
   // ⭐ 다음 버튼 클릭 후 로딩 페이지 이동 전 즉시 로딩 표시

@@ -1,24 +1,38 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-02-25
+> **최종 업데이트**: 2026-03-03
 
 ## 개요
 
 나다운세 프로젝트의 Supabase RLS 정책을 정리한 문서입니다.
 Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니다.
 
----
-
-## 환경 정보
-
-| 환경 | Project ID | 용도 |
-|------|------------|------|
-| Production | `kcthtpmxffppfbkjjkub` | nadaunse.com |
-| Staging | `hyltbeewxaqashyivilu` | Preview/테스트 |
+> **환경 정보** (Supabase Project ID 등)는 [CLAUDE.md](../CLAUDE.md) 참조
 
 ---
 
-## 테이블별 정책
+## 단순 정책 요약
+
+아래 테이블은 기본 `auth.uid() = user_id` 패턴 또는 단일 조건만 사용하는 단순 정책입니다.
+
+| 테이블 | RLS | 정책 | 조건 |
+|--------|-----|------|------|
+| `coupons` | Enabled | Anyone can view (SELECT) | `true` |
+| `free_content_records` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+| `free_content_records` | Enabled | Users INSERT own | `auth.uid() = user_id` |
+| `user_trait_tags` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+| `user_trait_tags` | Enabled | Users INSERT own | `auth.uid() = user_id` |
+| `user_trait_tags` | Enabled | Users DELETE own | `auth.uid() = user_id` |
+| `sprout_transactions` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+| `sprout_packages` | Enabled | Authenticated SELECT active | `is_active = true` |
+| `anonymous_free_views` | Enabled | (정책 없음 — Service Role Key 전용) | - |
+| `user_situation_summaries` | Enabled | Service role full access (ALL) | `true` (Service Role 전용) |
+| `referral_signups` | Enabled | Users SELECT own | `auth.uid() = referrer_id` |
+| `share_rewards` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+
+---
+
+## 테이블별 상세 정책
 
 ### 1. `alimtalk_logs` (알림톡 로그)
 
@@ -32,17 +46,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 2. `coupons` (쿠폰 마스터)
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Anyone can view coupons | SELECT | public | `true` (누구나 조회 가능) |
-
-**RLS 상태**: Enabled
-
----
-
-### 3. `master_content_questions` (콘텐츠 질문)
+### 2. `master_content_questions` (콘텐츠 질문)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -53,7 +57,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 4. `master_contents` (콘텐츠 마스터)
+### 3. `master_contents` (콘텐츠 마스터)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -64,7 +68,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 5. `order_results` (주문 결과/AI 결과)
+### 4. `order_results` (주문 결과/AI 결과)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -75,7 +79,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 6. `orders` (주문)
+### 5. `orders` (주문)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -89,7 +93,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 7. `saju_records` (사주 정보)
+### 6. `saju_records` (사주 정보)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -104,7 +108,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 8. `user_coupons` (사용자 쿠폰)
+### 7. `user_coupons` (사용자 쿠폰)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -117,7 +121,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 9. `users` (사용자)
+### 8. `users` (사용자)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -130,37 +134,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 ---
 
-### 10. `free_content_records` (무료 콘텐츠 기록)
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Users can view own free content records | SELECT | authenticated | `auth.uid() = user_id` |
-| Users can insert own free content records | INSERT | authenticated | `auth.uid() = user_id` |
-
-**RLS 상태**: Enabled
-
-**용도**: 로그인 사용자의 무료 콘텐츠 이용 기록 저장 (운세 기록 페이지에서 조회)
-
----
-
-### 11. `user_trait_tags` (나다움 태그)
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Users can view own trait tags | SELECT | authenticated | `auth.uid() = user_id` |
-| Users can insert own trait tags | INSERT | authenticated | `auth.uid() = user_id` |
-| Users can delete own trait tags | DELETE | authenticated | `auth.uid() = user_id` |
-
-**RLS 상태**: Enabled
-
-**용도**:
-- 무료/유료 콘텐츠에서 GPT-5-nano로 추출한 나다움 성향 태그 저장
-- `extract-trait-tags` Edge Function으로 추출 → `save-trait-tags` Edge Function으로 저장
-- 프로필에서 나다움 태그 목록 표시
-
----
-
-### 12. `weekly_reports` (주간 보고서) - NEW 2026-02-02
+### 9. `weekly_reports` (주간 보고서)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -171,15 +145,9 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 **RLS 상태**: Enabled
 
-**용도**:
-- 주간 보고서 메타데이터 및 응원글(self_encouragement) 저장
-- 인증된 사용자는 모든 보고서 조회 가능 (통계 대시보드용)
-- 사용자는 본인 보고서만 수정 가능
-- 시스템(Service Role)은 보고서 생성 담당
-
 ---
 
-### 13. `weekly_report_sections` (주간 보고서 섹션) - NEW 2026-02-02
+### 10. `weekly_report_sections` (주간 보고서 섹션)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -188,13 +156,9 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 **RLS 상태**: Enabled
 
-**용도**:
-- 섹션별 태그 분석 결과 저장 (JSONB)
-- `report_id`를 통해 `weekly_reports`와 조인하여 소유권 확인
-
 ---
 
-### 14. `report_tarot_selections` (보고서 타로 선택) - NEW 2026-02-02
+### 11. `report_tarot_selections` (보고서 타로 선택)
 
 | 정책명 | 명령 | 대상 | 조건 |
 |--------|------|------|------|
@@ -205,12 +169,6 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 
 **RLS 상태**: Enabled
 
-**용도**:
-- 보고서별 타로 카드 선택 기록
-- `user_viewed` 플래그로 실제 사용자 상호작용 추적
-- 인증된 사용자는 모든 타로 선택 조회 가능 (통계 대시보드용)
-- 사용자는 본인 보고서의 타로 선택만 수정 가능
-
 **user_viewed 패턴**:
 ```typescript
 // 타로 1회 제한 체크 (user_viewed = true인 경우만 뽑기 완료로 간주)
@@ -220,71 +178,6 @@ const { count } = await supabase
   .eq('report_id', id)
   .eq('user_viewed', true);
 ```
-
----
-
-### 15. `anonymous_free_views` (비회원 무료 콘텐츠 일일 제한) - NEW 2026-02-06
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| (정책 없음) | - | - | - |
-
-**RLS 상태**: Enabled (정책 없음 — Service Role Key 전용)
-
-**용도**:
-- 비회원 사용자의 무료 콘텐츠 일일 이용 횟수 추적 (하루 3개)
-- `generate-free-preview` Edge Function에서 Service Role Key로만 INSERT/SELECT
-- IP+UserAgent SHA-256 fingerprint + viewed_date 기반 일일 제한
-
-**접근 방식**:
-- anon/authenticated 사용자는 직접 접근 불가 (RLS 정책 없음)
-- Service Role Key로만 접근 (Edge Function 내부)
-
----
-
-### 16. `user_situation_summaries` (심리 상태 통합) - NEW 2026-02-25
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Service role full access | ALL | public | `true` |
-
-**RLS 상태**: Enabled (Service Role Key 전용)
-
-**용도**:
-- 주간 보고서(`generate-weekly-report`) + 유료 콘텐츠 풀이(`generate-content-answers`)에서 생성되는 심리 상태 통합 관리
-- `generate-content-answers`에서 최근 4주 심리 흐름 조회
-
-**접근 방식**:
-- 클라이언트 직접 접근 불필요 (Edge Function에서만 INSERT/SELECT)
-- Service Role Key로만 접근
-
----
-
-### 17. `sprout_transactions` (새싹 거래 내역) - NEW 2026-02-26
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Users can view own sprout transactions | SELECT | authenticated | `auth.uid() = user_id` |
-
-**RLS 상태**: Enabled
-
-**용도**:
-- 사용자 본인의 새싹 충전/차감/환불 거래 내역 조회
-- 충전소 페이지에서 거래 기록 표시
-
----
-
-### 18. `sprout_packages` (새싹 충전 패키지) - NEW 2026-02-26
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Authenticated can view active packages | SELECT | authenticated | `is_active = true` |
-
-**RLS 상태**: Enabled
-
-**용도**:
-- 모든 인증된 사용자가 활성화된 새싹 충전 패키지 조회
-- 충전소 페이지에서 패키지 목록 표시
 
 ---
 
@@ -310,7 +203,9 @@ const { count } = await supabase
 | user_situation_summaries | 1 | Enabled (Service Role 전용) |
 | sprout_transactions | 1 | Enabled |
 | sprout_packages | 1 | Enabled |
-| **총계** | **43** | - |
+| referral_signups | 1 | Enabled |
+| share_rewards | 1 | Enabled |
+| **총계** | **45** | - |
 
 ---
 
@@ -322,16 +217,6 @@ const { count } = await supabase
 | `authenticated` | 인증된 사용자 (로그인한 사용자) |
 | `service_role` | 서비스 역할 (Edge Function 등에서 사용) |
 | `public` | 모든 역할 (anon + authenticated) |
-
----
-
-## 정책 이관 스크립트
-
-Staging → Production 정책 이관 시 사용:
-
-```
-scripts/migrate_rls_policies_to_production.sql
-```
 
 ---
 
@@ -373,7 +258,7 @@ ORDER BY tablename;
 
 3. **정책 변경 시** 반드시 Staging에서 먼저 테스트 후 Production에 적용하세요.
 
-4. **SECURITY DEFINER 함수** (NEW - 2026-01-07)
+4. **SECURITY DEFINER 함수**
    - `process_payment_complete`, `process_refund`, `process_sprout_charge`, `process_sprout_deduct` 함수는 SECURITY DEFINER로 실행
    - 함수 소유자(postgres) 권한으로 실행되어 RLS 정책 우회
    - Edge Functions에서만 호출되도록 설계 (클라이언트 직접 호출 금지)

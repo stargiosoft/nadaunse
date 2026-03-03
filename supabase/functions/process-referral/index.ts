@@ -3,8 +3,7 @@
  *
  * @endpoint POST /process-referral
  * @input {
- *   referral_code: string,
- *   ip_fingerprint?: string
+ *   referral_code: string
  * }
  * @output { success: boolean, reward_granted?: boolean, error?: string }
  *
@@ -51,12 +50,26 @@ Deno.serve(async (req) => {
     }
 
     // 요청 본문 파싱
-    const { referral_code, ip_fingerprint } = await req.json();
+    const { referral_code } = await req.json();
+
+    // 서버 측 IP+UA fingerprint 생성 (클라이언트 값 사용 안 함 — 조작 방지)
+    // generate-free-preview Edge Function과 동일한 방식
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('x-real-ip')
+      || req.headers.get('cf-connecting-ip')
+      || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const encoder = new TextEncoder();
+    const fpData = encoder.encode(ip + userAgent);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', fpData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const serverFingerprint = hashArray.map((b: number) => b.toString(16).padStart(2, '0')).join('');
 
     console.log('📦 [레퍼럴] 입력 데이터:', {
       referred_id: referredId,
       referral_code,
-      has_fingerprint: !!ip_fingerprint,
+      ip: ip.substring(0, 8) + '***',
+      fingerprint: serverFingerprint.substring(0, 12) + '...',
     });
 
     // 필수 필드 검증
@@ -98,11 +111,31 @@ Deno.serve(async (req) => {
 
     console.log('🔗 [레퍼럴] 추천인(User A):', referrer.id);
 
+    // 부정 의심 체크: 동일 fingerprint가 같은 추천인에 대해 3건 이상이면 의심
+    let isSuspicious = false;
+    const { count: fpCount, error: fpError } = await supabaseAdmin
+      .from('referral_signups')
+      .select('*', { count: 'exact', head: true })
+      .eq('referrer_id', referrer.id)
+      .eq('ip_fingerprint', serverFingerprint);
+
+    if (!fpError && (fpCount ?? 0) >= 3) {
+      isSuspicious = true;
+      console.log('🚨 [레퍼럴] 부정 의심 감지 — 동일 fingerprint', fpCount, '건');
+
+      // users 테이블에 플래그 설정 (관리자 조회용)
+      await supabaseAdmin
+        .from('users')
+        .update({ is_suspicious_referral: true })
+        .eq('id', referredId);
+    }
+
     // process_share_reward RPC 호출
     const { data, error } = await supabaseAdmin.rpc('process_share_reward', {
       p_referrer_id: referrer.id,
       p_referred_id: referredId,
-      p_ip_fingerprint: ip_fingerprint || null,
+      p_ip_fingerprint: serverFingerprint,
+      p_is_suspicious: isSuspicious,
     });
 
     if (error) {
