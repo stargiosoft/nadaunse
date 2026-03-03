@@ -1,7 +1,7 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 34개
+> **총 함수 수**: 36개
 > **최종 업데이트**: 2026-02-15
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -42,9 +42,10 @@
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
 | 🧹 **유틸리티** | 1개 | 3% | Vercel 재빌드 |
 | 🛒 **구매 가이드** | 1개 | 3% | OpenAI gpt-4.1-nano, 개인화 |
+| 🌱 **새싹 충전소** | 2개 | 6% | PortOne, PostgreSQL Function |
 | 🔮 **만세력** | 1개 | 3% | Saju API 프록시 |
 
-**총 34개** (로컬 함수 기준)
+**총 36개** (로컬 함수 기준)
 
 ---
 
@@ -178,9 +179,16 @@
 
 ---
 
-### 1️⃣3️⃣ **만세력** (1개)
+### 1️⃣3️⃣ **새싹 충전소** (2개)
 
-34. `get-manse-data` - 만세력 데이터 조회 (--no-verify-jwt, Saju API 프록시)
+34. `sprout-charge` - 새싹 충전 처리 (JWT 필요)
+35. `sprout-deduct` - 새싹 차감 처리 (JWT 필요)
+
+---
+
+### 1️⃣4️⃣ **만세력** (1개)
+
+36. `get-manse-data` - 만세력 데이터 조회 (--no-verify-jwt, Saju API 프록시)
 
 ---
 
@@ -1822,6 +1830,8 @@ curl -X POST https://hyltbeewxaqashyivilu.supabase.co/functions/v1/index-now \
 | `get-ga-stats` | 📊 통계 | GET | GA Data API | 통계 대시보드 진입 시 |
 | `get-order-owner` | 🔐 소유자 확인 | POST | - | 유료 콘텐츠 계정 불일치 시 |
 | `get-report-owner` | 🔐 소유자 확인 | POST | - | 주간 보고서 계정 불일치 시 |
+| `sprout-charge` | 🌱 새싹 충전 | POST | - | 새싹 충전 결제 완료 후 |
+| `sprout-deduct` | 🌱 새싹 차감 | POST | - | 콘텐츠 구매 시 새싹 차감 |
 
 ---
 
@@ -1876,6 +1886,7 @@ supabase functions deploy generate-master-content
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 2.5.0 | 2026-02-26 | `sprout-charge`, `sprout-deduct` 함수 추가 (새싹 충전소 기능), 총 36개 |
 | 2.4.0 | 2026-02-25 | `generate-purchase-guide` 함수 추가 (AI 개인화 구매 가이드, gpt-4.1-nano, 나다움 태그 기반), 총 34개 |
 | 2.3.0 | 2026-02-25 | 초개인화 리팩토링: 발동 조건 확장 (태그 OR 콘텐츠 이용), gpt-4.1-nano 심리 추출, `user_situation_summaries` 통합 테이블, 주차별 포맷 + 최신 우선 안내 |
 | 2.2.0 | 2026-02-24 | `issue-revisit-coupon` 재방문 쿠폰 로직 제거 → 미션 쿠폰 전용으로 변경, 서버 사이드 tag_count≥5 검증 추가, 쿼리 병렬화 (Promise.all) |

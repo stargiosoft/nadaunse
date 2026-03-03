@@ -13,6 +13,7 @@ interface PurchaseItem {
   content_id: string;
   saju_record_id: string | null;
   paid_amount: number;
+  pay_method: string | null;
   created_at: string;
   pstatus: string;
   gname: string | null;
@@ -23,7 +24,7 @@ interface PurchaseItem {
     title: string;
     thumbnail_url: string | null;
     content_type: string;
-  };
+  } | null;
   saju_records: {
     full_name: string;
     birth_date: string;
@@ -48,7 +49,7 @@ interface FreeContentRecord {
   master_contents: {
     title: string;
     thumbnail_url: string | null;
-  };
+  } | null;
 }
 
 type TabType = 'paid' | 'free';
@@ -188,6 +189,7 @@ export default function PurchaseHistoryPage() {
           content_id,
           saju_record_id,
           paid_amount,
+          pay_method,
           created_at,
           pstatus,
           gname,
@@ -364,7 +366,7 @@ export default function PurchaseHistoryPage() {
 
   // ⭐ 유료 콘텐츠 클릭 핸들러
   const handleViewPurchase = async (item: PurchaseItem) => {
-    if (item.master_contents.content_type === 'free') {
+    if (item.master_contents?.content_type === 'free') {
       navigate(`/free-saju/${item.id}`);
     } else {
       // ⭐ 해당 콘텐츠에 대해 확정된 태그가 있는지 확인 (나다움 기록하기 여부 결정)
@@ -593,9 +595,9 @@ export default function PurchaseHistoryPage() {
         contentId: record.content_id,  // ⭐ contentId 명시적 전달 (태그 조회용)
         product: {
           id: record.content_id,
-          title: record.content_title || record.master_contents.title,
+          title: record.content_title || record.master_contents?.title || '',
           type: 'free',
-          image: record.master_contents.thumbnail_url || ''
+          image: record.master_contents?.thumbnail_url || ''
         },
         fromPurchaseHistory: true,  // ⭐ X 버튼 클릭 시 운세 기록으로 복귀
         hasConfirmedTags  // ⭐ 태그 확정 여부 (true면 나다움 기록하기 스킵)
@@ -757,7 +759,7 @@ export default function PurchaseHistoryPage() {
                       >
                         {/* Thumbnail */}
                         <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
-                          {item.master_contents.thumbnail_url ? (
+                          {item.master_contents?.thumbnail_url ? (
                             <img
                               alt={item.gname || item.master_contents.title}
                               className="w-full h-full object-cover"
@@ -772,22 +774,36 @@ export default function PurchaseHistoryPage() {
 
                         {/* Card Content */}
                         <div className="flex flex-col gap-[4px] items-start flex-1 min-w-0">
-                          {/* Title (clickable link) */}
-                          <button
-                            onClick={() => handleViewPurchase(item)}
-                            className="flex items-center p-[2px] rounded-[8px] text-left"
-                          >
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: 500,
-                              lineHeight: '22px',
-                              letterSpacing: '-0.42px',
-                              color: '#4da0ee',
-                              textDecoration: 'underline'
-                            }} className="line-clamp-2">
-                              {item.gname || item.master_contents.title}
-                            </span>
-                          </button>
+                          {/* Title */}
+                          {item.content_id ? (
+                            <button
+                              onClick={() => handleViewPurchase(item)}
+                              className="flex items-center p-[2px] rounded-[8px] text-left"
+                            >
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                lineHeight: '22px',
+                                letterSpacing: '-0.42px',
+                                color: '#4da0ee',
+                                textDecoration: 'underline'
+                              }} className="line-clamp-2">
+                                {item.gname || item.master_contents?.title || '운세 구성'}
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center p-[2px]">
+                              <span style={{
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                lineHeight: '22px',
+                                letterSpacing: '-0.42px',
+                                color: '#333'
+                              }} className="line-clamp-2">
+                                {item.gname || '새싹 충전'}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Details */}
                           <div className="flex flex-col gap-[4px] items-start w-full">
@@ -826,7 +842,9 @@ export default function PurchaseHistoryPage() {
                               letterSpacing: '-0.42px',
                               color: 'black'
                             }}>
-                              {item.paid_amount.toLocaleString()}원
+                              {item.pay_method === 'sprout'
+                                ? `${item.paid_amount}새싹`
+                                : `${item.paid_amount.toLocaleString()}원`}
                             </p>
                           </div>
                         </div>
@@ -923,7 +941,7 @@ export default function PurchaseHistoryPage() {
                       >
                         {/* Thumbnail */}
                         <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
-                          {record.master_contents.thumbnail_url ? (
+                          {record.master_contents?.thumbnail_url ? (
                             <img
                               alt={record.content_title || record.master_contents.title}
                               className="w-full h-full object-cover"
@@ -951,7 +969,7 @@ export default function PurchaseHistoryPage() {
                               color: '#4da0ee',
                               textDecoration: 'underline'
                             }} className="line-clamp-2">
-                              {record.content_title || record.master_contents.title}
+                              {record.content_title || record.master_contents?.title || ''}
                             </span>
                           </button>
 

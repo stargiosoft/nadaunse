@@ -43,19 +43,7 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1
-    }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      duration: 0.5,
+      duration: 0.4,
       ease: "easeOut"
     }
   }
@@ -310,9 +298,8 @@ export default function FreeSajuDetail({
             animate="visible"
           >
             {/* Product Info Card */}
-            <motion.div 
+            <div
               className="bg-[#f7f8f9] relative shrink-0 w-full mb-[-16px] z-10"
-              variants={itemVariants}
             >
               <div className="size-full">
                 <div className="content-stretch flex flex-col items-start px-[20px] py-[12px] relative w-full">
@@ -340,20 +327,18 @@ export default function FreeSajuDetail({
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
             {/* Q&A Content */}
-            <motion.div 
+            <div
               className="content-stretch flex flex-col gap-[52px] items-start relative shrink-0 w-full"
-              variants={containerVariants}
             >
               <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
                 {/* ⭐️ 동적으로 질문/답변 렌더링 */}
                 {cachedData.results.map((result, index) => (
-                  <motion.div 
-                    key={result.questionId} 
+                  <div
+                    key={result.questionId}
                     className="relative shrink-0 w-full"
-                    variants={itemVariants}
                   >
                     {/* 첫 번째 아이템이 아니면 디바이더 표시 */}
                     {index > 0 && (
@@ -398,16 +383,15 @@ export default function FreeSajuDetail({
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
 
               </div>
 
               {/* 궁금증 유발 마무리 문구 + 유료 추천 콘텐츠 카드 */}
               {recommendedPaidContent && (
-                <motion.div
+                <div
                   className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full px-[20px]"
-                  variants={itemVariants}
                 >
                   <p className="leading-[28.5px] text-[16px] text-[#41a09e] tracking-[-0.32px]" style={{ fontWeight: 500 }}>
                     구체적인 흐름이 궁금하다면...
@@ -450,9 +434,9 @@ export default function FreeSajuDetail({
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
-            </motion.div>
+            </div>
           </motion.div>
         </div>
         </div>{/* ⭐ Scrollable Container 닫기 */}

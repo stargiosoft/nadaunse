@@ -66,6 +66,8 @@ import ReportWeeklyMemoEdit from './components/ReportWeeklyMemoEdit';
 import ReportWeeklyMemoQuickEdit from './components/ReportWeeklyMemoQuickEdit';
 import CompletionCoupon from './components/CompletionCoupon';
 import AuthCallback from './pages/AuthCallback';
+import SproutChargingStation from './components/SproutChargingStation'; // ⭐ 새싹 충전소
+import { useSproutBalance, writeSproutBalanceCache } from './hooks/useSproutBalance'; // ⭐ 새싹 잔액 훅
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
 import { initGA, trackPageView } from './utils/analytics';
@@ -78,6 +80,7 @@ import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
 import { clearUserCaches, recordTodayVisit } from './lib/auth'; // ⭐ 캐시 삭제 + 방문 기록 함수
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
 import { projectId } from './utils/supabase/info'; // ⚡ Edge Function warm-up용
+import { captureReferralFromUrl } from './lib/shareRewardService'; // 🔗 공유 리워드 레퍼럴 캡처
 
 // ⚡ 프로덕션 환경 체크 - import.meta.env.DEV 오버라이드
 if (!DEV && import.meta.env.DEV) {
@@ -1719,6 +1722,171 @@ function AlimtalkInfoInputPageWrapper() {
   );
 }
 
+// ⭐ 새싹 충전소 페이지 Wrapper
+function SproutChargingStationPage() {
+  const { contentId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const loginAuth = useLoginRequired();
+  const { balance, loading: balanceLoading } = useSproutBalance();
+
+  // 로그인 체크
+  if (loginAuth === 'checking' || balanceLoading) return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // 직접 접속 가드
+  if (location.key === 'default') return <Navigate to="/" replace />;
+
+  const isFromProfile = contentId === 'profile';
+  const requiredAmount = (location.state as { requiredAmount?: number })?.requiredAmount || 30;
+
+  const handleChargeComplete = async (newBalance: number) => {
+    // 충전 후 잔액 캐시 즉시 갱신
+    writeSproutBalanceCache(newBalance);
+
+    if (!contentId || isFromProfile) {
+      navigate('/profile', { replace: true });
+      toast.success('충전되었어요.');
+      return;
+    }
+
+    // 충전 후 잔액이 필요량 이상이면 차감 → 사주 플로우 이동
+    if (newBalance >= requiredAmount) {
+      // 사주 보유 여부를 차감 전에 미리 판단 (캐시 활용)
+      const sajuCacheJson = localStorage.getItem('saju_records_cache');
+      let hasSajuFromCache: boolean | null = null;
+      if (sajuCacheJson) {
+        try {
+          hasSajuFromCache = JSON.parse(sajuCacheJson).length > 0;
+        } catch { /* ignore */ }
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          alert('로그인이 필요합니다. 다시 로그인해주세요.');
+          return;
+        }
+
+        // 네트워크 호출 #1: 새싹 차감
+        const edgeFnUrl = `https://${projectId}.supabase.co/functions/v1/sprout-deduct`;
+        const res = await fetch(edgeFnUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            content_id: contentId,
+            amount: requiredAmount,
+          }),
+        });
+        const result = await res.json();
+
+        if (!result.success) {
+          console.error('❌ [SproutChargingStationPage] 차감 실패:', result);
+          alert('새싹 차감에 실패했습니다. 다시 시도해주세요.');
+          return;
+        }
+
+        if (result.new_balance != null) {
+          writeSproutBalanceCache(result.new_balance);
+        }
+
+        console.log('✅ [SproutChargingStationPage] 차감 성공 → 주문 생성 시작');
+
+        // 네트워크 호출 #2: 주문 생성 + 콘텐츠 제목 + (캐시 미스 시) 사주 조회 병렬
+        const merchantUid = `order_${Date.now()}`;
+        const userId = session.user.id;
+
+        const orderInsertPromise = (gname: string) => supabase
+          .from('orders')
+          .insert({
+            user_id: userId,
+            content_id: contentId,
+            merchant_uid: merchantUid,
+            paid_amount: requiredAmount,
+            pay_method: 'sprout',
+            pg_provider: 'sprout',
+            pstatus: 'paid',
+            success: true,
+            gname,
+          })
+          .select('id')
+          .single();
+
+        let hasSaju = hasSajuFromCache ?? false;
+
+        // 콘텐츠 제목 + 주문 생성 + (필요 시 사주 조회) 병렬
+        const titlePromise = supabase
+          .from('master_contents')
+          .select('title')
+          .eq('id', contentId)
+          .single();
+
+        if (hasSajuFromCache === null) {
+          const [titleResult, sajuResult] = await Promise.all([
+            titlePromise,
+            supabase.from('saju_records').select('*').eq('user_id', userId),
+          ]);
+
+          const { data: orderData, error: orderError } = await orderInsertPromise(titleResult.data?.title || '운세 구성');
+          if (orderError || !orderData) {
+            console.error('❌ [SproutChargingStationPage] 주문 생성 실패:', orderError);
+            alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+            return;
+          }
+          localStorage.setItem('pendingOrderId', orderData.id);
+          console.log('✅ 주문 생성 완료:', orderData.id);
+
+          const mySajuList = sajuResult.data;
+          hasSaju = mySajuList ? mySajuList.length > 0 : false;
+          if (hasSaju && mySajuList) {
+            const primary = mySajuList.find((s: Record<string, unknown>) => s.is_primary) || mySajuList[0];
+            localStorage.setItem('primary_saju', JSON.stringify(primary));
+            localStorage.setItem('saju_records_cache', JSON.stringify(mySajuList));
+          }
+        } else {
+          const titleResult = await titlePromise;
+          const { data: orderData, error: orderError } = await orderInsertPromise(titleResult.data?.title || '운세 구성');
+          if (orderError || !orderData) {
+            console.error('❌ [SproutChargingStationPage] 주문 생성 실패:', orderError);
+            alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+            return;
+          }
+          localStorage.setItem('pendingOrderId', orderData.id);
+          console.log('✅ 주문 생성 완료:', orderData.id);
+        }
+
+        localStorage.removeItem('purchase_history_cache');
+        preloadLoadingPageImages();
+
+        if (hasSaju) {
+          navigate(`/product/${contentId}/saju-select`, { replace: true });
+        } else {
+          navigate(`/product/${contentId}/birthinfo`, { replace: true });
+        }
+      } catch (err) {
+        console.error('❌ [SproutChargingStationPage] 차감 처리 예외:', err);
+        alert('처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } else {
+      // 아직 잔액 부족 (여러 번 충전 가능)
+      navigate(0); // 페이지 새로고침
+    }
+  };
+
+  return (
+    <SproutChargingStation
+      contentId={contentId}
+      currentBalance={balance}
+      requiredAmount={requiredAmount}
+      fromProfile={isFromProfile}
+      onBack={() => navigate(-1)}
+      onChargeComplete={handleChargeComplete}
+    />
+  );
+}
+
 // ⭐ /result/saju → /result 리다이렉트 (알림톡 템플릿 호환성)
 function ResultSajuRedirect() {
   const location = useLocation();
@@ -3336,6 +3504,11 @@ export default function App() {
     document.documentElement.lang = 'ko';
   }, []);
 
+  // 🔗 공유 리워드: URL의 ?ref= 파라미터 캡처 (최초 1회)
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
+
   // ⚡ Edge Function Cold Start 방지 - 앱 로드 시 warm-up
   useEffect(() => {
     const warmupEdgeFunctions = async () => {
@@ -3464,6 +3637,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
           <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
+          <Route path="/sprout-charging/:contentId" element={<SproutChargingStationPage />} /> {/* ⭐ 새싹 충전소 */}
           {/* TarotDemo 백업됨 */}
 
           {/* ⭐ 공통 에러 페이지 라우트 (DEV 확인용) */}
