@@ -62,6 +62,7 @@ export default function SproutChargingStation({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'kakaopay' | 'card'>('kakaopay');
   const [isPortOneReady, setIsPortOneReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isChargeCompleted, setIsChargeCompleted] = useState(false);
   const [isLoadingPackages, setIsLoadingPackages] = useState(true);
 
   const shortfall = Math.max(0, requiredAmount - currentBalance);
@@ -153,6 +154,7 @@ export default function SproutChargingStation({
 
         if (result.success) {
           console.log('✅ [SproutChargingStation] 리다이렉트 충전 성공:', result);
+          setIsChargeCompleted(true);
           onChargeComplete(result.new_balance);
         } else {
           console.error('❌ [SproutChargingStation] 리다이렉트 충전 처리 실패:', result);
@@ -245,13 +247,12 @@ export default function SproutChargingStation({
       window.IMP!.request_pay(
         paymentParams,
         async function (response: Record<string, unknown>) {
-          setIsProcessing(false);
-
           if (response.success) {
             try {
               // Edge Function은 JWT 디코딩만 사용 → getSession 캐시 토큰으로 충분
               const { data: { session } } = await supabase.auth.getSession();
               if (!session) {
+                setIsProcessing(false);
                 alert('로그인이 필요합니다. 다시 로그인해주세요.');
                 return;
               }
@@ -276,16 +277,20 @@ export default function SproutChargingStation({
 
               if (result.success) {
                 console.log('✅ [SproutChargingStation] 충전 성공:', result);
+                setIsChargeCompleted(true);
                 onChargeComplete(result.new_balance);
               } else {
                 console.error('❌ [SproutChargingStation] 충전 처리 실패:', result);
+                setIsProcessing(false);
                 alert('충전 처리에 실패했습니다. 고객센터에 문의해주세요.');
               }
             } catch (err) {
               console.error('❌ [SproutChargingStation] 충전 API 호출 실패:', err);
+              setIsProcessing(false);
               alert('결제는 완료되었으나 충전 처리에 실패했습니다. 고객센터에 문의해주세요.');
             }
           } else {
+            setIsProcessing(false);
             alert('결제가 취소되었습니다.');
           }
         },
@@ -312,7 +317,7 @@ export default function SproutChargingStation({
 
         {isProcessing && (
           <div className="fixed inset-0 z-50">
-            <PageLoader message="결제 페이지로 이동 중..." />
+            <PageLoader message={isChargeCompleted ? "결제 완료! 운세 준비 중..." : "결제 페이지로 이동 중..."} />
           </div>
         )}
 

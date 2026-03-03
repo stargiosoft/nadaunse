@@ -1778,9 +1778,10 @@ function SproutChargingStationPage() {
           return;
         }
 
-        // 네트워크 호출 #1: 새싹 차감
-        const edgeFnUrl = `https://${projectId}.supabase.co/functions/v1/sprout-deduct`;
-        const res = await fetch(edgeFnUrl, {
+        const userId = session.user.id;
+
+        // 네트워크 호출 병렬화: 차감 + 제목 + (캐시 미스 시 사주 조회) 동시 실행
+        const deductPromise = fetch(`https://${projectId}.supabase.co/functions/v1/sprout-deduct`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1790,8 +1791,23 @@ function SproutChargingStationPage() {
             content_id: contentId,
             amount: requiredAmount,
           }),
-        });
-        const result = await res.json();
+        }).then(r => r.json());
+
+        const titlePromise = supabase
+          .from('master_contents')
+          .select('title')
+          .eq('id', contentId)
+          .single();
+
+        const sajuPromise = hasSajuFromCache === null
+          ? supabase.from('saju_records').select('*').eq('user_id', userId)
+          : null;
+
+        const [result, titleResult, sajuResult] = await Promise.all([
+          deductPromise,
+          titlePromise,
+          sajuPromise,
+        ]);
 
         if (!result.success) {
           console.error('❌ [SproutChargingStationPage] 차감 실패:', result);
@@ -1805,11 +1821,10 @@ function SproutChargingStationPage() {
 
         console.log('✅ [SproutChargingStationPage] 차감 성공 → 주문 생성 시작');
 
-        // 네트워크 호출 #2: 주문 생성 + 콘텐츠 제목 + (캐시 미스 시) 사주 조회 병렬
+        // 주문 생성 (차감 + 제목 완료 후)
         const merchantUid = `order_${Date.now()}`;
-        const userId = session.user.id;
-
-        const orderInsertPromise = (gname: string) => supabase
+        const gname = titleResult.data?.title || '운세 구성';
+        const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .insert({
             user_id: userId,
@@ -1825,30 +1840,16 @@ function SproutChargingStationPage() {
           .select('id')
           .single();
 
+        if (orderError || !orderData) {
+          console.error('❌ [SproutChargingStationPage] 주문 생성 실패:', orderError);
+          alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+          return;
+        }
+        localStorage.setItem('pendingOrderId', orderData.id);
+        console.log('✅ 주문 생성 완료:', orderData.id);
+
         let hasSaju = hasSajuFromCache ?? false;
-
-        // 콘텐츠 제목 + 주문 생성 + (필요 시 사주 조회) 병렬
-        const titlePromise = supabase
-          .from('master_contents')
-          .select('title')
-          .eq('id', contentId)
-          .single();
-
-        if (hasSajuFromCache === null) {
-          const [titleResult, sajuResult] = await Promise.all([
-            titlePromise,
-            supabase.from('saju_records').select('*').eq('user_id', userId),
-          ]);
-
-          const { data: orderData, error: orderError } = await orderInsertPromise(titleResult.data?.title || '운세 구성');
-          if (orderError || !orderData) {
-            console.error('❌ [SproutChargingStationPage] 주문 생성 실패:', orderError);
-            alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
-            return;
-          }
-          localStorage.setItem('pendingOrderId', orderData.id);
-          console.log('✅ 주문 생성 완료:', orderData.id);
-
+        if (sajuResult) {
           const mySajuList = sajuResult.data;
           hasSaju = mySajuList ? mySajuList.length > 0 : false;
           if (hasSaju && mySajuList) {
@@ -1856,16 +1857,6 @@ function SproutChargingStationPage() {
             localStorage.setItem('primary_saju', JSON.stringify(primary));
             localStorage.setItem('saju_records_cache', JSON.stringify(mySajuList));
           }
-        } else {
-          const titleResult = await titlePromise;
-          const { data: orderData, error: orderError } = await orderInsertPromise(titleResult.data?.title || '운세 구성');
-          if (orderError || !orderData) {
-            console.error('❌ [SproutChargingStationPage] 주문 생성 실패:', orderError);
-            alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
-            return;
-          }
-          localStorage.setItem('pendingOrderId', orderData.id);
-          console.log('✅ 주문 생성 완료:', orderData.id);
         }
 
         localStorage.removeItem('purchase_history_cache');
