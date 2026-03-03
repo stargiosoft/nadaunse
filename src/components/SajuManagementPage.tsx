@@ -691,23 +691,23 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
 
       console.log('🔄 [대표사주변경] 시작:', pendingPrimarySajuId);
 
-      // 1단계: 기존 대표 해제 + 새 대표 설정 병렬 실행
-      const [resetResult, updateResult] = await Promise.all([
-        supabase
-          .from('saju_records')
-          .update({ is_primary: false })
-          .eq('user_id', user.id)
-          .eq('is_primary', true),
-        supabase
-          .from('saju_records')
-          .update({ is_primary: true })
-          .eq('id', pendingPrimarySajuId),
-      ]);
+      // 1단계: 기존 대표 해제 → 새 대표 설정 (순차 실행 필수: 병렬 시 race condition)
+      const resetResult = await supabase
+        .from('saju_records')
+        .update({ is_primary: false })
+        .eq('user_id', user.id)
+        .eq('is_primary', true);
 
       if (resetResult.error) {
         console.error('❌ [대표사주변경] 기존 대표 해제 실패:', resetResult.error);
         throw resetResult.error;
       }
+
+      const updateResult = await supabase
+        .from('saju_records')
+        .update({ is_primary: true })
+        .eq('id', pendingPrimarySajuId);
+
       if (updateResult.error) {
         console.error('❌ [대표사주변경] 새 대표 설정 실패:', updateResult.error);
         throw updateResult.error;
