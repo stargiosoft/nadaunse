@@ -2,7 +2,7 @@
  * 태그 쿠폰 안내 바텀시트
  *
  * @description
- * - 프로모션 모드 (기본): 태그 5개 모으면 무료 쿠폰 지급 안내
+ * - 프로모션 모드 (기본): 태그 5개 모으면 무료 이용권 지급 안내
  * - 태그 모으기 유도 모드 (remainingTags 제공 시): 남은 태그 수 안내
  * - 나다움 기록하기 페이지에서 태그 선택 유도용
  *
@@ -121,7 +121,7 @@ export default function TagCouponBottomSheet({
                     >
                       {remainingTags ? (
                         <>
-                          <span>무료 쿠폰까지 </span>
+                          <span>무료 이용권까지 </span>
                           <span style={{ color: '#FF6678' }}>태그 {remainingTags}개</span>
                           <span> 남았어요</span>
                         </>
@@ -129,7 +129,7 @@ export default function TagCouponBottomSheet({
                         <>
                           <span>태그 5개</span>
                           <span>를 모으면 </span>
-                          <span style={{ color: '#ff6678' }}>무료 쿠폰</span>
+                          <span style={{ color: '#ff6678' }}>무료 이용권</span>
                           <span> 지급 !</span>
                         </>
                       )}
@@ -152,7 +152,7 @@ export default function TagCouponBottomSheet({
                         }}
                       >
                         {remainingTags
-                          ? '태그 5개를 모으면 무료 쿠폰 지급돼요'
+                          ? '태그 5개를 모으면 무료 이용권 지급돼요'
                           : '지금, 첫 태그를 선택해 보세요'
                         }
                       </p>

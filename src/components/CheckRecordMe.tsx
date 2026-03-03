@@ -875,7 +875,7 @@ export default function CheckRecordMe({
                   margin: 0,
                   whiteSpace: 'nowrap'
                 }}>
-                  무료 쿠폰까지{' '}
+                  무료 이용권까지{' '}
                   <span style={{ color: '#48B2AF' }}>태그 {completionRemainingTags}개</span>
                   {' '}남았어요
                 </p>
@@ -891,7 +891,7 @@ export default function CheckRecordMe({
                 margin: '-4px 0 0 0',
                 paddingLeft: '1px'
               }}>
-                태그 5개를 모으면 무료 쿠폰 지급돼요
+                태그 5개를 모으면 무료 이용권 지급돼요
               </p>
             </motion.div>
 
@@ -973,7 +973,7 @@ export default function CheckRecordMe({
                   whiteSpace: 'nowrap'
                 }}>
                   일요일에{' '}
-                  <span style={{ color: '#48B2AF' }}>무료 쿠폰</span>
+                  <span style={{ color: '#48B2AF' }}>무료 이용권</span>
                   이 지급돼요
                 </p>
               </div>

@@ -890,7 +890,7 @@
 - **사용처**: CheckRecordMe.tsx
 - **타입**: Modal Component
 - **주요 기능**:
-  - 프로모션 모드: 태그 5개 모으면 무료 쿠폰 지급 안내
+  - 프로모션 모드: 태그 5개 모으면 무료 이용권 지급 안내
   - 태그 모으기 유도 모드: 남은 태그 수 안내 (remainingTags prop)
   - Framer Motion 애니메이션
 - **Props**:
