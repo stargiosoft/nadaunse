@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from "motion/react";
 import { supabase } from '../lib/supabase';
 import { ContentTags, isContentNew } from './ContentTags';
 import type { MasterContent } from '../lib/freeContentService';
@@ -36,6 +37,29 @@ interface CachedData {
   results: ResultItem[];
   createdAt: string;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut"
+    }
+  }
+};
 
 export default function FreeSajuDetail({
   recordId,
@@ -276,15 +300,19 @@ export default function FreeSajuDetail({
         </div>
 
         {/* ⭐ Scrollable Content Area - overscroll-contain으로 iOS 바운스 방지 */}
-        <div className="flex-1 overflow-y-auto overscroll-contain" style={{ scrollbarGutter: 'stable' }}>
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {/* Content Area */}
           <div className="px-0 pb-[100px] pt-[12px]">
-          <div
+          <motion.div 
             className="content-stretch flex flex-col gap-[40px] items-start relative shrink-0 w-full"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
           >
             {/* Product Info Card */}
-            <div
+            <motion.div 
               className="bg-[#f7f8f9] relative shrink-0 w-full mb-[-16px] z-10"
+              variants={itemVariants}
             >
               <div className="size-full">
                 <div className="content-stretch flex flex-col items-start px-[20px] py-[12px] relative w-full">
@@ -312,18 +340,20 @@ export default function FreeSajuDetail({
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Q&A Content */}
-            <div
+            <motion.div 
               className="content-stretch flex flex-col gap-[52px] items-start relative shrink-0 w-full"
+              variants={containerVariants}
             >
               <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
                 {/* ⭐️ 동적으로 질문/답변 렌더링 */}
                 {cachedData.results.map((result, index) => (
-                  <div
-                    key={result.questionId}
+                  <motion.div 
+                    key={result.questionId} 
                     className="relative shrink-0 w-full"
+                    variants={itemVariants}
                   >
                     {/* 첫 번째 아이템이 아니면 디바이더 표시 */}
                     {index > 0 && (
@@ -368,15 +398,16 @@ export default function FreeSajuDetail({
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
 
               </div>
 
               {/* 궁금증 유발 마무리 문구 + 유료 추천 콘텐츠 카드 */}
               {recommendedPaidContent && (
-                <div
+                <motion.div
                   className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full px-[20px]"
+                  variants={itemVariants}
                 >
                   <p className="leading-[28.5px] text-[16px] text-[#41a09e] tracking-[-0.32px]" style={{ fontWeight: 500 }}>
                     구체적인 흐름이 궁금하다면...
@@ -419,10 +450,10 @@ export default function FreeSajuDetail({
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
         </div>{/* ⭐ Scrollable Container 닫기 */}
 

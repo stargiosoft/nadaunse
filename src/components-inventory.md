@@ -1,7 +1,7 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-02-26
-> **총 컴포넌트 수**: 76개 (활성화) - 주간 보고서 11개 + 통계 대시보드 1개 포함
+> **최종 업데이트**: 2026-02-12
+> **총 컴포넌트 수**: 75개 (활성화) - 주간 보고서 11개 + 통계 대시보드 1개 포함
 > **UI 컴포넌트 (shadcn/ui)**: 52개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -197,19 +197,6 @@
   - 쿠폰 선택 및 적용
   - 할인 금액 미리보기
 - **파일 경로**: `/components/CouponBottomSheetNew.tsx`
-
-### SproutChargingStation.tsx
-- **역할**: 새싹 충전소 (패키지 선택, PortOne 결제, 잔액 충전)
-- **사용처**: `/sprout-charging` 라우트
-- **타입**: Page Component
-- **주요 기능**:
-  - 새싹 충전 패키지 목록 표시 (sprout_packages 테이블)
-  - PortOne v2 결제 연동
-  - 잔액 충전 처리 (sprout-charge Edge Function)
-  - 새싹 잔액 표시
-- **파일 경로**: `/components/SproutChargingStation.tsx`
-- **관련 훅**: `useSproutBalance` (`/hooks/useSproutBalance.ts`) - 사용자 새싹 잔액 조회
-- **추가 날짜**: 2026-02-26
 
 ### WelcomeCouponPage.tsx
 - **역할**: 가입 축하 쿠폰 안내 페이지

@@ -6,7 +6,6 @@ import { setUser as setSentryUser } from '../lib/sentry';
 import { clearUserCaches } from '../lib/auth';
 import { PageLoader } from '../components/ui/PageLoader';
 import { setUserId as setGAUserId } from '../utils/analytics';
-import { processReferral, getPendingReferral } from '../lib/shareRewardService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -208,16 +207,6 @@ export default function AuthCallback() {
       // ⭐️ 신규 사용자 (404 또는 is_new: true)
       if (response.status === 404 || (result.user && result.user.is_new)) {
         console.log('⚠️ 신규 사용자 → 약관 페이지로 이동');
-
-        // 🔗 레퍼럴 처리 (non-blocking: 결과 기다리지 않음)
-        // 신규 가입자만 레퍼럴 대상. auth.users는 이미 생성됨 → FK 제약 충족
-        const pendingRef = getPendingReferral();
-        if (pendingRef) {
-          console.log('🔗 [레퍼럴] 신규 사용자 레퍼럴 처리 시작:', pendingRef);
-          processReferral(session.access_token).catch(e =>
-            console.error('🔗 [레퍼럴] 백그라운드 처리 실패:', e)
-          );
-        }
 
         // 세션 정보를 localStorage에 임시 저장
         const tempUserData = {

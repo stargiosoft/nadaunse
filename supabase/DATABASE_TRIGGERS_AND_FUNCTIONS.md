@@ -2,8 +2,8 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **Triggers**: 5개 | **Functions**: 10개 | **pg_cron Jobs**: 4개
-> **최종 업데이트**: 2026-02-26
+> **Triggers**: 5개 | **Functions**: 8개 | **pg_cron Jobs**: 4개
+> **최종 업데이트**: 2026-02-12
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -130,7 +130,7 @@ $function$
 
 ### 3. `handle_new_user`
 
-**목적**: 신규 사용자 인증 시 `users` 테이블에 자동으로 레코드 생성 + 웰컴 새싹 20개 지급
+**목적**: 신규 사용자 인증 시 `users` 테이블에 자동으로 레코드 생성
 
 ```sql
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -139,14 +139,13 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $function$
 BEGIN
-  INSERT INTO public.users (id, provider, provider_id, email, nickname, sprout_balance)
+  INSERT INTO public.users (id, provider, provider_id, email, nickname)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_app_meta_data->>'provider', 'google'),
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
-    20
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email)
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -161,7 +160,6 @@ $function$
 **설명**:
 - Supabase Auth의 `auth.users` 테이블에 새 사용자가 추가되면 자동 실행
 - `public.users` 테이블에 사용자 정보를 복사
-- **웰컴 새싹 20개 자동 지급** (`sprout_balance = 20`)
 - 이미 존재하는 경우 중복 삽입을 방지 (`ON CONFLICT DO NOTHING`)
 
 ---
@@ -415,66 +413,6 @@ SELECT process_refund(
 
 ---
 
-### 8. `process_sprout_charge` (NEW - 2026-02-26)
-
-**목적**: 새싹 충전 처리 - 잔액 증가, 주문 기록, 거래 내역 기록을 단일 트랜잭션으로 원자적 처리
-
-**권한**: `SECURITY DEFINER` - 함수 소유자 권한으로 실행 (RLS 우회)
-
-**파라미터**:
-- `p_user_id` (uuid): 사용자 ID
-- `p_base_amount` (integer): 기본 새싹 수량
-- `p_bonus_amount` (integer): 보너스 새싹 수량
-- `p_total_amount` (integer): 총 새싹 수량
-- `p_price_krw` (integer): 실제 결제 금액 (KRW)
-- `p_package_name` (text): 패키지 이름
-- `p_imp_uid` (text): 포트원 결제 고유번호
-- `p_merchant_uid` (text): 가맹점 주문번호
-- `p_pay_method` (text): 결제 수단
-- `p_pg_provider` (text): PG사
-
-**반환값**: `jsonb` - 처리 결과 (`success`, `order_id`, `new_balance` 또는 `error`)
-
-**처리 순서**:
-1. 잔액 잠금 (`FOR UPDATE`) - 동시성 제어
-2. 잔액 증가 (`sprout_balance += p_total_amount`)
-3. `orders` 테이블에 충전 주문 기록
-4. `sprout_transactions` 테이블에 거래 내역 기록 (`transaction_type = 'charge'`)
-
-**특징**:
-- `FOR UPDATE`: 행 잠금으로 동시 충전 시 데이터 정합성 보장
-- 트랜잭션 원자성: 잔액 증가 + 주문 기록 + 거래 내역이 함께 성공/실패
-- 예외 처리: 실패 시 롤백 및 에러 메시지 반환
-
----
-
-### 9. `process_sprout_deduct` (NEW - 2026-02-26)
-
-**목적**: 새싹 차감 처리 - 잔액 부족 검증, 잔액 차감, 거래 내역 기록을 단일 트랜잭션으로 원자적 처리
-
-**권한**: `SECURITY DEFINER` - 함수 소유자 권한으로 실행 (RLS 우회)
-
-**파라미터**:
-- `p_user_id` (uuid): 사용자 ID
-- `p_content_id` (text): 콘텐츠 ID
-- `p_amount` (integer): 차감할 새싹 수량
-
-**반환값**: `jsonb` - 처리 결과 (`success`, `new_balance` 또는 `error`)
-
-**처리 순서**:
-1. 잔액 잠금 (`FOR UPDATE`) - 동시성 제어
-2. 잔액 부족 시 에러 반환 (`RAISE EXCEPTION 'Insufficient sprout balance'`)
-3. 잔액 차감 (`sprout_balance -= p_amount`)
-4. `sprout_transactions` 테이블에 거래 내역 기록 (`transaction_type = 'deduct'`)
-
-**특징**:
-- `FOR UPDATE`: 행 잠금으로 동시 차감 시 데이터 정합성 보장
-- 잔액 검증: 차감 전 잔액 부족 여부 확인
-- 트랜잭션 원자성: 잔액 차감 + 거래 내역이 함께 성공/실패
-- 예외 처리: 실패 시 롤백 및 에러 메시지 반환
-
----
-
 ## pg_cron 스케줄 작업
 
 PostgreSQL 스케줄링 확장을 사용한 자동화 작업입니다.
@@ -692,8 +630,6 @@ END $$;
 |---------------------|-------------------|------|
 | `process_payment_complete` | `/process-payment` | 결제 트랜잭션 원자적 처리 |
 | `process_refund` | `/process-refund` | 환불 + 쿠폰 복원 |
-| `process_sprout_charge` | `/sprout-charge` | 새싹 충전 (잔액 증가 + 주문 + 거래 기록) |
-| `process_sprout_deduct` | `/sprout-deduct` | 새싹 차감 (잔액 감소 + 거래 기록) |
 
 **설계 원칙**:
 - **SECURITY DEFINER**: RLS 정책 우회하여 신뢰된 서버 로직만 실행

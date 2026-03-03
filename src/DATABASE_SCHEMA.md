@@ -20,9 +20,8 @@
 8. [주간 보고서 테이블](#주간-보고서-테이블)
 9. [심리 상태 통합 테이블](#심리-상태-통합-테이블)
 10. [알림톡 로그 테이블](#알림톡-로그-테이블)
-11. [새싹 관련 테이블](#새싹-관련-테이블)
-12. [백업 테이블](#백업-테이블)
-13. [테이블 관계도](#테이블-관계도)
+11. [백업 테이블](#백업-테이블)
+12. [테이블 관계도](#테이블-관계도)
 
 ---
 
@@ -51,11 +50,9 @@
 | `rejected_tags` | text[] | - | `'{}'` | AI 태그 추출 시 제외할 태그 목록 (CheckRecordMe에서 미선택 태그 누적) |
 | `created_at` | timestamptz | - | `now()` | 계정 생성 일시 |
 | `role` | text | CHECK | `'user'` | 사용자 권한 (master, admin, user) |
-| `sprout_balance` | integer | NOT NULL, CHECK | `0` | 새싹 잔액 (CHECK >= 0) |
 
 **제약조건**:
 - `role` CHECK: 'master', 'admin', 'user' 중 하나만 허용
-- `sprout_balance` CHECK: 0 이상만 허용
 
 ---
 
@@ -527,50 +524,6 @@
 
 ---
 
-## 새싹 관련 테이블
-
-### `sprout_transactions` (새싹 거래 내역)
-
-새싹 충전/차감/환불 거래 내역을 저장하는 테이블
-
-| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
-|--------|------|----------|--------|------|
-| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 거래 고유 ID |
-| `user_id` | uuid | FOREIGN KEY | - | 사용자 ID (users.id) |
-| `transaction_type` | text | NOT NULL | - | 거래 유형 ('charge', 'deduct', 'refund') |
-| `amount` | integer | NOT NULL | - | 거래 수량 |
-| `balance_before` | integer | NOT NULL | - | 거래 전 잔액 |
-| `balance_after` | integer | NOT NULL | - | 거래 후 잔액 |
-| `description` | text | - | - | 거래 설명 |
-| `related_order_id` | uuid | - | - | 관련 주문 ID |
-| `related_content_id` | text | - | - | 관련 콘텐츠 ID |
-| `payment_amount` | integer | - | - | 실제 결제 금액 (KRW) |
-| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
-
-**외래키**:
-- `user_id` → `users(id)`
-
----
-
-### `sprout_packages` (새싹 충전 패키지)
-
-새싹 충전 패키지 정보를 저장하는 테이블
-
-| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
-|--------|------|----------|--------|------|
-| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 패키지 고유 ID |
-| `name` | text | NOT NULL | - | 패키지 이름 |
-| `base_amount` | integer | NOT NULL | - | 기본 새싹 수량 |
-| `bonus_amount` | integer | NOT NULL | - | 보너스 새싹 수량 |
-| `total_amount` | integer | NOT NULL | - | 총 새싹 수량 (base + bonus) |
-| `price_krw` | integer | NOT NULL | - | 가격 (KRW) |
-| `badge` | text | - | - | 배지 텍스트 (BEST 등) |
-| `sort_order` | integer | - | - | 정렬 순서 |
-| `is_active` | boolean | - | `true` | 활성화 여부 |
-| `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
-
----
-
 ## 백업 테이블
 
 ### `master_contents_backup`
@@ -592,8 +545,7 @@ users (사용자)
   ├─→ user_coupons (1:N) - 사용자의 쿠폰
   ├─→ alimtalk_logs (1:N) - 사용자의 알림톡 로그
   ├─→ user_trait_tags (1:N) - 나다움 성향 태그
-  ├─→ weekly_reports (1:N) - 사용자의 주간 보고서
-  └─→ sprout_transactions (1:N) - 새싹 거래 내역
+  └─→ weekly_reports (1:N) - 사용자의 주간 보고서
 
 master_contents (콘텐츠)
   ├─→ master_content_questions (1:N) - 콘텐츠의 질문들
@@ -665,7 +617,6 @@ weekly_reports (주간 보고서)
 | 2.0.0 | 2026-02-09 | users 테이블에 rejected_tags 컬럼 추가, last_login_at 갱신 로직 변경 (HomePage → App.tsx recordTodayVisit) | AI Assistant |
 | 2.1.0 | 2026-02-09 | coupons.coupon_type에 mission 타입 추가 (미션성공쿠폰) | AI Assistant |
 | 2.2.0 | 2026-02-25 | user_situation_summaries 테이블 추가 (주간 보고서 + 콘텐츠 풀이 심리 상태 통합 관리) | AI Assistant |
-| 2.3.0 | 2026-02-26 | users 테이블에 sprout_balance 컬럼 추가, sprout_transactions/sprout_packages 테이블 추가 (새싹 충전소 기능) | AI Assistant |
 
 ---
 

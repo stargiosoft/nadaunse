@@ -260,34 +260,6 @@ const { count } = await supabase
 
 ---
 
-### 17. `sprout_transactions` (새싹 거래 내역) - NEW 2026-02-26
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Users can view own sprout transactions | SELECT | authenticated | `auth.uid() = user_id` |
-
-**RLS 상태**: Enabled
-
-**용도**:
-- 사용자 본인의 새싹 충전/차감/환불 거래 내역 조회
-- 충전소 페이지에서 거래 기록 표시
-
----
-
-### 18. `sprout_packages` (새싹 충전 패키지) - NEW 2026-02-26
-
-| 정책명 | 명령 | 대상 | 조건 |
-|--------|------|------|------|
-| Authenticated can view active packages | SELECT | authenticated | `is_active = true` |
-
-**RLS 상태**: Enabled
-
-**용도**:
-- 모든 인증된 사용자가 활성화된 새싹 충전 패키지 조회
-- 충전소 페이지에서 패키지 목록 표시
-
----
-
 ## 정책 요약
 
 | 테이블 | 정책 수 | RLS 상태 |
@@ -308,9 +280,7 @@ const { count } = await supabase
 | report_tarot_selections | 3 | Enabled |
 | anonymous_free_views | 0 | Enabled (Service Role 전용) |
 | user_situation_summaries | 1 | Enabled (Service Role 전용) |
-| sprout_transactions | 1 | Enabled |
-| sprout_packages | 1 | Enabled |
-| **총계** | **43** | - |
+| **총계** | **41** | - |
 
 ---
 
@@ -374,7 +344,7 @@ ORDER BY tablename;
 3. **정책 변경 시** 반드시 Staging에서 먼저 테스트 후 Production에 적용하세요.
 
 4. **SECURITY DEFINER 함수** (NEW - 2026-01-07)
-   - `process_payment_complete`, `process_refund`, `process_sprout_charge`, `process_sprout_deduct` 함수는 SECURITY DEFINER로 실행
+   - `process_payment_complete`, `process_refund` 함수는 SECURITY DEFINER로 실행
    - 함수 소유자(postgres) 권한으로 실행되어 RLS 정책 우회
    - Edge Functions에서만 호출되도록 설계 (클라이언트 직접 호출 금지)
    - 관련 문서: [DATABASE_TRIGGERS_AND_FUNCTIONS.md](./DATABASE_TRIGGERS_AND_FUNCTIONS.md)

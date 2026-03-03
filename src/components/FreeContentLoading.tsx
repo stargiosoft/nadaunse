@@ -226,66 +226,159 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
           return;
         }
 
-        // ⭐️ 1단계: 게스트 사주 데이터 준비 (동기 - localStorage)
-        let sajuDataForGuest: any = null;
+        // ⭐️ 1단계: contentId로 콘텐츠 & 질문 조회 (master_contents인 경우)
+        console.log('📋 [FreeContentLoading] 콘텐츠 & 질문 조회 시작...');
+
+        // ⭐ 콘텐츠 정보 조회 (FreeResultPage의 DB 조회 스킵용)
+        const { data: contentData, error: contentError } = await supabase
+          .from('master_contents')
+          .select('*')
+          .eq('id', contentId)
+          .single();
+
+        if (contentError || !contentData) {
+          console.error('❌ [FreeContentLoading] 콘텐츠 조회 실패:', contentError);
+          toast.error('콘텐츠를 찾을 수 없습니다.');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        console.log('✅ [FreeContentLoading] 콘텐츠 조회 완료:', contentData);
+
+        // product 형식으로 변환
+        const productInfo = {
+          id: contentData.id,
+          title: contentData.title,
+          type: 'free',
+          category: contentData.category_main || contentData.category,
+          image: contentData.thumbnail_url || '',
+          description: contentData.description || ''
+        };
+
+        const { data: questions, error: questionsError } = await supabase
+          .from('master_content_questions')
+          .select('*')
+          .eq('content_id', contentId)
+          .order('question_order');
+
+        if (questionsError) {
+          console.error('❌ [FreeContentLoading] 질문 조회 실패:', questionsError);
+          toast.error('질문을 불러올 수 없습니다.');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        if (!questions || questions.length === 0) {
+          console.error('❌ [FreeContentLoading] 질문이 없습니다.');
+          toast.error('콘텐츠 정보가 올바르지 않습니다.');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        console.log('✅ [FreeContentLoading] 질문 조회 완료:', questions);
+
+        // ⭐️ 2단계: 사주 정보 가져오기 및 문자열 변환
+        let questionerInfo = '';
+        let sajuDataForCache: any = null;
+
         if (guestMode) {
+          // 게스트 모드: localStorage에서 사주 데이터 가져오기
           console.log('🔓 [FreeContentLoading] 게스트 모드 → localStorage 사주 데이터 사용');
           const cachedSaju = localStorage.getItem('cached_saju_info');
+          
           if (!cachedSaju) {
             console.error('❌ [FreeContentLoading] 캐시된 사주 정보 없음');
             toast.error('사주 정보를 찾을 수 없습니다.');
             navigate('/', { replace: true });
             return;
           }
-          sajuDataForGuest = JSON.parse(cachedSaju);
-        } else if (!sajuRecordId) {
-          console.error('❌ [FreeContentLoading] sajuRecordId 없음');
-          toast.error('사주 정보를 찾을 수 없습니다.');
-          navigate('/', { replace: true });
-          return;
+
+          sajuDataForCache = JSON.parse(cachedSaju);
+          console.log('📌 [FreeContentLoading] 캐시된 사주 데이터:', sajuDataForCache);
+
+          // 사주 정보를 문자열로 변환 (camelCase 필드명 사용)
+          questionerInfo = `
+이름: ${sajuDataForCache.name || '미상'}
+성별: ${sajuDataForCache.gender === 'male' ? '남성' : '여성'}
+생년월일: ${new Date(sajuDataForCache.birthDate).toLocaleDateString('ko-KR')}
+출생시간: ${sajuDataForCache.birthTime}
+          `.trim();
+        } else {
+          // 로그인 모드: sajuRecordId로 DB 조회
+          console.log('✅ [FreeContentLoading] 로그인 모드 → sajuRecordId로 DB 조회');
+          
+          if (!sajuRecordId) {
+            console.error('❌ [FreeContentLoading] sajuRecordId 없음');
+            toast.error('사주 정보를 찾을 수 없습니다.');
+            navigate('/', { replace: true });
+            return;
+          }
+
+          const { data: sajuRecord, error: sajuError } = await supabase
+            .from('saju_records')
+            .select('*')
+            .eq('id', sajuRecordId)
+            .single();
+
+          if (sajuError || !sajuRecord) {
+            console.error('❌ [FreeContentLoading] 사주 정보 조회 실패:', sajuError);
+            toast.error('사주 정보를 찾을 수 없습니다.');
+            navigate('/', { replace: true });
+            return;
+          }
+
+          sajuDataForCache = sajuRecord;
+          console.log('📌 [FreeContentLoading] 조회한 사주 데이터:', sajuRecord);
+          console.log('  - full_name:', sajuRecord.full_name);
+          console.log('  - gender:', sajuRecord.gender);
+          console.log('  - birth_date:', sajuRecord.birth_date);
+          console.log('  - birth_time:', sajuRecord.birth_time);
+
+          // 사주 정보를 문자열로 변환
+          questionerInfo = `
+이름: ${sajuRecord.full_name || '미상'}
+성별: ${sajuRecord.gender === 'male' ? '남성' : '여성'}
+생년월일: ${new Date(sajuRecord.birth_date).toLocaleDateString('ko-KR')}
+출생시간: ${sajuRecord.birth_time}
+          `.trim();
         }
 
-        // ⭐️ 2단계: Edge Function + 콘텐츠 정보 동시 호출 (병렬)
-        // - Edge Function: AI 답변 생성 (내부에서 content, questions, saju 모두 조회)
-        // - master_contents: 결과 페이지 이동 시 productInfo용 (DB 재조회 방지)
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🚀 [FreeContentLoading] Edge Function + 콘텐츠 조회 병렬 시작...');
+        console.log('📌 [FreeContentLoading] questionerInfo:', questionerInfo);
 
-        const requestBody = guestMode
-          ? {
-              contentId,
-              sajuData: {
-                full_name: sajuDataForGuest.name || sajuDataForGuest.full_name,
-                gender: sajuDataForGuest.gender,
-                birth_date: sajuDataForGuest.birthDate || sajuDataForGuest.birth_date,
-                birth_time: sajuDataForGuest.birthTime || sajuDataForGuest.birth_time,
-                is_guest: true
-              },
-              userId: currentUserId
-            }
-          : { contentId, sajuRecordId, userId: currentUserId };
+        // ⭐️ 3단계: Edge Function 호출 (한 번에 모든 답변 생성)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🚀 [FreeContentLoading] Edge Function 호출 시작...');
+        console.log('📌 [FreeContentLoading] contentId:', contentId);
+
+        // Edge Function 파라미터 구성
+        let requestBody;
+        if (guestMode) {
+          // 게스트 모드: 사주 데이터 포맷을 DB 스키마(snake_case)로 변환하여 전달
+          // Edge Function이 saju_records 테이블 구조(full_name, birth_date, birth_time)를 기대할 가능성이 높음
+          requestBody = {
+            contentId: contentId,
+            sajuData: {
+              full_name: sajuDataForCache.name || sajuDataForCache.full_name,
+              gender: sajuDataForCache.gender,
+              birth_date: sajuDataForCache.birthDate || sajuDataForCache.birth_date,
+              birth_time: sajuDataForCache.birthTime || sajuDataForCache.birth_time,
+              is_guest: true
+            },
+            userId: currentUserId  // ⭐ 로그인 사용자인 경우 DB 저장용
+          };
+        } else {
+          requestBody = {
+            contentId: contentId,
+            sajuRecordId: sajuRecordId,
+            userId: currentUserId  // ⭐ 로그인 사용자인 경우 DB 저장용
+          };
+        }
 
         console.log('📤 [FreeContentLoading] 호출 파라미터:', requestBody);
 
-        const [result, { data: contentData }] = await Promise.all([
-          supabase.functions.invoke('generate-free-preview', { body: requestBody }),
-          supabase.from('master_contents')
-            .select('id,title,category_main,thumbnail_url,description')
-            .eq('id', contentId)
-            .single()
-        ]);
-
-        // product 형식으로 변환 (결과 페이지 네비게이션용)
-        const productInfo = contentData
-          ? {
-              id: contentData.id,
-              title: contentData.title,
-              type: 'free',
-              category: contentData.category_main,
-              image: contentData.thumbnail_url || '',
-              description: contentData.description || ''
-            }
-          : { id: contentId, title: '', type: 'free', category: '', image: '', description: '' };
+        const result = await supabase.functions.invoke('generate-free-preview', {
+          body: requestBody
+        });
 
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('📥 [FreeContentLoading] Edge Function 응답 (전체):');
@@ -415,21 +508,23 @@ export default function FreeContentLoading({ userName = '홍길동' }: FreeConte
         // ⭐ 비회원 일일 카운터 증가 (Edge Function 성공)
         incrementFreeDailyUsage();
 
-        // ⭐️ 3단계: Edge Function 응답을 FreeSajuDetail 형식으로 변환
+        // ⭐️ 4단계: Edge Function 응답을 FreeSajuDetail 형식으로 변환
         const results = result.data.answers.map((answer: any) => ({
           questionId: answer.question_id,
           questionOrder: answer.question_order,
           questionText: answer.question_text,
-          questionType: 'text',
+          questionType: 'text',  // 기본값
           previewText: answer.answer_text
         }));
 
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('✅ [FreeContentLoading] 모든 질문 생성 완료');
+        console.log('✅ [FreeContentLoading] 모든 질문 생성 완료:', results);
 
-        // ⭐️ 4단계: localStorage에 결과 저장
-        // sajuData: Edge Function 응답의 saju_info 사용 (프론트 DB 조회 제거)
-        const sajuDataForCache = result.data.saju_info || sajuDataForGuest;
+        // ⭐ 태그 추출은 결과 페이지에서 백그라운드로 처리 (UX 최적화)
+        // → 사용자가 결과를 보는 동안 태그 추출 진행
+        // → '다음' 클릭 시 태그 완료 여부 확인
+
+        // ⭐️ 5단계: localStorage에 결과 저장
         const resultData = {
           contentId: contentId,
           sajuData: sajuDataForCache,

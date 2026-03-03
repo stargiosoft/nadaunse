@@ -5406,33 +5406,6 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-## [2026-02-26] 새싹(Sprout) 포인트 시스템 도입
-
-**결정 사항**:
-- 콘텐츠별 직접 결제(KRW) → 새싹 포인트 기반 시스템으로 전환
-- 신규 가입 시 20새싹 웰컴 보너스 지급 (기존 유저 포함)
-- 유료 콘텐츠 가격: 30새싹 (약 3,000원 상당)
-- 충전 패키지 3종: 40새싹(3,900원), 130새싹(9,900원/BEST), 410새싹(19,500원)
-
-**근거**:
-- 소액 결제 반복 시 PG 수수료 부담 감소 (묶음 충전)
-- 결제 허들 낮춤 (잔액 있으면 즉시 이용, PG 없이 차감)
-- 보너스 새싹으로 대량 충전 유도 → ARPU 증가
-
-**구현**:
-- DB: `users.sprout_balance` (DEFAULT 20, CHECK >= 0), `sprout_transactions` (감사 로그), `sprout_packages` (충전 상품)
-- PG 함수: `process_sprout_charge` / `process_sprout_deduct` (SECURITY DEFINER, SELECT FOR UPDATE로 동시성 보호)
-- Edge Functions: `sprout-charge` (충전), `sprout-deduct` (차감) — JWT 필수
-- 프론트: `SproutChargingStation.tsx` (충전소), `useSproutBalance` 훅, ProfilePage 잔액 표시
-
-**영향 범위**:
-- `MasterContentDetailPage.tsx` - onPurchase: 잔액 확인 → 차감 or 충전소 이동
-- `ProfilePage.tsx` - 새싹 잔액 + 충전 버튼 (gradient 회전 테두리)
-- `App.tsx` - `/sprout-charging/:contentId` 라우트 추가
-- `TermsOfServicePage.tsx` - 제10조 환불 정책 새싹 반영
-
----
-
-**문서 버전**: 3.6.0
-**최종 업데이트**: 2026-02-26
+**문서 버전**: 3.5.0
+**최종 업데이트**: 2026-02-25
 **문서 끝**

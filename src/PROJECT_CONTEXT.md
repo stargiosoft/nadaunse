@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-26 (새싹 포인트 시스템 전환, 유료 콘텐츠 플로우 변경)
+> **최종 업데이트**: 2026-02-25 (무료 결과 유료 추천 카드 1개 교체, 컴포넌트/UI 수치 현행화)
 
 ---
 
@@ -865,30 +865,38 @@ AI 생성 요청 (Edge Function)
 
 ---
 
-### 2. 유료 콘텐츠 플로우 (심화 해석판) — 새싹 포인트 기반
+### 2. 유료 콘텐츠 플로우 (심화 해석판)
 
 ```
-홈 → 심화해석판 상세 (MasterContentDetailPage) → "지금 풀이 확인하기" 클릭
+홈 → 심화해석판 상세 (MasterContentDetailPage) → "구매하기" 클릭
     ↓
 로그인 필수 체크
     ↓
-새싹 잔액 확인 (users.sprout_balance)
-    ↓
-┌──────────────────┬──────────────────┐
-│ 잔액 >= 30새싹    │ 잔액 < 30새싹     │
-│ 즉시 차감         │ 새싹 충전소 이동   │
-│ (sprout-deduct)  │ (SproutCharging  │
-│                  │  Station)        │
-└──────────────────┴──────────────────┘
-    │                    │
-    │               패키지 선택 → PortOne 결제
-    │               → sprout-charge Edge Function
-    │               → 잔액 충전 → sprout-deduct
-    │                    │
-    └────────┬───────────┘
-             ↓
+┌─────────┬─────────┐
+│ 로그아웃 │ 로그인   │
+│ 로그인   │ 결제     │
+│ 페이지   │ 페이지   │
+└─────────┴─────────┘
+    │         │
+    └────┬────┘
+         ↓
+    포트원 결제 (PaymentNew)
+    ⭐ 최근 개선 (2026-01-16):
+    - 0원 결제: "결제 페이지로 이동중" 로딩 제거
+    - 오버레이 감지: display:none iframe 무시
+         ↓
+    쿠폰 적용 (선택)
+    - 웰컴 쿠폰 (5000원)
+    - 재방문 쿠폰 (3000원)
+    - 미션성공 쿠폰 (12900원)
+         ↓
+    결제 완료 → orders 생성
+    (0원 결제는 PG 호출 없이 바로 처리)
+         ↓
+    카카오 알림톡 발송 (send-alimtalk)
+         ↓
     사주 정보 확인
-             ↓
+         ↓
 ┌────────────┬────────────┐
 │ DB에 있음   │ DB에 없음   │
 │ SajuSelect │ BirthInfo  │
@@ -901,34 +909,44 @@ AI 생성 요청 (Edge Function)
     (generate-master-content)
           ↓
     AI 응답 → order_results 저장
+    (여러 질문-답변 쌍)
           ↓
     폴링으로 완료 확인
+    (orders.ai_generation_completed)
           ↓
     결과 페이지 (SajuResultPage)
           ↓
+    목차 바텀시트 (TableOfContentsBottomSheet)
+          ↓
     나다움 기록하기 (CheckRecordMe)
+    - 태그 선택/저장
+    - 전화번호 입력 바텀시트
 ```
 
 **주요 파일**:
-- `/components/MasterContentDetailPage.tsx` - 유료 상세 페이지 (새싹 차감 로직)
-- `/components/SproutChargingStation.tsx` - 새싹 충전소 (패키지 선택 + PortOne 결제)
-- `/hooks/useSproutBalance.ts` - 새싹 잔액 조회 훅
+- `/components/MasterContentDetailPage.tsx` - 유료 상세 페이지 (메인)
+- `/components/PaymentNew.tsx` - 결제 페이지
+- `/components/CouponBottomSheetNew.tsx` - 쿠폰 선택
 - `/components/BirthInfoInput.tsx` - 사주 입력 (결제 후)
 - `/components/SajuSelectPage.tsx` - 사주 선택
+- `/components/LoadingPage.tsx` - 로딩 (프로그레스 바)
 - `/components/SajuResultPage.tsx` - 사주 결과
+- `/components/TableOfContentsBottomSheet.tsx` - 목차 (질문 리스트)
 - `/components/CheckRecordMe.tsx` - 나다움 기록하기 (태그 선택/저장)
 
-**Edge Functions**:
-- `/sprout-charge` - 새싹 충전 (PortOne 결제 후 잔액 증가)
-- `/sprout-deduct` - 새싹 차감 (콘텐츠 열람 시)
+**Edge Functions**: 
 - `/generate-master-content` - 유료 콘텐츠 생성
+- `/get-available-coupons` - 사용 가능 쿠폰 조회
+- `/apply-coupon-to-order` - 쿠폰 적용
+- `/send-alimtalk` - 알림톡 발송
 
 **특징**:
-- ✅ 새싹(포인트) 기반 결제 (가격: 30새싹)
-- ✅ 잔액 충분 시 즉시 차감, 부족 시 충전소 이동
-- ✅ 충전 패키지 3종 (40/130/410새싹)
+- ✅ 로그인 필수
+- ✅ 심화 해석판만 결제
 - ✅ DB에 영구 저장
-- ✅ SECURITY DEFINER 함수로 잔액 조작 방지
+- ✅ 쿠폰 적용 가능
+- ✅ 카카오 알림톡 자동 발송
+- ✅ 목차 기능 (질문별 스크롤 이동)
 
 ---
 

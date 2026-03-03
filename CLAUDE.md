@@ -15,7 +15,7 @@
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 36개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 34개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne (구 아임포트) v2 |
@@ -25,7 +25,7 @@
 
 ### 주요 통계
 - **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 36개 (주간 보고서 4개 + 새싹 충전소 2개 포함)
+- **Edge Functions**: 34개 (주간 보고서 4개 포함)
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 52개
 - **타로 카드 덱**: 78장
@@ -117,7 +117,7 @@ const bgImage = "/background.jpg";
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
-- **총 36개**: AI 생성(10), 주간 보고서(4), 쿠폰 관리(4), 결제/환불(3), 모니터링/통계(3), 새싹 충전소(2), 마스터 콘텐츠(2), SEO(2), 소유자 확인(2), 알림(1), 사용자(1), 구매 가이드(1), 유틸리티(1), 만세력(1)
+- **총 34개**: AI 생성(10), 주간 보고서(4), 쿠폰 관리(4), 결제/환불(3), 모니터링/통계(3), 마스터 콘텐츠(2), SEO(2), 소유자 확인(2), 알림(1), 사용자(1), 구매 가이드(1), 유틸리티(1), 만세력(1)
 - **⚠️ Request Timeout**: 150초 (모든 플랜 동일, Pro도 동일). Wall clock(Pro 400초)과 별개
 - **Self-Continue 패턴**: 장시간 함수(`generate-content-answers`, `generate-weekly-reports-batch`)는 timeout 전에 안전 종료 후 자기 재호출로 미완료 작업을 이어서 처리
 - **환경변수 (Edge Functions)**:
@@ -158,8 +158,8 @@ npm run deploy:staging
 **배포 스크립트 위치**: `/scripts/`
 ```
 scripts/
-├── deploy-production.bat   # 프로덕션 전체 배포 (36개)
-├── deploy-staging.bat      # 스테이징 전체 배포 (36개)
+├── deploy-production.bat   # 프로덕션 전체 배포 (34개)
+├── deploy-staging.bat      # 스테이징 전체 배포 (34개)
 ├── deploy-core.bat         # 핵심 함수만 배포 (4개)
 └── README.md               # 상세 가이드
 ```
@@ -209,7 +209,7 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 → 94% 토큰 절약!
 ```
 
-**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 36개)에서 Serena는 필수입니다.
+**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 34개)에서 Serena는 필수입니다.
 
 ### 11. 캐싱 전략 (Cache Strategy)
 
@@ -330,7 +330,7 @@ serve(async (req) => {
 └── imports/        # SVG, 이미지 임포트
 
 supabase/
-├── functions/      # Edge Functions (36개)
+├── functions/      # Edge Functions (34개)
 ├── migrations/     # SQL 마이그레이션 파일
 └── *.md            # Supabase 관련 문서
 ```
@@ -469,10 +469,10 @@ import { DEV } from '../lib/env';
 | **[DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md)** | 테이블 구조, 타입, 제약조건, 인덱스 |
 | **[RLS_POLICIES.md](./supabase/RLS_POLICIES.md)** | 9개 테이블 26개 RLS 정책 |
 | **[DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | Triggers, Functions, pg_cron Jobs |
-| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | 36개 Edge Function 목록, 배포 방법 |
+| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | 34개 Edge Function 목록, 배포 방법 |
 | **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 분류, 파일 위치, shadcn/ui |
 | **[★SECURITY★.md](./src/docs/★SECURITY★.md)** | CORS, CSP, 보안 헤더, 에러 처리 |
 
 ---
 
-**최종 업데이트**: 2026-02-26
+**최종 업데이트**: 2026-02-25

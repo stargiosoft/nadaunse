@@ -60,7 +60,6 @@
       "devDependencies": {
             "@playwright/test": "^1.57.0",
             "@types/node": "^20.10.0",
-            "@vitejs/plugin-basic-ssl": "^2.1.4",
             "@vitejs/plugin-react-swc": "^3.10.2",
             "mightymeld": "^0.2.12",
             "tailwindcss": "^4.1.18",
