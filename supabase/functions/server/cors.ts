@@ -26,8 +26,9 @@ function isAllowedOrigin(origin: string | null): boolean {
     return true;
   }
 
-  // 로컬 개발 환경 (localhost 모든 포트)
-  if (origin.startsWith('http://localhost:') || origin === 'http://localhost') {
+  // 로컬 개발 환경 (localhost 모든 포트, HTTP/HTTPS)
+  if (origin.startsWith('http://localhost:') || origin === 'http://localhost' ||
+      origin.startsWith('https://localhost:') || origin === 'https://localhost') {
     return true;
   }
 

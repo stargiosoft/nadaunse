@@ -13,6 +13,7 @@ import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { ProfileSkeletonWithSaju } from './skeletons/ProfileSkeleton';
 import { ProfileImage } from './ProfileImage';
 import { DEV } from '../lib/env';
+import { useSproutBalance } from '../hooks/useSproutBalance';
 import { BarChart3, PenSquare } from 'lucide-react'; // ⭐ 통계 대시보드, 콘텐츠 만들기 아이콘
 import ReceiveMyAnalysis from './ReceiveMyAnalysis';
 
@@ -275,11 +276,28 @@ export default function ProfilePage({
   const [isLoadingTags, setIsLoadingTags] = useState(initialState.isLoadingTags);
 
   const navigate = useNavigate(); // ⭐ useNavigate 사용
+  const { balance: sproutBalance } = useSproutBalance();
 
   // ⭐ 핸드폰 번호 바텀시트 상태
   const [showPhoneBottomSheet, setShowPhoneBottomSheet] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isPhoneSaving, setIsPhoneSaving] = useState(false);
+
+  // ⭐ 새싹 gradient 테두리 회전 애니메이션
+  const sproutGradientRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let angle = 0;
+    let animationId: number;
+    const animate = () => {
+      angle = (angle + 0.6) % 360;
+      if (sproutGradientRef.current) {
+        sproutGradientRef.current.style.background = `conic-gradient(from ${angle}deg, #55CAC6, #78C7FF, #FFDCF8, #78C7FF, #55CAC6)`;
+      }
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, []);
 
   // ⭐ 스크롤 기반 탭 바 숨김/표시
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -993,7 +1011,7 @@ export default function ProfilePage({
 
                     <div className="basis-0 content-stretch flex flex-col gap-[0px] grow items-start min-h-px min-w-px text-nowrap">
                       <p className="font-['Pretendard_Variable:Regular',sans-serif] h-[16px] leading-[16px] overflow-ellipsis overflow-hidden text-[#848484] text-[12px] tracking-[-0.24px] w-full">
-                        {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
+                        {formatBirthDate(primarySaju.birth_date, primarySaju.calendar_type)}
                       </p>
                       <p
                         className="min-w-full overflow-ellipsis overflow-hidden w-[min-content]"
@@ -1004,34 +1022,49 @@ export default function ProfilePage({
                     </div>
                   </motion.div>
 
-                  {/* 생년월일시 / 띠 / 별자리 / 성별 */}
+                  {/* 새싹 잔여 + 충전 버튼 */}
                   <motion.div
                     variants={itemVariants}
-                    className="bg-[#f9f9f9] relative rounded-[12px] w-full mb-[10px]"
+                    className="relative rounded-[20px] shrink-0 w-full"
+                    style={{ height: '79px' }}
                   >
-                    <div className="flex flex-col items-center justify-center size-full">
-                      <div className="content-stretch flex flex-col items-center justify-center px-[12px] py-[10px] w-full">
-                        <div className="flex items-center justify-center gap-[6px] rounded-[12px]">
-                          <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
-                            {formatBirthDate(primarySaju.birth_date, primarySaju.calendar_type)}
-                          </p>
-                          <TextDivider />
-                          <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
-                            {primarySaju.zodiac || getChineseZodiac(primarySaju.birth_date, primarySaju.birth_time)}
-                          </p>
-                          <TextDivider />
-                          <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
-                            {(() => {
-                              const dateOnly = primarySaju.birth_date.split('T')[0];
-                              const [_, month, day] = dateOnly.split('-');
-                              return getConstellation(parseInt(month), parseInt(day));
-                            })()}
-                          </p>
-                          <TextDivider />
-                          <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[19px] overflow-ellipsis overflow-hidden text-[#525252] text-[13px] text-nowrap tracking-[-0.26px]">
-                            {primarySaju.gender === 'male' ? '남성' : '여성'}
-                          </p>
+                    {/* Gradient border layer (JS animated) */}
+                    <div
+                      ref={sproutGradientRef}
+                      className="absolute rounded-[20px]"
+                      style={{
+                        inset: 0,
+                        background: 'conic-gradient(from 0deg, #55CAC6, #78C7FF, #FFDCF8, #78C7FF, #55CAC6)'
+                      }}
+                    />
+                    {/* White content layer */}
+                    <div className="absolute bg-white rounded-[17px] flex items-center" style={{ inset: '3px', paddingLeft: '24px', paddingRight: '20px', paddingTop: '12px', paddingBottom: '12px', zIndex: 1 }}>
+                      <div className="flex flex-1 gap-[8px] items-center">
+                        <div className="flex flex-1 flex-col items-start justify-center" style={{ paddingTop: '5px' }}>
+                          <div className="flex gap-[3px] items-center justify-center">
+                            <span style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px', color: '#848484' }}>
+                              남은 새싹
+                            </span>
+                            <svg className="shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M7.44587 3.97257C8.5912 5.39257 8.85053 7.3679 8.12387 9.1279C8.05853 9.28523 7.91787 9.39857 7.74987 9.42923C7.42987 9.48724 7.10854 9.51523 6.7912 9.51523C5.25453 9.51523 3.8032 8.85257 2.85387 7.67523C1.7092 6.25523 1.44987 4.2799 2.17587 2.51923C2.2412 2.3619 2.38187 2.24857 2.54987 2.2179C4.4212 1.87723 6.30053 2.5519 7.44587 3.97257ZM14.1239 5.85257C14.0585 5.69523 13.9179 5.5819 13.7499 5.55123C12.3219 5.29723 10.8912 5.80657 10.0159 6.89123C9.14187 7.97457 8.94387 9.48124 9.49787 10.8226C9.5632 10.9799 9.70387 11.0932 9.87187 11.1239C10.1159 11.1679 10.3599 11.1899 10.6025 11.1899C11.7739 11.1899 12.8805 10.6832 13.6052 9.78523C14.4799 8.7019 14.6779 7.19523 14.1239 5.85323V5.85257Z" fill="#97D729"/>
+                              <path d="M11.7023 8.3276C11.5163 8.12494 11.2003 8.1116 10.9956 8.29827C10.0336 9.18227 9.2143 10.1829 8.53564 11.2669C8.45164 10.4116 8.2363 9.4556 7.79097 8.4616C7.00364 6.70694 5.82164 5.57427 4.9683 4.93294C4.74697 4.7656 4.43364 4.8116 4.2683 5.03227C4.1023 5.25294 4.14697 5.56627 4.36764 5.73227C5.12697 6.30227 6.1783 7.31027 6.8783 8.87027C7.65697 10.6063 7.64964 12.2176 7.50564 13.2649C7.50497 13.2709 7.51097 13.2756 7.51097 13.2809C7.48897 13.4923 7.59697 13.7023 7.8023 13.7916C7.86764 13.8196 7.93497 13.8329 8.00164 13.8329C8.1943 13.8329 8.3783 13.7203 8.4603 13.5323C8.65097 13.0923 8.8663 12.6596 9.1023 12.2476C9.77964 11.0616 10.6436 9.98094 11.673 9.03427C11.8763 8.8476 11.889 8.53094 11.7023 8.3276Z" fill="#79AD22"/>
+                            </svg>
+                          </div>
+                          <div className="flex flex-col items-start justify-center w-full">
+                            <span style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '16px', fontWeight: 700, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#151515' }}>
+                              {sproutBalance ?? 0}
+                            </span>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => navigate('/sprout-charging/profile', { state: { requiredAmount: 30, currentBalance: sproutBalance ?? 0 } })}
+                          className="flex items-center justify-center rounded-full border-none cursor-pointer shrink-0"
+                          style={{ backgroundColor: '#48b2af', height: '38px', paddingLeft: '12px', paddingRight: '12px' }}
+                        >
+                          <span style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '14px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.42px', color: '#fff' }}>
+                            새싹 충전
+                          </span>
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -1083,13 +1116,6 @@ export default function ProfilePage({
               {/* 나다움 태그 Section */}
               {!isLoadingTags && (
                 <>
-                  {/* Divider */}
-                  <motion.div
-                    variants={itemVariants}
-                    className="h-[8px] -mx-[20px]"
-                    style={{ backgroundColor: '#f9f9f9' }}
-                  />
-
                   {traitTags.length > 0 ? (
                     /* 태그가 있을 때 - 태그 카드 표시 */
                     <motion.div

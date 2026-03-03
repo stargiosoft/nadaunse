@@ -277,6 +277,7 @@ export const clearUserCaches = () => {
     'trait_tags_cache',
     'trait_tags_needs_refresh',
     'saju_cache_checked',
+    'sprout_balance_cache',       // 새싹 잔액 캐시
   ];
 
   // ⭐ cached_saju_info가 있으면 항상 보존 (로그인 후 사주 저장 필요)

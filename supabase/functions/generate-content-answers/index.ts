@@ -12,7 +12,7 @@ const corsHeaders = {
 // Supabase Edge Functions request timeout: 150초 (모든 플랜 동일)
 // 120초에 안전 종료 후 자기 재호출로 나머지 질문 이어서 처리
 const SELF_CONTINUE_CONFIG = {
-  maxExecutionMs: 120_000, // 120초 (request timeout 150초, 30초 안전 마진)
+  maxExecutionMs: 100_000, // 100초 (request timeout 150초, AI 1건 30~40초 고려 → 50초 안전 마진)
   maxContinueCount: 5,     // 최대 자기 재호출 횟수 (120초씩 5회 = 최대 10분)
 }
 

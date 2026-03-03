@@ -45,43 +45,16 @@ serve(async (req) => {
 
     console.log(`📝 [purchase-guide] 시작 - userId: ${userId}, contentId: ${contentId}`)
 
-    // 2. 병렬 DB 조회
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    const [weeklyTagsResult, allTagsResult, paidOrdersResult, freeRecordsResult, contentResult] = await Promise.all([
-      // a. 최근 7일 confirmed 태그
-      supabaseClient
-        .from('user_trait_tags')
-        .select('tag_name, tag_type')
-        .eq('user_id', userId)
-        .eq('is_confirmed', true)
-        .gte('created_at', sevenDaysAgo),
-
-      // b. 전체 confirmed 태그
+    // 2. 병렬 DB 조회 (태그 + 콘텐츠 2쿼리만)
+    const [allTagsResult, contentResult] = await Promise.all([
+      // a. 전체 confirmed 태그
       supabaseClient
         .from('user_trait_tags')
         .select('tag_name, tag_type')
         .eq('user_id', userId)
         .eq('is_confirmed', true),
 
-      // c. 최근 7일 유료 콘텐츠 주문
-      supabaseClient
-        .from('orders')
-        .select('master_contents(title)')
-        .eq('user_id', userId)
-        .eq('status', 'success')
-        .gte('created_at', sevenDaysAgo)
-        .limit(10),
-
-      // d. 최근 7일 무료 콘텐츠 기록
-      supabaseClient
-        .from('free_content_records')
-        .select('master_contents(title)')
-        .eq('user_id', userId)
-        .gte('created_at', sevenDaysAgo)
-        .limit(10),
-
-      // e. 대상 콘텐츠 정보 + 질문
+      // b. 대상 콘텐츠 정보 + 질문
       supabaseClient
         .from('master_contents')
         .select('title, description, master_content_questions(question_text)')
@@ -100,9 +73,6 @@ serve(async (req) => {
     }
 
     // 4. 태그 분류
-    const weeklyTags = weeklyTagsResult.data || []
-    const weeklyPositive = [...new Set(weeklyTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
-    const weeklyNegative = [...new Set(weeklyTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
     const allPositive = [...new Set(allTags.filter(t => t.tag_type === 'positive').map(t => t.tag_name))]
     const allNegative = [...new Set(allTags.filter(t => t.tag_type === 'negative').map(t => t.tag_name))]
 
@@ -115,16 +85,6 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // 이용 콘텐츠 목록
-    const paidContents = (paidOrdersResult.data || [])
-      .map((o: Record<string, unknown>) => (o.master_contents as Record<string, unknown>)?.title)
-      .filter(Boolean)
-      .join(', ') || '없음'
-    const freeContents = (freeRecordsResult.data || [])
-      .map((r: Record<string, unknown>) => (r.master_contents as Record<string, unknown>)?.title)
-      .filter(Boolean)
-      .join(', ') || '없음'
 
     const questions = (contentData.master_content_questions || [])
       .map((q: Record<string, unknown>) => q.question_text)
@@ -147,8 +107,8 @@ serve(async (req) => {
 정보를 나열하지 말고, "이걸 보면 나는 이렇게 달라질 수 있겠다"라고 상상하게 만드세요.
 
 ## 사용자 성향
-- 강점: ${formatTags(weeklyPositive.length > 0 ? weeklyPositive : allPositive)}
-- 단점: ${formatTags(weeklyNegative.length > 0 ? weeklyNegative : allNegative)}
+- 강점: ${formatTags(allPositive)}
+- 단점: ${formatTags(allNegative)}
 
 ## 콘텐츠 정보
 - 제목: ${contentData.title}
