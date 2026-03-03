@@ -488,14 +488,26 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
       } else {
         // ⭐ 신규 등록 모드: INSERT
         console.log('➕ [신규등록] 사주 정보 저장:', sajuPayload);
-        
+
+        // ⭐ 기존 본인 사주 존재 여부 확인 (중복 방지)
+        const { data: existingMySaju } = await supabase
+          .from('saju_records')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('notes', '본인')
+          .maybeSingle();
+
+        const hasMySaju = !!existingMySaju;
+        const shouldBePrimary = !hasMySaju;
+        console.log(`📌 [SajuInputPage] 기존 본인 사주: ${hasMySaju ? '있음' : '없음'}, is_primary: ${shouldBePrimary}`);
+
         const { error } = await supabase
           .from('saju_records')
           .insert({
             user_id: user.id,
             ...sajuPayload,
-            notes: '본인', // relation 정보를 notes에 저장
-            is_primary: true // ⭐️ 본인 사주는 대표 사주로 설정
+            notes: shouldBePrimary ? '본인' : '',
+            is_primary: shouldBePrimary
           });
 
         if (error) throw error;

@@ -158,21 +158,21 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
       throw new Error('로그인이 필요합니다.');
     }
 
-    // ⭐ 기존 대표 사주(is_primary) 존재 여부 확인
-    const { data: primarySaju, error: primaryError } = await supabase
+    // ⭐ 기존 본인 사주(notes='본인') 존재 여부 확인 (중복 방지)
+    const { data: existingMySaju, error: primaryError } = await supabase
       .from('saju_records')
       .select('id')
       .eq('user_id', user.id)
-      .eq('is_primary', true)
+      .eq('notes', '본인')
       .maybeSingle();
 
     if (primaryError) {
-      console.error('대표 사주 조회 실패:', primaryError);
+      console.error('본인 사주 조회 실패:', primaryError);
     }
 
-    const hasPrimary = !!primarySaju;
-    const shouldBePrimary = !hasPrimary;
-    console.log(`📌 [FreeBirthInfoInput] 기존 대표 사주: ${hasPrimary ? '있음' : '없음'}, 이번 사주 is_primary: ${shouldBePrimary}`);
+    const hasMySaju = !!existingMySaju;
+    const shouldBePrimary = !hasMySaju;
+    console.log(`📌 [FreeBirthInfoInput] 기존 본인 사주: ${hasMySaju ? '있음' : '없음'}, 이번 사주 is_primary: ${shouldBePrimary}`);
 
     const { data: savedRecord, error } = await supabase
       .from('saju_records')
@@ -183,7 +183,7 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
         birth_date: new Date(data.birthDate).toISOString(),
         birth_time: data.birthTime,
         notes: shouldBePrimary ? '본인' : '',
-        is_primary: shouldBePrimary // ⭐ 대표 사주가 없을 때만 내 사주로 설정
+        is_primary: shouldBePrimary // ⭐ 본인 사주가 없을 때만 내 사주로 설정
       })
       .select()
       .single();

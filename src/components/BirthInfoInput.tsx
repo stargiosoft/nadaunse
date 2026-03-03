@@ -109,21 +109,21 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
     phoneNumber?: string;
   }, user: { id: string }) => {
 
-    // ⭐ 기존 대표 사주(is_primary) 존재 여부 확인
-    const { data: primarySaju, error: primaryError } = await supabase
+    // ⭐ 기존 본인 사주(notes='본인') 존재 여부 확인 (중복 방지)
+    const { data: existingMySaju, error: primaryError } = await supabase
       .from('saju_records')
       .select('id')
       .eq('user_id', user.id)
-      .eq('is_primary', true)
+      .eq('notes', '본인')
       .maybeSingle();
 
     if (primaryError) {
-      console.error('대표 사주 조회 실패:', primaryError);
+      console.error('본인 사주 조회 실패:', primaryError);
     }
 
-    const hasPrimary = !!primarySaju;
-    const shouldBePrimary = !hasPrimary;
-    console.log(`📌 [BirthInfoInput] 기존 대표 사주: ${hasPrimary ? '있음' : '없음'}, 이번 사주 is_primary: ${shouldBePrimary}`);
+    const hasMySaju = !!existingMySaju;
+    const shouldBePrimary = !hasMySaju;
+    console.log(`📌 [BirthInfoInput] 기존 본인 사주: ${hasMySaju ? '있음' : '없음'}, 이번 사주 is_primary: ${shouldBePrimary}`);
 
     const { data: sajuRecord, error } = await supabase
       .from('saju_records')
@@ -135,7 +135,7 @@ export default function BirthInfoInput({ productId, onBack, onComplete }: BirthI
         birth_time: data.birthTime,
         phone_number: data.phoneNumber || null,
         notes: shouldBePrimary ? '본인' : '',
-        is_primary: shouldBePrimary // ⭐ 대표 사주가 없을 때만 내 사주로 설정
+        is_primary: shouldBePrimary // ⭐ 본인 사주가 없을 때만 내 사주로 설정
       })
       .select()
       .single();
