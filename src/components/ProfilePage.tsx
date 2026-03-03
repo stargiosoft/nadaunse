@@ -364,8 +364,10 @@ export default function ProfilePage({
       const forceReload = sessionStorage.getItem('force_profile_reload') === 'true';
 
       // 🔄 브라우저 새로고침 감지 (F5, Cmd+R 등)
+      // ⚠️ SPA에서 navigation type은 세션 내내 동일하므로,
+      // 실제 새로고침 직후(5초 이내)에만 강제 API 호출 (이후 SPA 내비게이션은 캐시 사용)
       const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-      const isPageRefresh = navEntries.length > 0 && navEntries[0].type === 'reload';
+      const isPageRefresh = navEntries.length > 0 && navEntries[0].type === 'reload' && performance.now() < 5000;
 
       // 🚀 태그 refresh 플래그도 미리 체크
       const needsTagRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
