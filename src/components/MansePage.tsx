@@ -856,13 +856,15 @@ export default function MansePage({ onBack }: MansePageProps) {
                 <span style={textStyle(14, 400, '#b7b7b7')}>|</span>
                 <span style={textStyle(14, 400, '#6d6d6d')}>{displayInfo ? formatBirthDisplay(displayInfo.birthDate) : ''}</span>
               </div>
-              <button
-                onClick={handleBackToForm}
-                className="rounded-[8px] px-[12px] py-[6px] cursor-pointer border-none"
-                style={{ ...textStyle(13, 600, '#41a09e'), backgroundColor: '#e8f5f4' }}
-              >
-                다시 입력
-              </button>
+              {!loggedInUserId && (
+                <button
+                  onClick={handleBackToForm}
+                  className="rounded-[8px] px-[12px] py-[6px] cursor-pointer border-none"
+                  style={{ ...textStyle(13, 600, '#41a09e'), backgroundColor: '#e8f5f4' }}
+                >
+                  다시 입력
+                </button>
+              )}
             </div>
             {sajuGuicheon && (
               <div className="mt-[8px] rounded-[8px] px-[12px] py-[14px]" style={{ backgroundColor: 'white', border: '1px solid #e7e7e7' }}>
