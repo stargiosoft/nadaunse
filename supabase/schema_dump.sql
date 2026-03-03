@@ -69,7 +69,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
-    20
+    10
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
