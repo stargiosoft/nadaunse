@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
 import svgPathsArrows from "../imports/svg-iwpvhe731i";
 import svgPathsProfile from "../imports/svg-33ktykwr5e";
 import { supabase } from '../lib/supabase';
-import { signOut } from '../lib/auth';
+import { signOut, clearUserCaches } from '../lib/auth';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import Footer from './Footer';
 import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
@@ -361,7 +361,7 @@ export default function ProfilePage({
       const needsRefresh = localStorage.getItem('profile_needs_refresh') === 'true';
 
       // ⭐ 최초 로그인 플래그: 로그인 직후 한 번만 강제 API 호출
-      const forceReload = sessionStorage.getItem('force_profile_reload') === 'true';
+      let forceReload = sessionStorage.getItem('force_profile_reload') === 'true';
 
       // 🔄 브라우저 새로고침 감지 (F5, Cmd+R 등)
       // ⚠️ SPA에서 navigation type은 세션 내내 동일하므로,
@@ -379,6 +379,20 @@ export default function ProfilePage({
       console.log('  - needsTagRefresh:', needsTagRefresh);
       console.log('  - forceReload:', forceReload);
       console.log('  - isPageRefresh:', isPageRefresh);
+
+      // 🔐 계정 불일치 감지: 캐시된 사용자와 현재 세션 사용자 비교
+      const { data: { session } } = await supabase.auth.getSession();
+      const cachedUserJson = localStorage.getItem('user');
+      if (session && cachedUserJson) {
+        try {
+          const cachedUser = JSON.parse(cachedUserJson);
+          if (cachedUser.id !== session.user.id) {
+            console.log('⚠️ [ProfilePage] 계정 불일치 감지! 캐시:', cachedUser.id, '→ 현재:', session.user.id);
+            clearUserCaches();
+            forceReload = true;
+          }
+        } catch { /* 파싱 실패 시 아래에서 API 호출 */ }
+      }
 
       // 🚀 모든 캐시가 유효할 때만 API 호출 스킵 (user + saju + tags)
       // → iOS 스와이프 뒤로가기 시 불필요한 리로드 완전 방지
