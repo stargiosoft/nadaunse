@@ -1730,11 +1730,22 @@ function SproutChargingStationPage() {
   const loginAuth = useLoginRequired();
   const { balance, loading: balanceLoading } = useSproutBalance();
 
+  // ⭐ PortOne 모바일 결제 리다이렉트 감지
+  const searchParams = new URLSearchParams(location.search);
+  const impUid = searchParams.get('imp_uid');
+  const isPaymentRedirect = !!impUid;
+
   // 로그인 체크
   if (loginAuth === 'checking' || balanceLoading) return <PageLoader />;
   if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
-  // 직접 접속 가드
-  if (location.key === 'default') return <Navigate to="/" replace />;
+  // 직접 접속 가드 (⭐ 결제 리다이렉트 시에는 허용)
+  if (location.key === 'default' && !isPaymentRedirect) return <Navigate to="/" replace />;
+
+  // ⭐ 결제 실패 리다이렉트 처리
+  if (isPaymentRedirect && searchParams.get('imp_success') !== 'true') {
+    const isFromProfile = contentId === 'profile';
+    return <Navigate to={isFromProfile ? '/profile' : '/'} replace />;
+  }
 
   const isFromProfile = contentId === 'profile';
   const requiredAmount = (location.state as { requiredAmount?: number })?.requiredAmount || 30;
@@ -1875,6 +1886,15 @@ function SproutChargingStationPage() {
     }
   };
 
+  // ⭐ 리다이렉트 결제 정보 구성
+  const redirectPayment = isPaymentRedirect ? {
+    impUid: impUid!,
+    merchantUid: searchParams.get('merchant_uid') || '',
+    packageId: searchParams.get('packageId') || '',
+    payMethod: searchParams.get('payMethod') || 'card',
+    pgProvider: decodeURIComponent(searchParams.get('pgProvider') || ''),
+  } : undefined;
+
   return (
     <SproutChargingStation
       contentId={contentId}
@@ -1883,6 +1903,7 @@ function SproutChargingStationPage() {
       fromProfile={isFromProfile}
       onBack={() => navigate(-1)}
       onChargeComplete={handleChargeComplete}
+      redirectPayment={redirectPayment}
     />
   );
 }

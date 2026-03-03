@@ -28,6 +28,14 @@ interface SproutPackage {
   sort_order: number;
 }
 
+interface RedirectPayment {
+  impUid: string;
+  merchantUid: string;
+  packageId: string;
+  payMethod: string;
+  pgProvider: string;
+}
+
 interface SproutChargingStationProps {
   contentId?: string;
   currentBalance: number;
@@ -35,16 +43,19 @@ interface SproutChargingStationProps {
   fromProfile?: boolean;
   onBack: () => void;
   onChargeComplete: (newBalance: number) => void;
+  redirectPayment?: RedirectPayment;
 }
 
 // 카카오페이 / 카드 아이콘은 인라인 SVG로 렌더링 (CSP 준수, 외부 URL 사용 금지)
 
 export default function SproutChargingStation({
+  contentId,
   currentBalance,
   requiredAmount = 30,
   fromProfile = false,
   onBack,
   onChargeComplete,
+  redirectPayment,
 }: SproutChargingStationProps) {
   const [packages, setPackages] = useState<SproutPackage[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
@@ -108,6 +119,57 @@ export default function SproutChargingStation({
     loadPackages();
   }, []);
 
+  // ⭐ 모바일 PortOne 리다이렉트 결제 완료 처리
+  useEffect(() => {
+    if (!redirectPayment) return;
+
+    const processRedirectPayment = async () => {
+      setIsProcessing(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          alert('로그인이 필요합니다. 다시 로그인해주세요.');
+          setIsProcessing(false);
+          return;
+        }
+
+        const edgeFnUrl = `https://${projectId}.supabase.co/functions/v1/sprout-charge`;
+        const res = await fetch(edgeFnUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            package_id: redirectPayment.packageId,
+            imp_uid: redirectPayment.impUid,
+            merchant_uid: redirectPayment.merchantUid,
+            pay_method: redirectPayment.payMethod,
+            pg_provider: redirectPayment.pgProvider,
+          }),
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          console.log('✅ [SproutChargingStation] 리다이렉트 충전 성공:', result);
+          onChargeComplete(result.new_balance);
+        } else {
+          console.error('❌ [SproutChargingStation] 리다이렉트 충전 처리 실패:', result);
+          alert('충전 처리에 실패했습니다. 고객센터에 문의해주세요.');
+          setIsProcessing(false);
+        }
+      } catch (err) {
+        console.error('❌ [SproutChargingStation] 리다이렉트 충전 API 호출 실패:', err);
+        alert('결제는 완료되었으나 충전 처리에 실패했습니다. 고객센터에 문의해주세요.');
+        setIsProcessing(false);
+      }
+    };
+
+    processRedirectPayment();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 포트원 SDK 로드
   useEffect(() => {
     if (window.IMP) {
@@ -164,6 +226,10 @@ export default function SproutChargingStation({
       buyer_name: '구매자명',
       buyer_tel: '010-0000-0000',
     };
+
+    // ⭐ 모바일: m_redirect_url 필수 (popup 모드 fallback)
+    const redirectUrl = `${window.location.origin}/sprout-charging/${contentId || 'profile'}?packageId=${selectedPackage.id}&payMethod=${selectedPaymentMethod === 'kakaopay' ? 'kakaopay' : 'card'}&pgProvider=${encodeURIComponent(pgProvider)}`;
+    paymentParams.m_redirect_url = redirectUrl;
 
     if (isMobile) {
       paymentParams.popup = true;
