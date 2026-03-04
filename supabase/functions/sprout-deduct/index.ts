@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     });
 
     // 필수 필드 검증
-    if (!content_id || !amount || amount <= 0) {
+    if (!content_id) {
       return new Response(
         JSON.stringify({ success: false, error: '필수 필드가 누락되었습니다' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -76,11 +76,38 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // process_sprout_deduct RPC 호출
+    // ⭐ 서버측 콘텐츠 가격 검증 (클라이언트 amount 무시)
+    const SPROUT_PRICE = 30;
+    const { data: content, error: contentError } = await supabaseAdmin
+      .from('master_contents')
+      .select('id, content_type, status')
+      .eq('id', content_id)
+      .single();
+
+    if (contentError || !content) {
+      console.error('❌ [새싹차감] 콘텐츠 조회 실패:', contentError);
+      return new Response(
+        JSON.stringify({ success: false, error: '유효하지 않은 콘텐츠입니다' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (content.content_type !== 'paid' || content.status !== 'deployed') {
+      console.error('❌ [새싹차감] 유료 콘텐츠가 아니거나 미배포:', content);
+      return new Response(
+        JSON.stringify({ success: false, error: '차감 대상이 아닌 콘텐츠입니다' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const serverAmount = SPROUT_PRICE;
+    console.log('🔍 [새싹차감] 서버 가격 검증 완료:', { content_id, serverAmount });
+
+    // process_sprout_deduct RPC 호출 (서버 검증된 금액 사용)
     const { data, error } = await supabaseAdmin.rpc('process_sprout_deduct', {
       p_user_id: user.id,
       p_content_id: content_id,
-      p_amount: amount,
+      p_amount: serverAmount,
     });
 
     if (error) {
