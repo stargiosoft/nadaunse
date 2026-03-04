@@ -133,6 +133,21 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ⭐ imp_uid 중복 체크 (리플레이 공격 방지)
+    const { data: existingOrder } = await supabaseAdmin
+      .from('orders')
+      .select('id')
+      .eq('imp_uid', imp_uid)
+      .maybeSingle();
+
+    if (existingOrder) {
+      console.error('❌ [새싹충전] 이미 사용된 imp_uid:', imp_uid);
+      return new Response(
+        JSON.stringify({ success: false, error: '이미 처리된 결제입니다' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ⭐ PortOne 결제 검증 (위변조 방지)
     try {
       const accessToken = await getPortOneAccessToken();

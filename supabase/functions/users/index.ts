@@ -133,11 +133,28 @@ serve(async (req) => {
       // profile_image 우선순위: user_data.profile_image > user_data.avatar_url
       const profile_image = user_data.profile_image || user_data.avatar_url || '';
 
-      // 레퍼럴 코드 생성 (NDS-{랜덤6자})
-      const randomBytes = new Uint8Array(6);
-      crypto.getRandomValues(randomBytes);
+      // 레퍼럴 코드 생성 (NDS-{랜덤6자}, 중복 시 재생성)
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      const referralCode = 'NDS-' + Array.from(randomBytes).map(b => chars[b % chars.length]).join('');
+      let referralCode = '';
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const randomBytes = new Uint8Array(6);
+        crypto.getRandomValues(randomBytes);
+        const candidate = 'NDS-' + Array.from(randomBytes).map(b => chars[b % chars.length]).join('');
+        const { data: existing } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('referral_code', candidate)
+          .maybeSingle();
+        if (!existing) {
+          referralCode = candidate;
+          break;
+        }
+        console.log(`⚠️ 레퍼럴 코드 충돌 (${attempt + 1}/5): ${candidate}`);
+      }
+      if (!referralCode) {
+        // 5회 모두 충돌 시 타임스탬프 기반 fallback
+        referralCode = 'NDS-' + Date.now().toString(36).slice(-6);
+      }
 
       const newUserData = {
         id: user.id,

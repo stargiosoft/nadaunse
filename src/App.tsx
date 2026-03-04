@@ -3662,7 +3662,8 @@ export default function App() {
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-          <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
+          {/* ⭐ 알림톡 정보 입력: dev/staging 전용 (production 비활성화) */}
+          {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />}
           <Route path="/sprout-charging/:contentId" element={<SproutChargingStationPage />} /> {/* ⭐ 새싹 충전소 */}
           {/* TarotDemo 백업됨 */}
 
