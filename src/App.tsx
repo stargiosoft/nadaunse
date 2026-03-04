@@ -168,6 +168,7 @@ function LoginToast() {
           subtitle: '프로필에서 확인할 수 있어요',
           duration: 3000,
         });
+        setTimeout(() => toast.dismiss(), 3300);
 
         console.log('🎉 [Toast] 태그 저장 토스트 표시');
         return; // 태그 저장 토스트를 표시했으면 로그인 토스트는 표시하지 않음
@@ -182,8 +183,9 @@ function LoginToast() {
         // 플래그 즉시 삭제 (중복 표시 방지)
         sessionStorage.removeItem('show_login_toast');
 
-        // 토스트 표시 (2.2초간) - toast 래퍼 사용 (unstyled: true 포함으로 auto-dismiss 보장)
+        // 토스트 표시 (2.2초간) + 수동 dismiss fallback (모바일 Safari document.hidden 이슈 대응)
         toast.success('로그인 되었어요, 반가워요', { duration: 2200 });
+        setTimeout(() => toast.dismiss(), 2500);
 
         console.log('🎉 [LoginToast] 로그인 성공 토스트 표시');
       }
