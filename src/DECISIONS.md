@@ -7,11 +7,20 @@
 
 ---
 
+## 2026-03-04 공유 리워드 버그 수정 2건
+
+**결정**: (1) REVOKE FROM PUBLIC 후 service_role GRANT 추가 (2) sprout_transactions CHECK 제약조건에 'reward' 타입 추가
+**이유**: (1) `REVOKE EXECUTE FROM PUBLIC`이 service_role 권한도 제거하여 Edge Function에서 RPC 호출 불가 (500 에러) (2) `process_share_reward` RPC가 `transaction_type='reward'`로 INSERT 시 CHECK 제약조건 위반 (23514 에러)
+**구현**: (1) 5개 RPC 함수에 `GRANT EXECUTE TO service_role` 명시적 부여 (2) `sprout_transactions_transaction_type_check`에 'reward' 추가
+**영향 파일**: `migrations/20260303_protect_sprout_balance_rls.sql`, `migrations/20260304_add_reward_transaction_type.sql`
+
+---
+
 ## 2026-03-04 새싹 잔액 보안 강화 (3중 방어)
 
-**결정**: protect_sprout_balance 트리거 + REVOKE EXECUTE + sprout-charge PortOne 검증 3중 보안
+**결정**: protect_sprout_balance 트리거 + REVOKE EXECUTE + GRANT service_role + sprout-charge PortOne 검증
 **이유**: (1) `users` 테이블 RLS disabled 상태에서 `supabase.from('users').update({ sprout_balance: 999999 })` 가능 (2) SECURITY DEFINER RPC를 클라이언트에서 직접 호출(`supabase.rpc('process_sprout_charge')`)하여 Edge Function 결제 검증 우회 가능 (3) `sprout-charge` Edge Function이 PortOne 결제 확인 없이 충전 처리
-**구현**: (1) BEFORE UPDATE 트리거로 `current_user IN ('authenticated','anon')` 시 sprout_balance 변경 차단 (SECURITY DEFINER RPC는 current_user='postgres'이므로 통과) (2) `process_sprout_charge`, `process_sprout_deduct`, `process_payment_complete`, `process_refund`, `process_share_reward` 함수에서 PUBLIC/authenticated/anon EXECUTE 권한 제거 (3) sprout-charge에 PortOne API 결제 검증 + 금액 일치 확인 추가
+**구현**: (1) BEFORE UPDATE 트리거로 `current_user IN ('authenticated','anon')` 시 sprout_balance 변경 차단 (SECURITY DEFINER RPC는 current_user='postgres'이므로 통과) (2) 5개 RPC 함수에서 PUBLIC/authenticated/anon EXECUTE 권한 제거 + **service_role에 명시적 GRANT** (⚠️ REVOKE FROM PUBLIC은 service_role도 제거하므로 필수) (3) sprout-charge에 PortOne API 결제 검증 + 금액 일치 확인 추가
 **영향 파일**: `sprout-charge/index.ts`, `migrations/20260303_protect_sprout_balance_rls.sql`
 
 ---
