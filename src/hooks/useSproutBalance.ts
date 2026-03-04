@@ -72,10 +72,8 @@ export function useSproutBalance() {
   }, []);
 
   useEffect(() => {
-    if (cached) {
-      // 캐시 히트 → DB 조회 스킵
-      return;
-    }
+    // 캐시 유무와 관계없이 항상 DB에서 최신 잔액 조회
+    // 캐시가 있으면 loading=false로 즉시 표시, 백그라운드에서 동기화
     fetchBalance();
   }, [fetchBalance]); // eslint-disable-line react-hooks/exhaustive-deps
 

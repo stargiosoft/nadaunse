@@ -157,7 +157,7 @@ export default function SproutChargingStation({
           setIsChargeCompleted(true);
           onChargeComplete(result.new_balance);
         } else {
-          console.error('❌ [SproutChargingStation] 리다이렉트 충전 처리 실패:', result);
+          console.error('❌ [SproutChargingStation] 리다이렉트 충전 처리 실패:', JSON.stringify(result));
           alert('충전 처리에 실패했습니다. 고객센터에 문의해주세요.');
           setIsProcessing(false);
         }
@@ -280,7 +280,7 @@ export default function SproutChargingStation({
                 setIsChargeCompleted(true);
                 onChargeComplete(result.new_balance);
               } else {
-                console.error('❌ [SproutChargingStation] 충전 처리 실패:', result);
+                console.error('❌ [SproutChargingStation] 충전 처리 실패:', JSON.stringify(result));
                 setIsProcessing(false);
                 alert('충전 처리에 실패했습니다. 고객센터에 문의해주세요.');
               }

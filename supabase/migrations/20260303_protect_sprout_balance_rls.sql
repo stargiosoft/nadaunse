@@ -26,9 +26,17 @@ CREATE TRIGGER protect_sprout_balance_trigger
   EXECUTE FUNCTION protect_sprout_balance();
 
 -- [패치 2] RPC 함수 직접 호출 차단
--- Edge Function은 service_role 키로 호출하므로 영향 없음
+-- REVOKE FROM PUBLIC은 service_role 포함 모든 역할에 영향
+-- → service_role에만 명시적 GRANT 필요 (Edge Function에서 사용)
 REVOKE EXECUTE ON FUNCTION process_sprout_charge FROM PUBLIC, authenticated, anon;
 REVOKE EXECUTE ON FUNCTION process_sprout_deduct FROM PUBLIC, authenticated, anon;
 REVOKE EXECUTE ON FUNCTION process_payment_complete FROM PUBLIC, authenticated, anon;
 REVOKE EXECUTE ON FUNCTION process_refund FROM PUBLIC, authenticated, anon;
 REVOKE EXECUTE ON FUNCTION process_share_reward FROM PUBLIC, authenticated, anon;
+
+-- [패치 3] service_role에 EXECUTE 권한 명시적 부여 (Edge Function 호출용)
+GRANT EXECUTE ON FUNCTION process_sprout_charge TO service_role;
+GRANT EXECUTE ON FUNCTION process_sprout_deduct TO service_role;
+GRANT EXECUTE ON FUNCTION process_payment_complete TO service_role;
+GRANT EXECUTE ON FUNCTION process_refund TO service_role;
+GRANT EXECUTE ON FUNCTION process_share_reward TO service_role;

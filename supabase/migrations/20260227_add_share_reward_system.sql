@@ -3,6 +3,9 @@
 -- 2026-02-27
 -- ============================================================
 
+-- 0. pgcrypto 확장 활성화 (gen_random_bytes 사용을 위해)
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- 1. users 테이블에 referral_code + is_suspicious_referral 컬럼 추가
 ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspicious_referral BOOLEAN NOT NULL DEFAULT false;
@@ -14,7 +17,7 @@ COMMENT ON COLUMN users.is_suspicious_referral IS '부정 레퍼럴 가입 의�
 UPDATE users
 SET referral_code = 'NDS-' || substr(
   replace(replace(replace(
-    encode(gen_random_bytes(6), 'base64'),
+    encode(extensions.gen_random_bytes(6), 'base64'),
     '+', ''), '/', ''), '=', ''),
   1, 6)
 WHERE referral_code IS NULL;
@@ -56,10 +59,12 @@ CREATE INDEX IF NOT EXISTS idx_share_rewards_active ON share_rewards(user_id) WH
 ALTER TABLE referral_signups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE share_rewards ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own referral signups" ON referral_signups;
 CREATE POLICY "Users can view own referral signups"
   ON referral_signups FOR SELECT
   USING (referrer_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can view own share rewards" ON share_rewards;
 CREATE POLICY "Users can view own share rewards"
   ON share_rewards FOR SELECT
   USING (user_id = auth.uid());

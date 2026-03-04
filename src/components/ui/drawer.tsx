@@ -67,6 +67,7 @@ function DrawerContent({
           maxHeight: '80vh',
           borderTopLeftRadius: '0.5rem',
           borderTopRightRadius: '0.5rem',
+          zIndex: 51,
           ...style,
         }}
         {...props}

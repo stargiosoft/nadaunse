@@ -193,7 +193,7 @@ export default function ShareRewardModal({
               color: '#848484',
             }}>
               {isLoggedIn
-                ? '친구 1명이 가입하면 바로 적립돼요'
+                ? `친구 ${status?.requiredCount ?? 1}명이 가입하면 바로 적립돼요`
                 : '로그인 후 공유하면 바로 적립돼요'}
             </p>
           </div>
