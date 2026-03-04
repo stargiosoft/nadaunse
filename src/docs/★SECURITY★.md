@@ -208,7 +208,7 @@ frame-src https://*.iamport.kr https://*.portone.io https://*.kakao.com https://
 media-src 'self';
 object-src 'none';
 base-uri 'self';
-form-action 'self' https://kauth.kakao.com https://*.kakaopay.com https://*.iamport.kr https://*.portone.io;
+form-action 'self' https://kauth.kakao.com https://*.kakaopay.com https://*.iamport.kr https://*.portone.io https://sharer.kakao.com;
 worker-src 'self' blob:;
 ```
 
@@ -219,7 +219,7 @@ worker-src 'self' blob:;
 | **script-src** | self, iamport, portone, kakao, sentry, gtm, naver | 결제 SDK, 카카오 SDK, 에러 모니터링, 애널리틱스 |
 | **connect-src** | supabase, sentry, kakao, iamport, portone, GA, naver | API 호출, 실시간 연결, 인증, 애널리틱스 |
 | **frame-src** | iamport, portone, kakao, kakaopay, danal, **teledit**, inicis, toss | 결제창 iframe (⚠️ 다날은 `teledit.com` 도메인도 사용) |
-| **form-action** | self, kakao, **kakaopay**, iamport, portone | 결제 redirect (⚠️ 카카오페이 모바일은 form submit 사용) |
+| **form-action** | self, kakao, **kakaopay**, iamport, portone, **sharer.kakao.com** | 결제 redirect + 카카오톡 공유 (PC는 form submit 사용) |
 | **img-src** | supabase, kakaocdn, naver | 썸네일 이미지, 프로필 사진, 애널리틱스 |
 | **object-src** | none | Flash/Plugin 완전 차단 |
 
