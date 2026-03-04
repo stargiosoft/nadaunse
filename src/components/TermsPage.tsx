@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { issueWelcomeCoupon } from '../lib/coupon';
 import { motion, AnimatePresence } from 'motion/react';
 import { DEV } from '../lib/env';
+import { processReferral, getPendingReferral } from '../lib/shareRewardService';
 import svgPaths from '../imports/svg-4laayaclj0';
 import svgPathsNew from '../imports/svg-90sehl95g8';
 
@@ -106,6 +107,16 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
       const tempUser = JSON.parse(tempUserJson);
       console.log('📦 tempUser:', tempUser);
 
+      // ⭐️ 팝업 OAuth 세션이 부모 탭에 전파되었는지 확인
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('🔑 [회원가입] 현재 세션:', currentSession ? '있음' : '없음');
+      if (!currentSession) {
+        console.error('❌ [회원가입] 세션 없음 → 로그인 필요');
+        alert('로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
+        onBack();
+        return;
+      }
+
       // ⭐️ 먼저 이미 회원인지 확인
       const { data: existingUser } = await supabase
         .from('users')
@@ -131,7 +142,13 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
         return;
       }
 
+      // ⭐️ 레퍼럴 코드 생성 (NDS-{랜덤6자})
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const randomValues = crypto.getRandomValues(new Uint8Array(6));
+      const referralCode = 'NDS-' + Array.from(randomValues).map(b => chars[b % chars.length]).join('');
+
       // ⭐️ public.users 테이블에 사용자 정보 저장
+      console.log('📝 [회원가입] insert 시작 - id:', tempUser.id);
       const { data: newUser, error } = await supabase
         .from('users')
         .insert({
@@ -146,38 +163,40 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
           privacy_agreed: true,
           marketing_agreed: agreements.marketing,
           terms_agreed_at: new Date().toISOString(),
+          referral_code: referralCode,
         })
         .select()
         .single();
 
       if (error) {
         console.error('❌ 회원가입 실패:', error);
-        
+        console.error('❌ 에러 코드:', error.code, '메시지:', error.message, '상세:', error.details);
+
         // 중복 키 에러 체크
         if (error.code === '23505') {
           console.log('ℹ️ 중복 키 에러 → 이미 가입된 사용자로 간주');
-          
+
           // 다시 조회해서 로그인 처리
           const { data: user } = await supabase
             .from('users')
             .select('*')
             .eq('id', tempUser.id)
             .single();
-          
+
           if (user) {
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.removeItem('tempUser');
-            
+
             document.cookie = `last_login_provider=${user.provider}; max-age=${60 * 60 * 24 * 365}; path=/`;
             if (user.email) {
               document.cookie = `last_login_email=${encodeURIComponent(user.email)}; max-age=${60 * 60 * 24 * 365}; path=/`;
             }
-            
+
             window.location.href = '/';
             return;
           }
         }
-        
+
         alert('회원가입에 실패했습니다. 다시 시도해주세요.');
         return;
       }
@@ -187,16 +206,28 @@ export default function TermsPage({ onBack, onComplete }: TermsPageProps) {
       // ⭐️ localStorage에 사용자 정보 저장
       localStorage.setItem('user', JSON.stringify(newUser));
       localStorage.removeItem('tempUser');  // 임시 데이터 제거
-      
+
       // 쿠키에 로그인 정보 저장
       document.cookie = `last_login_provider=${newUser.provider}; max-age=${60 * 60 * 24 * 365}; path=/`;
       if (newUser.email) {
         document.cookie = `last_login_email=${encodeURIComponent(newUser.email)}; max-age=${60 * 60 * 24 * 365}; path=/`;
       }
 
+      // 🔗 레퍼럴 처리 (public.users 생성 완료 후 처리)
+      const pendingRef = getPendingReferral();
+      if (pendingRef) {
+        console.log('🔗 [레퍼럴] 회원가입 완료 → 레퍼럴 처리 시작:', pendingRef);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          processReferral(session.access_token).catch(e =>
+            console.error('🔗 [레퍼럴] 처리 실패:', e)
+          );
+        }
+      }
+
       // ⭐ 가입 축하 쿠폰 발급 비활성화 (A/B 가격 테스트 기간)
       // issueWelcomeCoupon(newUser.id) ...
-      
+
       onComplete();
     } catch (err) {
       console.error('❌ 회원가입 오류:', err);

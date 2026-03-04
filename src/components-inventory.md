@@ -1,7 +1,7 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-02-12
-> **총 컴포넌트 수**: 75개 (활성화) - 주간 보고서 11개 + 통계 대시보드 1개 포함
+> **최종 업데이트**: 2026-03-03
+> **총 활성 컴포넌트 수**: 78개
 > **UI 컴포넌트 (shadcn/ui)**: 52개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -12,19 +12,18 @@
 
 - [UI 컴포넌트 (11개)](#ui-컴포넌트)
 - [인증 관련 (4개)](#인증-관련)
-- [결제 관련 (4개)](#결제-관련)
+- [결제 관련 (6개)](#결제-관련)
 - [무료 콘텐츠 관련 (11개)](#무료-콘텐츠-관련)
-- [마스터 콘텐츠 관리 (6개)](#마스터-콘텐츠-관리)
+- [마스터 콘텐츠 관리 (5개)](#마스터-콘텐츠-관리)
 - [통계 관리 (1개)](#통계-관리-1개)
-- [사주 정보 관리 (10개)](#사주-정보-관리)
-- [타로 콘텐츠 (5개)](#타로-콘텐츠)
+- [사주 정보 관리 (9개)](#사주-정보-관리)
+- [타로 콘텐츠 (4개)](#타로-콘텐츠)
 - [나다움 태그 (3개)](#나다움-태그-3개)
-- [주간 보고서 (11개)](#주간-보고서-11개)
-- [프로필 및 구매 내역 (4개)](#프로필-및-구매-내역)
+- [주간 보고서 (12개)](#주간-보고서-12개)
+- [프로필 및 구매 내역 (3개)](#프로필-및-구매-내역)
 - [유틸리티 컴포넌트 (4개)](#유틸리티-컴포넌트)
 - [약관 페이지 (3개)](#약관-페이지)
 - [에러 처리 (2개)](#에러-처리)
-- [백업 컴포넌트 (9개)](#백업된-컴포넌트-사용-중지)
 
 ---
 
@@ -173,10 +172,12 @@
 - **주요 기능**:
   - 유료 콘텐츠 구매 후 전화번호 미등록 사용자 대상
   - 사주 정보에 전화번호 업데이트
+  - 캐시 무효화: `primary_saju` + `saju_records_cache` + `saju_cache_checked` 삭제
   - 주문 소유자 검증 (다른 계정 주문 접근 방지)
   - 뒤로가기 시 상품 상세 페이지로 이동
 - **파일 경로**: `/components/AlimtalkInfoInputPage.tsx`
 - **추가 날짜**: 2026-01-19
+- **최근 업데이트**: 2026-03-03 - 캐시 무효화 시 `saju_cache_checked` 삭제 추가
 
 ### PaymentComplete.tsx
 - **역할**: 결제 완료 페이지
@@ -197,6 +198,21 @@
   - 쿠폰 선택 및 적용
   - 할인 금액 미리보기
 - **파일 경로**: `/components/CouponBottomSheetNew.tsx`
+
+### SproutChargingStation.tsx
+- **역할**: 새싹 충전소 (패키지 선택, PortOne 결제, 잔액 충전)
+- **사용처**: `/sprout-charging` 라우트
+- **타입**: Page Component
+- **주요 기능**:
+  - 새싹 충전 패키지 목록 표시 (sprout_packages 테이블)
+  - PortOne v1 결제 연동 (`m_redirect_url` 모바일 리다이렉트 지원)
+  - 잔액 충전 처리 (sprout-charge Edge Function)
+  - 새싹 잔액 표시
+  - `redirectPayment` prop으로 모바일 결제 복귀 시 자동 처리
+- **파일 경로**: `/components/SproutChargingStation.tsx`
+- **관련 훅**: `useSproutBalance` (`/hooks/useSproutBalance.ts`) - 사용자 새싹 잔액 조회
+- **추가 날짜**: 2026-02-26
+- **최근 업데이트**: 2026-03-03 - 모바일 결제 `m_redirect_url` + 리다이렉트 처리 추가
 
 ### WelcomeCouponPage.tsx
 - **역할**: 가입 축하 쿠폰 안내 페이지
@@ -447,10 +463,11 @@
   - 유료 콘텐츠 결제 후 사주 선택
   - DB 조회 (saju_records)
   - 대표 사주 우선 표시
+  - 전화번호 미등록 시 AlimtalkInfoInputPage 리다이렉트 (이동 전 `primary_saju` 캐시 설정)
   - **사주 API 직접 호출**: 선택 후 `fetchSajuData()` 실행 후 Edge Function에 전달
   - **개발 모드**: localStorage에서 데이터 로드
 - **파일 경로**: `/components/SajuSelectPage.tsx`
-- **최근 업데이트**: 2026-01-13 - 사주 API 프론트엔드 직접 호출 방식으로 변경
+- **최근 업데이트**: 2026-03-03 - 전화번호 리다이렉트 전 `primary_saju` 캐시 설정 추가
 
 ### SajuManagementPage.tsx
 - **역할**: 사주 정보 관리 메인 페이지
@@ -524,7 +541,7 @@
 
 ---
 
-## 🎴 타로 콘텐츠 (5개)
+## 🎴 타로 콘텐츠 (4개)
 
 ### TarotShufflePage.tsx
 - **역할**: 타로 셔플 페이지 (라우트 컴포넌트)
@@ -632,7 +649,7 @@
 
 ---
 
-## 📊 주간 보고서 (11개)
+## 📊 주간 보고서 (12개)
 
 ### MyReportList.tsx
 - **역할**: 주간 보고서 목록 페이지 + UI (병합됨)
@@ -790,7 +807,7 @@
     - 콘텐츠가 짧으면 spacer가 늘어나서 Footer를 하단에 고정
     - Footer 아래 빈 공간 없음 (스크롤 영역 내 Footer 배치)
 - **파일 경로**: `/components/ProfilePage.tsx`
-- **최근 업데이트**: 2026-01-15 - 디버그 버튼 제거, Footer 레이아웃 개선 (min-height wrapper + flexible spacer)
+- **최근 업데이트**: 2026-03-03 - `hasValidCache` 강화: `primary_saju` 실제 존재 시에만 API 스킵 (`saju_cache_checked` 플래그만으로 불가)
 
 ### PurchaseHistoryPage.tsx
 - **역할**: 운세 기록 조회 페이지 (유료 + 무료)
@@ -802,20 +819,6 @@
   - 주문 상세 정보
 - **파일 경로**: `/components/PurchaseHistoryPage.tsx`
 - **최근 업데이트**: 2026-01-28 - 무료 체험판 탭 추가, 퍼블리싱 수정 (탭-아이콘 간격 48px, 카드 간격 10px inline style)
-
-### StatsDashboard.tsx
-- **역할**: 통계 대시보드 (Master 전용)
-- **사용처**: `/test/stats-dashboard` 라우트
-- **타입**: Page Component
-- **주요 기능**:
-  - Google Analytics 4 실시간 활성 사용자 수 조회
-  - 기간별 통계 조회 (활성 사용자, 신규 사용자)
-  - 날짜 범위 선택 (시작일, 종료일)
-  - statsService.ts를 통한 Edge Function 호출
-- **파일 경로**: `/components/StatsDashboard.tsx`
-- **관련 서비스**: `/lib/statsService.ts`
-- **Edge Function**: `get-ga-stats`
-- **최근 업데이트**: 2026-02-02 - 신규 생성
 
 ### PurchaseFailure.tsx
 - **역할**: 결제 실패 페이지
@@ -877,7 +880,7 @@
 - **사용처**: CheckRecordMe.tsx
 - **타입**: Modal Component
 - **주요 기능**:
-  - 프로모션 모드: 태그 5개 모으면 무료 쿠폰 지급 안내
+  - 프로모션 모드: 태그 5개 모으면 무료 이용권 지급 안내
   - 태그 모으기 유도 모드: 남은 태그 수 안내 (remainingTags prop)
   - Framer Motion 애니메이션
 - **Props**:
@@ -949,84 +952,50 @@
 
 ---
 
-## 🗂️ 백업된 컴포넌트 (사용 중지)
+## 공유 리워드 (2개)
 
-### Loading.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 로딩 공통 컴포넌트화 후 실제 사용처 없음 (showLoading state가 항상 false)
-- **백업 날짜**: 2026-01-17
-- **파일 경로**: `/components/_backup/Loading.tsx`
+### ShareRewardModal.tsx
+- **역할**: 공유 리워드 바텀시트 모달
+- **사용처**: MasterContentDetailPage (유료 상세)
+- **타입**: Drawer (vaul)
+- **주요 기능**:
+  - 로그인 유저: 카카오 공유 + 링크 복사 + 리워드 진행 상황
+  - 비로그인 유저: 로그인 유도 CTA
+- **파일 경로**: `/components/ShareRewardModal.tsx`
 
-### FreeContentResult.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 실제 코드 플로우에서 사용되지 않음 (FreeSajuDetail로 직접 이동). 모든 무료 콘텐츠가 사주 기반이라 미사용 확인
-- **백업 날짜**: 2026-02-26
-- **파일 경로**: `/components/_backup/FreeContentResult.tsx`
-
-### ProfilePageWithSaju.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: ProfilePage.tsx로 통합됨
-- **파일 경로**: `/components/_backup/ProfilePageWithSaju.tsx`
-
-### RelationshipBottomSheet.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 사용처 없음 (개발 중 폐기)
-- **파일 경로**: `/components/_backup/RelationshipBottomSheet.tsx`
-
-### CouponBottomSheet.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: CouponBottomSheetNew.tsx로 대체됨
-- **파일 경로**: `/components/_backup/CouponBottomSheet.tsx`
-
-### ProfileImage.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 실제 사용처 없음 (import만 존재, JSX 미사용)
-- **백업 날짜**: 2026-01-06
-- **파일 경로**: `/components/_backup/ProfileImage.tsx`
-
-### ProgressiveImage.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 실제 사용처 없음 (import/JSX 모두 없음)
-- **백업 날짜**: 2026-01-06
-- **파일 경로**: `/components/_backup/ProgressiveImage.tsx`
-
-### ProductDetail.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: MasterContentDetailPage.tsx로 대체됨 (유료 콘텐츠 상세 페이지)
-- **백업 날짜**: 2026-01-06
-- **파일 경로**: `/components/_backup/ProductDetail.tsx`
-
-### FreeProductDetail.tsx
-- **상태**: 백업됨 (`/components/_backup/`)
-- **사유**: 하드코딩된 더미 데이터 버그 - FreeContentDetail.tsx로 대체
-- **버그 내용**: 운세 구성 섹션에 하드코딩된 질문 3개가 DB 데이터 대신 노출됨
-- **백업 날짜**: 2026-01-09
-- **파일 경로**: `/components/_backup/FreeProductDetail.tsx`
+### ShareRewardInfoPage.tsx
+- **역할**: 공유 리워드 안내 페이지
+- **사용처**: ShareRewardModal "자세히 보기" 링크
+- **타입**: Page Component
+- **주요 기능**:
+  - 3단계 참여 방법 안내
+  - 피보나치 회차별 리워드 테이블
+  - 유의사항 안내
+- **파일 경로**: `/components/ShareRewardInfoPage.tsx`
+- **라우트**: `/share-reward-info`
 
 ---
 
 ## 📊 통계
 
-- **총 컴포넌트**: 72개
-- **페이지 컴포넌트**: 42개
-- **UI/유틸리티 컴포넌트**: 15개
-- **백업된 컴포넌트**: 9개
+- **총 활성 컴포넌트**: 80개
 
 ### 카테고리별 분포
-- UI 컴포넌트: 8개
+- UI 컴포넌트: 11개
 - 인증 관련: 4개
-- 결제 관련: 4개
-- 무료 콘텐츠: 9개
-- 마스터 콘텐츠 관리: 6개
-- 통계 관리: 2개
-- 사주 정보 관리: 10개
-- 타로 콘텐츠: 5개
+- 결제 관련: 6개
+- 무료 콘텐츠: 11개
+- 마스터 콘텐츠 관리: 5개
+- 통계 관리: 1개
+- 사주 정보 관리: 9개
+- 타로 콘텐츠: 4개
 - 나다움 태그: 3개
-- 주간 보고서: 9개 (ReportWeeklyMemoQuickEdit 추가)
-- 프로필 및 구매: 4개
-- 유틸리티: 3개 (TagCouponBottomSheet 추가)
+- 주간 보고서: 12개
+- 프로필 및 구매: 3개
+- 유틸리티: 4개
 - 약관: 3개
 - 에러 처리: 2개
+- 공유 리워드: 2개
 
 ---
 
@@ -1135,173 +1104,11 @@
   - 총 컴포넌트: 55개 → 56개 (TagCouponBottomSheet 추가)
   - 유틸리티: 2개 → 3개
 
-### 2026-02-05
-- **NadaumTagsList.tsx DEV 전용 테스트 기능 추가**
-  - 빈 상태 테스트 버튼 2개 추가 (강한 모습/섬세한 모습)
-  - DEV 환경에서만 표시 (`import.meta.env.DEV`)
-  - `devForceEmpty` state로 강제 빈 상태 토글
-  - 페이지 하단 배치 (fixed 아님), 미니 사이즈 (36px 높이)
-  - 버튼 색상: 활성 #ff6678, 비활성 #48b2af
-- **EmptyContent.tsx 버튼 상호작용 개선**
-  - "태그 쌓으러 가기" 버튼 press 상태 추가
-  - 기본 색상 #48B2AF, 클릭 시 #41A09E
-  - Framer Motion scale 애니메이션 (0.99)
-  - Tailwind arbitrary value → inline style 전환
->>>>>>> a63cc716 (feat: 보고서 응원글 수정 UI 개선 및 스크롤 이슈 수정)
-
-### 2026-01-29
-- **CheckRecordMe.tsx props 확장**
-  - `orderId`, `sourceType`, `onComplete` props 추가 (유료 콘텐츠 지원)
-  - 무료/유료 콘텐츠 모두 동일한 태그 저장 로직 사용
-  - 저장 완료 후 `onComplete` 콜백으로 홈 이동
-- **App.tsx 유료 콘텐츠 태그 기록 라우트 추가**
-  - `PaidTagExtractionLoadingWrapper`: `/paid/tag-loading` 라우트
-  - `PaidNadaumRecordWrapper`: `/paid/nadaum-record` 라우트
-- **UnifiedResultPage.tsx 태그 추출 로직 추가**
-  - 데이터 로드 완료 시 백그라운드로 `extract-trait-tags` 호출
-  - 마지막 페이지에서 태그 추출 완료 여부에 따라 분기 이동
-- **통계 업데이트**
-  - 유틸리티 컴포넌트: 2개 → 3개 (CheckRecordMe 추가)
-
-### 2026-01-19
-- **AlimtalkInfoInputPage.tsx 컴포넌트 추가**
-  - 유료 콘텐츠 구매 후 전화번호 미등록 사용자 대상 전화번호 입력 페이지
-  - 주문 소유자 검증 (다른 계정 주문 접근 방지)
-  - 뒤로가기 시 상품 상세 페이지로 이동
-  - 결제 관련 섹션에 추가 (4개 → 5개)
-- **SajuCard.tsx, SajuManagementPage.tsx 구분자 렌더링 방식 변경**
-  - SVG → CSS div로 전환 (모바일 렌더링 일관성 확보)
-  - 높이 h-[6px], borderRadius 0.5px 적용
-  - iPhone 모바일에서 구분자(|) 렌더링 불일치 문제 완전 해결
-- **통계 업데이트**
-  - 총 컴포넌트: 54개 → 55개 (AlimtalkInfoInputPage 추가)
-  - 결제 관련: 4개 → 5개
-
-### 2026-01-16
-- **FreeSajuSelectPage.tsx, SajuCard.tsx UI 통일 (SajuManagementPage와 동일)**
-  - FreeSajuSelectPage: 섹션 타이틀 font-semibold, 간격 조정 (gap-[6px], gap-[1px])
-  - SajuCard: 프로필 이름 font-medium, 닉네임-생년월일 간격 축소, 이미지 위치 조정
-  - 사주 정보 선택 화면과 사주관리 화면이 동일한 UI로 통일
-- **WelcomeCouponPage.tsx 레이아웃 중앙 정렬**
-  - 캐릭터, 메인 타이틀, 서브 타이틀이 하단으로 치우쳐져 있던 문제 수정
-  - ImageContainer에 `pb-[160px]` 적용하여 수직 중앙 정렬
-  - 하단 고정 버튼 영역을 고려한 시각적 균형 조정
-- **iOS Safari 상태바 색상 변경**
-  - index.html `theme-color` 메타 태그 #48b2af(민트) → #ffffff(흰색)
-  - 흰색 배경 페이지와 시각적 일관성 개선
-
-### 2026-01-16
-- **HomePage.tsx 탭바 스크롤 숨김/노출 기능 추가**
-  - 스크롤 방향 감지: 아래로 스크롤 시 SegmentedControl (종합/심화 해석판/무료 체험판) 숨김
-  - 위로 스크롤 시 자동으로 다시 노출
-  - `window.scrollY` → `scrollContainer.scrollTop` 사용 (내부 div 스크롤 감지)
-  - 애니메이션: 300ms ease-out transition, pointer-events-none으로 클릭 방지
-  - 스크롤 threshold: 50px (상단 50px 이하에서는 항상 노출)
-- **FreeContentDetail.tsx 광고 배너 하단 여백 추가**
-  - 스크롤 컨테이너에 `paddingBottom: '250px'` inline style 적용
-  - 광고 배너와 하단 CTA 버튼 사이 충분한 여유 공간 확보
-  - Tailwind JIT 컴파일 문제로 `pb-[250px]` 클래스 대신 inline style 사용
-
-### 2026-01-15
-- **ProfilePage.tsx 디버그 버튼 제거 및 Footer 레이아웃 개선**
-  - 디버그 버튼 3개 완전 제거: `[디버그] 미등록 화면 보기`, `[DEV] 에러 페이지 확인`
-  - Footer 레이아웃 변경: min-height wrapper + flexible spacer 패턴 적용
-  - 로그아웃과 Footer 사이 최소 130px 간격 유지, 콘텐츠가 짧으면 spacer가 늘어남
-  - Footer 아래 빈 공간 제거 (스크롤 영역 내 Footer 배치)
-- **ResultCompletePage.tsx 토스트 아이콘 변경**
-  - 쿠폰 발급 토스트 메시지 아이콘을 lucide-react `Check`에서 커스텀 `PositiveIcon` (tick-circle)으로 변경
-  - `PositiveIcon`: 초록색(#46BB6F) 원형 체크마크 아이콘 (`/imports/Icons-517-859.tsx`)
-- **SajuResultPage.tsx, TarotResultPage.tsx 레이아웃 조정**
-  - 결과 페이지 내 gap, margin-bottom 값 수정
-- **TarotDemo.tsx 삭제**
-  - 사용하지 않는 타로 데모 페이지 제거
-  - App.tsx에서 TarotDemo import 제거
-
-### 2026-01-14
-- **MasterContentDetail.tsx 질문 변경 감지 로직 추가**
-  - `originalQuestions` state로 원본 질문 저장
-  - 질문 변경 여부 비교 후 변경 없으면 DELETE-INSERT 스킵
-  - FK constraint 에러 방지 (order_results 참조 문제 해결)
-- **Edge Functions 사주 API 연동 강화**
-  - generate-free-preview: 사주 API 연동 추가 (SAJU_API_KEY)
-  - generate-content-answers: 알림톡 중복 발송 방지 로직 추가
-  - lunar 파라미터 false로 변경 (양력 기준)
-
-### 2026-01-13
-- **이미지 캐시 버스팅 구현**
-  - MasterContentDetail.tsx: `imageCacheBuster` state 추가로 썸네일 재생성 시 즉시 반영
-  - MasterContentList.tsx: 실시간 썸네일 업데이트에 타임스탬프 파라미터 추가
-  - INSERT/UPDATE/폴링 모든 시나리오에서 캐시 무효화 적용
-- **사주 API 프론트엔드 직접 호출 방식 변경**
-  - BirthInfoInput.tsx: `fetchSajuData()` 후 Edge Function에 데이터 전달
-  - SajuSelectPage.tsx: 사주 선택 후 프론트엔드에서 API 직접 호출
-  - Edge Function 빈 응답 문제 해결 (서버 사이드 요청 차단 우회)
-- **핵심 라이브러리 추가**
-  - `/lib/sajuApi.ts`: 사주 API 직접 호출 유틸리티
-
-### 2026-01-09
-- **FreeProductDetail.tsx 백업 처리**
-  - 하드코딩된 더미 데이터 버그로 인해 백업 폴더로 이동
-  - 버그: 운세 구성 섹션에 하드코딩된 질문 3개가 DB 데이터 대신 노출
-  - FreeContentDetail.tsx + FreeContentDetailComponents.tsx로 대체
-- **App.tsx 수정**
-  - ProductDetailPage에서 무료 콘텐츠 렌더링 시 FreeContentDetail 사용
-- **통계 업데이트**
-  - 총 50개 컴포넌트 유지 (FreeProductDetail 백업)
-  - 백업된 컴포넌트: 6개 → 7개
-
-### 2026-01-07
-- **SajuCard.tsx 컴포넌트 추가**
-  - 사주 정보 카드 공통 컴포넌트 (FreeSajuSelectPage, SajuSelectPage, SajuManagementPage에서 공통 사용)
-  - 프로필 이미지, 이름, 생년월일, 띠|별자리|성별 표시
-  - 라디오 버튼 선택 UI, 케밥 메뉴 버튼 지원
-- **iOS 스와이프 뒤로가기 히스토리 관리 해결** (App.tsx)
-  - LoginPageNewWrapper, TermsPageWrapper, WelcomeCouponPageWrapper 상태 체크 로직 추가
-- **개발 안정성 강화**
-  - ErrorBoundary.tsx: Sentry `captureException` 연동으로 에러 자동 전송
-  - 새 lib 파일 추가: `logger.ts` (구조화된 로거), `fetchWithRetry.ts` (재시도 로직), `sentry.ts` (에러 모니터링)
-
-### 2026-01-06
-- **개발/배포 환경 분리 처리 완료**
-  - LoginPageNew.tsx: 테스트 버튼 2개 `import.meta.env.DEV` 처리
-  - ProfilePage.tsx: 개발용 버튼 3개 환경 분리
-  - MasterContentDetailPage.tsx: `IS_DEV_MODE` 플래그 적용
-- **iOS Safari 렌더링 최적화**
-  - FreeProductDetail.tsx: 맛보기 카드에 `transform-gpu` 적용
-  - 둥근 모서리 정상 렌더링 확인
-- **미사용 컴포넌트 정리**
-  - ProfileImage.tsx → `_backup` 폴더로 이동 (import만 존재, JSX 미사용)
-  - ProgressiveImage.tsx → `_backup` 폴더로 이동 (import/JSX 모두 없음)
-  - ProductDetail.tsx → `_backup` 폴더로 이동 (MasterContentDetailPage.tsx로 대체)
-  - App.tsx에서 FreeSajuAddPage import 제거
-  - ProfilePage.tsx에서 ProfileImage import 제거
-- **타로 서비스 통합**
-  - 타로 콘텐츠 섹션 추가 (3개 컴포넌트)
-  - TarotShufflePage, TarotGame, TarotResultPage
-  - 레거시 백업: TarotFlowPage, TarotCardSelection → `_backup/`
-- **하단 고정 CTA 리팩토링**
-  - BottomNavigation.tsx: iOS Safe Area 대응 완료
-- **에러 처리 섹션 신규 추가**
-  - ErrorPage.tsx, ErrorBoundary.tsx 문서화
-- **통계 및 카테고리 업데이트**
-  - 총 50개 컴포넌트 (51 → 50, ProductDetail 백업)
-  - 백업된 컴포넌트: 3개 → 6개
-
-### 2025-12-31
-- LoadingPage.tsx: 무료 콘텐츠 이미지 프리로딩 최적화 적용 반영
-- TableOfContentsBottomSheet.tsx: 하드코딩 더미 데이터 제거 버그 수정 반영
-- 총 51개 활성 컴포넌트 유지
-
-### 2025-12-20
-- 초기 문서 생성
-- ProfilePageWithSaju.tsx, RelationshipBottomSheet.tsx, CouponBottomSheet.tsx 백업 처리
-- 51개 활성 컴포넌트 정리 완료
-
 ---
 
 ## 📝 관리 가이드
 
-### 새 컴포넌�� 추가 시
+### 새 컴포넌트 추가 시
 1. 해당 카테고리에 컴포넌트 정보 추가
 2. 통계 섹션 업데이트
 3. 업데이트 이력에 변경 사항 기록
@@ -1322,7 +1129,7 @@
 
 ---
 
-**문서 버전**: 2.9.0
-**최종 업데이트**: 2026-02-24
+**문서 버전**: 3.0.0
+**최종 업데이트**: 2026-03-03
 **다음 업데이트**: 새 컴포넌트 추가 또는 주요 변경 시
 **문서 끝**

@@ -18,6 +18,8 @@ import PaidContentDetailSkeleton from './skeletons/PaidContentDetailSkeleton';
 import { trackViewItem, trackPurchaseClick, trackPageView } from '../utils/analytics';
 import SEO from './SEO';
 import { ContentTags, isContentNew } from './ContentTags';
+import { writeSproutBalanceCache } from '../hooks/useSproutBalance';
+import ShareRewardModal from './ShareRewardModal';
 
 // Animation Variants
 const staggerContainer = {
@@ -151,6 +153,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isUsageGuideExpanded, setIsUsageGuideExpanded] = useState(false);
   const [isRefundPolicyExpanded, setIsRefundPolicyExpanded] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // ⭐ 초기값 false (무료 콘텐츠는 스켈레톤 사용)
   // ⭐ 초기값을 localStorage에서 직접 읽어서 설정 (첫 렌더링부터 올바른 로그인 상태 반영 → 가격 영역 깜빡임 방지)
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('user'));
@@ -187,7 +190,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         .select('id')
         .eq('user_id', userId)
         .eq('content_id', contentId)
-        .eq('pstatus', 'completed')
+        .in('pstatus', ['completed', 'paid'])
         .limit(1);
       if (orders && orders.length > 0) { setIsRead(true); return; }
       // 무료: free_content_records 확인
@@ -994,10 +997,162 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return;
     }
 
-    // ⭐ 로그인 유저 → 바로 실제 결제 페이지로 이동 (더미 페이지 건너뜀)
-    console.log('✅ 로그인 유저 - 실제 결제 페이지로 이동');
-    console.log('🟢 [MasterContentDetailPage] navigate 호출:', `/product/${contentId}/payment/new`);
-    navigate(`/product/${contentId}/payment/new`);
+    // ⭐ 새싹 잔액 확인 (캐시 우선, 없으면 DB 조회)
+    const requiredAmount = 30;
+    const cachedBalanceRaw = localStorage.getItem('sprout_balance_cache');
+    let currentBalance: number;
+
+    if (cachedBalanceRaw) {
+      try {
+        currentBalance = JSON.parse(cachedBalanceRaw).balance ?? 0;
+      } catch {
+        currentBalance = 0;
+      }
+      console.log('🌱 [MasterContentDetailPage] 캐시 잔액:', currentBalance, '필요:', requiredAmount);
+    } else {
+      console.log('🌱 [MasterContentDetailPage] 새싹 잔액 DB 조회 중...');
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('sprout_balance')
+        .eq('id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('❌ [MasterContentDetailPage] 잔액 조회 실패:', userError);
+        alert('잔액 조회에 실패했습니다. 다시 시도해주세요.');
+        return;
+      }
+      currentBalance = userData?.sprout_balance ?? 0;
+      writeSproutBalanceCache(currentBalance);
+      console.log('🌱 [MasterContentDetailPage] DB 잔액:', currentBalance, '필요:', requiredAmount);
+    }
+
+    if (currentBalance < requiredAmount) {
+      console.log('🌱 잔액 부족 → 새싹 충전소로 이동');
+      navigate(`/sprout-charging/${contentId}`, {
+        state: { requiredAmount, currentBalance },
+      });
+      return;
+    }
+
+    // ⭐ 잔액 충분 → 차감 시작
+    console.log('✅ 잔액 충분 → 새싹 차감 시작');
+
+    // 사주 보유 여부를 차감 전에 미리 판단 (캐시 활용, 네트워크 호출 절약)
+    const sajuCacheJson = localStorage.getItem('saju_records_cache');
+    let hasSajuFromCache: boolean | null = null;
+    if (sajuCacheJson) {
+      try {
+        hasSajuFromCache = JSON.parse(sajuCacheJson).length > 0;
+      } catch { /* ignore */ }
+    }
+
+    try {
+      // 네트워크 호출 #1: 새싹 차감 (Edge Function)
+      const edgeFnUrl = `https://${projectId}.supabase.co/functions/v1/sprout-deduct`;
+      const res = await fetch(edgeFnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          content_id: contentId,
+          amount: requiredAmount,
+        }),
+      });
+      const result = await res.json();
+
+      if (!result.success) {
+        if (result.error === 'insufficient_balance') {
+          navigate(`/sprout-charging/${contentId}`, {
+            state: { requiredAmount, currentBalance: result.current_balance ?? 0 },
+          });
+          return;
+        }
+        console.error('❌ [MasterContentDetailPage] 차감 실패:', result);
+        alert('새싹 차감에 실패했습니다. 다시 시도해주세요.');
+        return;
+      }
+
+      if (result.new_balance != null) {
+        writeSproutBalanceCache(result.new_balance);
+      }
+
+      console.log('✅ 새싹 차감 성공 → 주문 생성 시작');
+
+      // 네트워크 호출 #2: 주문 생성 + (캐시 미스 시) 사주 조회 병렬
+      const merchantUid = `order_${Date.now()}`;
+      const orderPromise = supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          content_id: contentId,
+          merchant_uid: merchantUid,
+          paid_amount: requiredAmount,
+          pay_method: 'sprout',
+          pg_provider: 'sprout',
+          pstatus: 'completed',
+          success: true,
+          gname: content?.title || '운세 구성',
+        })
+        .select('id')
+        .single();
+
+      let hasSaju = hasSajuFromCache ?? false;
+
+      if (hasSajuFromCache === null) {
+        // 사주 캐시 없음 → 주문 생성과 병렬로 사주 조회
+        const [orderResult, sajuResult] = await Promise.all([
+          orderPromise,
+          supabase.from('saju_records').select('*').eq('user_id', user.id),
+        ]);
+
+        if (orderResult.error || !orderResult.data) {
+          console.error('❌ [MasterContentDetailPage] 주문 생성 실패:', orderResult.error);
+          alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+          return;
+        }
+
+        localStorage.setItem('pendingOrderId', orderResult.data.id);
+        console.log('✅ 주문 생성 완료:', orderResult.data.id);
+
+        const mySajuList = sajuResult.data;
+        hasSaju = mySajuList ? mySajuList.length > 0 : false;
+        if (hasSaju && mySajuList) {
+          const primary = mySajuList.find((s: Record<string, unknown>) => s.is_primary) || mySajuList[0];
+          localStorage.setItem('primary_saju', JSON.stringify(primary));
+          localStorage.setItem('saju_records_cache', JSON.stringify(mySajuList));
+        }
+      } else {
+        // 사주 캐시 히트 → 주문 생성만
+        const { data: newOrder, error: orderError } = await orderPromise;
+
+        if (orderError || !newOrder) {
+          console.error('❌ [MasterContentDetailPage] 주문 생성 실패:', orderError);
+          alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+          return;
+        }
+
+        localStorage.setItem('pendingOrderId', newOrder.id);
+        console.log('✅ 주문 생성 완료:', newOrder.id);
+      }
+
+      // 구매내역 캐시만 무효화 (사주 캐시는 구매와 무관하므로 유지)
+      localStorage.removeItem('purchase_history_cache');
+
+      // 로딩 페이지 이미지 미리 로드
+      preloadLoadingPageImages();
+
+      if (hasSaju) {
+        navigate(`/product/${contentId}/saju-select`);
+      } else {
+        navigate(`/product/${contentId}/birthinfo`);
+      }
+    } catch (err) {
+      console.error('❌ [MasterContentDetailPage] 차감 처리 예외:', err);
+      alert('처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   return (
@@ -1327,240 +1482,31 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           </div>
                         </div>
 
-                      {/* 쿠폰 안내 버튼 (조건부 렌더링) - 쿠폰 로딩 완료까지 숨김 */}
-                      <div className={`w-full ${isCouponLoaded ? '' : 'hidden'}`}>
-                      {(() => {
-                        // ⭐ coupon_type으로 정확히 구분 + 실제 할인 금액 사용
-                        const revisitCoupon = userCoupons.find(c => c.coupons.coupon_type === 'revisit' && !c.is_used);
-                        const welcomeCoupon = userCoupons.find(c => c.coupons.coupon_type === 'welcome' && !c.is_used);
-                        const hasAnyCoupon = userCoupons.length > 0;
+                        {/* 공유하고 30새싹 받기 버튼 */}
+                        {!isFreeContent && (
+                          <button
+                            onClick={() => setIsShareModalOpen(true)}
+                            className="flex items-center justify-center gap-[8px] w-full rounded-[12px]"
+                            style={{
+                              backgroundColor: '#f5fbfb',
+                              border: '1px solid #d4eceb',
+                              padding: '14px 0',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                              <path d="M9.30734 4.96571C10.739 6.74071 11.0632 9.20988 10.1548 11.4099C10.0732 11.6065 9.89734 11.7482 9.68734 11.7865C9.28734 11.859 8.88567 11.894 8.489 11.894C6.56817 11.894 4.754 11.0657 3.56734 9.59404C2.1365 7.81904 1.81234 5.34988 2.71984 3.14904C2.8015 2.95238 2.97734 2.81071 3.18734 2.77238C5.5265 2.34654 7.87567 3.18988 9.30734 4.96571ZM17.6548 7.31571C17.5732 7.11904 17.3973 6.97738 17.1873 6.93904C15.4023 6.62154 13.614 7.25821 12.5198 8.61404C11.4273 9.96821 11.1798 11.8515 11.8723 13.5282C11.954 13.7249 12.1298 13.8665 12.3398 13.9049C12.6448 13.9599 12.9498 13.9874 13.2532 13.9874C14.7173 13.9874 16.1007 13.354 17.0065 12.2315C18.0998 10.8774 18.3473 8.99404 17.6548 7.31654V7.31571Z" fill="#8BD1CF"/>
+                              <path d="M14.6279 10.4095C14.3954 10.1562 14.0004 10.1395 13.7445 10.3728C12.542 11.4778 11.5179 12.7287 10.6695 14.0837C10.5645 13.0145 10.2954 11.8195 9.73871 10.577C8.75455 8.38367 7.27704 6.96784 6.21038 6.16617C5.93371 5.957 5.54204 6.0145 5.33538 6.29034C5.12788 6.56617 5.18371 6.95784 5.45954 7.16534C6.40871 7.87784 7.72288 9.13784 8.59788 11.0878C9.57121 13.2578 9.56204 15.272 9.38204 16.5812C9.38121 16.5887 9.38871 16.5945 9.38871 16.6012C9.36121 16.8653 9.49621 17.1278 9.75288 17.2395C9.83454 17.2745 9.91871 17.2912 10.002 17.2912C10.2429 17.2912 10.4729 17.1503 10.5754 16.9153C10.8137 16.3653 11.0829 15.8245 11.3779 15.3095C12.2245 13.827 13.3045 12.4762 14.5912 11.2928C14.8454 11.0595 14.8612 10.6637 14.6279 10.4095Z" fill="#389E9B"/>
+                            </svg>
+                            <span style={{ fontSize: '15px', fontWeight: 500, letterSpacing: '-0.3px', color: '#2d2d2d' }}>
+                              공유하고 <span style={{ fontWeight: 700, color: '#389E9B' }}>30새싹</span> 받기
+                            </span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 18l6-6-6-6" />
+                            </svg>
+                          </button>
+                        )}
 
-                        // ⭐ 로그아웃 상태에서 로그인 페이지로 이동
-                        const handleLoginRedirect = () => {
-                          const paymentUrl = `/master/content/detail/${content.id}`;
-                          localStorage.setItem('redirectAfterLogin', paymentUrl);
-                          // ⭐ canGoBack 상태 추가 - 로그인 페이지에서 뒤로가기 시 직전 페이지로 이동 가능
-                          navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${content.id}` } });
-                        };
-
-                        // Case 1: 로그인 + 재방문쿠폰 보유 (우선순위 1) — AB 그룹 B는 이벤트가 우선
-                        if (isLoggedIn && revisitCoupon && getABGroup() !== 'B') {
-                          // ✅ 쿠폰의 실제 할인 금액 사용 (하드코딩 제거)
-                          const discountAmount = revisitCoupon.coupons.discount_amount || 3000;
-                          const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
-                          return (
-                            <button 
-                              onClick={onPurchase}
-                              onTouchStart={() => {}}
-                              className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
-                            >
-                              <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
-                              <motion.div 
-                                whileTap={{ scale: 0.96 }}
-                                transition={{ duration: 0.15, ease: "easeOut" }}
-                                className="flex flex-col items-center justify-center size-full"
-                              >
-                                <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
-                                  <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
-                                    <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                                      <div className="relative shrink-0 size-[20px] flex items-center justify-center">
-                                        <svg className="block w-[20px] h-[17px]" fill="none" viewBox="0 0 20 17">
-                                          <g id="Group">
-                                            <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
-                                            <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
-                                          </g>
-                                        </svg>
-                                      </div>
-                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
-                                          재구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
-                                          <span>{` 풀이 보기`}</span>
-                                        </p>
-                                        <motion.div 
-                                          className="relative shrink-0 size-[12px]"
-                                          animate={{ x: [0, 3, 0] }}
-                                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                        >
-                                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-                                            <g id="arrow-right">
-                                              <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-                                            </g>
-                                          </svg>
-                                        </motion.div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </button>
-                          );
-                        }
-                        
-                        // Case 2: 로그인 + 웰컴쿠폰 보유 (우선순위 2) — AB 그룹 B는 이벤트가 우선
-                        if (isLoggedIn && welcomeCoupon && getABGroup() !== 'B') {
-                          // ✅ 쿠폰의 실제 할인 금액 사용 (하드코딩 제거)
-                          const discountAmount = welcomeCoupon.coupons.discount_amount || 5000;
-                          const finalPrice = Math.max(0, (content.price_discount || 0) - discountAmount);
-                          return (
-                            <button
-                              onClick={onPurchase}
-                              onTouchStart={() => {}} // 모바일 active 상태 활성화
-                              className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
-                            >
-                              <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
-                              <motion.div 
-                                whileTap={{ scale: 0.96 }}
-                                transition={{ duration: 0.1 }}
-                                className="flex flex-col items-center justify-center size-full transform-gpu"
-                              >
-                                <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
-                                  <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
-                                    <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                                      <div className="relative shrink-0 size-[20px] flex items-center justify-center pt-[1px]">
-                                        <svg className="block w-[20px] h-[17px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 17">
-                                          <g id="Group">
-                                            <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
-                                            <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
-                                          </g>
-                                        </svg>
-                                      </div>
-                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
-                                          첫 구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
-                                          <span>{` 풀이 보기`}</span>
-                                        </p>
-                                        <motion.div
-                                          className="relative shrink-0 size-[12px]"
-                                          animate={{ x: [0, 3, 0] }}
-                                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                        >
-                                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-                                            <g id="arrow-right">
-                                              <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-                                            </g>
-                                          </svg>
-                                        </motion.div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </button>
-                          );
-                        }
-                        
-                        // Case 3: 로그아웃 상태 + welcomeCouponDiscount 있음 → 첫 구매 버튼 (A/B 테스트 기간 미노출)
-                        if (false && !isLoggedIn && welcomeCouponDiscount !== null) {
-                          const finalPrice = Math.max(0, (content.price_discount || 0) - welcomeCouponDiscount);
-                          return (
-                            <motion.button
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
-                              onClick={handleLoginRedirect}
-                              onTouchStart={() => {}}
-                              className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
-                            >
-                              <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
-                              <motion.div
-                                whileTap={{ scale: 0.96 }}
-                                transition={{ duration: 0.1 }}
-                                className="flex flex-col items-center justify-center size-full transform-gpu"
-                              >
-                                <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
-                                  <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
-                                    <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                                      <div className="relative shrink-0 size-[20px] flex items-center justify-center pt-[1px]">
-                                        <svg className="block w-[20px] h-[17px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 17">
-                                          <g id="Group">
-                                            <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
-                                            <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
-                                          </g>
-                                        </svg>
-                                      </div>
-                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
-                                          첫 구매 쿠폰 받고<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">{finalPrice.toLocaleString()}원으로</span>
-                                          <span>{` 풀이 보기`}</span>
-                                        </p>
-                                        <motion.div
-                                          className="relative shrink-0 size-[12px]"
-                                          animate={{ x: [0, 3, 0] }}
-                                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                        >
-                                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-                                            <g id="arrow-right">
-                                              <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-                                            </g>
-                                          </svg>
-                                        </motion.div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </motion.button>
-                          );
-                        }
-
-                        // Case 4: AB 그룹 B → 초특가 CTA 버튼
-                        if (getABGroup() === 'B') {
-                          return (
-                            <button
-                              onClick={isLoggedIn ? onPurchase : handleLoginRedirect}
-                              onTouchStart={() => {}}
-                              className="bg-[#f0f8f8] relative rounded-[12px] shrink-0 w-full border-none cursor-pointer p-0 group transition-colors duration-150 ease-out active:bg-[#e0f0f0]"
-                            >
-                              <div aria-hidden="true" className="absolute border border-[#7ed4d2] border-solid inset-0 pointer-events-none rounded-[12px]" />
-                              <motion.div
-                                whileTap={{ scale: 0.96 }}
-                                transition={{ duration: 0.1 }}
-                                className="flex flex-col items-center justify-center size-full transform-gpu"
-                              >
-                                <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[16px] py-[12px] relative w-full">
-                                  <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0 w-full">
-                                    <div className="basis-0 content-stretch flex gap-[8px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                                      <div className="relative shrink-0 size-[20px] flex items-center justify-center pt-[1px]">
-                                        <svg className="block w-[20px] h-[17px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 17">
-                                          <g id="Group">
-                                            <path clipRule="evenodd" d={svgPathsDetail.p364966f0} fill="var(--fill-0, #48B2AF)" fillRule="evenodd" />
-                                            <path clipRule="evenodd" d={svgPathsDetail.p978f000} fill="var(--fill-0, white)" fillRule="evenodd" />
-                                          </g>
-                                        </svg>
-                                      </div>
-                                      <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                                        <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[0px] text-[14px] text-black text-nowrap tracking-[-0.42px] whitespace-pre">
-                                          초특가 떴을 때<span className="text-[#48b2af]"> </span>
-                                          <span className="font-bold text-[#48b2af]">지금 바로</span>
-                                          <span>{` 풀이 보기`}</span>
-                                        </p>
-                                        <motion.div
-                                          className="relative shrink-0 size-[12px]"
-                                          animate={{ x: [0, 3, 0] }}
-                                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                        >
-                                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12 12">
-                                            <g id="arrow-right">
-                                              <path d={svgPathsDetail.p3117bd00} stroke="var(--stroke-0, #525252)" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-                                            </g>
-                                          </svg>
-                                        </motion.div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            </button>
-                          );
-                        }
-
-                        // Case 5: 그 외 → 버튼 미표시
-                        return null;
-                      })()}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -2414,6 +2360,12 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
         </div>
       </div>
+      {/* 공유 리워드 바텀시트 */}
+      <ShareRewardModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        contentId={contentId}
+      />
     </>
   );
 }

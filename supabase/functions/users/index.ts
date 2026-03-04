@@ -140,6 +140,8 @@ serve(async (req) => {
         provider: user_data.provider || user.app_metadata?.provider || 'google',
         provider_id: user.id, // auth.users.id를 provider_id로 사용
         profile_image: profile_image,
+        referral_code: referralCode,
+        // sprout_balance: 컬럼 DEFAULT 사용 (ALTER TABLE users ALTER COLUMN sprout_balance SET DEFAULT X;)
         created_at: new Date().toISOString(),
       };
 

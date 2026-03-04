@@ -3,7 +3,7 @@ chcp 65001 > nul
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo 🧪 나다운세 스테이징 Edge Functions 배포
 echo    Project: hyltbeewxaqashyivilu (Staging)
-echo    함수: 34개 (--no-verify-jwt: 10개)
+echo    함수: 38개 (--no-verify-jwt: 11개)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set PROJECT_REF=hyltbeewxaqashyivilu
@@ -210,13 +210,26 @@ echo.
 echo ──── 만세력 (1개) ────
 echo.
 
-echo [34/34] get-manse-data (--no-verify-jwt, 비로그인 공개 접근)
+echo [36/38] get-manse-data (--no-verify-jwt, 비로그인 공개 접근)
 call npx supabase functions deploy get-manse-data --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo ──── 공유 리워드 (2개) ────
+echo.
+
+echo [37/38] process-referral (레퍼럴 처리)
+call npx supabase functions deploy process-referral --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
+echo [38/38] get-share-reward-status (리워드 상태 조회)
+call npx supabase functions deploy get-share-reward-status --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 스테이징 배포 완료! (34개 함수)
+echo ✅ 스테이징 배포 완료! (38개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 echo 📌 --no-verify-jwt 적용된 함수 (11개):

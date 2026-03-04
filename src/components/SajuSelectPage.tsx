@@ -379,6 +379,8 @@ export default function SajuSelectPage() {
         const mySaju = mySajuList[0];
         if (!mySaju.phone_number) {
           console.log('📱 [사주선택] 휴대폰 번호 없음 → AlimtalkInfoInputPage로 이동');
+          // ⭐ 리다이렉트 전에 대표 사주 캐시 업데이트 (ProfilePage 빈 사주 방지)
+          localStorage.setItem('primary_saju', JSON.stringify({ ...selectedSaju, is_primary: true }));
           setIsGenerating(false);
           navigate(`/alimtalk/input?orderId=${orderId}&contentId=${contentId}&selectedSajuId=${selectedSajuId}`);
           return;
@@ -782,7 +784,7 @@ export default function SajuSelectPage() {
 
   // ⭐ 다음 버튼 클릭 후 로딩 페이지 이동 전 즉시 로딩 표시
   if (isGenerating) {
-    return <PageLoader message="잠시만 기다려주세요" />;
+    return <PageLoader />;
   }
 
   return (

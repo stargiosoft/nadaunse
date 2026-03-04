@@ -255,7 +255,7 @@ export class FreeContentService {
       const readIds: string[] = [];
       if (userId) {
         const [ordersRes, freeRes] = await Promise.all([
-          supabase.from('orders').select('content_id').eq('user_id', userId).eq('pstatus', 'completed'),
+          supabase.from('orders').select('content_id').eq('user_id', userId).in('pstatus', ['completed', 'paid']),
           supabase.from('free_content_records').select('content_id').eq('user_id', userId)
         ]);
         if (ordersRes.data) ordersRes.data.forEach((o: { content_id: string | null }) => { if (o.content_id) readIds.push(o.content_id); });

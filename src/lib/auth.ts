@@ -76,6 +76,24 @@ export const signInWithKakao = async () => {
 
                 logger.info('신규 계정 생성 완료');
 
+                // 🌱 신규 가입 초기 새싹 확인 로그
+                if (signUpResult.data.user?.id) {
+                  try {
+                    const { data: sproutData, error: sproutError } = await supabase
+                      .from('users')
+                      .select('sprout_balance')
+                      .eq('id', signUpResult.data.user.id)
+                      .single();
+                    if (sproutError) {
+                      logger.warn(`🌱 [카카오 회원가입] 새싹 조회 실패: ${sproutError.message}`);
+                    } else {
+                      logger.info(`🌱 [카카오 회원가입] 초기 새싹: ${sproutData?.sprout_balance}개`);
+                    }
+                  } catch (e) {
+                    logger.warn('🌱 [카카오 회원가입] 새싹 조회 예외:', e);
+                  }
+                }
+
                 // 회원가입 후 세션이 없으면 자동 로그인 시도
                 if (!signUpResult.data.session) {
                   logger.warn('세션이 없음. 자동 로그인 시도...');

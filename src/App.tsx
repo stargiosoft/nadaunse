@@ -66,6 +66,9 @@ import ReportWeeklyMemoEdit from './components/ReportWeeklyMemoEdit';
 import ReportWeeklyMemoQuickEdit from './components/ReportWeeklyMemoQuickEdit';
 import CompletionCoupon from './components/CompletionCoupon';
 import AuthCallback from './pages/AuthCallback';
+import SproutChargingStation from './components/SproutChargingStation'; // ⭐ 새싹 충전소
+import ShareRewardInfoPage from './components/ShareRewardInfoPage'; // ⭐ 공유 새싹 지급 안내
+import { useSproutBalance, writeSproutBalanceCache } from './hooks/useSproutBalance'; // ⭐ 새싹 잔액 훅
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
 import { initGA, trackPageView } from './utils/analytics';
@@ -164,6 +167,7 @@ function LoginToast() {
           subtitle: '프로필에서 확인할 수 있어요',
           duration: 3000,
         });
+        setTimeout(() => toast.dismiss(), 3300);
 
         console.log('🎉 [Toast] 태그 저장 토스트 표시');
         return; // 태그 저장 토스트를 표시했으면 로그인 토스트는 표시하지 않음
@@ -178,8 +182,9 @@ function LoginToast() {
         // 플래그 즉시 삭제 (중복 표시 방지)
         sessionStorage.removeItem('show_login_toast');
 
-        // 토스트 표시 (2.2초간) - toast 래퍼 사용 (unstyled: true 포함으로 auto-dismiss 보장)
+        // 토스트 표시 (2.2초간) + 수동 dismiss fallback (모바일 Safari document.hidden 이슈 대응)
         toast.success('로그인 되었어요, 반가워요', { duration: 2200 });
+        setTimeout(() => toast.dismiss(), 2500);
 
         console.log('🎉 [LoginToast] 로그인 성공 토스트 표시');
       }
@@ -332,6 +337,7 @@ function GAInit() {
         '/my-report-list': '보고서 리스트',
         '/manse': '만세력',
         '/blog': '운세 콘텐츠',
+        '/share-reward-info': '공유 새싹 지급 안내',
       };
 
       // 정적 라우트 확인
@@ -1719,6 +1725,185 @@ function AlimtalkInfoInputPageWrapper() {
   );
 }
 
+// ⭐ 새싹 충전소 페이지 Wrapper
+function SproutChargingStationPage() {
+  const { contentId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const loginAuth = useLoginRequired();
+  const { balance, loading: balanceLoading } = useSproutBalance();
+  const [isDeducting, setIsDeducting] = useState(false);
+
+  // ⭐ PortOne 모바일 결제 리다이렉트 감지
+  const searchParams = new URLSearchParams(location.search);
+  const impUid = searchParams.get('imp_uid');
+  const isPaymentRedirect = !!impUid;
+
+  // 로그인 체크
+  if (loginAuth === 'checking' || balanceLoading) return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  // 직접 접속 가드 (⭐ 결제 리다이렉트 시에는 허용)
+  if (location.key === 'default' && !isPaymentRedirect) return <Navigate to="/" replace />;
+
+  // ⭐ 결제 실패 리다이렉트 처리
+  if (isPaymentRedirect && searchParams.get('imp_success') !== 'true') {
+    const isFromProfile = contentId === 'profile';
+    return <Navigate to={isFromProfile ? '/profile' : '/'} replace />;
+  }
+
+  const isFromProfile = contentId === 'profile';
+  const requiredAmount = (location.state as { requiredAmount?: number })?.requiredAmount || 30;
+
+  const handleChargeComplete = async (newBalance: number) => {
+    // 충전 후 잔액 캐시 즉시 갱신
+    writeSproutBalanceCache(newBalance);
+
+    if (!contentId || isFromProfile) {
+      navigate('/profile', { replace: true });
+      toast.success('충전되었어요.');
+      return;
+    }
+
+    // 충전 후 잔액이 필요량 이상이면 차감 → 사주 플로우 이동
+    if (newBalance >= requiredAmount) {
+      setIsDeducting(true);
+      // 사주 보유 여부를 차감 전에 미리 판단 (캐시 활용)
+      const sajuCacheJson = localStorage.getItem('saju_records_cache');
+      let hasSajuFromCache: boolean | null = null;
+      if (sajuCacheJson) {
+        try {
+          hasSajuFromCache = JSON.parse(sajuCacheJson).length > 0;
+        } catch { /* ignore */ }
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          alert('로그인이 필요합니다. 다시 로그인해주세요.');
+          return;
+        }
+
+        const userId = session.user.id;
+
+        // 네트워크 호출 병렬화: 차감 + 제목 + (캐시 미스 시 사주 조회) 동시 실행
+        const deductPromise = fetch(`https://${projectId}.supabase.co/functions/v1/sprout-deduct`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            content_id: contentId,
+            amount: requiredAmount,
+          }),
+        }).then(r => r.json());
+
+        const titlePromise = supabase
+          .from('master_contents')
+          .select('title')
+          .eq('id', contentId)
+          .single();
+
+        const sajuPromise = hasSajuFromCache === null
+          ? supabase.from('saju_records').select('*').eq('user_id', userId)
+          : null;
+
+        const [result, titleResult, sajuResult] = await Promise.all([
+          deductPromise,
+          titlePromise,
+          sajuPromise,
+        ]);
+
+        if (!result.success) {
+          console.error('❌ [SproutChargingStationPage] 차감 실패:', result);
+          alert('새싹 차감에 실패했습니다. 다시 시도해주세요.');
+          return;
+        }
+
+        if (result.new_balance != null) {
+          writeSproutBalanceCache(result.new_balance);
+        }
+
+        console.log('✅ [SproutChargingStationPage] 차감 성공 → 주문 생성 시작');
+
+        // 주문 생성 (차감 + 제목 완료 후)
+        const merchantUid = `order_${Date.now()}`;
+        const gname = titleResult.data?.title || '운세 구성';
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            user_id: userId,
+            content_id: contentId,
+            merchant_uid: merchantUid,
+            paid_amount: requiredAmount,
+            pay_method: 'sprout',
+            pg_provider: 'sprout',
+            pstatus: 'completed',
+            success: true,
+            gname,
+          })
+          .select('id')
+          .single();
+
+        if (orderError || !orderData) {
+          console.error('❌ [SproutChargingStationPage] 주문 생성 실패:', orderError);
+          alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+          return;
+        }
+        localStorage.setItem('pendingOrderId', orderData.id);
+        console.log('✅ 주문 생성 완료:', orderData.id);
+
+        let hasSaju = hasSajuFromCache ?? false;
+        if (sajuResult) {
+          const mySajuList = sajuResult.data;
+          hasSaju = mySajuList ? mySajuList.length > 0 : false;
+          if (hasSaju && mySajuList) {
+            const primary = mySajuList.find((s: Record<string, unknown>) => s.is_primary) || mySajuList[0];
+            localStorage.setItem('primary_saju', JSON.stringify(primary));
+            localStorage.setItem('saju_records_cache', JSON.stringify(mySajuList));
+          }
+        }
+
+        localStorage.removeItem('purchase_history_cache');
+        preloadLoadingPageImages();
+
+        if (hasSaju) {
+          navigate(`/product/${contentId}/saju-select`, { replace: true });
+        } else {
+          navigate(`/product/${contentId}/birthinfo`, { replace: true });
+        }
+      } catch (err) {
+        console.error('❌ [SproutChargingStationPage] 차감 처리 예외:', err);
+        alert('처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } else {
+      // 아직 잔액 부족 (여러 번 충전 가능)
+      navigate(0); // 페이지 새로고침
+    }
+  };
+
+  // ⭐ 리다이렉트 결제 정보 구성
+  const redirectPayment = isPaymentRedirect ? {
+    impUid: impUid!,
+    merchantUid: searchParams.get('merchant_uid') || '',
+    packageId: searchParams.get('packageId') || '',
+    payMethod: searchParams.get('payMethod') || 'card',
+    pgProvider: decodeURIComponent(searchParams.get('pgProvider') || ''),
+  } : undefined;
+
+  return (
+    <SproutChargingStation
+      contentId={contentId}
+      currentBalance={balance}
+      requiredAmount={requiredAmount}
+      fromProfile={isFromProfile}
+      onBack={() => navigate(-1)}
+      onChargeComplete={handleChargeComplete}
+      redirectPayment={redirectPayment}
+    />
+  );
+}
+
 // ⭐ /result/saju → /result 리다이렉트 (알림톡 템플릿 호환성)
 function ResultSajuRedirect() {
   const location = useLocation();
@@ -1759,6 +1944,13 @@ function ProfilePageWrapper() {
 function MansePageWrapper() {
   const goBack = useGoBack('/');
   return <MansePage onBack={goBack} />;
+}
+
+// ⭐ 공유 새싹 지급 안내 Wrapper
+function ShareRewardInfoPageWrapper() {
+  const navigate = useNavigate();
+  const goBack = () => navigate(-1);
+  return <ShareRewardInfoPage onBack={goBack} />;
 }
 
 // ⭐ 블로그 목록 Wrapper (로그인 불필요)
@@ -3409,6 +3601,7 @@ export default function App() {
           <Route path="/payment/complete" element={<PaymentComplete />} />
           <Route path="/profile" element={<ProfilePageWrapper />} />
           <Route path="/manse" element={<MansePageWrapper />} />
+          <Route path="/share-reward-info" element={<ShareRewardInfoPageWrapper />} /> {/* ⭐ 공유 새싹 지급 안내 */}
           <Route path="/blog" element={<BlogListPageWrapper />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
           <Route path="/purchase-history" element={<PurchaseHistoryPageWrapper />} />
