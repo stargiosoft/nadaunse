@@ -276,12 +276,12 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     lastScrollYRef.current = 0;
   };
 
-  // 탭바 높이 측정
+  // 탭바 높이 측정 (content 로드 후 tabBarInnerRef가 DOM에 붙으면 측정)
   useEffect(() => {
     if (tabBarInnerRef.current) {
       setTabBarHeight(tabBarInnerRef.current.offsetHeight);
     }
-  }, []);
+  }, [content]);
 
   // 탭바 스크롤 hide/show
   const handleScroll = useCallback(() => {
@@ -299,7 +299,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     if (!el) return;
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  }, [handleScroll, content]); // content 로드 후 scrollContainerRef가 DOM에 붙으면 리스너 재등록
 
 
 
