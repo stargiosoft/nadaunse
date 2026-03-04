@@ -47,6 +47,7 @@ import {
 import { trackPageView, trackViewItem } from '../utils/analytics';
 
 import LoginBottomSheet from './LoginBottomSheet';
+import ShareRewardModal from './ShareRewardModal';
 
 /**
  * Props 인터페이스
@@ -606,6 +607,8 @@ export default function FreeContentDetail({
     handleClickCapture
   } = useSliderDrag();
 
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   // ⭐ 유료 콘텐츠만 필터링 (인기도 순 정렬은 이미 DB에서 됨)
   const paidContents = recommendedContents.filter(c => c.content_type === 'paid');
   const displayedPaidContents = paidContents.slice(0, visiblePaidCount); // 최대 6개
@@ -668,6 +671,31 @@ export default function FreeContentDetail({
           {/* Product Image & Info */}
           <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
             <ProductInfo content={content} isRead={isRead} />
+
+            {/* 공유하고 30새싹 받기 버튼 */}
+            <div style={{ padding: '12px 20px 0' }}>
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="flex items-center justify-center gap-[8px] w-full rounded-[12px]"
+                style={{
+                  backgroundColor: '#f5fbfb',
+                  border: '1px solid #d4eceb',
+                  padding: '14px 0',
+                  cursor: 'pointer',
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M9.30734 4.96571C10.739 6.74071 11.0632 9.20988 10.1548 11.4099C10.0732 11.6065 9.89734 11.7482 9.68734 11.7865C9.28734 11.859 8.88567 11.894 8.489 11.894C6.56817 11.894 4.754 11.0657 3.56734 9.59404C2.1365 7.81904 1.81234 5.34988 2.71984 3.14904C2.8015 2.95238 2.97734 2.81071 3.18734 2.77238C5.5265 2.34654 7.87567 3.18988 9.30734 4.96571ZM17.6548 7.31571C17.5732 7.11904 17.3973 6.97738 17.1873 6.93904C15.4023 6.62154 13.614 7.25821 12.5198 8.61404C11.4273 9.96821 11.1798 11.8515 11.8723 13.5282C11.954 13.7249 12.1298 13.8665 12.3398 13.9049C12.6448 13.9599 12.9498 13.9874 13.2532 13.9874C14.7173 13.9874 16.1007 13.354 17.0065 12.2315C18.0998 10.8774 18.3473 8.99404 17.6548 7.31654V7.31571Z" fill="#8BD1CF"/>
+                  <path d="M14.6279 10.4095C14.3954 10.1562 14.0004 10.1395 13.7445 10.3728C12.542 11.4778 11.5179 12.7287 10.6695 14.0837C10.5645 13.0145 10.2954 11.8195 9.73871 10.577C8.75455 8.38367 7.27704 6.96784 6.21038 6.16617C5.93371 5.957 5.54204 6.0145 5.33538 6.29034C5.12788 6.56617 5.18371 6.95784 5.45954 7.16534C6.40871 7.87784 7.72288 9.13784 8.59788 11.0878C9.57121 13.2578 9.56204 15.272 9.38204 16.5812C9.38121 16.5887 9.38871 16.5945 9.38871 16.6012C9.36121 16.8653 9.49621 17.1278 9.75288 17.2395C9.83454 17.2745 9.91871 17.2912 10.002 17.2912C10.2429 17.2912 10.4729 17.1503 10.5754 16.9153C10.8137 16.3653 11.0829 15.8245 11.3779 15.3095C12.2245 13.827 13.3045 12.4762 14.5912 11.2928C14.8454 11.0595 14.8612 10.6637 14.6279 10.4095Z" fill="#389E9B"/>
+                </svg>
+                <span style={{ fontSize: '15px', fontWeight: 500, letterSpacing: '-0.3px', color: '#2d2d2d' }}>
+                  공유하고 <span style={{ fontWeight: 700, color: '#389E9B' }}>30새싹</span> 받기
+                </span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>
           </motion.div>
 
           {/* Divider */}
@@ -712,6 +740,13 @@ export default function FreeContentDetail({
       <LoginBottomSheet
         isOpen={isLoginSheetOpen}
         onClose={() => setIsLoginSheetOpen(false)}
+        contentId={contentId}
+      />
+
+      {/* 공유 리워드 바텀시트 */}
+      <ShareRewardModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
         contentId={contentId}
       />
     </>
