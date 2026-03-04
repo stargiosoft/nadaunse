@@ -390,7 +390,7 @@
 |--------|------|----------|--------|------|
 | `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 거래 고유 ID |
 | `user_id` | uuid | FOREIGN KEY | - | 사용자 ID (users.id) |
-| `transaction_type` | text | NOT NULL | - | 거래 유형 (charge, deduct, refund) |
+| `transaction_type` | text | NOT NULL, CHECK | - | 거래 유형 (charge, deduct, refund, reward) |
 | `amount` | integer | NOT NULL | - | 거래 수량 |
 | `balance_before` | integer | NOT NULL | - | 거래 전 잔액 |
 | `balance_after` | integer | NOT NULL | - | 거래 후 잔액 |

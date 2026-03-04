@@ -168,7 +168,7 @@ SELECT trigger_weekly_report_batch();
 
 **공통 설계 원칙**: SECURITY DEFINER (RLS 우회), 트랜잭션 원자성, FOR UPDATE 행 잠금, EXCEPTION WHEN OTHERS 에러 핸들링
 
-**⚠️ 보안**: 위 함수들은 `PUBLIC`, `authenticated`, `anon` 역할에서 EXECUTE 권한 제거됨. Edge Function(service_role)에서만 호출 가능. 클라이언트에서 `supabase.rpc()` 직접 호출 시 `403 permission denied` 반환
+**⚠️ 보안**: 위 함수들은 `PUBLIC`, `authenticated`, `anon` 역할에서 EXECUTE 권한 제거됨 + **`service_role`에만 명시적 GRANT**. Edge Function(service_role)에서만 호출 가능. 클라이언트에서 `supabase.rpc()` 직접 호출 시 `permission denied` 반환. ⚠️ `REVOKE FROM PUBLIC`은 service_role 포함 모든 역할에 영향하므로 반드시 `GRANT EXECUTE TO service_role` 필요
 
 ### 2. `updated_at` 자동 갱신 패턴
 
