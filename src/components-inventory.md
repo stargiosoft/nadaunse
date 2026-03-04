@@ -1,7 +1,7 @@
 # Components Inventory
 
-> **최종 업데이트**: 2026-03-03
-> **총 활성 컴포넌트 수**: 78개
+> **최종 업데이트**: 2026-03-04
+> **총 활성 컴포넌트 수**: 94개
 > **UI 컴포넌트 (shadcn/ui)**: 52개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -978,9 +978,86 @@
 
 ---
 
+## 홈 고도화 (16개)
+
+> Figma Make 퍼블리싱 코드 이관 (2026-03-04). UI 셸만 — 비즈니스 로직 미연동.
+
+### 페이지 (11개)
+
+1. **HomeScreenNew.tsx** (/)
+   - **역할**: 홈 화면 (기존 HomePage.tsx 교체)
+   - 무료 상담 카드, NEW 무료 운세 스와이프, BEST 운세 탭+스와이프, 검색 바, 푸터
+   - **파일 경로**: `/pages/HomeScreenNew.tsx`
+
+2. **FortuneAllPage.tsx** (/best-fortune)
+   - **역할**: BEST 운세 전체보기 (탭, 정렬, FeaturedCard+RowCard)
+   - **파일 경로**: `/pages/FortuneAllPage.tsx`
+
+3. **NewFreeFortuneAllPage.tsx** (/new-free)
+   - **역할**: NEW 무료 운세 전체보기
+   - **파일 경로**: `/pages/NewFreeFortuneAllPage.tsx`
+
+4. **SearchPage.tsx** (/search)
+   - **역할**: 운세 퍼지 검색 (fuse.js)
+   - **파일 경로**: `/pages/SearchPage.tsx`
+
+5. **SajuConsultPage.tsx** (/saju-consult)
+   - **역할**: 사주 상담 입력 (TextareaInput, 이탈 확인 모달)
+   - **파일 경로**: `/pages/SajuConsultPage.tsx`
+
+6. **SajuConsultLoadingPage.tsx** (/saju-consult/loading)
+   - **역할**: 사주 상담 로딩 (Lottie 애니메이션, 1.8초 자동 이동)
+   - **파일 경로**: `/pages/SajuConsultLoadingPage.tsx`
+
+7. **SajuConsultResultPage.tsx** (/saju-consult/result)
+   - **역할**: 사주 상담 결과 (섹션별 stagger 애니메이션)
+   - **파일 경로**: `/pages/SajuConsultResultPage.tsx`
+
+8. **SajuRecommendedFortunePage.tsx** (/saju-consult/result/recommended)
+   - **역할**: 이어서 보기 좋은 운세 목록
+   - **파일 경로**: `/pages/SajuRecommendedFortunePage.tsx`
+
+9. **TaroConsultPage.tsx** (/taro-consult)
+   - **역할**: 타로 상담 입력
+   - **파일 경로**: `/pages/TaroConsultPage.tsx`
+
+10. **TaroConsultLoadingPage.tsx** (/taro-consult/loading)
+    - **역할**: 타로 상담 로딩
+    - **파일 경로**: `/pages/TaroConsultLoadingPage.tsx`
+
+11. **TaroConsultResultPage.tsx** (/taro-consult/result)
+    - **역할**: 타로 상담 결과 (3D 카드 플립, 글로우, 플라잉 카드 오버레이)
+    - **파일 경로**: `/pages/TaroConsultResultPage.tsx`
+
+### 공유 컴포넌트 (3개)
+
+12. **TextareaInput.tsx**
+    - **역할**: 상담 입력 텍스트 영역 (autoFocus, 글자 수 카운터)
+    - **파일 경로**: `/components/TextareaInput.tsx`
+
+13. **RecommendedCarousel.tsx**
+    - **역할**: 결과 페이지 추천 캐러셀 (가로 스크롤)
+    - **파일 경로**: `/components/RecommendedCarousel.tsx`
+
+14. **Divider-13-1579.tsx**
+    - **역할**: 섹션 구분선
+    - **파일 경로**: `/imports/Divider-13-1579.tsx`
+
+### 유틸리티 (2개)
+
+15. **consultStatus.ts**
+    - **역할**: 상담 상태 localStorage 관리 (idle/completed, 일별 초기화)
+    - **파일 경로**: `/lib/consultStatus.ts`
+
+16. **useScrollDirection.ts**
+    - **역할**: 스크롤 방향 감지 훅 (RAF 기반, 히스테리시스)
+    - **파일 경로**: `/hooks/useScrollDirection.ts`
+
+---
+
 ## 📊 통계
 
-- **총 활성 컴포넌트**: 80개
+- **총 활성 컴포넌트**: 94개
 
 ### 카테고리별 분포
 - UI 컴포넌트: 11개
@@ -998,6 +1075,7 @@
 - 약관: 3개
 - 에러 처리: 2개
 - 공유 리워드: 2개
+- 홈 고도화: 16개
 
 ---
 
@@ -1071,6 +1149,13 @@
 ---
 
 ## 🔄 업데이트 이력
+
+### 2026-03-04
+- **홈 고도화 이관** (78 → 94개 활성)
+  - Figma Make 퍼블리싱 코드 이관: 페이지 11개, 공유 컴포넌트 3개, 유틸리티 2개
+  - HomePage.tsx → backup/ 이동, HomeScreenNew.tsx로 교체
+  - 에셋: PNG 18개 (public/home-v2/), SVG 13개, Lottie JSON 1개
+  - 의존성: fuse.js 추가
 
 ### 2026-02-12
 - **인벤토리 현행화** (75개 활성, 52개 UI)

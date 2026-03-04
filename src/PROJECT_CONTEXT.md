@@ -187,6 +187,31 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 ### 🎯 기능별 빠른 참조 (Quick Reference by Feature)
 
 <details>
+<summary><b>홈 고도화 (홈 리디자인) - 11페이지 + 4유틸</b></summary>
+
+```
+/pages/HomeScreenNew.tsx               → 홈 화면 (라우트: /)
+/pages/FortuneAllPage.tsx              → BEST 운세 전체보기 (라우트: /best-fortune)
+/pages/NewFreeFortuneAllPage.tsx       → NEW 무료 운세 전체보기 (라우트: /new-free)
+/pages/SearchPage.tsx                  → 운세 검색 (라우트: /search, fuse.js 퍼지 검색)
+/pages/SajuConsultPage.tsx             → 사주 상담 입력 (라우트: /saju-consult)
+/pages/SajuConsultLoadingPage.tsx      → 사주 상담 로딩 (라우트: /saju-consult/loading)
+/pages/SajuConsultResultPage.tsx       → 사주 상담 결과 (라우트: /saju-consult/result)
+/pages/SajuRecommendedFortunePage.tsx  → 이어서 보기 좋은 운세 (라우트: /saju-consult/result/recommended)
+/pages/TaroConsultPage.tsx             → 타로 상담 입력 (라우트: /taro-consult)
+/pages/TaroConsultLoadingPage.tsx      → 타로 상담 로딩 (라우트: /taro-consult/loading)
+/pages/TaroConsultResultPage.tsx       → 타로 상담 결과 (라우트: /taro-consult/result, 카드 플립 애니메이션)
+/components/TextareaInput.tsx          → 상담 입력 텍스트 영역
+/components/RecommendedCarousel.tsx    → 결과 페이지 추천 캐러셀
+/lib/consultStatus.ts                  → 상담 상태 localStorage 관리 (idle/completed, 일별 초기화)
+/hooks/useScrollDirection.ts           → 스크롤 방향 감지 훅 (RAF 기반)
+```
+
+**소스**: Figma Make 퍼블리싱 코드 이관 (UI 셸만, 비즈니스 로직 미연동)
+**에셋**: `public/home-v2/` (PNG 18개), `src/imports/svg-*.ts` (13개), Lottie JSON 1개
+</details>
+
+<details>
 <summary><b>무료 콘텐츠 (사주)</b></summary>
 
 ```
@@ -490,7 +515,7 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 
 ---
 
-### 4. 스크롤 위치 복원 플로우 (HomePage.tsx)
+### 4. 스크롤 위치 복원 플로우 (backup/HomePage.tsx → HomeScreenNew.tsx로 교체됨)
 
 홈 → 콘텐츠 클릭 → sessionStorage 저장 (scrollY, contentCount, should_restore_scroll)
 → 상세 페이지 → 뒤로가기 → 홈 마운트 → useLayoutEffect 즉시 실행

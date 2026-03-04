@@ -976,5 +976,38 @@
 
 ---
 
-**문서 버전**: 4.0.0
-**최종 업데이트**: 2026-03-03
+---
+
+## 2026-03-04 홈 고도화 — Figma Make 퍼블리싱 코드 이관
+
+### 결정
+Figma Make에서 제작한 홈 고도화 퍼블리싱 코드(11페이지)를 나다운세 프로젝트에 **UI 셸만** 이관한다. 비즈니스 로직 연동은 별도 요청으로 진행.
+
+### 이유
+- 디자인 시안과 1:1 대응하는 퍼블리싱 코드를 Figma Make에서 자동 생성
+- 기존 프로젝트 구조(react-router-dom, inline style, Tailwind 레이아웃)와 호환되도록 변환 규칙 적용
+
+### 변환 규칙
+| 항목 | From → To |
+|------|-----------|
+| 라우터 | `react-router` → `react-router-dom` |
+| SVG 경로 | `../../imports/` → `../imports/` |
+| 이미지 | `figma:asset/[hash].png` → `'/home-v2/[name].png'` (string 상수) |
+| 상담 유틸 | `from '../App'` → `from '../lib/consultStatus'` |
+| 환경 감지 | `import.meta.env.DEV` → `import { DEV } from '../lib/env'` |
+
+### 영향
+- `HomePage.tsx` → `backup/` 이동, `HomeScreenNew.tsx`로 교체 (`/` 라우트)
+- 10개 신규 라우트 추가 (App.tsx)
+- fuse.js 의존성 추가
+
+### 관련 파일
+- 페이지 11개: `src/pages/HomeScreenNew.tsx` 외 10개
+- 컴포넌트: `TextareaInput.tsx`, `RecommendedCarousel.tsx`, `Divider-13-1579.tsx`
+- 유틸: `consultStatus.ts`, `useScrollDirection.ts`
+- 에셋: `public/home-v2/` (PNG 18개), `src/imports/svg-*.ts` (13개)
+
+---
+
+**문서 버전**: 4.1.0
+**최종 업데이트**: 2026-03-04

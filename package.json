@@ -39,6 +39,7 @@
             "embla-carousel-react": "^8.6.0",
             "exceljs": "^4.4.0",
             "framer-motion": "*",
+            "fuse.js": "^7.1.0",
             "hono": "*",
             "input-otp": "^1.4.2",
             "lottie-react": "^2.4.1",

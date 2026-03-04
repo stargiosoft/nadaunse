@@ -46,7 +46,18 @@ import { SessionExpiredDialog } from './components/SessionExpiredDialog'; // ⭐
 import ErrorBoundary from './components/ErrorBoundary'; // ⭐ 에러 바운더리
 import { PageLoader } from './components/ui/PageLoader'; // ⭐ 공통 로딩 컴포넌트
 import { LoadingWithMessage } from './components/ui/LoadingWithMessage'; // ⭐ 로딩 + 메시지
-import HomePage from './pages/HomePage';
+// ── 홈 고도화 페이지 ──
+import { HomeScreenNew } from './pages/HomeScreenNew';
+import { FortuneAllPage } from './pages/FortuneAllPage';
+import { NewFreeFortuneAllPage } from './pages/NewFreeFortuneAllPage';
+import { SearchPage } from './pages/SearchPage';
+import { SajuConsultPage } from './pages/SajuConsultPage';
+import { SajuConsultLoadingPage } from './pages/SajuConsultLoadingPage';
+import { SajuConsultResultPage } from './pages/SajuConsultResultPage';
+import { SajuRecommendedFortunePage } from './pages/SajuRecommendedFortunePage';
+import { TaroConsultPage } from './pages/TaroConsultPage';
+import { TaroConsultLoadingPage } from './pages/TaroConsultLoadingPage';
+import { TaroConsultResultPage } from './pages/TaroConsultResultPage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
@@ -3587,7 +3598,18 @@ export default function App() {
         <LoginToast />
         <PortOneInit />
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<HomeScreenNew />} />
+          {/* ── 홈 고도화 라우트 ── */}
+          <Route path="/best-fortune" element={<FortuneAllPage />} />
+          <Route path="/new-free" element={<NewFreeFortuneAllPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/saju-consult" element={<SajuConsultPage />} />
+          <Route path="/saju-consult/loading" element={<SajuConsultLoadingPage />} />
+          <Route path="/saju-consult/result" element={<SajuConsultResultPage />} />
+          <Route path="/saju-consult/result/recommended" element={<SajuRecommendedFortunePage />} />
+          <Route path="/taro-consult" element={<TaroConsultPage />} />
+          <Route path="/taro-consult/loading" element={<TaroConsultLoadingPage />} />
+          <Route path="/taro-consult/result" element={<TaroConsultResultPage />} />
           <Route path="/login" element={<LoginPageNewWrapper />} />
           <Route path="/login/new" element={<LoginPageNewWrapper />} />
           <Route path="/login/existing/new" element={<ExistingAccountPageNewWrapper />} />
