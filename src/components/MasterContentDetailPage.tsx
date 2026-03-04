@@ -229,6 +229,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollYRef = useRef(0);
   const [isTabBarVisible, setIsTabBarVisible] = useState(true);
+  const tabBarInnerRef = useRef<HTMLDivElement>(null);
+  const [tabBarHeight, setTabBarHeight] = useState<number>(0);
 
   // 탭 순서 및 인덱스 구하기
   const tabOrder: TabType[] = ['description', 'principle', 'preview'];
@@ -273,6 +275,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     setIsTabBarVisible(true);
     lastScrollYRef.current = 0;
   };
+
+  // 탭바 높이 측정
+  useEffect(() => {
+    if (tabBarInnerRef.current) {
+      setTabBarHeight(tabBarInnerRef.current.offsetHeight);
+    }
+  }, []);
 
   // 탭바 스크롤 hide/show
   const handleScroll = useCallback(() => {
@@ -1171,10 +1180,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             {/* Tab Bar */}
             <motion.div
               className="overflow-hidden shrink-0 w-full"
-              animate={{ height: isTabBarVisible ? 'auto' : 0, opacity: isTabBarVisible ? 1 : 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              animate={{
+                height: tabBarHeight > 0 ? (isTabBarVisible ? tabBarHeight : 0) : 'auto',
+                opacity: isTabBarVisible ? 1 : 0,
+              }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
             >
-            <div className="bg-white relative w-full">
+            <div ref={tabBarInnerRef} className="bg-white relative w-full">
               <div aria-hidden="true" className="absolute border-[#f3f3f3] border-[0px_0px_1px] border-solid inset-0 pointer-events-none" />
               <div className="size-full">
                 <div className="box-border content-stretch flex flex-col items-start px-[16px] pt-[4px] pb-[8px] relative w-full">
@@ -1598,7 +1610,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   </div>
 
                   {/* Worry Card Section - 작은 고민도 바로 풀어드립니다 */}
-                  <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full mb-[4px]" style={{ paddingBottom: 12, marginLeft: 20, marginRight: 20, width: 'calc(100% - 40px)' }}>
+                  <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full mb-[4px]" style={{ paddingBottom: 26, marginLeft: 20, marginRight: 20, width: 'calc(100% - 40px)' }}>
                     <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                       <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
                         <p className="basis-0 grow min-h-px min-w-px relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a' }}>작은 고민도 바로 풀어드립니다</p>
@@ -1648,7 +1660,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
                   {/* Fortune Composition List - 운세 구성 */}
                   <div className="bg-[#f9f9f9] w-full" style={{ height: 4 }} />
-                  <div className="bg-white box-border content-stretch flex flex-col gap-[12px] items-start px-[20px] relative shrink-0 w-full mb-[24px]" style={{ paddingTop: 24, paddingBottom: 0 }}>
+                  <div className="bg-white box-border content-stretch flex flex-col gap-[12px] items-start px-[20px] relative shrink-0 w-full mb-[24px]" style={{ paddingTop: 23, paddingBottom: 0 }}>
                     <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
                       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                         <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
