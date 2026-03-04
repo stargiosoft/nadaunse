@@ -26,7 +26,7 @@ interface PageLoaderProps {
  * 중앙에 DotLoading + 메시지를 표시
  */
 export function PageLoader({
-  message = '잠시만 기다려주세요',
+  message = '잠시만 기다려 주세요',
   showMessage = true,
   className
 }: PageLoaderProps) {

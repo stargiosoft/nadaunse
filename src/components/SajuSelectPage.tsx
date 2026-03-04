@@ -779,12 +779,12 @@ export default function SajuSelectPage() {
     });
 
   if (isLoading) {
-    return <PageLoader message="잠시만 기다려주세요" />;
+    return <PageLoader />;
   }
 
   // ⭐ 다음 버튼 클릭 후 로딩 페이지 이동 전 즉시 로딩 표시
   if (isGenerating) {
-    return <PageLoader message="잠시만 기다려주세요" />;
+    return <PageLoader />;
   }
 
   return (

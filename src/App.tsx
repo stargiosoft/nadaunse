@@ -1892,16 +1892,6 @@ function SproutChargingStationPage() {
     pgProvider: decodeURIComponent(searchParams.get('pgProvider') || ''),
   } : undefined;
 
-  if (isDeducting) {
-    return (
-      <div className="bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden">
-        <div className="w-full max-w-[440px]">
-          <LoadingWithMessage message="운세 준비 중이에요!" padding="0 20px" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <SproutChargingStation
       contentId={contentId}
