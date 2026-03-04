@@ -95,7 +95,7 @@ interface ProductInfoProps {
 
 export function ProductInfo({ content, isRead }: ProductInfoProps) {
   return (
-    <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+    <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
       {/* 상품 이미지 */}
       <div className="aspect-[391/270] relative shrink-0 w-full">
         {content.thumbnail_url ? (
@@ -115,8 +115,8 @@ export function ProductInfo({ content, isRead }: ProductInfoProps) {
       <div className="relative shrink-0 w-full">
         <div className="flex flex-col items-end size-full">
           <div className="box-border content-stretch flex flex-col gap-[16px] items-end px-[20px] py-0 relative w-full">
-            <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-              <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full mt-[-8px] mb-[-6px] pb-[8px]">
+            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" style={{ gap: '10px' }}>
+              <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
                 {/* 콘텐츠 태그 (New, 무료, 읽어봄) + 뷰수 */}
                 <div className="flex items-center justify-between w-full">
                   <ContentTags
@@ -126,8 +126,8 @@ export function ProductInfo({ content, isRead }: ProductInfoProps) {
                   />
                   {content.view_count > 0 && (
                     <div className="flex items-center gap-[3px] shrink-0">
-                      <img src="/eye-icon.svg" width="14" height="14" alt="" aria-hidden="true" />
-                      <span style={{ fontSize: '12px', fontWeight: 300, color: '#151515', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
+                      <img src="/eye-solid.svg" width="14" height="14" alt="" aria-hidden="true" />
+                      <span style={{ fontSize: '12px', fontWeight: 300, color: '#999999', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
                         {content.view_count.toLocaleString()}
                       </span>
                     </div>
@@ -139,12 +139,21 @@ export function ProductInfo({ content, isRead }: ProductInfoProps) {
                   <div className="size-full">
                     <div className="box-border content-stretch flex flex-col gap-[10px] items-start px-[2px] py-0 relative w-full">
                       <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
-                        <p className="font-semibold leading-[24px] not-italic relative shrink-0 text-[18px] text-black tracking-[-0.36px] w-full">
+                        <p className="relative shrink-0 w-full" style={{ fontSize: '18px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.36px', color: '#000000' }}>
                           {content.title}
                         </p>
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* 가격 (무료: 0새싹) */}
+              <div className="relative shrink-0 w-full mt-[-8px] mb-[-4px]">
+                <div className="box-border content-stretch flex flex-col gap-0 items-start px-[2px] py-0 relative w-full">
+                  <p style={{ fontSize: '20px', fontWeight: 700, lineHeight: '28px', color: '#151515', letterSpacing: '-0.2px', paddingTop: '1px' }}>
+                    0새싹
+                  </p>
                 </div>
               </div>
             </div>
@@ -167,14 +176,14 @@ interface DescriptionSectionProps {
 
 export function DescriptionSection({ description }: DescriptionSectionProps) {
   return (
-    <div className="box-border content-stretch flex flex-col gap-[10px] items-start px-[20px] py-0 relative shrink-0 w-full mb-[28px]">
-      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full pt-[10px] mb-[-4px]">
+    <div className="box-border content-stretch flex flex-col gap-[10px] items-start px-[20px] py-0 relative shrink-0 w-full" style={{ paddingTop: 26, paddingBottom: 26 }}>
+      <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
         {/* 타이틀 */}
         <div className="relative shrink-0 w-full">
           <div className="flex flex-row items-center justify-center size-full">
             <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
               <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[17px] text-black tracking-[-0.34px]">
+                <p className="basis-0 grow min-h-px min-w-px not-italic relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1A1A1A' }}>
                   운세 설명
                 </p>
               </div>
@@ -187,7 +196,7 @@ export function DescriptionSection({ description }: DescriptionSectionProps) {
           <div className="relative shrink-0 w-full">
             <div className="flex flex-row items-center justify-center size-full">
               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
-                <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">
+                <p className="basis-0 font-normal grow min-h-px min-w-px not-italic relative shrink-0 text-[#151515] tracking-[-0.32px]" style={{ fontSize: '15px', lineHeight: '26.5px', letterSpacing: '-0.3px' }}>
                   {description || '운세 설명이 없습니다.'}
                 </p>
               </div>
@@ -211,11 +220,11 @@ interface FortuneCompositionProps {
 
 export function FortuneComposition({ questions }: FortuneCompositionProps) {
   return (
-    <div className="bg-white box-border content-stretch flex flex-col gap-[12px] items-start px-[20px] py-0 relative shrink-0 w-full mb-[52px] mt-[-4px]">
+    <div className="bg-white box-border content-stretch flex flex-col gap-[12px] items-start px-[20px] py-0 relative shrink-0 w-full mb-[52px]" style={{ paddingTop: 26 }}>
       <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full mt-[-4px]">
         <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
           <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-            <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[17px] text-black tracking-[-0.34px] pb-[2px]">
+            <p className="basis-0 grow min-h-px min-w-px not-italic relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1A1A1A', marginBottom: '2px' }}>
               운세 구성
             </p>
           </div>
@@ -238,11 +247,11 @@ export function FortuneComposition({ questions }: FortuneCompositionProps) {
                   <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
                     <div className="content-stretch flex gap-[8px] items-start relative shrink-0 w-full pb-[4px]">
                       <div className="relative shrink-0">
-                        <span className="font-medium leading-[28.5px] text-[#999999] text-[16px]">·</span>
+                        <span style={{ fontSize: '15px', fontWeight: 400, lineHeight: '25.5px', letterSpacing: '-0.3px', color: '#999999' }}>·</span>
                       </div>
                       <div className="basis-0 content-stretch flex flex-col gap-[4px] grow items-start min-h-px min-w-px relative shrink-0">
                         <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0 w-full">
-                          <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">
+                          <p className="basis-0 font-normal grow min-h-px min-w-px not-italic relative shrink-0" style={{ fontSize: '15px', fontWeight: 400, lineHeight: '25.5px', letterSpacing: '-0.3px', color: '#151515' }}>
                             {question.question_text}
                           </p>
                         </div>
@@ -337,7 +346,7 @@ export function AdBanner({ onBannerClick }: AdBannerProps) {
         src={imageUrl}
         alt={banner.alt}
         onClick={handleClick}
-        className={`w-full h-auto rounded-[16px] shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] cursor-pointer transition-transform duration-200 ease-in-out active:scale-[0.96] transform-gpu ${!imageLoaded ? 'hidden' : ''}`}
+        className={`w-full h-auto shadow-[6px_7px_12px_0px_rgba(0,0,0,0.04),-3px_-3px_12px_0px_rgba(0,0,0,0.04)] cursor-pointer transition-transform duration-200 ease-in-out active:scale-[0.99] transform-gpu ${!imageLoaded ? 'hidden' : ''}`} style={{ borderRadius: 20 }}
         onLoad={() => setImageLoaded(true)}
         onError={() => setImageError(true)}
       />
@@ -610,8 +619,8 @@ export function BottomButton({ onClick, text }: BottomButtonProps) {
                     onClick();
                   }
                 }}
-                className="bg-[#48b2af] h-[56px] relative rounded-[16px] shrink-0 w-full cursor-pointer overflow-hidden select-none [-webkit-touch-callout:none] touch-manipulation pointer-events-auto active:bg-[#36908f]"
-                whileTap={{ scale: 0.96 }}
+                className="bg-[#48b2af] h-[56px] relative shrink-0 w-full cursor-pointer overflow-hidden select-none [-webkit-touch-callout:none] touch-manipulation pointer-events-auto active:bg-[#36908f]" style={{ borderRadius: 20 }}
+                whileTap={{ scale: 0.99 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
               >
                 <div className="flex flex-row items-center justify-center size-full">
