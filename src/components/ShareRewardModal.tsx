@@ -223,10 +223,12 @@ export default function ShareRewardModal({
           {/* Share buttons */}
           <div className="flex items-center justify-center" style={{ gap: '36px', marginTop: isLoggedIn ? '44px' : '32px' }}>
             {/* 링크 복사 */}
-            <button
+            <motion.button
               onClick={handleCopyLink}
               className="flex flex-col items-center"
               style={{ gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
               <div
                 className="flex items-center justify-center"
@@ -240,13 +242,15 @@ export default function ShareRewardModal({
               <span style={{ fontSize: '13px', fontWeight: 400, lineHeight: '22px', color: '#848484' }}>
                 {copied ? '복사 완료!' : '링크 복사'}
               </span>
-            </button>
+            </motion.button>
 
             {/* 카카오톡 공유 */}
-            <button
+            <motion.button
               onClick={handleKakaoShare}
               className="flex flex-col items-center"
               style={{ gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
               <div
                 className="flex items-center justify-center overflow-hidden"
@@ -259,7 +263,7 @@ export default function ShareRewardModal({
               <span style={{ fontSize: '13px', fontWeight: 400, lineHeight: '22px', color: '#848484' }}>
                 카카오톡 공유
               </span>
-            </button>
+            </motion.button>
           </div>
         </div>
 

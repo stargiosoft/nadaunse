@@ -3,7 +3,25 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-03
+> **최종 업데이트**: 2026-03-04
+
+---
+
+## 2026-03-04 새싹 잔액 보안 강화 (3중 방어)
+
+**결정**: protect_sprout_balance 트리거 + REVOKE EXECUTE + sprout-charge PortOne 검증 3중 보안
+**이유**: (1) `users` 테이블 RLS disabled 상태에서 `supabase.from('users').update({ sprout_balance: 999999 })` 가능 (2) SECURITY DEFINER RPC를 클라이언트에서 직접 호출(`supabase.rpc('process_sprout_charge')`)하여 Edge Function 결제 검증 우회 가능 (3) `sprout-charge` Edge Function이 PortOne 결제 확인 없이 충전 처리
+**구현**: (1) BEFORE UPDATE 트리거로 `current_user IN ('authenticated','anon')` 시 sprout_balance 변경 차단 (SECURITY DEFINER RPC는 current_user='postgres'이므로 통과) (2) `process_sprout_charge`, `process_sprout_deduct`, `process_payment_complete`, `process_refund`, `process_share_reward` 함수에서 PUBLIC/authenticated/anon EXECUTE 권한 제거 (3) sprout-charge에 PortOne API 결제 검증 + 금액 일치 확인 추가
+**영향 파일**: `sprout-charge/index.ts`, `migrations/20260303_protect_sprout_balance_rls.sql`
+
+---
+
+## 2026-03-04 새싹 충전 후 로딩 UX 개선
+
+**결정**: 충전 완료~SajuSelectPage 이동까지 전체화면 로딩 오버레이 표시
+**이유**: 충전 성공 후 차감+주문 생성 등 ~3초 동안 충전 화면이 그대로 보임 (로딩 피드백 없음)
+**구현**: `SproutChargingStationPage`에 `isDeducting` 상태 추가. 잔액 충분 시 즉시 `LoadingWithMessage("운세 준비 중이에요!")` 표시. SajuSelectPage 초기 로딩도 동일 메시지로 통일
+**영향 파일**: `App.tsx`, `SajuSelectPage.tsx`
 
 ---
 

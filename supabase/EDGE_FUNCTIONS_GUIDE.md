@@ -74,10 +74,6 @@ generate-master-content (백그라운드)
 ### 쿠폰 플로우
 
 ```
-신규 가입
-    ↓
-issue-welcome-coupon (웰컴 쿠폰 발급)
-
 미션 완료 (태그 5개 이상)
     ↓
 issue-revisit-coupon (미션성공쿠폰 발급)
@@ -86,6 +82,8 @@ issue-revisit-coupon (미션성공쿠폰 발급)
 결제 시
     ↓
 get-available-coupons → apply-coupon-to-order
+
+※ issue-welcome-coupon: 현재 비활성화 (A/B 가격 테스트 기간)
 ```
 
 ### 나다움 보고서 (주간 보고서) 플로우
@@ -225,7 +223,7 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 **주의사항**: `is_used=false`만, `discount_amount` 내림차순 정렬
 
 #### `issue-welcome-coupon`
-**목적**: 웰컴 쿠폰 발급 (회원가입 시, 3,000원, 30일 유효)
+**목적**: 웰컴 쿠폰 발급 (~~현재 비활성화~~ — A/B 가격 테스트 기간, TermsPage에서 호출 주석 처리됨)
 **파라미터**: `user_id`
 **주의사항**: 중복 발급 방지
 
@@ -365,9 +363,15 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 
 #### `sprout-charge`
 **목적**: 새싹 충전 처리 (JWT 필요)
+**입력**: `package_id`, `imp_uid`, `merchant_uid`, `pay_method`, `pg_provider`
+**보안**: PortOne API로 `imp_uid` 결제 상태(`paid`) 및 금액(`price_krw`) 검증 후 충전. 검증 실패 시 차단
+**호출**: `process_sprout_charge` RPC (SECURITY DEFINER, EXECUTE 권한 service_role만 허용)
 
 #### `sprout-deduct`
 **목적**: 새싹 차감 처리 (JWT 필요)
+**입력**: `content_id`, `amount`
+**보안**: `amount <= 0` 거부, 잔액 부족 검증
+**호출**: `process_sprout_deduct` RPC (SECURITY DEFINER, EXECUTE 권한 service_role만 허용)
 
 ---
 
@@ -411,7 +415,7 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 ### 유료 콘텐츠 플로우
 
 ```
-1. 회원가입 (OAuth) → users → issue-welcome-coupon
+1. 회원가입 (OAuth) → users → 약관 동의 → WelcomeCouponPage (안내만, 쿠폰 미발급)
    ↓
 2. 결제 페이지 → get-available-coupons
    ↓

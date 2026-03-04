@@ -1,14 +1,14 @@
 -- ============================================================
--- 보안 패치: users 테이블 sprout_balance 직접 수정 차단
+-- 보안 패치: 새싹(sprout) 잔고 조작 방지
 -- ============================================================
--- 문제: users 테이블이 RLS disabled (UNRESTRICTED) 상태에서
---       브라우저 콘솔로 sprout_balance를 임의 값으로 변경 가능
--- 해결: BEFORE UPDATE 트리거로 authenticated/anon 역할의 직접 수정 차단
---       (Edge Function의 SECURITY DEFINER RPC는 current_user='postgres'로
---        실행되므로 정상 작동)
+-- 취약점 1: users 테이블이 RLS disabled 상태에서
+--           supabase.from('users').update({ sprout_balance: 999999 }) 가능
+-- 취약점 2: SECURITY DEFINER RPC 함수를 클라이언트에서 직접 호출하여
+--           Edge Function의 결제 검증을 우회 가능
 -- ============================================================
 
--- 트리거 함수
+-- [패치 1] 트리거: sprout_balance 직접 수정 차단
+-- Edge Function의 SECURITY DEFINER RPC는 current_user='postgres'로 실행되므로 통과
 CREATE OR REPLACE FUNCTION protect_sprout_balance()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -20,8 +20,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 트리거 생성
 CREATE TRIGGER protect_sprout_balance_trigger
   BEFORE UPDATE ON public.users
   FOR EACH ROW
   EXECUTE FUNCTION protect_sprout_balance();
+
+-- [패치 2] RPC 함수 직접 호출 차단
+-- Edge Function은 service_role 키로 호출하므로 영향 없음
+REVOKE EXECUTE ON FUNCTION process_sprout_charge FROM PUBLIC, authenticated, anon;
+REVOKE EXECUTE ON FUNCTION process_sprout_deduct FROM PUBLIC, authenticated, anon;
+REVOKE EXECUTE ON FUNCTION process_payment_complete FROM PUBLIC, authenticated, anon;
+REVOKE EXECUTE ON FUNCTION process_refund FROM PUBLIC, authenticated, anon;
+REVOKE EXECUTE ON FUNCTION process_share_reward FROM PUBLIC, authenticated, anon;

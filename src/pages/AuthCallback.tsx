@@ -6,7 +6,7 @@ import { setUser as setSentryUser } from '../lib/sentry';
 import { clearUserCaches } from '../lib/auth';
 import { PageLoader } from '../components/ui/PageLoader';
 import { setUserId as setGAUserId } from '../utils/analytics';
-import { processReferral, getPendingReferral } from '../lib/shareRewardService';
+import { getPendingReferral } from '../lib/shareRewardService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -209,30 +209,11 @@ export default function AuthCallback() {
       if (response.status === 404 || (result.user && result.user.is_new)) {
         console.log('⚠️ 신규 사용자 → 약관 페이지로 이동');
 
-        // 🌱 신규 가입 초기 새싹 확인 로그
-        try {
-          const { data: sproutData, error: sproutError } = await supabase
-            .from('users')
-            .select('sprout_balance')
-            .eq('id', session.user.id)
-            .single();
-          if (sproutError) {
-            console.warn('🌱 [회원가입] 새싹 조회 실패:', sproutError.message);
-          } else {
-            console.log(`🌱 [회원가입] ${session.user.app_metadata?.provider || 'google'} 신규 가입 - 초기 새싹: ${sproutData?.sprout_balance}개`);
-          }
-        } catch (e) {
-          console.warn('🌱 [회원가입] 새싹 조회 예외:', e);
-        }
-
-        // 🔗 레퍼럴 처리 (non-blocking: 결과 기다리지 않음)
-        // 신규 가입자만 레퍼럴 대상. auth.users는 이미 생성됨 → FK 제약 충족
+        // 🔗 레퍼럴: 팝업에서는 처리하지 않음 (팝업 닫히면서 fetch 중단됨)
+        // → TermsPage에서 public.users 생성 후 처리
         const pendingRef = getPendingReferral();
         if (pendingRef) {
-          console.log('🔗 [레퍼럴] 신규 사용자 레퍼럴 처리 시작:', pendingRef);
-          processReferral(session.access_token).catch(e =>
-            console.error('🔗 [레퍼럴] 백그라운드 처리 실패:', e)
-          );
+          console.log('🔗 [레퍼럴] 대기 중인 ref 코드 확인:', pendingRef, '(TermsPage에서 처리 예정)');
         }
 
         // 세션 정보를 localStorage에 임시 저장

@@ -2,8 +2,8 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **Triggers**: 5개 | **Functions**: 10개 | **pg_cron Jobs**: 4개
-> **최종 업데이트**: 2026-03-03
+> **Triggers**: 6개 | **Functions**: 11개 | **pg_cron Jobs**: 4개
+> **최종 업데이트**: 2026-03-04
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -29,6 +29,7 @@
 | `update_order_results_updated_at` | `order_results` | BEFORE | UPDATE | `update_updated_at_column()` | `updated_at` 자동 갱신 |
 | `trigger_fill_gname` | `orders` | BEFORE | INSERT, UPDATE | `fill_gname_from_content()` | `content_id` 기반으로 `gname` 자동 채움 |
 | `update_orders_updated_at` | `orders` | BEFORE | UPDATE | `update_updated_at_column()` | `updated_at` 자동 갱신 |
+| `protect_sprout_balance_trigger` | `users` | BEFORE | UPDATE | `protect_sprout_balance()` | `sprout_balance` 직접 수정 차단 (authenticated/anon) |
 
 ---
 
@@ -150,6 +151,7 @@ SELECT trigger_weekly_report_batch();
 | `update_order_results_updated_at` | `order_results` | `update_updated_at_column` | BEFORE | UPDATE |
 | `trigger_fill_gname` | `orders` | `fill_gname_from_content` | BEFORE | INSERT, UPDATE |
 | `update_orders_updated_at` | `orders` | `update_updated_at_column` | BEFORE | UPDATE |
+| `protect_sprout_balance_trigger` | `users` | `protect_sprout_balance` | BEFORE | UPDATE |
 
 ---
 
@@ -165,6 +167,8 @@ SELECT trigger_weekly_report_batch();
 | `process_sprout_deduct` | `sprout-deduct` | 새싹 차감 (잔액 감소 + 거래 기록) |
 
 **공통 설계 원칙**: SECURITY DEFINER (RLS 우회), 트랜잭션 원자성, FOR UPDATE 행 잠금, EXCEPTION WHEN OTHERS 에러 핸들링
+
+**⚠️ 보안**: 위 함수들은 `PUBLIC`, `authenticated`, `anon` 역할에서 EXECUTE 권한 제거됨. Edge Function(service_role)에서만 호출 가능. 클라이언트에서 `supabase.rpc()` 직접 호출 시 `403 permission denied` 반환
 
 ### 2. `updated_at` 자동 갱신 패턴
 

@@ -39,7 +39,7 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 │                            BACKEND LAYER (Supabase)                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Auth: Google(팝업) + Kakao(팝업) + Session/JWT                              │
-│  DB: PostgreSQL + RLS + Triggers(5개) + Functions(5개)                       │
+│  DB: PostgreSQL + RLS + Triggers(6개) + Functions(5개)                       │
 │  Storage: thumbnails/, tarot-cards/, assets/                                │
 │  Edge Functions (Deno): AI생성(10) + 쿠폰(4) + 결제(3) + 보고서(4)          │
 │    + 새싹충전소(2) + 모니터링(3) + 마스터콘텐츠(2) + SEO(2) + 공유리워드(2) │
@@ -63,7 +63,7 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 │                         1. 인증 플로우 (OAuth)                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  [로그인 버튼] → [팝업 OAuth] → [AuthCallback.tsx] → [clearUserCaches()]   │
-│  → [Supabase Auth Session] → [users upsert] → [약관 동의] → [WelcomeCoupon]│
+│  → [Supabase Auth Session] → [users upsert] → [약관 동의] → [WelcomePage] │
 │  → pending_trait_tags 있으면 → [PendingTagsCheckPage] → [홈]               │
 │    (saju_records 저장, free_content_records 저장, 태그 저장)                 │
 │  → pending_trait_tags 없으면 → [홈]                                         │
@@ -455,7 +455,7 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 
 **Edge Functions**: sprout-charge, sprout-deduct, generate-master-content
 
-**특징**: 새싹(포인트) 기반 (30새싹) / 충전 패키지 3종 (40/130/410새싹) / DB 영구 저장 / SECURITY DEFINER 함수로 잔액 조작 방지
+**특징**: 새싹(포인트) 기반 (30새싹) / 충전 패키지 3종 (40/130/410새싹) / DB 영구 저장 / 3중 보안 (protect_sprout_balance 트리거 + RPC EXECUTE 권한 제거 + PortOne 결제 검증)
 
 **캐시 주의**: ProfilePage는 `primary_saju` localStorage가 실제 존재해야만 API 스킵. `saju_cache_checked` 플래그만으로는 캐시 유효 판단 안 함 (DECISIONS.md 2026-03-03 참조)
 

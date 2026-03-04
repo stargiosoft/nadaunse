@@ -258,8 +258,14 @@ ORDER BY tablename;
 
 3. **정책 변경 시** 반드시 Staging에서 먼저 테스트 후 Production에 적용하세요.
 
-4. **SECURITY DEFINER 함수**
-   - `process_payment_complete`, `process_refund`, `process_sprout_charge`, `process_sprout_deduct` 함수는 SECURITY DEFINER로 실행
+4. **SECURITY DEFINER 함수 (EXECUTE 권한 제한)**
+   - `process_payment_complete`, `process_refund`, `process_sprout_charge`, `process_sprout_deduct`, `process_share_reward` 함수는 SECURITY DEFINER로 실행
    - 함수 소유자(postgres) 권한으로 실행되어 RLS 정책 우회
-   - Edge Functions에서만 호출되도록 설계 (클라이언트 직접 호출 금지)
+   - **`REVOKE EXECUTE FROM PUBLIC, authenticated, anon`** 적용 → 클라이언트에서 `supabase.rpc()` 직접 호출 불가 (403)
+   - Edge Function(service_role)에서만 호출 가능
    - 관련 문서: [DATABASE_TRIGGERS_AND_FUNCTIONS.md](./DATABASE_TRIGGERS_AND_FUNCTIONS.md)
+
+5. **`protect_sprout_balance` 트리거 (users 테이블)**
+   - `users` 테이블은 RLS disabled (UNRESTRICTED) 상태
+   - BEFORE UPDATE 트리거로 `current_user IN ('authenticated','anon')` 시 `sprout_balance` 변경 차단
+   - SECURITY DEFINER 함수(current_user='postgres')는 통과
