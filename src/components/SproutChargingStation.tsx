@@ -317,7 +317,7 @@ export default function SproutChargingStation({
 
         {isProcessing && (
           <div className="fixed inset-0 z-50">
-            <PageLoader message={isChargeCompleted ? "결제 완료! 운세 준비 중..." : "결제 페이지로 이동 중..."} />
+            <PageLoader message="잠시만 기다려 주세요" />
           </div>
         )}
 
