@@ -67,16 +67,6 @@ interface MasterContent {
   created_at?: string;
 }
 
-interface UserCoupon {
-  id: string;
-  is_used: boolean;
-  coupons: {
-    name: string;
-    discount_amount: number;
-    coupon_type: string;
-  };
-}
-
 interface Question {
   id: string;
   question_order: number;
@@ -149,7 +139,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
   const [content, setContent] = useState<MasterContent | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('description');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isUsageGuideExpanded, setIsUsageGuideExpanded] = useState(false);
@@ -159,8 +148,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   // ⭐ 초기값을 localStorage에서 직접 읽어서 설정 (첫 렌더링부터 올바른 로그인 상태 반영 → 가격 영역 깜빡임 방지)
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('user'));
   const [isFreeContent, setIsFreeContent] = useState<boolean | null>(null); // ⭐ 무료 콘텐츠 여부 (초기 판별용)
-  const [welcomeCouponDiscount, setWelcomeCouponDiscount] = useState<number | null>(null); // ⭐ 로그아웃 유저용 welcome 쿠폰 할인 금액
-  const [isCouponLoaded, setIsCouponLoaded] = useState(false); // ⭐ 로그아웃 시 쿠폰 로딩 완료 여부
 
   const [hasExistingAnswers, setHasExistingAnswers] = useState(false); // ⭐ 이미 생성된 답변 존재 여부
   const [isCheckingAnswers, setIsCheckingAnswers] = useState(false); // ⭐ 초기값 false
@@ -414,11 +401,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
           price_original: optimizedContent.price_original,
           price_discount: optimizedContent.price_discount,
           discount_rate: optimizedContent.discount_rate,
-          final_price_with_welcome_coupon: (optimizedContent.price_discount || 0) - 5000,
-          isLoggedIn: !!userJsonParam
         });
 
-        // 🎫 로그인/로그아웃에 따른 쿠폰 조회 (병렬화)
+        // 🎫 로그인 상태: 주문/답변 체크
         if (userJsonParam) {
           try {
             const user = JSON.parse(userJsonParam);
@@ -431,54 +416,14 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               throw new Error('INVALID_UUID');
             }
 
-            // 🚀 쿠폰 + 주문 동시 조회 (Promise.all)
-            const [couponsResult, ordersResult] = await Promise.all([
-              supabase
-                .from('user_coupons')
-                .select(`
-                  id,
-                  is_used,
-                  expired_at,
-                  coupons (
-                    name,
-                    discount_amount,
-                    coupon_type
-                  )
-                `)
-                .eq('user_id', user.id)
-                .eq('is_used', false),
-              supabase
-                .from('orders')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('content_id', contentId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-            ]);
-
-            const { data: couponsData, error: couponsError } = couponsResult;
-            const { data: ordersData, error: ordersError } = ordersResult;
-
-            // 쿠폰 처리
-            if (couponsError) {
-              console.error('❌ 쿠폰 조회 실패:', couponsError);
-              // ⭐ 실패해도 쿠폰 로딩 완료 표시 (가격 영역은 표시되어야 함)
-              setIsCouponLoaded(true);
-            } else {
-              // 만료되지 않은 쿠폰만 필터링
-              const validCoupons = (couponsData || []).filter((coupon: any) => {
-                if (!coupon.expired_at) return true; // 만료일 없음 = 무제한
-                return new Date(coupon.expired_at) > new Date(); // 만료일이 미래인 경우만
-              }) as UserCoupon[];
-
-              setUserCoupons(validCoupons);
-              console.log('🎟️ [쿠폰 조회] 사용 가능한 쿠폰:', validCoupons.length, '개');
-              validCoupons.forEach((coupon, idx) => {
-                console.log(`  [${idx + 1}] 쿠폰명: "${coupon.coupons.name}", 할인금액: ${coupon.coupons.discount_amount}원`);
-              });
-              // ⭐ 로그인 상태에서도 쿠폰 로딩 완료 표시 (가격+혜택가 동시 표시)
-              setIsCouponLoaded(true);
-            }
+            // 주문 조회
+            const { data: ordersData, error: ordersError } = await supabase
+              .from('orders')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('content_id', contentId)
+              .order('created_at', { ascending: false })
+              .limit(1);
 
             // 답변 존재 여부 확인 (타로 콘텐츠용)
             if (!ordersError && ordersData && ordersData.length > 0) {
@@ -507,36 +452,16 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             setIsCheckingAnswers(false);
           } catch (error: any) {
             if (error.message !== 'INVALID_UUID') {
-              console.error('쿠폰 조회 중 오류:', error);
+              console.error('주문 조회 중 오류:', error);
             }
             setIsCheckingAnswers(false);
           }
         } else {
           // 로그아웃 상태면 답변 체크 불필요
           setIsCheckingAnswers(false);
-
-          // ⭐ 로그아웃 상태에서도 welcome 쿠폰 금액 조회 (혜택가 표시용)
-          try {
-            const { data: welcomeCouponData } = await supabase
-              .from('coupons')
-              .select('discount_amount')
-              .eq('coupon_type', 'welcome')
-              .eq('is_active', true)
-              .single();
-
-            if (welcomeCouponData) {
-              setWelcomeCouponDiscount(welcomeCouponData.discount_amount);
-              console.log('💰 [로그아웃] welcome 쿠폰 할인 금액:', welcomeCouponData.discount_amount);
-            }
-          } catch (couponError) {
-            console.warn('⚠️ [로그아웃] welcome 쿠폰 조회 실패:', couponError);
-          } finally {
-            // ⭐ 쿠폰 로딩 완료 (가격 영역 동시 표시용)
-            setIsCouponLoaded(true);
-          }
         }
 
-        // 💾 새 캐시 저장 (원본 가격으로 저장 - AB 오버라이드 전)
+        // 💾 새 캐시 저장
         saveToCache(optimizedContent, finalQuestionsData as Question[]);
 
         // ✅ 최신 데이터로 UI 업데이트
@@ -561,7 +486,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       console.log('✅ 캐시에서 즉시 표시 (백그라운드에서 최신 데이터 로드 중...)');
       // ⭐ 캐시가 있으면 상태 초기화 없이 즉시 표시
       setIsLoading(false);
-      setIsCouponLoaded(false);
 
       // ⭐ 백그라운드에서 최신 데이터 업데이트 (비동기, 사용자는 기다리지 않음)
       updateInBackground(userJson);
