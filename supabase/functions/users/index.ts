@@ -133,6 +133,12 @@ serve(async (req) => {
       // profile_image 우선순위: user_data.profile_image > user_data.avatar_url
       const profile_image = user_data.profile_image || user_data.avatar_url || '';
 
+      // 레퍼럴 코드 생성 (NDS-{랜덤6자})
+      const randomBytes = new Uint8Array(6);
+      crypto.getRandomValues(randomBytes);
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const referralCode = 'NDS-' + Array.from(randomBytes).map(b => chars[b % chars.length]).join('');
+
       const newUserData = {
         id: user.id,
         email: user.email || user_data.email,

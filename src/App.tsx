@@ -81,6 +81,7 @@ import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
 import { clearUserCaches, recordTodayVisit } from './lib/auth'; // ⭐ 캐시 삭제 + 방문 기록 함수
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
 import { projectId } from './utils/supabase/info'; // ⚡ Edge Function warm-up용
+import { captureReferralFromUrl } from './lib/shareRewardService'; // 🔗 공유 리워드 레퍼럴 캡처
 
 // ⚡ 프로덕션 환경 체크 - import.meta.env.DEV 오버라이드
 if (!DEV && import.meta.env.DEV) {
@@ -3528,6 +3529,11 @@ export default function App() {
     document.documentElement.lang = 'ko';
   }, []);
 
+  // 🔗 공유 리워드: URL의 ?ref= 파라미터 캡처 (최초 1회)
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
+
   // ⚡ Edge Function Cold Start 방지 - 앱 로드 시 warm-up
   useEffect(() => {
     const warmupEdgeFunctions = async () => {
@@ -3657,6 +3663,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
           <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} /> {/* ⭐ 알림톡 정보 입력 */}
+          <Route path="/sprout-charging/:contentId" element={<SproutChargingStationPage />} /> {/* ⭐ 새싹 충전소 */}
           {/* TarotDemo 백업됨 */}
 
           {/* ⭐ 공통 에러 페이지 라우트 (DEV 확인용) */}

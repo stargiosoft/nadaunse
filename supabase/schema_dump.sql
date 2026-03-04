@@ -62,7 +62,7 @@ CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 BEGIN
-  INSERT INTO public.users (id, provider, provider_id, email, nickname)
+  INSERT INTO public.users (id, provider, provider_id, email, nickname, sprout_balance)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_app_meta_data->>'provider', 'google'),

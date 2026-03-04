@@ -512,6 +512,7 @@ weekly_reports ─→ weekly_report_sections (1:N), report_tarot_selections (1:N
 |------|------|-----------|--------|
 | 2.1.0 | 2026-02-09 | coupons.coupon_type에 mission 타입 추가 (미션성공쿠폰) | AI Assistant |
 | 2.2.0 | 2026-02-25 | user_situation_summaries 테이블 추가 (주간 보고서 + 콘텐츠 풀이 심리 상태 통합 관리) | AI Assistant |
+| 2.3.0 | 2026-02-26 | users 테이블에 sprout_balance 컬럼 추가, sprout_transactions/sprout_packages 테이블 추가 (새싹 충전소 기능) | AI Assistant |
 
 ---
 

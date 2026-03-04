@@ -108,28 +108,38 @@ call npx supabase functions deploy issue-revisit-coupon --project-ref %PROJECT_R
 if errorlevel 1 goto :error
 
 echo.
-echo ──── 결제/환불 (3개) ────
+echo ──── 결제/환불/새싹 (5개) ────
 echo.
 
-echo [19/32] payment-webhook (--no-verify-jwt, PortOne 서버 콜백)
+echo [19/36] payment-webhook (--no-verify-jwt, PortOne 서버 콜백)
 call npx supabase functions deploy payment-webhook --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [20/32] process-payment
+echo [20/36] process-payment
 call npx supabase functions deploy process-payment --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [21/32] process-refund
+echo [21/34] process-refund
 call npx supabase functions deploy process-refund --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
+echo [22/34] sprout-charge (새싹 충전)
+call npx supabase functions deploy sprout-charge --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
+echo [23/34] sprout-deduct (새싹 차감)
+call npx supabase functions deploy sprout-deduct --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
 echo ──── 알림 (1개) ────
 echo.
 
-echo [22/32] send-alimtalk (--no-verify-jwt, 내부 호출용)
+echo [24/36] send-alimtalk (--no-verify-jwt, 내부 호출용)
 call npx supabase functions deploy send-alimtalk --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
@@ -137,12 +147,12 @@ echo.
 echo ──── 사용자/마스터 콘텐츠 (2개) ────
 echo.
 
-echo [23/32] users
+echo [25/36] users
 call npx supabase functions deploy users --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [24/32] master-content
+echo [26/36] master-content
 call npx supabase functions deploy master-content --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
@@ -150,17 +160,17 @@ echo.
 echo ──── 모니터링/통계 (3개) ────
 echo.
 
-echo [25/32] sentry-slack-webhook (--no-verify-jwt, Sentry 서버 콜백)
+echo [27/36] sentry-slack-webhook (--no-verify-jwt, Sentry 서버 콜백)
 call npx supabase functions deploy sentry-slack-webhook --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [26/32] get-ga-stats
+echo [28/36] get-ga-stats
 call npx supabase functions deploy get-ga-stats --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [27/32] cleanup-unconfirmed-tags (--no-verify-jwt, pg_cron 호출)
+echo [29/36] cleanup-unconfirmed-tags (--no-verify-jwt, pg_cron 호출)
 call npx supabase functions deploy cleanup-unconfirmed-tags --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
@@ -168,12 +178,12 @@ echo.
 echo ──── SEO (2개) ────
 echo.
 
-echo [28/32] generate-sitemap (--no-verify-jwt, Google 크롤러 접근)
+echo [30/36] generate-sitemap (--no-verify-jwt, Google 크롤러 접근)
 call npx supabase functions deploy generate-sitemap --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [29/32] index-now
+echo [31/36] index-now
 call npx supabase functions deploy index-now --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
@@ -181,12 +191,12 @@ echo.
 echo ──── 소유자 확인 (2개) ────
 echo.
 
-echo [30/32] get-order-owner
+echo [32/36] get-order-owner
 call npx supabase functions deploy get-order-owner --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [31/32] get-report-owner
+echo [33/36] get-report-owner
 call npx supabase functions deploy get-report-owner --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
@@ -194,7 +204,7 @@ echo.
 echo ──── 유틸리티 (1개) ────
 echo.
 
-echo [32/33] trigger-rebuild
+echo [34/36] trigger-rebuild
 call npx supabase functions deploy trigger-rebuild --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
@@ -202,7 +212,7 @@ echo.
 echo ──── AI 구매 가이드 (1개) ────
 echo.
 
-echo [33/34] generate-purchase-guide
+echo [35/36] generate-purchase-guide
 call npx supabase functions deploy generate-purchase-guide --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
