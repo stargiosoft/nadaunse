@@ -497,7 +497,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     setQuestions([]);
     setIsFreeContent(null);
     setIsLoading(true);
-    setIsCouponLoaded(false);
 
     const fetchContent = async () => {
       // ⭐ 캐시가 없을 때: content_type만 먼저 빠르게 조회
