@@ -1344,15 +1344,20 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
                         {/* 공유하고 30새싹 받기 버튼 */}
                         {!isFreeContent && (
-                          <button
+                          <div
                             onClick={() => setIsShareModalOpen(true)}
-                            className="flex items-center justify-center gap-[8px] w-full rounded-[16px]"
+                            className="flex items-center justify-center gap-[8px] w-full rounded-[16px] cursor-pointer select-none touch-manipulation"
                             style={{
                               backgroundColor: 'rgba(240, 248, 248, 0.7)',
                               border: '1px solid rgba(126, 212, 210, 0.7)',
                               height: '46px',
-                              cursor: 'pointer',
+                              transition: 'transform 0.12s cubic-bezier(0.25, 0, 0.25, 1)',
+                              willChange: 'transform',
                             }}
+                            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                            onPointerUp={(e) => { e.currentTarget.style.transform = ''; }}
+                            onPointerCancel={(e) => { e.currentTarget.style.transform = ''; }}
+                            onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
                           >
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ marginBottom: '1px' }}>
                               <path d="M9.30734 4.96571C10.739 6.74071 11.0632 9.20988 10.1548 11.4099C10.0732 11.6065 9.89734 11.7482 9.68734 11.7865C9.28734 11.859 8.88567 11.894 8.489 11.894C6.56817 11.894 4.754 11.0657 3.56734 9.59404C2.1365 7.81904 1.81234 5.34988 2.71984 3.14904C2.8015 2.95238 2.97734 2.81071 3.18734 2.77238C5.5265 2.34654 7.87567 3.18988 9.30734 4.96571ZM17.6548 7.31571C17.5732 7.11904 17.3973 6.97738 17.1873 6.93904C15.4023 6.62154 13.614 7.25821 12.5198 8.61404C11.4273 9.96821 11.1798 11.8515 11.8723 13.5282C11.954 13.7249 12.1298 13.8665 12.3398 13.9049C12.6448 13.9599 12.9498 13.9874 13.2532 13.9874C14.7173 13.9874 16.1007 13.354 17.0065 12.2315C18.0998 10.8774 18.3473 8.99404 17.6548 7.31654V7.31571Z" fill="#8BD1CF"/>
@@ -1361,7 +1366,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             <span style={{ fontSize: '14px', fontWeight: 500, letterSpacing: '-0.3px', color: '#2d2d2d', paddingRight: '4px' }}>
                               공유하고 <span style={{ fontWeight: 700, color: '#48B2AF' }}>30새싹</span> 받기
                             </span>
-                          </button>
+                          </div>
                         )}
 
                     </div>
@@ -1405,63 +1410,63 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
               {/* 무료/유료 비교 안내 섹션 */}
               <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
-              <div className="px-[20px] mb-[28px]">
-                <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a', marginBottom: '10px' }}>
+              <div className="px-[20px] mb-[4px]">
+                <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a', marginBottom: '10px', paddingLeft: 2 }}>
                   왜 심화 운세일까요?
                 </p>
                 <div className="flex" style={{ gap: 10, alignItems: 'flex-start' }}>
                   {/* 무료 운세 카드 */}
                   <div className="flex-1 min-w-0 relative" style={{ borderRadius: 20, border: '1px solid #f3f3f3', overflow: 'hidden' }}>
-                    <div className="flex flex-col items-start" style={{ padding: '24px 20px 27px' }}>
+                    <div className="flex flex-col items-start" style={{ padding: '22px 20px 25px' }}>
                       <span style={{ fontWeight: 600, fontSize: 17, color: '#525252', letterSpacing: '-0.34px', lineHeight: '24px' }}>무료 운세</span>
                       <div style={{ height: 30 }} />
                       <span style={{ fontWeight: 500, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>1문단 요약</span>
                     </div>
                     <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
-                    <div className="flex items-center justify-between" style={{ padding: '14px 20px' }}>
+                    <div className="flex items-center justify-between" style={{ padding: '12px 20px' }}>
                       <span style={{ fontWeight: 400, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>성향 분석</span>
                       <img src="/icon-brain.svg" alt="brain" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                     </div>
                     <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
-                    <div className="flex items-center justify-between" style={{ padding: '14px 20px' }}>
+                    <div className="flex items-center justify-between" style={{ padding: '12px 20px' }}>
                       <span style={{ fontWeight: 400, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>에너지 흐름</span>
                       <img src="/icon-thunder.svg" alt="thunder" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                     </div>
                   </div>
                   {/* 심화 운세 카드 */}
-                  <div className="flex-1 min-w-0" style={{ borderRadius: 20, border: '2px solid transparent', background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #55CAC6 0%, #78C7FF 15%, #DDB8E8 55%, #78C7FF 89%, #55CAC6 100%) border-box', boxShadow: '0px 2px 7px 0px rgba(0,0,0,0.12)', position: 'relative' }}>
+                  <div className="flex-1 min-w-0" style={{ borderRadius: 20, border: '2px solid transparent', background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #8EDEDD 0%, #9ACFFF 25%, #C8B8EE 55%, #9ACFFF 80%, #8EDEDD 100%) border-box', boxShadow: '0px 2px 7px 0px rgba(0,0,0,0.12)', position: 'relative' }}>
                     {/* 내용 클리핑용 내부 div */}
                     <div style={{ borderRadius: 18, overflow: 'hidden', position: 'relative' }}>
                       {/* 추천 배지 */}
-                      <div style={{ position: 'absolute', top: 0, right: 0, background: 'linear-gradient(105.09deg, #5ACBC8 0%, #57B9FF 58.98%, #F9AFE9 144.83%)', borderBottomLeftRadius: 14, padding: '1px 12px 2px', zIndex: 2 }}>
-                        <span style={{ fontWeight: 400, fontSize: 12, color: '#fff', lineHeight: '19.5px', letterSpacing: '1px' }}>추천</span>
+                      <div style={{ position: 'absolute', top: -1, right: 0, background: 'linear-gradient(105.09deg, #5ACBC8 0%, #57B9FF 58.98%, #F9AFE9 144.83%)', borderBottomLeftRadius: 14, padding: '0px 12px 2px', zIndex: 2 }}>
+                        <span style={{ fontWeight: 400, fontSize: 12, color: '#fff', lineHeight: '19.5px', letterSpacing: '0.5px' }}>추천</span>
                       </div>
-                      <div className="flex flex-col items-start w-full" style={{ padding: '24px 20px 26px' }}>
+                      <div className="flex flex-col items-start w-full" style={{ padding: '22px 20px 24px' }}>
                         <span style={{ fontWeight: 700, fontSize: 17, color: '#000', letterSpacing: '-0.34px', lineHeight: '24px' }}>심화 운세</span>
                         <div style={{ height: 30 }} />
                         <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>
-                          <span style={{ fontWeight: 700 }}>4문단 요약 </span>
+                          <span style={{ fontWeight: 600 }}>4문단 요약 </span>
                           <span>+ </span>
-                          <span style={{ fontWeight: 700 }}>심층 분석</span>
+                          <span style={{ fontWeight: 600 }}>심층 분석</span>
                         </span>
                       </div>
                       <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
-                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '14px 20px' }}>
+                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
                         <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>성향 분석</span>
                         <img src="/icon-brain.svg" alt="brain" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                       </div>
                       <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
-                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '14px 20px' }}>
+                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
                         <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>에너지 흐름</span>
                         <img src="/icon-thunder.svg" alt="thunder" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                       </div>
                       <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
-                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '14px 20px' }}>
+                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
                         <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>구체적 시기</span>
                         <img src="/icon-calendar.svg" alt="calendar" style={{ width: 20, height: 20, objectFit: 'contain' }} />
                       </div>
                       <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
-                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '14px 20px' }}>
+                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
                         <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>맞춤 조언</span>
                         <img src="/icon-compass.svg" alt="compass" style={{ width: 21, height: 21, objectFit: 'contain', marginRight: '-1.5px' }} />
                       </div>
@@ -1469,7 +1474,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   </div>
                 </div>
                 <div className="flex gap-[14px] items-start mt-[16px] rounded-[16px]" style={{ backgroundColor: '#fbfbfb', padding: '18px 18px' }}>
-                  <img src="/icon-arrow-right.svg" alt="arrow" style={{ width: '26px', height: '26px', flexShrink: 0, marginTop: '-3px' }} />
+                  <img src="/icon-arrow-right.svg" alt="arrow" style={{ width: '24px', height: '24px', flexShrink: 0, marginTop: '-2px' }} />
                   <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '23px', letterSpacing: '-0.3px', color: '#444', margin: 0 }}>
                     무료 운세보다 더 깊이 있는 분석을 제공합니다.<br />지금의 흐름과 앞으로의 시기까지 종합적으로 해석해 드려요.
                   </p>
@@ -1484,20 +1489,29 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   <AnimatePresence>
                     {!isDescriptionExpanded && (
                       <motion.div
-                        initial={{ height: 48, opacity: 1, marginTop: 0 }}
+                        initial={{ height: 48, opacity: 1, marginTop: 16 }}
                         exit={{ height: 0, opacity: 0, marginTop: -12 }}
                         transition={{ duration: 0.4, ease: "easeInOut" }}
                         className="overflow-hidden w-full"
+                        style={{ marginTop: 16 }}
                       >
-                        <button
+                        <div
                           onClick={() => setIsDescriptionExpanded(true)}
-                          className="bg-white box-border content-stretch flex gap-[10px] h-[48px] items-center justify-center px-[12px] py-0 relative rounded-[16px] shrink-0 w-full border border-[#e7e7e7]"
+                          className="bg-white box-border content-stretch flex gap-[10px] h-[48px] items-center justify-center px-[12px] py-0 relative rounded-[16px] shrink-0 w-full border border-[#e7e7e7] cursor-pointer select-none touch-manipulation"
+                          style={{
+                            transition: 'transform 0.12s cubic-bezier(0.25, 0, 0.25, 1)',
+                            willChange: 'transform',
+                          }}
+                          onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                          onPointerUp={(e) => { e.currentTarget.style.transform = ''; }}
+                          onPointerCancel={(e) => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
                         >
                           <p style={{ fontSize: '14px', fontWeight: 400, lineHeight: '20px', color: '#525252', letterSpacing: '-0.45px', whiteSpace: 'nowrap' }}>
                             자세히 보기
                           </p>
                           <ChevronDown className="w-4 h-4 text-[#525252]" />
-                        </button>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1518,7 +1532,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     {/* 운세 설명 (자세히보기 내부) */}
                     <div className="bg-[#f9f9f9] w-full" style={{ height: 4 }} />
                     <div className="px-[20px] pb-[28px]" style={{ paddingTop: 24 }}>
-                      <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a', marginBottom: '10px' }}>
+                      <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a', marginBottom: '8px' }}>
                         운세 설명
                       </p>
                       <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '25.5px', letterSpacing: '-0.3px', color: '#151515', margin: 0 }}>
@@ -1584,7 +1598,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   </div>
 
                   {/* Worry Card Section - 작은 고민도 바로 풀어드립니다 */}
-                  <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full mb-[4px]" style={{ paddingBottom: 12 }}>
+                  <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full mb-[4px]" style={{ paddingBottom: 12, marginLeft: 20, marginRight: 20, width: 'calc(100% - 40px)' }}>
                     <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                       <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
                         <p className="basis-0 grow min-h-px min-w-px relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a' }}>작은 고민도 바로 풀어드립니다</p>
@@ -1635,7 +1649,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   {/* Fortune Composition List - 운세 구성 */}
                   <div className="bg-[#f9f9f9] w-full" style={{ height: 4 }} />
                   <div className="bg-white box-border content-stretch flex flex-col gap-[12px] items-start px-[20px] relative shrink-0 w-full mb-[24px]" style={{ paddingTop: 24, paddingBottom: 0 }}>
-                    <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                    <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
                       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                         <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
                           <p className="basis-0 grow min-h-px min-w-px relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a' }}>운세 구성</p>
@@ -1812,7 +1826,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}
                   className="px-[20px] mb-[32px]"
                 >
-                  <div className="rounded-[20px]" style={{ backgroundColor: '#f5f5f5', padding: '16px 20px' }}>
+                  <div className="rounded-[20px]" style={{ backgroundColor: '#f5f5f5', padding: '12px 20px' }}>
                     <p style={{ fontSize: '10px', fontWeight: 500, color: '#bbb', marginBottom: '6px', textAlign: 'left' }}>
                       DEV
                     </p>
@@ -2245,7 +2259,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       }
                     }}
                     className="bg-[#48b2af] h-[56px] relative shrink-0 w-full cursor-pointer overflow-hidden touch-manipulation pointer-events-auto select-none [-webkit-touch-callout:none] active:bg-[#36908f]" style={{ borderRadius: 20 }}
-                    whileTap={{ scale: 0.96 }}
+                    whileTap={{ scale: 0.99 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
                     <div className="flex flex-row items-center justify-center size-full">
