@@ -197,8 +197,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        console.log('🔄 [MasterContentDetailPage] bfcache 복원 감지 → 홈으로 이동');
-        navigate('/', { replace: true });
+        console.log('🔄 [MasterContentDetailPage] bfcache 복원 감지 → 운세 모아보기로 이동');
+        navigate('/best-fortune', { replace: true });
       }
     };
     window.addEventListener('pageshow', handlePageShow);
@@ -216,8 +216,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     const currentState = window.history.state;
     const currentUrl = window.location.pathname + window.location.search + window.location.hash;
 
-    // 1) 현재 엔트리를 홈(/)으로 교체 (동일 state 유지)
-    window.history.replaceState(currentState, '', '/');
+    // 1) 현재 엔트리를 운세 모아보기(/best-fortune)로 교체 (동일 state 유지)
+    window.history.replaceState(currentState, '', '/best-fortune');
 
     // 2) 실제 콘텐츠 상세 페이지를 다시 push (동일 state 유지)
     window.history.pushState(currentState, '', currentUrl);
@@ -733,7 +733,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return (
         <FreeContentDetail
           contentId={contentId}
-          onBack={() => navigate('/', { replace: true })}
+          onBack={() => navigate('/new-free', { replace: true })}
           onHome={() => navigate('/', { replace: true })}
           onPurchase={async () => {}} // 로딩 중이므로 빈 함수
           onContentClick={(contentId) => {
@@ -792,7 +792,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate('/', { replace: true })}
+        onBack={() => navigate('/new-free', { replace: true })}
         onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
         onContentClick={(contentId) => {
@@ -915,7 +915,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate('/', { replace: true })}
+        onBack={() => navigate('/new-free', { replace: true })}
         onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
       />
@@ -923,9 +923,15 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   }
 
   const isPaid = content.content_type === 'paid';
+
+  // 카테고리 → 운세 모아보기 탭 인덱스 매핑
+  const FORTUNE_TABS = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+  const categoryTabIndex = content.category_main ? FORTUNE_TABS.indexOf(content.category_main) : 0;
+  const backTabState = categoryTabIndex >= 0 ? { tab: categoryTabIndex } : undefined;
+
   const onBack = () => {
     console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { timestamp: new Date().toISOString() });
-    navigate('/', { replace: true });
+    navigate('/best-fortune', { replace: true, state: backTabState });
   };
   
   const onPurchase = async () => {

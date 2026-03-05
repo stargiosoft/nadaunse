@@ -314,10 +314,13 @@ export function FortuneAllPage() {
   const scrollStartX = useRef(0);
   const hasDragged = useRef(false);
 
-  // 홈에서 state.sort로 초기 정렬값 전달 가능
+  // 홈에서 state.sort / state.tab으로 초기값 전달 가능
   useEffect(() => {
-    const st = (location.state as { sort?: string } | null);
+    const st = (location.state as { sort?: string; tab?: number } | null);
     if (st?.sort === 'popular') setSortBy('인기순');
+    if (typeof st?.tab === 'number' && st.tab >= 0 && st.tab < TAB_CATEGORIES.length) {
+      setActiveTab(st.tab);
+    }
   }, [location.state]);
 
   // 카테고리 + 정렬 변경 시 데이터 로드

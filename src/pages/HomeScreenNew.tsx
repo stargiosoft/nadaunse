@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Footer from '../components/Footer';
 import { motion } from 'motion/react';
 import { DEV } from '../lib/env';
 import {
@@ -351,63 +352,6 @@ function LogoLarge() {
       <div className="absolute" style={{ inset: '56.28% 14.07% 0 54.48%' }}>
         <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 25.1564 11.8038">
           <path d={svgLogo.p1cfcff80} fill="#151515" />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-function LogoSmall() {
-  return (
-    <div className="relative shrink-0" style={{ width: 59, height: 20 }}>
-      <div className="absolute" style={{ inset: '6.7% 79.05% 28.44% 0' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12.3601 12.9707">
-          <path d={svgPaths.p23a1d000} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '7.75% 51.93% 28.16% 27.15%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12.3461 12.8174">
-          <path d={svgPaths.p21f4640} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.2% 47.26% 21.76% 43.61%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 5.38448 15.2068">
-          <path d={svgPaths.p3dd0ce80} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.2% 74.17% 21.76% 16.7%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 5.38448 15.2068">
-          <path d={svgPaths.p252ddf00} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '39.15% 22.23% 31.85% 52.48%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 14.925 5.79971">
-          <path d={svgPaths.pfa46300} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '0 24.53% 63.35% 54.55%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 12.3388 7.33049">
-          <path d={svgPaths.p1aeb9d80} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.24% 0 21.76% 94.83%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 3.04836 15.201">
-          <path d={svgPaths.p26269db0} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.63% 5.75% 22.23% 85.73%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 5.02813 15.0289">
-          <path d={svgPaths.p316aad00} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '4.28% 11.29% 24.97% 75.49%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 7.80354 14.1496">
-          <path d={svgPaths.p1cc508c0} fill={C.charcoal} />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '56.28% 14.07% 0 54.48%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 18.5528 8.74359">
-          <path d={svgPaths.p36007680} fill={C.charcoal} />
         </svg>
       </div>
     </div>
@@ -1445,73 +1389,6 @@ function BestFortuneSection({
   );
 }
 
-/** 푸터 */
-function AppFooter() {
-  const footerLinks: string[] = ['이용약관', '개인정보 처리방침'];
-  const companyLines: string[] = [
-    'Copyright 2024@Stargiosoft All Rights Reserved.',
-    '대표자 서지현 | 사업자등록번호 827-88-01815',
-    '통신판매업번호 2024-서울영등포-2084',
-    '서울시 영등포구 양평로 149, 1507호',
-    '문의 stargiosoft@gmail.com',
-  ];
-
-  return (
-    <footer
-      className="w-full mt-auto"
-      style={{ backgroundColor: C.cardBorder, padding: '32px 20px 40px' }}
-    >
-      {/* 로고 + 회사 정보 */}
-      <div
-        className="flex flex-col items-start"
-        style={{ gap: 12, padding: '0 8px' }}
-      >
-        <LogoSmall />
-        <div className="flex flex-col" style={{ gap: 4 }}>
-          {companyLines.map((line) => (
-            <p
-              key={line}
-              style={{
-                fontFamily: font, fontSize: 13, fontWeight: 400,
-                color: C.gray700, letterSpacing: '-0.26px', lineHeight: '19px',
-              }}
-            >
-              {line}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {/* 법적 링크 */}
-      <div className="flex items-center" style={{ marginTop: 2 }}>
-        {footerLinks.map((label, i) => (
-          <span key={label} className="flex items-center">
-            {i > 0 && (
-              <div style={{ width: 1, height: 8, backgroundColor: C.gray100 }} />
-            )}
-            <button
-              className="flex items-center justify-center cursor-pointer"
-              style={{
-                height: 34, padding: '0 8px', borderRadius: 12,
-                backgroundColor: 'transparent', border: 'none',
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: font, fontSize: 14, fontWeight: 500,
-                  color: C.gray600, lineHeight: '22px', letterSpacing: '-0.42px',
-                }}
-              >
-                {label}
-              </span>
-            </button>
-          </span>
-        ))}
-      </div>
-    </footer>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Data Fetching Hooks
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1621,6 +1498,7 @@ function useBestContents(category: string): FortuneItem[] {
 // Main Screen
 // ─────────────────────────────────────────────────────────────────────────────
 export function HomeScreenNew() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [dot, setDot]             = useState(0);
 
@@ -1637,7 +1515,7 @@ export function HomeScreenNew() {
 
   return (
     <div
-      className="flex justify-center min-h-screen"
+      className="flex justify-center h-[100dvh] overflow-hidden"
       style={{ backgroundColor: C.pageBg }}
     >
       <SEO
@@ -1648,13 +1526,12 @@ export function HomeScreenNew() {
       />
       {/* 반응형 컨테이너: 320px ~ 440px, PC에서 440px 고정 */}
       <div
-        className="flex flex-col relative"
+        className="flex flex-col relative overflow-y-auto overscroll-y-contain"
         style={{
           backgroundColor: C.white,
           width: '100%',
           minWidth: 320,
           maxWidth: 440,
-          minHeight: '100vh',
         }}
       >
         <AppHeader />
@@ -1669,7 +1546,10 @@ export function HomeScreenNew() {
 
         <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
         <div style={{ marginTop: 130 }}>
-          <AppFooter />
+          <Footer
+            onNavigateToTerms={() => navigate('/terms-of-service')}
+            onNavigateToPrivacy={() => navigate('/privacy-policy')}
+          />
         </div>
       </div>
     </div>

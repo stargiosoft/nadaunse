@@ -34,6 +34,16 @@ export function useScrollDirection(threshold = 16): boolean {
         const dy = y - lastY.current;
         lastY.current = y;
 
+        // 최상단 도달 시 항상 탭바 노출 (iOS overscroll bounce 대응)
+        if (y <= 0) {
+          if (!visibleRef.current) {
+            visibleRef.current = true;
+            accumulated.current = 0;
+            setVisible(true);
+          }
+          return;
+        }
+
         // 미세 진동 무시 (이미지 lazy-load, resize 등으로 발생하는 1~2px 변동)
         if (Math.abs(dy) < 2) return;
 
