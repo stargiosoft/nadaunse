@@ -294,13 +294,16 @@ export function SajuConsultLoadingPage() {
           }}
         >
           <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)' }}>
-            <Lottie
-              animationData={lottieData}
-              loop
-              autoplay
-              renderer="canvas"
-              style={{ width: '100%', height: '100%' }}
-            />
+            <style>{`.lottie-crystal svg { overflow: visible !important; }`}</style>
+            <div className="lottie-crystal">
+              <Lottie
+                animationData={lottieData}
+                loop
+                autoplay
+                renderer="svg"
+                style={{ width: '100%', height: '100%', overflow: 'visible' }}
+              />
+            </div>
           </div>
 
           <div
