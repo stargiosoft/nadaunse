@@ -1,7 +1,7 @@
 # SEO 가이드 - 나다운세
 
 > **검색엔진 최적화(SEO) 설정 및 관리 가이드**
-> **최종 업데이트**: 2026-02-24
+> **최종 업데이트**: 2026-03-04
 
 ---
 
@@ -307,11 +307,19 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [x] description 80자 제한 준수 — index.html + prerender.mjs 축소 **(2026-02-24)**
 - [x] robots.txt `Disallow: /terms` → `/terms-of-service` 차단 버그 수정 (`Allow: /terms-of-service` 추가) **(2026-02-25)**
 - [x] Edge Function sitemap `/manse` priority 0.6 → 0.8 + lastmod 추가 (prerender와 일치) **(2026-02-25)**
+- [x] 홈페이지 + 블로그 메타 태그 SEO 최적화 (title/description 키워드 강화) **(2026-03-03)**
+- [x] 롱테일 키워드 타겟 블로그 7개 추가 (총 24→31개) — 생년월일운세, 사주연애운, 사주결혼시기, 이직운세, 사주재물운, 타로카드뽑기, AI타로, 무료궁합, 오늘타로운세, 타로연애운, 비대면사주, 온라인사주추천 **(2026-03-04)**
 
 ### SEO TODO (미완료) - 우선순위순
 
 #### 🔴 높음 (즉시 효과)
-- [ ] **IndexNow로 블로그 URL 일괄 제출** — Edge Function 호출하여 `/blog` + 24개 slug URL 제출 (Bing, 네이버 즉시 인덱싱)
+- [ ] **프리렌더 빌드 + 프로덕션 배포** — 신규 블로그 7개 프리렌더 HTML + sitemap + RSS 반영
+- [ ] **IndexNow로 블로그 URL 일괄 제출** — Edge Function 호출하여 `/blog` + 31개 slug URL 제출 (Bing, 네이버 즉시 인덱싱)
+- [ ] **Google Search Console 사이트맵 재제출** — 신규 블로그 7개 URL 인덱싱 요청
+- [ ] **네이버 서치어드바이저 사이트맵 재제출** — 신규 블로그 URL 수집 요청
+
+#### 🟡 중간 (SEO 품질 향상)
+- [ ] **블로그 썸네일 이미지 추가** — 현재 thumbnail_url NULL인 글들에 대표 이미지 추가 (검색결과 CTR 향상)
 
 #### 🟢 낮음 (여유 있을 때)
 - [ ] **FAQ 구조화 데이터** — 일부 블로그 글에 FAQPage JSON-LD 추가 (검색결과 리치 스니펫 노출)
@@ -525,13 +533,13 @@ SEO 개선의 핵심 전략으로, 롱테일 키워드 유입을 확보하기 �
 - blog-content 스타일은 `index.css` 끝에 직접 추가되어 있음
 - globals.css 수정 시 반드시 index.css에도 동일하게 반영해야 함
 
-### 콘텐츠 현황 (총 24개)
+### 콘텐츠 현황 (총 31개)
 
 | 카테고리 | 수량 | 대표 키워드 |
 |---------|------|------------|
-| saju (사주) | 18개 | 일간별 성격, 십성, 오행, 대운, 궁합, 연애운, 재물운, 직업적성, 건강운, 바람사주, 반려동물궁합, 12지지, 신살, 자미두수 |
-| tarot (타로) | 3개 | 메이저아르카나, 원카드리딩, 스프레드 종류 |
-| tip (꿀팁) | 3개 | 신년운세, MBTI vs 사주, 띠별운세 |
+| saju (사주) | 22개 | 일간별 성격, 십성, 오행, 대운, 궁합, 연애운, 재물운, 직업적성, 건강운, 바람사주, 반려동물궁합, 12지지, 신살, 자미두수, **생년월일운세, 사주결혼시기, 이직운세, 무료궁합** |
+| tarot (타로) | 5개 | 메이저아르카나, 원카드리딩, 스프레드 종류, **타로카드뽑기, AI타로, 오늘타로운세, 타로연애운** |
+| tip (꿀팁) | 4개 | 신년운세, MBTI vs 사주, 띠별운세, **비대면사주, 온라인사주추천** |
 
 ### 블로그 관련 파일
 
@@ -629,6 +637,8 @@ VALUES (
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-03-04 | **롱테일 키워드 블로그 7개 추가** (총 24→31개) - 생년월일운세, 사주연애운/결혼시기, 이직운세/재물운, 타로카드뽑기, 사주궁합, 오늘타로운세/연애타로, 비대면사주/온라인사주. migration: `20260304_add_longtail_blog_posts.sql` |
+| 2026-03-03 | **SEO 메타 태그 최적화** - 홈페이지 + 블로그 title/description 키워드 강화 |
 | 2026-02-25 | **Google Search Console 색인 문제 수정** - robots.txt `Disallow: /terms`가 `/terms-of-service` 차단하는 버그 수정 (`Allow: /terms-of-service` 추가), Edge Function sitemap `/manse` priority 0.6→0.8 + lastmod 추가 (prerender와 정합성) |
 | 2026-02-24 | **SEO 종합 개선** - `/manse` sitemap 추가, JSON-LD 중복 제거 (홈페이지 외 WebSite/FAQPage/Organization 제거, `isHomePage` 파라미터), sitemap `<lastmod>` 날짜 추가, RSS 2.0 피드 생성 (`/rss.xml`), 네이버 서치어드바이저 새 계정 재등록 (인증 메타 태그 `index.html` 적용), 이미지 alt 속성 16건 수정 (ProfilePage `aria-hidden` 7건, MyReportList 의미 있는 alt 3건), 콘텐츠 description fallback 유료/무료 차별화, description 80자 제한 준수 (index.html + prerender.mjs 축소), 사이트맵/RSS 네이버 재제출 |
 | 2026-02-20 | **SEO 내부 링크 강화** - 홈→블로그 내부 링크 (BlogPreviewSection), 관련 글 추천 (같은 카테고리 view_count 순), 본문 cross-links ("함께 읽어보세요"), blog-content CSS 검수 + index.css 반영, 모든 블로그 링크 `<a href>` 크롤러 지원 변환, Article JSON-LD 클라이언트 지원 (SEO.tsx), Organization sameAs 카카오톡 채널 추가, 이미지 loading 속성 (eager/lazy) |
