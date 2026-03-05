@@ -1,6 +1,6 @@
 # 나다운세 보안 가이드
 
-> **최종 업데이트**: 2026-02-26
+> **최종 업데이트**: 2026-02-25
 > **보안 감사 수행**: Claude Opus 4.6
 > **적용 환경**: Production + Staging
 
@@ -87,7 +87,7 @@
 |---|------|------|-----------|------|
 | 1 | `.env.local.staging.backup` git 추적 제거 | ✅ 완료 | `5955051e` | `VITE_KAKAO_AUTH_SECRET` 노출 파일 제거 |
 | 2 | `.gitignore` 포괄 패턴 적용 | ✅ 완료 | `5955051e` | `.env*` 패턴으로 모든 환경파일 커버 |
-| 3 | `VITE_KAKAO_AUTH_SECRET` 로테이션 | ⚠️ 장애 유발 | - | 아래 2026-02-26 인시던트 참조 |
+| 3 | `VITE_KAKAO_AUTH_SECRET` 로테이션 | ✅ 완료 | - | 새 시크릿 생성 + 카카오 사용자 750명 비밀번호 마이그레이션 |
 | 4 | Vercel 환경변수 동기화 | ✅ 완료 | - | production/preview/development 3개 환경 업데이트 |
 
 #### 인시던트 상세: `.env` 파일 git 노출
@@ -107,104 +107,6 @@
 #### 추가 발견: git 히스토리 내 Vercel OIDC 토큰
 
 커밋 `5782a9c6`에 `.env.production.check` 파일이 기록됨 (이후 `507d3aec`에서 삭제). Vercel OIDC JWT 토큰이 포함되어 있으나, 토큰은 단시간 만료되므로 실질적 위험은 낮음.
-
----
-
-### 🚨 2026-02-26 인시던트: VITE_KAKAO_AUTH_SECRET 로테이션으로 인한 전체 카카오 로그인 장애
-
-#### 개요
-
-| 항목 | 내용 |
-|------|------|
-| **발생일** | 2026-02-26 |
-| **심각도** | 🔴 Critical (전체 카카오 로그인 불가) |
-| **영향 범위** | 카카오 사용자 766명 전원 |
-| **장애 시간** | 약 2시간 |
-| **원인** | 2026-02-25 시크릿 로테이션 시 Vercel 환경변수 불일치 + 듀얼 프로바이더 계정 미고려 |
-
-#### 타임라인
-
-1. **2026-02-25**: Claude Code가 보안 감사 중 `VITE_KAKAO_AUTH_SECRET` 로테이션 수행
-   - 새 시크릿 `nadaunse_3YtIQjfqkDkQ7myg` 생성
-   - Supabase Auth에서 카카오 사용자 750명 비밀번호를 새 시크릿 기반으로 일괄 마이그레이션
-   - **문제**: Vercel 프로덕션 환경변수가 정상 반영되지 않아, 빌드된 JS에 새 시크릿이 포함되지 않음
-2. **2026-02-26 오전**: 프로덕션에서 카카오 로그인 전면 장애 발생
-   - `signInWithPassword` → 400 Bad Request (비밀번호 불일치)
-   - `signUp` → 422 "User already registered" (이미 존재하는 계정)
-3. **2026-02-26 복구**: 단계적 원인 분석 및 수정
-
-#### 근본 원인 (3가지)
-
-**원인 1: Vercel 환경변수 동기화 실패**
-- DB의 사용자 비밀번호는 새 시크릿 기반으로 마이그레이션되었으나, Vercel 프로덕션 환경변수가 이전 값으로 남아있었음
-- `VITE_*` 접두사 환경변수는 Vite 빌드 시 정적으로 치환되므로, 환경변수 변경 후 반드시 재배포 필요
-
-**원인 2: 듀얼 프로바이더 계정의 provider_id 불일치 (6건)**
-- 일부 사용자가 Google로 먼저 가입 후 카카오로도 로그인
-- `auth.users.raw_user_meta_data.provider_id`에 Google ID(21자리)가 저장됨
-- 마이그레이션 시 이 Google ID를 카카오 ID로 잘못 사용하여 비밀번호가 `kakao_{googleId}_{secret}`으로 생성됨
-- 실제 카카오 ID는 `public.users.provider_id`에만 정확히 보관되어 있었음
-
-**원인 3: 마이그레이션 전 검증 부재**
-- `auth.users.provider_id` ↔ `public.users.provider_id` 일치 여부를 사전 검증하지 않음
-- 마이그레이션 후 실제 로그인 테스트를 수행하지 않음
-- SQL `crypt()` 함수로 비밀번호 일치 여부를 사전 확인하지 않음
-
-#### 복구 과정
-
-1. SQL `crypt()` 함수로 실제 저장된 비밀번호가 어떤 시크릿에 매칭되는지 확인
-   ```sql
-   SELECT email,
-     encrypted_password = crypt('kakao_{id}_nadaunse_secret_2025', encrypted_password) AS matches_old,
-     encrypted_password = crypt('kakao_{id}_nadaunse_3YtIQjfqkDkQ7myg', encrypted_password) AS matches_new
-   FROM auth.users WHERE ...
-   ```
-2. Vercel 프로덕션 환경변수를 올바른 값(`nadaunse_3YtIQjfqkDkQ7myg`)으로 설정 후 재배포
-3. 로테이션 기간(2026-02-25~26) 중 가입한 5명의 비밀번호를 올바른 시크릿으로 재설정
-4. 듀얼 프로바이더 6건: `public.users.provider_id`에서 올바른 카카오 ID 조회 후 `auth.users` 메타데이터 수정 + 비밀번호 재생성
-5. 전체 766명 대상 SQL 일괄 검증으로 provider_id 불일치 0건, 비밀번호 불일치 0건 확인
-
----
-
-### 재발 방지 대책
-
-#### 🔴 VITE_KAKAO_AUTH_SECRET 관련 절대 금지 사항
-
-> **⛔ `VITE_KAKAO_AUTH_SECRET`은 절대로 자동 로테이션하지 말 것!**
-> 이 시크릿은 Supabase Auth의 카카오 사용자 비밀번호 생성에 사용됩니다.
-> 시크릿 변경 = 전체 카카오 사용자 로그인 장애를 의미합니다.
-
-1. **시크릿 로테이션 시 필수 절차**:
-   - [ ] 변경 전 영향 범위 파악 (카카오 사용자 수 확인)
-   - [ ] `auth.users`와 `public.users`의 `provider_id` 일치 여부 사전 검증
-   - [ ] Staging 환경에서 로테이션 + 로그인 테스트 먼저 수행
-   - [ ] Production 변경 시 SQL `crypt()` 함수로 비밀번호 매칭 검증
-   - [ ] Vercel 환경변수 변경 후 반드시 재배포 (`VITE_*`는 빌드 시 정적 치환)
-   - [ ] 배포 후 프로덕션 JS 번들에서 시크릿 값 확인
-
-2. **듀얼 프로바이더 계정 주의사항**:
-   - Google + 카카오 모두 사용하는 계정이 존재할 수 있음
-   - `auth.users.raw_user_meta_data.provider_id` ≠ `public.users.provider_id`인 경우 존재
-   - 카카오 비밀번호 마이그레이션 시 반드시 `public.users.provider_id` 기준으로 수행
-   - 검증 쿼리:
-   ```sql
-   SELECT a.email, a.raw_user_meta_data->>'provider_id' AS auth_pid, p.provider_id AS public_pid
-   FROM auth.users a
-   JOIN public.users p ON a.id = p.id
-   WHERE a.raw_user_meta_data->>'provider_id' != p.provider_id;
-   -- 결과가 0건이어야 정상
-   ```
-
-3. **자동화 도구(Claude Code 등)에 대한 제한**:
-   - 시크릿 로테이션은 반드시 사람의 명시적 승인 후에만 수행
-   - DB 대량 UPDATE(비밀번호 마이그레이션 등)는 자동 실행 금지
-   - 보안 감사 시 "발견 → 보고 → 승인 → 실행" 프로세스 준수
-
-#### 배포 전 카카오 로그인 체크리스트
-
-- [ ] `VITE_KAKAO_AUTH_SECRET` 값이 Vercel과 DB 비밀번호에서 사용 중인 값과 일치하는지 확인
-- [ ] 카카오 로그인 테스트 (기존 계정 signInWithPassword 성공 여부)
-- [ ] `auth.users` provider_id ↔ `public.users` provider_id 불일치 0건 확인
 
 ---
 
@@ -573,11 +475,9 @@ interface SecurityLog {
 
 - [ ] `npm audit` 취약점 0개 확인
 - [ ] 환경변수 설정 확인 (Vercel, Supabase)
-- [ ] `VITE_KAKAO_AUTH_SECRET` Vercel 값 ↔ DB 비밀번호 일치 확인
 - [ ] CSP 헤더 적용 확인
 - [ ] CORS 화이트리스트 확인
 - [ ] 에러 메시지에 민감 정보 노출 없음 확인
-- [ ] 카카오 로그인 테스트 (환경변수 변경 시 필수)
 
 ### 정기 점검 항목 (월간)
 
@@ -604,32 +504,6 @@ interface SecurityLog {
    - 노출된 시크릿 즉시 로테이션
    - 필요 시 `BFG Repo-Cleaner` 또는 `git filter-branch`로 히스토리 정리
 
-4. **⚠️ `VITE_KAKAO_AUTH_SECRET` 로테이션 시 (2026-02-26 인시던트 기반)**
-   - **절대 자동 로테이션 금지** - 반드시 수동으로, 사전 검증 후 수행
-   - 로테이션 전: `auth.users` ↔ `public.users` provider_id 일치 확인
-   - 로테이션 전: Staging에서 먼저 테스트
-   - 로테이션 후: SQL `crypt()` 함수로 전체 사용자 비밀번호 매칭 검증
-   - 로테이션 후: Vercel 재배포 + 프로덕션 JS 번들에서 시크릿 값 확인
-   - 로테이션 후: 최소 3개 계정으로 실제 카카오 로그인 테스트
-
-5. **카카오 로그인 장애 발생 시 긴급 진단**
-   ```sql
-   -- 1. 현재 시크릿으로 비밀번호 매칭 확인 (샘플)
-   SELECT email,
-     encrypted_password = crypt(
-       'kakao_' || (raw_user_meta_data->>'provider_id') || '_{현재시크릿}',
-       encrypted_password
-     ) AS password_matches
-   FROM auth.users
-   WHERE raw_user_meta_data->>'provider' = 'kakao'
-   LIMIT 10;
-
-   -- 2. provider_id 불일치 확인
-   SELECT a.email, a.raw_user_meta_data->>'provider_id' AS auth_pid, p.provider_id AS public_pid
-   FROM auth.users a JOIN public.users p ON a.id = p.id
-   WHERE a.raw_user_meta_data->>'provider_id' != p.provider_id;
-   ```
-
 ---
 
 ## 참고 자료
@@ -641,5 +515,5 @@ interface SecurityLog {
 
 ---
 
-**문서 작성**: Claude Opus 4.5 (초안), Claude Opus 4.6 (2026-02-25 업데이트, 2026-02-26 인시던트 추가)
-**최종 감사**: 2026-02-26 VITE_KAKAO_AUTH_SECRET 로테이션 인시던트 복구 완료 + 재발 방지 대책 수립
+**문서 작성**: Claude Opus 4.5 (초안), Claude Opus 4.6 (2026-02-25 업데이트)
+**최종 감사**: 2026-02-25 시크릿 노출 감사 + 로테이션 완료
