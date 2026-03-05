@@ -169,8 +169,9 @@
 ### 1️⃣1️⃣ **미션 리워드** (1개)
 
 33. `grant-mission-sprout` - 태그 5개 달성 시 새싹 30개 즉시 지급 (JWT 인증 필수)
-    - `process_mission_reward` RPC 호출, 중복 방지 내장
-    - 기존 미션 쿠폰(12,900원) 프로세스를 새싹 리워드로 대체
+    - IP+UA SHA-256 fingerprint 생성 → 같은 기기 다른 계정 중복 수령 차단
+    - `check_only=true` 모드: 지급 없이 자격만 확인 (마운트 시 사전 체크용)
+    - `process_mission_reward` RPC 호출, user_id + fingerprint 이중 중복 방지
 
 ---
 

@@ -5117,6 +5117,26 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.4.0
+## 2026-03-05 미션 리워드 fingerprint 기반 기기 중복 방지
+
+### 문제
+태그 5개 달성 시 새싹 30개 지급하는 미션 리워드를, 같은 기기에서 다른 계정으로 로그인하여 반복 수령 가능
+
+### 결정
+1. `grant-mission-sprout` Edge Function에서 IP+UA SHA-256 fingerprint 생성 (기존 `generate-free-preview` 등과 동일 패턴)
+2. `process_mission_reward` RPC에 `p_ip_fingerprint`, `p_check_only` 파라미터 추가
+   - user_id 중복 체크 + fingerprint 기기 중복 체크 이중 검증
+   - `check_only=true`: 지급 없이 자격만 확인 (컴포넌트 마운트 시 사전 체크)
+3. fingerprint 차단된 사용자: 태그는 정상 저장, 태그 안내 페이지 + 미션 완료 페이지 모두 스킵 → 조용히 홈 이동 (별도 안내 없음)
+4. `sprout_transactions.ip_fingerprint` 컬럼에 기록 저장
+
+### 관련 파일
+- DB: `sprout_transactions.ip_fingerprint` 컬럼, `process_mission_reward` RPC
+- Edge Function: `grant-mission-sprout/index.ts`
+- Frontend: `CheckRecordMe.tsx` (마운트 시 check_only 호출 + 지급 시 fingerprint_used 처리)
+
+---
+
+**문서 버전**: 3.5.0
 **최종 업데이트**: 2026-03-05
 **문서 끝**
