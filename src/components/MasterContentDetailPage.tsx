@@ -1920,7 +1920,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                         <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full">
                           <p className="font-semibold leading-[28.5px] not-italic relative shrink-0 text-[#41a09e] text-[15px] text-center text-nowrap tracking-[-0.30px] whitespace-pre">시중의 수많은 운세, 왜 조금씩 다를까 궁금하셨죠?</p>
                           <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                            <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                               <div className="font-medium leading-[28.5px] not-italic relative shrink-0 text-[#151515] text-[15px] text-center tracking-[-0.30px] w-full">
                                 <p className="mb-0">{`저희는 '평균적인' 해석이 아닌 당신만을 위한`}</p>
                                 <p>가장 정확한 답을 찾아드립니다.</p>
@@ -1948,13 +1948,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   <div className="flex flex-col items-center size-full">
                     <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                       <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                        <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[17px] text-black tracking-[-0.34px]">믿을 수 있는 이유 3가지</p>
+                        <p className="basis-0 font-bold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[17px] text-black tracking-[-0.34px]">믿을 수 있는 이유 3가지</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full">
+                <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full">
                   {/* 01 정통 명리 해석 */}
                   <div className="relative shrink-0 w-full">
                     <div className="size-full">
@@ -2073,7 +2073,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
             { (isFreeContent || activeTab === 'preview') && (
             <div className={`${isFreeContent ? "w-1/3" : "w-full"} shrink-0 bg-white`}>
             <motion.div 
-              className="content-stretch flex flex-col gap-[40px] items-center relative shrink-0 w-full"
+              className="content-stretch flex flex-col gap-[24px] items-center relative shrink-0 w-full"
               initial={!isFreeContent ? "hidden" : undefined}
               animate={!isFreeContent ? "visible" : undefined}
               variants={staggerContainer}
@@ -2085,41 +2085,41 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               >
                 <div className="relative shrink-0 w-full">
                   <div className="flex flex-row items-center justify-center size-full">
-                    <div className="content-stretch flex items-center justify-center pb-[20px] pt-[28px] px-[20px] relative w-full">
-                      <p className="basis-0 font-['Pretendard_Variable:SemiBold',sans-serif] grow leading-[25.5px] min-h-px min-w-px not-italic relative shrink-0 text-[17px] text-black text-center tracking-[-0.34px]">아래는 일부 예시 해석입니다</p>
+                    <div className="content-stretch flex items-center justify-center pb-[16px] pt-[20px] px-[20px] relative w-full">
+                      <p className="basis-0 font-normal grow leading-[25.5px] min-h-px min-w-px not-italic relative shrink-0 text-[15px] text-center tracking-[-0.30px]" style={{ color: '#848484' }}>아래는 일부 예시 해석입니다</p>
                     </div>
                   </div>
                 </div>
-                <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
+                <div className="bg-[#f9f9f9] h-[4px] shrink-0 w-full" />
               </motion.div>
 
               {/* Preview Cards - 최대 3개만 표시 */}
               <motion.div 
-                className="content-stretch flex flex-col gap-[28px] items-center relative shrink-0 w-full px-[20px]"
+                className="content-stretch flex flex-col gap-[24px] items-center relative shrink-0 w-full px-[20px]"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}
               >
                 {questions.slice(0, 3).map((question, index) => (
                   <div key={question.id} className="w-full">
                     <div className="content-stretch flex flex-col gap-[36px] items-center relative shrink-0 w-full">
-                      <div className="h-[293px] relative shrink-0 w-full overflow-hidden">
+                      <div className="h-[293px] relative shrink-0 w-full overflow-hidden transform-gpu">
                         <div className="absolute content-stretch flex flex-col inset-0 items-start">
-                          <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                          <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
                             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                               <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                                <p className="basis-0 font-semibold grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[17px] tracking-[-0.32px]">
+                                <p className="basis-0 font-semibold grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[15px] tracking-[-0.30px]" style={{ paddingLeft: '2px' }}>
                                   {String(index + 1).padStart(2, '0')}. {question.question_text}
                                 </p>
                               </div>
                             </div>
-                            <div className="bg-[#f9f9f9] h-[252px] relative rounded-[16px] shrink-0 w-full overflow-hidden transform-gpu">
+                            <div className="bg-[#f9f9f9] h-[252px] relative rounded-[20px] shrink-0 w-full overflow-hidden transform-gpu">
                               <div className="size-full">
                                 <div className="content-stretch flex h-[252px] items-start px-[20px] py-[16px] relative w-full overflow-hidden">
-                                  <div className="basis-0 content-stretch flex flex-col gap-[8px] grow items-start min-h-px min-w-px relative shrink-0">
+                                  <div className="basis-0 content-stretch flex flex-col gap-[5px] grow items-start min-h-px min-w-px relative shrink-0">
                                     <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-                                      <p className="font-semibold leading-[23.5px] not-italic relative shrink-0 text-[#151515] text-[15px] tracking-[-0.3px] w-full">[맛보기]</p>
+                                      <p className="font-medium leading-[23.5px] not-italic relative shrink-0 text-[#151515] text-[15px] tracking-[-0.3px] w-full">맛보기</p>
                                     </div>
                                     <div className="content-stretch flex flex-col items-start relative w-full overflow-hidden flex-1">
-                                      <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] not-italic text-[15px] text-neutral-600 tracking-[-0.3px] w-full overflow-hidden">
+                                      <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[25.5px] not-italic text-[15px] text-neutral-600 tracking-[-0.3px] w-full overflow-hidden">
                                         {question.preview_text || '미리보기 답변이 생성 중입니다...'}
                                       </p>
                                     </div>
@@ -2129,9 +2129,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             </div>
                           </div>
                         </div>
-                        <div className="absolute bg-[#f9f9f9] bottom-0 content-stretch flex flex-col items-center justify-center left-0 p-[16px] pt-[16px] right-0 rounded-b-[16px] w-full z-10 transform-gpu" style={{ borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+                        <div className="absolute bg-[#f9f9f9] bottom-0 content-stretch flex flex-col items-center justify-center left-0 p-[16px] pt-[14px] pb-[14px] right-0 rounded-b-[20px] w-full z-10 transform-gpu" style={{ borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
                           <div className="absolute left-0 right-0 -top-[56px] h-[56px] bg-gradient-to-b from-transparent to-[#f9f9f9] pointer-events-none" />
-                          <div aria-hidden="true" className="absolute border-[#f3f3f3] border-[1px_0px_0px] border-solid inset-0 pointer-events-none rounded-b-[16px] shadow-[0px_-26px_26px_0px_#f9f9f9]" style={{ borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }} />
+                          <div aria-hidden="true" className="absolute border-[#f3f3f3] border-[1px_0px_0px] border-solid inset-0 pointer-events-none rounded-b-[20px] shadow-[0px_-26px_26px_0px_#f9f9f9]" style={{ borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }} />
                           <div className="content-stretch flex gap-[8px] items-center justify-center relative shrink-0">
                             <div className="relative shrink-0 size-[16px]">
                               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
@@ -2150,15 +2150,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           </div>
                         </div>
                       </div>
-                      {index < Math.min(questions.length, 3) - 1 && (
-                        <div className="h-0 relative shrink-0 w-full">
-                          <div className="absolute bottom-[-0.5px] left-0 right-0 top-[-0.5px]">
-                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 390 1">
-                              <path d="M0 0.5H390" stroke="#F3F3F3" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -2185,7 +2176,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                               </svg>
                             </div>
                             <div className="basis-0 content-stretch flex grow items-start min-h-px min-w-px pb-0 pt-[3px] px-0 relative shrink-0">
-                              <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">
+                              <p className="basis-0 font-['Pretendard_Variable:Regular',sans-serif] grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[15px] tracking-[-0.30px]">
                                 {String(index + 4).padStart(2, '0')}. {question.question_text}
                               </p>
                             </div>
@@ -2212,7 +2203,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 <motion.div 
                   className="box-border content-stretch flex gap-[10px] items-center justify-center px-[16px] py-[14px] relative rounded-[12px] shrink-0 w-full"
                   style={{ 
-                    background: "linear-gradient(90deg, #F2FAFA 0%, #e0fcfc 25%, #F2FAFA 50%, #e0fcfc 75%, #F2FAFA 100%)",
+                    background: "linear-gradient(90deg, #F7FDFD 0%, #EDFAFA 25%, #F7FDFD 50%, #EDFAFA 75%, #F7FDFD 100%)",
                     backgroundSize: "200% 100%"
                   }}
                   animate={{ backgroundPosition: ["0% 0%", "100% 0%"] }}
