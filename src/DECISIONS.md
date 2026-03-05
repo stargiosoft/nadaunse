@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-12
-> **주요 결정**: IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-03-05
+> **주요 결정**: 상세 페이지 History Guard 제거 및 navigate(-1) 전환, IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,59 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-03-05
+
+### 상세 페이지 History Guard 제거 및 navigate(-1) 전환
+
+**결정**: MasterContentDetailPage, FreeContentDetail의 History Guard(replaceState+pushState) 제거, onBack을 `navigate(-1)`로 전환
+
+**문제**:
+- best 운세 → 상품 상세 → iOS 스와이프 뒤로가기 → best 운세 → 상품 상세 → iOS 스와이프 뒤로가기 → **new 무료 운세 리스트로 이동** (버그)
+- 4~5번째 사이클부터 히스토리 스택이 꼬이기 시작
+- `history.length`가 14 → 19까지 증가, 유령 네비게이션(`/best-fortune` → `/`) 발생
+
+**원인 (2026-02-06 결정과 동일 패턴)**:
+```
+MasterContentDetailPage mount 시:
+  replaceState(state, '', '/best-fortune')  ← 현재 엔트리를 /best-fortune으로 교체
+  pushState(state, '', '/master/content/detail/xxx')  ← 상세 URL 다시 push
+
+onBack 시:
+  navigate('/best-fortune', { replace: true })  ← 또 다른 /best-fortune 추가
+
+→ 스택: [..., /best-fortune(원래), /best-fortune(guard), /best-fortune(replaced)]
+→ 반복할수록 중복 엔트리 누적 + React Router state 불일치
+→ 5-6 사이클 후 iOS 스와이프 시 이전 세션의 엔트리(/new-free, /free/content/...)로 빠짐
+```
+
+**해결 방법**:
+1. **History Guard useEffect 제거** (MasterContentDetailPage, FreeContentDetail)
+   - 매 상세 페이지 진입 시 replaceState+pushState로 엔트리를 삽입하면 반복 네비게이션 시 스택 오염
+   - `DirectEntryHistoryGuard`(App.tsx)가 직접 URL 진입 시 홈(/) 삽입 역할을 이미 담당
+2. **onBack: `navigate(-1)` 사용**
+   - 유료 콘텐츠: `navigate('/best-fortune', { replace: true })` → `navigate(-1)`
+   - 무료 콘텐츠: `navigate('/new-free', { replace: true })` → `navigate(-1)`
+   - 탭 상태는 FortuneAllPage/NewFreeFortuneAllPage가 sessionStorage에서 자동 복원
+3. **canGoBack state 추가** (FortuneAllPage, NewFreeFortuneAllPage, HomeScreenNew)
+   - 상세 페이지 이동 시 `{ state: { canGoBack: true } }` 전달
+   - `useGoBack` 훅이 직접 URL 진입 vs 앱 내 네비게이션 구분 가능
+
+**핵심 원리 (DECISIONS.md 2026-02-06 결정 재확인)**:
+- `navigate('/some-path', { replace: true })`는 히스토리 스택을 예측 불가능하게 만듦
+- `navigate(-1)`는 브라우저의 자연스러운 뒤로가기 동작 보존
+- History Guard는 `DirectEntryHistoryGuard`(App.tsx) 한 곳에서만 관리
+
+**영향 범위**:
+- `src/components/MasterContentDetailPage.tsx` — History Guard 제거, onBack `navigate(-1)` 전환, FreeContentDetail onBack 3곳 동일 수정
+- `src/components/FreeContentDetail.tsx` — History Guard 제거
+- `src/pages/FortuneAllPage.tsx` — handleItemClick에 `canGoBack: true` 추가
+- `src/pages/NewFreeFortuneAllPage.tsx` — handleItemClick에 `canGoBack: true` 추가
+- `src/pages/HomeScreenNew.tsx` — BestFortuneCard/슬라이더 navigate에 `canGoBack: true` 추가
+
+**테스트**: iOS Safari에서 best 운세 ↔ 상품 상세 6회 이상 반복 후 스와이프 뒤로가기 정상 확인 ✅
 
 ---
 
