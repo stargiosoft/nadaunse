@@ -448,7 +448,7 @@ export function FortuneAllPage() {
               className="flex-1 text-center overflow-hidden"
               style={{ fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
             >
-              운세 모아보기
+              BEST 운세
             </p>
             <div style={{ width: 44, height: 44, opacity: 0 }} />
           </div>

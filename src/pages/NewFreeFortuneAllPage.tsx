@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgPaths from '../imports/svg-hzfdemyje6';
 import { useScrollDirection } from '../hooks/useScrollDirection';
@@ -93,6 +93,17 @@ function ArrowLeftIcon() {
     <div className="relative shrink-0" style={{ width: 24, height: 24 }}>
       <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
         <path d={svgPaths.p2a5cd480} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Atom: Arrow Down Fill Icon ──────────────────────────────────────────────
+function ArrowDownFillIcon() {
+  return (
+    <div className="relative shrink-0" style={{ width: 14, height: 14 }}>
+      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 14 14" style={{ transform: 'translateY(-1.5px)' }}>
+        <path d={svgPaths.p12ea3700} fill="#999999" transform="rotate(180 7 7)" />
       </svg>
     </div>
   );
@@ -236,13 +247,41 @@ const TAB_BAR_HEIGHT = 53;
 
 export function NewFreeFortuneAllPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState(0);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'인기순' | '최신순'>('최신순');
+  const sortRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<NoRankFortuneItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
   const tabVisible = useScrollDirection(16);
 
-  // 카테고리별 무료 콘텐츠 로드 (최신순 기본)
+  // state.tab으로 초기 탭 전달 가능
+  useEffect(() => {
+    const st = (location.state as { tab?: number } | null);
+    if (typeof st?.tab === 'number' && st.tab >= 0 && st.tab < TAB_CATEGORIES.length) {
+      setActiveTab(st.tab);
+    }
+  }, [location.state]);
+
+  // 정렬 드롭다운 외부 클릭 닫기
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [sortOpen]);
+
+  // 카테고리별 무료 콘텐츠 로드
   const fetchData = useCallback(async () => {
     try {
       const category = TAB_CATEGORIES[activeTab] || '연애';
@@ -255,11 +294,14 @@ export function NewFreeFortuneAllPage() {
       if (error) { logger.error('NewFreeFortuneAllPage 로드 실패:', error.message); return; }
       if (!data || data.length === 0) { setItems([]); setTotalCount(0); return; }
 
-      // 최신순 정렬 (동일 날짜면 weekly_clicks DESC)
-      const sorted = [...data].sort((a: { created_at: string; weekly_clicks: number }, b: { created_at: string; weekly_clicks: number }) => {
-        const d = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        return d !== 0 ? d : b.weekly_clicks - a.weekly_clicks;
-      });
+      let sorted = [...data];
+      if (sortBy === '최신순') {
+        sorted.sort((a: { created_at: string; weekly_clicks: number }, b: { created_at: string; weekly_clicks: number }) => {
+          const d = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return d !== 0 ? d : b.weekly_clicks - a.weekly_clicks;
+        });
+      }
+      // 인기순은 RPC 기본 정렬 (weekly_clicks DESC, created_at DESC)
 
       setTotalCount(sorted[0]?.total_count ?? sorted.length);
       setItems(sorted.map((row: {
@@ -282,7 +324,7 @@ export function NewFreeFortuneAllPage() {
     } catch (e) {
       logger.error('NewFreeFortuneAllPage fetchData 실패:', e);
     }
-  }, [activeTab]);
+  }, [activeTab, sortBy]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -406,9 +448,77 @@ export function NewFreeFortuneAllPage() {
           </div>
         </div>
 
-        {/* ── Content header: count only ── */}
-        <div className="flex items-center w-full" style={{ padding: '12px 22px', backgroundColor: C.white }}>
+        {/* ── Content header: count + sort ── */}
+        <div className="flex items-center justify-between w-full" style={{ padding: '12px 22px', backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
+          <div className="relative" ref={sortRef}>
+            <button
+              className="flex items-center cursor-pointer"
+              style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
+              onClick={() => setSortOpen(v => !v)}
+            >
+              <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{sortBy}</span>
+              <ArrowDownFillIcon />
+            </button>
+
+            {/* ── Sort dropdown ── */}
+            {sortOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: -6,
+                  width: 140,
+                  backgroundColor: C.white,
+                  borderRadius: 16,
+                  border: '1px solid #f3f3f3',
+                  boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
+                  zIndex: 200,
+                  paddingTop: 14,
+                  paddingBottom: 12,
+                }}
+              >
+                {/* Header */}
+                <div style={{ padding: '0 22px', marginBottom: 4 }}>
+                  <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>정렬</span>
+                </div>
+                {/* 인기순 */}
+                <button
+                  onClick={() => { setSortBy('인기순'); setSortOpen(false); }}
+                  className="flex items-center w-full cursor-pointer"
+                  style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
+                    {sortBy === '인기순' ? (
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
+                    ) : (
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
+                    )}
+                  </div>
+                  <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>인기순</span>
+                </button>
+                {/* 최신순 */}
+                <button
+                  onClick={() => { setSortBy('최신순'); setSortOpen(false); }}
+                  className="flex items-center w-full cursor-pointer"
+                  style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
+                    {sortBy === '최신순' ? (
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
+                    ) : (
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
+                    )}
+                  </div>
+                  <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>최신순</span>
+                </button>
+              </motion.div>
+            )}
+          </div>
         </div>
 
         {/* ── Content list ── */}
