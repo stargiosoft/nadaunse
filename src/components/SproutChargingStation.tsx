@@ -445,7 +445,7 @@ export default function SproutChargingStation({
               {/* ── 새싹 충전 패키지 섹션 ── */}
               <div className="flex flex-col gap-[12px] items-start px-[20px] py-[24px] w-full">
                 <div className="flex flex-col items-start px-[4px] w-full">
-                  <div className="flex flex-col gap-[2px] items-start w-full">
+                  <div className="flex flex-col gap-[4px] items-start w-full">
                     <div style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#000' }}>
                       새싹 충전
                     </div>
@@ -638,7 +638,7 @@ export default function SproutChargingStation({
               <div className="bg-[#f9f9f9] h-[4px] shrink-0 w-full" />
 
               {/* ── 약관 동의 섹션 (PaymentNew.tsx 동일) ── */}
-              <div className="content-stretch flex flex-col gap-[16px] items-start px-[20px] py-[24px] relative shrink-0 w-full pb-[140px]">
+              <div className="content-stretch flex flex-col gap-[8px] items-start px-[20px] py-[24px] relative shrink-0 w-full pb-[140px]">
                 <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
                   <p style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '14px', fontWeight: 400, lineHeight: '22px', letterSpacing: '-0.42px', color: '#525252', width: '100%' }}>
                     결제 금액과 안내 사항을 확인했어요
