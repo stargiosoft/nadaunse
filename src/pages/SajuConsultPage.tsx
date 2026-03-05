@@ -145,17 +145,16 @@ export function SajuConsultPage() {
         } catch { /* ignore */ }
 
         if (!hasSaju) {
-          const { data: sajuRecord, error: sajuError } = await supabase
+          const { data: sajuList, error: sajuError } = await supabase
             .from('saju_records')
-            .select('id')
+            .select('id, is_primary')
             .eq('user_id', user.id)
-            .eq('is_primary', true)
-            .maybeSingle();
+            .order('created_at', { ascending: true });
 
           if (sajuError) {
             console.error('❌ [SajuConsult] DB 사주 조회 에러:', sajuError.message, sajuError.code);
           }
-          if (sajuRecord) {
+          if (sajuList && sajuList.length > 0) {
             hasSaju = true;
           }
         }

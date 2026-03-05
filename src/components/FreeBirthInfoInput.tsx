@@ -70,16 +70,18 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
       if (user) {
         console.log('👤 [FreeBirthInfoInput] 로그인 사용자 → DB에서 사주 조회');
         
-        const { data: primarySaju, error } = await supabase
+        const { data: sajuList, error } = await supabase
           .from('saju_records')
           .select('*')
           .eq('user_id', user.id)
-          .eq('is_primary', true)
-          .maybeSingle();
+          .order('created_at', { ascending: true });
 
         if (error) {
           console.error('❌ [FreeBirthInfoInput] DB 사주 조회 에러:', error.message, error.code, error.details);
         }
+
+        // ProfilePage와 동일한 방식: 전체 목록에서 is_primary 찾기
+        const primarySaju = sajuList?.find((s: Record<string, unknown>) => s.is_primary) || sajuList?.[0] || null;
 
         if (!error && primarySaju) {
           console.log('✅ [FreeBirthInfoInput] DB에서 대표 사주 발견:', primarySaju);
