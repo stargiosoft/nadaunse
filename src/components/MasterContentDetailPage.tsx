@@ -156,6 +156,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   // ⭐ AI 개인화 구매 가이드
   const [purchaseGuide, setPurchaseGuide] = useState<string | null>(null);
   const [isPurchaseGuideLoading, setIsPurchaseGuideLoading] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false); // ⭐ 구매 버튼 중복 클릭 방지
   const [primarySajuName, setPrimarySajuName] = useState<string | null>(null);
   // 태그 유무를 동기적으로 확인 (스켈레톤 표시 판단용)
   const [hasTraitTags] = useState(() => {
@@ -933,6 +934,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   };
   
   const onPurchase = async () => {
+    if (isPurchasing) return; // ⭐ 중복 클릭 방지
+    setIsPurchasing(true);
     console.log('🔵 [MasterContentDetailPage] onPurchase 함수 시작', {
       timestamp: new Date().toISOString(),
       contentId
@@ -980,6 +983,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       if (userError) {
         console.error('❌ [MasterContentDetailPage] 잔액 조회 실패:', userError);
         alert('잔액 조회에 실패했습니다. 다시 시도해주세요.');
+        setIsPurchasing(false);
         return;
       }
       currentBalance = userData?.sprout_balance ?? 0;
@@ -1025,6 +1029,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
       if (!result.success) {
         if (result.error === 'insufficient_balance') {
+          setIsPurchasing(false);
           navigate(`/sprout-charging/${contentId}`, {
             state: { requiredAmount, currentBalance: result.current_balance ?? 0 },
           });
@@ -1032,6 +1037,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         }
         console.error('❌ [MasterContentDetailPage] 차감 실패:', result);
         alert('새싹 차감에 실패했습니다. 다시 시도해주세요.');
+        setIsPurchasing(false);
         return;
       }
 
@@ -1071,6 +1077,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         if (orderResult.error || !orderResult.data) {
           console.error('❌ [MasterContentDetailPage] 주문 생성 실패:', orderResult.error);
           alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+          setIsPurchasing(false);
           return;
         }
 
@@ -1091,6 +1098,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         if (orderError || !newOrder) {
           console.error('❌ [MasterContentDetailPage] 주문 생성 실패:', orderError);
           alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
+          setIsPurchasing(false);
           return;
         }
 
@@ -1112,6 +1120,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     } catch (err) {
       console.error('❌ [MasterContentDetailPage] 차감 처리 예외:', err);
       alert('처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setIsPurchasing(false);
     }
   };
 
@@ -2255,33 +2264,40 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[20px] py-[12px] relative w-full">
                   <motion.div
                     role="button"
-                    tabIndex={0}
+                    tabIndex={isPurchasing ? -1 : 0}
                     aria-label="구매하기"
+                    aria-disabled={isPurchasing}
                     onTouchStart={() => console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchStart', { timestamp: new Date().toISOString() })}
                     onTouchEnd={(e) => {
                       console.log('📱 [MasterContentDetailPage] 구매버튼 onTouchEnd', { timestamp: new Date().toISOString() });
                       e.preventDefault(); // ⭐ iOS 더블탭 방지
-                      onPurchase();
+                      if (!isPurchasing) onPurchase();
                     }}
                     onClick={(e) => {
                       console.log('🖱️ [MasterContentDetailPage] 구매버튼 onClick 이벤트 발생', { timestamp: new Date().toISOString() });
                       e.preventDefault(); // ⭐ iOS 더블탭 방지
-                      onPurchase();
+                      if (!isPurchasing) onPurchase();
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (!isPurchasing && (e.key === 'Enter' || e.key === ' ')) {
                         e.preventDefault();
                         onPurchase();
                       }
                     }}
-                    className="bg-[#48b2af] h-[56px] relative shrink-0 w-full cursor-pointer overflow-hidden touch-manipulation pointer-events-auto select-none [-webkit-touch-callout:none] active:bg-[#36908f]" style={{ borderRadius: 20 }}
-                    whileTap={{ scale: 0.99 }}
+                    className={`h-[56px] relative shrink-0 w-full overflow-hidden touch-manipulation pointer-events-auto select-none [-webkit-touch-callout:none] ${isPurchasing ? 'bg-[#8dd4d2] cursor-not-allowed' : 'bg-[#48b2af] cursor-pointer active:bg-[#36908f]'}`} style={{ borderRadius: 20 }}
+                    whileTap={isPurchasing ? {} : { scale: 0.99 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
                     <div className="flex flex-row items-center justify-center size-full">
                       <div className="box-border content-stretch flex gap-[10px] h-[56px] items-center justify-center px-[12px] py-0 relative w-full">
                         <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                          <p className="font-medium leading-[25px] not-italic relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px] whitespace-pre select-none [-webkit-touch-callout:none]">지금 풀이 확인하기</p>
+                          {isPurchasing && (
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          )}
+                          <p className="font-medium leading-[25px] not-italic relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px] whitespace-pre select-none [-webkit-touch-callout:none]">{isPurchasing ? '처리 중...' : '지금 풀이 확인하기'}</p>
                         </div>
                       </div>
                     </div>
