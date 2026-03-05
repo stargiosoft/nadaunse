@@ -1401,8 +1401,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   <div style={{ borderRadius: '20px', border: '1px solid transparent', background: 'linear-gradient(to right, #F2FEFF, #FAF4FF) padding-box, linear-gradient(to right, rgba(85,202,198,0.8), rgba(120,199,255,0.7), rgba(185,155,220,0.6), rgba(120,199,255,0.7), rgba(85,202,198,0.8)) border-box', padding: '16px 24px' }}>
                     {isPurchaseGuideLoading ? (
                       <div className="flex flex-col gap-[8px]">
-                        <div className="h-[18px] rounded-[4px] animate-pulse" style={{ backgroundColor: '#ebebeb', width: '90%' }} />
-                        <div className="h-[18px] rounded-[4px] animate-pulse" style={{ backgroundColor: '#ebebeb', width: '80%' }} />
+                        <div className="h-[18px] rounded-[4px] animate-pulse" style={{ background: 'linear-gradient(90deg, #E7FEFF 0%, #F4E7FF 100%)', width: '90%' }} />
+                        <div className="h-[18px] rounded-[4px] animate-pulse" style={{ background: 'linear-gradient(90deg, #E7FEFF 0%, #F4E7FF 100%)', width: '80%' }} />
                       </div>
                     ) : (purchaseGuide || import.meta.env.DEV) ? (
                       <p style={{ fontSize: '14px', fontWeight: 400, lineHeight: '22px', letterSpacing: '-0.28px', color: '#2d2d2d', margin: 0, whiteSpace: 'pre-line' }}>
