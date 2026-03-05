@@ -95,6 +95,12 @@ function injectMetaTags(template, { title, description, keywords, canonicalUrl, 
     `<link rel="canonical" href="${escapeAttr(canonicalUrl)}" />`
   );
 
+  // robots 태그 교체 (기본 noindex → 프리렌더 페이지는 index,follow)
+  html = html.replace(
+    /<meta name="robots" content="[^"]*" \/>/,
+    `<meta name="robots" content="index,follow" />`
+  );
+
   // OG 태그 교체
   html = html.replace(
     /<meta property="og:type" content="[^"]*" \/>/,

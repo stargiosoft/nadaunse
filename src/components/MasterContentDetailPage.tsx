@@ -1295,7 +1295,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                             />
                             {content.view_count > 0 && (
                               <div className="flex items-center gap-[3px] shrink-0">
-                                <img src="/eye-solid.svg" width="14" height="14" alt="" aria-hidden="true" />
+                                <img src="/eye-solid.svg" width="14" height="14" alt="조회수" aria-hidden="true" />
                                 <span style={{ fontSize: '12px', fontWeight: 300, color: '#999999', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
                                   {content.view_count.toLocaleString()}
                                 </span>

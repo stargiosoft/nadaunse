@@ -126,7 +126,7 @@ export function ProductInfo({ content, isRead }: ProductInfoProps) {
                   />
                   {content.view_count > 0 && (
                     <div className="flex items-center gap-[3px] shrink-0">
-                      <img src="/eye-icon.svg" width="14" height="14" alt="" aria-hidden="true" />
+                      <img src="/eye-icon.svg" width="14" height="14" alt="조회수" aria-hidden="true" />
                       <span style={{ fontSize: '12px', fontWeight: 300, color: '#151515', fontFamily: 'Pretendard Variable', letterSpacing: '-0.24px' }}>
                         {content.view_count.toLocaleString()}
                       </span>
