@@ -100,16 +100,15 @@ export function RecommendedCarousel({ items, onMoreClick, onCardClick, style, hi
   return (
     <div
       ref={carouselRef}
+      className="scrollbar-hide"
       style={{
         display: 'flex',
         overflowX: 'auto',
         overflowY: 'hidden',
-        scrollbarWidth: 'none',
         paddingLeft: 20,
         paddingRight: 20,
         gap: 8,
-        WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-        touchAction: 'pan-x',
+        touchAction: 'pan-x pinch-zoom',
         cursor: 'grab',
         ...style,
       }}
