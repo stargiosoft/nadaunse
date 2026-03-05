@@ -429,6 +429,7 @@
 | `related_order_id` | uuid | - | - | 관련 주문 ID |
 | `related_content_id` | text | - | - | 관련 콘텐츠 ID |
 | `payment_amount` | integer | - | - | 실제 결제 금액 (KRW) |
+| `ip_fingerprint` | text | - | - | IP+UA SHA-256 해시 (미션 리워드 기기 중복 방지) |
 | `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
 
 **외래키**: `user_id` → `users(id)`

@@ -105,10 +105,10 @@
 **사용처**: Edge Function `process-referral`에서 호출. 부정 의심(`p_is_suspicious=true`) 시 기록만 하고 카운트/리워드 스킵
 
 ### 13. `process_mission_reward`
-**목적**: 미션 리워드(태그 5개 달성) 새싹 30개 원자적 지급 — 중복 방지 + 잔액 증가 + 거래 기록
-**파라미터**: `p_user_id` (uuid), `p_reward_amount` (integer, DEFAULT 30)
-**반환값**: `jsonb` - `{ success, new_balance, reward_amount }` 또는 `{ success: false, already_granted: true }` (SECURITY DEFINER)
-**사용처**: Edge Function `grant-mission-sprout`에서 호출. `sprout_transactions`에서 기존 `reward` 레코드 체크 후 중복 시 미지급
+**목적**: 미션 리워드(태그 5개 달성) 새싹 30개 원자적 지급 — user_id 중복 방지 + fingerprint 기기 중복 방지 + 잔액 증가 + 거래 기록
+**파라미터**: `p_user_id` (uuid), `p_reward_amount` (integer, DEFAULT 30), `p_ip_fingerprint` (text, DEFAULT NULL), `p_check_only` (boolean, DEFAULT FALSE)
+**반환값**: `jsonb` - `{ success, new_balance, reward_amount }` / `{ success: false, already_granted: true }` / `{ success: false, fingerprint_used: true }` / `{ success: true, eligible: true }` (check_only 모드) (SECURITY DEFINER)
+**사용처**: Edge Function `grant-mission-sprout`에서 호출. user_id 중복 + ip_fingerprint 기기 중복 이중 체크. `p_check_only=true`면 자격 확인만 수행(지급X)
 
 ---
 
