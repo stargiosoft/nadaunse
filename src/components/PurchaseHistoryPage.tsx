@@ -633,7 +633,7 @@ export default function PurchaseHistoryPage() {
             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
               <ArrowLeft onClick={handleBackClick} />
               <p style={{ fontSize: '18px', fontWeight: 600, lineHeight: '25.5px', letterSpacing: '-0.36px' }} className="basis-0 grow min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-black text-center text-nowrap">
-                운세 기록
+                이용 내역
               </p>
               <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
             </div>
@@ -657,7 +657,7 @@ export default function PurchaseHistoryPage() {
             letterSpacing: '-0.45px',
             color: activeTab === 'paid' ? '#151515' : '#999'
           }}>
-            심화 해석판
+            심화 운세
           </span>
         </button>
         <button
@@ -674,7 +674,7 @@ export default function PurchaseHistoryPage() {
             letterSpacing: '-0.45px',
             color: activeTab === 'free' ? '#151515' : '#999'
           }}>
-            무료 체험판
+            무료 운세
           </span>
         </button>
       </div>
@@ -729,133 +729,141 @@ export default function PurchaseHistoryPage() {
         {activeTab === 'paid' && !isPaidEmpty && (
           // Purchase List
           <motion.div
-            className="flex flex-col pt-[16px] pb-[60px]"
+            className="flex flex-col pt-[8px] pb-[60px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
             {Object.entries(groupedPurchases).map(([date, items], index, arr) => (
-              <div key={date}>
+              <div key={date} className="flex flex-col" style={{ paddingTop: index > 0 ? '10px' : 0 }}>
                 {/* Date Section */}
-                <div className="flex flex-col gap-[12px] items-start w-full">
+                <div className="flex flex-col items-start w-full">
                   {/* Date Header */}
-                  <div className="flex flex-col gap-[4px] items-center px-[20px] w-full">
+                  <div className="flex flex-col items-center px-[20px] w-full">
                     <div className="flex items-center justify-between w-full">
-                      <p style={{ fontSize: '17px', fontWeight: 700, lineHeight: '24px', letterSpacing: '-0.34px', color: 'black' }}>
+                      <p style={{ fontSize: '16px', fontWeight: 700, lineHeight: '28.5px', letterSpacing: '-0.32px', color: 'black' }}>
                         {date}
                       </p>
-                    </div>
-                    <div className="h-0 w-full relative">
-                      <div className="absolute inset-[-0.5px_0] border-t border-[#f3f3f3]" />
                     </div>
                   </div>
 
                   {/* Cards */}
-                  {items.map((item, cardIndex) => (
-                    <div key={item.id} className="flex flex-col items-start px-[20px] w-full" style={{ paddingTop: '10px' }}>
-                      <div
-                        className={`flex items-start w-full ${cardIndex < items.length - 1 ? 'border-b border-[#f8f8f8]' : ''}`}
-                        style={{ gap: '12px', paddingBottom: '10px' }}
-                      >
-                        {/* Thumbnail */}
-                        <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
-                          {item.master_contents?.thumbnail_url ? (
-                            <img
-                              alt={item.gname || item.master_contents.title}
-                              className="w-full h-full object-cover"
-                              src={item.master_contents.thumbnail_url}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                              <span className="text-[24px]">🔮</span>
+                  <div className="flex flex-col items-start w-full">
+                    {items.map((item, cardIndex) => (
+                      <div key={item.id} className="flex flex-col items-start px-[20px] w-full">
+                        <div
+                          className={`flex items-start w-full ${cardIndex < items.length - 1 ? 'border-b border-[#f8f8f8]' : ''}`}
+                          style={{ gap: '10px', paddingBottom: '11px' }}
+                        >
+                          {/* Thumbnail */}
+                          <div className="shrink-0 w-[73px] pt-[3px]">
+                            <div className="relative rounded-[12px] border border-[#f9f9f9] overflow-hidden" style={{ aspectRatio: '80/54' }}>
+                              {item.master_contents?.thumbnail_url ? (
+                                <img
+                                  alt={item.gname || item.master_contents.title}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  src={item.master_contents.thumbnail_url}
+                                />
+                              ) : (
+                                <div className="absolute inset-0 w-full h-full bg-gray-100 flex items-center justify-center">
+                                  <span style={{ fontSize: '24px' }}>🔮</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
 
-                        {/* Card Content */}
-                        <div className="flex flex-col gap-[4px] items-start flex-1 min-w-0">
-                          {/* Title */}
-                          {item.content_id ? (
-                            <button
-                              onClick={() => handleViewPurchase(item)}
-                              className="flex items-center p-[2px] rounded-[8px] text-left"
-                            >
-                              <span style={{
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                lineHeight: '22px',
-                                letterSpacing: '-0.42px',
-                                color: '#4da0ee',
-                                textDecoration: 'underline'
-                              }} className="line-clamp-2">
-                                {item.gname || item.master_contents?.title || '운세 구성'}
-                              </span>
-                            </button>
-                          ) : (
-                            <div className="flex items-center p-[2px]">
-                              <span style={{
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                lineHeight: '22px',
-                                letterSpacing: '-0.42px',
-                                color: '#333'
-                              }} className="line-clamp-2">
-                                {item.gname || '새싹 충전'}
-                              </span>
+                          {/* Card Content */}
+                          <div className="flex flex-col gap-[3px] items-start flex-1 min-w-0">
+                            {/* Title + Price */}
+                            <div className="flex flex-col items-start w-full">
+                              {item.content_id ? (
+                                <motion.button
+                                  onClick={() => handleViewPurchase(item)}
+                                  whileTap="tap"
+                                  className="flex items-center py-[2px] px-[2px] rounded-[8px] text-left"
+                                  initial={{ backgroundColor: 'transparent' }}
+                                  variants={{ tap: { backgroundColor: '#F0F8FF' } }}
+                                >
+                                  <motion.span
+                                    variants={{ tap: { color: '#3a8ad4' } }}
+                                    style={{
+                                      fontSize: '14px',
+                                      fontWeight: 400,
+                                      lineHeight: '22px',
+                                      letterSpacing: '-0.42px',
+                                      color: '#4DA0EE',
+                                      textDecoration: 'underline'
+                                    }}
+                                    className="line-clamp-2"
+                                  >
+                                    {item.gname || item.master_contents?.title || '운세 구성'}
+                                  </motion.span>
+                                </motion.button>
+                              ) : (
+                                <div className="flex items-center p-[2px]">
+                                  <span style={{
+                                    fontSize: '14px',
+                                    fontWeight: 400,
+                                    lineHeight: '22px',
+                                    letterSpacing: '-0.42px',
+                                    color: '#525252'
+                                  }} className="line-clamp-2">
+                                    {item.gname || '새싹 충전'}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Price */}
+                              <div className="flex items-center pl-[2px]" style={{ marginTop: '-1px' }}>
+                                <p style={{
+                                  fontSize: '13px',
+                                  fontWeight: 700,
+                                  lineHeight: '22px',
+                                  color: 'black'
+                                }}>
+                                  {item.pay_method === 'sprout'
+                                    ? `${item.paid_amount}새싹`
+                                    : `${item.paid_amount.toLocaleString()}원`}
+                                </p>
+                              </div>
                             </div>
-                          )}
 
-                          {/* Details */}
-                          <div className="flex flex-col gap-[4px] items-start w-full">
-                            {(item.full_name || item.saju_records?.full_name) && (
+                            {/* Details */}
+                            <div className="flex flex-col gap-[2px] items-start w-full" style={{ marginTop: '-2px' }}>
+                              {(item.full_name || item.saju_records?.full_name) && (
+                                <div className="flex items-center px-[2px] w-full">
+                                  <p style={{
+                                    fontSize: '12px',
+                                    fontWeight: 400,
+                                    lineHeight: '16px',
+                                    letterSpacing: '-0.24px',
+                                    color: '#999'
+                                  }} className="truncate">
+                                    풀이 대상 : {item.full_name || item.saju_records?.full_name} ({formatBirthDate(item.birth_date || item.saju_records?.birth_date)})
+                                  </p>
+                                </div>
+                              )}
                               <div className="flex items-center px-[2px] w-full">
                                 <p style={{
                                   fontSize: '12px',
                                   fontWeight: 400,
                                   lineHeight: '16px',
                                   letterSpacing: '-0.24px',
-                                  color: '#848484'
+                                  color: '#999'
                                 }} className="truncate">
-                                  풀이 대상 : {item.full_name || item.saju_records?.full_name} ({formatBirthDate(item.birth_date || item.saju_records?.birth_date)})
+                                  구매 일시 : {formatDateTime(item.created_at)}
                                 </p>
                               </div>
-                            )}
-                            <div className="flex items-center px-[2px] w-full">
-                              <p style={{
-                                fontSize: '12px',
-                                fontWeight: 400,
-                                lineHeight: '16px',
-                                letterSpacing: '-0.24px',
-                                color: '#848484'
-                              }} className="truncate">
-                                구매 일시 : {formatDateTime(item.created_at)}
-                              </p>
                             </div>
-                          </div>
-
-                          {/* Price */}
-                          <div className="flex items-center pl-[2px] w-full">
-                            <p style={{
-                              fontSize: '14px',
-                              fontWeight: 700,
-                              lineHeight: '20px',
-                              letterSpacing: '-0.42px',
-                              color: 'black'
-                            }}>
-                              {item.pay_method === 'sprout'
-                                ? `${item.paid_amount}새싹`
-                                : `${item.paid_amount.toLocaleString()}원`}
-                            </p>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
                 {/* Divider between date groups */}
                 {index < arr.length - 1 && (
-                  <div className="w-full h-[8px] bg-[#f9f9f9] mt-[12px] mb-[20px]" />
+                  <div className="w-full h-[4px] bg-[#f9f9f9] mt-[4px]" />
                 )}
               </div>
             ))}
@@ -911,103 +919,111 @@ export default function PurchaseHistoryPage() {
         {activeTab === 'free' && !freeLoading && !isFreeEmpty && (
           // Free Content List
           <motion.div
-            className="flex flex-col pt-[16px] pb-[60px]"
+            className="flex flex-col pt-[8px] pb-[60px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
           >
             {Object.entries(groupedFreeRecords).map(([date, items], index, arr) => (
-              <div key={date}>
+              <div key={date} className="flex flex-col" style={{ paddingTop: index > 0 ? '10px' : 0 }}>
                 {/* Date Section */}
-                <div className="flex flex-col gap-[12px] items-start w-full">
+                <div className="flex flex-col items-start w-full">
                   {/* Date Header */}
-                  <div className="flex flex-col gap-[4px] items-center px-[20px] w-full">
+                  <div className="flex flex-col items-center px-[20px] w-full">
                     <div className="flex items-center justify-between w-full">
-                      <p style={{ fontSize: '17px', fontWeight: 700, lineHeight: '24px', letterSpacing: '-0.34px', color: 'black' }}>
+                      <p style={{ fontSize: '16px', fontWeight: 700, lineHeight: '28.5px', letterSpacing: '-0.32px', color: 'black' }}>
                         {date}
                       </p>
-                    </div>
-                    <div className="h-0 w-full relative">
-                      <div className="absolute inset-[-0.5px_0] border-t border-[#f3f3f3]" />
                     </div>
                   </div>
 
                   {/* Cards */}
-                  {items.map((record, cardIndex) => (
-                    <div key={record.id} className="flex flex-col items-start px-[20px] w-full" style={{ paddingTop: '10px' }}>
-                      <div
-                        className={`flex items-start w-full ${cardIndex < items.length - 1 ? 'border-b border-[#f8f8f8]' : ''}`}
-                        style={{ gap: '12px', paddingBottom: '10px' }}
-                      >
-                        {/* Thumbnail */}
-                        <div className="h-[54px] w-[80px] shrink-0 rounded-[12px] border border-[#f9f9f9] overflow-hidden">
-                          {record.master_contents?.thumbnail_url ? (
-                            <img
-                              alt={record.content_title || record.master_contents.title}
-                              className="w-full h-full object-cover"
-                              src={record.master_contents.thumbnail_url}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                              <span className="text-[24px]">🔮</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Card Content */}
-                        <div className="flex flex-col gap-[4px] items-start flex-1 min-w-0">
-                          {/* Title (clickable link) */}
-                          <button
-                            onClick={() => handleViewFreeRecord(record)}
-                            className="flex items-center p-[2px] rounded-[8px] text-left"
-                          >
-                            <span style={{
-                              fontSize: '14px',
-                              fontWeight: 500,
-                              lineHeight: '22px',
-                              letterSpacing: '-0.42px',
-                              color: '#4da0ee',
-                              textDecoration: 'underline'
-                            }} className="line-clamp-2">
-                              {record.content_title || record.master_contents?.title || ''}
-                            </span>
-                          </button>
-
-                          {/* Details */}
-                          <div className="flex flex-col gap-[4px] items-start w-full">
-                            <div className="flex items-center px-[2px] w-full">
-                              <p style={{
-                                fontSize: '12px',
-                                fontWeight: 400,
-                                lineHeight: '16px',
-                                letterSpacing: '-0.24px',
-                                color: '#848484'
-                              }} className="truncate">
-                                풀이 대상 : {record.full_name} ({formatBirthDate(record.birth_date)})
-                              </p>
-                            </div>
-                            <div className="flex items-center px-[2px] w-full">
-                              <p style={{
-                                fontSize: '12px',
-                                fontWeight: 400,
-                                lineHeight: '16px',
-                                letterSpacing: '-0.24px',
-                                color: '#848484'
-                              }} className="truncate">
-                                이용 일시 : {formatDateTime(record.created_at)}
-                              </p>
+                  <div className="flex flex-col items-start w-full">
+                    {items.map((record, cardIndex) => (
+                      <div key={record.id} className="flex flex-col items-start px-[20px] w-full">
+                        <div
+                          className={`flex items-start w-full ${cardIndex < items.length - 1 ? 'border-b border-[#f8f8f8]' : ''}`}
+                          style={{ gap: '10px', paddingBottom: '11px' }}
+                        >
+                          {/* Thumbnail */}
+                          <div className="shrink-0 w-[73px] pt-[3px]">
+                            <div className="relative rounded-[12px] border border-[#f9f9f9] overflow-hidden" style={{ aspectRatio: '80/54' }}>
+                              {record.master_contents?.thumbnail_url ? (
+                                <img
+                                  alt={record.content_title || record.master_contents.title}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  src={record.master_contents.thumbnail_url}
+                                />
+                              ) : (
+                                <div className="absolute inset-0 w-full h-full bg-gray-100 flex items-center justify-center">
+                                  <span style={{ fontSize: '24px' }}>🔮</span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
+                          {/* Card Content */}
+                          <div className="flex flex-col gap-[3px] items-start flex-1 min-w-0">
+                            {/* Title */}
+                            <div className="flex flex-col items-start w-full">
+                              <motion.button
+                                onClick={() => handleViewFreeRecord(record)}
+                                whileTap="tap"
+                                className="flex items-center py-[2px] px-[2px] rounded-[8px] text-left"
+                                variants={{ tap: { backgroundColor: '#F0F8FF' } }}
+                              >
+                                <motion.span
+                                  variants={{ tap: { color: '#3a8ad4' } }}
+                                  style={{
+                                    fontSize: '14px',
+                                    fontWeight: 400,
+                                    lineHeight: '22px',
+                                    letterSpacing: '-0.42px',
+                                    color: '#4DA0EE',
+                                    textDecoration: 'underline'
+                                  }}
+                                  className="line-clamp-2"
+                                >
+                                  {record.content_title || record.master_contents?.title || ''}
+                                </motion.span>
+                              </motion.button>
+                            </div>
+
+                            {/* Details */}
+                            <div className="flex flex-col gap-[2px] items-start w-full">
+                              <div className="flex items-center px-[2px] w-full">
+                                <p style={{
+                                  fontSize: '12px',
+                                  fontWeight: 400,
+                                  lineHeight: '16px',
+                                  letterSpacing: '-0.24px',
+                                  color: '#999'
+                                }} className="truncate">
+                                  풀이 대상 : {record.full_name} ({formatBirthDate(record.birth_date)})
+                                </p>
+                              </div>
+                              <div className="flex items-center px-[2px] w-full">
+                                <p style={{
+                                  fontSize: '12px',
+                                  fontWeight: 400,
+                                  lineHeight: '16px',
+                                  letterSpacing: '-0.24px',
+                                  color: '#999'
+                                }} className="truncate">
+                                  이용 일시 : {formatDateTime(record.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
                 {/* Divider between date groups */}
                 {index < arr.length - 1 && (
-                  <div className="w-full h-[8px] bg-[#f9f9f9] mt-[12px] mb-[20px]" />
+                  <div className="w-full h-[4px] bg-[#f9f9f9] mt-[4px]" />
                 )}
               </div>
             ))}
