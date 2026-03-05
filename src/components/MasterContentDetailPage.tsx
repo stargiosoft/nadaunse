@@ -290,6 +290,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     const currentY = el.scrollTop;
     const diff = currentY - lastScrollYRef.current;
     if (Math.abs(diff) < 4) return; // 미세한 떨림 무시
+    // 최하단 근처(40px)에서는 바운스 스크롤로 인한 깜빡임 방지
+    const isNearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+    if (isNearBottom) return;
     setIsTabBarVisible(diff < 0 || currentY < 10);
     lastScrollYRef.current = currentY;
   }, []);
@@ -1553,7 +1556,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     </div>
 
                     <div className="bg-[#f7f8f9] box-border content-stretch flex flex-col gap-[10px] items-start pb-[28px] pt-[28px] px-[20px] relative shrink-0 w-full mb-[36px]">
-                    <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+                    <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                         <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
                           <p className="basis-0 grow min-h-px min-w-px relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a' }}>핵심만 콕 집어드려요</p>
@@ -1661,7 +1664,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   {/* Fortune Composition List - 운세 구성 */}
                   <div className="bg-[#f9f9f9] w-full" style={{ height: 4 }} />
                   <div className="bg-white box-border content-stretch flex flex-col gap-[12px] items-start px-[20px] relative shrink-0 w-full mb-[24px]" style={{ paddingTop: 23, paddingBottom: 0 }}>
-                    <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+                    <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                       <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                         <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
                           <p className="basis-0 grow min-h-px min-w-px relative shrink-0" style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a' }}>운세 구성</p>
@@ -1902,20 +1905,20 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 <div className="flex flex-col items-center justify-center size-full">
                   <div className="box-border content-stretch flex flex-col gap-[24px] items-center justify-center pb-[0px] pt-[50px] px-[20px] relative w-full pr-[20px] pl-[20px] mb-[36px]">
                     <div className="content-stretch flex flex-col gap-[4px] h-[298px] items-start justify-center relative shrink-0 w-[310px]">
-                      <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
+                      <div className="content-stretch flex flex-col gap-[15px] items-start relative shrink-0 w-full">
                         <div className="content-stretch flex flex-col gap-[30px] items-center justify-center relative shrink-0 w-full">
                           <div className="h-[152px] relative shrink-0 w-[146px]">
                             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                               <img alt="오리 캐릭터" className="absolute h-[125.71%] left-[-1.09%] max-w-none top-[-17.49%] w-[102.17%]" src={imgGeminiGeneratedImageEj66M7Ej66M7Ej661} loading="eager" />
                             </div>
                           </div>
-                          <p className="font-bold leading-[24px] min-w-full not-italic relative shrink-0 text-[19px] text-black text-center tracking-[-0.36px] w-[min-content]">우리 운세는 왜 다를까요?</p>
+                          <p className="font-bold leading-[24px] min-w-full not-italic relative shrink-0 text-[17px] text-black text-center tracking-[-0.34px] w-[min-content]">우리 운세는 왜 다를까요?</p>
                         </div>
                         <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full">
-                          <p className="font-semibold leading-[28.5px] not-italic relative shrink-0 text-[#41a09e] text-[16px] text-center text-nowrap tracking-[-0.32px] whitespace-pre">시중의 수많은 운세, 왜 조금씩 다를까 궁금하셨죠?</p>
+                          <p className="font-semibold leading-[28.5px] not-italic relative shrink-0 text-[#41a09e] text-[15px] text-center text-nowrap tracking-[-0.30px] whitespace-pre">시중의 수많은 운세, 왜 조금씩 다를까 궁금하셨죠?</p>
                           <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full">
-                            <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                              <div className="font-medium leading-[28.5px] not-italic relative shrink-0 text-[#151515] text-[16px] text-center tracking-[-0.32px] w-full">
+                            <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                              <div className="font-medium leading-[28.5px] not-italic relative shrink-0 text-[#151515] text-[15px] text-center tracking-[-0.30px] w-full">
                                 <p className="mb-0">{`저희는 '평균적인' 해석이 아닌 당신만을 위한`}</p>
                                 <p>가장 정확한 답을 찾아드립니다.</p>
                               </div>
@@ -1925,24 +1928,24 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       </div>
                     </div>
                   </div>
-                  <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
+                  <div className="bg-[#f9f9f9] h-[4px] shrink-0 w-full" />
                 </div>
               </motion.div>
 
               <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
-                <div className="bg-[#f9f9f9] h-[12px] shrink-0 w-full" />
+                <div className="bg-[#f9f9f9] h-[4px] shrink-0 w-full" />
               </motion.div>
 
               {/* 믿을 수 있는 이유 3가지 */}
-              <motion.div 
-                className="content-stretch flex flex-col gap-[32px] items-start relative shrink-0 w-full px-[20px]"
+              <motion.div
+                className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full px-[20px]" style={{ marginTop: '12px' }}
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}
               >
                 <div className="relative shrink-0 w-full">
                   <div className="flex flex-col items-center size-full">
                     <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                       <div className="basis-0 content-stretch flex gap-[10px] grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                        <p className="basis-0 font-bold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[18px] text-black tracking-[-0.36px]">믿을 수 있는 이유 3가지</p>
+                        <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[17px] text-black tracking-[-0.34px]">믿을 수 있는 이유 3가지</p>
                       </div>
                     </div>
                   </div>
@@ -1952,16 +1955,16 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   {/* 01 정통 명리 해석 */}
                   <div className="relative shrink-0 w-full">
                     <div className="size-full">
-                      <div className="content-stretch flex flex-col gap-[12px] items-start relative w-full">
-                        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] py-px relative rounded-[8px] shrink-0">
-                            <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#41a09e] text-[13px] text-nowrap whitespace-pre">01</p>
+                      <div className="content-stretch flex flex-col gap-[4px] items-start relative w-full">
+                        <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] relative rounded-[8px] shrink-0" style={{ paddingTop: '1px', paddingBottom: '0px' }}>
+                            <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#41a09e] text-[12px] text-nowrap whitespace-pre">01</p>
                           </div>
                           <div className="relative shrink-0 w-full">
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
                                 <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                                  <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[17px] tracking-[-0.34px]">정통 명리 해석</p>
+                                  <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">정통 명리 해석</p>
                                 </div>
                               </div>
                             </div>
@@ -1971,7 +1974,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           <div className="relative shrink-0 w-full">
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
-                                <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[16px] tracking-[-0.32px]">
+                                <p className="basis-0 font-normal grow leading-[25.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[15px] tracking-[-0.30px]">
                                   <span>{`명리학은 태어난 순간의 '팔자(八字)'를 수(數)와 오행(五行)으로 해석하는 학문입니다. 저희는 명리학의 대표적인 3대 고전, 『자평진전』·『적천수』·『궁통보감』에 기반한 정통 추론 방식을 현대 프로그램에 맞게 재해석했습니다. `}</span>
                                   <span className="font-semibold">복잡한 계산을 거치지만, 그만큼 깊이 있고 정통성 있는 분석을 제공해드립니다.</span>
                                 </p>
@@ -1988,16 +1991,16 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   {/* 02 AI 데��터 분석 */}
                   <div className="relative shrink-0 w-full">
                     <div className="size-full">
-                      <div className="content-stretch flex flex-col gap-[12px] items-start relative w-full">
-                        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] py-px relative rounded-[8px] shrink-0">
-                            <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#41a09e] text-[13px] text-nowrap whitespace-pre">02</p>
+                      <div className="content-stretch flex flex-col gap-[4px] items-start relative w-full">
+                        <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] relative rounded-[8px] shrink-0" style={{ paddingTop: '1px', paddingBottom: '0px' }}>
+                            <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#41a09e] text-[12px] text-nowrap whitespace-pre">02</p>
                           </div>
                           <div className="relative shrink-0 w-full">
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
                                 <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                                  <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[17px] tracking-[-0.34px]">AI 데이터 분석</p>
+                                  <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">AI 데이터 분석</p>
                                 </div>
                               </div>
                             </div>
@@ -2007,7 +2010,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           <div className="relative shrink-0 w-full">
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
-                                <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[16px] tracking-[-0.32px]">
+                                <p className="basis-0 font-normal grow leading-[25.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[15px] tracking-[-0.30px]">
                                   <span>
                                     사주의 핵심은 바로 용신(用神) 해석입니다.
                                     <br aria-hidden="true" />
@@ -2028,16 +2031,16 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   {/* 03 10만+ 사례 검증 */}
                   <div className="relative shrink-0 w-full">
                     <div className="size-full">
-                      <div className="content-stretch flex flex-col gap-[12px] items-start relative w-full">
-                        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
-                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] py-px relative rounded-[8px] shrink-0">
-                            <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#41a09e] text-[13px] text-nowrap whitespace-pre">03</p>
+                      <div className="content-stretch flex flex-col gap-[4px] items-start relative w-full">
+                        <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+                          <div className="bg-[#f0f8f8] box-border content-stretch flex gap-[10px] items-center justify-center px-[6px] relative rounded-[8px] shrink-0" style={{ paddingTop: '1px', paddingBottom: '0px' }}>
+                            <p className="font-medium leading-[22px] not-italic relative shrink-0 text-[#41a09e] text-[12px] text-nowrap whitespace-pre">03</p>
                           </div>
                           <div className="relative shrink-0 w-full">
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
                                 <div className="basis-0 content-stretch flex gap-[4px] grow items-center min-h-px min-w-px relative shrink-0">
-                                  <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[17px] tracking-[-0.34px]">10만+ 사례 검증</p>
+                                  <p className="basis-0 font-semibold grow leading-[24px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[16px] tracking-[-0.32px]">10만+ 사례 검증</p>
                                 </div>
                               </div>
                             </div>
@@ -2047,7 +2050,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                           <div className="relative shrink-0 w-full">
                             <div className="flex flex-row items-center justify-center size-full">
                               <div className="box-border content-stretch flex gap-[10px] items-center justify-center px-[2px] py-0 relative w-full">
-                                <p className="basis-0 font-normal grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[16px] tracking-[-0.32px]">
+                                <p className="basis-0 font-normal grow leading-[25.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[0px] text-[15px] tracking-[-0.30px]">
                                   <span>{`세종대왕부터 현대의 유명 인물까지, 전 세계 인물들의 사주를 분석해왔습니다. 총 경력 200년! 11분의 전문가와 함께 10만 건 이상의 실제 사례를 바탕으로 AI와 함께 완성도를 높였습니다. `}</span>
                                   <span className="font-semibold">단순한 이론이 아니라, 실제 검증된 데이터를 기반으로 신뢰할 수 있는 해석을 제공합니다.</span>
                                 </p>
@@ -2097,7 +2100,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                     <div className="content-stretch flex flex-col gap-[36px] items-center relative shrink-0 w-full">
                       <div className="h-[293px] relative shrink-0 w-full overflow-hidden">
                         <div className="absolute content-stretch flex flex-col inset-0 items-start">
-                          <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full">
+                          <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
                             <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
                               <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
                                 <p className="basis-0 font-semibold grow leading-[28.5px] min-h-px min-w-px not-italic relative shrink-0 text-[#151515] text-[17px] tracking-[-0.32px]">
