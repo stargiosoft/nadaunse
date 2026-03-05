@@ -6,6 +6,7 @@ import { getAuthUser } from '../lib/supabase';
 import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
 import SEO from '../components/SEO';
+import { trackConsultLoginClick, trackConsultSubmit } from '../utils/analytics';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -115,6 +116,7 @@ export function TaroConsultPage() {
         setShowLoginSheet(true);
         return;
       }
+      trackConsultSubmit('taro', !!user);
       navigate('/taro-consult/loading');
     } finally {
       setSubmitting(false);
@@ -200,6 +202,7 @@ export function TaroConsultPage() {
         isOpen={showLoginSheet}
         onClose={() => setShowLoginSheet(false)}
         redirectPath="/taro-consult"
+        onLoginClick={() => trackConsultLoginClick('taro_consult')}
         icon="/key-icon.svg"
         title={
           <>

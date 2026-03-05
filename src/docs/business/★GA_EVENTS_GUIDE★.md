@@ -2,7 +2,7 @@
 
 > **이 문서는 나다운세 서비스의 GA4 이벤트 트래킹 구현을 정리한 문서입니다.**
 > **마케팅 퍼널 분석 및 사용자 행동 추적에 활용됩니다.**
-> **최종 업데이트**: 2026-02-02
+> **최종 업데이트**: 2026-03-05
 
 ---
 
@@ -133,6 +133,16 @@ if (params.value <= 0) {
 | `/report-weekly-memo/{id}` | 보고서 나 응원하기 \| 나다운세 |
 | `/report-completion/{id}` | 보고서 완료/쿠폰 \| 나다운세 |
 | `/report-weekly/{id}/cheer-edit` | 나 응원하기 수정 \| 나다운세 |
+| `/best-fortune` | BEST 운세 전체보기 \| 나다운세 |
+| `/new-free` | NEW 무료 운세 전체보기 \| 나다운세 |
+| `/search` | 검색 \| 나다운세 |
+| `/saju-consult` | 사주 상담 \| 나다운세 |
+| `/saju-consult/loading` | 사주 상담 생성 중 \| 나다운세 |
+| `/saju-consult/result` | 사주 상담 결과 \| 나다운세 |
+| `/saju-consult/result/recommended` | 추천 운세 전체보기 \| 나다운세 |
+| `/taro-consult` | 타로 상담 \| 나다운세 |
+| `/taro-consult/loading` | 타로 상담 생성 중 \| 나다운세 |
+| `/taro-consult/result` | 타로 상담 결과 \| 나다운세 |
 
 ### 콘텐츠 상세 페이지: 이중 page_view 트래킹
 
@@ -230,6 +240,20 @@ if (params.value <= 0) {
 | 36 | `share_kakao` | `trackShareKakao` | 카카오톡 공유 클릭 |
 
 > 모두 `content_id`, `is_logged_in` 파라미터 포함 → GA4에서 로그인/로그아웃 분기 분석 가능
+
+### 상담 이벤트
+
+| # | 이벤트명 | 함수명 | 설명 |
+|---|---------|--------|------|
+| 37 | `consult_login_click` | `trackConsultLoginClick` | 상담 로그인 유도 바텀시트에서 "로그인 하기" 클릭 |
+| 38 | `consult_start_click` | `trackConsultStartClick` | 홈에서 상담 시작 버튼 클릭 |
+| 39 | `consult_submit` | `trackConsultSubmit` | 상담 질문 제출 (로딩 진입 직전) |
+| 40 | `consult_recommendation_click` | `trackConsultRecommendationClick` | 상담 결과에서 추천 콘텐츠 클릭 |
+
+> - `consult_login_click`: `source` 파라미터 (`saju_consult` / `taro_consult` / `home`)
+> - `consult_start_click`: `consult_type` 파라미터 (`saju` / `taro`)
+> - `consult_submit`: `consult_type` + `is_logged_in` → 로그인 여부별 전환율 분석
+> - `consult_recommendation_click`: `consult_type` + `content_id` → 상담→유료 전환 추적
 
 ---
 
@@ -357,6 +381,76 @@ trackViewItem({
 
 ---
 
+### consult_login_click (상담 로그인 유도 클릭) - 2026-03-05 추가
+
+비회원이 상담 2회째 시도 시 로그인 바텀시트에서 "로그인 하기" 클릭
+
+```typescript
+trackConsultLoginClick('saju_consult');
+
+// GA4 전송 파라미터
+{
+  source: 'saju_consult'  // 'saju_consult' | 'taro_consult' | 'home'
+}
+```
+
+**호출 위치**: `SajuConsultPage.tsx`, `TaroConsultPage.tsx`, `HomeScreenNew.tsx` (LoginBottomSheet의 `onLoginClick` prop)
+
+---
+
+### consult_start_click (상담 시작 클릭) - 2026-03-05 추가
+
+홈 화면에서 "상담 시작" 버튼 클릭 시 발생 (결과 보기는 제외)
+
+```typescript
+trackConsultStartClick('saju');
+
+// GA4 전송 파라미터
+{
+  consult_type: 'saju'  // 'saju' | 'taro'
+}
+```
+
+**호출 위치**: `HomeScreenNew.tsx` (상담 카드 버튼 onClick)
+
+---
+
+### consult_submit (상담 질문 제출) - 2026-03-05 추가
+
+상담 페이지에서 질문 입력 후 로딩 페이지 진입 직전 발생
+
+```typescript
+trackConsultSubmit('saju', true);
+
+// GA4 전송 파라미터
+{
+  consult_type: 'saju',  // 'saju' | 'taro'
+  is_logged_in: true
+}
+```
+
+**호출 위치**: `SajuConsultPage.tsx` (handleSubmit, onConsultComplete), `TaroConsultPage.tsx` (handleSubmit)
+
+---
+
+### consult_recommendation_click (추천 콘텐츠 클릭) - 2026-03-05 추가
+
+상담 결과 페이지에서 추천 캐러셀의 유료 콘텐츠 클릭 시 발생
+
+```typescript
+trackConsultRecommendationClick('saju', 'content-123');
+
+// GA4 전송 파라미터
+{
+  consult_type: 'saju',  // 'saju' | 'taro'
+  content_id: 'content-123'
+}
+```
+
+**호출 위치**: `SajuConsultResultPage.tsx`, `TaroConsultResultPage.tsx` (RecommendedCarousel onCardClick)
+
+---
+
 ### 기타 이벤트 (간략)
 
 | 이벤트 | 주요 파라미터 | 호출 위치 |
@@ -389,6 +483,11 @@ trackViewItem({
 | `UnifiedResultPage.tsx` | `paid_result_view`, `paid_result_complete`, `free_result_view`, `free_result_complete` |
 | `ResultCompletePage.tsx` | `revisit_coupon_issued` |
 | `ShareRewardModal.tsx` | `share_modal_open`, `share_link_copy`, `share_kakao` |
+| `HomeScreenNew.tsx` | `consult_start_click`, `consult_login_click` |
+| `SajuConsultPage.tsx` | `consult_submit`, `consult_login_click` |
+| `TaroConsultPage.tsx` | `consult_submit`, `consult_login_click` |
+| `SajuConsultResultPage.tsx` | `consult_recommendation_click` |
+| `TaroConsultResultPage.tsx` | `consult_recommendation_click` |
 
 ---
 
@@ -473,6 +572,8 @@ GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확�
 | 2026-02-05 | 주간 보고서 페이지 타이틀 추가 (보고서 리스트, 보고서 시작, 타로 셔플/결과, 마음처방, 나 응원하기, 완료/쿠폰) |
 | 2026-02-12 | 누락 페이지 타이틀 일괄 등록 (태그 확인 중, 태그 추출 중, 통계 대시보드) - "나다운세"로만 찍히던 이슈 해결 |
 | 2026-03-04 | 공유 리워드 이벤트 추가 (34-36번: `share_modal_open`, `share_link_copy`, `share_kakao`) |
+| 2026-03-05 | 홈 고도화 페이지 타이틀 추가 (BEST 운세, NEW 무료 운세, 검색, 사주/타로 상담, 상담 로딩/결과, 추천 운세 전체보기) |
+| 2026-03-05 | 상담 이벤트 추가 (37-40번: `consult_login_click`, `consult_start_click`, `consult_submit`, `consult_recommendation_click`) |
 
 ---
 

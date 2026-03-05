@@ -25,6 +25,7 @@ interface LoginBottomSheetProps {
   title?: ReactNode;
   description?: ReactNode;
   icon?: string;
+  onLoginClick?: () => void;
 }
 
 export default function LoginBottomSheet({
@@ -35,9 +36,11 @@ export default function LoginBottomSheet({
   title,
   description,
   icon,
+  onLoginClick,
 }: LoginBottomSheetProps) {
   // 로그인 후 돌아올 경로 저장 + 로그인 페이지 이동
   const handleNavigateToLogin = () => {
+    onLoginClick?.();
     const redirect = redirectPath || (contentId ? `/free/content/${contentId}` : '/');
     localStorage.setItem('redirectAfterLogin', redirect);
     window.location.href = '/login/new';

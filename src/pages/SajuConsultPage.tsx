@@ -8,6 +8,7 @@ import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
 import FreeBirthInfoInput from '../components/FreeBirthInfoInput';
 import SEO from '../components/SEO';
+import { trackConsultLoginClick, trackConsultSubmit } from '../utils/analytics';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -165,6 +166,7 @@ export function SajuConsultPage() {
           return;
         }
 
+        trackConsultSubmit('saju', true);
         navigate('/saju-consult/loading');
       } else {
         // 비로그인 유저
@@ -176,6 +178,7 @@ export function SajuConsultPage() {
         // 캐시된 사주 정보가 있으면 바로 로딩, 없으면 birth-info 단계
         const cachedSaju = localStorage.getItem('cached_saju_info');
         if (cachedSaju) {
+          trackConsultSubmit('saju', false);
           navigate('/saju-consult/loading');
         } else {
           setStep('birth-info');
@@ -194,6 +197,7 @@ export function SajuConsultPage() {
         onBack={() => setStep('question')}
         mode="consult"
         onConsultComplete={() => {
+          trackConsultSubmit('saju', false);
           navigate('/saju-consult/loading');
         }}
       />
@@ -507,6 +511,7 @@ export function SajuConsultPage() {
         isOpen={showLoginSheet}
         onClose={() => setShowLoginSheet(false)}
         redirectPath="/saju-consult"
+        onLoginClick={() => trackConsultLoginClick('saju_consult')}
         icon="/key-icon.svg"
         title={
           <>

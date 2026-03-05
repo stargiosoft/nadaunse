@@ -367,6 +367,17 @@ function GAInit() {
         '/manse': '만세력',
         '/blog': '운세 콘텐츠',
         '/share-reward-info': '공유 새싹 지급 안내',
+        // 홈 고도화 라우트
+        '/best-fortune': 'BEST 운세 전체보기',
+        '/new-free': 'NEW 무료 운세 전체보기',
+        '/search': '검색',
+        '/saju-consult': '사주 상담',
+        '/saju-consult/loading': '사주 상담 생성 중',
+        '/saju-consult/result': '사주 상담 결과',
+        '/saju-consult/result/recommended': '추천 운세 전체보기',
+        '/taro-consult': '타로 상담',
+        '/taro-consult/loading': '타로 상담 생성 중',
+        '/taro-consult/result': '타로 상담 결과',
       };
 
       // 정적 라우트 확인
