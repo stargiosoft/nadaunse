@@ -19,10 +19,12 @@ export function LottieCrystal({ size = 160 }: { size?: number }) {
       if (!svg) return;
       svg.style.overflow = 'visible';
       svg.querySelectorAll('filter').forEach((f) => {
-        f.setAttribute('x', '-100%');
-        f.setAttribute('y', '-100%');
-        f.setAttribute('width', '400%');
-        f.setAttribute('height', '400%');
+        if (f.getAttribute('x') !== '-100%') {
+          f.setAttribute('x', '-100%');
+          f.setAttribute('y', '-100%');
+          f.setAttribute('width', '400%');
+          f.setAttribute('height', '400%');
+        }
       });
     };
 
@@ -30,12 +32,25 @@ export function LottieCrystal({ size = 160 }: { size?: number }) {
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(fixFilters);
     });
-    // Also run on a small delay as fallback
     const timer = setTimeout(fixFilters, 200);
+
+    // MutationObserver: Lottie re-renders SVG DOM on each frame,
+    // which can reset filter regions. Watch and re-apply the fix.
+    const observer = new MutationObserver(fixFilters);
+    const startObserving = () => {
+      const svg = el.querySelector('svg');
+      if (svg) {
+        observer.observe(svg, { childList: true, subtree: true, attributes: true, attributeFilter: ['x', 'y', 'width', 'height'] });
+      }
+    };
+    startObserving();
+    const observerTimer = setTimeout(startObserving, 300);
 
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
+      clearTimeout(observerTimer);
+      observer.disconnect();
     };
   }, []);
 

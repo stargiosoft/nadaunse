@@ -1,4 +1,4 @@
-// Supabase Edge Function: 사주 상담 답변 생성 (GPT-4.1-mini)
+// Supabase Edge Function: 사주 상담 답변 생성 (GPT-4.1-nano)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
@@ -365,7 +365,7 @@ ${fullQuestionerInfo}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4.1-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 3000

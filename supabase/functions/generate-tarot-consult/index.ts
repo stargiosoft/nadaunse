@@ -1,4 +1,4 @@
-// Supabase Edge Function: 타로 상담 답변 생성 (GPT-4.1-mini)
+// Supabase Edge Function: 타로 상담 답변 생성 (GPT-4.1-nano)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
@@ -262,7 +262,7 @@ ${question.trim()}
 - 추가 질문이나 다음 상담 언급 금지
 - 마크다운 서식 사용 금지`
 
-    console.log('🤖 [Edge Function] OpenAI API 호출 시작 (gpt-4.1-mini)')
+    console.log('🤖 [Edge Function] OpenAI API 호출 시작 (gpt-4.1-nano)')
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -271,7 +271,7 @@ ${question.trim()}
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4.1-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 2000
