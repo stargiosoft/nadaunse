@@ -958,7 +958,7 @@ export default function ProfilePage({
                     className="content-stretch flex gap-[12px] items-center w-full pb-[8px]"
                   >
                     {/* Profile Image with Shimmer Skeleton (YouTube Style) */}
-                    <div className="profile-group relative rounded-[16px] shrink-0 size-[72px] overflow-hidden bg-[#e5e5e5]">
+                    <div className="profile-group relative shrink-0 overflow-hidden bg-[#e5e5e5]" style={{ width: '64px', height: '64px', borderRadius: '16px' }}>
                       <style>{`
                         @keyframes shimmer-diagonal {
                           0% { transform: translateX(-150%) skewX(-20deg); }
@@ -1135,14 +1135,14 @@ export default function ProfilePage({
                                 className="flex items-center justify-center rounded-[999px] shrink-0"
                                 style={{ backgroundColor: '#f0f8f8', padding: '3px 7px' }}
                               >
-                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', whiteSpace: 'nowrap' }}>
+                                <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11.5px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', whiteSpace: 'nowrap' }}>
                                   # {tag.tag_name}
                                 </p>
                               </div>
                             ))}
                             {/* +N 텍스트 - 표시된 개수보다 많으면 표시 */}
                             {totalTagCount > visibleTagCount && (
-                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '12px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '4px 0 3px 0', whiteSpace: 'nowrap' }}>
+                              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '11.5px', lineHeight: '16px', letterSpacing: '-0.02em', color: '#368683', padding: '4px 0 3px 0', whiteSpace: 'nowrap' }}>
                                 +{totalTagCount - visibleTagCount}
                               </p>
                             )}
