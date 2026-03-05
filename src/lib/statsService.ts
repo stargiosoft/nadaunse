@@ -1369,16 +1369,15 @@ export async function fetchPurchaseFunnelStats(
 
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ga-stats?${gaParams.toString()}`;
 
-    // orders 쿼리 빌더
+    // 새싹 충전 쿼리 빌더 (completedOrders = 새싹 충전 건수)
     const adminFilter = ADMIN_IDS.join(',');
-    let ordersQuery = supabase
-      .from('orders')
+    let chargeQuery = supabase
+      .from('sprout_transactions')
       .select('*', { count: 'exact', head: true })
-      .eq('pstatus', 'completed')
-      .gt('paid_amount', 0)
+      .eq('transaction_type', 'charge')
       .not('user_id', 'in', `(${adminFilter})`);
-    if (dateRange?.startDate) ordersQuery = ordersQuery.gte('created_at', dateRange.startDate);
-    if (dateRange?.endDate) ordersQuery = ordersQuery.lte('created_at', dateRange.endDate);
+    if (dateRange?.startDate) chargeQuery = chargeQuery.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) chargeQuery = chargeQuery.lte('created_at', dateRange.endDate);
 
     // 0원 쿠폰 주문 쿼리 빌더
     let freeCouponQuery = supabase
@@ -1390,8 +1389,8 @@ export async function fetchPurchaseFunnelStats(
     if (dateRange?.startDate) freeCouponQuery = freeCouponQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) freeCouponQuery = freeCouponQuery.lte('created_at', dateRange.endDate);
 
-    // GA + orders + freeCoupon 병렬 호출
-    const [gaResponse, ordersResult, freeCouponResult] = await Promise.all([
+    // GA + sprout_transactions + freeCoupon 병렬 호출
+    const [gaResponse, chargeResult, freeCouponResult] = await Promise.all([
       fetch(functionUrl, {
         method: 'GET',
         headers: {
@@ -1399,7 +1398,7 @@ export async function fetchPurchaseFunnelStats(
           'Content-Type': 'application/json',
         },
       }),
-      ordersQuery,
+      chargeQuery,
       freeCouponQuery,
     ]);
 
@@ -1416,10 +1415,10 @@ export async function fetchPurchaseFunnelStats(
       console.error('구매 퍼널 GA 조회 실패:', gaResponse.status);
     }
 
-    // orders 결과
-    const completedOrders = ordersResult.count || 0;
-    if (ordersResult.error) {
-      console.error('구매 퍼널 orders 조회 실패:', ordersResult.error);
+    // 새싹 충전 결과
+    const completedOrders = chargeResult.count || 0;
+    if (chargeResult.error) {
+      console.error('구매 퍼널 새싹 충전 조회 실패:', chargeResult.error);
     }
 
     // 0원 쿠폰 주문 결과
@@ -2187,19 +2186,18 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .select('id, provider')
       .not('id', 'in', `(${adminFilter})`),
 
-    // 4. 완료된 주문 데이터 (성별 유료 전환율용, 0원 쿠폰 결제 제외)
+    // 4. 새싹 충전 데이터 (성별 유료 전환율용 - 충전한 유저 = 구매 고객)
     supabase
-      .from('orders')
+      .from('sprout_transactions')
       .select('user_id')
-      .eq('pstatus', 'completed')
-      .gt('paid_amount', 0)
+      .eq('transaction_type', 'charge')
       .not('user_id', 'in', `(${adminFilter})`),
   ]);
 
   if (sajuOwnResult.error) throw new Error('본인 사주 데이터 조회에 실패했습니다.');
   if (sajuAllResult.error) throw new Error('전체 사주 데이터 조회에 실패했습니다.');
   if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
-  if (ordersResult.error) throw new Error('주문 데이터 조회에 실패했습니다.');
+  if (ordersResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
 
   const sajuOwn = sajuOwnResult.data || [];
   const sajuAll = sajuAllResult.data || [];
