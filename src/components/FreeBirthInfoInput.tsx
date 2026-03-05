@@ -73,15 +73,30 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
           .select('*')
           .eq('user_id', user.id)
           .eq('is_primary', true)
-          .single();
-        
+          .maybeSingle();
+
         if (!error && primarySaju) {
           console.log('✅ [FreeBirthInfoInput] DB에서 대표 사주 발견:', primarySaju);
-          
+
+          // consult 모드: 대표 사주가 있으면 폼 스킵 → 바로 완료 처리
+          if (mode === 'consult' && onConsultComplete) {
+            const birthDateObj = new Date(primarySaju.birth_date);
+            const yyyy = birthDateObj.getFullYear();
+            const mm = String(birthDateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(birthDateObj.getDate()).padStart(2, '0');
+            onConsultComplete({
+              name: primarySaju.full_name || '',
+              gender: primarySaju.gender || 'female',
+              birthDate: `${yyyy}-${mm}-${dd}`,
+              birthTime: primarySaju.birth_time || '',
+            });
+            return;
+          }
+
           // 폼 필드 자동 채우기
           setName(primarySaju.full_name || '');
           setGender(primarySaju.gender || 'female');
-          
+
           // birth_date는 ISO 형식 → YYYY-MM-DD 변환
           if (primarySaju.birth_date) {
             const birthDateObj = new Date(primarySaju.birth_date);
@@ -90,7 +105,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
             const dd = String(birthDateObj.getDate()).padStart(2, '0');
             setBirthDate(`${yyyy}-${mm}-${dd}`);
           }
-          
+
           // birth_time은 "HH:MM" 형식
           if (primarySaju.birth_time) {
             if (primarySaju.birth_time === '시간 미상') {
@@ -102,7 +117,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
               setUnknownTime(false);
             }
           }
-          
+
           console.log('✅ [FreeBirthInfoInput] DB 사주 데이터 자동 입력 완료');
           console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           return; // DB에서 찾았으면 캐시 확인 스킵
