@@ -479,10 +479,13 @@ export function TaroConsultResultPage() {
             {/* Scrollable result content */}
             <div
               className="taro-result-scroll"
-              style={{ flex: 1, overflowY: phase === 'transition' ? 'hidden' : 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}
+              style={{
+                flex: 1,
+                overflowY: phase === 'transition' ? 'hidden' : 'auto',
+                WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+              }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 40 }}>
-               <div className="flex flex-col" style={{ gap: 24 }}>
+              <div className="flex flex-col" style={{ gap: 24, paddingBottom: 40 }}>
 
                 {/* ── 카드가 전하는 메시지 ── */}
                 <div className="w-full shrink-0">
@@ -572,7 +575,6 @@ export function TaroConsultResultPage() {
                   <div style={{ height: 130 }} />
                 </div>
 
-               </div>
               </div>
             </div>
           </>
