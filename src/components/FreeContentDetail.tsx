@@ -109,8 +109,8 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     const currentState = window.history.state;
     const currentUrl = window.location.pathname + window.location.search + window.location.hash;
 
-    // 1) 현재 엔트리를 홈(/)으로 교체 (동일 state 유지)
-    window.history.replaceState(currentState, '', '/');
+    // 1) 현재 엔트리를 무료 운세 리스트(/new-free)로 교체 (동일 state 유지)
+    window.history.replaceState(currentState, '', '/new-free');
 
     // 2) 실제 콘텐츠 상세 페이지를 다시 push (동일 state 유지)
     window.history.pushState(currentState, '', currentUrl);

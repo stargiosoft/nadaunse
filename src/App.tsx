@@ -566,7 +566,7 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={id}
-        onBack={() => navigate('/', { replace: true })}
+        onBack={() => navigate('/new-free', { replace: true })}
         onHome={() => navigate('/', { replace: true })}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
@@ -725,7 +725,7 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={product.id.toString()}
-        onBack={() => navigate('/', { replace: true })}
+        onBack={() => navigate('/new-free', { replace: true })}
         onHome={() => navigate('/', { replace: true })}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
@@ -2745,7 +2745,7 @@ function MasterContentDetailPageWrapper() {
 function FreeContentDetailWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const goBack = useGoBack('/'); // 🛡️ iOS 안전한 뒤로가기
+  const goBack = useGoBack('/new-free'); // 🛡️ iOS 안전한 뒤로가기
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -2754,7 +2754,7 @@ function FreeContentDetailWrapper() {
   return (
     <FreeContentDetail
       contentId={id}
-      onBack={() => navigate('/', { replace: true })}
+      onBack={() => navigate('/new-free', { replace: true })}
       onHome={() => navigate('/', { replace: true })}
       onContentClick={(contentId) => {
         console.log('🔥 App.tsx navigate 시도 (replace):', `/master/content/detail/${contentId}`);
