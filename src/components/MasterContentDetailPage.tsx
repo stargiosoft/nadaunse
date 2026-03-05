@@ -953,8 +953,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     console.log('🔐 [MasterContentDetailPage] 로그인 체크 완료:', { isLoggedIn: !!user });
 
     if (!user) {
-      const redirectUrl = `/master/content/detail/${contentId}`;
-      console.log('🔐 로그아웃 상태 → 리다이렉트 URL 저장:', redirectUrl);
+      const redirectUrl = `/sprout-charging/${contentId}`;
+      console.log('🔐 로그아웃 상태 → 리다이렉트 URL 저장 (새싹 충전소):', redirectUrl);
       localStorage.setItem('redirectAfterLogin', redirectUrl);
       navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${contentId}` } });
       return;
