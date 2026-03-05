@@ -255,28 +255,59 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     throw new Error('유료 콘텐츠 이용 횟수 조회에 실패했습니다.');
   }
 
-  // 5. 총 매출 조회 (새싹 충전 기준 - sprout_transactions에서 charge 건의 payment_amount 합계)
-  let revenueQuery = supabase
+  // 5. 총 매출 조회 (원화 결제 전체: 새싹 충전 + 기존 원화 직접 결제)
+  // 5-1. 새싹 충전 매출 (sprout_transactions charge)
+  let chargeRevenueQuery = supabase
     .from('sprout_transactions')
     .select('payment_amount, user_id')
     .eq('transaction_type', 'charge')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
-    revenueQuery = revenueQuery.gte('created_at', dateRange.startDate);
+    chargeRevenueQuery = chargeRevenueQuery.gte('created_at', dateRange.startDate);
   }
   if (dateRange?.endDate) {
-    revenueQuery = revenueQuery.lt('created_at', dateRange.endDate);
+    chargeRevenueQuery = chargeRevenueQuery.lt('created_at', dateRange.endDate);
   }
 
-  const { data: revenueData, error: revenueError } = await revenueQuery;
+  // 5-2. 기존 원화 직접 결제 매출 (orders paid_amount > 0)
+  let orderRevenueQuery = supabase
+    .from('orders')
+    .select('paid_amount, user_id')
+    .eq('pstatus', 'completed')
+    .gt('paid_amount', 0)
+    .not('user_id', 'in', `(${adminFilter})`);
 
-  if (revenueError) {
-    console.error('매출 조회 오류:', revenueError);
-    throw new Error('매출 조회에 실패했습니다.');
+  if (dateRange?.startDate) {
+    orderRevenueQuery = orderRevenueQuery.gte('created_at', dateRange.startDate);
+  }
+  if (dateRange?.endDate) {
+    orderRevenueQuery = orderRevenueQuery.lt('created_at', dateRange.endDate);
   }
 
-  const totalRevenue = revenueData?.reduce((sum, tx) => sum + (tx.payment_amount || 0), 0) || 0;
+  const [chargeRevenueResult, orderRevenueResult] = await Promise.all([
+    chargeRevenueQuery,
+    orderRevenueQuery,
+  ]);
+
+  if (chargeRevenueResult.error) {
+    console.error('새싹 충전 매출 조회 오류:', chargeRevenueResult.error);
+    throw new Error('새싹 충전 매출 조회에 실패했습니다.');
+  }
+  if (orderRevenueResult.error) {
+    console.error('주문 매출 조회 오류:', orderRevenueResult.error);
+    throw new Error('주문 매출 조회에 실패했습니다.');
+  }
+
+  const chargeRevenue = chargeRevenueResult.data?.reduce((sum, tx) => sum + (tx.payment_amount || 0), 0) || 0;
+  const orderRevenue = orderRevenueResult.data?.reduce((sum, o) => sum + (o.paid_amount || 0), 0) || 0;
+  const totalRevenue = chargeRevenue + orderRevenue;
+
+  // 구매 고객 = 새싹 충전 또는 원화 직접 결제한 유니크 유저
+  const revenueData = [
+    ...(chargeRevenueResult.data || []).map(d => ({ user_id: d.user_id })),
+    ...(orderRevenueResult.data || []).map(d => ({ user_id: d.user_id })),
+  ];
 
   // 6. 태그 통계 조회 (source_type별, neutral 제외)
   // 콘텐츠 건 기준으로 계산 (태그 3개 = 1건, 1개라도 확인하면 확인된 건)
@@ -813,10 +844,15 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const paidContentUsage = paidContentList.length;
     const uniquePaidUsers = new Set(paidContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
 
-    // 새싹 충전 (매출/구매자 추세)
+    // 매출 (새싹 충전 + 기존 원화 직접 결제)
     const chargeList = chargeData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
-    const revenue = chargeList.reduce((sum, d) => sum + (d.payment_amount || 0), 0);
-    const _buyerIds = [...new Set(chargeList.map(d => d.user_id))];
+    const chargeRevenue = chargeList.reduce((sum, d) => sum + (d.payment_amount || 0), 0);
+    const orderRevenue = paidContentList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
+    const revenue = chargeRevenue + orderRevenue;
+    const _buyerIds = [...new Set([
+      ...chargeList.map(d => d.user_id),
+      ...paidContentList.map(d => d.user_id),
+    ])];
     const uniqueBuyers = _buyerIds.length;
 
     // 콘텐츠 이용 고유 유저 (totalCustomers에 포함된 유저만)
@@ -1369,7 +1405,7 @@ export async function fetchPurchaseFunnelStats(
 
     const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ga-stats?${gaParams.toString()}`;
 
-    // 새싹 충전 쿼리 빌더 (completedOrders = 새싹 충전 건수)
+    // 원화 결제 건수 쿼리 (새싹 충전 + 기존 원화 직접 결제)
     const adminFilter = ADMIN_IDS.join(',');
     let chargeQuery = supabase
       .from('sprout_transactions')
@@ -1378,6 +1414,15 @@ export async function fetchPurchaseFunnelStats(
       .not('user_id', 'in', `(${adminFilter})`);
     if (dateRange?.startDate) chargeQuery = chargeQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) chargeQuery = chargeQuery.lte('created_at', dateRange.endDate);
+
+    let paidOrderQuery = supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
+      .not('user_id', 'in', `(${adminFilter})`);
+    if (dateRange?.startDate) paidOrderQuery = paidOrderQuery.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) paidOrderQuery = paidOrderQuery.lte('created_at', dateRange.endDate);
 
     // 0원 쿠폰 주문 쿼리 빌더
     let freeCouponQuery = supabase
@@ -1389,8 +1434,8 @@ export async function fetchPurchaseFunnelStats(
     if (dateRange?.startDate) freeCouponQuery = freeCouponQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) freeCouponQuery = freeCouponQuery.lte('created_at', dateRange.endDate);
 
-    // GA + sprout_transactions + freeCoupon 병렬 호출
-    const [gaResponse, chargeResult, freeCouponResult] = await Promise.all([
+    // GA + charge + paidOrders + freeCoupon 병렬 호출
+    const [gaResponse, chargeResult, paidOrderResult, freeCouponResult] = await Promise.all([
       fetch(functionUrl, {
         method: 'GET',
         headers: {
@@ -1399,6 +1444,7 @@ export async function fetchPurchaseFunnelStats(
         },
       }),
       chargeQuery,
+      paidOrderQuery,
       freeCouponQuery,
     ]);
 
@@ -1415,10 +1461,13 @@ export async function fetchPurchaseFunnelStats(
       console.error('구매 퍼널 GA 조회 실패:', gaResponse.status);
     }
 
-    // 새싹 충전 결과
-    const completedOrders = chargeResult.count || 0;
+    // 원화 결제 결과 (새싹 충전 + 기존 원화 직접 결제)
+    const completedOrders = (chargeResult.count || 0) + (paidOrderResult.count || 0);
     if (chargeResult.error) {
       console.error('구매 퍼널 새싹 충전 조회 실패:', chargeResult.error);
+    }
+    if (paidOrderResult.error) {
+      console.error('구매 퍼널 유료 주문 조회 실패:', paidOrderResult.error);
     }
 
     // 0원 쿠폰 주문 결과
@@ -1973,8 +2022,8 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     return q;
   };
 
-  // 최근 주문 쿼리 빌더 (orders 테이블 - 최근 주문 리스트용)
-  const buildRecentOrderQuery = (select: string) => {
+  // 유료 주문 쿼리 빌더 (orders 테이블 - 최근 주문 리스트 + 매출 집계 겸용)
+  const buildPaidOrderQuery = (select: string) => {
     let q = supabase
       .from('orders')
       .select(select)
@@ -1986,22 +2035,26 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     return q;
   };
 
-  // 7개 쿼리 병렬 실행
+  // 8개 쿼리 병렬 실행
   const [
     recentOrdersResult,
     allChargesResult,
+    allPaidOrdersResult,
     freeCouponOrdersResult,
     usersResult,
     tagStatsResult,
     contentsResult,
   ] = await Promise.all([
     // 1. 최근 완료 주문 50건 (orders 테이블 - 최근 주문 리스트용)
-    buildRecentOrderQuery('id, user_id, content_id, paid_amount, pay_method, pg_provider, pstatus, created_at')
+    buildPaidOrderQuery('id, user_id, content_id, paid_amount, pay_method, pg_provider, pstatus, created_at')
       .order('created_at', { ascending: false })
       .limit(50),
 
     // 2. 전체 새싹 충전 건 (고객별 구매 통계)
     buildChargeQuery('user_id, payment_amount'),
+
+    // 2-1. 전체 유료 주문 건 (매출 집계용)
+    buildPaidOrderQuery('user_id, paid_amount'),
 
     // 3. 무료 쿠폰 주문 수 (paid_amount = 0)
     buildFreeCouponQuery(),
@@ -2028,6 +2081,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
 
   if (recentOrdersResult.error) throw new Error('최근 주문 데이터 조회에 실패했습니다.');
   if (allChargesResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
+  if (allPaidOrdersResult.error) throw new Error('유료 주문 데이터 조회에 실패했습니다.');
   if (freeCouponOrdersResult.error) throw new Error('무료 쿠폰 주문 데이터 조회에 실패했습니다.');
   if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
   if (tagStatsResult.error) throw new Error('태그 데이터 조회에 실패했습니다.');
@@ -2035,6 +2089,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
 
   const recentOrders = recentOrdersResult.data || [];
   const allCharges = allChargesResult.data || [];
+  const allPaidOrders = allPaidOrdersResult.data || [];
   const users = usersResult.data || [];
   const tagStatsData = tagStatsResult.data || [];
   const contents = contentsResult.data || [];
@@ -2062,13 +2117,19 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     };
   });
 
-  // 2. 고객별 충전 통계 (새싹 충전 기준)
+  // 2. 고객별 구매 통계 (새싹 충전 + 기존 원화 직접 결제)
   const customerPurchaseMap = new Map<string, { totalPurchases: number; totalSpent: number }>();
   allCharges.forEach(charge => {
     const existing = customerPurchaseMap.get(charge.user_id) || { totalPurchases: 0, totalSpent: 0 };
     existing.totalPurchases++;
     existing.totalSpent += charge.payment_amount || 0;
     customerPurchaseMap.set(charge.user_id, existing);
+  });
+  allPaidOrders.forEach(order => {
+    const existing = customerPurchaseMap.get(order.user_id) || { totalPurchases: 0, totalSpent: 0 };
+    existing.totalPurchases++;
+    existing.totalSpent += order.paid_amount || 0;
+    customerPurchaseMap.set(order.user_id, existing);
   });
 
   // 3. 태그 통계 (고객별)
@@ -2110,9 +2171,11 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   // 정렬: totalPurchases 내림차순
   customerSummary.sort((a, b) => b.totalPurchases - a.totalPurchases);
 
-  // 5. 요약 통계 (새싹 충전 기준)
-  const totalOrders = allCharges.length;
-  const totalRevenue = allCharges.reduce((sum, c) => sum + (c.payment_amount || 0), 0);
+  // 5. 요약 통계 (새싹 충전 + 기존 원화 직접 결제)
+  const totalOrders = allCharges.length + allPaidOrders.length;
+  const totalRevenue = customerPurchaseMap.size > 0
+    ? [...customerPurchaseMap.values()].reduce((sum, c) => sum + c.totalSpent, 0)
+    : 0;
   const uniqueBuyers = customerPurchaseMap.size;
   const avgPurchasesPerBuyer = uniqueBuyers > 0
     ? Math.round(totalOrders / uniqueBuyers * 10) / 10
@@ -2160,12 +2223,13 @@ export interface CustomerStatsData {
 export async function fetchCustomerStats(): Promise<CustomerStatsData> {
   const adminFilter = ADMIN_IDS.join(',');
 
-  // 4개 쿼리 병렬 실행
+  // 5개 쿼리 병렬 실행
   const [
     sajuOwnResult,
     sajuAllResult,
     usersResult,
-    ordersResult,
+    chargeUsersResult,
+    paidOrderUsersResult,
   ] = await Promise.all([
     // 1. 본인 사주 레코드 (notes='본인' 또는 notes IS NULL)
     supabase
@@ -2186,23 +2250,33 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .select('id, provider')
       .not('id', 'in', `(${adminFilter})`),
 
-    // 4. 새싹 충전 데이터 (성별 유료 전환율용 - 충전한 유저 = 구매 고객)
+    // 4. 새싹 충전 유저 (구매 고객)
     supabase
       .from('sprout_transactions')
       .select('user_id')
       .eq('transaction_type', 'charge')
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 5. 기존 원화 직접 결제 유저 (구매 고객)
+    supabase
+      .from('orders')
+      .select('user_id')
+      .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
       .not('user_id', 'in', `(${adminFilter})`),
   ]);
 
   if (sajuOwnResult.error) throw new Error('본인 사주 데이터 조회에 실패했습니다.');
   if (sajuAllResult.error) throw new Error('전체 사주 데이터 조회에 실패했습니다.');
   if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
-  if (ordersResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
+  if (chargeUsersResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
+  if (paidOrderUsersResult.error) throw new Error('유료 주문 데이터 조회에 실패했습니다.');
 
   const sajuOwn = sajuOwnResult.data || [];
   const sajuAll = sajuAllResult.data || [];
   const users = usersResult.data || [];
-  const orders = ordersResult.data || [];
+  const chargeUsers = chargeUsersResult.data || [];
+  const paidOrderUsers = paidOrderUsersResult.data || [];
 
   // 본인 사주 user 중복 제거 (user_id 기준 첫 레코드)
   const seenUserIds = new Set<string>();
@@ -2307,7 +2381,10 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
     .sort((a, b) => b.count - a.count);
 
   // 성별 유료 전환율
-  const paidUserIds = new Set(orders.map(o => o.user_id));
+  const paidUserIds = new Set([
+    ...chargeUsers.map(c => c.user_id),
+    ...paidOrderUsers.map(o => o.user_id),
+  ]);
   // 본인 사주 기준 성별별 유저
   const maleUsers = uniqueOwnRecords.filter(r => r.gender === 'male');
   const femaleUsers = uniqueOwnRecords.filter(r => r.gender === 'female');
