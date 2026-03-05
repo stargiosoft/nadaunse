@@ -270,12 +270,13 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     chargeRevenueQuery = chargeRevenueQuery.lt('created_at', dateRange.endDate);
   }
 
-  // 5-2. 기존 원화 직접 결제 매출 (orders paid_amount > 0)
+  // 5-2. 기존 원화 직접 결제 매출 (orders paid_amount > 0, sprout 소비 제외)
   let orderRevenueQuery = supabase
     .from('orders')
     .select('paid_amount, user_id')
     .eq('pstatus', 'completed')
     .gt('paid_amount', 0)
+    .neq('pay_method', 'sprout')
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -729,10 +730,10 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 4. 유료 콘텐츠 이용 데이터 (paid만, 0원 제외, 관리자 제외 - 콘텐츠 이용율 계산용)
+    // 4. 유료 콘텐츠 이용 데이터 (paid만, 0원 제외, 관리자 제외 - 콘텐츠 이용율 + 매출 계산용)
     supabase
       .from('orders')
-      .select('user_id, created_at, paid_amount')
+      .select('user_id, created_at, paid_amount, pay_method')
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
       .not('user_id', 'in', `(${adminFilter})`)
@@ -844,14 +845,15 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const paidContentUsage = paidContentList.length;
     const uniquePaidUsers = new Set(paidContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
 
-    // 매출 (새싹 충전 + 기존 원화 직접 결제)
+    // 매출 (새싹 충전 + 기존 원화 직접 결제, sprout 소비 제외)
     const chargeList = chargeData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const chargeRevenue = chargeList.reduce((sum, d) => sum + (d.payment_amount || 0), 0);
-    const orderRevenue = paidContentList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
+    const krwOrderList = paidContentList.filter(d => d.pay_method !== 'sprout');
+    const orderRevenue = krwOrderList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
     const revenue = chargeRevenue + orderRevenue;
     const _buyerIds = [...new Set([
       ...chargeList.map(d => d.user_id),
-      ...paidContentList.map(d => d.user_id),
+      ...krwOrderList.map(d => d.user_id),
     ])];
     const uniqueBuyers = _buyerIds.length;
 
@@ -1420,6 +1422,7 @@ export async function fetchPurchaseFunnelStats(
       .select('*', { count: 'exact', head: true })
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
+      .neq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`);
     if (dateRange?.startDate) paidOrderQuery = paidOrderQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) paidOrderQuery = paidOrderQuery.lte('created_at', dateRange.endDate);
@@ -2022,13 +2025,14 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     return q;
   };
 
-  // 유료 주문 쿼리 빌더 (orders 테이블 - 최근 주문 리스트 + 매출 집계 겸용)
+  // 원화 직접 결제 주문 쿼리 빌더 (sprout 소비 제외, 최근 주문 리스트 + 매출 집계 겸용)
   const buildPaidOrderQuery = (select: string) => {
     let q = supabase
       .from('orders')
       .select(select)
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
+      .neq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`);
     if (dateRange?.startDate) q = q.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) q = q.lte('created_at', dateRange.endDate);
@@ -2257,12 +2261,13 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .eq('transaction_type', 'charge')
       .not('user_id', 'in', `(${adminFilter})`),
 
-    // 5. 기존 원화 직접 결제 유저 (구매 고객)
+    // 5. 기존 원화 직접 결제 유저 (구매 고객, sprout 소비 제외)
     supabase
       .from('orders')
       .select('user_id')
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
+      .neq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`),
   ]);
 
