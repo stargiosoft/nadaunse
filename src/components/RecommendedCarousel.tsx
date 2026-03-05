@@ -103,11 +103,13 @@ export function RecommendedCarousel({ items, onMoreClick, onCardClick, style, hi
       style={{
         display: 'flex',
         overflowX: 'auto',
+        overflowY: 'hidden',
         scrollbarWidth: 'none',
         paddingLeft: 20,
         paddingRight: 20,
         gap: 8,
         WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+        touchAction: 'pan-x',
         cursor: 'grab',
         ...style,
       }}
