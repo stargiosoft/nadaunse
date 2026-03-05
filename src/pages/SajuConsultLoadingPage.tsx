@@ -293,11 +293,12 @@ export function SajuConsultLoadingPage() {
             paddingBottom: 48,
           }}
         >
-          <div style={{ width: 160, height: 160, flexShrink: 0 }}>
+          <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)' }}>
             <Lottie
               animationData={lottieData}
               loop
               autoplay
+              renderer="svg"
               style={{ width: '100%', height: '100%' }}
             />
           </div>
