@@ -50,7 +50,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 32개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 41개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne v2 |
@@ -60,9 +60,9 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ## 📊 주요 통계
 
-- **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 32개 (주간 보고서 4개 포함)
-- **페이지**: 41개
+- **컴포넌트**: 72개 (주간 보고서 8개 + 통계 대시보드 2개 + 상담 2개 포함)
+- **Edge Functions**: 41개 (주간 보고서 4개 + 상담 2개 + 미션 리워드 1개 포함)
+- **페이지**: 52개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 
 ## 📚 문서

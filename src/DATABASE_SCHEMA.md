@@ -1,7 +1,7 @@
 # 데이터베이스 스키마 문서
 
 > **작성일**: 2024-12-17
-> **최종 업데이트**: 2026-03-03
+> **최종 업데이트**: 2026-03-05
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
 > **경고**: 이 문서는 참고용이며, 스키마 변경 시 수동으로 업데이트해야 합니다.
 
@@ -258,6 +258,22 @@
 **인덱스**: UNIQUE (fingerprint) — 사주+타로 통합 1회 제한
 
 **용도**: 비회원 상담 체험 최초 1회 제한 (서버 권위적 검증). `generate-tarot-consult`, `generate-saju-consult`에서 Service Role Key로만 접근. RLS 불필요. cron 정리 없음 (영구 보관).
+
+### `user_consult_daily`
+
+로그인 유저 사주/타로 상담 일일 1회 제한 추적 (매일 자동 정리)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PK | `gen_random_uuid()` | 고유 ID |
+| `user_id` | uuid | NOT NULL | - | 사용자 ID (auth.users) |
+| `consult_type` | text | NOT NULL, CHECK | - | 상담 유형 ('saju' \| 'taro') |
+| `consulted_date` | date | NOT NULL | `CURRENT_DATE` | 상담 날짜 (KST 기준) |
+| `created_at` | timestamptz | - | `now()` | 생성 일시 |
+
+**인덱스**: UNIQUE (user_id, consult_type, consulted_date) — 일일 1회 제한
+
+**용도**: 로그인 유저 상담 하루 1회 제한 (서버 검증). `generate-saju-consult`, `generate-tarot-consult`에서 Service Role Key로만 접근. RLS Enabled (정책 없음). pg_cron `cleanup-user-consult-daily`로 매일 KST 09:00 전날 이전 데이터 자동 삭제.
 
 ---
 
@@ -519,15 +535,21 @@ weekly_reports ─→ weekly_report_sections (1:N), report_tarot_selections (1:N
 - `question_type = 'saju'`: 사주 기반 질문
 - `question_type = 'tarot'`: 타로 카드 질문 (카드 이미지 포함)
 
+### 5. RPC 함수
+
+| 함수명 | 파라미터 | 반환 | 용도 |
+|--------|----------|------|------|
+| `process_mission_reward` | `p_user_id UUID, p_reward_amount INTEGER DEFAULT 30` | `JSONB` | 태그 5개 달성 시 새싹 30개 즉시 지급. 중복 방지 (sprout_transactions에서 기존 reward 체크). `SECURITY DEFINER`, service_role 전용 |
+
 ---
 
 ## 변경 이력
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
-| 2.1.0 | 2026-02-09 | coupons.coupon_type에 mission 타입 추가 (미션성공쿠폰) | AI Assistant |
 | 2.2.0 | 2026-02-25 | user_situation_summaries 테이블 추가 (주간 보고서 + 콘텐츠 풀이 심리 상태 통합 관리) | AI Assistant |
 | 2.3.0 | 2026-02-26 | users 테이블에 sprout_balance 컬럼 추가, sprout_transactions/sprout_packages 테이블 추가 (새싹 충전소 기능) | AI Assistant |
+| 2.4.0 | 2026-03-05 | user_consult_daily 테이블 추가, process_mission_reward RPC 추가, 테이블 수 25개 | AI Assistant |
 
 ---
 

@@ -44,7 +44,7 @@
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
 | 🧹 **유틸리티** | 2개 | 6% | 태그 정리, Vercel 재빌드 |
 
-**총 33개** (로컬 함수 기준)
+**총 35개** (로컬 함수 기준)
 
 ---
 
@@ -166,10 +166,18 @@
 
 ---
 
-### 1️⃣1️⃣ **유틸리티** (2개)
+### 1️⃣1️⃣ **미션 리워드** (1개)
 
-33. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
-34. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
+33. `grant-mission-sprout` - 태그 5개 달성 시 새싹 30개 즉시 지급 (JWT 인증 필수)
+    - `process_mission_reward` RPC 호출, 중복 방지 내장
+    - 기존 미션 쿠폰(12,900원) 프로세스를 새싹 리워드로 대체
+
+---
+
+### 1️⃣2️⃣ **유틸리티** (2개)
+
+34. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
+35. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
 
 ---
 

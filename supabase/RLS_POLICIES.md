@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-03-03
+> **최종 업데이트**: 2026-03-05
 
 ## 개요
 
@@ -24,8 +24,11 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | `user_trait_tags` | Enabled | Users INSERT own | `auth.uid() = user_id` |
 | `user_trait_tags` | Enabled | Users DELETE own | `auth.uid() = user_id` |
 | `sprout_transactions` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+| `sprout_transactions` | Enabled | Masters can view all | `users.role = 'master'` |
 | `sprout_packages` | Enabled | Authenticated SELECT active | `is_active = true` |
 | `anonymous_free_views` | Enabled | (정책 없음 — Service Role Key 전용) | - |
+| `anonymous_consult_views` | - | RLS 없음 (Service Role Key 전용) | - |
+| `user_consult_daily` | Enabled | (정책 없음 — Service Role Key 전용) | - |
 | `user_situation_summaries` | Enabled | Service role full access (ALL) | `true` (Service Role 전용) |
 | `referral_signups` | Enabled | Users SELECT own | `auth.uid() = referrer_id` |
 | `share_rewards` | Enabled | Users SELECT own | `auth.uid() = user_id` |
@@ -201,11 +204,13 @@ const { count } = await supabase
 | report_tarot_selections | 3 | Enabled |
 | anonymous_free_views | 0 | Enabled (Service Role 전용) |
 | user_situation_summaries | 1 | Enabled (Service Role 전용) |
-| sprout_transactions | 1 | Enabled |
+| sprout_transactions | 2 | Enabled |
 | sprout_packages | 1 | Enabled |
 | referral_signups | 1 | Enabled |
 | share_rewards | 1 | Enabled |
-| **총계** | **45** | - |
+| anonymous_consult_views | 0 | RLS 없음 (Service Role 전용) |
+| user_consult_daily | 0 | Enabled (Service Role 전용) |
+| **총계** | **47** | - |
 
 ---
 

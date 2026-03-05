@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-02-09 (v2.8.0 - 초개인화 프로덕션 배포, 미션성공쿠폰 추가)
+> **최종 업데이트**: 2026-03-05 (v3.0.0 - 홈 v2 + 사주/타로 상담 + 태그 미션 새싹 리워드)
 
 ---
 
@@ -47,9 +47,9 @@
 - 무료/유료 콘텐츠 이원화 시스템
 
 ### 주요 통계
-- **컴포넌트**: 72개 (활성화, backup 제외) - 주간 보고서 9개 + 통계 대시보드 2개 추가
-- **Edge Functions**: 32개 (주간 보고서 4개 포함)
-- **페이지 컴포넌트**: 42개
+- **컴포넌트**: 72개 (활성화, backup 제외) - 주간 보고서 9개 + 통계 대시보드 2개 + 상담 2개 포함
+- **Edge Functions**: 41개 (주간 보고서 4개 + 상담 2개 + 미션 리워드 1개 포함)
+- **페이지 컴포넌트**: 52개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **스켈레톤**: 5개
 - **타로 카드 덱**: 78장 (메이저 22장 + 마이너 56장)
@@ -665,6 +665,34 @@ const sajuResponse = await fetch(sajuApiUrl, {
 ### 🎯 기능별 빠른 참조 (Quick Reference by Feature)
 
 <details>
+<summary><b>홈 v2 (HomeScreenNew) - 11페이지</b></summary>
+
+```
+/pages/HomeScreenNew.tsx               → 메인 홈 (기존 HomePage.tsx 교체)
+/pages/FortuneAllPage.tsx              → BEST 운세 전체보기 (/best-fortune)
+/pages/NewFreeFortuneAllPage.tsx       → 무료 운세 전체보기 (/new-free)
+/pages/SearchPage.tsx                  → 검색 (/search, fuse.js 기반)
+/pages/SajuConsultPage.tsx             → 사주 상담 입력 (/saju-consult)
+/pages/SajuConsultLoadingPage.tsx      → 사주 상담 로딩
+/pages/SajuConsultResultPage.tsx       → 사주 상담 결과
+/pages/SajuRecommendedFortunePage.tsx  → 추천 운세 전체보기
+/pages/TaroConsultPage.tsx             → 타로 상담 입력 (/taro-consult)
+/pages/TaroConsultLoadingPage.tsx      → 타로 상담 로딩
+/pages/TaroConsultResultPage.tsx       → 타로 상담 결과
+/components/RecommendedCarousel.tsx    → 추천 콘텐츠 캐러셀
+/components/TextareaInput.tsx          → 상담 입력 텍스트 영역
+/hooks/useScrollDirection.ts           → 스크롤 방향 감지 훅
+/lib/consultStatus.ts                  → 상담 상태 localStorage 관리
+/lib/consultLimitService.ts            → 비회원 상담 1회 제한
+/lib/consultRecommendationService.ts   → AI 카테고리 기반 동적 추천
+```
+
+**의존성**: `fuse.js` (검색)
+**Edge Functions**: `generate-saju-consult`, `generate-tarot-consult`
+**DB 테이블**: `anonymous_consult_views`, `user_consult_daily`
+</details>
+
+<details>
 <summary><b>무료 콘텐츠 (사주)</b></summary>
 
 ```
@@ -1015,17 +1043,17 @@ App.tsx (PendingTagsCheckPage)  → 회원가입 후 사주/무료콘텐츠/태�
 /utils/scrollRestoreLogger.ts   → 스크롤 복원 디버깅 로거
 ```
 
-### 🗄️ Supabase Edge Functions (21개)
+### 🗄️ Supabase Edge Functions (41개)
 
 | 카테고리 | 개수 | 주요 기능 |
 |----------|------|----------|
-| AI 생성 | 8개 | 무료/유료 콘텐츠, 사주/타로 운세, 썸네일 생성 |
-| 쿠폰 관리 | 4개 | 조회, 적용, 웰컴/재방문/미션성공 쿠폰 발급 |
-| 결제/환불 | 3개 | 웹훅 검증, 결제 처리, 환불 |
-| 사용자 관리 | 2개 | 사용자, 마스터 콘텐츠 |
-| 알림 | 1개 | 카카오 알림톡 발송 |
-| 모니터링 | 1개 | Sentry → Slack 중계 |
-| 기타 | 2개 | 서버 상태, 콘텐츠 답변 생성 |
+| AI 생성 | 9개 | 무료/유료 콘텐츠, 사주/타로 운세, 썸네일, 태그 추출 |
+| AI 상담 | 2개 | 사주 상담, 타로 상담 (GPT-4.1-mini) |
+| 주간 보고서 | 4개 | 배치 생성, 개별 생성, 알림톡, 실패 조회 |
+| 쿠폰 관리 | 4개 | 조회, 적용, 웰컴/재방문 쿠폰 발급 |
+| 결제/환불/새싹 | 5개 | 웹훅 검증, 결제, 환불, 새싹 충전/차감 |
+| 미션 리워드 | 1개 | 태그 5개 달성 새싹 30 지급 |
+| 기타 | 16개 | 사용자, 알림, 모니터링, SEO, 소유자 확인, 공유 리워드 등 |
 
 **📚 상세 문서**: [EDGE_FUNCTIONS_GUIDE.md](../supabase/EDGE_FUNCTIONS_GUIDE.md) - 각 함수별 입력/출력 형식, 배포 방법
 

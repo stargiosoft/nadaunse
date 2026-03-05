@@ -15,7 +15,7 @@
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 34개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 41개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne (구 아임포트) v2 |
@@ -24,9 +24,9 @@
 | 배포 | Vercel |
 
 ### 주요 통계
-- **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 34개 (주간 보고서 4개 포함)
-- **페이지**: 41개
+- **컴포넌트**: 72개 (주간 보고서 8개 + 통계 대시보드 2개 + 상담 2개 포함)
+- **Edge Functions**: 41개 (주간 보고서 4개 + 상담 2개 + 미션 리워드 1개 포함)
+- **페이지**: 52개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **타로 카드 덱**: 78장
 
@@ -117,7 +117,7 @@ const bgImage = "/background.jpg";
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
-- **총 34개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(2), 소유자 확인(2), 유틸리티(2)
+- **총 41개**: AI 생성(9), AI 상담(2), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불/새싹(5), 모니터링/통계(3), SEO(2), 소유자 확인(2), 공유 리워드(2), 미션 리워드(1), 만세력(1), AI 구매 가이드(1), 유틸리티(2)
 
 **⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
 ```bash
@@ -199,7 +199,7 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 → 94% 토큰 절약!
 ```
 
-**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 34개)에서 Serena는 필수입니다.
+**프로젝트 규모** (컴포넌트 72개, 페이지 52개, Edge Functions 41개)에서 Serena는 필수입니다.
 
 ### 11. 캐싱 전략 (Cache Strategy)
 
@@ -409,8 +409,8 @@ serve(async (req) => {
 
 ```
 /src
-├── components/     # React 컴포넌트 (55개)
-├── pages/          # 페이지 컴포넌트 (41개)
+├── components/     # React 컴포넌트 (57개)
+├── pages/          # 페이지 컴포넌트 (52개)
 ├── lib/            # 비즈니스 로직, 유틸리티
 ├── utils/          # 순수 유틸리티 함수
 ├── hooks/          # Custom hooks
@@ -418,7 +418,7 @@ serve(async (req) => {
 └── imports/        # SVG, 이미지 임포트
 
 supabase/
-├── functions/      # Edge Functions (31개)
+├── functions/      # Edge Functions (41개)
 ├── migrations/     # SQL 마이그레이션 파일
 └── *.md            # Supabase 관련 문서
 ```
