@@ -1486,7 +1486,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                   </div>
                 </div>
                 <div className="flex gap-[14px] items-start mt-[16px] rounded-[16px]" style={{ backgroundColor: '#fbfbfb', padding: '18px 18px' }}>
-                  <img src="/icon-arrow-right.svg" alt="arrow" style={{ width: '23px', height: '23px', flexShrink: 0, marginTop: '0px' }} />
+                  <img src="/icon-arrow-right-gradient.svg" alt="arrow" style={{ width: '23px', height: '23px', flexShrink: 0, marginTop: '0px' }} />
                   <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '26.5px', letterSpacing: '-0.3px', color: '#444', margin: 0 }}>
                     무료 운세보다 더 깊이 있는 분석을 제공합니다.<br />지금의 흐름과 앞으로의 시기까지 종합적으로 해석해 드려요.
                   </p>
