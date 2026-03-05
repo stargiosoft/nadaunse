@@ -2095,6 +2095,11 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   const allCharges = allChargesResult.data || [];
   const allPaidOrders = allPaidOrdersResult.data || [];
   const users = usersResult.data || [];
+
+  // 디버깅: sprout_transactions charge 쿼리 결과
+  console.log('[구매통계] allCharges:', allCharges.length, '건', allCharges.slice(0, 3));
+  console.log('[구매통계] allChargesResult.error:', allChargesResult.error);
+  console.log('[구매통계] allPaidOrders:', allPaidOrders.length, '건');
   const tagStatsData = tagStatsResult.data || [];
   const contents = contentsResult.data || [];
 
