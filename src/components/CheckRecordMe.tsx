@@ -135,17 +135,25 @@ export default function CheckRecordMe({
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) return;
 
-        // sprout_transactions에서 미션 리워드 기록 확인
-        const { data: rewardRecord } = await supabase
-          .from('sprout_transactions')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .eq('transaction_type', 'reward')
-          .eq('description', '미션 완료 리워드 (태그 5개 달성)')
-          .maybeSingle();
+        // Edge Function으로 user_id + fingerprint 동시 체크 (check_only 모드)
+        const response = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/grant-mission-sprout`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ user_id: session.user.id, check_only: true }),
+          }
+        );
+        const result = await response.json();
 
-        if (rewardRecord) {
-          console.log('ℹ️ [CheckRecordMe] 미션 리워드 이미 지급됨 → 프로모션 스킵');
+        // already_granted: 같은 계정에서 이미 수령
+        // fingerprint_used: 같은 기기, 다른 계정에서 이미 수령
+        if (result.already_granted || result.fingerprint_used) {
+          console.log('[CheckRecordMe] 미션 리워드 수령 불가 → 프로모션 스킵',
+            result.already_granted ? '(같은 계정)' : '(같은 기기)');
           setHasMissionReward(true);
         }
       } catch (err) {
@@ -553,13 +561,23 @@ export default function CheckRecordMe({
               console.log('✅ [CheckRecordMe] 새싹 리워드 지급 성공:', rewardResult.new_balance);
               writeSproutBalanceCache(rewardResult.new_balance);
             } else if (rewardResult.already_granted) {
-              console.log('ℹ️ [CheckRecordMe] 새싹 리워드 이미 지급됨');
+              console.log('[CheckRecordMe] 새싹 리워드 이미 지급됨 (같은 계정)');
+            } else if (rewardResult.fingerprint_used) {
+              // 같은 기기, 다른 계정 → 조용히 홈으로
+              console.log('[CheckRecordMe] fingerprint 중복 → 홈으로 이동');
+              toast.success('태그가 저장됐어요!', {
+                subtitle: '프로필에서 확인할 수 있어요.',
+                duration: 2200,
+              });
+              if (onHomeProp) onHomeProp();
+              setIsSaving(false);
+              return;
             } else {
-              console.error('❌ [CheckRecordMe] 새싹 리워드 지급 실패:', rewardResult.error);
+              console.error('[CheckRecordMe] 새싹 리워드 지급 실패:', rewardResult.error);
             }
           }
         } catch (rewardErr) {
-          console.error('❌ [CheckRecordMe] 새싹 리워드 요청 예외:', rewardErr);
+          console.error('[CheckRecordMe] 새싹 리워드 요청 예외:', rewardErr);
         }
         setView('coupon-info');
       } else if (totalTagCount >= 5 && beforeTagCount >= 5) {

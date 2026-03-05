@@ -2,12 +2,14 @@
  * 미션 완료 새싹 리워드 지급 Edge Function
  *
  * @endpoint POST /grant-mission-sprout
- * @input { user_id: string }
- * @output { success: boolean, new_balance?: number, reward_amount?: number, already_granted?: boolean }
+ * @input { user_id: string, check_only?: boolean }
+ * @output { success: boolean, new_balance?: number, reward_amount?: number, already_granted?: boolean, fingerprint_used?: boolean, eligible?: boolean }
  *
  * @description
  * - 태그 5개 달성 시 새싹 30개 즉시 지급
  * - process_mission_reward RPC 호출 (SECURITY DEFINER)
+ * - IP+UA SHA-256 fingerprint 기반 중복 기기 검증
+ * - check_only=true: 지급 없이 자격만 확인 (fingerprint + user_id 중복 체크)
  * - JWT 검증 필요 (--no-verify-jwt 불필요)
  */
 
@@ -48,7 +50,7 @@ Deno.serve(async (req) => {
     }
 
     // 요청 본문 파싱
-    const { user_id } = await req.json();
+    const { user_id, check_only } = await req.json();
 
     if (!user_id) {
       return new Response(
@@ -66,7 +68,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('🌱 [미션리워드] 사용자:', user_id);
+    // SHA-256 fingerprint 생성 (IP + User-Agent)
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('cf-connecting-ip')
+      || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const encoder = new TextEncoder();
+    const hashData = encoder.encode(ip + userAgent);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', hashData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    console.log('🌱 [미션리워드] 사용자:', user_id, '| check_only:', !!check_only);
+    console.log('📌 [미션리워드] fingerprint:', fingerprint.substring(0, 16) + '...');
 
     // Service Role 클라이언트 (RPC 호출용)
     const supabaseAdmin = createClient(
@@ -77,6 +91,8 @@ Deno.serve(async (req) => {
     // process_mission_reward RPC 호출
     const { data, error } = await supabaseAdmin.rpc('process_mission_reward', {
       p_user_id: user_id,
+      p_ip_fingerprint: fingerprint,
+      p_check_only: !!check_only,
     });
 
     if (error) {
@@ -97,10 +113,27 @@ Deno.serve(async (req) => {
         );
       }
 
+      if (data.fingerprint_used) {
+        console.log('🚫 [미션리워드] fingerprint 중복 (다른 계정에서 이미 수령):', user_id);
+        return new Response(
+          JSON.stringify({ success: false, fingerprint_used: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       console.error('❌ [미션리워드] 처리 실패:', data.error);
       return new Response(
         JSON.stringify({ success: false, error: data.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // check_only 모드: 자격 확인 결과만 반환
+    if (check_only) {
+      console.log('✅ [미션리워드] 자격 확인 통과:', user_id);
+      return new Response(
+        JSON.stringify({ success: true, eligible: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
