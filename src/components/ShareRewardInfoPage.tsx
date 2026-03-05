@@ -11,7 +11,14 @@
  * @see ★PUBLISHING_GUIDE★.md Section 11
  */
 
+import { motion } from 'framer-motion';
 import ArrowLeft from './ArrowLeft';
+
+const slideUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 24 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay },
+});
 
 /* ─── 피보나치 적립 기준 테이블 데이터 ─── */
 const REWARD_TABLE = [
@@ -138,30 +145,35 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
         <div className="flex-1 min-h-0 overflow-y-auto w-full">
 
           {/* 히어로 섹션 */}
-          <div className="flex flex-col items-center" style={{ padding: '24px 20px 32px', gap: '28px' }}>
+          <motion.div className="flex flex-col items-center" style={{ padding: '24px 20px 32px', gap: '28px' }} {...slideUp(0)}>
             <div className="flex flex-col items-center w-full" style={{ gap: '2px' }}>
               <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515' }}>
                 공유하면, 새싹이 쌓여요
               </p>
-              <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#41a09e' }}>
+              <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#48B2AF' }}>
                 제한 없이 계속 적립돼요
               </p>
             </div>
-            <SproutIcon size={120} />
-          </div>
+            <motion.div
+              animate={{ y: [0, -10, 0, -10, 0, -10, 0] }}
+              transition={{ duration: 1.8, ease: 'easeInOut', delay: 0.3, times: [0, 0.143, 0.286, 0.429, 0.571, 0.714, 1] }}
+            >
+              <SproutIcon size={120} />
+            </motion.div>
+          </motion.div>
 
           <Divider />
 
           {/* ─── 이렇게 받아요 섹션 ─── */}
-          <div className="flex flex-col" style={{ padding: '28px 20px 34px', gap: '12px' }}>
+          <motion.div className="flex flex-col" style={{ padding: '28px 20px 34px', gap: '12px' }} {...slideUp(0.08)}>
             <SectionHeader title="이렇게 받아요" />
 
             <div className="flex flex-col" style={{ gap: '7px' }}>
 
               {/* Step 1: 링크 공유하기 */}
-              <div className="rounded-[16px]" style={{ backgroundColor: '#f8f8f8', padding: '20px 20px 24px' }}>
+              <div className="rounded-[20px]" style={{ backgroundColor: '#f8f8f8', padding: '17px 20px 24px' }}>
                 <div className="flex items-start" style={{ gap: '12px' }}>
-                  <div style={{ paddingTop: '5px' }}>
+                  <div style={{ paddingTop: '3px' }}>
                     <NumberBadge num={1} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0" style={{ gap: '12px' }}>
@@ -175,7 +187,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                     </div>
                     {/* 카카오톡 / 링크 복사 미리보기 */}
                     <div
-                      className="flex items-center justify-center w-full rounded-[16px]"
+                      className="flex items-center justify-center w-full rounded-[20px]"
                       style={{ backgroundColor: '#ffffff', border: '1px solid #f3f3f3', padding: '10px 0' }}
                     >
                       <div className="flex items-center" style={{ gap: '14px' }}>
@@ -209,9 +221,9 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
               </div>
 
               {/* Step 2: 친구 가입 완료 */}
-              <div className="rounded-[16px]" style={{ backgroundColor: '#f8f8f8', padding: '20px 20px 24px' }}>
+              <div className="rounded-[20px]" style={{ backgroundColor: '#f8f8f8', padding: '17px 20px 24px' }}>
                 <div className="flex items-start" style={{ gap: '12px' }}>
-                  <div style={{ paddingTop: '5px' }}>
+                  <div style={{ paddingTop: '3px' }}>
                     <NumberBadge num={2} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0" style={{ gap: '12px' }}>
@@ -225,7 +237,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                     </div>
                     {/* 가입 UI 미리보기 (정적 일러스트) */}
                     <div
-                      className="flex flex-col items-center w-full rounded-[16px]"
+                      className="flex flex-col items-center w-full rounded-[20px]"
                       style={{ backgroundColor: '#ffffff', border: '1px solid #f3f3f3', padding: '20px 20px 16px' }}
                     >
                       <div className="flex flex-col items-center w-full" style={{ gap: '10px' }}>
@@ -233,9 +245,9 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                         <div className="relative" style={{ marginBottom: '2px' }}>
                           <div
                             className="rounded-full"
-                            style={{ backgroundColor: '#41a09e', padding: '5px 11px', boxShadow: '0px 1px 4px rgba(0,0,0,0.12)' }}
+                            style={{ backgroundColor: '#48B2AF', padding: '2px 11px 5px', boxShadow: '0px 1px 4px rgba(0,0,0,0.12)' }}
                           >
-                            <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 600, lineHeight: '16px', letterSpacing: '-0.22px', color: '#ffffff' }}>
+                            <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, lineHeight: '16px', letterSpacing: '-0.22px', color: '#ffffff' }}>
                               3초면 가입 끝!
                             </span>
                           </div>
@@ -249,7 +261,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                               height: 0,
                               borderLeft: '6px solid transparent',
                               borderRight: '6px solid transparent',
-                              borderTop: '6px solid #41a09e',
+                              borderTop: '6px solid #48B2AF',
                             }}
                           />
                         </div>
@@ -290,9 +302,9 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
               </div>
 
               {/* Step 3: 30새싹 바로 적립 */}
-              <div className="rounded-[16px]" style={{ backgroundColor: '#f8f8f8', padding: '20px 20px 24px' }}>
+              <div className="rounded-[20px]" style={{ backgroundColor: '#f8f8f8', padding: '17px 20px 24px' }}>
                 <div className="flex items-start" style={{ gap: '12px' }}>
-                  <div style={{ paddingTop: '5px' }}>
+                  <div style={{ paddingTop: '3px' }}>
                     <NumberBadge num={3} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0" style={{ gap: '12px' }}>
@@ -305,7 +317,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                       </p>
                     </div>
                     <div
-                      className="flex items-center justify-center w-full rounded-[16px]"
+                      className="flex items-center justify-center w-full rounded-[20px]"
                       style={{ backgroundColor: '#ffffff', border: '1px solid #f3f3f3', padding: '16px 0' }}
                     >
                       <div className="flex items-center" style={{ gap: '7px' }}>
@@ -320,12 +332,12 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
               </div>
 
             </div>
-          </div>
+          </motion.div>
 
           <Divider />
 
           {/* ─── 알아두세요 섹션 ─── */}
-          <div className="flex flex-col" style={{ padding: '26px 20px', gap: '11px' }}>
+          <motion.div className="flex flex-col" style={{ padding: '26px 20px', gap: '11px' }} {...slideUp(0.16)}>
             <SectionHeader title="알아두세요" />
             <ul className="flex flex-col" style={{ gap: '8px', paddingLeft: '6px' }}>
               <BulletItem>링크로 가입해야 인정돼요</BulletItem>
@@ -345,10 +357,10 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
               <BulletItem>부정한 방법으로 적립된 새싹은 회수될 수 있어요</BulletItem>
               <BulletItem>조건과 보상은 사전 공지 후 변경될 수 있어요</BulletItem>
             </ul>
-          </div>
+          </motion.div>
 
           {/* ─── 단계별 적립 기준 테이블 ─── */}
-          <div className="flex flex-col" style={{ padding: '26px 20px 40px', gap: '13px' }}>
+          <motion.div className="flex flex-col" style={{ padding: '26px 20px 170px', gap: '13px' }} {...slideUp(0.24)}>
             <SectionHeader title="단계별 적립 기준" />
 
             <div
@@ -403,7 +415,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
         </div>
 
@@ -419,7 +431,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
             onClick={onBack}
             className="flex items-center justify-center cursor-pointer w-full"
             style={{
-              backgroundColor: '#41a09e',
+              backgroundColor: '#48B2AF',
               height: '56px',
               borderRadius: '16px',
               border: 'none',
@@ -432,11 +444,11 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
             }}
             onMouseUp={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.backgroundColor = '#41a09e';
+              e.currentTarget.style.backgroundColor = '#48B2AF';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.backgroundColor = '#41a09e';
+              e.currentTarget.style.backgroundColor = '#48B2AF';
             }}
             onTouchStart={(e) => {
               e.currentTarget.style.transform = 'scale(0.99)';
@@ -444,7 +456,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
             }}
             onTouchEnd={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.backgroundColor = '#41a09e';
+              e.currentTarget.style.backgroundColor = '#48B2AF';
             }}
           >
             <span style={{

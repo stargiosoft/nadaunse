@@ -167,8 +167,8 @@ export default function ShareRewardModal({
       <DrawerContent
         className="mx-auto max-w-[440px]"
         style={{
-          borderTopLeftRadius: '16px',
-          borderTopRightRadius: '16px',
+          borderTopLeftRadius: '24px',
+          borderTopRightRadius: '24px',
         }}
       >
         {/* Handle bar (커스텀) */}
@@ -230,7 +230,7 @@ export default function ShareRewardModal({
           )}
 
           {/* Share buttons */}
-          <div className="flex items-center justify-center" style={{ gap: '36px', marginTop: isLoggedIn ? '44px' : '32px' }}>
+          <div className="flex items-center justify-center" style={{ gap: '36px', marginTop: isLoggedIn ? '36px' : '40px' }}>
             {/* 링크 복사 */}
             <motion.button
               onClick={handleCopyLink}
@@ -295,7 +295,7 @@ export default function ShareRewardModal({
                 border: 'none',
                 cursor: 'pointer',
               }}
-              whileTap={{ scale: 0.96 }}
+              whileTap={{ scale: 0.99 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
               <p style={{
