@@ -2039,9 +2039,10 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     return q;
   };
 
-  // 8개 쿼리 병렬 실행
+  // 9개 쿼리 병렬 실행
   const [
     recentOrdersResult,
+    recentChargesResult,
     allChargesResult,
     allPaidOrdersResult,
     freeCouponOrdersResult,
@@ -2051,6 +2052,11 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   ] = await Promise.all([
     // 1. 최근 완료 주문 50건 (orders 테이블 - 최근 주문 리스트용)
     buildPaidOrderQuery('id, user_id, content_id, paid_amount, pay_method, pg_provider, pstatus, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50),
+
+    // 1-1. 최근 새싹 충전 50건 (최근 구매 내역에 합산)
+    buildChargeQuery('id, user_id, payment_amount, description, created_at')
       .order('created_at', { ascending: false })
       .limit(50),
 
@@ -2084,6 +2090,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   ]);
 
   if (recentOrdersResult.error) throw new Error('최근 주문 데이터 조회에 실패했습니다.');
+  if (recentChargesResult.error) throw new Error('최근 새싹 충전 데이터 조회에 실패했습니다.');
   if (allChargesResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
   if (allPaidOrdersResult.error) throw new Error('유료 주문 데이터 조회에 실패했습니다.');
   if (freeCouponOrdersResult.error) throw new Error('무료 쿠폰 주문 데이터 조회에 실패했습니다.');
@@ -2092,6 +2099,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   if (contentsResult.error) throw new Error('콘텐츠 데이터 조회에 실패했습니다.');
 
   const recentOrders = recentOrdersResult.data || [];
+  const recentCharges = recentChargesResult.data || [];
   const allCharges = allChargesResult.data || [];
   const allPaidOrders = allPaidOrdersResult.data || [];
   const users = usersResult.data || [];
@@ -2103,8 +2111,8 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   const userMap = new Map(users.map(u => [u.id, u]));
   const contentMap = new Map(contents.map(c => [c.id, c]));
 
-  // 1. 최근 주문 리스트 구성
-  const recentPurchaseOrders: PurchaseOrderData[] = recentOrders.map(order => {
+  // 1. 최근 주문 리스트 구성 (기존 원화 주문 + 새싹 충전 합산)
+  const orderEntries: PurchaseOrderData[] = recentOrders.map(order => {
     const user = userMap.get(order.user_id);
     const content = contentMap.get(order.content_id);
     return {
@@ -2121,6 +2129,25 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
       orderedAt: order.created_at,
     };
   });
+  const chargeEntries: PurchaseOrderData[] = recentCharges.map(charge => {
+    const user = userMap.get(charge.user_id);
+    return {
+      orderId: charge.id,
+      userId: charge.user_id,
+      email: user?.email || '',
+      nickname: user?.nickname || '',
+      contentTitle: charge.description || '새싹 충전',
+      categoryMain: '새싹 충전',
+      paidAmount: charge.payment_amount || 0,
+      payMethod: '새싹 충전',
+      pgProvider: '',
+      pstatus: 'completed',
+      orderedAt: charge.created_at,
+    };
+  });
+  const recentPurchaseOrders = [...orderEntries, ...chargeEntries]
+    .sort((a, b) => new Date(b.orderedAt).getTime() - new Date(a.orderedAt).getTime())
+    .slice(0, 50);
 
   // 2. 고객별 구매 통계 (새싹 충전 + 기존 원화 직접 결제)
   const customerPurchaseMap = new Map<string, { totalPurchases: number; totalSpent: number }>();
