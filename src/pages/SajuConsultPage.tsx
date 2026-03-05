@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import svgPaths from '../imports/svg-97glg550pf';
 import { TextareaInput } from '../components/TextareaInput';
-import { getAuthUser, supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
@@ -129,7 +129,9 @@ export function SajuConsultPage() {
     setSubmitting(true);
 
     try {
-      const { data: { user } } = await getAuthUser();
+      // getSession()으로 세션 확실히 로드 (로그인 직후 타이밍 이슈 방지)
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
 
       if (user) {
         // 로그인 유저: localStorage 캐시 → 없으면 DB 조회

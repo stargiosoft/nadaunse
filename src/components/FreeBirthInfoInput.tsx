@@ -63,8 +63,10 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
       console.log('📋 [FreeBirthInfoInput] 컴포넌트 마운트 → 사주 정보 로드');
       
       // 1️⃣ 로그인 사용자면 DB에서 대표 사주 가져오기
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      // getSession()으로 세션 확실히 로드 (로그인 직후 타이밍 이슈 방지)
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
+
       if (user) {
         console.log('👤 [FreeBirthInfoInput] 로그인 사용자 → DB에서 사주 조회');
         
