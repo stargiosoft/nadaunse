@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { PageLoader } from './ui/PageLoader';
 import SEO from './SEO';
@@ -703,14 +704,16 @@ export default function SproutChargingStation({
           {/* ===== Bottom CTA Button ===== */}
           <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-start w-full max-w-[440px] z-10" style={{ boxShadow: '0px -8px 16px 0px rgba(255,255,255,0.76)' }}>
             <div className="flex flex-col items-center justify-center px-[20px] py-[12px] w-full bg-white">
-              <button
+              <motion.button
                 onClick={handleCharge}
                 disabled={isProcessing || !selectedPackage}
-                className={`flex h-[56px] items-center justify-center px-[12px] rounded-[20px] w-full border-none transition-all duration-200 ease-out ${
+                className={`flex h-[56px] items-center justify-center px-[12px] rounded-[20px] w-full border-none transition-colors duration-200 ease-out ${
                   isProcessing || !selectedPackage
                     ? 'bg-[#48b2af]/70 cursor-not-allowed'
-                    : 'bg-[#48b2af] cursor-pointer active:scale-96 active:bg-[#41a09e]'
+                    : 'bg-[#48b2af] cursor-pointer active:bg-[#41a09e]'
                 }`}
+                whileTap={!isProcessing && selectedPackage ? { scale: 0.99 } : {}}
+                style={{ transformOrigin: 'center center', willChange: 'transform' }}
               >
                 <div className="flex gap-[4px] items-center">
                   {isProcessing ? (
@@ -726,7 +729,7 @@ export default function SproutChargingStation({
                     </span>
                   )}
                 </div>
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
