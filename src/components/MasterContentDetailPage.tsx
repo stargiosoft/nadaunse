@@ -1180,12 +1180,14 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               </div>
             </div>
             
-            {/* Tab Bar */}
+            {/* Tab Bar — 고정 높이 래퍼 + transform 슬라이드 (레이아웃 변화 없이 숨김) */}
+            <div
+              className="shrink-0 w-full overflow-hidden"
+              style={{ height: tabBarHeight > 0 ? tabBarHeight : undefined }}
+            >
             <motion.div
-              className="overflow-hidden shrink-0 w-full"
               animate={{
-                height: tabBarHeight > 0 ? (isTabBarVisible ? tabBarHeight : 0) : 'auto',
-                opacity: isTabBarVisible ? 1 : 0,
+                y: isTabBarVisible ? 0 : '-100%',
               }}
               transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
             >
@@ -1253,6 +1255,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               </div>
             </div>
             </motion.div>
+            </div>
           </div>
         </div>
 
