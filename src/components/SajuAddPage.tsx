@@ -811,7 +811,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     }}
                     className="bg-transparent content-stretch flex h-[38px] items-center justify-center px-[12px] py-0 relative rounded-[12px] shrink-0 w-[80px] border border-[#e7e7e7] cursor-pointer group transition-colors active:bg-gray-100"
                   >
-                    <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px] transition-transform group-active:scale-96">
+                    <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px] transition-transform group-active:scale-96" style={{ paddingTop: '2px' }}>
                       선택
                     </p>
                   </button>
@@ -868,7 +868,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
 
                 {/* Bottom Sheet */}
                 <motion.div
-                  className="fixed bottom-0 left-0 right-0 w-full max-w-[440px] mx-auto bg-white rounded-t-[16px] flex flex-col pointer-events-auto z-[10000]"
+                  className="fixed bottom-0 left-0 right-0 w-full max-w-[440px] mx-auto bg-white flex flex-col pointer-events-auto z-[10000]" style={{ borderRadius: '24px 24px 0 0' }}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -893,43 +893,38 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                   </div>
 
                   {/* Header */}
-                  <div className="px-[24px] py-[16px]">
-                    <h3 className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[20px] leading-[28px] tracking-[-0.2px] text-black">
+                  <div className="flex items-center px-[32px]" style={{ paddingBottom: '16px', paddingTop: '14px' }}>
+                    <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '18px', fontWeight: 600, lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#000000' }}>
                       관계 선택
-                    </h3>
+                    </p>
                   </div>
 
                   {/* Options List */}
-                  <div
-                    className="overflow-y-auto px-[24px] pb-[24px]"
-                    style={{
-                      WebkitOverflowScrolling: 'touch'
-                    }}
-                  >
-                    <div className="flex flex-col">
-                      {relationshipOptions.map((option, index) => (
-                        <div key={option}>
-                          {index > 0 && <div className="w-full h-[1px] bg-[#f8f8f8]" />}
-                          <button
-                            onClick={() => setTempRelationship(option)}
-                            className="w-full bg-transparent border-none p-0 cursor-pointer py-[12px]"
-                          >
-                            <div className="flex flex-row items-center justify-between w-full min-h-[36px]">
-                              <span className="text-[15px] text-[#151515] tracking-[-0.45px] leading-[20px] font-['Pretendard_Variable:Medium',sans-serif]">
-                                {option}
-                              </span>
-                              <div className="flex items-center justify-center size-[36px]">
-                                {tempRelationship === option ? (
-                                  <div className="size-[20px] rounded-full border-[6px] border-[#48b2af]" />
-                                ) : (
-                                  <div className="size-[20px] rounded-full border-2 border-[#e7e7e7] bg-white" />
-                                )}
-                              </div>
-                            </div>
-                          </button>
+                  <div className="flex flex-col gap-[8px] px-[24px] pb-[32px]">
+                    {relationshipOptions.map((option, index) => (
+                      <div key={option}>
+                        <div
+                          className="flex gap-[6px] items-center w-full cursor-pointer"
+                          onClick={() => setTempRelationship(option)}
+                        >
+                          {/* Radio - 좌측 */}
+                          <div className="flex items-center justify-center shrink-0 size-[36px]">
+                            {tempRelationship === option ? (
+                              <div className="flex items-center justify-center rounded-full shrink-0 size-[20px] border-[6px]" style={{ borderColor: '#48b2af' }} />
+                            ) : (
+                              <div className="rounded-full shrink-0 size-[20px] border-2 bg-white" style={{ borderColor: '#e7e7e7' }} />
+                            )}
+                          </div>
+                          {/* Text - 우측 */}
+                          <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '15px', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.45px', color: '#151515' }}>
+                            {option}
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                        {index < relationshipOptions.length - 1 && (
+                          <div className="w-full h-[1px] bg-[#f8f8f8] mt-[8px]" />
+                        )}
+                      </div>
+                    ))}
                   </div>
 
                   {/* Bottom Buttons */}
@@ -937,11 +932,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     <div className="flex gap-[12px] w-full">
                       <motion.button
                         onClick={() => setShowRelationshipPicker(false)}
-                        className="flex-1 h-[56px] rounded-[16px] bg-[#f0f8f8] flex items-center justify-center cursor-pointer"
-                        whileTap={{ scale: 0.96, backgroundColor: "#E4F7F7" }}
+                        className="flex-1 h-[56px] bg-[#f0f8f8] flex items-center justify-center cursor-pointer"
+                        style={{ borderRadius: '20px' }}
+                        whileTap={{ scale: 0.99, backgroundColor: "#E4F7F7" }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                       >
-                        <span className="text-[#48b2af] text-[16px] font-medium leading-[25px] tracking-[-0.32px]">
+                        <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#48b2af' }}>
                           취소
                         </span>
                       </motion.button>
@@ -951,11 +947,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                           setShowRelationshipPicker(false);
                           setErrors(prev => ({ ...prev, relationship: undefined }));
                         }}
-                        className="flex-1 h-[56px] rounded-[16px] bg-[#48b2af] flex items-center justify-center cursor-pointer"
-                        whileTap={{ scale: 0.96, backgroundColor: "#368d8a" }}
+                        className="flex-1 h-[56px] bg-[#48b2af] flex items-center justify-center cursor-pointer"
+                        style={{ borderRadius: '20px' }}
+                        whileTap={{ scale: 0.99, backgroundColor: "#368d8a" }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
                       >
-                        <span className="text-white text-[16px] font-medium leading-[25px] tracking-[-0.32px]">
+                        <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#ffffff' }}>
                           선택 완료
                         </span>
                       </motion.button>

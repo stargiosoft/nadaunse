@@ -106,7 +106,7 @@ export function SajuKebabMenu({
           
           {/* Bottom Sheet */}
           {/* pointer-events-auto로 컨텐츠 상호작용 가능하게 함 */}
-          <div className="relative w-full max-w-[440px] bg-white rounded-t-[16px] overflow-hidden animate-in slide-in-from-bottom duration-300 pointer-events-auto">
+          <div className="relative w-full max-w-[440px] bg-white overflow-hidden animate-in slide-in-from-bottom duration-300 pointer-events-auto" style={{ borderRadius: '24px 24px 0 0' }}>
             
             {/* Handle - Drag Area */}
             
@@ -157,9 +157,15 @@ export function SajuKebabMenu({
             
             {/* Footer / Cancel */}
             <div className="w-full flex flex-col items-center px-[20px] pb-[calc(20px+env(safe-area-inset-bottom))] pt-[12px]">
-               <button 
+               <button
                  onClick={onClose}
-                 className="w-full h-[56px] bg-[#f0f8f8] rounded-[16px] flex items-center justify-center active:bg-[#E4F7F7] active:scale-[0.96] transition-all"
+                 className="w-full h-[56px] bg-[#f0f8f8] flex items-center justify-center transition-all"
+                 style={{ borderRadius: '20px', transition: 'all 0.15s ease' }}
+                 onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#E4F7F7'; }}
+                 onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#f0f8f8'; }}
+                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#f0f8f8'; }}
+                 onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#E4F7F7'; }}
+                 onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#f0f8f8'; }}
                >
                  <span className="font-['Pretendard_Variable'] font-medium text-[#48b2af] text-[16px] tracking-[-0.32px]">취소</span>
                </button>

@@ -819,143 +819,86 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
             </div>
           </div>
 
-          <div className="h-[16px] shrink-0 w-full" />
         </div>
 
         {/* Content */}
-        <motion.div className="pt-[68px] pb-[120px] px-[20px]" variants={containerVariants} initial="hidden" animate="visible">
+        <motion.div className="pt-[52px] pb-[120px]" variants={containerVariants} initial="hidden" animate="visible">
+          <div className="flex flex-col" style={{ gap: '8px' }}>
           {/* 내 사주 섹션 */}
           {mySaju && (
-            <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
-              {/* Section Title */}
-              <motion.div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full" variants={itemVariants}>
-                <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                  <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">
-                      내 사주
-                    </p>
-                  </div>
+            <motion.div className="flex flex-col" style={{ gap: '12px' }} variants={itemVariants}>
+              <div className="flex flex-col">
+                {/* Section Header */}
+                <div className="flex items-center px-[20px]" style={{ paddingTop: '10px' }}>
+                  <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                    내 사주
+                  </p>
                 </div>
-                <div className="h-0 relative shrink-0 w-full">
-                  <div className="absolute inset-[-0.5px_0]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                      <path d="M0 0.5H350" stroke="#F3F3F3" />
-                    </svg>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Profile Card */}
-              <motion.div className="content-stretch flex gap-[12px] items-center px-[px] py-[4px] relative rounded-[12px] shrink-0 w-full" variants={itemVariants}>
-                {/* Radio Button */}
-                <div className="content-stretch flex items-center justify-center relative shrink-0 size-[44px]">
-                  <Radio 
-                    checked={selectedSajuId === mySaju.id}
-                    onClick={() => handleRadioClick(mySaju.id)}
-                  />
-                </div>
-
-                {/* Profile Image */}
-                <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-                  <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-                    <img
-                      alt={mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
-                      className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-                      src={getZodiacImageUrl(mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time))}
-                      loading="lazy"
-                    />
-                    <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
-                  </div>
-                </div>
-
-                {/* Info Container */}
-                <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0 mb-[8px]">
-                  <div className="content-stretch flex items-center justify-between relative shrink-0 w-full -mb-[8px]">
-                    <p className="overflow-hidden relative text-[15px] text-black tracking-[-0.45px] font-medium line-clamp-2">
-                      {mySaju.full_name} {mySaju.notes && `(${mySaju.notes})`}
-                    </p>
-                    <div 
-                      onClick={(event) => handleKebabClick(event, mySaju)}
-                      className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
-                    >
-                      <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
-                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                          <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
-                        </svg>
+                {/* Profile Item */}
+                <div className="flex items-start justify-between px-[20px]" style={{ paddingBottom: '10px', paddingTop: '4px' }}>
+                  {/* Left: Profile Container (Radio + Image) + Text */}
+                  <div className="flex flex-1 gap-[10px] items-center min-w-0" style={{ paddingTop: '6px' }}>
+                    {/* Profile Container: Radio + Image */}
+                    <div className="flex gap-[4px] items-center shrink-0">
+                      <div className="flex items-center justify-center shrink-0 size-[36px]">
+                        <Radio
+                          checked={selectedSajuId === mySaju.id}
+                          onClick={() => handleRadioClick(mySaju.id)}
+                        />
+                      </div>
+                      {/* Profile Image 44x44 */}
+                      <div className="relative shrink-0 size-[44px] overflow-hidden transform-gpu" style={{ borderRadius: "14px" }}>
+                        <img
+                          alt={mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
+                          className="absolute inset-0 max-w-none object-cover size-full"
+                          src={getZodiacImageUrl(mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time))}
+                          loading="lazy"
+                        />
                       </div>
                     </div>
-                  </div>
-                  <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full -mt-[4px]">
-                    <div className="content-stretch flex items-center relative rounded-[12px] shrink-0 w-full">
-                      <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
+                    {/* Text Group */}
+                    <div className="flex flex-col min-w-0" style={{ gap: '3px' }}>
+                      <p className="overflow-hidden line-clamp-2" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.42px', color: '#000000' }}>
+                        {mySaju.full_name} {mySaju.notes && `(${mySaju.notes})`}
+                      </p>
+                      <p className="overflow-hidden text-nowrap" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 400, lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484' }}>
                         {formatBirthDate(mySaju.birth_date, mySaju.calendar_type)}
                       </p>
                     </div>
-                    <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
-                      <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                        {mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)}
-                      </p>
-                      <div
-                        className="h-[6px] shrink-0"
-                        style={{
-                          width: '1px',
-                          backgroundColor: '#D4D4D4',
-                          borderRadius: '0.5px'
-                        }}
-                      />
-                      <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                        {(() => {
-                          const dateOnly = mySaju.birth_date.split('T')[0];
-                          const [_, month, day] = dateOnly.split('-');
-                          return getConstellation(parseInt(month), parseInt(day));
-                        })()}
-                      </p>
-                      <div
-                        className="h-[6px] shrink-0"
-                        style={{
-                          width: '1px',
-                          backgroundColor: '#D4D4D4',
-                          borderRadius: '0.5px'
-                        }}
-                      />
-                      <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                        {mySaju.gender === 'male' || mySaju.gender === '남' || mySaju.gender === '남성' ? '남성' : '여성'}
-                      </p>
+                  </div>
+                  {/* Kebab button */}
+                  <div
+                    onClick={(event) => handleKebabClick(event, mySaju)}
+                    className="group flex items-center justify-center p-[4px] rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
+                  >
+                    <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
+                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                        <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
+                      </svg>
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            </div>
+              </div>
+              {/* 4px 구분선 */}
+              <div className="shrink-0 w-full" style={{ height: '4px', backgroundColor: '#f9f9f9' }} />
+            </motion.div>
           )}
 
           {/* 함께 보는 사주 섹션 */}
-          <div className="content-stretch flex flex-col gap-[120px] items-start relative shrink-0 w-full mt-[32px]">
-            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-              {/* Section Title */}
-              <motion.div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full mb-[-6px]" variants={itemVariants}>
-                <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                  <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">
-                      함께 보는 사주
-                    </p>
-                  </div>
-                </div>
-                <div className="h-0 relative shrink-0 w-full">
-                  <div className="absolute inset-[-0.5px_0]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                      <path d="M0 0.5H350" stroke="#F3F3F3" />
-                    </svg>
-                  </div>
-                </div>
-              </motion.div>
+          <motion.div className="flex flex-col" variants={itemVariants}>
+            {/* Section Header */}
+            <div className="flex items-center px-[20px]" style={{ paddingTop: '10px' }}>
+              <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                함께 보는 사주
+              </p>
             </div>
 
             {/* Empty State or List */}
             {!hasOtherSaju ? (
-              <motion.div className="content-stretch flex flex-col items-start relative shrink-0 w-full -mt-[44px]" variants={itemVariants}>
-                <div className="content-stretch flex flex-col gap-[16px] items-center justify-center relative shrink-0 w-full">
-                  <div className="relative shrink-0 size-[64px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 48 48">
+              <motion.div className="flex flex-col items-center px-[20px] pt-[24px] pb-[16px]" variants={itemVariants}>
+                <div className="flex flex-col gap-[16px] items-center justify-center w-full">
+                  <div className="relative shrink-0" style={{ width: '56px', height: '56px' }}>
+                    <svg className="block" style={{ width: '56px', height: '56px' }} fill="none" preserveAspectRatio="none" viewBox="0 0 48 48">
                       <g id="Icons">
                         <path d={emptyStateSvgPaths.p3a144140} fill="var(--fill-0, #E7E7E7)" id="Vector" />
                         <path d={emptyStateSvgPaths.p15b23580} fill="var(--fill-0, #D4D4D4)" id="Vector_2" />
@@ -968,100 +911,63 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
                       </g>
                     </svg>
                   </div>
-                  <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
-                    <p className="font-normal leading-[26.5px] relative shrink-0 text-[#B7B7B7] text-[15px] text-center tracking-[-0.3px] w-full">
-                      함께 보는 사주를 등록해 보세요.
-                      <br />
-                      소중한 인연의 운세를 함께 확인할 수 있어요.
-                    </p>
-                  </div>
+                  <p className="w-full text-center" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, lineHeight: '26.5px', letterSpacing: '-0.3px', color: '#B7B7B7' }}>
+                    함께 보는 사주를 등록해 보세요.
+                    <br />
+                    소중한 인연의 운세를 함께 확인할 수 있어요.
+                  </p>
                 </div>
               </motion.div>
             ) : (
-              <div className="content-stretch flex flex-col gap-[1px] items-start relative shrink-0 w-full -mt-[108px]">
+              <div className="flex flex-col" style={{ gap: '2px' }}>
                 {otherSajuList.map((saju) => (
-                  <motion.div key={saju.id} className="content-stretch flex gap-[12px] items-center px-[px] py-[4px] relative rounded-[12px] shrink-0 w-full" variants={itemVariants}>
-                    {/* Radio Button */}
-                    <div className="content-stretch flex items-center justify-center relative shrink-0 size-[44px]">
-                      <Radio 
-                        checked={selectedSajuId === saju.id}
-                        onClick={() => handleRadioClick(saju.id)}
-                      />
-                    </div>
-
-                    {/* Profile Image */}
-                    <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-                      <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-                        <img
-                          alt={saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
-                          className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-                          src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time))}
-                          loading="lazy"
-                        />
-                        <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
+                  <motion.div key={saju.id} className="flex items-start justify-between px-[20px]" style={{ paddingBottom: '10px', paddingTop: '4px' }} variants={itemVariants}>
+                    {/* Left: Profile Container (Radio + Image) + Text */}
+                    <div className="flex flex-1 gap-[10px] items-center min-w-0" style={{ paddingTop: '6px' }}>
+                      {/* Profile Container: Radio + Image */}
+                      <div className="flex gap-[4px] items-center shrink-0">
+                        <div className="flex items-center justify-center shrink-0 size-[36px]">
+                          <Radio
+                            checked={selectedSajuId === saju.id}
+                            onClick={() => handleRadioClick(saju.id)}
+                          />
+                        </div>
+                        {/* Profile Image 44x44 */}
+                        <div className="relative shrink-0 size-[44px] overflow-hidden transform-gpu" style={{ borderRadius: "14px" }}>
+                          <img
+                            alt={saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
+                            className="absolute inset-0 max-w-none object-cover size-full"
+                            src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time))}
+                            loading="lazy"
+                          />
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Info Container */}
-                    <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0 mb-[8px]">
-                      <div className="content-stretch flex items-center justify-between relative shrink-0 w-full -mb-[8px]">
-                        <p className="overflow-hidden relative text-[15px] text-black tracking-[-0.45px] font-medium line-clamp-2">
+                      {/* Text Group */}
+                      <div className="flex flex-col min-w-0" style={{ gap: '3px' }}>
+                        <p className="overflow-hidden line-clamp-2" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.42px', color: '#000000' }}>
                           {saju.full_name} {saju.notes && `(${saju.notes})`}
                         </p>
-                        <div 
-                          onClick={(event) => handleKebabClick(event, saju)}
-                          className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
-                        >
-                          <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
-                            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                              <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
-                            </svg>
-                          </div>
-                        </div>
+                        <p className="overflow-hidden text-nowrap" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 400, lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484' }}>
+                          {formatBirthDate(saju.birth_date, saju.calendar_type)}
+                        </p>
                       </div>
-                      <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full -mt-[4px]">
-                        <div className="content-stretch flex items-center relative rounded-[12px] shrink-0 w-full">
-                          <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            {formatBirthDate(saju.birth_date, saju.calendar_type)}
-                          </p>
-                        </div>
-                        <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
-                          <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            {saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)}
-                          </p>
-                          <div
-                            className="h-[6px] shrink-0"
-                            style={{
-                              width: '1px',
-                              backgroundColor: '#D4D4D4',
-                              borderRadius: '0.5px'
-                            }}
-                          />
-                          <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            {(() => {
-                              const dateOnly = saju.birth_date.split('T')[0];
-                              const [_, month, day] = dateOnly.split('-');
-                              return getConstellation(parseInt(month), parseInt(day));
-                            })()}
-                          </p>
-                          <div
-                            className="h-[6px] shrink-0"
-                            style={{
-                              width: '1px',
-                              backgroundColor: '#D4D4D4',
-                              borderRadius: '0.5px'
-                            }}
-                          />
-                          <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-                            {saju.gender === 'male' || saju.gender === '남' || saju.gender === '남성' ? '남성' : '여성'}
-                          </p>
-                        </div>
+                    </div>
+                    {/* Kebab button */}
+                    <div
+                      onClick={(event) => handleKebabClick(event, saju)}
+                      className="group flex items-center justify-center p-[4px] rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
+                    >
+                      <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                          <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
+                        </svg>
                       </div>
                     </div>
                   </motion.div>
                 ))}
               </div>
             )}
+          </motion.div>
           </div>
         </motion.div>
 
@@ -1072,15 +978,18 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
               <div className="w-full flex justify-center relative">
                 <div className="w-full max-w-[440px] px-[20px] py-[12px]">
                   <div
-                    onClick={handleNavigateToAdd}
-                    className="bg-[#48b2af] h-[56px] rounded-[16px] w-full cursor-pointer hover:bg-[#3a9794] active:bg-[#2d7a78] active:scale-96 transition-all duration-150 ease-in-out flex items-center justify-center gap-[4px]"
+                    onClick={onNavigateToInput}
+                    className="bg-[#48b2af] h-[56px] w-full cursor-pointer flex items-center justify-center"
+                    style={{ borderRadius: '20px', transition: 'all 0.15s ease' }}
+                    onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#41a09e'; }}
+                    onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#48b2af'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#48b2af'; }}
+                    onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#41a09e'; }}
+                    onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#48b2af'; }}
                   >
-                    <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[25px] text-[16px] text-nowrap text-white tracking-[-0.32px]">
+                    <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#ffffff' }}>
                       사주 정보 추가
                     </p>
-                    <svg className="size-[16px]" fill="none" viewBox="0 0 24 24">
-                      <path d={svgPaths.p2a89300} fill="white" />
-                    </svg>
                   </div>
                 </div>
               </div>

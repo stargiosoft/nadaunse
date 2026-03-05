@@ -14,8 +14,10 @@ import svgPaths from "../imports/svg-b51v8udqqu"; // ⭐️ SajuManagementPage�
 import emptyStateSvgPaths from "../imports/svg-297vu4q7h0"; // Empty State 아이콘 (둥지)
 import { SajuKebabMenu } from './SajuKebabMenu';
 import { ConfirmDialog } from './ConfirmDialog';
-import SajuCard, { SajuCardData } from './SajuCard';
 import { PageLoader } from './ui/PageLoader';
+import { getZodiacImageUrl } from '../lib/zodiacUtils';
+import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
+import { Radio } from './ui/Radio';
 
 interface FreeSajuSelectPageProps {
   productId: string;
@@ -40,6 +42,16 @@ interface SajuRecord {
   calendar_type?: string;
   zodiac?: string;
 }
+
+const getChineseZodiac = (birthDate: string, birthTime?: string) =>
+  getChineseZodiacByLichun(birthDate, birthTime);
+
+const formatBirthDate = (birthDate: string, calendarType?: string): string => {
+  const dateOnly = birthDate.split('T')[0];
+  const [year, month, day] = dateOnly.split('-');
+  const prefix = calendarType === 'lunar' ? '음력' : '양력';
+  return `${prefix} ${year}.${month}.${day}`;
+};
 
 export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRecords, prefetchedMySaju }: FreeSajuSelectPageProps) {
   const navigate = useNavigate();
@@ -552,178 +564,177 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
 
   return (
     <div className="bg-white fixed inset-0 flex justify-center">
-      <div className="w-full max-w-[390px] h-full flex flex-col bg-white">
-        {/* Top Navigation - shrink-0로 고정 높이 */}
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
+        {/* Top Navigation */}
         <div className="bg-white shrink-0 w-full z-10">
-        {/* Navigation Bar */}
-        <div className="bg-white h-[52px] relative shrink-0 w-full">
-          <div className="flex flex-col justify-center size-full">
-            <div className="content-stretch flex flex-col items-start justify-center px-[12px] py-[4px] relative size-full">
-              <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                <div onClick={onBack} className="content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer">
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <path d={svgPaths.p2a5cd480} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
-                    </svg>
+          <div className="bg-white h-[52px] relative shrink-0 w-full">
+            <div className="flex flex-col justify-center size-full">
+              <div className="content-stretch flex flex-col items-start justify-center px-[12px] py-[4px] relative size-full">
+                <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
+                  <div onClick={onBack} className="group content-stretch flex items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer transition-colors duration-200 active:bg-gray-100">
+                    <div className="relative shrink-0 size-[24px] transition-transform duration-200 group-active:scale-90">
+                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+                        <path d={svgPaths.p2a5cd480} stroke="#848484" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" strokeWidth="1.7" />
+                      </svg>
+                    </div>
                   </div>
+                  <p className="basis-0 grow leading-[25.5px] font-semibold min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
+                    사주 정보 선택
+                  </p>
+                  <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
                 </div>
-                <p className="basis-0 grow leading-[25.5px] font-semibold min-h-px min-w-px overflow-ellipsis overflow-hidden relative shrink-0 text-[18px] text-black text-center text-nowrap tracking-[-0.36px]">
-                  사주 정보 선택
-                </p>
-                <div className="content-stretch flex items-center justify-center opacity-0 p-[4px] relative rounded-[12px] shrink-0 size-[44px]" />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="h-[16px] shrink-0 w-full" />
-      </div>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-[20px]">
+          <div className="flex flex-col" style={{ gap: '8px' }}>
 
-      {/* Scrollable Content Area - flex-1로 남은 공간 차지, overscroll-contain으로 바운스 방지 */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        <div className="px-[20px] pb-[20px]">
-          {/* 내 사주 섹션 */}
-          {mySaju && (
-            <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
-              {/* Section Title */}
-              <div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full">
-                <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                  <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">
+            {/* 내 사주 섹션 */}
+            {mySaju && (
+              <div className="flex flex-col" style={{ gap: '12px' }}>
+                <div className="flex flex-col">
+                  <div className="flex items-center px-[20px]" style={{ paddingTop: '10px' }}>
+                    <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                       내 사주
                     </p>
                   </div>
-                </div>
-                <div className="h-0 relative shrink-0 w-full">
-                  <div className="absolute inset-[-0.5px_0]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                      <path d="M0 0.5H350" stroke="#F3F3F3" />
-                    </svg>
+                  <div className="flex items-start justify-between px-[20px]" style={{ paddingBottom: '10px', paddingTop: '4px' }} onClick={() => setSelectedSajuId(mySaju.id)}>
+                    <div className="flex flex-1 gap-[10px] items-center min-w-0" style={{ paddingTop: '6px' }}>
+                      <div className="flex gap-[4px] items-center shrink-0">
+                        <div className="flex items-center justify-center shrink-0 size-[36px]">
+                          <Radio checked={selectedSajuId === mySaju.id} onClick={() => setSelectedSajuId(mySaju.id)} />
+                        </div>
+                        <div className="relative shrink-0 size-[44px] overflow-hidden transform-gpu" style={{ borderRadius: '14px' }}>
+                          <img alt={mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time)} className="absolute inset-0 max-w-none object-cover size-full" src={getZodiacImageUrl(mySaju.zodiac || getChineseZodiac(mySaju.birth_date, mySaju.birth_time))} loading="lazy" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col min-w-0" style={{ gap: '3px' }}>
+                        <p className="overflow-hidden line-clamp-2" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.42px', color: '#000000' }}>
+                          {mySaju.full_name} {mySaju.notes && `(${mySaju.notes})`}
+                        </p>
+                        <p className="overflow-hidden text-nowrap" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 400, lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484' }}>
+                          {formatBirthDate(mySaju.birth_date, mySaju.calendar_type)}
+                        </p>
+                      </div>
+                    </div>
+                    <div onClick={(event) => { event.stopPropagation(); handleKebabClick(event, mySaju); }} className="group flex items-center justify-center p-[4px] rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10">
+                      <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
+                        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                          <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                {/* 4px 구분선 */}
+                <div className="shrink-0 w-full" style={{ height: '4px', backgroundColor: '#f9f9f9' }} />
+              </div>
+            )}
+
+            {/* 함께 보는 사주 섹션 */}
+            <div className="flex flex-col">
+              <div className="flex items-center px-[20px]" style={{ paddingTop: '10px' }}>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                  함께 보는 사주
+                </p>
               </div>
 
-              {/* Profile Card - 공통 컴포넌트 사용 */}
-              <SajuCard
-                saju={mySaju as SajuCardData}
-                isSelected={selectedSajuId === mySaju.id}
-                onSelect={() => setSelectedSajuId(mySaju.id)}
-                onKebabClick={(event) => handleKebabClick(event, mySaju)}
-              />
-            </div>
-          )}
-
-          {/* 함께 보는 사주 섹션 */}
-          <div className="content-stretch flex flex-col gap-[120px] items-start relative shrink-0 w-full mt-[32px]">
-            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
-              {/* Section Title */}
-              <div className="content-stretch flex flex-col gap-[6px] items-center relative shrink-0 w-full mb-[-6px]">
-                <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-                  <div className="basis-0 content-stretch flex grow items-center justify-center min-h-px min-w-px relative shrink-0">
-                    <p className="basis-0 grow leading-[24px] min-h-px min-w-px relative shrink-0 text-[17px] text-black tracking-[-0.34px] font-semibold">
-                      함께 보는 사주
-                    </p>
-                  </div>
-                </div>
-                <div className="h-0 relative shrink-0 w-full">
-                  <div className="absolute inset-[-0.5px_0]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 350 1">
-                      <path d="M0 0.5H350" stroke="#F3F3F3" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Empty State or List */}
-            {!hasOtherSaju ? (
-              <div className="content-stretch flex flex-col items-start relative shrink-0 w-full -mt-[44px]">
-                <div className="content-stretch flex flex-col gap-[28px] items-center justify-center relative shrink-0 w-full">
-                  <div className="relative shrink-0 size-[64px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 48 48">
-                      <g id="Icons">
-                        <path d={emptyStateSvgPaths.p3a144140} fill="#E7E7E7" id="Vector" />
-                        <path d={emptyStateSvgPaths.p15b23580} fill="#D4D4D4" id="Vector_2" />
-                        <path d={emptyStateSvgPaths.p3b09d000} fill="#D4D4D4" id="Vector_3" />
-                        <path d={emptyStateSvgPaths.p1c433500} fill="#E7E7E7" id="Vector_4" />
-                        <path d={emptyStateSvgPaths.p136e2000} fill="#F3F3F3" id="Vector_5" />
-                        <path d={emptyStateSvgPaths.p15328600} fill="#D4D4D4" id="Vector_6" />
-                        <path d={emptyStateSvgPaths.p1d148980} fill="#E7E7E7" id="Vector_7" />
-                        <path d={emptyStateSvgPaths.p2d904400} fill="#F3F3F3" id="Vector_8" />
-                      </g>
-                    </svg>
-                  </div>
-                  <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 w-full">
-                    <p className="font-normal leading-[25.5px] relative shrink-0 text-[#848484] text-[15px] text-center tracking-[-0.3px] w-full">
+              {!hasOtherSaju ? (
+                <div className="flex flex-col items-center px-[20px] pt-[24px] pb-[16px]">
+                  <div className="flex flex-col gap-[16px] items-center justify-center w-full">
+                    <div className="relative shrink-0" style={{ width: '56px', height: '56px' }}>
+                      <svg className="block" style={{ width: '56px', height: '56px' }} fill="none" preserveAspectRatio="none" viewBox="0 0 48 48">
+                        <g id="Icons">
+                          <path d={emptyStateSvgPaths.p3a144140} fill="#E7E7E7" id="Vector" />
+                          <path d={emptyStateSvgPaths.p15b23580} fill="#D4D4D4" id="Vector_2" />
+                          <path d={emptyStateSvgPaths.p3b09d000} fill="#D4D4D4" id="Vector_3" />
+                          <path d={emptyStateSvgPaths.p1c433500} fill="#E7E7E7" id="Vector_4" />
+                          <path d={emptyStateSvgPaths.p136e2000} fill="#F3F3F3" id="Vector_5" />
+                          <path d={emptyStateSvgPaths.p15328600} fill="#D4D4D4" id="Vector_6" />
+                          <path d={emptyStateSvgPaths.p1d148980} fill="#E7E7E7" id="Vector_7" />
+                          <path d={emptyStateSvgPaths.p2d904400} fill="#F3F3F3" id="Vector_8" />
+                        </g>
+                      </svg>
+                    </div>
+                    <p className="w-full text-center" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, lineHeight: '26.5px', letterSpacing: '-0.3px', color: '#B7B7B7' }}>
                       함께 보는 사주를 등록해 보세요.
                       <br />
                       소중한 인연의 운세를 함께 확인할 수 있어요.
                     </p>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="content-stretch flex flex-col gap-[1px] items-start relative shrink-0 w-full -mt-[108px]">
-                {otherSajus.map((saju) => (
-                  <SajuCard
-                    key={saju.id}
-                    saju={saju as SajuCardData}
-                    isSelected={selectedSajuId === saju.id}
-                    onSelect={() => setSelectedSajuId(saju.id)}
-                    onKebabClick={(event) => handleKebabClick(event, saju)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Button - shrink-0로 고정 */}
-      <div className="bg-white shrink-0 w-full shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] z-10">
-        <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
-                {/* Button Group - 사주 정보 추가 + 다음 */}
-                <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full">
-                  {/* 사주 정보 추가 버튼 */}
-                  <motion.button
-                    onClick={handleAddSaju}
-                    onTouchStart={() => {}}
-                    whileTap={{ scale: 0.96 }}
-                    transition={{ duration: 0.1 }}
-                    className="basis-0 grow h-[56px] min-h-px min-w-px relative rounded-[16px] shrink-0 bg-[#f0f8f8] cursor-pointer border-none transition-colors duration-150 active:bg-[#e0f0f0]"
-                  >
-                    <div className="flex flex-row items-center justify-center size-full">
-                      <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
-                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                          <p className="font-medium leading-[25px] relative shrink-0 text-[#48b2af] text-[16px] text-nowrap tracking-[-0.32px]">
-                            사주 정보 추가
+              ) : (
+                <div className="flex flex-col" style={{ gap: '2px' }}>
+                  {otherSajus.map((saju) => (
+                    <div key={saju.id} className="flex items-start justify-between px-[20px]" style={{ paddingBottom: '10px', paddingTop: '4px' }} onClick={() => setSelectedSajuId(saju.id)}>
+                      <div className="flex flex-1 gap-[10px] items-center min-w-0" style={{ paddingTop: '6px' }}>
+                        <div className="flex gap-[4px] items-center shrink-0">
+                          <div className="flex items-center justify-center shrink-0 size-[36px]">
+                            <Radio checked={selectedSajuId === saju.id} onClick={() => setSelectedSajuId(saju.id)} />
+                          </div>
+                          <div className="relative shrink-0 size-[44px] overflow-hidden transform-gpu" style={{ borderRadius: '14px' }}>
+                            <img alt={saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time)} className="absolute inset-0 max-w-none object-cover size-full" src={getZodiacImageUrl(saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time))} loading="lazy" />
+                          </div>
+                        </div>
+                        <div className="flex flex-col min-w-0" style={{ gap: '3px' }}>
+                          <p className="overflow-hidden line-clamp-2" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.42px', color: '#000000' }}>
+                            {saju.full_name} {saju.notes && `(${saju.notes})`}
+                          </p>
+                          <p className="overflow-hidden text-nowrap" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 400, lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484' }}>
+                            {formatBirthDate(saju.birth_date, saju.calendar_type)}
                           </p>
                         </div>
                       </div>
-                    </div>
-                  </motion.button>
-
-                  {/* 다음 버튼 */}
-                  <motion.button
-                    onClick={handleNext}
-                    onTouchStart={() => {}}
-                    whileTap={{ scale: 0.96 }}
-                    transition={{ duration: 0.1 }}
-                    className="basis-0 grow h-[56px] min-h-px min-w-px relative rounded-[16px] shrink-0 bg-[#48b2af] cursor-pointer border-none transition-colors duration-150 active:bg-[#3a9693]"
-                  >
-                    <div className="flex flex-row items-center justify-center size-full">
-                      <div className="content-stretch flex items-center justify-center px-[12px] py-0 relative size-full">
-                        <div className="content-stretch flex gap-[4px] items-center relative shrink-0">
-                          <p className="font-medium leading-[25px] relative shrink-0 text-[16px] text-nowrap text-white tracking-[-0.32px]">
-                            다음
-                          </p>
+                      <div onClick={(event) => { event.stopPropagation(); handleKebabClick(event, saju); }} className="group flex items-center justify-center p-[4px] rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10">
+                        <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
+                          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+                            <path d={svgPaths.pdd51400} fill="#B7B7B7" stroke="#B7B7B7" />
+                          </svg>
                         </div>
                       </div>
                     </div>
-                  </motion.button>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
-      </div>
+
+        {/* Bottom Buttons */}
+        <div className="bg-white shrink-0 w-full shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] z-10">
+          <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
+            <div className="content-stretch flex gap-[12px] items-start relative shrink-0 w-full">
+              <motion.button
+                onClick={handleAddSaju}
+                onTouchStart={() => {}}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.1 }}
+                className="basis-0 grow h-[56px] min-h-px min-w-px relative shrink-0 bg-[#f0f8f8] cursor-pointer border-none transition-colors duration-150 active:bg-[#e0f0f0]"
+                style={{ borderRadius: '20px' }}
+              >
+                <div className="flex flex-row items-center justify-center size-full">
+                  <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#48b2af' }}>사주 정보 추가</p>
+                </div>
+              </motion.button>
+              <motion.button
+                onClick={handleNext}
+                onTouchStart={() => {}}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.1 }}
+                className="basis-0 grow h-[56px] min-h-px min-w-px relative shrink-0 bg-[#48b2af] cursor-pointer border-none transition-colors duration-150 active:bg-[#3a9693]"
+                style={{ borderRadius: '20px' }}
+              >
+                <div className="flex flex-row items-center justify-center size-full">
+                  <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#ffffff' }}>다음</p>
+                </div>
+              </motion.button>
+            </div>
+          </div>
+        </div>
 
       {/* 케밥 메뉴 */}
       {kebabMenuOpen && selectedSajuForKebab && (

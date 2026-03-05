@@ -5,11 +5,11 @@
  */
 
 import React from 'react';
-import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
+import { getZodiacImageUrl } from '../lib/zodiacUtils';
 import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 
-// 케밥 메뉴 아이콘 SVG path
-const KEBAB_ICON_PATH = "M8 2.75C7.58579 2.75 7.25 3.08579 7.25 3.5C7.25 3.91421 7.58579 4.25 8 4.25C8.41421 4.25 8.75 3.91421 8.75 3.5C8.75 3.08579 8.41421 2.75 8 2.75ZM8 7.25C7.58579 7.25 7.25 7.58579 7.25 8C7.25 8.41421 7.58579 8.75 8 8.75C8.41421 8.75 8.75 8.41421 8.75 8C8.75 7.58579 8.41421 7.25 8 7.25ZM8 11.75C7.58579 11.75 7.25 12.0858 7.25 12.5C7.25 12.9142 7.58579 13.25 8 13.25C8.41421 13.25 8.75 12.9142 8.75 12.5C8.75 12.0858 8.41421 11.75 8 11.75Z";
+// 케밥 메뉴 아이콘 SVG path (가로 점 3개 - SajuManagementPage 동일)
+const KEBAB_ICON_PATH = "M3.00033 6.83333C3.30955 6.83342 3.60584 6.95652 3.82454 7.17513C4.04334 7.39392 4.16634 7.69091 4.16634 8.00033C4.16626 8.30963 4.04326 8.60583 3.82454 8.82454C3.60583 9.04326 3.30963 9.16626 3.00033 9.16634C2.69091 9.16634 2.39392 9.04334 2.17513 8.82454C1.95652 8.60584 1.83342 8.30955 1.83333 8.00033C1.83333 7.69091 1.95634 7.39392 2.17513 7.17513C2.39392 6.95634 2.69091 6.83333 3.00033 6.83333ZM8.00033 6.83333C8.30955 6.83342 8.60584 6.95652 8.82454 7.17513C9.04334 7.39392 9.16634 7.69091 9.16634 8.00033C9.16626 8.30963 9.04326 8.60583 8.82454 8.82454C8.60583 9.04326 8.30963 9.16626 8.00033 9.16634C7.69091 9.16634 7.39392 9.04334 7.17513 8.82454C6.95652 8.60584 6.83342 8.30955 6.83333 8.00033C6.83333 7.69091 6.95634 7.39392 7.17513 7.17513C7.39392 6.95634 7.69091 6.83333 8.00033 6.83333ZM13.0003 6.83333C13.3096 6.83342 13.6058 6.95652 13.8245 7.17513C14.0433 7.39392 14.1663 7.69091 14.1663 8.00033C14.1663 8.30963 14.0433 8.60583 13.8245 8.82454C13.6058 9.04326 13.3096 9.16626 13.0003 9.16634C12.6909 9.16634 12.3939 9.04334 12.1751 8.82454C11.9565 8.60584 11.8334 8.30955 11.8333 8.00033C11.8333 7.69091 11.9563 7.39392 12.1751 7.17513C12.3939 6.95634 12.6909 6.83333 13.0003 6.83333Z";
 
 export interface SajuCardData {
   id: string;
@@ -49,20 +49,6 @@ const formatBirthDate = (birthDate: string, calendarType?: string): string => {
   return `${calendarPrefix} ${year}.${month}.${day}`;
 };
 
-/**
- * 구분자 (|) 컴포넌트
- * ⚠️ CSS div 사용: SVG subpixel rendering 이슈 방지 (모바일에서 두께 불일치)
- */
-const Separator = () => (
-  <div
-    className="h-[6px] shrink-0"
-    style={{
-      width: '1px',
-      backgroundColor: '#D4D4D4',
-      borderRadius: '0.5px'
-    }}
-  />
-);
 
 export default function SajuCard({
   saju,
@@ -74,91 +60,65 @@ export default function SajuCard({
 }: SajuCardProps) {
   const zodiac = saju.zodiac || getChineseZodiac(saju.birth_date, saju.birth_time);
 
-  // 별자리 계산
-  const getConstellationFromDate = () => {
-    const dateOnly = saju.birth_date.split('T')[0];
-    const [_, month, day] = dateOnly.split('-');
-    return getConstellation(parseInt(month), parseInt(day));
-  };
-
   return (
     <div
-      className={`content-stretch flex gap-[12px] items-center px-[px] py-[4px] relative rounded-[12px] shrink-0 w-full ${className}`}
+      className={`flex items-start justify-between relative shrink-0 w-full ${className}`}
+      style={{ paddingBottom: '10px', paddingTop: '4px' }}
       onClick={onSelect}
     >
-      {/* Radio Button */}
-      {showRadio && (
-        <div className="content-stretch flex items-center justify-center relative shrink-0 size-[44px]">
-          <div
-            className={`content-stretch flex items-center justify-center relative rounded-full shrink-0 size-[24px] border-2 ${
-              isSelected ? 'border-[#48b2af]' : 'border-[#e7e7e7]'
-            } cursor-pointer`}
-          >
-            {isSelected && (
-              <div className="bg-[#48b2af] rounded-full size-[12px]" />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Profile Image */}
-      <div className="-ml-[11px] pl-[1px] mr-[-3px] grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
-        <div className="[grid-area:1_/_1] ml-0 mt-0 pointer-events-none relative rounded-[8px] shrink-0 size-[60px]">
-          <img
-            alt={zodiac}
-            className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
-            src={getZodiacImageUrl(zodiac)}
-            loading="lazy"
-          />
-          <div aria-hidden="true" className="absolute border border-[#f8f8f8] border-solid inset-0 rounded-[8px]" />
-        </div>
-      </div>
-
-      {/* Info Container */}
-      <div className="basis-0 content-stretch flex flex-col grow items-start min-h-px min-w-px relative shrink-0 mb-[8px]">
-        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full -mb-[8px]">
-          <p className="overflow-hidden relative text-[15px] text-black tracking-[-0.45px] font-medium line-clamp-2">
-            {saju.full_name} {saju.notes && `(${saju.notes})`}
-          </p>
-          {onKebabClick && (
-            <div
-              onClick={(event) => {
-                event.stopPropagation();
-                onKebabClick(event);
-              }}
-              className="content-stretch flex items-center justify-center p-[4px] relative rounded-[8px] shrink-0 size-[36px] cursor-pointer hover:bg-gray-100"
-            >
-              <div className="relative shrink-0 size-[16px]">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
-                  <path d={KEBAB_ICON_PATH} fill="#848484" stroke="#848484" />
-                </svg>
+      <div className="flex flex-1 gap-[10px] items-center min-w-0" style={{ paddingTop: '6px' }}>
+        {/* Radio + Image grouped */}
+        <div className="flex gap-[4px] items-center shrink-0">
+          {showRadio && (
+            <div className="flex items-center justify-center shrink-0 size-[36px]">
+              <div
+                className={`flex items-center justify-center rounded-full shrink-0 size-[24px] border-2 ${
+                  isSelected ? 'border-[#48b2af]' : 'border-[#e7e7e7]'
+                } cursor-pointer`}
+              >
+                {isSelected && (
+                  <div className="bg-[#48b2af] rounded-full size-[12px]" />
+                )}
               </div>
             </div>
           )}
+          <div className="relative shrink-0 size-[44px] overflow-hidden transform-gpu" style={{ borderRadius: '14px' }}>
+            <img
+              alt={zodiac}
+              className="absolute inset-0 max-w-none object-cover size-full"
+              src={getZodiacImageUrl(zodiac)}
+              loading="lazy"
+            />
+          </div>
         </div>
-        <div className="content-stretch flex flex-col gap-[3px] items-start relative shrink-0 w-full -mt-[4px]">
-          {/* 생년월일 */}
-          <div className="content-stretch flex items-center relative rounded-[12px] shrink-0 w-full">
-            <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-              {formatBirthDate(saju.birth_date, saju.calendar_type)}
-            </p>
-          </div>
-          {/* 띠 | 별자리 | 성별 */}
-          <div className="content-stretch flex gap-[6px] items-center relative rounded-[12px] shrink-0 w-full">
-            <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-              {zodiac}
-            </p>
-            <Separator />
-            <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-              {getConstellationFromDate()}
-            </p>
-            <Separator />
-            <p className="font-normal leading-[16px] overflow-ellipsis overflow-hidden relative shrink-0 text-[#848484] text-[12px] text-nowrap tracking-[-0.24px]">
-              {saju.gender === 'male' || saju.gender === '남' || saju.gender === '남성' ? '남성' : '여성'}
-            </p>
-          </div>
+
+        {/* Text info */}
+        <div className="flex flex-col min-w-0" style={{ gap: '3px' }}>
+          <p className="min-w-0" style={{ fontSize: '14px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.42px', color: '#000000' }}>
+            {saju.full_name}{saju.notes && ` (${saju.notes})`}
+          </p>
+          <p style={{ fontSize: '12px', fontWeight: 400, lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484' }}>
+            {formatBirthDate(saju.birth_date, saju.calendar_type)}
+          </p>
         </div>
       </div>
+
+      {/* Kebab button */}
+      {onKebabClick && (
+        <div
+          onClick={(event) => {
+            event.stopPropagation();
+            onKebabClick(event);
+          }}
+          className="group flex items-center justify-center p-[4px] rounded-[8px] shrink-0 size-[36px] cursor-pointer transition-colors duration-200 active:bg-gray-100 pointer-events-auto z-10"
+        >
+          <div className="relative shrink-0 size-[16px] transition-transform duration-200 group-active:scale-90">
+            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 16">
+              <path d={KEBAB_ICON_PATH} fill="#B7B7B7" stroke="#B7B7B7" />
+            </svg>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
