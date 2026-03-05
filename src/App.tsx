@@ -3472,6 +3472,73 @@ function ReportWeeklyMemoEditWrapper() {
   );
 }
 
+/** 개발용 자동 로그인 (DEV 전용) */
+function AutoLoginPage() {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading');
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const { supabase } = await import('./lib/supabase');
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'devtest_local@stargio.co.kr',
+          password: 'devtest1234',
+        });
+        if (error || !data.session) throw error ?? new Error('no session');
+        const u = data.session.user;
+        // provider: 'dev'로 설정 → ProfilePage DEV 우회 경로 (Supabase API 스킵, 더미 사주 사용)
+        localStorage.setItem('user', JSON.stringify({
+          id: u.id, email: u.email ?? '', nickname: '개발테스트',
+          provider: 'dev', provider_id: u.id, profile_image: '',
+        }));
+        // 더미 사주 데이터 (프로필 화면 표시용)
+        localStorage.setItem('primary_saju', JSON.stringify({
+          id: 'dev_saju_1',
+          full_name: '개발테스트',
+          notes: '본인',
+          birth_date: '1990-06-15T12:00:00',
+          birth_time: '오시',
+          calendar_type: 'solar',
+          gender: 'male',
+          zodiac: '말띠',
+          is_primary: true,
+        }));
+        localStorage.setItem('saju_records_cache', JSON.stringify([{
+          id: 'dev_saju_1',
+          full_name: '개발테스트',
+          notes: '본인',
+          birth_date: '1990-06-15T12:00:00',
+          birth_time: '오시',
+          calendar_type: 'solar',
+          gender: 'male',
+          zodiac: '말띠',
+          is_primary: true,
+        }]));
+        localStorage.setItem('saju_cache_checked', 'true');
+        // 더미 새싹 잔액 (50개)
+        localStorage.setItem('sprout_balance_cache', JSON.stringify({ balance: 50, timestamp: Date.now() }));
+        setStatus('done');
+        setTimeout(() => navigate('/profile', { replace: true }), 500);
+      } catch (e) {
+        console.error(e);
+        setStatus('error');
+      }
+    };
+    run();
+  }, [navigate]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p style={{ fontSize: '16px', color: '#6d6d6d' }}>
+        {status === 'loading' && '자동 로그인 중...'}
+        {status === 'done' && '✅ 로그인 완료! 프로필로 이동 중...'}
+        {status === 'error' && '❌ 로그인 실패 (콘솔 확인)'}
+      </p>
+    </div>
+  );
+}
+
 export default function App() {
   // 🌐 HTML lang 속성 설정 (브라우저 자동번역 방지)
   useEffect(() => {
@@ -3595,6 +3662,7 @@ export default function App() {
           <Route path="/tarot/shuffle" element={<TarotShufflePage />} /> {/* ⭐ 타로 셔플 페이지 */}
           <Route path="/test/tarot" element={<TestTarotPage />} /> {/* ⭐ 테스트용 타로 셔플 (로그인 불필요) */}
           <Route path="/test/email-auth" element={<EmailAuthPage />} /> {/* ⭐ AI 테스트용 이메일 인증 */}
+          {DEV && <Route path="/test/autologin" element={<AutoLoginPage />} />} {/* ⭐ 개발용 자동 로그인 */}
           {/* ⭐ 테스트용 Figma 컴포넌트 라우트 */}
           <Route path="/test/check-record-me" element={<CheckRecordMe />} />
           <Route path="/test/receive-my-analysis" element={<ReceiveMyAnalysis onClose={() => {}} onSave={() => {}} phoneNumber="" setPhoneNumber={() => {}} />} />
@@ -3623,6 +3691,8 @@ export default function App() {
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
           {/* ⭐ 알림톡 정보 입력: dev/staging 전용 (production 비활성화) */}
           {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />}
+          {/* ⭐ 알림톡 정보 입력 UI 미리보기 (DEV 전용) */}
+          {DEV && <Route path="/test/alimtalk-info" element={<AlimtalkInfoInputPage onBack={() => {}} orderId="preview" contentId="preview" selectedSajuId="preview" />} />}
           <Route path="/sprout-charging/:contentId" element={<SproutChargingStationPage />} /> {/* ⭐ 새싹 충전소 */}
           {/* TarotDemo 백업됨 */}
 

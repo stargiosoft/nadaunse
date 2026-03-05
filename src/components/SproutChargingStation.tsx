@@ -359,7 +359,7 @@ export default function SproutChargingStation({
               {fromProfile ? (
                 /* 프로필에서 접근: 남은 새싹만 표시 */
                 <div className="flex flex-col items-center justify-center px-[20px] py-[12px] w-full">
-                  <div className="flex items-start px-[20px] py-[16px] rounded-[16px] w-full" style={{ backgroundColor: '#f9f9f9' }}>
+                  <div className="flex items-start px-[20px] py-[16px] rounded-[20px] w-full" style={{ backgroundColor: '#f9f9f9' }}>
                     <div className="flex flex-1 items-center justify-between">
                       <span style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '14px', fontWeight: 400, lineHeight: '22px', letterSpacing: '-0.42px', color: '#6d6d6d' }}>
                         남은 새싹
@@ -455,20 +455,23 @@ export default function SproutChargingStation({
                 </div>
 
                 {/* 패키지 카드 리스트 */}
-                <div className="flex flex-col gap-[8px] items-start w-full">
+                <div className="flex flex-col gap-[4px] items-start w-full">
                   {packages.map((pkg) => {
                     const isSelected = selectedPackageId === pkg.id;
                     const isBest = pkg.badge === 'BEST';
 
                     return (
-                      <button
+                      <div
                         key={pkg.id}
                         onClick={() => setSelectedPackageId(pkg.id)}
-                        className="flex flex-col items-start w-full bg-transparent border-none cursor-pointer p-0"
+                        className="flex flex-col items-start w-full cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && setSelectedPackageId(pkg.id)}
                       >
                         {/* BEST 배지 (카드 위에 겹치기) */}
                         {isBest && (
-                          <div className="flex flex-col items-start px-[15px] relative z-[2]" style={{ marginBottom: '-10px' }}>
+                          <div className="flex flex-col items-start relative z-[2]" style={{ marginBottom: '-10px', paddingLeft: '18px' }}>
                             <div className="flex items-center justify-center rounded-[999px]" style={{ backgroundColor: '#ff6678', paddingLeft: '8px', paddingRight: '7px', paddingTop: '2px', paddingBottom: '2px' }}>
                               <span style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '12px', fontWeight: 600, lineHeight: '16px', letterSpacing: '-0.24px', color: '#fff' }}>
                                 BEST
@@ -478,7 +481,7 @@ export default function SproutChargingStation({
                         )}
                         {/* 패키지 카드 */}
                         <div
-                          className="relative rounded-[16px] w-full z-[1]"
+                          className="relative rounded-[20px] w-full z-[1]"
                           style={{
                             boxShadow: isSelected ? '0px 2px 7px 0px rgba(0,0,0,0.12)' : 'none',
                             ...(isBest ? { marginBottom: '-10px' } : {}),
@@ -488,7 +491,7 @@ export default function SproutChargingStation({
                           {isSelected && (
                             <div
                               ref={gradientCallbackRef}
-                              className="absolute rounded-[16px]"
+                              className="absolute rounded-[20px]"
                               style={{
                                 inset: 0,
                                 background: 'conic-gradient(from 0deg, #55CAC6, #78C7FF, #FFDCF8, #78C7FF, #55CAC6)'
@@ -497,12 +500,11 @@ export default function SproutChargingStation({
                           )}
                           {/* White content layer */}
                           <div
-                            className={`flex flex-col items-start px-[20px] py-[18px] relative ${
-                              isSelected ? 'rounded-[13px]' : 'rounded-[16px] border border-solid w-full'
-                            }`}
+                            className="flex flex-col items-start px-[20px] py-[18px] relative rounded-[17px]"
                             style={{
                               backgroundColor: '#fff',
-                              ...(isSelected ? { margin: '3px' } : { borderColor: '#f3f3f3' }),
+                              margin: '3px',
+                              boxShadow: isSelected ? 'none' : 'inset 0 0 0 1px #f3f3f3',
                             }}
                           >
                           <div className="flex flex-col items-start w-full" style={{ paddingBottom: '4px' }}>
@@ -543,7 +545,7 @@ export default function SproutChargingStation({
                         </div>
                         {/* 선택된 패키지가 BEST일 경우 아래 여백 보정 */}
                         {isBest && <div className="h-[10px]" />}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -704,7 +706,7 @@ export default function SproutChargingStation({
               <button
                 onClick={handleCharge}
                 disabled={isProcessing || !selectedPackage}
-                className={`flex h-[56px] items-center justify-center px-[12px] rounded-[16px] w-full border-none transition-all duration-200 ease-out ${
+                className={`flex h-[56px] items-center justify-center px-[12px] rounded-[20px] w-full border-none transition-all duration-200 ease-out ${
                   isProcessing || !selectedPackage
                     ? 'bg-[#48b2af]/70 cursor-not-allowed'
                     : 'bg-[#48b2af] cursor-pointer active:scale-96 active:bg-[#41a09e]'
