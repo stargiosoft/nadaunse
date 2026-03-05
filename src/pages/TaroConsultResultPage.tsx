@@ -4,7 +4,6 @@ import { markConsultCompleted } from '../lib/consultStatus';
 import svgPaths from '../imports/svg-97glg550pf';
 import svgR from '../imports/svg-w53mchi1wt';
 import { RecommendedCarousel, type RecommendedItem } from '../components/RecommendedCarousel';
-import FigmaDivider from '../imports/Divider-13-1579';
 import SEO from '../components/SEO';
 import { fetchConsultRecommendations } from '../lib/consultRecommendationService';
 
@@ -544,28 +543,36 @@ export function TaroConsultResultPage() {
                   animStyle={sectionAnim(310)}
                 />
 
-               </div>
-                {/* ── 이 흐름, 더 깊이 보고 싶다면 (동적 추천) ── */}
-                {recommendedItems.length > 0 && (
-                <div className="w-full shrink-0" style={sectionAnim(400)}>
-                  <div>
-                    <div style={{ width: '100%', height: 8 }}><FigmaDivider /></div>
-                    <div className="px-5" style={{ paddingTop: 10, paddingBottom: 8, marginTop: 11 }}>
-                      <p style={{ fontFamily: font, fontSize: 17, fontWeight: 600, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>이 흐름, 더 깊이 보고 싶다면</p>
-                    </div>
-                  </div>
-                  {/* ↓ 선택 요소: RecommendedCarousel (사주 풀이와 동일 컴포넌트) */}
-                  <div style={{ paddingBottom: 130 }}>
-                    <RecommendedCarousel
-                      items={recommendedItems}
-                      onMoreClick={() => navigate('/saju-consult/result/recommended')}
-                      onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
-                      hidePrice
-                    />
-                  </div>
-                </div>
-                )}
+                {/* ── 이 흐름, 더 깊이 보고 싶다면 ── */}
+                <div className="flex flex-col w-full" style={{ paddingTop: 8, ...sectionAnim(400) }}>
+                  <div style={{ width: '100%', height: 8, backgroundColor: '#f9f9f9', marginBottom: 24 }} />
 
+                  <div style={{ paddingLeft: 20, paddingRight: 20, marginBottom: 16 }}>
+                    <p
+                      style={{
+                        fontFamily: font,
+                        fontSize: 17,
+                        fontWeight: 600,
+                        color: C.black,
+                        letterSpacing: '-0.34px',
+                        lineHeight: '24px',
+                        marginBottom: -9,
+                      }}
+                    >
+                      이 흐름, 더 깊이 보고 싶다면
+                    </p>
+                  </div>
+
+                  <RecommendedCarousel
+                    items={recommendedItems}
+                    onMoreClick={() => navigate('/saju-consult/result/recommended')}
+                    onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
+                    hidePrice
+                  />
+                  <div style={{ height: 130 }} />
+                </div>
+
+               </div>
               </div>
             </div>
           </>
