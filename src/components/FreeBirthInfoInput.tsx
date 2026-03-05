@@ -75,6 +75,10 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
           .eq('is_primary', true)
           .maybeSingle();
 
+        if (error) {
+          console.error('❌ [FreeBirthInfoInput] DB 사주 조회 에러:', error.message, error.code, error.details);
+        }
+
         if (!error && primarySaju) {
           console.log('✅ [FreeBirthInfoInput] DB에서 대표 사주 발견:', primarySaju);
 
@@ -123,6 +127,24 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
           return; // DB에서 찾았으면 캐시 확인 스킵
         } else {
           console.log('⚠️ [FreeBirthInfoInput] DB에 대표 사주 없음 → 캐시 확인');
+        }
+
+        // DB 조회 실패 + consult 모드: 캐시에서라도 사주 찾으면 바로 완료
+        if (mode === 'consult' && onConsultComplete) {
+          const cachedSajuStr = localStorage.getItem('cached_saju_info');
+          if (cachedSajuStr) {
+            try {
+              const cached = JSON.parse(cachedSajuStr);
+              console.log('✅ [FreeBirthInfoInput] consult 모드: 캐시 사주로 바로 진행:', cached);
+              onConsultComplete({
+                name: cached.name || '',
+                gender: cached.gender || 'female',
+                birthDate: cached.birthDate || '',
+                birthTime: cached.birthTime || '',
+              });
+              return;
+            } catch { /* ignore */ }
+          }
         }
       } else {
         console.log('⚠️ [FreeBirthInfoInput] 비로그인 사용자 → 캐시 확인');

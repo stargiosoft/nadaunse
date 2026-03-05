@@ -143,13 +143,16 @@ export function SajuConsultPage() {
         } catch { /* ignore */ }
 
         if (!hasSaju) {
-          const { data: sajuRecord } = await supabase
+          const { data: sajuRecord, error: sajuError } = await supabase
             .from('saju_records')
             .select('id')
             .eq('user_id', user.id)
             .eq('is_primary', true)
             .maybeSingle();
 
+          if (sajuError) {
+            console.error('❌ [SajuConsult] DB 사주 조회 에러:', sajuError.message, sajuError.code);
+          }
           if (sajuRecord) {
             hasSaju = true;
           }
