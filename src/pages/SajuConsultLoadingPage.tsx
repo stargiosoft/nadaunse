@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Lottie from 'lottie-react';
 import svgPaths from '../imports/svg-97glg550pf';
-import lottieData from '../imports/animated-shape-effect.json';
+import { LottieCrystal } from '../components/LottieCrystal';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { recordConsultUsed } from '../lib/consultLimitService';
@@ -293,18 +292,7 @@ export function SajuConsultLoadingPage() {
             paddingBottom: 48,
           }}
         >
-          <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)' }}>
-            <style>{`.lottie-crystal svg { overflow: visible !important; }`}</style>
-            <div className="lottie-crystal">
-              <Lottie
-                animationData={lottieData}
-                loop
-                autoplay
-                renderer="svg"
-                style={{ width: '100%', height: '100%', overflow: 'visible' }}
-              />
-            </div>
-          </div>
+          <LottieCrystal />
 
           <div
             style={{
