@@ -1015,7 +1015,7 @@ export default function ProfilePage({
                       style={{
                         height: '79px',
                         borderRadius: '19px',
-                        background: 'linear-gradient(90deg, #EEFCFF 0%, #F2F2FF 100%)',
+                        background: 'linear-gradient(90deg, #F4FEFF 0%, #F7F7FF 100%)',
                         paddingLeft: '24px',
                         paddingRight: '20px',
                         paddingTop: '12px',
