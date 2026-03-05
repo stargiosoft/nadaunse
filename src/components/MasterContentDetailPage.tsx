@@ -205,25 +205,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [navigate]);
 
-  // 🛡️ History Guard Entry: iOS 스와이프 뒤로가기 시 항상 홈으로 이동하도록
-  // 현재 히스토리 엔트리 바로 앞에 홈(/) 엔트리를 삽입
-  // ⭐ React Router state를 그대로 보존 (idx 변경 금지 - 내부 추적 깨짐 방지)
-  const hasHistoryGuardRef = useRef(false);
-  useEffect(() => {
-    if (hasHistoryGuardRef.current) return;
-    hasHistoryGuardRef.current = true;
-
-    const currentState = window.history.state;
-    const currentUrl = window.location.pathname + window.location.search + window.location.hash;
-
-    // 1) 현재 엔트리를 운세 모아보기(/best-fortune)로 교체 (동일 state 유지)
-    window.history.replaceState(currentState, '', '/best-fortune');
-
-    // 2) 실제 콘텐츠 상세 페이지를 다시 push (동일 state 유지)
-    window.history.pushState(currentState, '', currentUrl);
-
-    console.log('🛡️ [MasterContentDetailPage] History guard entry inserted');
-  }, []);
+  // 🛡️ History Guard 제거 (2026-03-05)
+  // - 매 상세 페이지 진입 시 /best-fortune 엔트리를 삽입하면 반복 네비게이션 시 스택 오염
+  // - DECISIONS.md "navigate('/') → navigate(-1) 전환" 패턴 적용
+  // - DirectEntryHistoryGuard(App.tsx)가 직접 URL 진입 시 /(홈) 삽입 역할 담당
+  // - onBack은 navigate(-1)로 이전 페이지 자연스럽게 복귀
   const usageGuideRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -733,10 +719,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return (
         <FreeContentDetail
           contentId={contentId}
-          onBack={(categoryMain) => {
-              const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
-              const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
-              navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+          onBack={() => {
+              // ⭐ navigate(-1)로 이전 페이지 자연스럽게 복귀 (DECISIONS.md 패턴)
+              navigate(-1);
             }}
           onHome={() => navigate('/', { replace: true })}
           onPurchase={async () => {}} // 로딩 중이므로 빈 함수
@@ -796,10 +781,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={(categoryMain) => {
-              const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
-              const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
-              navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+        onBack={() => {
+              // ⭐ navigate(-1)로 이전 페이지 자연스럽게 복귀 (DECISIONS.md 패턴)
+              navigate(-1);
             }}
         onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
@@ -923,10 +907,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={(categoryMain) => {
-              const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
-              const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
-              navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+        onBack={() => {
+              // ⭐ navigate(-1)로 이전 페이지 자연스럽게 복귀 (DECISIONS.md 패턴)
+              navigate(-1);
             }}
         onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
@@ -942,8 +925,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const backTabState = categoryTabIndex >= 0 ? { tab: categoryTabIndex } : undefined;
 
   const onBack = () => {
-    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex, backTabState });
-    navigate('/best-fortune', { replace: true, state: backTabState });
+    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex });
+    // ⭐ navigate(-1)로 이전 페이지 자연스럽게 복귀 (DECISIONS.md 패턴)
+    // - 탭 상태는 FortuneAllPage가 sessionStorage에서 복원
+    // - navigate('/best-fortune', { replace: true }) 사용 시 히스토리 스택 오염 버그 발생
+    navigate(-1);
   };
   
   const onPurchase = async () => {

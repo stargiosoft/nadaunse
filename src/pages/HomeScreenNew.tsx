@@ -884,7 +884,7 @@ function NewFortuneSection({
                   onClick={() => {
                     if (slide.id) {
                       trackContentClick(slide.id);
-                      navigate(`/free/content/${slide.id}`);
+                      navigate(`/free/content/${slide.id}`, { state: { canGoBack: true } });
                     }
                   }}
                 >
@@ -1377,6 +1377,7 @@ function BestFortuneSection({
                       item.contentType === 'free'
                         ? `/free/content/${item.id}`
                         : `/master/content/detail/${item.id}`,
+                      { state: { canGoBack: true } }
                     );
                   }}
                 />

@@ -98,25 +98,10 @@ function useFreeContentDetail(contentId: string, onBack: () => void) {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [navigate]);
 
-  // 🛡️ History Guard Entry: iOS 스와이프 뒤로가기 시 항상 홈으로 이동하도록
-  // 현재 히스토리 엔트리 바로 앞에 홈(/) 엔트리를 삽입
-  // ⭐ React Router state를 그대로 보존 (idx 변경 금지 - 내부 추적 깨짐 방지)
-  const hasHistoryGuardRef = useRef(false);
-  useEffect(() => {
-    if (hasHistoryGuardRef.current) return;
-    hasHistoryGuardRef.current = true;
-
-    const currentState = window.history.state;
-    const currentUrl = window.location.pathname + window.location.search + window.location.hash;
-
-    // 1) 현재 엔트리를 무료 운세 리스트(/new-free)로 교체 (동일 state 유지)
-    window.history.replaceState(currentState, '', '/new-free');
-
-    // 2) 실제 콘텐츠 상세 페이지를 다시 push (동일 state 유지)
-    window.history.pushState(currentState, '', currentUrl);
-
-    console.log('🛡️ [FreeContentDetail] History guard entry inserted');
-  }, []);
+  // 🛡️ History Guard 제거 (2026-03-05)
+  // - 매 상세 페이지 진입 시 /new-free 엔트리를 삽입하면 반복 네비게이션 시 스택 오염
+  // - DECISIONS.md "navigate('/') → navigate(-1) 전환" 패턴 적용
+  // - DirectEntryHistoryGuard(App.tsx)가 직접 URL 진입 시 /(홈) 삽입 역할 담당
 
   const [content, setContent] = useState<MasterContent | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);

@@ -398,6 +398,7 @@ export function FortuneAllPage() {
       item.contentType === 'free'
         ? `/free/content/${item.id}`
         : `/master/content/detail/${item.id}`,
+      { state: { canGoBack: true } }
     );
   };
 

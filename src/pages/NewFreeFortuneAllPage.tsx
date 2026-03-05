@@ -347,7 +347,7 @@ export function NewFreeFortuneAllPage() {
 
   const handleItemClick = (item: NoRankFortuneItem) => {
     trackContentClick(item.id);
-    navigate(`/free/content/${item.id}`);
+    navigate(`/free/content/${item.id}`, { state: { canGoBack: true } });
   };
 
   return (
