@@ -991,7 +991,7 @@ function BestFortuneCard({ item }: { item: FortuneItem }) {
               style={{ width: 69, height: 47, borderRadius: 8 }}
             >
               <img
-                alt=""
+                alt={item.title}
                 className="absolute inset-0 object-cover"
                 style={{ width: '100%', height: '100%', borderRadius: 8 }}
                 src={item.img}
