@@ -66,7 +66,7 @@ export default function TermsOfServicePage() {
               transition={{ duration: 0.5, delay: 0 }}
             >
               <p className="font-['Pretendard_Variable',sans-serif] font-semibold leading-[24px] text-[#151515] text-[17px] tracking-[-0.34px]">
-                최종 업데이트일: 2026년 3월 ○일
+                최종 업데이트일: 2026년 3월 5일
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
                 본 약관은 주식회사 스타지오소프트(이하 "회사")가 제공하는 운세 서비스 '나다운'(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항 등을 규정합니다. 서비스를 이용하기 전 반드시 본 약관을 숙지하여 주시기 바랍니다.
@@ -619,7 +619,7 @@ export default function TermsOfServicePage() {
                 부 칙
               </p>
               <p className="font-['Pretendard_Variable:Regular',sans-serif] leading-[23.5px] text-[#5f5f5f] text-[15px] tracking-[-0.3px]">
-                (시행일) 이 약관은 2026년 3월 ○일부터 시행합니다.
+                (시행일) 이 약관은 2026년 3월 5일부터 시행합니다.
               </p>
             </motion.div>
           </div>

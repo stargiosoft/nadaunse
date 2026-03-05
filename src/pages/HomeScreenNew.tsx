@@ -1508,9 +1508,10 @@ export function HomeScreenNew() {
   const bestCategory = TAB_CATEGORIES[activeTab] || '연애';
   const bestItems = useBestContents(bestCategory);
 
-  // 탭 변경 시 BEST 스와이프 페이지 초기화
+  // 탭 변경 시 BEST 스와이프 페이지 초기화 + sessionStorage 저장
   const handleTabChange = useCallback((i: number) => {
     setActiveTab(i);
+    sessionStorage.setItem('best-fortune-tab', String(i));
   }, []);
 
   return (

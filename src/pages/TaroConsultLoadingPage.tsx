@@ -44,6 +44,15 @@ export function TaroConsultLoadingPage() {
   const navigate = useNavigate();
   const hasStarted = useRef(false);
 
+  // 뒤로가기(브라우저/iOS 스와이프) → 홈으로 리다이렉트
+  useEffect(() => {
+    const onPopState = () => {
+      navigate('/', { replace: true });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [navigate]);
+
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
@@ -76,7 +85,7 @@ export function TaroConsultLoadingPage() {
 
         // 로그인 유저 일일 제한
         if (data?.error === 'DAILY_CONSULT_LIMIT') {
-          toast.error('타로 상담은 하루에 한 번 이용할 수 있어요.');
+          toast.error('상담은 하루에 한 번만 받을 수 있어요.');
           navigate('/taro-consult', { replace: true });
           return;
         }
@@ -118,7 +127,7 @@ export function TaroConsultLoadingPage() {
       <SEO title="타로 상담 중" noIndex={true} />
       <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.white }}>
         <div style={{ height: 52, display: 'flex', alignItems: 'center', paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white, flexShrink: 0 }}>
-          <BackButton onPress={() => navigate('/taro-consult')} />
+          <BackButton onPress={() => navigate('/', { replace: true })} />
           <p style={{ flex: 1, textAlign: 'center', fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             타로 상담
           </p>

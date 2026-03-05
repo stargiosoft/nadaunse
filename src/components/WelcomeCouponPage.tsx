@@ -284,10 +284,10 @@ function IndependentIPhoneStatusBar() {
 // ==================== Main Component ====================
 
 export default function WelcomeCouponPage({ onClose }: WelcomeCouponPageProps) {
-  // 📊 GA 이벤트: 회원가입 완료 + 웰컴 쿠폰 발급
+  // 📊 GA 이벤트: 회원가입 완료
   useEffect(() => {
     trackSignUp('kakao'); // 회원가입 완료 (카카오가 대부분)
-    trackWelcomeCouponIssued(10000); // 웰컴 쿠폰 5,000원 x 2장 = 10,000원 발급
+    trackWelcomeCouponIssued(10000); // GA 이벤트 전송 (실제 쿠폰 발급 로직 아님)
   }, []);
 
   return (

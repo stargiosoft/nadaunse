@@ -81,6 +81,15 @@ export function SajuConsultLoadingPage() {
   const navigate = useNavigate();
   const hasStarted = useRef(false);
 
+  // 뒤로가기(브라우저/iOS 스와이프) → 홈으로 리다이렉트
+  useEffect(() => {
+    const onPopState = () => {
+      navigate('/', { replace: true });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [navigate]);
+
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
@@ -130,6 +139,12 @@ export function SajuConsultLoadingPage() {
             body: { question: question.trim(), sajuRecordId, userId: user.id }
           });
 
+          if (data?.error === 'DAILY_CONSULT_LIMIT') {
+            toast.error('상담은 하루에 한 번만 받을 수 있어요.');
+            navigate('/saju-consult', { replace: true });
+            return;
+          }
+
           if (error || !data?.success || !data?.result) {
             console.error('[SajuConsultLoading] API 오류:', error || data?.error);
             toast.error('상담 결과를 생성하지 못했어요. 다시 시도해주세요.');
@@ -178,7 +193,7 @@ export function SajuConsultLoadingPage() {
 
           // 로그인 유저 일일 제한
           if (data?.error === 'DAILY_CONSULT_LIMIT') {
-            toast.error('사주 상담은 하루에 한 번 이용할 수 있어요.');
+            toast.error('상담은 하루에 한 번만 받을 수 있어요.');
             navigate('/saju-consult', { replace: true });
             return;
           }
@@ -245,7 +260,7 @@ export function SajuConsultLoadingPage() {
             flexShrink: 0,
           }}
         >
-          <BackButton onPress={() => navigate(-1)} />
+          <BackButton onPress={() => navigate('/', { replace: true })} />
           <p
             style={{
               flex: 1,

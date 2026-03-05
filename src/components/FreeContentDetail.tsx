@@ -24,7 +24,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { freeContentService, MasterContent, Question } from '../lib/freeContentService';
 import { supabase } from '../lib/supabase';
@@ -54,7 +54,7 @@ import ShareRewardModal from './ShareRewardModal';
  */
 interface FreeContentDetailProps {
   contentId: string;
-  onBack: () => void;
+  onBack: (categoryMain?: string) => void;
   onHome: () => void;
   onContentClick?: (contentId: string) => void;
   onBannerClick?: (productId: string) => void;
@@ -572,6 +572,11 @@ export default function FreeContentDetail({
   onPurchase,
   onNext
 }: FreeContentDetailProps) {
+  // onBack 안정화 (매 렌더 새 참조 방지 → useFreeContentDetail 무한 루프 방지)
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+  const stableOnBack = useCallback(() => onBackRef.current(), []);
+
   // Custom Hooks
   const {
     content,
@@ -592,7 +597,12 @@ export default function FreeContentDetail({
     setShowResult,
     setIsLoginSheetOpen, // ⭐ 비회원 제한 바텀시트
     loadMorePaidContents
-  } = useFreeContentDetail(contentId, onBack);
+  } = useFreeContentDetail(contentId, stableOnBack);
+
+  // onBack에 카테고리 정보 포함
+  const handleBack = useCallback(() => {
+    onBack(content?.category_main);
+  }, [onBack, content?.category_main]);
 
   const {
     sliderRef,
@@ -646,7 +656,7 @@ export default function FreeContentDetail({
         <div className="w-full max-w-[440px] mx-auto flex flex-col h-full relative">
           {/* Top Navigation */}
           <TopNavigation
-            onBack={onBack}
+            onBack={handleBack}
             onHome={onHome}
             title={content.title}
           />

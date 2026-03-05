@@ -566,7 +566,11 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={id}
-        onBack={() => navigate('/new-free', { replace: true })}
+        onBack={(categoryMain) => {
+          const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+          const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
+          navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+        }}
         onHome={() => navigate('/', { replace: true })}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
@@ -725,7 +729,11 @@ function ProductDetailPage() {
     return (
       <FreeContentDetail
         contentId={product.id.toString()}
-        onBack={() => navigate('/new-free', { replace: true })}
+        onBack={(categoryMain) => {
+          const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+          const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
+          navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+        }}
         onHome={() => navigate('/', { replace: true })}
         onContentClick={(contentId) => navigate(`/product/${contentId}`)}
         onBannerClick={(productId) => navigate(`/product/${productId}`)}
@@ -2487,8 +2495,8 @@ function TermsPageWrapper() {
     // ⭐ 회원가입 완료 플래그 설정 (unmount 시 세션 삭제 방지)
     signupCompletedRef.current = true;
 
-    // ⭐️ 가입 축하 쿠폰 페이지로 이동
-    console.log('✅ 회원가입 완료 → 가입 축하 쿠폰 페이지로 이동');
+    // ⭐️ 가입 완료 환영 페이지로 이동
+    console.log('✅ 회원가입 완료 → 환영 페이지로 이동');
 
     // ⭐ 환영 페이지 플래그 초기화 (새 회원가입이므로 환영 페이지를 봐야 함)
     sessionStorage.removeItem('welcomePageViewed');
@@ -2754,7 +2762,11 @@ function FreeContentDetailWrapper() {
   return (
     <FreeContentDetail
       contentId={id}
-      onBack={() => navigate('/new-free', { replace: true })}
+      onBack={(categoryMain) => {
+        const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+        const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
+        navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+      }}
       onHome={() => navigate('/', { replace: true })}
       onContentClick={(contentId) => {
         console.log('🔥 App.tsx navigate 시도 (replace):', `/master/content/detail/${contentId}`);

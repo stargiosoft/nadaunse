@@ -297,9 +297,21 @@ const TAB_BAR_HEIGHT = 53;
 export function FortuneAllPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(0);
+  // 초기 탭: state > sessionStorage > 0
+  const [activeTab, setActiveTab] = useState(() => {
+    const st = (location.state as { tab?: number } | null);
+    if (typeof st?.tab === 'number' && st.tab >= 0 && st.tab < TAB_CATEGORIES.length) return st.tab;
+    try {
+      const saved = sessionStorage.getItem('best-fortune-tab');
+      if (saved) { const idx = Number(saved); if (idx >= 0 && idx < TAB_CATEGORIES.length) return idx; }
+    } catch (_) { /* silent */ }
+    return 0;
+  });
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<'인기순' | '최신순'>('인기순');
+  const [sortBy, setSortBy] = useState<'인기순' | '최신순'>(() => {
+    const st = (location.state as { sort?: string } | null);
+    return st?.sort === 'popular' ? '인기순' : '인기순';
+  });
   const sortRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<FortuneItem[]>([]);
@@ -314,14 +326,20 @@ export function FortuneAllPage() {
   const scrollStartX = useRef(0);
   const hasDragged = useRef(false);
 
-  // 홈에서 state.sort / state.tab으로 초기값 전달 가능
+  // 탭 변경 시 sessionStorage에 저장 + 활성 탭 스크롤
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    const st = (location.state as { sort?: string; tab?: number } | null);
-    if (st?.sort === 'popular') setSortBy('인기순');
-    if (typeof st?.tab === 'number' && st.tab >= 0 && st.tab < TAB_CATEGORIES.length) {
-      setActiveTab(st.tab);
+    sessionStorage.setItem('best-fortune-tab', String(activeTab));
+    const container = tabScrollRef.current;
+    if (container) {
+      const btn = container.querySelectorAll('button')[activeTab];
+      if (btn) {
+        const left = btn.offsetLeft - container.offsetWidth / 2 + btn.offsetWidth / 2;
+        container.scrollTo({ left: Math.max(0, left), behavior: isFirstRender.current ? 'instant' : 'smooth' });
+      }
     }
-  }, [location.state]);
+    isFirstRender.current = false;
+  }, [activeTab]);
 
   // 카테고리 + 정렬 변경 시 데이터 로드
   const fetchData = useCallback(async () => {
@@ -415,7 +433,7 @@ export function FortuneAllPage() {
           {/* Navigation bar */}
           <div className="flex items-center justify-between w-full" style={{ height: 52, padding: '4px 12px', backgroundColor: C.white }}>
             <motion.button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/')}
               className="flex items-center justify-center cursor-pointer"
               style={{ width: 44, height: 44, borderRadius: 12, border: 'none', backgroundColor: 'transparent', WebkitTapHighlightColor: 'transparent', transition: 'background-color 0.12s ease-out' }}
               onTouchStart={() => {}}

@@ -296,6 +296,13 @@ export const clearUserCaches = () => {
     'trait_tags_needs_refresh',
     'saju_cache_checked',
     'sprout_balance_cache',       // 새싹 잔액 캐시
+    // ⭐ 상담 상태/결과 캐시 (계정 전환 시 반드시 삭제!)
+    'consult_status_saju',
+    'consult_status_taro',
+    'saju_last_result',
+    'taro_last_result',
+    'saju_consult_result',
+    'taro_consult_result',
   ];
 
   // ⭐ cached_saju_info가 있으면 항상 보존 (로그인 후 사주 저장 필요)

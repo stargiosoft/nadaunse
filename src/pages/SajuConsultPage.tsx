@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import svgPaths from '../imports/svg-97glg550pf';
 import { TextareaInput } from '../components/TextareaInput';
-import { getAuthUser } from '../lib/supabase';
+import { getAuthUser, supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
@@ -132,7 +132,7 @@ export function SajuConsultPage() {
       const { data: { user } } = await getAuthUser();
 
       if (user) {
-        // 로그인 유저: 기존 로직 (primary_saju 확인 → loading)
+        // 로그인 유저: localStorage 캐시 → 없으면 DB 조회
         let hasSaju = false;
         try {
           const cached = localStorage.getItem('primary_saju');
@@ -143,8 +143,21 @@ export function SajuConsultPage() {
         } catch { /* ignore */ }
 
         if (!hasSaju) {
-          toast.error('사주 정보를 먼저 등록해주세요.');
-          navigate('/profile');
+          const { data: sajuRecord } = await supabase
+            .from('saju_records')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('is_primary', true)
+            .maybeSingle();
+
+          if (sajuRecord) {
+            hasSaju = true;
+          }
+        }
+
+        if (!hasSaju) {
+          // 사주 정보 없으면 사주 입력 페이지로 이동
+          setStep('birth-info');
           return;
         }
 
@@ -456,7 +469,7 @@ export function SajuConsultPage() {
                 onClick={() => {
                   sessionStorage.removeItem(DRAFT_KEY);
                   setShowExitModal(false);
-                  navigate(-1);
+                  navigate('/', { replace: true });
                 }}
                 onPointerDown={(e) => { e.currentTarget.style.backgroundColor = C.primaryPressed; }}
                 onPointerUp={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}

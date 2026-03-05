@@ -733,7 +733,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       return (
         <FreeContentDetail
           contentId={contentId}
-          onBack={() => navigate('/new-free', { replace: true })}
+          onBack={(categoryMain) => {
+              const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+              const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
+              navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+            }}
           onHome={() => navigate('/', { replace: true })}
           onPurchase={async () => {}} // 로딩 중이므로 빈 함수
           onContentClick={(contentId) => {
@@ -792,7 +796,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate('/new-free', { replace: true })}
+        onBack={(categoryMain) => {
+              const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+              const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
+              navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+            }}
         onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
         onContentClick={(contentId) => {
@@ -915,7 +923,11 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     return (
       <FreeContentDetail
         contentId={contentId}
-        onBack={() => navigate('/new-free', { replace: true })}
+        onBack={(categoryMain) => {
+              const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+              const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
+              navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
+            }}
         onHome={() => navigate('/', { replace: true })}
         onPurchase={handleFreePurchase}
       />
@@ -930,7 +942,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const backTabState = categoryTabIndex >= 0 ? { tab: categoryTabIndex } : undefined;
 
   const onBack = () => {
-    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { timestamp: new Date().toISOString() });
+    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex, backTabState });
     navigate('/best-fortune', { replace: true, state: backTabState });
   };
   

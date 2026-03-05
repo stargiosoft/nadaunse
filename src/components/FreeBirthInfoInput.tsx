@@ -476,6 +476,18 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
         console.log('✅ [FreeBirthInfoInput] primary_saju 캐시 업데이트 완료');
       }
 
+      // ⭐ consult 모드 (로그인 유저): onConsultComplete 콜백 호출 후 종료
+      if (mode === 'consult' && onConsultComplete) {
+        console.log('🔀 [FreeBirthInfoInput] consult 모드 (로그인) → onConsultComplete 콜백 호출');
+        onConsultComplete({
+          name: name.trim(),
+          gender,
+          birthDate,
+          birthTime: finalBirthTime,
+        });
+        return;
+      }
+
       // ⭐️ Edge Function 호출 제거 - FreeContentLoading에서 처리
       console.log('🔀 [FreeBirthInfoInput] Edge Function은 로딩 페이지에서 호출됨');
 
