@@ -119,14 +119,13 @@ export function SajuConsultLoadingPage() {
           } catch { /* ignore */ }
 
           if (!sajuRecordId) {
-            const { data: records } = await supabase
+            const { data: sajuList } = await supabase
               .from('saju_records')
-              .select('id')
+              .select('id, is_primary')
               .eq('user_id', user.id)
-              .eq('is_primary', true)
-              .limit(1)
-              .single();
-            sajuRecordId = records?.id || null;
+              .order('created_at', { ascending: true });
+            const primary = sajuList?.find((s: Record<string, unknown>) => s.is_primary) || sajuList?.[0];
+            sajuRecordId = primary?.id || null;
           }
 
           if (!sajuRecordId) {
