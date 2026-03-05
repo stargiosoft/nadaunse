@@ -108,6 +108,10 @@ function generateSitemapXml(contents: ContentItem[], blogPosts: BlogPost[]): str
   // 정적 페이지
   const staticPages = [
     { loc: '/', changefreq: 'daily', priority: '1.0', lastmod: today },
+    { loc: '/best-fortune', changefreq: 'daily', priority: '0.8', lastmod: today },
+    { loc: '/new-free', changefreq: 'daily', priority: '0.8', lastmod: today },
+    { loc: '/saju-consult', changefreq: 'monthly', priority: '0.7' },
+    { loc: '/taro-consult', changefreq: 'monthly', priority: '0.7' },
     { loc: '/terms-of-service', changefreq: 'monthly', priority: '0.3' },
     { loc: '/privacy-policy', changefreq: 'monthly', priority: '0.3' },
     { loc: '/manse', changefreq: 'monthly', priority: '0.8', lastmod: today },
