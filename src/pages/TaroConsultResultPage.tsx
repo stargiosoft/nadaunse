@@ -3,18 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { markConsultCompleted } from '../lib/consultStatus';
 import svgPaths from '../imports/svg-97glg550pf';
 import svgR from '../imports/svg-w53mchi1wt';
-import { RecommendedCarousel } from '../components/RecommendedCarousel';
+import { RecommendedCarousel, type RecommendedItem } from '../components/RecommendedCarousel';
 import FigmaDivider from '../imports/Divider-13-1579';
 import SEO from '../components/SEO';
+import { fetchConsultRecommendations } from '../lib/consultRecommendationService';
 
 const imgCardBack  = '/home-v2/taro-card-back.png';
 const imgCardFront = '/home-v2/taro-card-front.png';
-const imgCard1 = '/home-v2/card-1.png';
-const imgCard2 = '/home-v2/card-4.png';
-const imgCard3 = '/home-v2/card-5.png';
-const imgCard4 = '/home-v2/card-6.png';
-const imgCard5 = '/home-v2/card-7.png';
-const imgCard6 = '/home-v2/card-8.png';
 
 // ─── Types / Tokens ───────────────────────────────────────────────────────────
 type Phase = 'reveal' | 'transition' | 'result';
@@ -28,15 +23,7 @@ const C = {
 } as const;
 const font = "'Pretendard Variable', sans-serif";
 
-// ─── 타로 추천 아이템 데이터 ──────────────────────────────────────────────────
-const TARO_RECOMMENDED_ITEMS = [
-  { title: '혹시 지금 바람 피우고 있을까?',        image: imgCard1, isNew: true,  isRead: true,  views: 324, discountLabel: '50%할인', originalPrice: '60새싹', finalPrice: '30새싹' },
-  { title: '내 연인은 바람기 있을까?',              image: imgCard2, isNew: true,  isRead: true,  views: 187, discountLabel: '50%할인', originalPrice: '60새싹', finalPrice: '30새싹' },
-  { title: '우리 관계, 앞으로 어떻게 될까?',        image: imgCard3, isNew: true,  isRead: false, views: 512, discountLabel: '50%할인', originalPrice: '60새싹', finalPrice: '30새싹' },
-  { title: '이 사람, 나를 진심으로 좋아할까?',      image: imgCard4, isNew: true,  isRead: false, views:  93, discountLabel: '50%할인', originalPrice: '60새싹', finalPrice: '30새싹' },
-  { title: '올해 직장운, 버텨야 할까 떠나야 할까?', image: imgCard5, isNew: false, isRead: false, views: 248, discountLabel: '50%할인', originalPrice: '60새싹', finalPrice: '30새싹' },
-  { title: '재물운 언제 풀릴까?',                   image: imgCard6, isNew: false, isRead: false, views:  61, discountLabel: '50%할인', originalPrice: '60새싹', finalPrice: '30새싹' },
-];
+
 
 // ─── Icon Components ──────────────────────────────────────────────────────────
 function MoonIcon() {
@@ -152,6 +139,7 @@ export function TaroConsultResultPage() {
         result: { cardMessage: string; currentFlow: string; actionAdvice: string; dailySentence: string };
         tarotCard: string;
         imageUrl: string;
+        recommendedCategory?: { main: string; sub: string };
       };
     } catch {
       return null;
@@ -163,6 +151,23 @@ export function TaroConsultResultPage() {
       navigate('/', { replace: true });
     }
   }, [storedData, navigate]);
+
+  // ── 동적 추천 콘텐츠 ────────────────────────────────────────────────────
+  const [recommendedItems, setRecommendedItems] = useState<RecommendedItem[]>([]);
+
+  useEffect(() => {
+    fetchConsultRecommendations(storedData?.recommendedCategory).then((contents) => {
+      setRecommendedItems(contents.map((c) => ({
+        id: c.id,
+        title: c.title,
+        image: c.thumbnail_url || '/home-v2/card-1.png',
+        views: c.view_count,
+        discountLabel: c.discount_rate > 0 ? `${c.discount_rate}%할인` : undefined,
+        originalPrice: c.discount_rate > 0 ? `${c.price_original}새싹` : undefined,
+        finalPrice: `${c.price_discount}새싹`,
+      })));
+    });
+  }, [storedData?.recommendedCategory]);
 
   // ── Reveal state ─────────────────────────────────────────────────────────
   const [isFlipped, setIsFlipped]         = useState(false);
@@ -540,7 +545,8 @@ export function TaroConsultResultPage() {
                 />
 
                </div>
-                {/* ── 이 흐름, 더 깊이 보고 싶다면 (공통 캐러셀) ── */}
+                {/* ── 이 흐름, 더 깊이 보고 싶다면 (동적 추천) ── */}
+                {recommendedItems.length > 0 && (
                 <div className="w-full shrink-0" style={sectionAnim(400)}>
                   <div>
                     <div style={{ width: '100%', height: 8 }}><FigmaDivider /></div>
@@ -551,12 +557,13 @@ export function TaroConsultResultPage() {
                   {/* ↓ 선택 요소: RecommendedCarousel (사주 풀이와 동일 컴포넌트) */}
                   <div style={{ paddingBottom: 130 }}>
                     <RecommendedCarousel
-                      items={TARO_RECOMMENDED_ITEMS}
+                      items={recommendedItems}
                       onMoreClick={() => navigate('/saju-consult/result/recommended')}
-                      hidePrice
+                      onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
                     />
                   </div>
                 </div>
+                )}
 
               </div>
             </div>

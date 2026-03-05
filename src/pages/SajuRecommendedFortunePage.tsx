@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
 import svgArrow from '../imports/svg-jctkfb0fnf';
 import svgHome from '../imports/svg-jv8l9s7k24';
 import {
   NewFreeCardList,
   type NoRankFortuneItem,
 } from './NewFreeFortuneAllPage';
-import { supabase } from '../lib/supabase';
-import { isContentNew } from '../components/ContentTags';
+import { fetchConsultRecommendations } from '../lib/consultRecommendationService';
 import SEO from '../components/SEO';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
@@ -25,29 +23,36 @@ type LabelType = 'New' | '무료' | '심화' | '유료';
 function useRecommendedItems(): NoRankFortuneItem[] {
   const [items, setItems] = useState<NoRankFortuneItem[]>([]);
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('master_contents')
-        .select('id, title, content_type, thumbnail_url, weekly_clicks, created_at')
-        .eq('content_type', 'free')
-        .eq('status', 'deployed')
-        .order('weekly_clicks', { ascending: false })
-        .limit(10);
-      if (data) {
-        setItems(data.map((row) => {
-          const labels: LabelType[] = [];
-          if (isContentNew(row.created_at)) labels.push('New');
-          labels.push('무료');
-          return {
-            id: row.id,
-            title: row.title,
-            labels,
-            views: row.weekly_clicks,
-            img: row.thumbnail_url || '/home-v2/card-1.png',
-          };
-        }));
+    // localStorage에서 추천 카테고리 읽기 (사주/타로 결과에서 저장됨)
+    let category: { main: string; sub: string } | undefined;
+    try {
+      const sajuRaw = localStorage.getItem('saju_consult_result');
+      if (sajuRaw) {
+        const parsed = JSON.parse(sajuRaw);
+        category = parsed.recommendedCategory;
       }
-    })();
+      if (!category) {
+        const taroRaw = localStorage.getItem('taro_consult_result');
+        if (taroRaw) {
+          const parsed = JSON.parse(taroRaw);
+          category = parsed.recommendedCategory;
+        }
+      }
+    } catch { /* ignore */ }
+
+    fetchConsultRecommendations(category, 15).then((contents) => {
+      setItems(contents.map((c) => {
+        const labels: LabelType[] = [];
+        labels.push('심화');
+        return {
+          id: c.id,
+          title: c.title,
+          labels,
+          views: c.view_count,
+          img: c.thumbnail_url || '/home-v2/card-1.png',
+        };
+      }));
+    });
   }, []);
   return items;
 }
@@ -181,8 +186,11 @@ export function SajuRecommendedFortunePage() {
           </span>
         </div>
 
-        {/* ── 카드 리스트 ── */}
-        <NewFreeCardList items={RECOMMENDED_ITEMS} />
+        {/* ── 카드 리스트 (유료 콘텐츠 → 클릭 시 상세 이동) ── */}
+        <NewFreeCardList
+          items={RECOMMENDED_ITEMS}
+          onItemClick={(item) => navigate(`/master/content/detail/${item.id}`)}
+        />
       </div>
     </div>
   );

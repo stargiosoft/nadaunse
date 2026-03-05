@@ -217,11 +217,11 @@ function RowCard({ item }: { item: NoRankFortuneItem }) {
 }
 
 // ─── Card List (no-rank, reusable) ───────────────────────────────────────────
-export function NewFreeCardList({ items }: { items: NoRankFortuneItem[] }) {
+export function NewFreeCardList({ items, onItemClick }: { items: NoRankFortuneItem[]; onItemClick?: (item: NoRankFortuneItem) => void }) {
   return (
     <div className="flex flex-col w-full" style={{ backgroundColor: '#ffffff', flex: 1 }}>
       {items.map((item, index) => (
-        <div key={item.id}>
+        <div key={item.id} onClick={() => onItemClick?.(item)} style={onItemClick ? { cursor: 'pointer' } : undefined}>
           {index > 0 && <div style={{ height: 1, backgroundColor: '#F9F9F9' }} />}
           {index === 0 ? <TopCard item={item} /> : <RowCard item={item} />}
         </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { DEV } from '../lib/env';
@@ -9,13 +9,14 @@ import {
   type ConsultStatus,
   readConsultStatus,
 } from '../lib/consultStatus';
+import { supabase, getAuthUser } from '../lib/supabase';
+import { hasUsedConsult } from '../lib/consultLimitService';
+import LoginBottomSheet from '../components/LoginBottomSheet';
+import { isContentNew } from '../components/ContentTags';
+import { logger } from '../lib/logger';
 import svgPaths from '../imports/svg-t3oztaafjr';
 import svgLogo from '../imports/svg-udgbxqyegd';
-
-const imgThumbnail = '/home-v2/thumbnail.png';
-const imgCard1 = '/home-v2/card-1.png';
-const imgCard2 = '/home-v2/card-2.png';
-const imgCard3 = '/home-v2/card-3.png';
+import SEO from '../components/SEO';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design Tokens
@@ -47,28 +48,69 @@ const font = "'Pretendard Variable', sans-serif";
 type LabelType = 'New' | '무료' | '심화' | '유료';
 
 interface FortuneItem {
-  id: number;
+  id: string;
   rank: number;
   title: string;
   labels: LabelType[];
   views: number;
   showRead?: boolean;
   img: string;
+  contentType: 'free' | 'paid';
 }
 
-const TABS = ['연애', '이별', '재물', '직업', '인간관계', '시험/ 학업'];
+/** DB 콘텐츠 → FortuneItem 변환 */
+function toFortuneItem(
+  row: {
+    id: string;
+    title: string;
+    content_type: string;
+    thumbnail_url: string | null;
+    weekly_clicks: number;
+    view_count: number;
+    created_at: string;
+    is_read?: boolean;
+  },
+  rank: number,
+): FortuneItem {
+  const labels: LabelType[] = [];
+  if (isContentNew(row.created_at)) labels.push('New');
+  labels.push(row.content_type === 'free' ? '무료' : '심화');
+  return {
+    id: row.id,
+    rank,
+    title: row.title,
+    labels,
+    views: row.weekly_clicks,
+    showRead: row.is_read === true,
+    img: row.thumbnail_url || '/home-v2/card-1.png',
+    contentType: row.content_type as 'free' | 'paid',
+  };
+}
 
-const FORTUNE_ITEMS: FortuneItem[] = [
-  { id: 1, rank: 1, title: '저 사람, 나한테 왜 그럴까 알려줘',    labels: ['New', '무료'], views: 27,  showRead: true, img: imgCard1 },
-  { id: 2, rank: 2, title: '내돈은 다 어디갔을까?',               labels: ['New', '무료'], views: 100, img: imgCard2 },
-  { id: 3, rank: 3, title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['심화'],        views: 100, img: imgCard3 },
-  { id: 4, rank: 4, title: '저 사람, 나한테 왜 그럴까 알려줘',    labels: ['New', '무료'], views: 27,  showRead: true, img: imgCard1 },
-  { id: 5, rank: 5, title: '내돈은 다 어디갔을까?',               labels: ['New', '무료'], views: 100, img: imgCard2 },
-  { id: 6, rank: 6, title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['심화'],        views: 100, img: imgCard3 },
-  { id: 7, rank: 7, title: '나의 올해 직업운은 어떨까?',           labels: ['무료'],        views: 84,  img: imgCard1 },
-  { id: 8, rank: 8, title: '인간관계가 힘든 이유',                 labels: ['New', '무료'], views: 61,  img: imgCard2 },
-  { id: 9, rank: 9, title: '시험 합격, 나는 될까?',               labels: ['심화'],        views: 45,  img: imgCard3 },
-];
+/** 콘텐츠 클릭 시 view_count + weekly_clicks 증가 */
+async function trackContentClick(contentId: string) {
+  try {
+    const { data } = await supabase
+      .from('master_contents')
+      .select('view_count, weekly_clicks')
+      .eq('id', contentId)
+      .single();
+    if (data) {
+      await supabase
+        .from('master_contents')
+        .update({
+          view_count: data.view_count + 1,
+          weekly_clicks: data.weekly_clicks + 1,
+        })
+        .eq('id', contentId);
+    }
+  } catch (e) {
+    logger.error('trackContentClick 실패:', e);
+  }
+}
+
+const TABS = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+const TAB_CATEGORIES = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -378,6 +420,17 @@ function LogoSmall() {
 
 /** 상단 네비게이션 헤더 */
 function AppHeader() {
+  const navigate = useNavigate();
+
+  const handleUserIconClick = () => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      navigate('/profile', { state: { canGoBack: true } });
+    } else {
+      navigate('/login', { state: { canGoBack: true } });
+    }
+  };
+
   return (
     <header
       className="sticky top-0 z-10 flex items-center justify-between w-full shrink-0"
@@ -395,6 +448,7 @@ function AppHeader() {
           border: 'none', padding: 4,
           WebkitTapHighlightColor: 'transparent',
         }}
+        onClick={handleUserIconClick}
       >
         <span className="group-active:scale-90 transition-transform duration-150 flex items-center justify-center">
           <UserIcon />
@@ -434,8 +488,9 @@ function AppSearchBar() {
 }
 
 /** 무료 상담 카드 */
-function FreeConsultationSection() {
+function FreeConsultationSection({ nickname }: { nickname: string }) {
   const navigate = useNavigate();
+  const [showLoginSheet, setShowLoginSheet] = useState(false);
 
   // ── 상담 상태 (사주 / 타로) ────────────────────────────────────────────────
   const [statuses, setStatuses] = useState<Record<ConsultKey, ConsultStatus>>(() => ({
@@ -517,7 +572,7 @@ function FreeConsultationSection() {
                 color: C.black, letterSpacing: '-0.34px', lineHeight: '24px',
               }}
             >
-              홍길동님, 오늘 마음은 어떠세요?
+              {nickname ? `${nickname}님, 오늘 마음은 어떠세요?` : '오늘 마음은 어떠세요?'}
             </p>
             <p
               style={{
@@ -595,11 +650,21 @@ function FreeConsultationSection() {
                     onPointerUp={(e)   => { e.currentTarget.style.backgroundColor = C.primary; }}
                     onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
                     onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
-                    onClick={() => {
-                      if (isCompleted && statusKey === 'taro') {
-                        sessionStorage.setItem('taro_result_phase', 'result');
+                    onClick={async () => {
+                      if (isCompleted) {
+                        if (statusKey === 'taro') {
+                          sessionStorage.setItem('taro_result_phase', 'result');
+                        }
+                        navigate(resultPath);
+                        return;
                       }
-                      navigate(isCompleted ? resultPath : path);
+                      // 상담 시작: 비로그인 + 체험 사용 완료 → LoginBottomSheet
+                      const { data: { user } } = await getAuthUser();
+                      if (!user && hasUsedConsult()) {
+                        setShowLoginSheet(true);
+                        return;
+                      }
+                      navigate(path);
                     }}
                   >
                     <span
@@ -619,36 +684,48 @@ function FreeConsultationSection() {
           </div>
         </div>
       </div>
+
+      {/* ── 로그인 유도 바텀시트 ── */}
+      <LoginBottomSheet
+        isOpen={showLoginSheet}
+        onClose={() => setShowLoginSheet(false)}
+        redirectPath="/"
+        icon="/key-icon.svg"
+        title={
+          <>
+            <p style={{ fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515', fontFamily: "'Pretendard Variable', sans-serif", width: '100%' }}>로그인하면</p>
+            <p style={{ fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515', fontFamily: "'Pretendard Variable', sans-serif", width: '100%' }}>매일 상담 받을 수 있어요</p>
+          </>
+        }
+        description={
+          <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.45px', textAlign: 'center', color: '#848484', fontFamily: "'Pretendard Variable', sans-serif" }}>
+            비회원은 1회만 이용 가능해요
+          </p>
+        }
+      />
     </section>
   );
+}
+
+/** NEW 무료 운세 슬라이드 데이터 */
+interface NewFortuneSlide {
+  id: string;
+  img: string;
+  title: string;
+  desc: string;
 }
 
 /** NEW 무료 운세 섹션 — 롤링 스와이프 (순수 px translateX) */
 function NewFortuneSection({
   dot,
   onDotChange,
+  slides,
 }: {
   dot: number;
   onDotChange: (i: number) => void;
+  slides: NewFortuneSlide[];
 }) {
   const navigate = useNavigate();
-  const slides = [
-    {
-      img: imgThumbnail,
-      title: '연애를 망치는 주범',
-      desc: '이상하게 연애만 시작하면 비슷한 문제로 힘들어지나요? 무심코 반복하는 당신의 행동 패턴 속에 모든 답이 숨어있을지 모릅니다. 당신의 사주를 통해 연애를 방해하는 치명적인 습관과 매력을 함께 분석해 드립니다.',
-    },
-    {
-      img: imgCard1,
-      title: '나의 재물운은 어떨까?',
-      desc: '올해 재물운이 궁금하신가요? 사주로 보는 나의 금전운과 투자 운세를 분석해드립니다. 재물이 들어오는 시기와 나가는 시기를 미리 알아보고 현명한 선택을 해보세요.',
-    },
-    {
-      img: imgCard2,
-      title: '운명의 상대는 바로 곁에',
-      desc: '소울메이트는 생각보다 가까운 곳에 있을지도 모릅니다. 사주로 보는 나의 인연운과 결혼운을 통해 운명의 상대를 만날 시기와 장소를 미리 알아보세요.',
-    },
-  ];
   const N = slides.length;
   const GAP = 10;
 
@@ -857,9 +934,15 @@ function NewFortuneSection({
             >
               {slides.map((slide, i) => (
                 <div
-                  key={i}
-                  className="flex flex-col"
+                  key={slide.id || i}
+                  className="flex flex-col cursor-pointer"
                   style={{ flex: '0 0 100%', gap: 12 }}
+                  onClick={() => {
+                    if (slide.id) {
+                      trackContentClick(slide.id);
+                      navigate(`/free/content/${slide.id}`);
+                    }
+                  }}
                 >
                   {/* 이미지 영역 */}
                   <div
@@ -950,7 +1033,7 @@ function NewFortuneSection({
 }
 
 /** BEST 운세 개별 카드 */
-function BestFortuneCard({ item }: { item: FortuneItem }) {
+function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () => void }) {
   return (
     <div
       className="relative w-full"
@@ -981,6 +1064,7 @@ function BestFortuneCard({ item }: { item: FortuneItem }) {
         onPointerCancel={(e) => {
           e.currentTarget.style.backgroundColor = '';
         }}
+        onClick={onClick}
       >
         <div className="flex items-start" style={{ gap: 10 }}>
           <RankNumber n={item.rank} />
@@ -1025,25 +1109,33 @@ function BestFortuneCard({ item }: { item: FortuneItem }) {
 function BestFortuneSection({
   tab,
   onTabChange,
+  items,
 }: {
   tab: number;
   onTabChange: (i: number) => void;
+  items: FortuneItem[];
 }) {
   const navigate = useNavigate();
-  const TOTAL_PAGES = 3;
   const PAGES = [
-    FORTUNE_ITEMS.slice(0, 3),
-    FORTUNE_ITEMS.slice(3, 6),
-    FORTUNE_ITEMS.slice(6, 9),
-  ];
+    items.slice(0, 3),
+    items.slice(3, 6),
+    items.slice(6, 9),
+  ].filter(page => page.length > 0);
+  const TOTAL_PAGES = PAGES.length;
 
   const [bestPage, setBestPage] = useState(0);
+
+  // 탭(items) 변경 시 페이지 초기화
+  useEffect(() => {
+    setBestPage(0);
+  }, [items]);
 
   const PEEK    = 20;
   const GAP     = 10;
   const PAD_LEFT = 10;
 
   const clipperRef = useRef<HTMLDivElement>(null);
+  const tabBarRef = useRef<HTMLDivElement>(null);
   const [slideW, setSlideW] = useState(0);
 
   useEffect(() => {
@@ -1061,52 +1153,104 @@ function BestFortuneSection({
 
   const touchStartX  = useRef<number>(0);
   const touchStartY  = useRef<number>(0);
-  const isHorizDrag  = useRef<boolean>(false);
 
   const mouseStartX  = useRef<number>(0);
   const isMouseDown  = useRef<boolean>(false);
 
   const wheelCooldown = useRef(false);
 
+  const bestPageRef = useRef(bestPage);
+  bestPageRef.current = bestPage;
+  const totalPagesRef = useRef(TOTAL_PAGES);
+  totalPagesRef.current = TOTAL_PAGES;
+
   const goTo = (next: number) => {
     setBestPage(Math.max(0, Math.min(TOTAL_PAGES - 1, next)));
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    isHorizDrag.current = false;
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
-    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
-    if (!isHorizDrag.current && dx > dy && dx > 5) isHorizDrag.current = true;
-  };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isHorizDrag.current) return;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    isHorizDrag.current = false;
-    if (Math.abs(diff) < 40) return;
-    goTo(diff > 0 ? bestPage + 1 : bestPage - 1);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    mouseStartX.current = e.clientX;
-    isMouseDown.current = true;
-  };
-  const handleMouseLeave = () => { isMouseDown.current = false; };
-
+  // ── Touch: native DOM 리스너 (passive: false로 preventDefault 가능) ──
   useEffect(() => {
-    const onWindowMouseUp = (e: MouseEvent) => {
+    const el = clipperRef.current;
+    if (!el) return;
+
+    let horizLock: boolean | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      horizLock = null;
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const cx = e.touches[0].clientX;
+      const cy = e.touches[0].clientY;
+      if (horizLock === null) {
+        const adx = Math.abs(cx - touchStartX.current);
+        const ady = Math.abs(cy - touchStartY.current);
+        if (adx > ady && adx > 6) horizLock = true;
+        else if (ady > adx && ady > 6) horizLock = false;
+        else return;
+      }
+      if (horizLock) e.preventDefault();
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (horizLock !== true) return;
+      const diff = touchStartX.current - e.changedTouches[0].clientX;
+      if (Math.abs(diff) < 40) return;
+      const cur = bestPageRef.current;
+      const total = totalPagesRef.current;
+      setBestPage(Math.max(0, Math.min(total - 1, diff > 0 ? cur + 1 : cur - 1)));
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Mouse: window 글로벌 리스너 ──
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isMouseDown.current) return;
+      e.preventDefault();
+    };
+    const onMouseUp = (e: MouseEvent) => {
       if (!isMouseDown.current) return;
       const diff = mouseStartX.current - e.clientX;
       isMouseDown.current = false;
       if (Math.abs(diff) < 40) return;
-      setBestPage(prev => Math.max(0, Math.min(TOTAL_PAGES - 1, diff > 0 ? prev + 1 : prev - 1)));
+      setBestPage(prev => Math.max(0, Math.min(totalPagesRef.current - 1, diff > 0 ? prev + 1 : prev - 1)));
     };
-    window.addEventListener('mouseup', onWindowMouseUp);
-    return () => window.removeEventListener('mouseup', onWindowMouseUp);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── 탭 바: 마우스 휠 → 가로 스크롤 ──
+  useEffect(() => {
+    const el = tabBarRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaX !== 0 || e.shiftKey) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaX || e.deltaY;
+      } else if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   return (
@@ -1139,7 +1283,7 @@ function BestFortuneSection({
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           onTouchStart={e => (e.currentTarget.style.backgroundColor = '#F8F8F8')}
           onTouchEnd={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-          onClick={() => navigate('/best-fortune')}
+          onClick={() => navigate('/best-fortune', { state: { sort: 'popular' } })}
         >
           <span className="group-active:scale-90 transition-transform duration-150 flex items-center justify-center">
             <ChevronRightIcon />
@@ -1147,10 +1291,36 @@ function BestFortuneSection({
         </button>
       </div>
 
-      {/* 탭 바 */}
+      {/* 탭 바 — 마우스 드래그 + 휠 스크롤 지원 */}
       <div
+        ref={tabBarRef}
         className="w-full overflow-x-auto"
-        style={{ backgroundColor: C.white, scrollbarWidth: 'none' }}
+        style={{ backgroundColor: C.white, scrollbarWidth: 'none', cursor: 'grab' }}
+        onMouseDown={(e) => {
+          const el = e.currentTarget;
+          const startX = e.clientX;
+          const scrollLeft = el.scrollLeft;
+          let dragged = false;
+          el.style.cursor = 'grabbing';
+
+          const onMouseMove = (ev: MouseEvent) => {
+            const dx = ev.clientX - startX;
+            if (Math.abs(dx) > 3) dragged = true;
+            el.scrollLeft = scrollLeft - dx;
+          };
+          const onMouseUp = () => {
+            el.style.cursor = 'grab';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            if (dragged) {
+              // 드래그 후 클릭 방지
+              const preventClick = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); };
+              el.addEventListener('click', preventClick, { capture: true, once: true });
+            }
+          };
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        }}
       >
         <div
           className="flex items-center"
@@ -1205,12 +1375,10 @@ function BestFortuneSection({
           paddingLeft: 10,
           paddingTop: 16,
           paddingBottom: 20,
+          touchAction: 'pan-y',
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
+        onMouseDown={(e) => { mouseStartX.current = e.clientX; isMouseDown.current = true; }}
+        onMouseLeave={() => { isMouseDown.current = false; }}
       >
         <div
           style={{
@@ -1245,7 +1413,18 @@ function BestFortuneSection({
               }}
             >
               {pageItems.map((item) => (
-                <BestFortuneCard key={item.id} item={item} />
+                <BestFortuneCard
+                  key={item.id}
+                  item={item}
+                  onClick={() => {
+                    trackContentClick(item.id);
+                    navigate(
+                      item.contentType === 'free'
+                        ? `/free/content/${item.id}`
+                        : `/master/content/detail/${item.id}`,
+                    );
+                  }}
+                />
               ))}
             </div>
           ))}
@@ -1323,17 +1502,139 @@ function AppFooter() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Data Fetching Hooks
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 로그인 유저 닉네임 가져오기 */
+function useNickname(): string {
+  const [nickname, setNickname] = useState('');
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const { data } = await supabase
+          .from('users')
+          .select('nickname')
+          .eq('id', session.user.id)
+          .single();
+        if (data?.nickname) setNickname(data.nickname);
+      } catch (e) {
+        logger.error('useNickname 실패:', e);
+      }
+    })();
+  }, []);
+  return nickname;
+}
+
+/** NEW 무료 운세 — content_type='free' 최신 3개 (동일 날짜면 weekly_clicks DESC) */
+function useNewFreeContents(): NewFortuneSlide[] {
+  const [slides, setSlides] = useState<NewFortuneSlide[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('master_contents')
+          .select('id, title, description, thumbnail_url, created_at, weekly_clicks')
+          .eq('content_type', 'free')
+          .eq('status', 'deployed')
+          .order('created_at', { ascending: false })
+          .order('weekly_clicks', { ascending: false })
+          .limit(3);
+
+        if (error) {
+          logger.error('NEW 무료 운세 로드 실패:', error.message);
+          return;
+        }
+        if (data && data.length > 0) {
+          setSlides(
+            data.map((row) => ({
+              id: row.id,
+              img: row.thumbnail_url || '/home-v2/thumbnail.png',
+              title: row.title,
+              desc: row.description || '',
+            })),
+          );
+        }
+      } catch (e) {
+        logger.error('useNewFreeContents 실패:', e);
+      }
+    })();
+  }, []);
+  return slides;
+}
+
+/** BEST 운세 — 카테고리별 weekly_clicks 상위 9개 (get_home_contents RPC) */
+function useBestContents(category: string): FortuneItem[] {
+  const [items, setItems] = useState<FortuneItem[]>([]);
+  const prevCategory = useRef(category);
+
+  const fetchBest = useCallback(async (cat: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_home_contents', {
+        p_category: cat,
+        p_content_type: 'all',
+        p_offset: 0,
+        p_limit: 9,
+      });
+
+      if (error) {
+        logger.error('BEST 운세 로드 실패:', error.message);
+        return;
+      }
+      if (data && data.length > 0) {
+        setItems(
+          data.map((row: {
+            id: string; title: string; content_type: string;
+            thumbnail_url: string | null; weekly_clicks: number;
+            view_count: number; created_at: string; is_read: boolean;
+          }, i: number) => toFortuneItem(row, i + 1)),
+        );
+      } else {
+        setItems([]);
+      }
+    } catch (e) {
+      logger.error('useBestContents 실패:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBest(category);
+    prevCategory.current = category;
+  }, [category, fetchBest]);
+
+  return items;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Screen
 // ─────────────────────────────────────────────────────────────────────────────
 export function HomeScreenNew() {
   const [activeTab, setActiveTab] = useState(0);
   const [dot, setDot]             = useState(0);
 
+  // ── 데이터 로드 ──
+  const nickname = useNickname();
+  const newFreeSlides = useNewFreeContents();
+  const bestCategory = TAB_CATEGORIES[activeTab] || '연애';
+  const bestItems = useBestContents(bestCategory);
+
+  // 탭 변경 시 BEST 스와이프 페이지 초기화
+  const handleTabChange = useCallback((i: number) => {
+    setActiveTab(i);
+  }, []);
+
   return (
     <div
       className="flex justify-center min-h-screen"
       style={{ backgroundColor: C.pageBg }}
     >
+      <SEO
+        title="무료운세 사주 타로 궁합 | AI 사주풀이"
+        description="AI사주 · 무료타로 · 궁합 · 생년월일운세를 정확하게 풀어드립니다. 무료사주풀이사이트 나다운세에서 타로카드뽑기, 사주연애운, 이직운세까지 무료로 만나보세요."
+        keywords="AI사주, 무료사주풀이사이트, 생년월일운세, 무료타로사이트, 타로카드뽑기, 무료운세, 궁합, 사주풀이, 온라인사주추천, 비대면사주"
+        canonical="/"
+      />
       {/* 반응형 컨테이너: 320px ~ 440px, PC에서 440px 고정 */}
       <div
         className="flex flex-col relative"
@@ -1347,13 +1648,15 @@ export function HomeScreenNew() {
       >
         <AppHeader />
         <AppSearchBar />
-        <FreeConsultationSection />
-        <NewFortuneSection dot={dot} onDotChange={setDot} />
+        <FreeConsultationSection nickname={nickname} />
+        {newFreeSlides.length > 0 && (
+          <NewFortuneSection dot={dot} onDotChange={setDot} slides={newFreeSlides} />
+        )}
 
         {/* 섹션 구분선 */}
         <div style={{ height: 8, backgroundColor: C.cardBorder }} />
 
-        <BestFortuneSection tab={activeTab} onTabChange={setActiveTab} />
+        <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
         <div style={{ marginTop: 130 }}>
           <AppFooter />
         </div>

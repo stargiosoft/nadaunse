@@ -90,7 +90,8 @@ export function TaroConsultLoadingPage() {
         localStorage.setItem('taro_consult_result', JSON.stringify({
           result: data.result,
           tarotCard: data.tarotCard,
-          imageUrl: data.imageUrl
+          imageUrl: data.imageUrl,
+          recommendedCategory: data.result.recommendedCategory,
         }));
         sessionStorage.removeItem('taro_consult_draft');
         navigate('/taro-consult/result', { replace: true });

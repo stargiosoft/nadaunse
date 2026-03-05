@@ -12,6 +12,7 @@ import svgMorePaths from '../imports/svg-1svu7din8s';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface RecommendedItem {
+  id?: string;
   title: string;
   image: string;
   isNew?: boolean;
@@ -25,6 +26,7 @@ export interface RecommendedItem {
 interface Props {
   items: RecommendedItem[];
   onMoreClick?: () => void;
+  onCardClick?: (id: string) => void;
   /** 추가 컨테이너 스타일 (필요 시 덮어쓰기) */
   style?: React.CSSProperties;
   /** 가격 정보 숨김 */
@@ -36,7 +38,7 @@ const font = "'Pretendard Variable', sans-serif";
 const C = { black: '#000000', white: '#ffffff' } as const;
 
 // ─── RecommendedCarousel ─────────────────────────────────────────────────────
-export function RecommendedCarousel({ items, onMoreClick, style, hidePrice }: Props) {
+export function RecommendedCarousel({ items, onMoreClick, onCardClick, style, hidePrice }: Props) {
   // ── Drag / scroll 상태 ────────────────────────────────────────────────────
   const carouselRef = useRef<HTMLDivElement>(null);
   const drag = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
@@ -116,7 +118,11 @@ export function RecommendedCarousel({ items, onMoreClick, style, hidePrice }: Pr
       onClick={onCarouselClick}
     >
       {items.map((item, i) => (
-        <div key={i} className="flex flex-col items-start" style={{ width: 200, flexShrink: 0, gap: 8 }}>
+        <div
+          key={item.id || i}
+          className="flex flex-col items-start"
+          style={{ width: 200, flexShrink: 0, gap: 8, cursor: item.id && onCardClick ? 'pointer' : undefined }}
+          onClick={() => { if (!isDragging.current && item.id && onCardClick) onCardClick(item.id); }}>
           {/* Thumbnail */}
           <div style={{ width: 200, height: 120, borderRadius: 12, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
             <img
