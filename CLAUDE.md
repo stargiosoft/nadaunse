@@ -15,7 +15,7 @@
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 32개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 34개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Anthropic Claude-3.5-Sonnet, Google Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서 자동 발송) |
 | 결제 | PortOne (구 아임포트) v2 |
@@ -25,7 +25,7 @@
 
 ### 주요 통계
 - **컴포넌트**: 69개 (주간 보고서 8개 + 통계 대시보드 2개 포함)
-- **Edge Functions**: 32개 (주간 보고서 4개 포함)
+- **Edge Functions**: 34개 (주간 보고서 4개 포함)
 - **페이지**: 41개
 - **UI 컴포넌트 (shadcn/ui)**: 48개
 - **타로 카드 덱**: 78장
@@ -117,7 +117,7 @@ const bgImage = "/background.jpg";
 - Deno runtime 사용
 - CORS 헤더 필수 포함
 - 에러 핸들링 + 구조화된 로깅
-- **총 32개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(2), 소유자 확인(2), 유틸리티(2)
+- **총 34개**: AI 생성(9), 주간 보고서(4), 쿠폰 관리(4), 마스터 콘텐츠(2), 알림(1), 사용자(1), 결제/환불(3), 모니터링/통계(2), SEO(2), 소유자 확인(2), 유틸리티(2)
 
 **⚠️ 배포 시 반드시 스크립트 사용 (수동 배포 금지)**:
 ```bash
@@ -148,8 +148,8 @@ npm run deploy:staging
 **배포 스크립트 위치**: `/scripts/`
 ```
 scripts/
-├── deploy-production.bat   # 프로덕션 전체 배포 (32개)
-├── deploy-staging.bat      # 스테이징 전체 배포 (32개)
+├── deploy-production.bat   # 프로덕션 전체 배포 (34개)
+├── deploy-staging.bat      # 스테이징 전체 배포 (34개)
 ├── deploy-core.bat         # 핵심 함수만 배포 (4개)
 └── README.md               # 상세 가이드
 ```
@@ -199,7 +199,7 @@ Serena 방식: find_symbol("UserProfile") → 해당 컴포넌트 30줄만 로�
 → 94% 토큰 절약!
 ```
 
-**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 32개)에서 Serena는 필수입니다.
+**프로젝트 규모** (컴포넌트 69개, 페이지 41개, Edge Functions 34개)에서 Serena는 필수입니다.
 
 ### 11. 캐싱 전략 (Cache Strategy)
 
@@ -399,6 +399,9 @@ serve(async (req) => {
 | `/lib/freeContentService.ts` | 무료 콘텐츠 비즈니스 로직 |
 | `/lib/freeContentLimitService.ts` | 비회원 무료 콘텐츠 일일 제한 (localStorage 기반) |
 | `/lib/coupon.ts` | 쿠폰 관리 로직 |
+| `/lib/consultStatus.ts` | 상담 상태 관리 (일별 완료 추적, localStorage) |
+| `/lib/consultLimitService.ts` | 비회원 상담 1회 제한 (localStorage 기반) |
+| `/lib/consultRecommendationService.ts` | AI 카테고리 기반 동적 추천 콘텐츠 조회 |
 
 ---
 
@@ -573,7 +576,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 **필수 문서**:
 1. `DATABASE_SCHEMA.md` - 전체 DB 구조 파악
 2. `PROJECT_CONTEXT.md` - RLS 정책, Edge Functions
-3. `supabase/EDGE_FUNCTIONS_GUIDE.md` - Edge Functions 32개 목록
+3. `supabase/EDGE_FUNCTIONS_GUIDE.md` - Edge Functions 34개 목록
 
 **체크리스트**:
 - [ ] RLS 정책 추가 필요한지 확인
@@ -783,7 +786,7 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 | 문서 | 언제 읽나요? | 주요 내용 |
 |------|-------------|----------|
-| **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | Edge Function 작업 시 | 24개 함수 목록, 입력/출력 형식, 배포 방법 |
+| **[supabase/EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | Edge Function 작업 시 | 34개 함수 목록, 입력/출력 형식, 배포 방법 |
 
 ### 🎨 컴포넌트 & UI
 
@@ -837,4 +840,4 @@ FigmaMake에 아래 프롬프트를 사용하면 통합이 더 수월합니다:
 
 ---
 
-**최종 업데이트**: 2026-02-09
+**최종 업데이트**: 2026-03-05

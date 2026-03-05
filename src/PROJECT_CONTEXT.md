@@ -120,15 +120,15 @@
 │  │   ───────────────   │      │   ├── process-payment                   │  │
 │  │   Triggers (5개)    │      │   └── process-refund                    │  │
 │  │   Functions (5개)   │      │                                         │  │
-│  └─────────────────────┘      │   기타 (6개)                             │  │
-│            ↓                  │   ├── users, master-content             │  │
-│  ┌─────────────────────┐      │   ├── send-alimtalk                     │  │
-│  │   Supabase Storage  │      │   └── sentry-slack-webhook              │  │
-│  │   ───────────────   │      └─────────────────────────────────────────┘  │
-│  │   • thumbnails/     │                                                    │
-│  │   • tarot-cards/    │                                                    │
-│  │   • assets/         │                                                    │
-│  └─────────────────────┘                                                    │
+│  └─────────────────────┘      │   상담 (2개)                             │  │
+│            ↓                  │   ├── generate-saju-consult             │  │
+│  ┌─────────────────────┐      │   └── generate-tarot-consult            │  │
+│  │   Supabase Storage  │      │                                         │  │
+│  │   ───────────────   │      │   기타 (6개)                             │  │
+│  │   • thumbnails/     │      │   ├── users, master-content             │  │
+│  │   • tarot-cards/    │      │   ├── send-alimtalk                     │  │
+│  │   • assets/         │      │   └── sentry-slack-webhook              │  │
+│  └─────────────────────┘      └─────────────────────────────────────────┘  │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       ↓
@@ -868,6 +868,30 @@ interface TarotGameProps {
 ```
 </details>
 
+<details>
+<summary><b>사주/타로 상담 체험 (AI 상담) - 7페이지 + 3서비스</b></summary>
+
+```
+/pages/SajuConsultPage.tsx               → 사주 상담 질문 입력 (라우트: /saju-consult)
+/pages/SajuConsultLoadingPage.tsx        → 사주 상담 로딩 (라우트: /saju-consult/loading)
+/pages/SajuConsultResultPage.tsx         → 사주 상담 결과 (라우트: /saju-consult/result)
+/pages/SajuRecommendedFortunePage.tsx    → 추천 운세 전체보기 (라우트: /saju-consult/result/recommended)
+/pages/TaroConsultPage.tsx               → 타로 상담 질문 입력 (라우트: /taro-consult)
+/pages/TaroConsultLoadingPage.tsx        → 타로 상담 로딩 (라우트: /taro-consult/loading)
+/pages/TaroConsultResultPage.tsx         → 타로 상담 결과 (라우트: /taro-consult/result, 카드 플립 애니메이션)
+/components/RecommendedCarousel.tsx      → 추천 콘텐츠 캐러셀 (가로 스크롤, 터치/마우스 드래그)
+/components/TextareaInput.tsx            → 상담 입력 텍스트 영역
+/lib/consultStatus.ts                    → 상담 상태 localStorage 관리 (idle/completed, 일별 초기화)
+/lib/consultLimitService.ts              → 비회원 상담 1회 제한 (localStorage 기반)
+/lib/consultRecommendationService.ts     → AI 카테고리 기반 동적 추천 콘텐츠 조회
+/hooks/useScrollDirection.ts             → 스크롤 방향 감지 훅 (RAF 기반)
+```
+
+**Edge Functions**: `generate-saju-consult`, `generate-tarot-consult`
+**DB 테이블**: `anonymous_consult_views` (비회원 상담 fingerprint 기록)
+**비회원 제한**: fingerprint(SHA-256(IP+UA)) 기반 최초 1회, 로그인 유저 1일 1회
+</details>
+
 ---
 
 ### 🔐 인증 & 회원가입
@@ -1340,6 +1364,22 @@ NO  → 추가 로드 후 재시도
 🟣 [RESTORE ATTEMPT] Target: 1250, Current: 0
 🟢 [RESTORE SUCCESS] Final: 1250
 ```
+
+### 5. 사주/타로 상담 체험 플로우
+
+홈 → SajuConsultPage/TaroConsultPage (질문 입력, 최대 300자)
+→ 로그인 체크
+- **로그인**: DB에서 사주 정보 조회 → 있으면 바로 로딩, 없으면 사주 입력
+- **비로그인**: 상담 1회 체험 확인 → 미사용 시 cached_saju_info 확인 → 있으면 로딩, 없으면 사주 입력
+→ SajuConsultLoadingPage (Edge Function 호출)
+→ generate-saju-consult / generate-tarot-consult (AI 생성 + 제한 검증)
+→ SajuConsultResultPage / TaroConsultResultPage (결과 + 동적 추천 캐러셀)
+
+**타로 특징**: 사주 입력 불필요, 78장 덱 랜덤 카드, 3D 카드 플립 애니메이션
+**추천 콘텐츠**: AI가 분류한 `recommendedCategory` → `consultRecommendationService` → 유료 콘텐츠 최대 6개
+
+**주요 파일**: SajuConsultPage, TaroConsultPage, RecommendedCarousel, consultRecommendationService
+**Edge Functions**: generate-saju-consult, generate-tarot-consult
 
 ---
 
@@ -1836,5 +1876,5 @@ useEffect(() => {
 ---
 
 **문서 버전**: 2.3.0
-**최종 업데이트**: 2026-01-23
+**최종 업데이트**: 2026-03-05
 **문서 끝**

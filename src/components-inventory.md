@@ -1,7 +1,7 @@
 # Components Inventory
 
 > **최종 업데이트**: 2026-03-05
-> **총 활성 컴포넌트 수**: 93개
+> **총 활성 컴포넌트 수**: 106개
 > **UI 컴포넌트 (shadcn/ui)**: 52개
 > **프로젝트**: 타로/사주 운세 모바일 웹 서비스
 > **필수 문서**: [CLAUDE.md](../CLAUDE.md) - 개발 규칙
@@ -24,6 +24,9 @@
 - [유틸리티 컴포넌트 (4개)](#유틸리티-컴포넌트)
 - [약관 페이지 (3개)](#약관-페이지)
 - [에러 처리 (2개)](#에러-처리)
+- [공유 리워드 (2개)](#공유-리워드-2개)
+- [홈 고도화 (16개)](#홈-고도화-16개)
+- [사주/타로 상담 체험 (13개)](#사주타로-상담-체험-13개)
 
 ---
 
@@ -1047,9 +1050,75 @@
 
 ---
 
+## 🔮 사주/타로 상담 체험 (13개)
+
+> 비회원/회원 대상 사주·타로 AI 상담 체험 기능 (2026-03-05 추가).
+
+### 페이지 (7개)
+
+1. **SajuConsultPage.tsx** (/saju-consult)
+   - **역할**: 사주 상담 질문 입력
+   - **파일 경로**: `/pages/SajuConsultPage.tsx`
+
+2. **SajuConsultLoadingPage.tsx** (/saju-consult/loading)
+   - **역할**: 사주 상담 로딩 (Lottie 애니메이션)
+   - **파일 경로**: `/pages/SajuConsultLoadingPage.tsx`
+
+3. **SajuConsultResultPage.tsx** (/saju-consult/result)
+   - **역할**: 사주 상담 결과 (6개 섹션)
+   - **파일 경로**: `/pages/SajuConsultResultPage.tsx`
+
+4. **SajuRecommendedFortunePage.tsx** (/saju-consult/result/recommended)
+   - **역할**: 추천 운세 전체보기
+   - **파일 경로**: `/pages/SajuRecommendedFortunePage.tsx`
+
+5. **TaroConsultPage.tsx** (/taro-consult)
+   - **역할**: 타로 상담 질문 입력
+   - **파일 경로**: `/pages/TaroConsultPage.tsx`
+
+6. **TaroConsultLoadingPage.tsx** (/taro-consult/loading)
+   - **역할**: 타로 상담 로딩 (Lottie 애니메이션)
+   - **파일 경로**: `/pages/TaroConsultLoadingPage.tsx`
+
+7. **TaroConsultResultPage.tsx** (/taro-consult/result)
+   - **역할**: 타로 상담 결과 (카드 플립 + 4개 섹션)
+   - **파일 경로**: `/pages/TaroConsultResultPage.tsx`
+
+### 공유 컴포넌트 (2개)
+
+8. **RecommendedCarousel.tsx**
+   - **역할**: 추천 콘텐츠 캐러셀 (가로 스크롤)
+   - **파일 경로**: `/components/RecommendedCarousel.tsx`
+
+9. **TextareaInput.tsx**
+   - **역할**: 상담 입력 텍스트 영역
+   - **파일 경로**: `/components/TextareaInput.tsx`
+
+### 서비스 (3개)
+
+10. **consultStatus.ts**
+    - **역할**: 상담 상태 localStorage 관리
+    - **파일 경로**: `/lib/consultStatus.ts`
+
+11. **consultLimitService.ts**
+    - **역할**: 비회원 상담 1회 제한
+    - **파일 경로**: `/lib/consultLimitService.ts`
+
+12. **consultRecommendationService.ts**
+    - **역할**: AI 카테고리 기반 동적 추천 조회
+    - **파일 경로**: `/lib/consultRecommendationService.ts`
+
+### 훅 (1개)
+
+13. **useScrollDirection.ts**
+    - **역할**: 스크롤 방향 감지 (RAF 기반)
+    - **파일 경로**: `/hooks/useScrollDirection.ts`
+
+---
+
 ## 📊 통계
 
-- **총 활성 컴포넌트**: 93개
+- **총 활성 컴포넌트**: 106개
 
 ### 카테고리별 분포
 - UI 컴포넌트: 11개
@@ -1068,6 +1137,7 @@
 - 에러 처리: 2개
 - 공유 리워드: 2개
 - 홈 고도화: 16개
+- 사주/타로 상담 체험: 13개
 
 ---
 
@@ -1143,6 +1213,9 @@
 ## 🔄 업데이트 이력
 
 ### 2026-03-05
+- **사주/타로 상담 체험 섹션 추가** (93 → 106개 활성)
+  - 페이지 7개, 공유 컴포넌트 2개, 서비스 3개, 훅 1개
+  - 신규 서비스: consultLimitService.ts (비회원 상담 1회 제한), consultRecommendationService.ts (AI 카테고리 기반 동적 추천 조회)
 - **CompletionCoupon.tsx 삭제** (94 → 93개 활성)
   - 미션 쿠폰 → 새싹 30개 리워드로 대체 (`grant-mission-sprout` Edge Function)
   - CheckRecordMe.tsx 내 새싹 리워드 로직으로 이동

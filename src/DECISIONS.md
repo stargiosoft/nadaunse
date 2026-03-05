@@ -5095,6 +5095,28 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.3.0
-**최종 업데이트**: 2026-02-10
+## [2026-03-05] 사주/타로 상담 체험 기능
+
+### 배경
+- 홈 고도화의 일환으로 AI 사주/타로 상담 체험 기능 추가
+- 무료 콘텐츠와 유료 콘텐츠 사이의 퍼널 역할
+
+### 결정
+1. **상담 플로우**: 질문 입력(300자) → 사주 확인 → AI 생성 → 결과 + 동적 추천
+2. **비회원 제한**: fingerprint(SHA-256(IP+UA)) 기반 최초 1회 (`anonymous_consult_views` 테이블)
+3. **로그인 유저 제한**: 1일 1회 (Edge Function에서 DB 레벨 검증)
+4. **사주 조회 패턴**: `.eq('is_primary', true).single()` 대신 전체 목록 조회 후 JS `find(s.is_primary)` — ProfilePage와 동일 패턴 (PostgREST 406 에러 방지)
+5. **동적 추천**: AI가 `recommendedCategory` 분류 → `consultRecommendationService`가 sub→main→전체 우선순위로 유료 콘텐츠 6개 조회
+6. **타로 특징**: 사주 입력 불필요, 78장 덱 랜덤 카드, 3D 카드 플립 애니메이션
+7. **세션 인증 타이밍**: 로그인 직후 DB 쿼리 시 `getSession()` 사용 (getUser()는 DB 쿼리의 Authorization 헤더에 반영 안 됨)
+
+### 관련 파일
+- 페이지: `SajuConsultPage`, `SajuConsultLoadingPage`, `SajuConsultResultPage`, `TaroConsultPage`, `TaroConsultLoadingPage`, `TaroConsultResultPage`
+- Edge Functions: `generate-saju-consult`, `generate-tarot-consult`
+- 서비스: `consultStatus.ts`, `consultLimitService.ts`, `consultRecommendationService.ts`
+
+---
+
+**문서 버전**: 3.4.0
+**최종 업데이트**: 2026-03-05
 **문서 끝**

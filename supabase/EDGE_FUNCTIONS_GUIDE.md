@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 32개
-> **최종 업데이트**: 2026-02-09
+> **총 함수 수**: 34개
+> **최종 업데이트**: 2026-03-05
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -13,7 +13,8 @@
 2. [기능별 분류](#-기능별-분류)
 3. [함수 간 관계도](#-함수-간-관계도)
 4. [AI 생성 Functions](#-ai-생성-functions-8개)
-5. [쿠폰 관리 Functions](#-쿠폰-관리-functions-4개)
+5. [AI 상담 Functions](#-ai-상담-functions-2개)
+6. [쿠폰 관리 Functions](#-쿠폰-관리-functions-4개)
 6. [사용자 관리 Functions](#-사용자-관리-functions-2개)
 7. [알림 Functions](#-알림-functions-1개)
 8. [결제/환불 Functions](#-결제환불-functions-3개)
@@ -30,8 +31,9 @@
 
 | 카테고리 | 함수 수 | 비율 | 주요 기술 |
 |---------|--------|------|----------|
-| 🤖 **AI 콘텐츠 생성** | 9개 | 29% | OpenAI GPT, Gemini |
-| 📊 **주간 보고서** | 4개 | 13% | GPT-5.1, pg_cron, TalkDream |
+| 🤖 **AI 콘텐츠 생성** | 9개 | 26% | OpenAI GPT, Gemini |
+| 💬 **AI 상담** | 2개 | 6% | OpenAI GPT-4.1-mini |
+| 📊 **주간 보고서** | 4개 | 12% | GPT-5.1, pg_cron, TalkDream |
 | 🎟️ **쿠폰 관리** | 4개 | 13% | Supabase DB |
 | 🔧 **마스터 콘텐츠 관리** | 2개 | 6% | OpenAI, Gemini 통합 |
 | 📨 **알림** | 1개 | 3% | TalkDream API (카카오 알림톡) |
@@ -42,7 +44,7 @@
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
 | 🧹 **유틸리티** | 2개 | 6% | 태그 정리, Vercel 재빌드 |
 
-**총 31개** (로컬 함수 기준)
+**총 33개** (로컬 함수 기준)
 
 ---
 
@@ -83,27 +85,34 @@
 
 ---
 
+### 2️⃣-② **AI 상담** (2개)
+
+14. `generate-saju-consult` - 사주 상담 AI 답변 생성 (GPT-4.1-mini)
+15. `generate-tarot-consult` - 타로 상담 AI 답변 + 카드 선택 (GPT-4.1-mini)
+
+---
+
 ### 3️⃣ **주간 보고서** (4개)
 
-14. `generate-weekly-report` - 개별 사용자 주간 보고서 생성 (GPT-5.1)
+16. `generate-weekly-report` - 개별 사용자 주간 보고서 생성 (GPT-5.1)
     - 사주 정보 + 주간 태그 + 이용 콘텐츠 기반
     - 3카드 타로 + 마음 처방 + To-Do List 생성
     - 복수 "본인" 사주 대응 (is_primary 우선, 최신순 fallback)
     - `--no-verify-jwt` 필수 (배치에서 내부 호출)
 
-15. `generate-weekly-reports-batch` - 주간 보고서 배치 생성
+17. `generate-weekly-reports-batch` - 주간 보고서 배치 생성
     - pg_cron에서 매주 호출 (10분 간격 반복, 이어하기 패턴)
     - concurrency: 3, 2초 간격, 60초 시간 제한 (shutdown 방지)
     - `selfContinue: true` → 시간 제한 시 자기 자신 재호출 (fire-and-forget)
     - 관리자 재발송: 1회 호출로 서버 자동 처리 (브라우저 닫아도 됨)
     - 전주 태그 있는 모든 사용자 대상, 기존 보고서 있으면 스킵
 
-16. `send-report-alimtalk` - 보고서 알림톡 발송
+18. `send-report-alimtalk` - 보고서 알림톡 발송
     - TalkDream API 사용
     - 최대 5회 재시도
     - `--no-verify-jwt` 필수 (내부 호출)
 
-17. `get-failed-reports` - 실패 보고서 조회 (관리자용)
+19. `get-failed-reports` - 실패 보고서 조회 (관리자용)
     - 태그 있는데 보고서 없는 사용자 조회
     - 마스터 계정 관리자 패널에서 사용
 
@@ -111,56 +120,56 @@
 
 ### 4️⃣ **마스터 콘텐츠 관리** (2개)
 
-18. `master-content` - 마스터 콘텐츠 CRUD API (권한 검증)
-19. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
+20. `master-content` - 마스터 콘텐츠 CRUD API (권한 검증)
+21. `generate-master-content` - 마스터 콘텐츠 전체 생성 (백그라운드, 모든 AI 통합)
 
 ---
 
 ### 5️⃣ **알림** (1개)
 
-20. `send-alimtalk` - 알림톡 발송 (TalkDream API, 재시도 로직 포함)
+22. `send-alimtalk` - 알림톡 발송 (TalkDream API, 재시도 로직 포함)
 
 ---
 
 ### 6️⃣ **사용자 관리** (1개)
 
-21. `users` - 사용자 조회/생성 API (RLS 대신 권한 검증)
+23. `users` - 사용자 조회/생성 API (RLS 대신 권한 검증)
 
 ---
 
 ### 7️⃣ **결제/환불** (3개)
 
-22. `payment-webhook` - 포트원 결제 웹훅 검증
-23. `process-payment` - 결제 트랜잭션 원자적 처리
-24. `process-refund` - 환불 처리 (쿠폰 복원 포함)
+24. `payment-webhook` - 포트원 결제 웹훅 검증
+25. `process-payment` - 결제 트랜잭션 원자적 처리
+26. `process-refund` - 환불 처리 (쿠폰 복원 포함)
 
 ---
 
 ### 8️⃣ **모니터링/통계** (2개)
 
-25. `sentry-slack-webhook` - Sentry 이벤트를 Slack으로 중계
-26. `get-ga-stats` - Google Analytics 통계 조회 (마스터 계정 전용)
+27. `sentry-slack-webhook` - Sentry 이벤트를 Slack으로 중계
+28. `get-ga-stats` - Google Analytics 통계 조회 (마스터 계정 전용)
 
 ---
 
 ### 9️⃣ **SEO** (2개)
 
-27. `generate-sitemap` - 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
-28. `index-now` - IndexNow 프로토콜로 검색엔진에 URL 즉시 제출 (네이버/Bing)
+29. `generate-sitemap` - 동적 sitemap.xml 생성 (deployed 콘텐츠 자동 포함)
+30. `index-now` - IndexNow 프로토콜로 검색엔진에 URL 즉시 제출 (네이버/Bing)
 
 ---
 
 ### 🔟 **소유자 확인** (2개)
 
-29. `get-order-owner` - 유료 콘텐츠 소유자 정보 조회 (계정 불일치 처리)
-30. `get-report-owner` - 주간 보고서 소유자 정보 조회 (계정 불일치 처리)
+31. `get-order-owner` - 유료 콘텐츠 소유자 정보 조회 (계정 불일치 처리)
+32. `get-report-owner` - 주간 보고서 소유자 정보 조회 (계정 불일치 처리)
 
 ---
 
 ### 1️⃣1️⃣ **유틸리티** (2개)
 
-31. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
-32. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
+33. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
+34. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
 
 ---
 
@@ -764,6 +773,85 @@ UnifiedResultPage (데이터 로드 완료 시)
 │            (로딩 후 자동 이동)                  │
 └─────────────────────────────────────────────────┘
 ```
+
+---
+
+## 💬 AI 상담 Functions (2개)
+
+### 1. `generate-saju-consult`
+
+**역할**: 사주 상담 AI 답변 생성 (GPT-4.1-mini)
+
+**인증**: 로그인 유저 (`sajuRecordId`) + 비회원 (`birthInfo` 직접 전달)
+
+**제한**: 로그인 1일 1회 (DB), 비회원 최초 1회 (fingerprint)
+
+**`--no-verify-jwt`**: 불필요 (클라이언트 호출)
+
+**입력**:
+```typescript
+{
+  question: string,              // 상담 질문
+  sajuRecordId?: string,         // 사주 레코드 ID (로그인 시)
+  birthInfo?: object,            // 생년월일 정보 (비회원 시 직접 전달)
+  userId?: string                // 사용자 ID (로그인 시)
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  result: {
+    todayCore: string,           // 오늘의 핵심 메시지
+    advice: string,              // 조언
+    flow: string,                // 흐름
+    caution: string,             // 주의사항
+    overallFlow: string,         // 전체 흐름
+    recommendedCategory: string  // 추천 카테고리
+  }
+}
+```
+
+**AI 모델**: OpenAI GPT-4.1-mini
+
+---
+
+### 2. `generate-tarot-consult`
+
+**역할**: 타로 상담 AI 답변 + 카드 선택 (GPT-4.1-mini)
+
+**인증**: 로그인 유저 (`userId`) + 비회원 (질문만으로 상담)
+
+**제한**: 로그인 1일 1회 (DB), 비회원 최초 1회 (fingerprint)
+
+**`--no-verify-jwt`**: 불필요 (클라이언트 호출)
+
+**입력**:
+```typescript
+{
+  question: string,              // 상담 질문
+  userId?: string                // 사용자 ID (로그인 시)
+}
+```
+
+**출력**:
+```typescript
+{
+  success: boolean,
+  result: {
+    cardMessage: string,         // 카드 메시지
+    currentFlow: string,         // 현재 흐름
+    actionAdvice: string,        // 행동 조언
+    dailySentence: string,       // 오늘의 한마디
+    recommendedCategory: string  // 추천 카테고리
+  },
+  tarotCard: string,             // 선택된 타로 카드명
+  imageUrl: string               // 카드 이미지 URL
+}
+```
+
+**AI 모델**: OpenAI GPT-4.1-mini
 
 ---
 
@@ -1779,6 +1867,8 @@ curl -X POST https://hyltbeewxaqashyivilu.supabase.co/functions/v1/index-now \
 | `generate-sitemap` | 🔍 SEO | GET | - | /sitemap.xml 요청 시 |
 | `index-now` | 🔍 SEO | POST | - | 콘텐츠 배포/업데이트 후 |
 | `extract-trait-tags` | 🤖 AI 생성 | POST | GPT-5-nano | 운세 결과 페이지 진입 시 |
+| `generate-saju-consult` | 💬 AI 상담 | POST | GPT-4.1-mini | 사주 상담 질문 시 |
+| `generate-tarot-consult` | 💬 AI 상담 | POST | GPT-4.1-mini | 타로 상담 질문 시 |
 | `get-ga-stats` | 📊 통계 | GET | GA Data API | 통계 대시보드 진입 시 |
 | `get-order-owner` | 🔐 소유자 확인 | POST | - | 유료 콘텐츠 계정 불일치 시 |
 | `get-report-owner` | 🔐 소유자 확인 | POST | - | 주간 보고서 계정 불일치 시 |
@@ -1829,13 +1919,14 @@ supabase functions deploy generate-master-content
 
 ---
 
-**문서 버전**: 1.8.0
+**문서 버전**: 2.1.0
 **작성자**: AI Assistant
-**최종 업데이트**: 2026-02-03
+**최종 업데이트**: 2026-03-05
 
 ### 변경 이력
 | 버전 | 날짜 | 변경 내용 |
 |-----|------|----------|
+| 2.1.0 | 2026-03-05 | `generate-saju-consult`, `generate-tarot-consult` 함수 추가 (AI 상담 카테고리 신설), 총 34개 |
 | 2.0.0 | 2026-02-12 | `index-now` 함수 추가 (IndexNow 프로토콜로 검색엔진 URL 즉시 제출), SEO 카테고리 2개로 확장 |
 | 1.9.0 | 2026-02-09 | `extract-trait-tags`에 `rejectedTags` 파라미터 추가, `generate-free-preview` upsert→INSERT 변경 |
 | 1.8.0 | 2026-02-03 | `get-order-owner`, `get-report-owner` 함수 추가 (계정 불일치 시 소유자 정보 마스킹 표시), 총 32개 |
