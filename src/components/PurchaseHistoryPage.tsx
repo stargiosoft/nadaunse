@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { DEV } from '../lib/env';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import ArrowLeft from './ArrowLeft';
 import { preloadTarotImages } from '../lib/tarotImageCache';
@@ -113,6 +114,8 @@ export default function PurchaseHistoryPage() {
   );
   const [freeRecords, setFreeRecords] = useState<FreeContentRecord[]>([]);
   const [freeLoading, setFreeLoading] = useState(false);
+  const [devForcePaidEmpty, setDevForcePaidEmpty] = useState(false);
+  const [devForceFreeEmpty, setDevForceFreeEmpty] = useState(false);
 
   // ⭐ 세션 체크
   useEffect(() => {
@@ -621,8 +624,8 @@ export default function PurchaseHistoryPage() {
     return <PageLoader />;
   }
 
-  const isPaidEmpty = purchases.length === 0;
-  const isFreeEmpty = freeRecords.length === 0;
+  const isPaidEmpty = purchases.length === 0 || devForcePaidEmpty;
+  const isFreeEmpty = freeRecords.length === 0 || devForceFreeEmpty;
 
   return (
     <div className="h-[100dvh] bg-white flex flex-col w-full max-w-[440px] mx-auto overflow-hidden">
@@ -678,6 +681,24 @@ export default function PurchaseHistoryPage() {
           </span>
         </button>
       </div>
+
+      {/* ===== DEV 전용 빈 화면 테스트 버튼 ===== */}
+      {DEV && (
+        <div className="flex gap-[8px] px-[20px] py-[6px] bg-white">
+          <button
+            onClick={() => setDevForcePaidEmpty(v => !v)}
+            style={{ fontSize: '11px', color: devForcePaidEmpty ? '#fff' : '#999', backgroundColor: devForcePaidEmpty ? '#ff6b6b' : '#f3f3f3', padding: '3px 8px', borderRadius: '6px' }}
+          >
+            심화 운세 기록없음
+          </button>
+          <button
+            onClick={() => setDevForceFreeEmpty(v => !v)}
+            style={{ fontSize: '11px', color: devForceFreeEmpty ? '#fff' : '#999', backgroundColor: devForceFreeEmpty ? '#ff6b6b' : '#f3f3f3', padding: '3px 8px', borderRadius: '6px' }}
+          >
+            무료 운세 기록없음
+          </button>
+        </div>
+      )}
 
       {/* ⭐ Content */}
       <div className={`flex-1 w-full safe-area-bottom ${
