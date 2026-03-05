@@ -221,6 +221,16 @@ if (params.value <= 0) {
 | 31 | `paid_result_complete` | `trackPaidResultComplete` | 유료 결과 끝까지 봄 |
 | 32 | `revisit_coupon_issued` | `trackRevisitCouponIssued` | 재방문 쿠폰 발급 |
 
+### 공유 리워드 이벤트
+
+| # | 이벤트명 | 함수명 | 설명 |
+|---|---------|--------|------|
+| 34 | `share_modal_open` | `trackShareModalOpen` | 공유 바텀시트 열림 |
+| 35 | `share_link_copy` | `trackShareLinkCopy` | 링크 복사 클릭 |
+| 36 | `share_kakao` | `trackShareKakao` | 카카오톡 공유 클릭 |
+
+> 모두 `content_id`, `is_logged_in` 파라미터 포함 → GA4에서 로그인/로그아웃 분기 분석 가능
+
 ---
 
 ## 이벤트 상세 명세
@@ -378,6 +388,7 @@ trackViewItem({
 | `CouponBottomSheetNew.tsx` | `coupon_apply` |
 | `UnifiedResultPage.tsx` | `paid_result_view`, `paid_result_complete`, `free_result_view`, `free_result_complete` |
 | `ResultCompletePage.tsx` | `revisit_coupon_issued` |
+| `ShareRewardModal.tsx` | `share_modal_open`, `share_link_copy`, `share_kakao` |
 
 ---
 
@@ -461,6 +472,7 @@ GA4 → **실시간** → 이벤트 카드에서 실시간으로 이벤트 확�
 | 2026-02-02 | 나다움 태그 페이지 타이틀 추가 (`/profile/nadaum-tags`) |
 | 2026-02-05 | 주간 보고서 페이지 타이틀 추가 (보고서 리스트, 보고서 시작, 타로 셔플/결과, 마음처방, 나 응원하기, 완료/쿠폰) |
 | 2026-02-12 | 누락 페이지 타이틀 일괄 등록 (태그 확인 중, 태그 추출 중, 통계 대시보드) - "나다운세"로만 찍히던 이슈 해결 |
+| 2026-03-04 | 공유 리워드 이벤트 추가 (34-36번: `share_modal_open`, `share_link_copy`, `share_kakao`) |
 
 ---
 

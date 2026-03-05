@@ -1,8 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import svgPaths from '../imports/svg-97glg550pf';
 import lottieData from '../imports/animated-shape-effect.json';
+import { supabase, getAuthUser } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { recordConsultUsed } from '../lib/consultLimitService';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const C = {
@@ -75,13 +79,126 @@ function BackButton({ onPress }: { onPress: () => void }) {
 // ─── SajuConsultLoadingPage ──────────────────────────────────────────────────
 export function SajuConsultLoadingPage() {
   const navigate = useNavigate();
+  const hasStarted = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      sessionStorage.removeItem('saju_consult_draft');
-      navigate('/saju-consult/result');
-    }, 1800);
-    return () => clearTimeout(timer);
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
+    const runConsult = async () => {
+      try {
+        // 1. sessionStorage에서 질문 읽기
+        const question = sessionStorage.getItem('saju_consult_draft');
+        if (!question || question.trim().length === 0) {
+          toast.error('질문이 비어있습니다.');
+          navigate('/saju-consult', { replace: true });
+          return;
+        }
+
+        // 2. 인증 확인
+        const { data: { user } } = await getAuthUser();
+
+        if (user) {
+          // ── 로그인 유저 경로 ──
+          let sajuRecordId: string | null = null;
+          try {
+            const cached = localStorage.getItem('primary_saju');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              sajuRecordId = parsed.id || null;
+            }
+          } catch { /* ignore */ }
+
+          if (!sajuRecordId) {
+            const { data: records } = await supabase
+              .from('saju_records')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('is_primary', true)
+              .limit(1)
+              .single();
+            sajuRecordId = records?.id || null;
+          }
+
+          if (!sajuRecordId) {
+            toast.error('사주 정보를 먼저 등록해주세요.');
+            navigate('/profile', { replace: true });
+            return;
+          }
+
+          const { data, error } = await supabase.functions.invoke('generate-saju-consult', {
+            body: { question: question.trim(), sajuRecordId, userId: user.id }
+          });
+
+          if (error || !data?.success || !data?.result) {
+            console.error('[SajuConsultLoading] API 오류:', error || data?.error);
+            toast.error('상담 결과를 생성하지 못했어요. 다시 시도해주세요.');
+            navigate('/saju-consult', { replace: true });
+            return;
+          }
+
+          localStorage.setItem('saju_consult_result', JSON.stringify(data.result));
+          sessionStorage.removeItem('saju_consult_draft');
+          navigate('/saju-consult/result', { replace: true });
+
+        } else {
+          // ── 비회원 게스트 경로 ──
+          const cachedSajuStr = localStorage.getItem('cached_saju_info');
+          if (!cachedSajuStr) {
+            toast.error('사주 정보가 없습니다.');
+            navigate('/saju-consult', { replace: true });
+            return;
+          }
+
+          let birthInfo: { name: string; gender: string; birthDate: string; birthTime: string };
+          try {
+            const cached = JSON.parse(cachedSajuStr);
+            birthInfo = {
+              name: cached.name,
+              gender: cached.gender,
+              birthDate: cached.birthDate,
+              birthTime: cached.birthTime,
+            };
+          } catch {
+            toast.error('사주 정보가 올바르지 않습니다.');
+            navigate('/saju-consult', { replace: true });
+            return;
+          }
+
+          const { data, error } = await supabase.functions.invoke('generate-saju-consult', {
+            body: { question: question.trim(), birthInfo }
+          });
+
+          // CONSULT_LIMIT_REACHED 처리
+          if (data?.error === 'CONSULT_LIMIT_REACHED') {
+            toast.error('비회원 체험은 1회까지 가능해요. 로그인해주세요.');
+            navigate('/saju-consult', { replace: true });
+            return;
+          }
+
+          if (error || !data?.success || !data?.result) {
+            console.error('[SajuConsultLoading] API 오류:', error || data?.error);
+            toast.error('상담 결과를 생성하지 못했어요. 다시 시도해주세요.');
+            navigate('/saju-consult', { replace: true });
+            return;
+          }
+
+          // 비회원 성공 시 localStorage에 사용 기록
+          recordConsultUsed('saju');
+
+          localStorage.setItem('saju_consult_result', JSON.stringify(data.result));
+          sessionStorage.removeItem('saju_consult_draft');
+          navigate('/saju-consult/result', { replace: true });
+        }
+
+      } catch (err) {
+        console.error('[SajuConsultLoading] 예외:', err);
+        toast.error('오류가 발생했습니다. 다시 시도해주세요.');
+        navigate('/saju-consult', { replace: true });
+      }
+    };
+
+    runConsult();
   }, [navigate]);
 
   return (
@@ -95,6 +212,7 @@ export function SajuConsultLoadingPage() {
         zIndex: 100,
       }}
     >
+      <SEO title="사주 상담 중" noIndex={true} />
       <div
         style={{
           width: '100%',

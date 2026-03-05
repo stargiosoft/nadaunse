@@ -59,45 +59,6 @@ export async function issueWelcomeCoupon(userId: string): Promise<{ success: boo
 }
 
 /**
- * 재구매 쿠폰 발급
- * @param userId - 사용자 ID
- * @param sourceOrderId - 출처 ID (주문 ID 또는 보고서 ID) - 중복 발급 방지용
- */
-export async function issueRevisitCoupon(userId: string, sourceOrderId?: string): Promise<{ success: boolean; coupon?: UserCoupon; error?: string; alreadyIssued?: boolean; couponType?: 'mission' | 'revisit'; discountAmount?: number }> {
-  try {
-    console.log('🎟️ [쿠폰API] 재구매 쿠폰 발급 시작:', { userId, sourceOrderId });
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('로그인이 필요합니다');
-    }
-
-    const response = await fetch(`${EDGE_FUNCTION_BASE_URL}/issue-revisit-coupon`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ user_id: userId, source_order_id: sourceOrderId }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ [쿠폰API] 재구매 쿠폰 발급 실패:', result.error);
-      // ⭐ alreadyIssued 플래그 포함하여 반환
-      return { success: false, error: result.error, alreadyIssued: result.alreadyIssued };
-    }
-
-    console.log('✅ [쿠폰API] 재구매 쿠폰 발급 성공:', result.coupon);
-    return result;
-  } catch (error: any) {
-    console.error('❌ [쿠폰API] 재구매 쿠폰 발급 예외:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
  * 사용 가능한 쿠폰 조회
  */
 export async function getAvailableCoupons(userId: string): Promise<{ success: boolean; coupons?: UserCoupon[]; error?: string }> {

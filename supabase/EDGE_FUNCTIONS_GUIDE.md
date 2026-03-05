@@ -1,8 +1,8 @@
 # Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 36개
-> **최종 업데이트**: 2026-03-03
+> **총 함수 수**: 40개
+> **최종 업데이트**: 2026-03-04
 > **환경 정보 / 배포 방법**: [CLAUDE.md](../CLAUDE.md) 참조
 
 ---
@@ -37,8 +37,9 @@
 | 새싹 충전소 | 2개 | PortOne, PostgreSQL Function |
 | 만세력 | 1개 | Saju API 프록시 |
 | 공유 리워드 | 2개 | 레퍼럴 처리, 리워드 상태 조회 |
+| 사주/타로 상담 | 2개 | GPT-4.1-mini, 1:1 상담 |
 
-**총 38개**
+**총 40개**
 
 ---
 
@@ -396,6 +397,23 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 
 ---
 
+### 사주/타로 상담 (2개)
+
+#### `generate-saju-consult`
+**목적**: 사주 상담 답변 생성 (GPT-4.1-mini, JWT 필수)
+**파라미터**: `question`, `sajuRecordId`, `userId`
+**주의사항**: 사주 레코드 조회 + 사주 API 호출 + OpenAI JSON 응답 (todayCore, advice, flow, caution, overallFlow)
+
+#### `generate-tarot-consult`
+**목적**: 타로 상담 답변 생성 (GPT-4.1-mini, 인증 불필요)
+**파라미터**: `question` (1~300자)
+**주의사항**:
+- DB 조회 없음, 인증 불필요 (브라우저에서 anon key로 호출)
+- 78장 타로 덱에서 랜덤 카드 선택 → OpenAI JSON 응답 (cardMessage, currentFlow, actionAdvice, dailySentence)
+- 카드 이미지 URL은 Supabase Storage `assets/tarot cards/` 경로
+
+---
+
 ## 호출 플로우
 
 ### 무료 콘텐츠 플로우
@@ -484,6 +502,8 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 | `get-manse-data` | 만세력 | GET | - | 만세력 데이터 조회 시 |
 | `process-referral` | 공유 리워드 | POST | - | 회원가입 완료 후 (AuthCallback) |
 | `get-share-reward-status` | 공유 리워드 | POST | - | 공유 리워드 페이지 진입 시 |
+| `generate-saju-consult` | 사주 상담 | POST | GPT-4.1-mini | 사주 상담 요청 시 |
+| `generate-tarot-consult` | 타로 상담 | POST | GPT-4.1-mini | 타로 상담 요청 시 |
 
 ---
 
@@ -524,4 +544,4 @@ npm run deploy:staging       # 스테이징 전체 배포
 
 ---
 
-**최종 업데이트**: 2026-03-03
+**최종 업데이트**: 2026-03-04

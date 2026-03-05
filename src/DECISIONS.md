@@ -3,7 +3,46 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-04
+> **최종 업데이트**: 2026-03-05
+
+---
+
+## 2026-03-05 비회원 사주/타로 상담 체험 (Fingerprint 기반 1회 제한)
+
+### 배경
+비로그인 유저도 사주 상담/타로 상담을 체험할 수 있도록 하여 전환율을 높인다.
+
+### 결정
+- **사주+타로 통합 1회 제한**: 하나를 쓰면 다른 하나도 차단 (fingerprint UNIQUE 제약)
+- **별도 테이블 `anonymous_consult_views`**: 기존 `anonymous_free_views`는 일일 리셋+cron 삭제라 영구 제한에 부적합
+- **서버 사이드 권위적**: Edge Function에서 fingerprint(SHA-256(IP+UA)) 기반 검증, localStorage는 UX 최적화용
+- **사주 상담 게스트 경로**: `birthInfo` 객체를 직접 Edge Function에 전달 (saju_records 조회 대신)
+- **LoginBottomSheet 재사용**: props 확장(redirectPath, title, description)으로 범용화
+
+### 파일
+- `supabase/migrations/20260305_create_anonymous_consult_views.sql` — 테이블 생성
+- `src/lib/consultLimitService.ts` — 클라이언트 제한 서비스 (localStorage)
+- `supabase/functions/generate-tarot-consult/index.ts` — fingerprint 체크 추가
+- `supabase/functions/generate-saju-consult/index.ts` — guest birthInfo 경로 + fingerprint
+- `src/pages/TaroConsultPage.tsx`, `TaroConsultLoadingPage.tsx` — auth 체크 + 에러 핸들링
+- `src/pages/SajuConsultPage.tsx`, `SajuConsultLoadingPage.tsx` — multi-step + guest 경로
+- `src/components/FreeBirthInfoInput.tsx` — consult mode props
+- `src/components/LoginBottomSheet.tsx` — props 확장
+- `src/pages/HomeScreenNew.tsx` — 버튼 auth 체크
+
+---
+
+## 2026-03-04 사주 상담 백엔드 연동
+
+**결정**: 사주 상담 페이지에서 실제 OpenAI API 호출하여 사주 기반 상담 결과 생성
+**이유**: 기존 UI 셸(하드코딩 더미 데이터)을 실제 서비스로 전환
+**구현**:
+- Edge Function `generate-saju-consult` 신규 생성 (GPT-4.1-mini, temperature 0.7)
+- 사용자 질문(300자 이내) + Stargio 사주 API 데이터를 기반으로 구조화된 JSON 응답 생성
+- 응답 구조: `{ todayCore, advice, flow, caution, overallFlow }`
+- SajuConsultPage → 사전 검증(로그인/사주) → Loading → Edge Function 호출 → Result 동적 표시
+- 결과는 `localStorage('saju_consult_result')`에 저장, 일일 1회 제한은 기존 `consultStatus` 활용
+**영향 파일**: `supabase/functions/generate-saju-consult/index.ts`, `SajuConsultLoadingPage.tsx`, `SajuConsultResultPage.tsx`, `SajuConsultPage.tsx`
 
 ---
 

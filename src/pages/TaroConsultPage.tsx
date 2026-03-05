@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import svgPaths from '../imports/svg-97glg550pf';
 import { TextareaInput } from '../components/TextareaInput';
+import { getAuthUser } from '../lib/supabase';
+import { hasUsedConsult } from '../lib/consultLimitService';
+import LoginBottomSheet from '../components/LoginBottomSheet';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -89,6 +93,8 @@ export function TaroConsultPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState<string>(() => sessionStorage.getItem(DRAFT_KEY) ?? '');
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showLoginSheet, setShowLoginSheet] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const keyboardHeight = useKeyboardHeight();
 
   const handleChange = (val: string) => {
@@ -98,10 +104,31 @@ export function TaroConsultPage() {
     }
   };
 
-  const isActive = text.trim().length > 0;
+  const isActive = text.trim().length > 0 && !submitting;
+
+  const handleSubmit = async () => {
+    if (!isActive) return;
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await getAuthUser();
+      if (!user && hasUsedConsult()) {
+        setShowLoginSheet(true);
+        return;
+      }
+      navigate('/taro-consult/loading');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: C.white, display: 'flex', justifyContent: 'center', zIndex: 100 }}>
+      <SEO
+        title="AI 타로 상담 - 무료 타로카드 뽑기"
+        description="AI 타로 상담으로 연애운, 진로, 고민을 풀어보세요. 무료타로사이트 나다운세에서 타로카드뽑기와 오늘타로운세를 무료로 경험하세요."
+        keywords="타로카드뽑기, 무료타로사이트, AI타로, 타로연애운, 오늘타로운세, 무료타로, 타로점"
+        canonical="/taro-consult"
+      />
       <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.white, position: 'relative' }}>
         {/* ── 상단 네비게이션 ── */}
         <div style={{ height: 52, display: 'flex', alignItems: 'center', paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white, flexShrink: 0 }}>
@@ -133,7 +160,7 @@ export function TaroConsultPage() {
             <button
               disabled={!isActive}
               onTouchStart={() => {}}
-              onClick={() => { if (isActive) navigate('/taro-consult/loading'); }}
+              onClick={handleSubmit}
               onPointerDown={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(0.995) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primaryPressed; }}
               onPointerUp={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(1) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primary; }}
               onPointerLeave={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(1) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primary; }}
@@ -167,6 +194,25 @@ export function TaroConsultPage() {
           </div>
         </div>
       )}
+
+      {/* ── 로그인 유도 바텀시트 ── */}
+      <LoginBottomSheet
+        isOpen={showLoginSheet}
+        onClose={() => setShowLoginSheet(false)}
+        redirectPath="/taro-consult"
+        icon="/key-icon.svg"
+        title={
+          <>
+            <p style={{ fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515', fontFamily: "'Pretendard Variable', sans-serif", width: '100%' }}>로그인하면</p>
+            <p style={{ fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515', fontFamily: "'Pretendard Variable', sans-serif", width: '100%' }}>매일 상담 받을 수 있어요</p>
+          </>
+        }
+        description={
+          <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.45px', textAlign: 'center', color: '#848484', fontFamily: "'Pretendard Variable', sans-serif" }}>
+            비회원은 1회만 이용 가능해요
+          </p>
+        }
+      />
     </div>
   );
 }

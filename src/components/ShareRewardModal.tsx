@@ -14,6 +14,7 @@ import { motion } from "motion/react";
 import { Drawer, DrawerContent } from "./ui/drawer";
 import { useShareRewardStatus } from "../hooks/useShareRewardStatus";
 import { generateShareLink } from "../lib/shareRewardService";
+import { trackShareModalOpen, trackShareLinkCopy, trackShareKakao } from "../utils/analytics";
 
 declare global {
   interface Window {
@@ -37,10 +38,14 @@ export default function ShareRewardModal({
   const { status } = useShareRewardStatus();
   const [copied, setCopied] = useState(false);
 
-  // 바텀시트 닫힐 때 복사 상태 초기화
+  // 바텀시트 열릴 때 GA 이벤트 + 닫힐 때 복사 상태 초기화
   useEffect(() => {
-    if (!isOpen) setCopied(false);
-  }, [isOpen]);
+    if (isOpen) {
+      trackShareModalOpen(contentId, isLoggedIn);
+    } else {
+      setCopied(false);
+    }
+  }, [isOpen, contentId, isLoggedIn]);
 
   // 모바일 상태바 딤 처리 (theme-color)
   useEffect(() => {
@@ -62,17 +67,20 @@ export default function ShareRewardModal({
     }
   }, [isOpen]);
 
-  // 공유 링크 생성
-  const getShareUrl = useCallback(() => {
+  // 공유 링크 생성 (UTM 파라미터 포함)
+  const getShareUrl = useCallback((medium: 'kakao' | 'link_copy') => {
+    const campaign = isLoggedIn ? 'reward' : 'general';
+    const utm = `utm_source=share&utm_medium=${medium}&utm_campaign=${campaign}`;
     if (isLoggedIn && status?.referralCode) {
-      return generateShareLink(contentId, status.referralCode);
+      return `${generateShareLink(contentId, status.referralCode)}&${utm}`;
     }
-    return `${window.location.origin}/product/${contentId}`;
+    return `${window.location.origin}/product/${contentId}?${utm}`;
   }, [contentId, isLoggedIn, status?.referralCode]);
 
   // 링크 복사
   const handleCopyLink = async () => {
-    const url = getShareUrl();
+    trackShareLinkCopy(contentId, isLoggedIn);
+    const url = getShareUrl('link_copy');
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -91,7 +99,8 @@ export default function ShareRewardModal({
 
   // 카카오톡 공유
   const handleKakaoShare = async () => {
-    const shareUrl = getShareUrl();
+    trackShareKakao(contentId, isLoggedIn);
+    const shareUrl = getShareUrl('kakao');
 
     // Kakao SDK 로드 + 초기화
     if (!window.Kakao) {

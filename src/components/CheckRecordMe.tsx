@@ -13,6 +13,8 @@ import ReportWeeklyTarotResult from '@/components/ReportWeeklyTarotResult';
 import ReportWeeklyMindCare from '@/components/ReportWeeklyMindCare';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
+import { writeSproutBalanceCache } from '@/hooks/useSproutBalance';
+import { projectId } from '@/utils/supabase/info';
 import TagCouponBottomSheet from './TagCouponBottomSheet';
 
 interface SajuRecord {
@@ -124,41 +126,33 @@ export default function CheckRecordMe({
   const [isTagEncourageOpen, setIsTagEncourageOpen] = useState(false);
   const [remainingTagCount, setRemainingTagCount] = useState(0);
   const [completionRemainingTags, setCompletionRemainingTags] = useState(0); // 태그 저장 완료 페이지: 남은 태그 수
-  const [hasMissionCoupon, setHasMissionCoupon] = useState(false); // 미션 쿠폰 이미 발급됨 여부
+  const [hasMissionReward, setHasMissionReward] = useState(false); // 미션 리워드 이미 지급됨 여부
 
-  // ⭐ 미션 쿠폰 발급 여부 확인 (마운트 시)
+  // ⭐ 미션 리워드(새싹 30개) 지급 여부 확인 (마운트 시)
   useEffect(() => {
-    const checkMissionCoupon = async () => {
+    const checkMissionReward = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) return;
 
-        // coupons 테이블에서 mission 타입 쿠폰 ID 조회
-        const { data: missionCoupon } = await supabase
-          .from('coupons')
-          .select('id')
-          .eq('coupon_type', 'mission')
-          .maybeSingle();
-
-        if (!missionCoupon) return;
-
-        // user_coupons에서 해당 유저에게 미션 쿠폰이 발급되었는지 확인
-        const { data: issuedMission } = await supabase
-          .from('user_coupons')
+        // sprout_transactions에서 미션 리워드 기록 확인
+        const { data: rewardRecord } = await supabase
+          .from('sprout_transactions')
           .select('id')
           .eq('user_id', session.user.id)
-          .eq('coupon_id', missionCoupon.id)
+          .eq('transaction_type', 'reward')
+          .eq('description', '미션 완료 리워드 (태그 5개 달성)')
           .maybeSingle();
 
-        if (issuedMission) {
-          console.log('ℹ️ [CheckRecordMe] 미션 쿠폰 이미 발급됨 → 프로모션 스킵');
-          setHasMissionCoupon(true);
+        if (rewardRecord) {
+          console.log('ℹ️ [CheckRecordMe] 미션 리워드 이미 지급됨 → 프로모션 스킵');
+          setHasMissionReward(true);
         }
       } catch (err) {
-        console.error('❌ [CheckRecordMe] 미션 쿠폰 체크 실패:', err);
+        console.error('❌ [CheckRecordMe] 미션 리워드 체크 실패:', err);
       }
     };
-    checkMissionCoupon();
+    checkMissionReward();
   }, []);
 
   // ⭐ "다음에 할래요" 스킵 처리 공통 함수
@@ -529,17 +523,44 @@ export default function CheckRecordMe({
       const totalTagCount = allConfirmedTags?.length || 0;
       console.log('🏷️ [CheckRecordMe] 총 확정 태그 수:', totalTagCount);
 
-      // ⭐ 미션 쿠폰 이미 받은 사람 → 프로모션 안내 없이 바로 홈 (체리피커 방지)
-      if (hasMissionCoupon) {
-        console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 프로모션 스킵, 바로 홈');
+      // ⭐ 미션 리워드 이미 받은 사람 → 프로모션 안내 없이 바로 홈
+      if (hasMissionReward) {
+        console.log('🌱 [CheckRecordMe] 미션 리워드 이미 수령 → 프로모션 스킵, 바로 홈');
         toast.success('태그가 저장됐어요!', {
           subtitle: '프로필에서 확인할 수 있어요.',
           duration: 2200,
         });
         if (onHomeProp) onHomeProp();
       } else if (totalTagCount >= 5 && beforeTagCount < 5) {
-        // ⭐ 최초로 태그 5개 달성 → 쿠폰 발급 안내 페이지
-        console.log('🎉 [CheckRecordMe] 최초 5개 달성 → 쿠폰 발급 안내 페이지');
+        // ⭐ 최초로 태그 5개 달성 → 새싹 30개 즉시 지급
+        console.log('🎉 [CheckRecordMe] 최초 5개 달성 → 새싹 리워드 지급');
+        try {
+          const { data: { session: rewardSession } } = await supabase.auth.getSession();
+          if (rewardSession) {
+            const rewardResponse = await fetch(
+              `https://${projectId}.supabase.co/functions/v1/grant-mission-sprout`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${rewardSession.access_token}`,
+                },
+                body: JSON.stringify({ user_id: rewardSession.user.id }),
+              }
+            );
+            const rewardResult = await rewardResponse.json();
+            if (rewardResult.success) {
+              console.log('✅ [CheckRecordMe] 새싹 리워드 지급 성공:', rewardResult.new_balance);
+              writeSproutBalanceCache(rewardResult.new_balance);
+            } else if (rewardResult.already_granted) {
+              console.log('ℹ️ [CheckRecordMe] 새싹 리워드 이미 지급됨');
+            } else {
+              console.error('❌ [CheckRecordMe] 새싹 리워드 지급 실패:', rewardResult.error);
+            }
+          }
+        } catch (rewardErr) {
+          console.error('❌ [CheckRecordMe] 새싹 리워드 요청 예외:', rewardErr);
+        }
         setView('coupon-info');
       } else if (totalTagCount >= 5 && beforeTagCount >= 5) {
         // ⭐ 이미 5개 이상이었음 → 바로 홈으로
@@ -935,84 +956,74 @@ export default function CheckRecordMe({
     );
   }
 
-  // ⭐ 1-5) 쿠폰 발급 안내 페이지 (태그 5개 이상 최초 달성)
+  // ⭐ 1-5) 새싹 리워드 안내 페이지 (태그 5개 이상 최초 달성)
   if (view === 'coupon-info') {
     return (
       <div className="bg-white fixed inset-0 flex justify-center overflow-x-hidden">
         <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto flex flex-col items-center" style={{ paddingTop: '76px', paddingLeft: '32px', paddingRight: '32px' }}>
-            {/* Text Group */}
+          {/* Center Content */}
+          <div className="flex-1 flex items-center justify-center" style={{ padding: '0 20px' }}>
             <motion.div
-              className="flex flex-col items-start w-full"
+              className="flex flex-col items-center"
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
-              style={{ gap: '12px', transformOrigin: "left center", containerType: 'inline-size' }}
+              style={{ gap: '36px', transform: 'translateZ(0)', willChange: 'transform, opacity' }}
             >
-              {/* Title */}
-              <div className="flex flex-col items-start w-full" style={{ gap: 0 }}>
+              {/* Sprout Icon */}
+              <img src="/prout.svg" alt="새싹 아이콘" style={{ width: '120px', height: '120px' }} />
+
+              {/* Text Group */}
+              <div className="flex flex-col items-center" style={{ gap: '10px' }}>
+                <div className="flex flex-col items-center" style={{ gap: '6px' }}>
+                  <p style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '27px',
+                    fontWeight: 700,
+                    color: '#000000',
+                    letterSpacing: '-0.27px',
+                    lineHeight: '39.5px',
+                    margin: 0,
+                    textAlign: 'center'
+                  }}>
+                    미션 완료!
+                  </p>
+                  <p style={{
+                    fontFamily: 'Pretendard Variable',
+                    fontSize: '27px',
+                    fontWeight: 700,
+                    letterSpacing: '-0.27px',
+                    lineHeight: '39.5px',
+                    margin: 0,
+                    textAlign: 'center',
+                    color: '#48b2af'
+                  }}>
+                    새싹 30개<span style={{ color: '#151515' }}>를 받았어요</span>
+                  </p>
+                </div>
                 <p style={{
                   fontFamily: 'Pretendard Variable',
-                  fontSize: 'clamp(24px, 9.5cqw, 26px)',
-                  fontWeight: 700,
-                  color: '#000000',
-                  letterSpacing: '-0.78px',
+                  fontSize: '16px',
+                  fontWeight: 400,
+                  color: '#848484',
+                  lineHeight: '28.5px',
+                  letterSpacing: '-0.32px',
                   margin: 0,
-                  whiteSpace: 'nowrap'
+                  textAlign: 'center'
                 }}>
-                  태그 5개를 모두 모았어요
-                </p>
-                <p style={{
-                  fontFamily: 'Pretendard Variable',
-                  fontSize: 'clamp(24px, 9.5cqw, 26px)',
-                  fontWeight: 700,
-                  color: '#000000',
-                  letterSpacing: '-0.78px',
-                  margin: 0,
-                  whiteSpace: 'nowrap'
-                }}>
-                  일요일에{' '}
-                  <span style={{ color: '#48B2AF' }}>무료 이용권</span>
-                  이 지급돼요
+                  이제 심화 콘텐츠를 무료로 볼 수 있어요
                 </p>
               </div>
-              {/* Subtitle */}
-              <p style={{
-                fontFamily: 'Pretendard Variable',
-                fontSize: '14px',
-                fontWeight: 400,
-                color: '#999999',
-                lineHeight: '22px',
-                letterSpacing: '-0.42px',
-                margin: '-4px 0 0 0',
-                paddingLeft: '1px'
-              }}>
-                쿠폰 지급 : 일요일 나의 분석 보고서 확인 후 자동 발급
-              </p>
             </motion.div>
-
-            {/* Coupon Icon */}
-            <div className="flex items-center justify-center w-full overflow-hidden" style={{ marginTop: '52px', height: '250px' }}>
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
-                style={{ width: '194px', height: '194px', transform: 'translateZ(0)', willChange: 'transform, opacity' }}
-              >
-                <img src="/coupon-mint.svg" alt="쿠폰 아이콘" style={{ width: '100%', height: '100%' }} />
-              </motion.div>
-            </div>
           </div>
 
           {/* Bottom Button */}
-          <div className="bg-white relative shrink-0 w-full z-20">
-            <div className="absolute top-[-20px] left-0 right-0 h-[20px] bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          <div className="bg-white relative shrink-0 w-full z-20" style={{ boxShadow: '0px -8px 16px 0px rgba(255, 255, 255, 0.76)' }}>
             <div className="flex flex-col items-center justify-center w-full" style={{ padding: '12px 20px 20px' }}>
               <button
                 onClick={handleHome}
                 className="w-full flex items-center justify-center cursor-pointer transition-all active:scale-[0.98]"
-                style={{ backgroundColor: '#48b2af', height: '56px', borderRadius: '16px', border: 'none', padding: 0 }}
+                style={{ backgroundColor: '#48b2af', height: '56px', borderRadius: '20px', border: 'none', padding: 0 }}
               >
                 <span style={{
                   fontFamily: 'Pretendard Variable',

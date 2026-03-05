@@ -1,12 +1,15 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgArrow from '../imports/svg-jctkfb0fnf';
 import svgHome from '../imports/svg-jv8l9s7k24';
 import {
   NewFreeCardList,
-  NEW_FREE_ITEMS,
   type NoRankFortuneItem,
 } from './NewFreeFortuneAllPage';
+import { supabase } from '../lib/supabase';
+import { isContentNew } from '../components/ContentTags';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -17,8 +20,37 @@ const C = {
 
 const font = "'Pretendard Variable', sans-serif";
 
-// ─── 추천 아이템 (상담 결과 기반, 추후 필터 교체 가능) ────────────────────────
-const RECOMMENDED_ITEMS: NoRankFortuneItem[] = NEW_FREE_ITEMS;
+type LabelType = 'New' | '무료' | '심화' | '유료';
+
+function useRecommendedItems(): NoRankFortuneItem[] {
+  const [items, setItems] = useState<NoRankFortuneItem[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('master_contents')
+        .select('id, title, content_type, thumbnail_url, weekly_clicks, created_at')
+        .eq('content_type', 'free')
+        .eq('status', 'deployed')
+        .order('weekly_clicks', { ascending: false })
+        .limit(10);
+      if (data) {
+        setItems(data.map((row) => {
+          const labels: LabelType[] = [];
+          if (isContentNew(row.created_at)) labels.push('New');
+          labels.push('무료');
+          return {
+            id: row.id,
+            title: row.title,
+            labels,
+            views: row.weekly_clicks,
+            img: row.thumbnail_url || '/home-v2/card-1.png',
+          };
+        }));
+      }
+    })();
+  }, []);
+  return items;
+}
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 function ArrowLeftIcon() {
@@ -46,9 +78,11 @@ function HomeIcon() {
 // ─── Page ────────────────────────────────────────────────────────────────────
 export function SajuRecommendedFortunePage() {
   const navigate = useNavigate();
+  const RECOMMENDED_ITEMS = useRecommendedItems();
 
   return (
     <div className="flex justify-center min-h-screen" style={{ backgroundColor: C.white }}>
+      <SEO title="추천 운세" noIndex={true} />
       <div
         className="flex flex-col relative"
         style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440, minHeight: '100vh' }}

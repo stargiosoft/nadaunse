@@ -2,6 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import svgPaths from '../imports/svg-97glg550pf';
 import { TextareaInput } from '../components/TextareaInput';
+import { getAuthUser } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { hasUsedConsult } from '../lib/consultLimitService';
+import LoginBottomSheet from '../components/LoginBottomSheet';
+import FreeBirthInfoInput from '../components/FreeBirthInfoInput';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -104,6 +110,8 @@ export function SajuConsultPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState<string>(() => sessionStorage.getItem(DRAFT_KEY) ?? '');
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showLoginSheet, setShowLoginSheet] = useState(false);
+  const [step, setStep] = useState<'question' | 'birth-info'>('question');
   const keyboardHeight = useKeyboardHeight();
 
   const handleChange = (val: string) => {
@@ -113,7 +121,67 @@ export function SajuConsultPage() {
     }
   };
 
-  const isActive = text.trim().length > 0;
+  const [submitting, setSubmitting] = useState(false);
+  const isActive = text.trim().length > 0 && !submitting;
+
+  const handleSubmit = async () => {
+    if (!isActive) return;
+    setSubmitting(true);
+
+    try {
+      const { data: { user } } = await getAuthUser();
+
+      if (user) {
+        // 로그인 유저: 기존 로직 (primary_saju 확인 → loading)
+        let hasSaju = false;
+        try {
+          const cached = localStorage.getItem('primary_saju');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            hasSaju = !!parsed.id;
+          }
+        } catch { /* ignore */ }
+
+        if (!hasSaju) {
+          toast.error('사주 정보를 먼저 등록해주세요.');
+          navigate('/profile');
+          return;
+        }
+
+        navigate('/saju-consult/loading');
+      } else {
+        // 비로그인 유저
+        if (hasUsedConsult()) {
+          setShowLoginSheet(true);
+          return;
+        }
+
+        // 캐시된 사주 정보가 있으면 바로 로딩, 없으면 birth-info 단계
+        const cachedSaju = localStorage.getItem('cached_saju_info');
+        if (cachedSaju) {
+          navigate('/saju-consult/loading');
+        } else {
+          setStep('birth-info');
+        }
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── birth-info 단계: 비회원 사주 정보 입력 ──
+  if (step === 'birth-info') {
+    return (
+      <FreeBirthInfoInput
+        productId=""
+        onBack={() => setStep('question')}
+        mode="consult"
+        onConsultComplete={() => {
+          navigate('/saju-consult/loading');
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -126,6 +194,12 @@ export function SajuConsultPage() {
         zIndex: 100,
       }}
     >
+      <SEO
+        title="AI 사주 상담 - 생년월일 사주풀이"
+        description="AI가 생년월일 사주팔자를 분석해드립니다. 사주연애운, 사주결혼시기, 이직운세, 재물운까지 비대면사주 상담을 경험하세요."
+        keywords="AI사주, 비대면사주, 생년월일운세, 사주풀이, 사주연애운, 이직운세, 사주결혼시기, 온라인사주추천, 사주잘보는곳"
+        canonical="/saju-consult"
+      />
       <div
         style={{
           width: '100%',
@@ -260,7 +334,7 @@ export function SajuConsultPage() {
             <button
               disabled={!isActive}
               onTouchStart={() => {}}
-              onClick={() => { if (isActive) navigate('/saju-consult/loading'); }}
+              onClick={handleSubmit}
               onPointerDown={(e) => {
                 if (!isActive) return;
                 e.currentTarget.style.transform = 'scale(0.995) translateZ(0)';
@@ -410,6 +484,25 @@ export function SajuConsultPage() {
           </div>
         </div>
       )}
+
+      {/* ── 로그인 유도 바텀시트 ── */}
+      <LoginBottomSheet
+        isOpen={showLoginSheet}
+        onClose={() => setShowLoginSheet(false)}
+        redirectPath="/saju-consult"
+        icon="/key-icon.svg"
+        title={
+          <>
+            <p style={{ fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515', fontFamily: "'Pretendard Variable', sans-serif", width: '100%' }}>로그인하면</p>
+            <p style={{ fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515', fontFamily: "'Pretendard Variable', sans-serif", width: '100%' }}>매일 상담 받을 수 있어요</p>
+          </>
+        }
+        description={
+          <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.45px', textAlign: 'center', color: '#848484', fontFamily: "'Pretendard Variable', sans-serif" }}>
+            비회원은 1회만 이용 가능해요
+          </p>
+        }
+      />
     </div>
   );
 }

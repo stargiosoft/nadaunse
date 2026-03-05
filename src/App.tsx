@@ -75,14 +75,13 @@ import ReportWeeklyMindCare from './components/ReportWeeklyMindCare';
 import ReportWeeklyMemo from './components/ReportWeeklyMemo';
 import ReportWeeklyMemoEdit from './components/ReportWeeklyMemoEdit';
 import ReportWeeklyMemoQuickEdit from './components/ReportWeeklyMemoQuickEdit';
-import CompletionCoupon from './components/CompletionCoupon';
 import AuthCallback from './pages/AuthCallback';
 import SproutChargingStation from './components/SproutChargingStation'; // ⭐ 새싹 충전소
 import ShareRewardInfoPage from './components/ShareRewardInfoPage'; // ⭐ 공유 새싹 지급 안내
 import { useSproutBalance, writeSproutBalanceCache } from './hooks/useSproutBalance'; // ⭐ 새싹 잔액 훅
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
-import { initGA, trackPageView } from './utils/analytics';
+import { initGA, trackPageView, setMasterUser } from './utils/analytics';
 import { supabase } from './lib/supabase';
 import { Toaster } from 'sonner';
 import { toast } from './lib/toast'; // ⭐ 커스텀 토스트 (subtitle 지원)
@@ -277,7 +276,25 @@ function GAInit() {
     
     // GA 초기화 (앱 시작 시 한 번만)
     initGA();
-    
+
+    // 🔒 관리자(master) GA 트래킹 제외
+    const checkMasterForGA = async () => {
+      try {
+        const userJson = localStorage.getItem('user');
+        if (!userJson) {
+          setMasterUser(false);
+          return;
+        }
+        const user = JSON.parse(userJson);
+        if (!user?.id) return;
+        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+        setMasterUser(data?.role === 'master');
+      } catch {
+        // 실패 시 기존 localStorage 캐시 유지
+      }
+    };
+    checkMasterForGA();
+
     // 🔥 띠 이미지 리페칭 (백그라운드)
     prefetchZodiacImages().catch(err => {
       // 이미지 프리페칭 실패는 무시 (경고 없이)
@@ -423,9 +440,6 @@ function GAInit() {
       }
       if (pathname.startsWith('/report-weekly-memo/')) {
         return `보고서 나 응원하기 | ${BASE_TITLE}`;
-      }
-      if (pathname.startsWith('/report-completion/')) {
-        return `보고서 완료/쿠폰 | ${BASE_TITLE}`;
       }
       if (pathname.includes('/cheer-edit')) {
         return `나 응원하기 수정 | ${BASE_TITLE}`;
@@ -3355,75 +3369,29 @@ function ReportWeeklyMemoWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const [hasEncouragement, setHasEncouragement] = useState<boolean | null>(null);
-  const [hasCoupon, setHasCoupon] = useState<boolean | null>(null);
-  const [isMissionEligible, setIsMissionEligible] = useState<boolean | null>(null);
 
-  // 응원글 존재 여부 + 쿠폰 발급 여부 + 미션 쿠폰 대상 여부 확인
+  // 응원글 존재 여부 확인
   useEffect(() => {
     async function checkStatus() {
       if (!id) return;
 
       try {
-        // 🚀 1차 병렬: 보고서 + 세션 + 미션 쿠폰 마스터 동시 조회
-        const [reportResult, sessionResult, missionMasterResult] = await Promise.all([
-          supabase.from('weekly_reports').select('self_encouragement, tag_count').eq('id', id).single(),
-          supabase.auth.getSession(),
-          supabase.from('coupons').select('id').eq('coupon_type', 'mission').maybeSingle(),
-        ]);
+        const { data, error } = await supabase
+          .from('weekly_reports')
+          .select('self_encouragement')
+          .eq('id', id)
+          .single();
 
-        const reportData = reportResult.data;
-        if (reportResult.error) {
-          console.error('응원글 확인 실패:', reportResult.error);
+        if (error) {
+          console.error('응원글 확인 실패:', error);
           setHasEncouragement(false);
         } else {
-          setHasEncouragement(!!reportData?.self_encouragement);
+          setHasEncouragement(!!data?.self_encouragement);
         }
-
-        const tagCount = reportData?.tag_count ?? 0;
-        const user = sessionResult.data?.session?.user;
-        const missionCouponId = missionMasterResult.data?.id;
-
-        console.log(`📝 [응원글] 보고서 ${id} - 응원글: ${!!reportData?.self_encouragement}, 태그: ${tagCount}`);
-
-        if (!user) {
-          setHasCoupon(false);
-          setIsMissionEligible(false);
-          return;
-        }
-
-        // 🚀 2차 병렬: 쿠폰 발급 여부 + 미션 쿠폰 수령 여부 동시 조회
-        const queries: Promise<{ data: { id: string }[] | { id: string } | null; error: unknown }>[] = [
-          supabase.from('user_coupons').select('id').eq('user_id', user.id).eq('source_order_id', id).limit(1),
-        ];
-
-        if (tagCount >= 5 && missionCouponId) {
-          queries.push(
-            supabase.from('user_coupons').select('id').eq('user_id', user.id).eq('coupon_id', missionCouponId).maybeSingle()
-          );
-        }
-
-        const results = await Promise.all(queries);
-
-        // 쿠폰 발급 여부
-        const couponData = results[0].data as { id: string }[] | null;
-        const couponExists = !!(couponData && couponData.length > 0);
-        setHasCoupon(couponExists);
-        console.log(`🎟️ [쿠폰] 보고서 ${id} - 쿠폰 발급 여부:`, couponExists);
-
-        // 미션 쿠폰 대상 여부
-        if (tagCount >= 5 && missionCouponId && results[1]) {
-          const eligible = !results[1].data;
-          setIsMissionEligible(eligible);
-          console.log(`🎯 [미션쿠폰] 태그 ${tagCount}개, 미수령:`, eligible);
-        } else {
-          setIsMissionEligible(false);
-          if (tagCount < 5) console.log(`🎯 [미션쿠폰] 태그 ${tagCount}개 < 5 → 대상 아님`);
-        }
+        console.log(`📝 [응원글] 보고서 ${id} - 응원글: ${!!data?.self_encouragement}`);
       } catch (err) {
         console.error('상태 확인 중 오류:', err);
         setHasEncouragement(false);
-        setHasCoupon(false);
-        setIsMissionEligible(false);
       }
     }
 
@@ -3438,7 +3406,7 @@ function ReportWeeklyMemoWrapper() {
   const fromEdit = (location.state as { fromEdit?: boolean })?.fromEdit;
 
   // 상태 확인 중이면 로딩 상태로 렌더링
-  if (hasEncouragement === null || hasCoupon === null || isMissionEligible === null) {
+  if (hasEncouragement === null) {
     return (
       <ReportWeeklyMemo
         reportId={id}
@@ -3449,45 +3417,15 @@ function ReportWeeklyMemoWrapper() {
     );
   }
 
-  // 프로필로 바로 이동해야 하는 경우:
-  // 1. 수정 페이지에서 왔으면
-  // 2. 응원글이 이미 있으면 (view 모드)
-  // 3. 쿠폰이 이미 발급되었으면 (두 번째 방문)
-  // 4. 미션 쿠폰 대상이 아닌 경우 (태그 5개 미만 or 이미 수령)
-  const shouldGoToProfile = fromEdit || hasEncouragement || hasCoupon || !isMissionEligible;
-
   return (
     <ReportWeeklyMemo
       reportId={id}
       onClose={() => navigate('/my-report-list', { replace: true })}
       onPrev={() => navigate(`/report-weekly-mind-care/${id}`, { replace: true })}
       onNext={() => {
-        if (shouldGoToProfile) {
-          console.log('✅ [응원글] 프로필로 이동 (fromEdit:', fromEdit, ', hasEncouragement:', hasEncouragement, ', hasCoupon:', hasCoupon, ', isMissionEligible:', isMissionEligible, ')');
-          navigate('/my-report-list', { replace: true });
-        } else {
-          console.log('🎟️ [응원글] 미션 쿠폰 페이지로 이동 (태그 5개↑ & 미션 쿠폰 미수령)');
-          navigate(`/report-completion/${id}`, { replace: true });
-        }
+        console.log('✅ [응원글] 프로필로 이동 (fromEdit:', fromEdit, ', hasEncouragement:', hasEncouragement, ')');
+        navigate('/my-report-list', { replace: true });
       }}
-    />
-  );
-}
-
-// ⭐ 보고서 완료 & 쿠폰 증정 페이지 Wrapper
-function ReportCompletionWrapper() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-
-  if (!id) {
-    return <Navigate to="/" replace />;
-  }
-
-  return (
-    <CompletionCoupon
-      reportId={id}
-      onClose={() => navigate('/my-report-list', { replace: true })}
-      onHome={() => navigate('/', { replace: true })}
     />
   );
 }
@@ -3572,6 +3510,7 @@ export default function App() {
         // ※ !session 조건 제거: INITIAL_SESSION 이벤트의 일시적 null session으로 오작동 방지
         console.log('🧹 로그아웃 감지 → 사용자 캐시 전체 삭제');
         clearUserCaches();
+        setMasterUser(false); // GA 관리자 제외 플래그 초기화
       } else if (event === 'SIGNED_IN' && session) {
         // 로그인/가입 완료 → 오늘 방문 기록 (가입 첫날 visit_dates 누락 방지)
         recordTodayVisit();
@@ -3677,10 +3616,8 @@ export default function App() {
           <Route path="/report-weekly-tarot-result/:id" element={<ReportWeeklyTarotResultWrapper />} />
           <Route path="/report-weekly-mind-care/:id" element={<ReportWeeklyMindCareWrapper />} />
           <Route path="/report-weekly-memo/:id" element={<ReportWeeklyMemoWrapper />} />
-          <Route path="/report-completion/:id" element={<ReportCompletionWrapper />} />
           <Route path="/report-weekly/:id/cheer-edit" element={<ReportWeeklyMemoEditWrapper />} />
           <Route path="/test/report-weekly-memo-edit" element={<ReportWeeklyMemoEdit initialText="" onCancel={() => {}} onSave={() => {}} />} />
-          <Route path="/test/completion-coupon" element={<CompletionCoupon />} />
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />

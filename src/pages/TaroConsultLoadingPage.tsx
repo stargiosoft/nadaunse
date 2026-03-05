@@ -1,8 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import svgPaths from '../imports/svg-97glg550pf';
 import lottieData from '../imports/animated-shape-effect.json';
+import { supabase, getAuthUser } from '../lib/supabase';
+import { toast } from '../lib/toast';
+import { recordConsultUsed } from '../lib/consultLimitService';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 const C = {
@@ -38,17 +42,72 @@ function BackButton({ onPress }: { onPress: () => void }) {
 // ─── TaroConsultLoadingPage ───────────────────────────────────────────────────
 export function TaroConsultLoadingPage() {
   const navigate = useNavigate();
+  const hasStarted = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      sessionStorage.removeItem('taro_consult_draft');
-      navigate('/taro-consult/result');
-    }, 1800);
-    return () => clearTimeout(timer);
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
+    const runConsult = async () => {
+      try {
+        // 1. sessionStorage에서 질문 읽기
+        const question = sessionStorage.getItem('taro_consult_draft');
+        if (!question || question.trim().length === 0) {
+          toast.error('질문이 비어있습니다.');
+          navigate('/taro-consult', { replace: true });
+          return;
+        }
+
+        // 2. 인증 확인 (optional)
+        const { data: { user } } = await getAuthUser();
+        const userId = user?.id || undefined;
+
+        // 3. Edge Function 호출
+        const { data, error } = await supabase.functions.invoke('generate-tarot-consult', {
+          body: { question: question.trim(), userId }
+        });
+
+        // CONSULT_LIMIT_REACHED 처리
+        if (data?.error === 'CONSULT_LIMIT_REACHED') {
+          toast.error('비회원 체험은 1회까지 가능해요. 로그인해주세요.');
+          navigate('/taro-consult', { replace: true });
+          return;
+        }
+
+        if (error || !data?.success || !data?.result) {
+          console.error('[TaroConsultLoading] API 오류:', error || data?.error);
+          toast.error('상담 결과를 생성하지 못했어요. 다시 시도해주세요.');
+          navigate('/taro-consult', { replace: true });
+          return;
+        }
+
+        // 4. 비회원 성공 시 localStorage에 사용 기록
+        if (!userId) {
+          recordConsultUsed('taro');
+        }
+
+        // 5. 결과 저장 및 이동
+        localStorage.setItem('taro_consult_result', JSON.stringify({
+          result: data.result,
+          tarotCard: data.tarotCard,
+          imageUrl: data.imageUrl
+        }));
+        sessionStorage.removeItem('taro_consult_draft');
+        navigate('/taro-consult/result', { replace: true });
+
+      } catch (err) {
+        console.error('[TaroConsultLoading] 예외:', err);
+        toast.error('오류가 발생했습니다. 다시 시도해주세요.');
+        navigate('/taro-consult', { replace: true });
+      }
+    };
+
+    runConsult();
   }, [navigate]);
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: C.white, display: 'flex', justifyContent: 'center', zIndex: 100 }}>
+      <SEO title="타로 상담 중" noIndex={true} />
       <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.white }}>
         <div style={{ height: 52, display: 'flex', alignItems: 'center', paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white, flexShrink: 0 }}>
           <BackButton onPress={() => navigate('/taro-consult')} />

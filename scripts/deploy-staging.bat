@@ -3,7 +3,7 @@ chcp 65001 > nul
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo 🧪 나다운세 스테이징 Edge Functions 배포
 echo    Project: hyltbeewxaqashyivilu (Staging)
-echo    함수: 38개 (--no-verify-jwt: 11개)
+echo    함수: 41개 (--no-verify-jwt: 11개)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set PROJECT_REF=hyltbeewxaqashyivilu
@@ -233,13 +233,34 @@ call npx supabase functions deploy process-referral --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
-echo [38/38] get-share-reward-status (리워드 상태 조회)
+echo [38/39] get-share-reward-status (리워드 상태 조회)
 call npx supabase functions deploy get-share-reward-status --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo ──── 사주/타로 상담 (2개) ────
+echo.
+
+echo [39/41] generate-saju-consult (사주 상담 답변 생성)
+call npx supabase functions deploy generate-saju-consult --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
+echo [40/41] generate-tarot-consult (타로 상담 답변 생성)
+call npx supabase functions deploy generate-tarot-consult --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
+echo ──── 미션 리워드 (1개) ────
+echo.
+
+echo [41/41] grant-mission-sprout (태그 5개 달성 새싹 리워드)
+call npx supabase functions deploy grant-mission-sprout --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 스테이징 배포 완료! (38개 함수)
+echo ✅ 스테이징 배포 완료! (41개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 echo 📌 --no-verify-jwt 적용된 함수 (11개):

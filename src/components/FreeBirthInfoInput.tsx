@@ -12,9 +12,18 @@ import svgPaths from "../imports/svg-b5r0yb3uuf";
 import { supabase } from '../lib/supabase';
 import { trackFreeBirthInfoSubmit } from '../utils/analytics';
 
+interface BirthInfoData {
+  name: string;
+  gender: 'female' | 'male';
+  birthDate: string;
+  birthTime: string;
+}
+
 interface FreeBirthInfoInputProps {
   productId: string;
   onBack: () => void;
+  mode?: 'free' | 'consult';
+  onConsultComplete?: (birthInfo: BirthInfoData) => void;
 }
 
 // 에러 상태 타입
@@ -24,7 +33,7 @@ interface ValidationErrors {
   birthTime?: string;
 }
 
-export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoInputProps) {
+export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', onConsultComplete }: FreeBirthInfoInputProps) {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'female' | 'male'>('female');
@@ -413,6 +422,18 @@ export default function FreeBirthInfoInput({ productId, onBack }: FreeBirthInfoI
 
         localStorage.setItem('cached_saju_info', JSON.stringify(cachedSajuData));
         console.log('✅ [FreeBirthInfoInput] localStorage 캐시 저장 완료:', cachedSajuData);
+
+        // ⭐ consult 모드: onConsultComplete 콜백 호출 후 종료
+        if (mode === 'consult' && onConsultComplete) {
+          console.log('🔀 [FreeBirthInfoInput] consult 모드 → onConsultComplete 콜백 호출');
+          onConsultComplete({
+            name: name.trim(),
+            gender,
+            birthDate,
+            birthTime: finalBirthTime,
+          });
+          return;
+        }
 
         // ⭐️ 로그아웃 상태에서는 임시 recordId 생성 (timestamp 기반)
         const tempRecordId = `temp_${Date.now()}`;

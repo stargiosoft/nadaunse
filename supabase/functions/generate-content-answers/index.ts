@@ -658,8 +658,9 @@ ${freeList}
       if (remainingCount > 0 && selfContinueCount < SELF_CONTINUE_CONFIG.maxContinueCount) {
         console.log(`🔄 [selfContinue] 자기 재호출 시작 (#${selfContinueCount + 1}, ${remainingCount}개 남음)...`)
 
-        // fire-and-forget 자기 재호출
-        fetch(`${supabaseUrl}/functions/v1/generate-content-answers`, {
+        // self-continue 재호출: fetch 시작 후 2초 대기하여 HTTP 요청 전송 보장
+        // await fetch()는 불가 (응답 대기 100초+ → 150초 timeout 초과)
+        const selfContinuePromise = fetch(`${supabaseUrl}/functions/v1/generate-content-answers`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseServiceKey}`,
@@ -672,6 +673,9 @@ ${freeList}
             selfContinueCount: selfContinueCount + 1,
           })
         }).catch(err => console.error('❌ [selfContinue] 재호출 실패:', err))
+
+        // 요청이 네트워크로 전송될 시간 확보 (2초)
+        await new Promise(resolve => setTimeout(resolve, 2000))
 
         return new Response(
           JSON.stringify({

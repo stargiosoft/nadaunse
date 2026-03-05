@@ -9,12 +9,18 @@ call npx supabase functions deploy generate-content-answers --project-ref hyltbe
 echo Deploying generate-saju-answer...
 call npx supabase functions deploy generate-saju-answer --project-ref hyltbeewxaqashyivilu
 
+echo Deploying generate-saju-consult...
+call npx supabase functions deploy generate-saju-consult --project-ref hyltbeewxaqashyivilu
+
 echo === Deploying to Production ===
 echo Deploying generate-content-answers...
 call npx supabase functions deploy generate-content-answers --project-ref kcthtpmxffppfbkjjkub
 
 echo Deploying generate-saju-answer...
 call npx supabase functions deploy generate-saju-answer --project-ref kcthtpmxffppfbkjjkub
+
+echo Deploying generate-saju-consult...
+call npx supabase functions deploy generate-saju-consult --project-ref kcthtpmxffppfbkjjkub
 
 echo === Deployment Complete ===
 pause

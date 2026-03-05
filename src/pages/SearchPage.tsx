@@ -1,11 +1,24 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Fuse from 'fuse.js';
 import svgPaths from '../imports/svg-785lw9iqbw';
 import svgPathsSearch from '../imports/svg-0xbeh2zzam';
-import svgPathsEmpty from '../imports/svg-s8czvl35mx';
 import svgPathsCnax from '../imports/svg-cnaxp9yhnd';
-import { ALL_ITEMS, LabelBadge, EyeIcon, type FortuneItem } from './FortuneAllPage';
+import { LabelBadge, EyeIcon } from './FortuneAllPage';
+import { supabase } from '../lib/supabase';
+import { isContentNew } from '../components/ContentTags';
+import { logger } from '../lib/logger';
+import SEO from '../components/SEO';
+
+type LabelType = 'New' | '무료' | '심화' | '유료';
+
+interface SearchItem {
+  id: string;
+  title: string;
+  contentType: 'free' | 'paid';
+  labels: LabelType[];
+  views: number;
+  img: string;
+}
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -92,7 +105,7 @@ function useKeyboardHeight(): number {
 }
 
 // ─── Search Result Row Item (순위 배지 없음) ──────────────────────────────────
-function SearchResultItem({ item, onClick }: { item: FortuneItem; onClick?: () => void }) {
+function SearchResultItem({ item, onClick }: { item: SearchItem; onClick?: () => void }) {
   return (
     <div
       className="w-full cursor-pointer"
@@ -226,69 +239,138 @@ function EmptyResult({ query }: { query: string }) {
   );
 }
 
+// ─── Supabase 검색 (ILIKE 부분 일치) ─────────────────────────────────────────
+async function searchContents(q: string): Promise<SearchItem[]> {
+  const trimmed = q.trim();
+  if (!trimmed) return [];
+
+  // OR 조건: title, category_main ILIKE, 해시태그(무료/심화) 매칭
+  const orParts: string[] = [
+    `title.ilike.%${trimmed}%`,
+    `category_main.ilike.%${trimmed}%`,
+  ];
+  if (trimmed.includes('무료')) orParts.push('content_type.eq.free');
+  if (trimmed.includes('심화')) orParts.push('content_type.eq.paid');
+
+  const { data, error } = await supabase
+    .from('master_contents')
+    .select('id, title, content_type, thumbnail_url, weekly_clicks, created_at')
+    .eq('status', 'deployed')
+    .or(orParts.join(','))
+    .order('weekly_clicks', { ascending: false })
+    .limit(30);
+
+  if (error) {
+    logger.error('검색 실패:', error.message);
+    return [];
+  }
+  if (!data) return [];
+
+  return data.map((row) => {
+    const labels: LabelType[] = [];
+    if (isContentNew(row.created_at)) labels.push('New');
+    labels.push(row.content_type === 'free' ? '무료' : '심화');
+    return {
+      id: row.id,
+      title: row.title,
+      contentType: row.content_type as 'free' | 'paid',
+      labels,
+      views: row.weekly_clicks,
+      img: row.thumbnail_url || '/home-v2/card-1.png',
+    };
+  });
+}
+
+/** 클릭 추적 */
+async function trackClick(contentId: string) {
+  try {
+    const { data } = await supabase
+      .from('master_contents')
+      .select('view_count, weekly_clicks')
+      .eq('id', contentId)
+      .single();
+    if (data) {
+      await supabase
+        .from('master_contents')
+        .update({
+          view_count: data.view_count + 1,
+          weekly_clicks: data.weekly_clicks + 1,
+        })
+        .eq('id', contentId);
+    }
+  } catch (_) { /* silent */ }
+}
+
 // ─── SearchPage ───────────────────────────────────────────────────────────────
 export function SearchPage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState('');
+  const [results, setResults] = useState<SearchItem[]>([]);
+  const [searched, setSearched] = useState(false);
   const keyboardHeight = useKeyboardHeight();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Fuse 인스턴스
-  const fuse = useMemo(
-    () =>
-      new Fuse(ALL_ITEMS, {
-        keys: [
-          { name: 'title',    weight: 0.6 },
-          { name: 'keywords', weight: 0.4 },
-        ],
-        threshold: 0.45,
-        distance: 200,
-        minMatchCharLength: 1,
-        ignoreLocation: true,
-        useExtendedSearch: false,
-      }),
-    []
-  );
-
-  const filteredItems: FortuneItem[] = useMemo(() => {
-    if (!submittedQuery.trim()) return [];
-    return fuse.search(submittedQuery).map((r) => r.item);
-  }, [submittedQuery, fuse]);
+  // 디바운스 검색 (300ms)
+  const doSearch = useCallback((q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = q.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      const items = await searchContents(trimmed);
+      setResults(items);
+      setSearched(true);
+    }, 300);
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const handleSearch = () => {
-    const trimmed = query.trim();
-    setSubmittedQuery(trimmed);
-    if (trimmed) {
-      inputRef.current?.blur();
-    }
-  };
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
 
   const handleClear = () => {
     setQuery('');
-    setSubmittedQuery('');
+    setResults([]);
+    setSearched(false);
     inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleSearch();
+      // Enter 누르면 즉시 검색 + 키보드 닫기
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      const trimmed = query.trim();
+      if (trimmed) {
+        searchContents(trimmed).then((items) => {
+          setResults(items);
+          setSearched(true);
+        });
+        inputRef.current?.blur();
+      }
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
-    if (val.trim() === '') {
-      setSubmittedQuery('');
-    }
+    doSearch(val);
   };
 
-  const hasSubmitted = submittedQuery.trim() !== '';
+  const handleItemClick = (item: SearchItem) => {
+    trackClick(item.id);
+    navigate(
+      item.contentType === 'free'
+        ? `/free/content/${item.id}`
+        : `/master/content/detail/${item.id}`,
+    );
+  };
 
   return (
     <div
@@ -301,6 +383,7 @@ export function SearchPage() {
         zIndex: 100,
       }}
     >
+      <SEO title="검색" noIndex={true} />
       <div
         style={{
           width: '100%',
@@ -444,7 +527,7 @@ export function SearchPage() {
           }}
         >
           {/* 검색 전: 빈 안내 상태 */}
-          {!hasSubmitted && (
+          {!searched && (
             <div
               className="flex flex-col items-center justify-center"
               style={{ padding: '60px 20px', gap: 20 }}
@@ -499,19 +582,19 @@ export function SearchPage() {
           )}
 
           {/* 검색 후: 결과 없음 */}
-          {hasSubmitted && filteredItems.length === 0 && (
-            <EmptyResult query={submittedQuery} />
+          {searched && results.length === 0 && (
+            <EmptyResult query={query.trim()} />
           )}
 
           {/* 검색 후: 결과 리스트 */}
-          {hasSubmitted && filteredItems.length > 0 && (
+          {searched && results.length > 0 && (
             <div className="flex flex-col w-full" style={{ backgroundColor: C.white }}>
-              {filteredItems.map((item, index) => (
-                <div key={item.rank}>
+              {results.map((item, index) => (
+                <div key={item.id}>
                   {index > 0 && (
                     <div style={{ height: 1, backgroundColor: '#F9F9F9' }} />
                   )}
-                  <SearchResultItem item={item} />
+                  <SearchResultItem item={item} onClick={() => handleItemClick(item)} />
                 </div>
               ))}
               <div style={{ height: 40 }} />

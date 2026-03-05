@@ -27,6 +27,8 @@ interface Props {
   onMoreClick?: () => void;
   /** 추가 컨테이너 스타일 (필요 시 덮어쓰기) */
   style?: React.CSSProperties;
+  /** 가격 정보 숨김 */
+  hidePrice?: boolean;
 }
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -34,7 +36,7 @@ const font = "'Pretendard Variable', sans-serif";
 const C = { black: '#000000', white: '#ffffff' } as const;
 
 // ─── RecommendedCarousel ─────────────────────────────────────────────────────
-export function RecommendedCarousel({ items, onMoreClick, style }: Props) {
+export function RecommendedCarousel({ items, onMoreClick, style, hidePrice }: Props) {
   // ── Drag / scroll 상태 ────────────────────────────────────────────────────
   const carouselRef = useRef<HTMLDivElement>(null);
   const drag = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
@@ -171,6 +173,7 @@ export function RecommendedCarousel({ items, onMoreClick, style }: Props) {
             </p>
 
             {/* Price block */}
+            {!hidePrice && (
             <div className="flex flex-col">
               <div className="flex items-center" style={{ gap: 4 }}>
                 {item.discountLabel && (
@@ -200,6 +203,7 @@ export function RecommendedCarousel({ items, onMoreClick, style }: Props) {
                 </span>
               )}
             </div>
+            )}
 
           </div>
         </div>

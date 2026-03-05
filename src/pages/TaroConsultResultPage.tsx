@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { markConsultCompleted } from '../lib/consultStatus';
 import svgPaths from '../imports/svg-97glg550pf';
 import svgR from '../imports/svg-w53mchi1wt';
 import { RecommendedCarousel } from '../components/RecommendedCarousel';
 import FigmaDivider from '../imports/Divider-13-1579';
+import SEO from '../components/SEO';
 
 const imgCardBack  = '/home-v2/taro-card-back.png';
 const imgCardFront = '/home-v2/taro-card-front.png';
@@ -102,19 +103,17 @@ function ResultSection({
 }) {
   return (
     <div className="w-full shrink-0" style={animStyle}>
-      <div className="flex flex-col gap-2.5 px-5 py-2.5">
-        <div className="flex items-center gap-1.5">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 20, paddingRight: 20, paddingTop: 10, paddingBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {icon}
           <span style={{ fontFamily: font, fontSize: 17, fontWeight: 600, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>
             {title}
           </span>
         </div>
-        <div className="w-full" style={{ backgroundColor: C.grayBg, borderRadius: 16 }}>
-          <div className="p-5">
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px' }}>
-              {text}
-            </p>
-          </div>
+        <div style={{ backgroundColor: C.grayBg, borderRadius: 16, padding: 20 }}>
+          <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px' }}>
+            {text}
+          </p>
         </div>
       </div>
     </div>
@@ -143,6 +142,27 @@ function BackButton({ onPress }: { onPress: () => void }) {
 // ─── TaroConsultResultPage ─────────────────────────────────────────────────────
 export function TaroConsultResultPage() {
   const navigate = useNavigate();
+
+  // ── localStorage 데이터 파싱 ────────────────────────────────────────────
+  const storedData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('taro_consult_result');
+      if (!raw) return null;
+      return JSON.parse(raw) as {
+        result: { cardMessage: string; currentFlow: string; actionAdvice: string; dailySentence: string };
+        tarotCard: string;
+        imageUrl: string;
+      };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!storedData) {
+      navigate('/', { replace: true });
+    }
+  }, [storedData, navigate]);
 
   // ── Reveal state ─────────────────────────────────────────────────────────
   const [isFlipped, setIsFlipped]         = useState(false);
@@ -317,6 +337,7 @@ export function TaroConsultResultPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: C.white, display: 'flex', justifyContent: 'center', zIndex: 100 }}>
+      <SEO title="타로 상담 결과" noIndex={true} />
       <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.white, position: 'relative' }}>
 
         {/* ═════════════════════════════════════════
@@ -384,7 +405,7 @@ export function TaroConsultResultPage() {
                       </div>
                       {/* Front face */}
                       <div style={{ position: 'absolute', inset: 0, transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)' }}>
-                        <img alt="카드 앞면" src={imgCardFront} style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', display: 'block', borderRadius: 16 }} />
+                        <img alt="카드 앞면" src={storedData?.imageUrl || imgCardFront} style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', display: 'block', borderRadius: 16 }} />
                       </div>
                     </div>
                   </div>
@@ -456,36 +477,38 @@ export function TaroConsultResultPage() {
               className="taro-result-scroll"
               style={{ flex: 1, overflowY: phase === 'transition' ? 'hidden' : 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 40 }}>
+               <div className="flex flex-col" style={{ gap: 24 }}>
 
                 {/* ── 카드가 전하는 메시지 ── */}
                 <div className="w-full shrink-0">
-                  <div className="flex flex-col gap-2.5 px-5 py-2.5">
-                    <div className="flex items-center gap-1.5">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 20, paddingRight: 20, paddingTop: 10, paddingBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <MoonIcon />
                       <span style={{ fontFamily: font, fontSize: 17, fontWeight: 600, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>카드가 전하는 메시지</span>
                     </div>
-                    <div style={{ backgroundColor: C.grayBg, borderRadius: 16 }}>
-                      <div className="p-5 flex flex-col items-center gap-4">
-                        {/* Result card image slot — ref for flying card target measurement */}
-                        <div
-                          ref={resultCardRef}
-                          style={{
-                            width: 150, height: 260,
-                            borderRadius: 16,
-                            boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
-                            overflow: 'hidden',
-                            flexShrink: 0,
-                            opacity: phase === 'result' ? 1 : 0,
-                          }}
-                        >
-                          <img alt="카드 앞면" src={imgCardFront} style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block' }} />
+                    <div style={{ backgroundColor: C.grayBg, borderRadius: 16, padding: 20 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                        {/* Card image + name */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                          <div
+                            ref={resultCardRef}
+                            style={{
+                              width: 150, height: 260,
+                              borderRadius: 16,
+                              boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
+                              overflow: 'hidden',
+                              flexShrink: 0,
+                              opacity: phase === 'result' ? 1 : 0,
+                            }}
+                          >
+                            <img alt="카드 앞면" src={storedData?.imageUrl || imgCardFront} style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block' }} />
+                          </div>
+                          <p style={{ ...sectionAnim(80), fontFamily: font, fontSize: 15, fontWeight: 600, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px', textAlign: 'center' }}>{storedData?.tarotCard || ''}</p>
                         </div>
-
-                        {/* Card name + description */}
-                        <div className="w-full flex flex-col gap-2" style={sectionAnim(80)}>
-                          <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px', textAlign: 'center' }}>Page of Swords</p>
-                          <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px' }}>이 카드는 생각과 말의 에너지가 강하게 작용하는 흐름을 말합니다. 지금은 궁금함이 커지고, 직접 확인하고 싶은 마음이 생길 수 있어요.</p>
+                        {/* Card description */}
+                        <div style={{ ...sectionAnim(80), width: '100%' }}>
+                          <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px' }}>{storedData?.result.cardMessage || ''}</p>
                         </div>
                       </div>
                     </div>
@@ -496,7 +519,7 @@ export function TaroConsultResultPage() {
                 <ResultSection
                   icon={<WaveIcon />}
                   title="지금 흐름은"
-                  text="말 한마디에 분위기가 달라질 수 있습니다. 빠른 판단보다 표현의 방식이 더 중요해질 수 있어요."
+                  text={storedData?.result.currentFlow || ''}
                   animStyle={sectionAnim(150)}
                 />
 
@@ -504,7 +527,7 @@ export function TaroConsultResultPage() {
                 <ResultSection
                   icon={<LeafIcon />}
                   title="이렇게 움직여보세요"
-                  text="궁금한 건 직접 확인해보세요. 다만 말의 타이밍은 한 번 더 생각하는 것이 좋습니다. 신중한 표현이 오히려 당신에게 유리하게 작용할 거예요."
+                  text={storedData?.result.actionAdvice || ''}
                   animStyle={sectionAnim(230)}
                 />
 
@@ -512,15 +535,16 @@ export function TaroConsultResultPage() {
                 <ResultSection
                   icon={<span style={{ display: 'inline-flex', position: 'relative', top: 1 }}><QuoteCircleIcon /></span>}
                   title="오늘을 위한 한 문장"
-                  text="생각은 빠르게, 말은 천천히 말하기."
+                  text={storedData?.result.dailySentence || ''}
                   animStyle={sectionAnim(310)}
                 />
 
+               </div>
                 {/* ── 이 흐름, 더 깊이 보고 싶다면 (공통 캐러셀) ── */}
                 <div className="w-full shrink-0" style={sectionAnim(400)}>
                   <div>
                     <div style={{ width: '100%', height: 8 }}><FigmaDivider /></div>
-                    <div className="px-5" style={{ paddingTop: 6, paddingBottom: 6, marginTop: 20, marginBottom: 0 }}>
+                    <div className="px-5" style={{ paddingTop: 10, paddingBottom: 8, marginTop: 11 }}>
                       <p style={{ fontFamily: font, fontSize: 17, fontWeight: 600, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>이 흐름, 더 깊이 보고 싶다면</p>
                     </div>
                   </div>
@@ -529,6 +553,7 @@ export function TaroConsultResultPage() {
                     <RecommendedCarousel
                       items={TARO_RECOMMENDED_ITEMS}
                       onMoreClick={() => navigate('/saju-consult/result/recommended')}
+                      hidePrice
                     />
                   </div>
                 </div>
@@ -563,7 +588,7 @@ export function TaroConsultResultPage() {
             }}
           >
             <img
-              src={imgCardFront}
+              src={storedData?.imageUrl || imgCardFront}
               alt="카드 전환"
               style={{ width: '100%', height: '100%', objectFit: 'fill', display: 'block' }}
             />

@@ -1,22 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgPaths from '../imports/svg-hzfdemyje6';
 import { useScrollDirection } from '../hooks/useScrollDirection';
-
-// ─── Asset paths ─────────────────────────────────────────────────────────────
-const img1  = '/home-v2/card-1.png';
-const img2  = '/home-v2/card-4.png';
-const img3  = '/home-v2/card-5.png';
-const img4  = '/home-v2/card-6.png';
-const img5  = '/home-v2/card-7.png';
-const img6  = '/home-v2/card-8.png';
-const img7  = '/home-v2/card-9.png';
-const img8  = '/home-v2/card-10.png';
-const img9  = '/home-v2/card-11.png';
-const img10 = '/home-v2/card-12.png';
-const img11 = '/home-v2/card-13.png';
-const img12 = '/home-v2/card-14.png';
+import { supabase } from '../lib/supabase';
+import { isContentNew } from '../components/ContentTags';
+import { logger } from '../lib/logger';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -39,44 +29,37 @@ const font = "'Pretendard Variable', sans-serif";
 export type LabelType = 'New' | '무료' | '심화' | '유료';
 
 export interface FortuneItem {
-  rank:     number;
-  title:    string;
-  labels:   LabelType[];
-  views:    number;
+  id:        string;
+  rank:      number;
+  title:     string;
+  labels:    LabelType[];
+  views:     number;
   showRead?: boolean;
-  img:      string;
+  img:       string;
   featured?: boolean;
+  contentType: 'free' | 'paid';
   keywords?: string[];
 }
 
-const TABS = ['연애', '이별', '재물', '직업', '인간관계', '시험/ 학업'];
+const TABS = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+const TAB_CATEGORIES = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
 
-export const ALL_ITEMS: FortuneItem[] = [
-  { rank: 1,  title: '저 사람, 나한테 왜 그럴까 알려줘',    labels: ['New', '무료'], views: 27,  showRead: true, img: img1,  featured: true,
-    keywords: ['사람', '인간관계', '대인관계', '상대방', '심리', '행동', '관계'] },
-  { rank: 2,  title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['심화'],        views: 100, img: img2,
-    keywords: ['사람', '인연', '운명', '상대', '인간관계', '연애', '이성'] },
-  { rank: 3,  title: '내돈은 다 어디갔을까?',               labels: ['무료'],        views: 100, img: img2,
-    keywords: ['재물', '돈', '금전', '지출', '경제', '소비'] },
-  { rank: 4,  title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['New', '무료'], views: 100, img: img2,
-    keywords: ['사람', '인연', '운명', '상대', '인간관계', '연애', '이성'] },
-  { rank: 5,  title: '내 인생 리즈 시절은 언제?',            labels: ['심화'],        views: 100, img: img3,
-    keywords: ['인생', '전성기', '미래', '운', '전망'] },
-  { rank: 6,  title: '내돈은 다 어디갔을까?',               labels: ['심화'],        views: 100, img: img4,
-    keywords: ['재물', '돈', '금전', '지출', '경제', '소비'] },
-  { rank: 7,  title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['New', '무료'], views: 100, img: img5,
-    keywords: ['사람', '인연', '운명', '상대', '인간관계', '연애', '이성'] },
-  { rank: 8,  title: '내돈은 다 어디갔을까?',               labels: ['심화'],        views: 100, img: img6,
-    keywords: ['재물', '돈', '금전', '지출', '경제', '소비'] },
-  { rank: 9,  title: '내 인생 리즈 시절은 언제?',            labels: ['심화'],        views: 100, img: img7,
-    keywords: ['인생', '전성기', '미래', '운', '전망'] },
-  { rank: 10, title: '내돈은 다 어디갔을까?',               labels: ['무료'],        views: 100, img: img8,
-    keywords: ['재물', '돈', '금전', '지출', '경제', '소비'] },
-  { rank: 11, title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['New', '무료'], views: 100, img: img9,
-    keywords: ['사람', '인연', '운명', '상대', '인간관계', '연애', '이성'] },
-  { rank: 12, title: '내 몸에 숨겨진 질병, 시한폭탄 같은',  labels: ['심화'],        views: 100, img: img10,
-    keywords: ['건강', '몸', '질병', '건강운', '신체'] },
-];
+/** 클릭 추적 */
+async function trackContentClick(contentId: string) {
+  try {
+    const { data } = await supabase
+      .from('master_contents')
+      .select('view_count, weekly_clicks')
+      .eq('id', contentId)
+      .single();
+    if (data) {
+      await supabase
+        .from('master_contents')
+        .update({ view_count: data.view_count + 1, weekly_clicks: data.weekly_clicks + 1 })
+        .eq('id', contentId);
+    }
+  } catch (_) { /* silent */ }
+}
 
 // ─── Atom: Label Badge ────────────────────────────────────────────────────────
 const LABEL_MAP: Record<LabelType, [string, string]> = {
@@ -98,35 +81,27 @@ export function LabelBadge({ type }: { type: LabelType }) {
   );
 }
 
-// ─── Atom: Eye Icon (from Figma SVG paths) ────────────────────────────────────
+// ─── Atom: Eye Icon ──────────────────────────────────────────────────────────
 export function EyeIcon() {
   return (
-    <div className="overflow-clip relative shrink-0 size-[12px]">
-      <div className="absolute inset-[29.17%_12.5%_28.56%_12.5%]">
-        <div className="absolute inset-[-11.83%_-6.67%_-14.79%_-6.67%]">
-          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10.2003 6.42143">
-            <path d={svgPaths.p1e926900} stroke="#B7B7B7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" />
-            <path d={svgPaths.p13e62800} fill="#B7B7B7" stroke="#B7B7B7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-          </svg>
-        </div>
-      </div>
+    <div style={{ position: 'relative', width: 12, height: 12, flexShrink: 0, overflow: 'hidden' }}>
+      <svg style={{ position: 'absolute', left: 0.9, top: 2.9, width: 10.2, height: 6.42 }} fill="none" viewBox="0 0 10.2003 6.42143">
+        <path d={svgPaths.p1e926900} stroke="#B7B7B7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" />
+        <path d={svgPaths.p13e62800} fill="#B7B7B7" stroke="#B7B7B7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+      </svg>
     </div>
   );
 }
 
-// ─── Atom: Crown Icon (from Figma SVG paths) ──────────────────────────────────
+// ─── Atom: Crown Icon ────────────────────────────────────────────────────────
 function CrownIcon() {
   return (
-    <div className="overflow-clip relative shrink-0 size-[14px]">
-      <div className="absolute inset-[13.54%_3.13%_13.55%_3.13%]">
-        <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 13.125 10.2083">
-          <path d={svgPaths.pf798600} fill="#F9CD16" />
-          <path d={svgPaths.p30692c80} fill="#FAA701" />
-          <path d={svgPaths.p18c22300} fill="#FAA701" />
-          <path d={svgPaths.p3a173380} fill="#FAA701" />
-        </svg>
-      </div>
-    </div>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ display: 'block', flexShrink: 0 }}>
+      <path d="M12.5017 5.47345C12.4324 5.42477 12.3505 5.39723 12.2659 5.39414C12.1813 5.39106 12.0976 5.41257 12.0249 5.45607L9.61924 6.8996C9.60258 6.90953 9.58412 6.91606 9.56491 6.91879C9.5457 6.92152 9.52614 6.9204 9.50738 6.91549C9.48861 6.91059 9.471 6.902 9.45559 6.89022C9.44017 6.87845 9.42725 6.86372 9.41759 6.8469L7.37989 3.28082C7.33844 3.21793 7.28203 3.16631 7.21571 3.13059C7.1494 3.09487 7.07525 3.07617 6.99993 3.07617C6.9246 3.07617 6.85046 3.09487 6.78414 3.13059C6.71782 3.16631 6.66141 3.21793 6.61996 3.28082L4.58228 6.84662C4.57266 6.86348 4.55977 6.87826 4.54437 6.89008C4.52897 6.9019 4.51136 6.91053 4.49258 6.91547C4.4738 6.9204 4.45423 6.92154 4.435 6.91881C4.41578 6.91609 4.39729 6.90955 4.38062 6.8996L1.97496 5.45607C1.9023 5.41248 1.81853 5.39092 1.73385 5.39403C1.64917 5.39715 1.56722 5.42479 1.49795 5.4736C1.42869 5.52241 1.37509 5.59029 1.34367 5.66898C1.31226 5.74768 1.30438 5.83381 1.32099 5.91691L2.39366 11.2814C2.44046 11.5125 2.56562 11.7207 2.74799 11.8701C2.93035 12.0196 3.15874 12.1015 3.39454 12.102H10.6053C10.8411 12.1015 11.0696 12.0196 11.252 11.87C11.4343 11.7205 11.5595 11.5126 11.6062 11.2814L12.6789 5.91695C12.6956 5.83381 12.6877 5.7476 12.6562 5.66886C12.6248 5.59011 12.5711 5.52221 12.5017 5.47345Z" fill="#F9CD16" />
+      <path d="M7 4.51953C7.72487 4.51953 8.3125 3.93191 8.3125 3.20703C8.3125 2.48216 7.72487 1.89453 7 1.89453C6.27513 1.89453 5.6875 2.48216 5.6875 3.20703C5.6875 3.93191 6.27513 4.51953 7 4.51953Z" fill="#FAA701" />
+      <path d="M1.75 6.85156C2.47487 6.85156 3.0625 6.26394 3.0625 5.53906C3.0625 4.81419 2.47487 4.22656 1.75 4.22656C1.02513 4.22656 0.4375 4.81419 0.4375 5.53906C0.4375 6.26394 1.02513 6.85156 1.75 6.85156Z" fill="#FAA701" />
+      <path d="M12.25 6.85156C12.9749 6.85156 13.5625 6.26394 13.5625 5.53906C13.5625 4.81419 12.9749 4.22656 12.25 4.22656C11.5251 4.22656 10.9375 4.81419 10.9375 5.53906C10.9375 6.26394 11.5251 6.85156 12.25 6.85156Z" fill="#FAA701" />
+    </svg>
   );
 }
 
@@ -155,53 +130,53 @@ function ArrowDownFillIcon() {
 // ─── Card: Featured (Rank 1) ──────────────────────────────────────────────────
 function FeaturedCard({ item }: { item: FortuneItem }) {
   return (
-    <div className="bg-white relative shrink-0 w-full">
-      <div className="flex flex-col justify-center size-full">
+    <div style={{ backgroundColor: C.white, position: 'relative', flexShrink: 0, width: '100%' }}>
+      <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
         <div
-          className="content-stretch flex flex-col items-start justify-center pb-[16px] px-[16px] relative w-full cursor-pointer"
-          style={{ transition: 'background-color 0.15s ease' }}
+          className="flex flex-col items-start justify-center cursor-pointer"
+          style={{ padding: '0 16px 16px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
           onTouchStart={() => {}}
-          onPointerDown={(e) => {
-            e.currentTarget.style.backgroundColor = '#FBFBFB';
-          }}
-          onPointerUp={(e) => {
-            e.currentTarget.style.backgroundColor = '';
-          }}
-          onPointerLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '';
-          }}
-          onPointerCancel={(e) => {
-            e.currentTarget.style.backgroundColor = '';
-          }}
+          onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#FBFBFB'; }}
+          onPointerUp={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+          onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+          onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = ''; }}
         >
           {/* Content Image Container */}
           <div
-            className="content-stretch flex flex-col isolate items-start pb-[48px] relative shrink-0 w-full"
+            className="flex flex-col items-start"
+            style={{ isolation: 'isolate', paddingBottom: 48, position: 'relative', flexShrink: 0, width: '100%' }}
           >
-            {/* Rank badge — renders first, then image overlaps with z-[1] */}
-            <div className="content-stretch flex flex-col items-start mb-[-48px] p-[12px] relative shrink-0 w-[64px] z-[2]">
-              <div className="bg-white content-stretch flex flex-col items-center justify-center px-[8px] py-[2px] relative rounded-[8px] shrink-0">
-                <div aria-hidden="true" className="absolute border border-[#ffc000] border-solid inset-[-1px] pointer-events-none rounded-[9px]" />
-                <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0 w-full">
+            {/* Rank badge — renders first, then image overlaps with z-index 1 */}
+            <div
+              className="flex flex-col items-start"
+              style={{ marginBottom: -48, padding: 12, position: 'relative', flexShrink: 0, width: 64, zIndex: 2 }}
+            >
+              <div
+                className="flex flex-col items-center justify-center"
+                style={{ backgroundColor: C.white, padding: '2px 8px', position: 'relative', borderRadius: 8, flexShrink: 0 }}
+              >
+                <div aria-hidden="true" style={{ position: 'absolute', inset: -1, border: '1px solid #ffc000', pointerEvents: 'none', borderRadius: 9 }} />
+                <div className="flex items-center justify-center" style={{ gap: 4, position: 'relative', flexShrink: 0, width: '100%' }}>
                   <span style={{ fontFamily: font, fontSize: 12, fontWeight: 700, lineHeight: '19.5px', color: C.black }}>1</span>
                   <CrownIcon />
                 </div>
               </div>
             </div>
             {/* Image */}
-            <div className="aspect-[80/54] mb-[-48px] pointer-events-none relative rounded-[16px] shrink-0 w-full z-[1]">
-              <img alt={item.title} className="absolute inset-0 max-w-none object-cover rounded-[16px] size-full" src={item.img} />
-              <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[17px]" />
+            <div
+              style={{ aspectRatio: '80/54', marginBottom: -48, pointerEvents: 'none', position: 'relative', borderRadius: 16, flexShrink: 0, width: '100%', zIndex: 1 }}
+            >
+              <img alt={item.title} style={{ position: 'absolute', inset: 0, maxWidth: 'none', objectFit: 'cover', borderRadius: 16, width: '100%', height: '100%' }} src={item.img} />
+              <div aria-hidden="true" style={{ position: 'absolute', inset: -1, border: '1px solid #f9f9f9', borderRadius: 17 }} />
             </div>
           </div>
           {/* Text details */}
           <div
-            className="content-stretch flex flex-col gap-[4px] items-start px-[8px] relative shrink-0 w-full"
-            style={{ marginTop: 8 }}
+            className="flex flex-col items-start"
+            style={{ gap: 4, padding: '0 8px', position: 'relative', flexShrink: 0, width: '100%', marginTop: 8 }}
           >
             <p
-              className="w-full overflow-hidden"
-              style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+              style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}
             >
               {item.title}
             </p>
@@ -209,22 +184,16 @@ function FeaturedCard({ item }: { item: FortuneItem }) {
               {item.labels.map((l) => <LabelBadge key={l} type={l} />)}
             </div>
             {/* Views + 읽어봄 */}
-            <div className="content-stretch flex gap-[4px] items-center justify-center relative shrink-0">
-              <div className="content-stretch flex items-start relative shrink-0">
-                <div className="content-stretch flex gap-[2px] items-center relative shrink-0">
-                  <EyeIcon />
-                  <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>{item.views}</span>
-                </div>
+            <div className="flex items-center" style={{ gap: 4, flexShrink: 0 }}>
+              <div className="flex items-center" style={{ gap: 2, flexShrink: 0 }}>
+                <EyeIcon />
+                <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>{item.views}</span>
               </div>
               {item.showRead && (
                 <>
-                  <div className="h-[6px] relative shrink-0 w-0">
-                    <div className="absolute inset-[-8.33%_-0.5px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 1 7">
-                        <path d="M0.5 0.5V6.5" stroke="#E7E7E7" strokeLinecap="round" />
-                      </svg>
-                    </div>
-                  </div>
+                  <svg width="1" height="7" fill="none" viewBox="0 0 1 7" style={{ flexShrink: 0 }}>
+                    <path d="M0.5 0.5V6.5" stroke="#E7E7E7" strokeLinecap="round" />
+                  </svg>
                   <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>읽어봄</span>
                 </>
               )}
@@ -240,69 +209,59 @@ function FeaturedCard({ item }: { item: FortuneItem }) {
 function RowCard({ item }: { item: FortuneItem }) {
   const rankW = item.rank >= 100 ? 27 : item.rank >= 10 ? 23 : 19;
   return (
-    <div className="bg-white relative shrink-0 w-full">
-      <div className="flex flex-col justify-center size-full">
+    <div style={{ backgroundColor: C.white, position: 'relative', flexShrink: 0, width: '100%' }}>
+      <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
         <div
-          className="content-stretch flex flex-col items-start justify-center px-[20px] py-[10px] relative w-full cursor-pointer"
-          style={{ transition: 'background-color 0.15s ease' }}
+          className="flex flex-col items-start justify-center cursor-pointer"
+          style={{ padding: '10px 20px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
           onTouchStart={() => {}}
-          onPointerDown={(e) => {
-            e.currentTarget.style.backgroundColor = '#FBFBFB';
-          }}
-          onPointerUp={(e) => {
-            e.currentTarget.style.backgroundColor = '';
-          }}
-          onPointerLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '';
-          }}
-          onPointerCancel={(e) => {
-            e.currentTarget.style.backgroundColor = '';
-          }}
+          onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#FBFBFB'; }}
+          onPointerUp={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+          onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+          onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = ''; }}
         >
-          <div className="content-stretch flex gap-[12px] h-[61px] items-start relative shrink-0 w-full">
+          <div className="flex items-start" style={{ gap: 12, height: 61, position: 'relative', flexShrink: 0, width: '100%' }}>
             {/* Thumbnail with rank badge */}
             <div
-              className="content-stretch flex isolate items-start relative shrink-0"
-              style={{ paddingRight: rankW }}
+              className="flex items-start"
+              style={{ isolation: 'isolate', paddingRight: rankW, position: 'relative', flexShrink: 0 }}
             >
               {/* Rank badge */}
               <div
-                className="content-stretch flex flex-col items-start p-[3px] relative shrink-0 z-[2]"
-                style={{ marginRight: -rankW }}
+                className="flex flex-col items-start"
+                style={{ padding: 3, position: 'relative', flexShrink: 0, zIndex: 2, marginRight: -rankW }}
               >
-                <div className="bg-white content-stretch flex flex-col items-center justify-center pb-[2px] pt-px px-[3px] relative rounded-[4px] shrink-0">
+                <div
+                  className="flex flex-col items-center justify-center"
+                  style={{ backgroundColor: C.white, padding: '1px 3px 2px', position: 'relative', borderRadius: 4, flexShrink: 0 }}
+                >
                   <span style={{ fontFamily: font, fontSize: 10, fontWeight: 600, color: C.black, lineHeight: 'normal' }}>{item.rank}</span>
                 </div>
               </div>
               {/* Thumbnail image */}
               <div
-                className="pointer-events-none relative rounded-[8px] shrink-0 z-[1]"
-                style={{ width: 69, height: 47, marginRight: -rankW }}
+                style={{ pointerEvents: 'none', position: 'relative', borderRadius: 8, flexShrink: 0, width: 69, height: 47, marginRight: -rankW, zIndex: 1 }}
               >
-                <img alt={item.title} className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full" src={item.img} />
-                <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[9px]" />
+                <img alt={item.title} style={{ position: 'absolute', inset: 0, maxWidth: 'none', objectFit: 'cover', borderRadius: 8, width: '100%', height: '100%' }} src={item.img} />
+                <div aria-hidden="true" style={{ position: 'absolute', inset: -1, border: '1px solid #f9f9f9', borderRadius: 9 }} />
               </div>
             </div>
             {/* Text details */}
             <div
-              className="content-stretch flex flex-[1_0_0] flex-col gap-[4px] items-start min-h-px min-w-px relative"
+              className="flex flex-col items-start"
+              style={{ flex: '1 0 0', gap: 4, minHeight: 1, minWidth: 1, position: 'relative' }}
             >
               <p
-                className="w-full overflow-hidden"
-                style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+                style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}
               >
                 {item.title}
               </p>
               <div className="flex items-center" style={{ gap: 3 }}>
                 {item.labels.map((l) => <LabelBadge key={l} type={l} />)}
               </div>
-              <div className="content-stretch flex items-center justify-center relative shrink-0">
-                <div className="content-stretch flex items-start relative shrink-0">
-                  <div className="content-stretch flex gap-[2px] items-center relative shrink-0">
-                    <EyeIcon />
-                    <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>{item.views}</span>
-                  </div>
-                </div>
+              <div className="flex items-center" style={{ gap: 2, flexShrink: 0 }}>
+                <EyeIcon />
+                <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>{item.views}</span>
               </div>
             </div>
           </div>
@@ -337,12 +296,82 @@ const TAB_BAR_HEIGHT = 53;
 
 export function FortuneAllPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState(0);
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'인기순' | '최신순'>('인기순');
   const sortRef = useRef<HTMLDivElement>(null);
 
+  const [items, setItems] = useState<FortuneItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+
   const tabVisible = useScrollDirection(16);
+
+  // 홈에서 state.sort로 초기 정렬값 전달 가능
+  useEffect(() => {
+    const st = (location.state as { sort?: string } | null);
+    if (st?.sort === 'popular') setSortBy('인기순');
+  }, [location.state]);
+
+  // 카테고리 + 정렬 변경 시 데이터 로드
+  const fetchData = useCallback(async () => {
+    try {
+      const category = TAB_CATEGORIES[activeTab] || '전체';
+      const { data, error } = await supabase.rpc('get_home_contents', {
+        p_category: category,
+        p_content_type: 'all',
+        p_offset: 0,
+        p_limit: 100,
+      });
+      if (error) { logger.error('FortuneAllPage 로드 실패:', error.message); return; }
+      if (!data || data.length === 0) { setItems([]); setTotalCount(0); return; }
+
+      // 정렬 적용
+      let sorted = [...data];
+      if (sortBy === '최신순') {
+        sorted.sort((a: { created_at: string; weekly_clicks: number }, b: { created_at: string; weekly_clicks: number }) => {
+          const d = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return d !== 0 ? d : b.weekly_clicks - a.weekly_clicks;
+        });
+      }
+      // 인기순은 RPC 기본 정렬 (weekly_clicks DESC, created_at DESC)
+
+      setTotalCount(sorted[0]?.total_count ?? sorted.length);
+      setItems(sorted.map((row: {
+        id: string; title: string; content_type: string;
+        thumbnail_url: string | null; weekly_clicks: number;
+        view_count: number; created_at: string; is_read: boolean;
+      }, i: number) => {
+        const labels: LabelType[] = [];
+        if (isContentNew(row.created_at)) labels.push('New');
+        labels.push(row.content_type === 'free' ? '무료' : '심화');
+        return {
+          id: row.id,
+          rank: i + 1,
+          title: row.title,
+          labels,
+          views: row.weekly_clicks,
+          showRead: row.is_read === true,
+          img: row.thumbnail_url || '/home-v2/card-1.png',
+          featured: i === 0,
+          contentType: row.content_type as 'free' | 'paid',
+        };
+      }));
+    } catch (e) {
+      logger.error('FortuneAllPage fetchData 실패:', e);
+    }
+  }, [activeTab, sortBy]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleItemClick = (item: FortuneItem) => {
+    trackContentClick(item.id);
+    navigate(
+      item.contentType === 'free'
+        ? `/free/content/${item.id}`
+        : `/master/content/detail/${item.id}`,
+    );
+  };
 
   useEffect(() => {
     if (!sortOpen) return;
@@ -361,6 +390,12 @@ export function FortuneAllPage() {
 
   return (
     <div className="flex justify-center min-h-screen" style={{ backgroundColor: C.white }}>
+      <SEO
+        title="인기 운세 모아보기 - 사주 타로 궁합 베스트"
+        description="나다운세에서 가장 인기 있는 사주, 타로, 궁합 콘텐츠를 모아보세요. 사주연애운, 사주결혼시기, 사주재물운 등 다양한 AI 운세를 확인하세요."
+        keywords="사주연애운, 사주결혼시기, 사주재물운, 이직운세, 인기운세, AI사주, 사주잘보는곳, 온라인사주추천"
+        canonical="/best-fortune"
+      />
       <div
         className="flex flex-col relative"
         style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440, minHeight: '100vh' }}
@@ -468,7 +503,7 @@ export function FortuneAllPage() {
 
         {/* ── Content header: count + sort ── */}
         <div className="flex items-center justify-between w-full" style={{ padding: '12px 22px', backgroundColor: C.white }}>
-          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 102개</span>
+          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="relative" ref={sortRef}>
             <button
               className="flex items-center cursor-pointer"
@@ -541,8 +576,8 @@ export function FortuneAllPage() {
 
         {/* ── Content list ── */}
         <div className="flex flex-col w-full" style={{ backgroundColor: C.white, flex: 1 }}>
-          {ALL_ITEMS.map((item, index) => (
-            <div key={item.rank}>
+          {items.map((item, index) => (
+            <div key={item.id} onClick={() => handleItemClick(item)}>
               {index > 0 && (
                 <div style={{ height: 1, backgroundColor: '#F9F9F9', margin: '0 0' }} />
               )}

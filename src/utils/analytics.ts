@@ -13,6 +13,21 @@ const GA_MEASUREMENT_ID = (typeof import.meta !== 'undefined' && import.meta.env
 // 개발환경 체크
 const isDevelopment = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
 
+// 관리자(master) GA 제외 플래그 (localStorage 캐시로 앱 재시작 시에도 즉시 적용)
+let _isMasterUser = typeof localStorage !== 'undefined' && localStorage.getItem('ga_master_excluded') === 'true';
+
+export const setMasterUser = (isMaster: boolean) => {
+  _isMasterUser = isMaster;
+  if (isMaster) {
+    localStorage.setItem('ga_master_excluded', 'true');
+  } else {
+    localStorage.removeItem('ga_master_excluded');
+  }
+  if (isDevelopment) {
+    console.log(`📊 GA 관리자 제외: ${isMaster}`);
+  }
+};
+
 // GA 초기화
 export const initGA = () => {
   if (typeof window === 'undefined') return;
@@ -61,7 +76,7 @@ export const initGA = () => {
 
 // 페이지뷰 트래킹
 export const trackPageView = (path: string, title?: string) => {
-  if (!window.gtag) return;
+  if (!window.gtag || _isMasterUser) return;
 
   window.gtag('event', 'page_view', {
     page_path: path,
@@ -99,7 +114,7 @@ export const setUserProperties = (properties: Record<string, any>) => {
 
 // 이벤트 트래킹 헬퍼
 const trackEvent = (eventName: string, eventParams?: Record<string, any>) => {
-  if (!window.gtag) return;
+  if (!window.gtag || _isMasterUser) return;
 
   window.gtag('event', eventName, eventParams);
 
@@ -484,5 +499,33 @@ export const trackRevisitCouponIssued = (orderId: string, couponAmount: number =
 export const trackEarlyReportRequest = (tagCount: number) => {
   trackEvent('early_report_request', {
     tag_count: tagCount,
+  });
+};
+
+// ============================================
+// 공유 리워드 이벤트 (2026-03-04 추가)
+// ============================================
+
+// 34. 공유 바텀시트 열림
+export const trackShareModalOpen = (contentId: string, isLoggedIn: boolean) => {
+  trackEvent('share_modal_open', {
+    content_id: contentId,
+    is_logged_in: isLoggedIn,
+  });
+};
+
+// 35. 링크 복사 클릭
+export const trackShareLinkCopy = (contentId: string, isLoggedIn: boolean) => {
+  trackEvent('share_link_copy', {
+    content_id: contentId,
+    is_logged_in: isLoggedIn,
+  });
+};
+
+// 36. 카카오톡 공유 클릭
+export const trackShareKakao = (contentId: string, isLoggedIn: boolean) => {
+  trackEvent('share_kakao', {
+    content_id: contentId,
+    is_logged_in: isLoggedIn,
   });
 };

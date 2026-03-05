@@ -1,9 +1,19 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { markConsultCompleted } from '../lib/consultStatus';
 import { motion } from 'motion/react';
 import svgPaths from '../imports/svg-64m32mfmx4';
 import svgMorePaths from '../imports/svg-1svu7din8s';
+import SEO from '../components/SEO';
+
+// ─── 사주 상담 결과 타입 ──────────────────────────────────────────────────────
+interface SajuConsultResult {
+  todayCore: { keyword: string; point: string };
+  advice: string;
+  flow: { workStudy: string; relationships: string; finances: string };
+  caution: string;
+  overallFlow: string;
+}
 
 // ─── Asset paths ─────────────────────────────────────────────────────────────
 const imgThumbnail = '/home-v2/result-thumbnail.png';
@@ -197,9 +207,29 @@ export function SajuConsultResultPage() {
   const homePress  = useNavPress(() => navigate('/'));
   const closePress = useNavPress(() => navigate('/'));
 
-  useEffect(() => {
-    markConsultCompleted('saju');
+  // localStorage에서 결과 데이터 읽기
+  const result = useMemo<SajuConsultResult | null>(() => {
+    try {
+      const raw = localStorage.getItem('saju_consult_result');
+      if (!raw) return null;
+      return JSON.parse(raw) as SajuConsultResult;
+    } catch {
+      return null;
+    }
   }, []);
+
+  // 결과 없으면 홈으로 리다이렉트
+  useEffect(() => {
+    if (!result) {
+      navigate('/', { replace: true });
+    }
+  }, [result, navigate]);
+
+  useEffect(() => {
+    if (result) {
+      markConsultCompleted('saju');
+    }
+  }, [result]);
 
   const [sectionsVisible, setSectionsVisible] = useState(false);
 
@@ -291,6 +321,8 @@ export function SajuConsultResultPage() {
 
   const cardImages = [imgCard1, imgCard2, imgCard3, imgCard4, imgCard5, imgCard6];
 
+  if (!result) return null;
+
   return (
     <div
       style={{
@@ -313,6 +345,7 @@ export function SajuConsultResultPage() {
           backgroundColor: C.white,
         }}
       >
+        <SEO title="사주 상담 결과" noIndex={true} />
         {/* ── 상단 네비게이션 ── */}
         <div
           style={{
@@ -373,13 +406,13 @@ export function SajuConsultResultPage() {
                   <div style={{ flex: 1, backgroundColor: C.cardBg, borderRadius: 16, padding: 20 }}>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>키워드</span>
-                      <span style={{ ...bodyText, fontWeight: 400 }}>형</span>
+                      <span style={{ ...bodyText, fontWeight: 400 }}>{result.todayCore.keyword}</span>
                     </div>
                   </div>
                   <div style={{ flex: 1, backgroundColor: C.cardBg, borderRadius: 16, padding: 20 }}>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>포인트</span>
-                      <span style={{ ...bodyText, fontWeight: 400 }}>감정보단 판단</span>
+                      <span style={{ ...bodyText, fontWeight: 400 }}>{result.todayCore.point}</span>
                     </div>
                   </div>
                 </div>
@@ -392,7 +425,7 @@ export function SajuConsultResultPage() {
                 <SectionHeader icon={<BulbIcon />} title="이렇게 해보세요" />
                 <Card>
                   <p style={bodyText}>
-                    오늘은 속도를 줄이고 내 마음의 리듬을 먼저 살펴보세요. 서두르기보다 한 번 더 생각하는 선택이 좋습니다. 작은 결정이라도 나에게 편한 방향을 택하면 흐름이 부드러워질 거예요.
+                    {result.advice}
                   </p>
                 </Card>
               </div>
@@ -406,19 +439,19 @@ export function SajuConsultResultPage() {
                   <Card>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>일/학업</span>
-                      <span style={bodyText}>현재 계획을 유지하는 것이 좋습니.</span>
+                      <span style={bodyText}>{result.flow.workStudy}</span>
                     </div>
                   </Card>
                   <Card>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>인간관계</span>
-                      <span style={bodyText}>급한 답은 잠시 미뤄도 괜찮습니다.</span>
+                      <span style={bodyText}>{result.flow.relationships}</span>
                     </div>
                   </Card>
                   <Card>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>재물</span>
-                      <span style={bodyText}>충동 지출은 한 번 더 생각해보는 것이 좋습니다.</span>
+                      <span style={bodyText}>{result.flow.finances}</span>
                     </div>
                   </Card>
                 </div>
@@ -431,7 +464,7 @@ export function SajuConsultResultPage() {
                 <SectionHeader icon={<AlertIcon />} title="이것은 조심하세요" />
                 <Card>
                   <p style={bodyText}>
-                    감정이 예민하게 작용할 수 있습니다. 바로 반응하기보다 한 박자 멈추는 태도가 필요합니다. 차분함이 불필요한 오해를 줄여줄 거예요.
+                    {result.caution}
                   </p>
                 </Card>
               </div>
@@ -443,9 +476,7 @@ export function SajuConsultResultPage() {
                 <SectionHeader icon={<StarIcon />} title="전체 운의 흐름" />
                 <Card>
                   <p style={bodyText}>
-                    겉으로는 변화가 적어 보여도 내면에서는 방향이 정리되고 있습니다. 주변의 속도에 휩쓸리지 않는 것이 중요합니다. 관찰하는 태도가 하루의 중심을 잡아줄 거예요.
-                    <br />
-                    차분함을 유지하면 안정적인 하루로 마무리될 수 있습니다.
+                    {result.overallFlow}
                   </p>
                 </Card>
               </div>
@@ -541,21 +572,6 @@ export function SajuConsultResultPage() {
                         {title}
                       </p>
 
-                      <div className="flex flex-col">
-                        <div className="flex items-center" style={{ gap: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', width: 14, height: 14 }}>
-                            <svg width="14" height="14" fill="none" viewBox="0 0 14 14" style={{ transform: 'rotate(90deg) scaleY(-1)', display: 'block', marginBottom: 1 }}>
-                              <defs><clipPath id={`arrow-clip-${i}`}><rect fill="white" height="14" width="14" /></clipPath></defs>
-                              <g clipPath={`url(#arrow-clip-${i})`}>
-                                <path d="M2.60754 10.0074C2.52141 9.97776 2.44669 9.92195 2.3938 9.84779C2.34091 9.77363 2.31249 9.6848 2.3125 9.59371C2.3125 7.59488 2.71391 5.99637 3.50605 4.84219C4.46309 3.44766 5.97273 2.6968 8 2.60356V0.406212C8.00001 0.320544 8.02517 0.236764 8.07235 0.165264C8.11954 0.0937642 8.18668 0.0376912 8.26545 0.00400138C8.34421 -0.0296885 8.43113 -0.0395127 8.51543 -0.0242526C8.59973 -0.00899244 8.67769 0.0306805 8.73965 0.0898447L13.5521 4.68359C13.5949 4.72444 13.629 4.77354 13.6522 4.82792C13.6755 4.88229 13.6875 4.94082 13.6875 4.99996C13.6875 5.0591 13.6755 5.11763 13.6522 5.17201C13.629 5.22638 13.5949 5.27548 13.5521 5.31633L8.73965 9.91008C8.67769 9.96924 8.59973 10.0089 8.51543 10.0242C8.43113 10.0394 8.34421 10.0296 8.26545 9.99592C8.18668 9.96223 8.11954 9.90616 8.07235 9.83466C8.02517 9.76316 8.00001 9.67938 8 9.59371V7.4125C6.76953 7.44969 5.83984 7.64902 5.09965 8.03156C4.29984 8.445 3.71988 9.0627 3.0948 9.86359C3.03873 9.9354 2.96164 9.9879 2.87428 10.0138C2.78693 10.0397 2.69368 10.0376 2.60754 10.008V10.0074Z" fill="#FF6678" />
-                              </g>
-                            </svg>
-                          </div>
-                          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: '#ff6678', letterSpacing: '-0.26px', lineHeight: '19px', whiteSpace: 'nowrap', marginLeft: -3 }}>50%할인</span>
-                          <span style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: '#999', lineHeight: '19.5px', textDecoration: 'line-through', whiteSpace: 'nowrap' }}>60새싹</span>
-                        </div>
-                        <span style={{ fontFamily: font, fontSize: 14, fontWeight: 600, color: C.black, letterSpacing: '-0.42px', lineHeight: '20px', whiteSpace: 'nowrap', marginTop: 1 }}>30새싹</span>
-                      </div>
                     </div>
                   </div>
                 ))}

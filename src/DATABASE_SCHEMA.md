@@ -244,6 +244,21 @@
 
 **용도**: 비회원 하루 3개 무료 콘텐츠 제한 (서버 2차 검증). `generate-free-preview`에서 Service Role Key로만 접근. RLS Enabled (정책 없음). pg_cron으로 매일 KST 09:00 전날 이전 데이터 자동 삭제.
 
+### `anonymous_consult_views`
+
+비회원 사주/타로 상담 체험 1회 제한 추적 (IP+UA fingerprint 기반, 영구 보관)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PK | `gen_random_uuid()` | 고유 ID |
+| `fingerprint` | text | NOT NULL, UNIQUE | - | SHA-256(IP+UA) 해시 |
+| `consult_type` | text | NOT NULL | - | 상담 유형 ('saju' \| 'taro') |
+| `created_at` | timestamptz | - | `now()` | 생성 일시 |
+
+**인덱스**: UNIQUE (fingerprint) — 사주+타로 통합 1회 제한
+
+**용도**: 비회원 상담 체험 최초 1회 제한 (서버 권위적 검증). `generate-tarot-consult`, `generate-saju-consult`에서 Service Role Key로만 접근. RLS 불필요. cron 정리 없음 (영구 보관).
+
 ---
 
 ## 나다움 태그 테이블

@@ -1,19 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import svgPaths from '../imports/svg-hzfdemyje6';
 import { useScrollDirection } from '../hooks/useScrollDirection';
-
-// ─── Asset paths ─────────────────────────────────────────────────────────────
-const img1 = '/home-v2/card-1.png';
-const img2 = '/home-v2/card-4.png';
-const img3 = '/home-v2/card-5.png';
-const img4 = '/home-v2/card-6.png';
-const img5 = '/home-v2/card-7.png';
-const img6 = '/home-v2/card-8.png';
-const img7 = '/home-v2/card-9.png';
-const img8 = '/home-v2/card-10.png';
-const img9 = '/home-v2/card-11.png';
+import { supabase } from '../lib/supabase';
+import { isContentNew } from '../components/ContentTags';
+import { logger } from '../lib/logger';
+import SEO from '../components/SEO';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -36,7 +29,7 @@ const font = "'Pretendard Variable', sans-serif";
 type LabelType = 'New' | '무료' | '심화' | '유료';
 
 export type NoRankFortuneItem = {
-  id:       number;
+  id:       string;
   title:    string;
   labels:   LabelType[];
   views:    number;
@@ -44,19 +37,25 @@ export type NoRankFortuneItem = {
   img:      string;
 };
 
-const TABS = ['연애', '이별', '재물', '직업', '인간관계', '시험/ 학업'];
+const TABS = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
+const TAB_CATEGORIES = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
 
-export const NEW_FREE_ITEMS: NoRankFortuneItem[] = [
-  { id: 1,  title: '저 사람, 나한테 왜 그럴까 알려줘',    labels: ['New', '무료'], views: 27,  showRead: true, img: img1 },
-  { id: 2,  title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['New', '무료'], views: 100, img: img2 },
-  { id: 3,  title: '내돈은 다 어디갔을까?',               labels: ['무료'],        views: 100, img: img3 },
-  { id: 4,  title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['New', '무료'], views: 100, img: img4 },
-  { id: 5,  title: '내 인생 리즈 시절은 언제?',            labels: ['무료'],        views: 100, img: img5 },
-  { id: 6,  title: '내돈은 다 어디갔을까?',               labels: ['New', '무료'], views: 100, img: img6 },
-  { id: 7,  title: '운명의 상대는 바로 곁에 있을 수 있어', labels: ['New', '무료'], views: 100, img: img7 },
-  { id: 8,  title: '내돈은 다 어디갔을까?',               labels: ['무료'],        views: 100, img: img8 },
-  { id: 9,  title: '내 인생 리즈 시절은 언제?',            labels: ['New', '무료'], views: 100, img: img9 },
-];
+/** 클릭 추적 */
+async function trackContentClick(contentId: string) {
+  try {
+    const { data } = await supabase
+      .from('master_contents')
+      .select('view_count, weekly_clicks')
+      .eq('id', contentId)
+      .single();
+    if (data) {
+      await supabase
+        .from('master_contents')
+        .update({ view_count: data.view_count + 1, weekly_clicks: data.weekly_clicks + 1 })
+        .eq('id', contentId);
+    }
+  } catch (_) { /* silent */ }
+}
 
 // ─── Atom: Label Badge ────────────────────────────────────────────────────────
 const LABEL_MAP: Record<LabelType, [string, string]> = {
@@ -81,16 +80,10 @@ function LabelBadge({ type }: { type: LabelType }) {
 // ─── Atom: Eye Icon ───────────────────────────────────────────────────────────
 function EyeIcon() {
   return (
-    <div className="overflow-clip relative shrink-0 size-[12px]">
-      <div className="absolute inset-[29.17%_12.5%_28.56%_12.5%]">
-        <div className="absolute inset-[-11.83%_-6.67%_-14.79%_-6.67%]">
-          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10.2003 6.42143">
-            <path d={svgPaths.p1e926900} stroke="#B7B7B7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" />
-            <path d={svgPaths.p13e62800} fill="#B7B7B7" stroke="#B7B7B7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-          </svg>
-        </div>
-      </div>
-    </div>
+    <svg className="shrink-0" width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M1.5 6.50195C3.3 2.50195 8.7 2.50195 10.5 6.50195" stroke="#B7B7B7" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.00446 8.57338C5.83562 8.57338 5.66843 8.54013 5.51244 8.47551C5.35645 8.4109 5.21472 8.31619 5.09533 8.19681C4.97594 8.07742 4.88123 7.93568 4.81662 7.77969C4.75201 7.6237 4.71875 7.45651 4.71875 7.28767C4.71875 7.11883 4.75201 6.95164 4.81662 6.79565C4.88123 6.63966 4.97594 6.49792 5.09533 6.37853C5.21472 6.25914 5.35645 6.16444 5.51244 6.09982C5.66843 6.03521 5.83562 6.00195 6.00446 6.00195C6.34546 6.00195 6.67248 6.13741 6.9136 6.37853C7.15472 6.61965 7.29018 6.94667 7.29018 7.28767C7.29018 7.62866 7.15472 7.95569 6.9136 8.19681C6.67248 8.43792 6.34546 8.57338 6.00446 8.57338Z" fill="#B7B7B7" stroke="#B7B7B7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -134,7 +127,8 @@ function TopCard({ item }: { item: NoRankFortuneItem }) {
         >
           {/* Image — no rank badge */}
           <div
-            className="aspect-[80/54] pointer-events-none relative rounded-[16px] shrink-0 w-full"
+            className="pointer-events-none relative rounded-[16px] shrink-0 w-full"
+            style={{ aspectRatio: '80/54' }}
           >
             <img alt={item.title} className="absolute inset-0 max-w-none object-cover rounded-[16px] size-full" src={item.img} />
             <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[17px]" />
@@ -243,11 +237,68 @@ const TAB_BAR_HEIGHT = 53;
 export function NewFreeFortuneAllPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
+  const [items, setItems] = useState<NoRankFortuneItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
 
   const tabVisible = useScrollDirection(16);
 
+  // 카테고리별 무료 콘텐츠 로드 (최신순 기본)
+  const fetchData = useCallback(async () => {
+    try {
+      const category = TAB_CATEGORIES[activeTab] || '연애';
+      const { data, error } = await supabase.rpc('get_home_contents', {
+        p_category: category,
+        p_content_type: 'free',
+        p_offset: 0,
+        p_limit: 100,
+      });
+      if (error) { logger.error('NewFreeFortuneAllPage 로드 실패:', error.message); return; }
+      if (!data || data.length === 0) { setItems([]); setTotalCount(0); return; }
+
+      // 최신순 정렬 (동일 날짜면 weekly_clicks DESC)
+      const sorted = [...data].sort((a: { created_at: string; weekly_clicks: number }, b: { created_at: string; weekly_clicks: number }) => {
+        const d = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return d !== 0 ? d : b.weekly_clicks - a.weekly_clicks;
+      });
+
+      setTotalCount(sorted[0]?.total_count ?? sorted.length);
+      setItems(sorted.map((row: {
+        id: string; title: string; content_type: string;
+        thumbnail_url: string | null; weekly_clicks: number;
+        created_at: string; is_read: boolean;
+      }) => {
+        const labels: LabelType[] = [];
+        if (isContentNew(row.created_at)) labels.push('New');
+        labels.push('무료');
+        return {
+          id: row.id,
+          title: row.title,
+          labels,
+          views: row.weekly_clicks,
+          showRead: row.is_read === true,
+          img: row.thumbnail_url || '/home-v2/card-1.png',
+        };
+      }));
+    } catch (e) {
+      logger.error('NewFreeFortuneAllPage fetchData 실패:', e);
+    }
+  }, [activeTab]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleItemClick = (item: NoRankFortuneItem) => {
+    trackContentClick(item.id);
+    navigate(`/free/content/${item.id}`);
+  };
+
   return (
     <div className="flex justify-center min-h-screen" style={{ backgroundColor: C.white }}>
+      <SEO
+        title="무료 운세 모아보기 - 무료사주 무료타로"
+        description="무료사주풀이사이트 나다운세의 무료 운세 콘텐츠를 모아보세요. 생년월일운세, 무료타로, 오늘의운세를 무료로 만나보세요."
+        keywords="무료사주풀이사이트, 무료운세사이트, 무료타로사이트, 생년월일운세, 무료궁합, 오늘의운세, 무료운세"
+        canonical="/new-free"
+      />
       <div
         className="flex flex-col relative"
         style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440, minHeight: '100vh' }}
@@ -297,9 +348,32 @@ export function NewFreeFortuneAllPage() {
             >
               <div
                 className="w-full overflow-x-auto"
-                style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+                style={{ scrollbarWidth: 'none', cursor: 'grab' } as React.CSSProperties}
+                onMouseDown={(e) => {
+                  const el = e.currentTarget;
+                  const startX = e.clientX;
+                  const scrollLeft = el.scrollLeft;
+                  let dragged = false;
+                  el.style.cursor = 'grabbing';
+                  const onMouseMove = (ev: MouseEvent) => {
+                    const dx = ev.clientX - startX;
+                    if (Math.abs(dx) > 3) dragged = true;
+                    el.scrollLeft = scrollLeft - dx;
+                  };
+                  const onMouseUp = () => {
+                    el.style.cursor = 'grab';
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                    if (dragged) {
+                      const preventClick = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); };
+                      el.addEventListener('click', preventClick, { capture: true, once: true });
+                    }
+                  };
+                  window.addEventListener('mousemove', onMouseMove);
+                  window.addEventListener('mouseup', onMouseUp);
+                }}
               >
-                <div className="flex items-center" style={{ padding: '8px 16px', gap: 2, minWidth: 'max-content' }}>
+                <div className="flex items-center" style={{ padding: '4px 16px 8px', gap: 2, minWidth: 'max-content' }}>
                   {TABS.map((t, i) => {
                     const isActive = activeTab === i;
                     return (
@@ -334,11 +408,19 @@ export function NewFreeFortuneAllPage() {
 
         {/* ── Content header: count only ── */}
         <div className="flex items-center w-full" style={{ padding: '12px 22px', backgroundColor: C.white }}>
-          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {NEW_FREE_ITEMS.length}개</span>
+          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
         </div>
 
         {/* ── Content list ── */}
-        <NewFreeCardList items={NEW_FREE_ITEMS} />
+        <div className="flex flex-col w-full" style={{ backgroundColor: '#ffffff', flex: 1 }}>
+          {items.map((item, index) => (
+            <div key={item.id} onClick={() => handleItemClick(item)}>
+              {index > 0 && <div style={{ height: 1, backgroundColor: '#F9F9F9' }} />}
+              {index === 0 ? <TopCard item={item} /> : <RowCard item={item} />}
+            </div>
+          ))}
+          <div style={{ height: 130 }} />
+        </div>
       </div>
     </div>
   );
