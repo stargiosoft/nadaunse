@@ -1156,6 +1156,8 @@ function BestFortuneSection({
 
   const mouseStartX  = useRef<number>(0);
   const isMouseDown  = useRef<boolean>(false);
+  const mouseDragDx  = useRef<number>(0);
+  const [dragOffset, setDragOffset] = useState(0);
 
   const wheelCooldown = useRef(false);
 
@@ -1214,18 +1216,28 @@ function BestFortuneSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Mouse: window 글로벌 리스너 ──
+  // ── Mouse: window 글로벌 리스너 (드래그 추적 + 페이지 전환) ──
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!isMouseDown.current) return;
       e.preventDefault();
+      const dx = e.clientX - mouseStartX.current;
+      mouseDragDx.current = dx;
+      setDragOffset(dx);
     };
     const onMouseUp = (e: MouseEvent) => {
       if (!isMouseDown.current) return;
-      const diff = mouseStartX.current - e.clientX;
       isMouseDown.current = false;
+      const diff = mouseStartX.current - e.clientX;
+      setDragOffset(0);
+      mouseDragDx.current = 0;
       if (Math.abs(diff) < 40) return;
       setBestPage(prev => Math.max(0, Math.min(totalPagesRef.current - 1, diff > 0 ? prev + 1 : prev - 1)));
+      // 드래그 후 클릭 방지
+      if (clipperRef.current) {
+        const preventClick = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); };
+        clipperRef.current.addEventListener('click', preventClick, { capture: true, once: true });
+      }
     };
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
@@ -1377,16 +1389,15 @@ function BestFortuneSection({
           paddingBottom: 20,
           touchAction: 'pan-y',
         }}
-        onMouseDown={(e) => { mouseStartX.current = e.clientX; isMouseDown.current = true; }}
-        onMouseLeave={() => { isMouseDown.current = false; }}
+        onMouseDown={(e) => { mouseStartX.current = e.clientX; isMouseDown.current = true; mouseDragDx.current = 0; setDragOffset(0); }}
       >
         <div
           style={{
             display: 'flex',
             gap: `${GAP}px`,
             paddingLeft: `${PAD_LEFT}px`,
-            transform: `translateX(-${trackOffset}px)`,
-            transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            transform: `translateX(-${trackOffset - dragOffset}px)`,
+            transition: dragOffset !== 0 ? 'none' : 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             userSelect: 'none',
             cursor: 'grab',
             touchAction: 'pan-y',

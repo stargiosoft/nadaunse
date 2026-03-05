@@ -2,8 +2,8 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **Triggers**: 6개 | **Functions**: 11개 | **pg_cron Jobs**: 4개
-> **최종 업데이트**: 2026-03-04
+> **Triggers**: 6개 | **Functions**: 13개 | **pg_cron Jobs**: 4개
+> **최종 업데이트**: 2026-03-05
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -104,6 +104,12 @@
 **반환값**: `jsonb` - `{ success, reward_granted, current_round, current_count, required_count }` (SECURITY DEFINER)
 **사용처**: Edge Function `process-referral`에서 호출. 부정 의심(`p_is_suspicious=true`) 시 기록만 하고 카운트/리워드 스킵
 
+### 13. `process_mission_reward`
+**목적**: 미션 리워드(태그 5개 달성) 새싹 30개 원자적 지급 — 중복 방지 + 잔액 증가 + 거래 기록
+**파라미터**: `p_user_id` (uuid), `p_reward_amount` (integer, DEFAULT 30)
+**반환값**: `jsonb` - `{ success, new_balance, reward_amount }` 또는 `{ success: false, already_granted: true }` (SECURITY DEFINER)
+**사용처**: Edge Function `grant-mission-sprout`에서 호출. `sprout_transactions`에서 기존 `reward` 레코드 체크 후 중복 시 미지급
+
 ---
 
 ## pg_cron 스케줄 작업
@@ -165,6 +171,7 @@ SELECT trigger_weekly_report_batch();
 | `process_refund` | `process-refund` | 환불 + 쿠폰 복원 |
 | `process_sprout_charge` | `sprout-charge` | 새싹 충전 (잔액 증가 + 주문 + 거래 기록) |
 | `process_sprout_deduct` | `sprout-deduct` | 새싹 차감 (잔액 감소 + 거래 기록) |
+| `process_mission_reward` | `grant-mission-sprout` | 미션 리워드 새싹 30 지급 (중복 방지) |
 
 **공통 설계 원칙**: SECURITY DEFINER (RLS 우회), 트랜잭션 원자성, FOR UPDATE 행 잠금, EXCEPTION WHEN OTHERS 에러 핸들링
 
@@ -217,7 +224,7 @@ pg_cron 스케줄만 다르며 (`WEEK_START_DAY`: 프로덕션 0=일요일, 스�
 1. **보고서 생성** (시스템): `weekly_reports` INSERT → `weekly_report_sections` INSERT
 2. **타로 카드 뽑기** (사용자): `report_tarot_selections` UPDATE (`user_viewed = true`)
 3. **응원글 저장** (사용자): `weekly_reports` UPDATE (`self_encouragement` 필드)
-4. **쿠폰 발급** (tag_count>=5): `user_coupons` INSERT (서버 사이드 검증)
+4. **새싹 리워드** (tag_count>=5): `grant-mission-sprout` → `process_mission_reward` RPC → 새싹 30 지급
 
 ### user_viewed 패턴
 

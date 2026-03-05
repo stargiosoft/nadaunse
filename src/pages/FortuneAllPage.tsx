@@ -307,6 +307,13 @@ export function FortuneAllPage() {
 
   const tabVisible = useScrollDirection(16);
 
+  // PC 마우스 드래그 스크롤
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const scrollStartX = useRef(0);
+  const hasDragged = useRef(false);
+
   // 홈에서 state.sort로 초기 정렬값 전달 가능
   useEffect(() => {
     const st = (location.state as { sort?: string } | null);
@@ -465,8 +472,35 @@ export function FortuneAllPage() {
               }}
             >
               <div
+                ref={tabScrollRef}
                 className="w-full overflow-x-auto"
-                style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+                style={{ scrollbarWidth: 'none', cursor: 'grab' } as React.CSSProperties}
+                onMouseDown={(e) => {
+                  isDragging.current = true;
+                  hasDragged.current = false;
+                  dragStartX.current = e.clientX;
+                  scrollStartX.current = tabScrollRef.current?.scrollLeft ?? 0;
+                  e.currentTarget.style.cursor = 'grabbing';
+                  e.currentTarget.style.userSelect = 'none';
+                }}
+                onMouseMove={(e) => {
+                  if (!isDragging.current) return;
+                  const dx = e.clientX - dragStartX.current;
+                  if (Math.abs(dx) > 3) hasDragged.current = true;
+                  if (tabScrollRef.current) {
+                    tabScrollRef.current.scrollLeft = scrollStartX.current - dx;
+                  }
+                }}
+                onMouseUp={(e) => {
+                  isDragging.current = false;
+                  e.currentTarget.style.cursor = 'grab';
+                  e.currentTarget.style.userSelect = '';
+                }}
+                onMouseLeave={(e) => {
+                  isDragging.current = false;
+                  e.currentTarget.style.cursor = 'grab';
+                  e.currentTarget.style.userSelect = '';
+                }}
               >
                 <div className="flex items-center" style={{ padding: '8px 16px', gap: 2, minWidth: 'max-content' }}>
                   {TABS.map((t, i) => {
@@ -474,7 +508,7 @@ export function FortuneAllPage() {
                     return (
                       <button
                         key={t}
-                        onClick={() => setActiveTab(i)}
+                        onClick={() => { if (!hasDragged.current) setActiveTab(i); }}
                         className="relative flex items-center justify-center shrink-0 cursor-pointer"
                         style={{ padding: '8px 16px', borderRadius: 12, backgroundColor: 'transparent', border: 'none', WebkitTapHighlightColor: 'transparent' }}
                       >

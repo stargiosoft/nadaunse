@@ -1,7 +1,7 @@
 # SEO 가이드 - 나다운세
 
 > **검색엔진 최적화(SEO) 설정 및 관리 가이드**
-> **최종 업데이트**: 2026-03-04
+> **최종 업데이트**: 2026-03-05
 
 ---
 
@@ -36,7 +36,7 @@
 <title>나다운세 - 무료운세 사주 타로 궁합 | AI 사주풀이 · 신년운세</title>
 <meta name="description" content="무료운세, 사주, 타로, 궁합, 신년운세를 AI로 정확하게 풀어드립니다. 사주팔자, 오늘의운세, 사주풀이까지 나다운세에서 만나보세요." />
 <meta name="keywords" content="나다운세, 운세, 무료사주, 무료운세, 신년운세, 사주, 타로, 궁합, 오늘의운세, 띠별오늘의운세, 띠별운세, AI 운세, 별자리운세, 챗지피티사주, 챗gpt사주, 사주GPT, 신점, 사주팔자, 사주풀이, 인터넷사주, 자기이해" />
-<meta name="robots" content="index,follow" />
+<meta name="robots" content="noindex" /> <!-- 프리렌더 페이지는 index,follow로 오버라이드 -->
 <meta name="author" content="나다운세" />
 
 <!-- 검색엔진 인증 -->
@@ -213,24 +213,32 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - ✅ HTTPS 리다이렉션 정상
 - ✅ 보안 인증서 정상
 
-**사이트 진단 결과** (2026-02-24):
+**사이트 진단 결과** (2026-03-05):
 | 항목 | 수치 | 비고 |
 |------|------|------|
-| 색인 | 73 페이지 | 이전 12 → 73으로 증가 |
-| 수집제한 | 1 | |
-| SEO 경고 | 32건 | description 동일(16) + alt 누락(16) → 수정 완료 |
+| 색인 | 73+ 페이지 | |
+| SEO 경고 | 32건 → **수정 완료** | description 동일(16) + alt 누락(16) |
 
-**SEO 경고 수정 내역** (2026-02-24):
-- `<meta name="description">` 동일: **16건** → 콘텐츠 description fallback 개선 (유료/무료 차별화)
-- Alt 속성 누락: **16건** → ProfilePage.tsx 7건 (`aria-hidden="true"`), MyReportList.tsx 3건 (의미 있는 alt 텍스트)
-- Description 80자 초과: **index.html + prerender.mjs** 둘 다 축소 (~60자)
+**SEO 경고 수정 내역**:
 
-**성과 데이터** (최근 30일, 2026-02-24 기준):
-| 지표 | 값 |
-|------|-----|
-| 총 클릭수 | 9 |
-| 총 노출수 | 77 |
-| 평균 CTR | 11.7% |
+*1차 수정 (2026-02-24)*:
+- 콘텐츠 description fallback 유료/무료 차별화
+- ProfilePage.tsx 7건 `aria-hidden`, MyReportList.tsx 3건 의미 있는 alt
+- Description 80자 초과: index.html + prerender.mjs 축소
+
+*2차 수정 (2026-03-05)* — **근본 원인 해결**:
+- **중복 description 원인**: 프리렌더되지 않은 동적 페이지(login, payment, result 등)가 기본 index.html의 홈페이지 description을 공유
+- **해결**: `index.html` robots를 `noindex`로 변경 + `prerender.mjs`에서 프리렌더 페이지만 `index,follow` 오버라이드
+- **alt 누락 원인**: 네이버 크롤러가 `alt=""` (decorative icon)을 누락으로 판단
+- **해결**: eye-icon `alt=""` → `alt="조회수"` (FreeContentDetailComponents, MasterContentDetailPage, HomePage/HomeScreenNew)
+
+**성과 데이터** (2026-03-05 기준):
+| 지표 | 최근 30일 |
+|------|----------|
+| 총 클릭수 | 15 |
+| 총 노출수 | 160 |
+| 평균 CTR | 9.2% |
+| 주요 키워드 | 브랜드 키워드("나다운세") 위주 |
 
 **인증 방법**: HTML 메타 태그
 
@@ -241,21 +249,20 @@ Sitemap: https://nadaunse.com/sitemap.xml
 
 ### 구글 Search Console
 
-**현재 상태** (2026-02-24 기준):
+**현재 상태** (2026-03-05 기준):
 - ✅ 사이트 등록 완료
 - ✅ 소유권 인증 완료
-- ✅ 사이트맵 제출 완료
+- ✅ 사이트맵 제출 완료 (31개 블로그 + 218개 콘텐츠 포함)
 - ✅ 검색 결과에 노출 중
 
-**성과 데이터** (최근 28일, 2026-02-24 기준):
+**성과 데이터** (최근 3개월, 2026-03-05 기준):
 | 지표 | 값 |
 |------|-----|
-| 총 클릭수 | 75 |
-| 총 노출수 | 180 |
-| 평균 CTR | - |
-| 평균 게재순위 | - |
+| 총 클릭수 | 135 |
+| 총 노출수 | 1,520 |
+| 평균 CTR | 8.9% |
 
-**주요 검색어**: "나다운세" + 블로그 롱테일 키워드 유입 시작
+**주요 검색어**: "나다운세" 브랜드 + 블로그 롱테일 키워드 유입 확인
 
 ```html
 <!-- 구글 인증 (필요 시 index.html에 추가) -->
@@ -309,14 +316,13 @@ Sitemap: https://nadaunse.com/sitemap.xml
 - [x] Edge Function sitemap `/manse` priority 0.6 → 0.8 + lastmod 추가 (prerender와 일치) **(2026-02-25)**
 - [x] 홈페이지 + 블로그 메타 태그 SEO 최적화 (title/description 키워드 강화) **(2026-03-03)**
 - [x] 롱테일 키워드 타겟 블로그 7개 추가 (총 24→31개) — 생년월일운세, 사주연애운, 사주결혼시기, 이직운세, 사주재물운, 타로카드뽑기, AI타로, 무료궁합, 오늘타로운세, 타로연애운, 비대면사주, 온라인사주추천 **(2026-03-04)**
+- [x] 프리렌더 빌드 + 프로덕션 배포 (블로그 7개 포함 254 URL) **(2026-03-05)**
+- [x] IndexNow 제출 (254 URL 전체) **(2026-03-05)**
+- [x] Google Search Console 사이트맵 재제출 **(2026-03-05)**
+- [x] 네이버 서치어드바이저 사이트맵 재제출 **(2026-03-05)**
+- [x] 네이버 SEO 경고 32건 근본 원인 수정 **(2026-03-05)** — `index.html` robots `noindex` + `prerender.mjs` robots 오버라이드 (중복 description 해결), eye-icon `alt="조회수"` (alt 누락 해결)
 
 ### SEO TODO (미완료) - 우선순위순
-
-#### 🔴 높음 (즉시 효과)
-- [ ] **프리렌더 빌드 + 프로덕션 배포** — 신규 블로그 7개 프리렌더 HTML + sitemap + RSS 반영
-- [ ] **IndexNow로 블로그 URL 일괄 제출** — Edge Function 호출하여 `/blog` + 31개 slug URL 제출 (Bing, 네이버 즉시 인덱싱)
-- [ ] **Google Search Console 사이트맵 재제출** — 신규 블로그 7개 URL 인덱싱 요청
-- [ ] **네이버 서치어드바이저 사이트맵 재제출** — 신규 블로그 URL 수집 요청
 
 #### 🟡 중간 (SEO 품질 향상)
 - [ ] **블로그 썸네일 이미지 추가** — 현재 thumbnail_url NULL인 글들에 대표 이미지 추가 (검색결과 CTR 향상)
@@ -375,9 +381,10 @@ SPA(CSR)에서는 모든 페이지가 동일한 `index.html`의 메타 태그를
    - `/blog`, `/blog/{slug}`: 블로그 목록/상세 HTML
 4. 콘텐츠 페이지는 article 태그로 감싸고, 관련 콘텐츠 내부 링크를 포함
 5. **`isHomePage` 파라미터**: 홈페이지 외 페이지에서 템플릿의 기존 JSON-LD(WebSite, FAQPage, Organization) 자동 제거 (2026-02-24)
-6. **sitemap.xml 생성**: 모든 페이지에 `<lastmod>` 포함 (블로그: published_at, 기타: 빌드일)
-7. **rss.xml 생성**: 블로그 최신 50개 포스트를 RSS 2.0 형식으로 생성 (2026-02-24)
-8. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
+6. **robots 태그 오버라이드**: 템플릿 `index.html`의 `noindex` → 프리렌더 페이지에서 `index,follow`로 교체. 비프리렌더 동적 페이지(login, payment, result 등)는 `noindex`가 유지되어 검색엔진에 색인되지 않음 (2026-03-05)
+7. **sitemap.xml 생성**: 모든 페이지에 `<lastmod>` 포함 (블로그: published_at, 기타: 빌드일)
+8. **rss.xml 생성**: 블로그 최신 50개 포스트를 RSS 2.0 형식으로 생성 (2026-02-24)
+9. Vercel은 **정적 파일 > rewrites** 우선순위이므로 추가 설정 불필요
 
 ### 환경변수
 - `VITE_SUPABASE_PROJECT_ID`: Supabase URL 구성에 사용
@@ -637,6 +644,7 @@ VALUES (
 
 | 날짜 | 변경 내용 |
 |------|----------|
+| 2026-03-05 | **네이버 SEO 경고 32건 근본 원인 수정** - 중복 description 16건: `index.html` robots `noindex` + `prerender.mjs`에서 프리렌더 페이지만 `index,follow` 오버라이드 (비프리렌더 동적 페이지 색인 차단). alt 누락 16건: eye-icon `alt=""` → `alt="조회수"` (FreeContentDetailComponents, MasterContentDetailPage, HomePage/HomeScreenNew). 프리렌더 빌드 + 프로덕션 배포 (254 URL), IndexNow/사이트맵 재제출 |
 | 2026-03-04 | **롱테일 키워드 블로그 7개 추가** (총 24→31개) - 생년월일운세, 사주연애운/결혼시기, 이직운세/재물운, 타로카드뽑기, 사주궁합, 오늘타로운세/연애타로, 비대면사주/온라인사주. migration: `20260304_add_longtail_blog_posts.sql` |
 | 2026-03-03 | **SEO 메타 태그 최적화** - 홈페이지 + 블로그 title/description 키워드 강화 |
 | 2026-02-25 | **Google Search Console 색인 문제 수정** - robots.txt `Disallow: /terms`가 `/terms-of-service` 차단하는 버그 수정 (`Allow: /terms-of-service` 추가), Edge Function sitemap `/manse` priority 0.6→0.8 + lastmod 추가 (prerender와 정합성) |

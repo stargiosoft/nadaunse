@@ -1,8 +1,8 @@
 # Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 40개
-> **최종 업데이트**: 2026-03-04
+> **총 함수 수**: 41개
+> **최종 업데이트**: 2026-03-05
 > **환경 정보 / 배포 방법**: [CLAUDE.md](../CLAUDE.md) 참조
 
 ---
@@ -25,6 +25,7 @@
 | AI 콘텐츠 생성 | 10개 | OpenAI GPT, Gemini |
 | 주간 보고서 | 4개 | GPT-5.1, pg_cron, TalkDream |
 | 쿠폰 관리 | 4개 | Supabase DB |
+| 미션 리워드 | 1개 | PostgreSQL Function |
 | 마스터 콘텐츠 관리 | 2개 | OpenAI, Gemini 통합 |
 | 알림 | 1개 | TalkDream API (카카오 알림톡) |
 | 사용자 관리 | 1개 | JWT 인증, RLS |
@@ -39,7 +40,7 @@
 | 공유 리워드 | 2개 | 레퍼럴 처리, 리워드 상태 조회 |
 | 사주/타로 상담 | 2개 | GPT-4.1-mini, 1:1 상담 |
 
-**총 40개**
+**총 41개**
 
 ---
 
@@ -75,16 +76,21 @@ generate-master-content (백그라운드)
 ### 쿠폰 플로우
 
 ```
-미션 완료 (태그 5개 이상)
-    ↓
-issue-revisit-coupon (미션성공쿠폰 발급)
-    ※ tag_count >= 5 → 미션성공쿠폰 / tag_count < 5 → 미발급
-
 결제 시
     ↓
 get-available-coupons → apply-coupon-to-order
 
 ※ issue-welcome-coupon: 현재 비활성화 (A/B 가격 테스트 기간)
+※ issue-revisit-coupon: 비활성화 (grant-mission-sprout으로 대체)
+```
+
+### 미션 리워드 플로우
+
+```
+태그 5개 이상 달성 (CheckRecordMe.tsx)
+    ↓
+grant-mission-sprout → process_mission_reward RPC
+    → 새싹 30개 지급 (중복 방지: sprout_transactions에서 기존 reward 체크)
 ```
 
 ### 나다움 보고서 (주간 보고서) 플로우
@@ -99,7 +105,7 @@ MyReportList → MyReportWeekly → ReportWeeklyDetail → ReportWeeklyTarot
 ReportWeeklyTarotResult → ReportWeeklyMindCare → ReportWeeklyMemo
     │  └─ 저장 시 my_report_cache 삭제 (캐시 무효화)
     ↓
-CompletionCoupon: 미션 쿠폰 발급 (tag_count >= 5인 경우만)
+"완료" → /my-report-list로 이동 (미션 리워드는 CheckRecordMe에서 처리)
 ```
 
 **캐시 무효화 지점**: `ReportWeeklyMemo.tsx` (응원글 저장 시), `ReportWeeklyMemoEdit` (응원글 수정 시)
@@ -229,9 +235,9 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 **주의사항**: 중복 발급 방지
 
 #### `issue-revisit-coupon`
-**목적**: 미션성공쿠폰 발급 (보고서 완료 시, tag_count >= 5)
+**목적**: ~~미션성공쿠폰 발급~~ → 비활성화 (`grant-mission-sprout`으로 대체)
 **파라미터**: `user_id`, `source_order_id` (weekly_reports.id)
-**주의사항**: 서버 사이드 `weekly_reports.tag_count >= 5` 검증, tag_count < 5 → 403, 중복 → 409
+**주의사항**: 프론트엔드에서 더 이상 호출하지 않음. Edge Function은 유지
 
 #### `apply-coupon-to-order`
 **목적**: 주문에 쿠폰 적용 (사용 처리)
@@ -397,6 +403,16 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 
 ---
 
+### 미션 리워드 (1개)
+
+#### `grant-mission-sprout`
+**목적**: 태그 5개 달성 시 새싹 30개 리워드 지급 (JWT 필수)
+**파라미터**: `user_id`
+**호출**: `process_mission_reward` RPC (SECURITY DEFINER, 중복 방지)
+**주의사항**: `sprout_transactions`에서 기존 `reward` 레코드 체크 → 이미 지급 시 `{ success: false, already_granted: true }` 반환
+
+---
+
 ### 사주/타로 상담 (2개)
 
 #### `generate-saju-consult`
@@ -476,7 +492,8 @@ process-refund → PortOne 환불 API → orders.pstatus='refunded' + 쿠폰 복
 | `extract-trait-tags` | AI 생성 | POST | GPT-5-nano | 운세 결과 페이지 진입 시 |
 | `get-available-coupons` | 쿠폰 | GET | - | 결제 페이지 진입 |
 | `issue-welcome-coupon` | 쿠폰 | POST | - | 회원가입 후 |
-| `issue-revisit-coupon` | 쿠폰 | POST | - | 보고서 완료 시 미션 쿠폰 (tag>=5) |
+| `issue-revisit-coupon` | 쿠폰 | POST | - | ~~보고서 완료 시 미션 쿠폰~~ (비활성화) |
+| `grant-mission-sprout` | 미션 리워드 | POST | - | 태그 5개 달성 시 새싹 30 지급 |
 | `apply-coupon-to-order` | 쿠폰 | POST | - | 결제 완료 후 |
 | `users` | 사용자 | POST | - | OAuth 콜백 |
 | `master-content` | 관리 | POST | - | 콘텐츠 생성 |
@@ -544,4 +561,4 @@ npm run deploy:staging       # 스테이징 전체 배포
 
 ---
 
-**최종 업데이트**: 2026-03-04
+**최종 업데이트**: 2026-03-05

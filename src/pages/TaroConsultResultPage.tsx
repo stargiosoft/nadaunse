@@ -560,6 +560,7 @@ export function TaroConsultResultPage() {
                       items={recommendedItems}
                       onMoreClick={() => navigate('/saju-consult/result/recommended')}
                       onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
+                      hidePrice
                     />
                   </div>
                 </div>

@@ -7,6 +7,44 @@
 
 ---
 
+## 2026-03-05 태그 5개 달성 새싹 30개 리워드 전환 (미션 쿠폰 제거)
+
+### 배경
+기존: 태그 5개 달성 → 미션 쿠폰(12,900원) 발급 → 보고서 응원글 후 CompletionCoupon 페이지
+새싹 포인트 기반 결제로 전환 후 쿠폰 의미 퇴색.
+
+### 결정
+- **태그 5개 달성 시 새싹 30개 즉시 지급** (`grant-mission-sprout` Edge Function + `process_mission_reward` RPC)
+- **보고서 응원글 "완료" → 항상 `/my-report-list`로 이동** (CompletionCoupon 제거)
+- **중복 방지**: `sprout_transactions`에서 `transaction_type = 'reward'` 레코드 체크
+
+### 파일
+- `supabase/migrations/20260305_add_mission_reward_rpc.sql` — RPC 생성
+- `supabase/functions/grant-mission-sprout/index.ts` — Edge Function
+- `src/components/CheckRecordMe.tsx` — hasMissionCoupon → hasMissionReward, Edge Function 호출
+- `src/App.tsx` — ReportWeeklyMemoWrapper 단순화, ReportCompletionWrapper/route 제거
+- `src/components/CompletionCoupon.tsx` — 삭제
+
+---
+
+## 2026-03-05 홈 고도화 DB 연동 + 추천 콘텐츠 동적화
+
+### 배경
+홈 화면(HomeScreenNew.tsx)이 Figma Make 코드 이관 후 하드코딩 상태였음.
+
+### 결정
+- **홈 화면 실시간 DB 연동**: `useNewFreeContents()`, `useBestContents()` 훅으로 DB에서 콘텐츠 로딩
+- **추천 콘텐츠 동적화**: `consultRecommendationService.ts` 서비스로 상담 결과 페이지 추천 콘텐츠 DB 기반 로딩
+- **Edge Function 업데이트**: `generate-saju-consult`, `generate-tarot-consult` 실서비스 연동
+
+### 파일
+- `src/pages/HomeScreenNew.tsx` — DB 연동, 클릭 핸들러
+- `src/lib/consultRecommendationService.ts` — 추천 콘텐츠 서비스 (신규)
+- `src/components/RecommendedCarousel.tsx` — 동적 추천 로딩
+- `src/pages/SajuConsultResultPage.tsx`, `TaroConsultResultPage.tsx` — 동적 추천
+
+---
+
 ## 2026-03-05 비회원 사주/타로 상담 체험 (Fingerprint 기반 1회 제한)
 
 ### 배경

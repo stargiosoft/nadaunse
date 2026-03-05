@@ -321,10 +321,10 @@ chore:    기타 변경
 | **[DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md)** | 테이블 구조, 타입, 제약조건, 인덱스 |
 | **[RLS_POLICIES.md](./supabase/RLS_POLICIES.md)** | 9개 테이블 26개 RLS 정책 |
 | **[DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | Triggers, Functions, pg_cron Jobs |
-| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | 38개 Edge Function 목록, 배포 방법 |
+| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | 41개 Edge Function 목록, 배포 방법 |
 | **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 분류, 파일 위치, shadcn/ui |
 | **[★SECURITY★.md](./src/docs/★SECURITY★.md)** | CORS, CSP, 보안 헤더, 에러 처리 |
 
 ---
 
-**최종 업데이트**: 2026-03-03
+**최종 업데이트**: 2026-03-05

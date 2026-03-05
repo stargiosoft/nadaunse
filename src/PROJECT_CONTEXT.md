@@ -3,7 +3,7 @@
 > **AI 디버깅 전용 컨텍스트 파일**
 > 버그 발생 시 AI에게 가장 먼저 제공해야 하는 프로젝트 뇌(Brain)
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-03
+> **최종 업데이트**: 2026-03-05
 
 ---
 
@@ -137,14 +137,13 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 │  → OpenAI API → weekly_reports + sections 저장 + 타로 카드 사전 선택         │
 │  [열람] MyReportList → ReportWeeklyDetail → ReportWeeklyTarot (1회)         │
 │  → ReportWeeklyTarotResult → ReportWeeklyMindCare → ReportWeeklyMemo       │
-│  → CompletionCoupon (tag_count>=5만)                                        │
+│  → "완료" 버튼 → /my-report-list로 이동                                    │
 │  [다시보기] Detail → TarotResult(셔플 스킵) → MindCare → Memo(view)         │
 │  [응원글 수정] ReportWeeklyMemoEdit → my_report_cache 삭제                   │
 │                                                                              │
 │  관련 파일:                                                                  │
 │  • /components/MyReportList.tsx, ReportWeekly{Detail,Tarot,TarotResult}.tsx │
 │  • /components/ReportWeekly{MindCare,Memo,MemoEdit}.tsx                     │
-│  • /components/CompletionCoupon.tsx                                          │
 │  관련 테이블: weekly_reports, weekly_report_sections,                        │
 │    report_tarot_selections, user_trait_tags                                  │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -187,7 +186,7 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 ### 🎯 기능별 빠른 참조 (Quick Reference by Feature)
 
 <details>
-<summary><b>홈 고도화 (홈 리디자인) - 11페이지 + 4유틸</b></summary>
+<summary><b>홈 고도화 (홈 리디자인) - 11페이지 + 5유틸</b></summary>
 
 ```
 /pages/HomeScreenNew.tsx               → 홈 화면 (라우트: /)
@@ -204,10 +203,11 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 /components/TextareaInput.tsx          → 상담 입력 텍스트 영역
 /components/RecommendedCarousel.tsx    → 결과 페이지 추천 캐러셀
 /lib/consultStatus.ts                  → 상담 상태 localStorage 관리 (idle/completed, 일별 초기화)
+/lib/consultRecommendationService.ts   → 상담 결과 추천 콘텐츠 동적 로딩 서비스
 /hooks/useScrollDirection.ts           → 스크롤 방향 감지 훅 (RAF 기반)
 ```
 
-**소스**: Figma Make 퍼블리싱 코드 이관 (UI 셸만, 비즈니스 로직 미연동)
+**소스**: Figma Make 퍼블리싱 코드 이관 → DB 연동 완료 (실시간 콘텐츠 로딩)
 **에셋**: `public/home-v2/` (PNG 18개), `src/imports/svg-*.ts` (13개), Lottie JSON 1개
 </details>
 
@@ -267,7 +267,7 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 </details>
 
 <details>
-<summary><b>나다움 보고서 (주간 보고서) - 8개</b></summary>
+<summary><b>나다움 보고서 (주간 보고서) - 7개</b></summary>
 
 ```
 /components/MyReportList.tsx            → 나의 분석 보고서 목록 + UI (병합됨)
@@ -277,7 +277,6 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 /components/ReportWeeklyMindCare.tsx    → 마음 챙김 메시지 (AI 생성)
 /components/ReportWeeklyMemo.tsx        → 나에게 응원 한마디 입력
 /components/ReportWeeklyMemoEdit.tsx    → 응원글 수정
-/components/CompletionCoupon.tsx        → 쿠폰 발급 완료 페이지
 ```
 
 **주요 패턴**:
@@ -624,6 +623,6 @@ Cache: Memory(Map) → Cache API → localStorage → sessionStorage (상세: CL
 
 ---
 
-**문서 버전**: 4.0.0
-**최종 업데이트**: 2026-03-03
+**문서 버전**: 4.1.0
+**최종 업데이트**: 2026-03-05
 **문서 끝**

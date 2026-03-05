@@ -25,6 +25,10 @@ Thumbs.db
 testsprite_tests/
 tmpclaude-*
 env.local
+check_dupes*
+cleanup_dupes*
+deploy_edge_functions*
+mightymeld.json
 
 # Supabase CLI cache
 supabase/.temp/
