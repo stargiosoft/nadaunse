@@ -104,6 +104,29 @@ serve(async (req) => {
       }
     }
 
+    // ⭐ 로그인 유저 하루 1회 제한 (user_consult_daily 테이블)
+    if (userId) {
+      console.log('🔒 [Edge Function] 로그인 유저 일일 상담 제한 체크')
+
+      const { data: existingConsult, error: consultCheckError } = await supabase
+        .from('user_consult_daily')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('consult_type', 'saju')
+        .eq('consulted_date', new Date().toISOString().slice(0, 10))
+        .maybeSingle()
+
+      if (consultCheckError) {
+        console.warn('⚠️ [Edge Function] user_consult_daily 조회 실패:', consultCheckError)
+      } else if (existingConsult) {
+        console.log('🚫 [Edge Function] 로그인 유저 일일 상담 제한 도달 → DAILY_CONSULT_LIMIT')
+        return new Response(
+          JSON.stringify({ success: false, error: 'DAILY_CONSULT_LIMIT' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     // 사주 정보 조회 (로그인 vs 게스트 분기)
     let questionerInfo = ''
     let birthDateStr = ''
@@ -394,6 +417,21 @@ ${fullQuestionerInfo}
     console.log('✅ [Edge Function] 사주 상담 답변 생성 완료')
     console.log('📌 [Edge Function] keyword:', parsedResult.todayCore.keyword)
     console.log('📌 [Edge Function] point:', parsedResult.todayCore.point)
+
+    // 로그인 유저 일일 상담 기록 저장
+    if (userId) {
+      const { error: insertDailyError } = await supabase
+        .from('user_consult_daily')
+        .upsert(
+          { user_id: userId, consult_type: 'saju', consulted_date: new Date().toISOString().slice(0, 10) },
+          { onConflict: 'user_id,consult_type,consulted_date' }
+        )
+      if (insertDailyError) {
+        console.warn('⚠️ [Edge Function] user_consult_daily INSERT 실패:', insertDailyError)
+      } else {
+        console.log('✅ [Edge Function] 로그인 유저 일일 상담 기록 저장 완료')
+      }
+    }
 
     // 응답 반환
     const responseData = {

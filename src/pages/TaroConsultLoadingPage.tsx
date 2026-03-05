@@ -74,6 +74,13 @@ export function TaroConsultLoadingPage() {
           return;
         }
 
+        // 로그인 유저 일일 제한
+        if (data?.error === 'DAILY_CONSULT_LIMIT') {
+          toast.error('타로 상담은 하루에 한 번 이용할 수 있어요.');
+          navigate('/taro-consult', { replace: true });
+          return;
+        }
+
         if (error || !data?.success || !data?.result) {
           console.error('[TaroConsultLoading] API 오류:', error || data?.error);
           toast.error('상담 결과를 생성하지 못했어요. 다시 시도해주세요.');
