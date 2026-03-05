@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import svgPaths from "../imports/svg-0762m0vok8";
 import { SessionExpiredDialog } from './SessionExpiredDialog';
@@ -33,12 +34,16 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
   const sajuInfo = location.state?.sajuInfo || null; // ⭐ 케밥 메뉴에서 전달받은 사주 정보
   const returnTo = location.state?.returnTo || null; // ⭐ 돌아갈 경로
 
+  // ⭐ 프로필에서 진입했는지 확인 (탈퇴하기 표시 여부)
+  const fromProfile = location.state?.fromProfile === true;
   // ⭐ 유료 콘텐츠 플로우에서 진입했는지 확인 (SajuSelectPage에서 본인 사주 수정)
   const isFromPaidContent = returnTo?.includes('/saju-select') || false;
 
   // ⭐ sajuInfo 또는 sajuData가 있으면 편집 모드로 간주
   const isEditMode = !!(sajuInfo || (editMode && sajuData));
   const editingSaju = sajuInfo || sajuData; // 수정할 사주 정보
+  // ⭐ 내 사주 수정 여부 (관계 필드 숨김, 탈퇴하기 표시)
+  const isMySajuEdit = isEditMode && editingSaju?.notes === '본인';
 
   // ⭐ 편집 모드일 때 초기 gender 값을 미리 계산 (애니메이션 깜빡임 방지)
   const getInitialGender = (): 'female' | 'male' => {
@@ -55,9 +60,16 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
   const [birthTime, setBirthTime] = useState('');
   const [unknownTime, setUnknownTime] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [relationship, setRelationship] = useState('');
+  const [tempRelationship, setTempRelationship] = useState('');
+  const [showRelationshipPicker, setShowRelationshipPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+
+  const dragControls = useDragControls();
+
+  const relationshipOptions = ['연인', '가족', '친구', '지인', '동료', '기타'];
 
   // 이름 필드에 자동 포커스를 위한 ref
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -150,6 +162,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         return numbers;
       };
       setPhoneNumber(formatPhoneNumber(dataToLoad.phone_number || ''));
+      setRelationship(dataToLoad.notes || '본인');
     }
   }, [isEditMode, editingSaju]);
 
@@ -474,7 +487,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         
         const { error } = await supabase
           .from('saju_records')
-          .update(sajuPayload)
+          .update({ ...sajuPayload, notes: relationship || '본인' })
           .eq('id', editingSaju.id);
 
         if (error) throw error;
@@ -506,7 +519,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
           .insert({
             user_id: user.id,
             ...sajuPayload,
-            notes: shouldBePrimary ? '본인' : '',
+            notes: relationship || '본인',
             is_primary: shouldBePrimary
           });
 
@@ -717,8 +730,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                 </div>
               </div>
             </div>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors shrink-0 w-full ${
-              errors.name 
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors shrink-0 w-full ${
+              errors.name
                 ? 'bg-white border-[#FF0000]' 
                 : name.length > 0 
                   ? 'bg-white border-[#48b2af]' 
@@ -739,7 +752,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                     placeholder="예: 홍길동"
                     inputMode="text"
                     autoComplete="off"
-                    className="basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7]"
+                    className="basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] placeholder:text-[15px]"
                     ref={nameInputRef}
                   />
                 </div>
@@ -759,7 +772,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
 
           {/* 성별 */}
           <motion.div 
-            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mt-[36px]"
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mt-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -772,16 +785,16 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                 </div>
               </div>
             </div>
-            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px] w-full overflow-hidden isolate">
+            <div className="bg-[#f8f8f8] rounded-[20px] p-[8px] w-full overflow-hidden isolate">
               <div className="flex gap-[8px] w-full">
                 <button
                   onClick={() => setGender('female')}
-                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
+                  className="flex-1 h-[48px] rounded-[17px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
                   {gender === 'female' && (
                     <motion.div
                       layoutId="gender-selection-indicator"
-                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[17px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -801,12 +814,12 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                 </button>
                 <button
                   onClick={() => setGender('male')}
-                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
+                  className="flex-1 h-[48px] rounded-[17px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
                   {gender === 'male' && (
                     <motion.div
                       layoutId="gender-selection-indicator"
-                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[17px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -830,7 +843,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
 
           {/* 생년월일 */}
           <motion.div 
-            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mt-[36px]"
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mt-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -843,8 +856,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                 </div>
               </div>
             </div>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors shrink-0 w-full ${
-              errors.birthDate 
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors shrink-0 w-full ${
+              errors.birthDate
                 ? 'bg-white border-[#FF0000]' 
                 : birthDate.length > 0
                   ? 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
@@ -864,7 +877,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                     }
                   }}
                   placeholder="예: 1992-07-15 (양력)"
-                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] w-full ${
+                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] placeholder:text-[15px] w-full ${
                     isValidDate(birthDate) ? 'text-transparent focus:text-[#151515]' : 'text-[#151515]'
                   }`}
                 />
@@ -894,7 +907,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
 
           {/* 태어난 시간 */}
           <motion.div 
-            className="content-stretch flex gap-[24px] items-start relative shrink-0 w-full mt-[36px]"
+            className="content-stretch flex gap-[24px] items-start relative shrink-0 w-full mt-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -908,7 +921,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                   </div>
                 </div>
               </div>
-              <div className={`h-[48px] relative rounded-[12px] border transition-colors shrink-0 w-full ${
+              <div className={`h-[56px] relative rounded-[20px] border transition-colors shrink-0 w-full ${
                 unknownTime
                   ? 'bg-[#f5f5f5] border-[#e7e7e7]' 
                   : errors.birthTime
@@ -935,7 +948,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                       disabled={unknownTime}
                       inputMode="numeric"
                       autoComplete="off"
-                      className="basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] disabled:text-[#b7b7b7]"
+                      className="basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] placeholder:text-[15px] disabled:text-[#b7b7b7]"
                       ref={birthTimeInputRef}
                     />
                   </div>
@@ -971,7 +984,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
 
           {/* 휴대폰 번호 */}
           <motion.div 
-            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mt-[36px]"
+            className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full mt-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -986,8 +999,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                 </div>
               </div>
             </div>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors shrink-0 w-full ${
-              errors.phoneNumber 
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors shrink-0 w-full ${
+              errors.phoneNumber
                 ? 'bg-white border-[#FF0000]' 
                 : phoneNumber.length > 0
                   ? 'bg-white border-[#48b2af]' 
@@ -1002,7 +1015,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                     placeholder="'-' 하이픈 없이 숫자만 입력해 주세요"
                     inputMode="numeric"
                     autoComplete="off"
-                    className="basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7]"
+                    className="basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[16px] tracking-[-0.45px] bg-transparent outline-none placeholder:text-[#b7b7b7] placeholder:text-[15px]"
                   />
                 </div>
               </div>
@@ -1019,8 +1032,51 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
             </div>
           </motion.div>
 
-          {/* 탈퇴하기 - returnTo가 없을 때만 표시 (프로필에서 유입) */}
-          {!returnTo && !sajuInfo && (
+          {/* 관계 - 내 사주 수정 시 숨김 */}
+          {!isMySajuEdit && <motion.div
+            className="flex flex-col gap-[0px] w-full mt-[28px]"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+            }}
+          >
+            <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">관계</label>
+            <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+              <div className="relative shrink-0 w-full">
+                <div className="flex flex-row items-center size-full">
+                  <div className="content-stretch flex items-center px-[4px] py-0 relative w-full" />
+                </div>
+              </div>
+              <div className="content-stretch flex flex-col gap-[8px] items-end relative shrink-0 w-full">
+                <div className="content-stretch flex gap-[12px] items-center relative shrink-0 w-full">
+                  <div
+                    className="basis-0 grow min-h-px min-w-px relative shrink-0 cursor-pointer"
+                    onClick={() => { setTempRelationship(relationship); setShowRelationshipPicker(true); }}
+                  >
+                    <div className="flex flex-row items-center justify-start size-full">
+                      <div className="content-stretch flex items-center justify-start px-[5px] py-0 relative w-full">
+                        <p className={`basis-0 font-normal grow leading-[20px] min-h-px min-w-px relative shrink-0 text-[15px] tracking-[-0.45px] pt-[4px] ${relationship ? 'text-[#151515]' : 'text-[#b7b7b7]'}`}>
+                          {relationship || '관계를 선택해 주세요'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setTempRelationship(relationship); setShowRelationshipPicker(true); }}
+                    className="bg-transparent content-stretch flex h-[38px] items-center justify-center px-[12px] py-0 relative rounded-[12px] shrink-0 w-[80px] border border-[#e7e7e7] cursor-pointer group transition-colors active:bg-gray-100"
+                  >
+                    <p className="font-medium leading-[20px] relative shrink-0 text-[#525252] text-[14px] text-nowrap tracking-[-0.42px] transition-transform group-active:scale-96" style={{ paddingTop: '2px' }}>선택</p>
+                  </button>
+                </div>
+                <div className="h-0 relative shrink-0 w-full">
+                  <div className="absolute inset-[-0.5px_0] h-[1px] bg-[#f3f3f3]" />
+                </div>
+              </div>
+            </div>
+          </motion.div>}
+
+          {/* 탈퇴하기 - 프로필에서 진입했을 때만 표시 */}
+          {fromProfile ? (
             <motion.div
               onClick={handleWithdraw}
               className="content-stretch flex flex-col h-[34px] items-center justify-center px-[8px] py-0 rounded-[12px] mt-[24px] cursor-pointer"
@@ -1038,7 +1094,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
                 </div>
               </div>
             </motion.div>
-          )}
+          ) : null}
         </motion.div>
 
         {/* Bottom Button */}
@@ -1048,8 +1104,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
               <div className="content-stretch flex flex-col items-center justify-center px-[20px] py-[12px] relative w-full">
                 <motion.div
                   onClick={handleSave}
-                  className={`${isFormValid() && !isSaving ? 'bg-[#48b2af] cursor-pointer active:bg-[#3a9794]' : 'bg-[#f8f8f8] cursor-not-allowed'} h-[56px] relative rounded-[16px] shrink-0 w-full transition-colors`}
-                  whileTap={isFormValid() && !isSaving ? { scale: 0.96 } : {}}
+                  className={`${isFormValid() && !isSaving ? 'bg-[#48b2af] cursor-pointer active:bg-[#3a9794]' : 'bg-[#f8f8f8] cursor-not-allowed'} h-[56px] relative rounded-[20px] shrink-0 w-full transition-colors`}
+                  whileTap={isFormValid() && !isSaving ? { scale: 0.99 } : {}}
                   transition={{ duration: 0.1, ease: "easeInOut" }}
                   style={{ transformOrigin: "center" }}
                 >
@@ -1067,6 +1123,109 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         </div>
       </div>
       <SessionExpiredDialog isOpen={isSessionExpired} />
+
+      {/* 관계 선택 Bottom Sheet */}
+      {createPortal(
+        <AnimatePresence>
+          {showRelationshipPicker && (
+            <div className="fixed inset-0 z-[9999] pointer-events-none">
+              {/* Backdrop */}
+              <motion.div
+                className="fixed inset-0 touch-none pointer-events-auto"
+                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                onClick={() => setShowRelationshipPicker(false)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              />
+
+              {/* Bottom Sheet */}
+              <motion.div
+                className="fixed bottom-0 left-0 right-0 w-full max-w-[440px] mx-auto bg-white flex flex-col pointer-events-auto z-[10000]"
+                style={{ borderRadius: '24px 24px 0 0' }}
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                drag="y"
+                dragControls={dragControls}
+                dragListener={false}
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(_, info) => { if (info.offset.y > 80) setShowRelationshipPicker(false); }}
+              >
+                {/* Handle */}
+                <div
+                  className="flex items-center justify-center py-[12px] cursor-grab active:cursor-grabbing touch-none"
+                  onPointerDown={(e) => dragControls.start(e)}
+                >
+                  <div className="w-[48px] h-[4px] bg-[#d4d4d4] rounded-full" />
+                </div>
+
+                {/* Header */}
+                <div className="flex items-center px-[32px]" style={{ paddingBottom: '16px', paddingTop: '14px' }}>
+                  <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '18px', fontWeight: 600, lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#000000' }}>
+                    관계 선택
+                  </p>
+                </div>
+
+                {/* Options List */}
+                <div className="flex flex-col gap-[8px] px-[24px] pb-[32px]">
+                  {relationshipOptions.map((option, index) => (
+                    <div key={option}>
+                      <div
+                        className="flex gap-[6px] items-center w-full cursor-pointer"
+                        onClick={() => setTempRelationship(option)}
+                      >
+                        {/* Radio - 좌측 */}
+                        <div className="flex items-center justify-center shrink-0 size-[36px]">
+                          {tempRelationship === option ? (
+                            <div className="flex items-center justify-center rounded-full shrink-0 size-[20px] border-[6px]" style={{ borderColor: '#48b2af' }} />
+                          ) : (
+                            <div className="rounded-full shrink-0 size-[20px] border-2 bg-white" style={{ borderColor: '#e7e7e7' }} />
+                          )}
+                        </div>
+                        {/* Text - 우측 */}
+                        <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '15px', fontWeight: 400, lineHeight: '20px', letterSpacing: '-0.45px', color: '#151515' }}>
+                          {option}
+                        </p>
+                      </div>
+                      {index < relationshipOptions.length - 1 && (
+                        <div className="w-full h-[1px] bg-[#f8f8f8] mt-[8px]" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Buttons */}
+                <div className="sticky bottom-0 w-full z-20 bg-white shadow-[0px_-8px_16px_0px_rgba(255,255,255,0.76)] px-[20px] pt-[12px] pb-[calc(20px+env(safe-area-inset-bottom))]">
+                  <div className="flex gap-[12px] w-full">
+                    <motion.button
+                      onClick={() => setShowRelationshipPicker(false)}
+                      className="flex-1 h-[56px] bg-[#f0f8f8] flex items-center justify-center cursor-pointer"
+                      style={{ borderRadius: '20px' }}
+                      whileTap={{ scale: 0.99, backgroundColor: '#E4F7F7' }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    >
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#48b2af' }}>취소</span>
+                    </motion.button>
+                    <motion.button
+                      onClick={() => { setRelationship(tempRelationship); setShowRelationshipPicker(false); }}
+                      className="flex-1 h-[56px] bg-[#48b2af] flex items-center justify-center cursor-pointer"
+                      style={{ borderRadius: '20px' }}
+                      whileTap={{ scale: 0.99, backgroundColor: '#368d8a' }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    >
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: '#ffffff' }}>선택 완료</span>
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

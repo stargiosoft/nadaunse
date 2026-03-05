@@ -1966,7 +1966,7 @@ function ProfilePageWrapper() {
       onNavigateToTermsOfService={() => navigate('/terms-of-service', { state: { canGoBack: true } })}
       onNavigateToPrivacyPolicy={() => navigate('/privacy-policy', { state: { canGoBack: true } })}
       onNavigateToPurchaseHistory={() => navigate('/purchase-history', { state: { canGoBack: true } })}
-      onNavigateToSajuInput={() => navigate('/saju/input', { state: { canGoBack: true } })}
+      onNavigateToSajuInput={() => navigate('/saju/input', { state: { canGoBack: true, fromProfile: true } })}
       onNavigateToSajuManagement={() => navigate('/saju/management', { state: { canGoBack: true } })}
       onNavigateToManse={() => navigate('/manse', { state: { canGoBack: true } })}
       onNavigateToBlog={() => navigate('/blog', { state: { canGoBack: true } })}
@@ -3042,12 +3042,12 @@ function SajuManagementPageWrapper() {
   return (
     <SajuManagementPage
       onBack={goBack}
-      onNavigateToInput={() => navigate('/saju/input', { replace: true })}
+      onNavigateToInput={() => navigate('/saju/input', { replace: true, state: { returnTo: '/saju/management' } })}
       onNavigateToAdd={() => navigate('/saju/add', { replace: true })}
       onEditMySaju={(sajuInfo) => {
         // 내 사주 수정 → SajuInputPage로 이동 (편집 모드)
         // ⭐ replace: true로 히스토리 교체 → iOS 스와이프 뒤로가기 정상 동작
-        navigate('/saju/input', { replace: true, state: { editMode: true, sajuData: sajuInfo, returnTo: '/saju/management' } });
+        navigate('/saju/input', { replace: true, state: { editMode: true, sajuData: sajuInfo, returnTo: '/saju/management', fromProfile: true } });
       }}
       onEditOtherSaju={(sajuInfo) => {
         // 함께 보는 사주 수정 → SajuAddPage로 이동 (편집 모드)

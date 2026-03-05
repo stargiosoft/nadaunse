@@ -515,7 +515,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         >
           {/* 이름 */}
           <motion.div 
-            className="flex flex-col gap-[4px] mb-[32px] w-full"
+            className="flex flex-col gap-[4px] mb-[28px] w-full"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -524,8 +524,8 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               이름
             </label>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors w-full ${
-              errors.name 
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors w-full ${
+              errors.name
                 ? 'bg-white border-[#FF0000]' 
                 : name.length > 0 
                   ? 'bg-white border-[#48b2af]' 
@@ -543,7 +543,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     }
                   }}
                   placeholder="예: 홍길동"
-                  className="flex-1 text-[16px] text-[#151515] leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[#b7b7b7] w-full"
+                  className="flex-1 text-[16px] text-[#151515] leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[#b7b7b7] placeholder:text-[15px] w-full"
                   ref={nameInputRef}
                 />
               </div>
@@ -555,7 +555,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
 
           {/* 성별 */}
           <motion.div 
-            className="flex flex-col gap-[4px] mb-[32px] w-full"
+            className="flex flex-col gap-[4px] mb-[28px] w-full"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -564,16 +564,16 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               성별
             </label>
-            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px] w-full overflow-hidden isolate">
+            <div className="bg-[#f8f8f8] rounded-[20px] p-[8px] w-full overflow-hidden isolate">
               <div className="flex gap-[8px] w-full">
                 <button
                   onClick={() => setGender('female')}
-                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
+                  className="flex-1 h-[48px] rounded-[17px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
                   {gender === 'female' && (
                     <motion.div
                       layoutId="gender-selection-indicator"
-                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[17px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -593,12 +593,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                 </button>
                 <button
                   onClick={() => setGender('male')}
-                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
+                  className="flex-1 h-[48px] rounded-[17px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
                   {gender === 'male' && (
                     <motion.div
                       layoutId="gender-selection-indicator"
-                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[17px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -622,7 +622,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
 
           {/* 생년월일 */}
           <motion.div 
-            className="flex flex-col gap-[4px] mb-[32px] w-full"
+            className="flex flex-col gap-[4px] mb-[28px] w-full"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -631,8 +631,8 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               생년월일 (양력 기준으로 입력해 주세요)
             </label>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors w-full ${
-              errors.birthDate 
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors w-full ${
+              errors.birthDate
                 ? 'bg-white border-[#FF0000]' 
                 : birthDate.length > 0
                   ? 'bg-white border-[#e7e7e7] focus-within:border-[#48b2af]' 
@@ -652,7 +652,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     }
                   }}
                   placeholder="예: 1992-07-15 (양력)"
-                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] w-full ${
+                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] placeholder:text-[15px] w-full ${
                     isValidDate(birthDate) ? 'text-transparent focus:text-[#151515]' : 'text-[#151515]'
                   }`}
                 />
@@ -682,7 +682,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
 
           {/* 태어난 시간 */}
           <motion.div 
-            className="flex gap-[24px] items-start mb-[32px] w-full"
+            className="flex gap-[24px] items-start mb-[28px] w-full"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -692,7 +692,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
               <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
                 태어난 시간
               </label>
-              <div className={`h-[48px] relative rounded-[12px] border transition-colors w-full ${
+              <div className={`h-[56px] relative rounded-[20px] border transition-colors w-full ${
                 unknownTime
                   ? 'bg-[#f5f5f5] border-[#e7e7e7]' 
                   : errors.birthTime
@@ -719,9 +719,9 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
                     placeholder={unknownTime ? "오후 12:00" : "예: 21:00"}
                     disabled={unknownTime}
                     className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent min-w-0 w-full ${
-                      unknownTime 
-                        ? 'text-[#b7b7b7] placeholder:text-[#b7b7b7]' 
-                        : 'text-[#151515] placeholder:text-[#b7b7b7]'
+                      unknownTime
+                        ? 'text-[#b7b7b7] placeholder:text-[#b7b7b7] placeholder:text-[15px]'
+                        : 'text-[#151515] placeholder:text-[#b7b7b7] placeholder:text-[15px]'
                     }`}
                   />
                 </div>
@@ -839,9 +839,9 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
             <button
               onClick={handleSave}
               disabled={!isFormValid() || isSaving}
-              className={`w-full h-[56px] rounded-[16px] flex items-center justify-center transition-all ${
+              className={`w-full h-[56px] rounded-[20px] flex items-center justify-center transition-all ${
                 isFormValid() && !isSaving
-                  ? 'bg-[#48b2af] text-white cursor-pointer hover:bg-[#3a9794] active:scale-96 active:bg-[#3a9794]'
+                  ? 'bg-[#48b2af] text-white cursor-pointer hover:bg-[#3a9794] active:scale-99 active:bg-[#3a9794]'
                   : 'bg-[#f8f8f8] text-[#b7b7b7] cursor-not-allowed'
               }`}
             >
