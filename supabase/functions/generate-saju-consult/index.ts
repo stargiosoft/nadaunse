@@ -267,11 +267,11 @@ ${fullQuestionerInfo}
     "point": "6~12글자 핵심 포인트 요약 1개"
   },
   "advice": "질문에 대한 실천 가능한 조언. 3~4문장. 해요체.",
-  "flow": {
-    "workStudy": "일/학업 영역 흐름. 1~2문장.",
-    "relationships": "인간관계 영역 흐름. 1~2문장.",
-    "finances": "재물 영역 흐름. 1~2문장."
-  },
+  "flow": [
+    { "title": "질문과 가장 관련 깊은 영역 제목 (2~4글자)", "content": "해당 영역 흐름. 1~2문장." },
+    { "title": "두 번째로 관련 깊은 영역 제목 (2~4글자)", "content": "해당 영역 흐름. 1~2문장." },
+    { "title": "세 번째로 관련 깊은 영역 제목 (2~4글자)", "content": "해당 영역 흐름. 1~2문장." }
+  ],
   "caution": "주의해야 할 점. 2~3문장. 해요체.",
   "overallFlow": "전체 운의 흐름 종합. 3~4문장. 해요체.",
   "recommendedCategory": {
@@ -310,8 +310,10 @@ ${fullQuestionerInfo}
 - 긍정적이고 따뜻한 톤으로 질문자가 스스로 행동할 수 있도록 유도
 
 ### flow (이렇게 흘러가요)
-- 각 영역별로 현재 시점 기준 짧고 명확한 흐름 안내
-- 질문과 직접 관련된 영역은 좀 더 구체적으로 작성
+- 질문의 주제를 분석하여 가장 관련 깊은 3개 영역을 직접 선정
+- 영역 예시: 양육, 가족관계, 건강, 일/학업, 인간관계, 재물, 연애, 자녀교육, 감정관리, 자기성장, 사업, 직장, 이직, 부동산 등
+- 질문 내용과 직접 연결되는 영역 위주로 선정 (예: "자녀 양육" 질문 → 양육, 가족관계, 감정관리)
+- title은 2~4글자로 간결하게 (예: "양육", "가족관계", "감정관리")
 - 각 항목 1~2문장으로 간결하게
 
 ### caution (이것은 조심하세요)
@@ -368,7 +370,7 @@ ${fullQuestionerInfo}
     let parsedResult: {
       todayCore: { keyword: string; point: string };
       advice: string;
-      flow: { workStudy: string; relationships: string; finances: string };
+      flow: Array<{ title: string; content: string }>;
       caution: string;
       overallFlow: string;
       recommendedCategory?: { main: string; sub: string };

@@ -10,7 +10,7 @@ import { fetchConsultRecommendations } from '../lib/consultRecommendationService
 interface SajuConsultResult {
   todayCore: { keyword: string; point: string };
   advice: string;
-  flow: { workStudy: string; relationships: string; finances: string };
+  flow: Array<{ title: string; content: string }>;
   caution: string;
   overallFlow: string;
   recommendedCategory?: { main: string; sub: string };
@@ -391,24 +391,14 @@ export function SajuConsultResultPage() {
               <div className="flex flex-col w-full" style={{ gap: 10 }}>
                 <SectionHeader icon={<PinIcon />} title="이렇게 흘러가요" />
                 <div className="flex flex-col w-full" style={{ gap: 8 }}>
-                  <Card>
-                    <div className="flex flex-col" style={{ gap: 6 }}>
-                      <span style={labelText}>일/학업</span>
-                      <span style={bodyText}>{result.flow.workStudy}</span>
-                    </div>
-                  </Card>
-                  <Card>
-                    <div className="flex flex-col" style={{ gap: 6 }}>
-                      <span style={labelText}>인간관계</span>
-                      <span style={bodyText}>{result.flow.relationships}</span>
-                    </div>
-                  </Card>
-                  <Card>
-                    <div className="flex flex-col" style={{ gap: 6 }}>
-                      <span style={labelText}>재물</span>
-                      <span style={bodyText}>{result.flow.finances}</span>
-                    </div>
-                  </Card>
+                  {result.flow.map((item, idx) => (
+                    <Card key={idx}>
+                      <div className="flex flex-col" style={{ gap: 6 }}>
+                        <span style={labelText}>{item.title}</span>
+                        <span style={bodyText}>{item.content}</span>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
               </div>
             </div>
@@ -461,6 +451,7 @@ export function SajuConsultResultPage() {
                 items={recommendedItems}
                 onMoreClick={() => navigate('/saju-consult/result/recommended')}
                 onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
+                hidePrice
               />
               <div style={{ height: 130 }} />
             </div>
