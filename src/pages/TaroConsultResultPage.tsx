@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DEV } from '../lib/env';
 import { markConsultCompleted } from '../lib/consultStatus';
 import svgPaths from '../imports/svg-97glg550pf';
 import svgR from '../imports/svg-w53mchi1wt';
@@ -425,12 +426,14 @@ export function TaroConsultResultPage() {
               </div>
 
               {/* DEV ONLY — 카드 초기화 버튼 */}
-              <div style={{ marginTop: 'auto', paddingBottom: 24, display: 'flex', justifyContent: 'center', width: '100%' }}>
-                <button onClick={handleDevReset} onTouchStart={() => {}}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', color: '#9CA3AF', fontFamily: font, fontSize: 12, fontWeight: 400, letterSpacing: '-0.24px', WebkitTapHighlightColor: 'transparent' }}>
-                  DEV 카드 초기화
-                </button>
-              </div>
+              {DEV && (
+                <div style={{ marginTop: 'auto', paddingBottom: 24, display: 'flex', justifyContent: 'center', width: '100%' }}>
+                  <button onClick={handleDevReset} onTouchStart={() => {}}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 12px', color: '#9CA3AF', fontFamily: font, fontSize: 12, fontWeight: 400, letterSpacing: '-0.24px', WebkitTapHighlightColor: 'transparent' }}>
+                    DEV 카드 초기화
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
