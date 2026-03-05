@@ -3705,6 +3705,7 @@ export default function App() {
           {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />}
           {/* ⭐ 알림톡 정보 입력 UI 미리보기 (DEV 전용) */}
           {DEV && <Route path="/test/alimtalk-info" element={<AlimtalkInfoInputPage onBack={() => {}} orderId="preview" contentId="preview" selectedSajuId="preview" />} />}
+          {DEV && <Route path="/test/sprout-charging" element={<SproutChargingStation contentId="test" currentBalance={0} requiredAmount={30} onBack={() => window.history.back()} onChargeComplete={(n) => alert(`충전 완료: ${n}새싹`)} />} />} {/* ⭐ 개발용 새싹 충전소 미리보기 */}
           <Route path="/sprout-charging/:contentId" element={<SproutChargingStationPage />} /> {/* ⭐ 새싹 충전소 */}
           {/* TarotDemo 백업됨 */}
 

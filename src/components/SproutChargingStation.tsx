@@ -381,7 +381,7 @@ export default function SproutChargingStation({
                 /* 콘텐츠 구매에서 접근: 필요 새싹 / 남은 새싹 분할 표시 */
                 <div className="flex flex-col gap-[10px] items-center justify-center px-[20px] py-[16px] w-full">
                   <div className="flex flex-col items-start px-[4px] w-full">
-                    <div className="flex flex-col gap-[2px] items-start w-full">
+                    <div className="flex flex-col gap-[4px] items-start w-full">
                       <div style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#000' }}>
                         {shortfall > 0 ? `${shortfall}새싹이 부족해요` : '새싹을 충전해 보세요'}
                       </div>
