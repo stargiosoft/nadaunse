@@ -529,3 +529,27 @@ export const trackShareKakao = (contentId: string, isLoggedIn: boolean) => {
     is_logged_in: isLoggedIn,
   });
 };
+
+// ============================================
+// 상담 이벤트 (2026-03-05 추가)
+// ============================================
+
+// 37. 상담 로그인 유도 바텀시트에서 "로그인 하기" 클릭
+export const trackConsultLoginClick = (source: 'saju_consult' | 'taro_consult' | 'home') => {
+  trackEvent('consult_login_click', { source });
+};
+
+// 38. 홈에서 상담 시작 버튼 클릭
+export const trackConsultStartClick = (consultType: 'saju' | 'taro') => {
+  trackEvent('consult_start_click', { consult_type: consultType });
+};
+
+// 39. 상담 질문 제출 (로딩 페이지 진입 직전)
+export const trackConsultSubmit = (consultType: 'saju' | 'taro', isLoggedIn: boolean) => {
+  trackEvent('consult_submit', { consult_type: consultType, is_logged_in: isLoggedIn });
+};
+
+// 40. 상담 결과에서 추천 콘텐츠 클릭
+export const trackConsultRecommendationClick = (consultType: 'saju' | 'taro', contentId: string) => {
+  trackEvent('consult_recommendation_click', { consult_type: consultType, content_id: contentId });
+};

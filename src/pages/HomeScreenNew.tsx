@@ -13,6 +13,7 @@ import {
 import { supabase, getAuthUser } from '../lib/supabase';
 import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
+import { trackConsultLoginClick, trackConsultStartClick } from '../utils/analytics';
 import { isContentNew } from '../components/ContentTags';
 import { logger } from '../lib/logger';
 import svgPaths from '../imports/svg-t3oztaafjr';
@@ -608,6 +609,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
                         setShowLoginSheet(true);
                         return;
                       }
+                      trackConsultStartClick(statusKey as 'saju' | 'taro');
                       navigate(path);
                     }}
                   >
@@ -634,6 +636,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
         isOpen={showLoginSheet}
         onClose={() => setShowLoginSheet(false)}
         redirectPath="/"
+        onLoginClick={() => trackConsultLoginClick('home')}
         icon="/key-icon.svg"
         title={
           <>

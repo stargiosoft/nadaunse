@@ -5,6 +5,7 @@ import svgPaths from '../imports/svg-64m32mfmx4';
 import SEO from '../components/SEO';
 import { RecommendedCarousel, type RecommendedItem } from '../components/RecommendedCarousel';
 import { fetchConsultRecommendations } from '../lib/consultRecommendationService';
+import { trackConsultRecommendationClick } from '../utils/analytics';
 
 // ─── 사주 상담 결과 타입 ──────────────────────────────────────────────────────
 interface SajuConsultResult {
@@ -450,7 +451,7 @@ export function SajuConsultResultPage() {
               <RecommendedCarousel
                 items={recommendedItems}
                 onMoreClick={() => navigate('/saju-consult/result/recommended')}
-                onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
+                onCardClick={(id) => { trackConsultRecommendationClick('saju', id); navigate(`/master/content/detail/${id}`); }}
                 hidePrice
               />
               <div style={{ height: 130 }} />

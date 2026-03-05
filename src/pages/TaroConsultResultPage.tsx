@@ -7,6 +7,7 @@ import svgR from '../imports/svg-w53mchi1wt';
 import { RecommendedCarousel, type RecommendedItem } from '../components/RecommendedCarousel';
 import SEO from '../components/SEO';
 import { fetchConsultRecommendations } from '../lib/consultRecommendationService';
+import { trackConsultRecommendationClick } from '../utils/analytics';
 
 const imgCardBack  = '/home-v2/taro-card-back.png';
 const imgCardFront = '/home-v2/taro-card-front.png';
@@ -572,7 +573,7 @@ export function TaroConsultResultPage() {
                   <RecommendedCarousel
                     items={recommendedItems}
                     onMoreClick={() => navigate('/saju-consult/result/recommended')}
-                    onCardClick={(id) => navigate(`/master/content/detail/${id}`)}
+                    onCardClick={(id) => { trackConsultRecommendationClick('taro', id); navigate(`/master/content/detail/${id}`); }}
                     hidePrice
                   />
                   <div style={{ height: 130 }} />
