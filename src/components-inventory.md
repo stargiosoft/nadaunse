@@ -1143,6 +1143,20 @@
 
 ## 🎨 디자인 시스템
 
+### Toast 시스템
+- **UI 컴포넌트**: `/components/ui/Toast.tsx`
+  - `type`: `positive | warning | negative | info`
+  - `variant`: `dark` (기본) | `light`
+  - dark variant: 배경 `rgba(0,0,0,0.40)` + `blur(24px)`, 패딩 `6px 11px 6px 8px`, 아이콘 23px
+  - light variant: 배경 `rgba(245,243,239,0.95)`, 패딩 `12px 20px 12px 16px`, 아이콘 32px
+  - 등장 애니메이션: `toast-animate-enter` (아래→위 slide + scale 0.82→1)
+- **헬퍼 유틸**: `/lib/toast.tsx`
+  - `toast.success / error / warning / info` — 커스텀 토스트 호출
+  - `toast.setBottomOffset(ctaHeight)` — CTA 버튼 위에 토스트 배치 (CTA 높이 + 12px)
+  - `toast.resetBottomOffset()` — 기본 위치(하단 20px)로 복원
+  - CSS 변수 `--toast-bottom-offset` (`:root`)으로 동적 위치 제어
+- **위치**: Sonner v2 기본 포지셔닝 사용, `bottom` 만 CSS 오버라이드
+
 ### shadcn/ui 컴포넌트 (52개)
 위치: `/components/ui/`
 

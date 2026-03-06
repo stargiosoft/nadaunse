@@ -5137,6 +5137,41 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.5.0
-**최종 업데이트**: 2026-03-05
+---
+
+## 2026-03-06 Toast 시스템 UI 개선 및 위치 제어
+
+### 결정
+1. **Toast dark variant 스타일 확정**
+   - 배경: `rgba(0, 0, 0, 0.40)` + `backdropFilter: blur(24px)` + `-webkit` prefix
+   - 패딩: `6px 11px 6px 8px`, 아이콘-텍스트 갭: `6px`, 아이콘: 23px
+   - 폰트: 13px Regular, 흰색
+   - 동일 스타일을 NadaumTagsList 태그 삭제 토스트에도 적용
+
+2. **Toast 등장 애니메이션**
+   - `toast-animate-enter`: 아래→위 16px + scale 0.82→1
+   - `cubic-bezier(0.16, 1, 0.3, 1)` ease-out (spring 오버슈트 제거)
+   - `transform-origin: bottom center` — keyframes 내부가 아닌 CSS 규칙에 적용해야 함
+
+3. **Toast 위치 제어 방식**
+   - Sonner v2의 내부 포지셔닝을 최대한 활용
+   - `[data-sonner-toaster]`의 `bottom`만 CSS `!important`로 오버라이드: `calc(env(safe-area-inset-bottom, 0px) + var(--toast-bottom-offset, 20px))`
+   - 이전의 `transform: none`, `left/right: 0`, `display: flex`, `[data-sonner-toast] position: relative` 오버라이드가 Sonner 내부 레이아웃과 충돌하여 제거
+   - App.tsx: `offset="20px"`, `className` 오버라이드 제거
+
+4. **CTA 위 토스트 배치**
+   - `toast.setBottomOffset(ctaHeight)`: `:root`의 `--toast-bottom-offset`을 `ctaHeight + 12px`로 설정
+   - `toast.resetBottomOffset()`: 프로퍼티 제거로 기본값 20px 복원
+
+### 관련 파일
+- `/src/components/ui/Toast.tsx`
+- `/src/styles/globals.css` (toast CSS 블록)
+- `/src/lib/toast.tsx`
+- `/src/App.tsx` (Toaster 설정)
+- `/src/components/NadaumTagsList.tsx` (태그 삭제 토스트)
+
+---
+
+**문서 버전**: 3.6.0
+**최종 업데이트**: 2026-03-06
 **문서 끝**
