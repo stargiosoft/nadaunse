@@ -3716,8 +3716,8 @@ export default function App() {
           <Route path="/signup/terms" element={<TermsPageWrapper />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/welcome-coupon" element={<WelcomeCouponPageWrapper />} />
-          {/* ⭐ 알림톡 정보 입력: dev/staging 전용 (production 비활성화) */}
-          {DEV && <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />}
+          {/* ⭐ 알림톡 정보 입력 */}
+          <Route path="/alimtalk/input" element={<AlimtalkInfoInputPageWrapper />} />
           {/* ⭐ 알림톡 정보 입력 UI 미리보기 (DEV 전용) */}
           {DEV && <Route path="/test/alimtalk-info" element={<AlimtalkInfoInputPage onBack={() => {}} orderId="preview" contentId="preview" selectedSajuId="preview" />} />}
           {DEV && <Route path="/test/sprout-charging" element={<SproutChargingStation contentId="test" currentBalance={0} requiredAmount={30} onBack={() => window.history.back()} onChargeComplete={(n) => alert(`충전 완료: ${n}새싹`)} />} />} {/* ⭐ 개발용 새싹 충전소 미리보기 */}
