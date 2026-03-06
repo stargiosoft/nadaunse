@@ -332,7 +332,7 @@ export function NewFreeFortuneAllPage() {
           const dateB = new Date(b.created_at).toISOString().slice(0, 10);
           if (dateA !== dateB) return dateB < dateA ? -1 : 1;
           // 3순위: 동일 날짜면 인기순
-          return d !== 0 ? d : b.weekly_clicks - a.weekly_clicks;
+          return b.weekly_clicks - a.weekly_clicks;
         });
       }
       // 인기순은 RPC 기본 정렬 (weekly_clicks DESC, created_at DESC)
