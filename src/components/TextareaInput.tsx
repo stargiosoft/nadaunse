@@ -136,7 +136,7 @@ export const TextareaInput = forwardRef<HTMLTextAreaElement, TextareaInputProps>
         {/* ── 콘텐츠 박스 ── */}
         <div
           style={{
-            backgroundColor: '#f9f9f9',
+            backgroundColor: '#fbfbfb',
             borderRadius: 20,
             border: `1px solid ${borderColor}`,
             padding: '12px 16px',

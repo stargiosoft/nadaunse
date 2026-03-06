@@ -297,7 +297,7 @@ export function SajuConsultPage() {
           <div
             style={{
               backgroundColor: C.white,
-              paddingTop: 24,
+              paddingTop: 16,
               paddingBottom: 12,
               paddingLeft: 20,
               paddingRight: 20,
@@ -380,7 +380,7 @@ export function SajuConsultPage() {
                 width: '100%',
                 maxWidth: 400,
                 height: 56,
-                borderRadius: 16,
+                borderRadius: 20,
                 border: 'none',
                 backgroundColor: isActive ? C.primary : '#f8f8f8',
                 display: 'flex',

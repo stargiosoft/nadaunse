@@ -423,6 +423,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
       setStatuses(prev => ({ ...prev, [key]: 'completed' }));
     } else {
       localStorage.removeItem(CONSULT_STORAGE_KEY[key]);
+      localStorage.removeItem('anonymous_consult_used_v1');
       setStatuses(prev => ({ ...prev, [key]: 'idle' }));
     }
   }

@@ -146,7 +146,7 @@ export function TaroConsultPage() {
           style={{ flex: 1, overflowY: 'auto', paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 80, transition: 'padding-bottom 0.2s cubic-bezier(0.4, 0, 0.2, 1)', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}
           onTouchStart={() => { const el = textareaRef.current; if (!el) return; if (document.activeElement === el) return; el.focus(); setTimeout(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 350); }}
         >
-          <div style={{ backgroundColor: C.white, paddingTop: 24, paddingBottom: 12, paddingLeft: 20, paddingRight: 20 }}>
+          <div style={{ backgroundColor: C.white, paddingTop: 16, paddingBottom: 12, paddingLeft: 20, paddingRight: 20 }}>
             <p style={{ fontFamily: font, fontSize: 17, fontWeight: 500, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>
               카드에 무엇을 물어볼까요?
             </p>
@@ -167,7 +167,7 @@ export function TaroConsultPage() {
               onPointerUp={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(1) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primary; }}
               onPointerLeave={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(1) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primary; }}
               onPointerCancel={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(1) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primary; }}
-              style={{ width: '100%', maxWidth: 400, height: 56, borderRadius: 16, border: 'none', backgroundColor: isActive ? C.primary : '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isActive ? 'pointer' : 'default', transition: 'background-color 0.2s ease, transform 0.15s ease-out', WebkitTapHighlightColor: 'transparent', transform: 'scale(1) translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+              style={{ width: '100%', maxWidth: 400, height: 56, borderRadius: 20, border: 'none', backgroundColor: isActive ? C.primary : '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isActive ? 'pointer' : 'default', transition: 'background-color 0.2s ease, transform 0.15s ease-out', WebkitTapHighlightColor: 'transparent', transform: 'scale(1) translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
             >
               <span style={{ fontFamily: font, fontSize: 16, fontWeight: 400, color: isActive ? C.white : C.gray200, letterSpacing: '-0.32px', lineHeight: '25px', transition: 'color 0.2s ease' }}>
                 상담 요청하기
