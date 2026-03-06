@@ -324,6 +324,10 @@ export function FortuneAllPage() {
   });
   const sortRef = useRef<HTMLDivElement>(null);
 
+  const [contentTypeFilter, setContentTypeFilter] = useState<'전체' | '심화' | '무료'>('전체');
+  const [contentTypeFilterOpen, setContentTypeFilterOpen] = useState(false);
+  const contentTypeFilterRef = useRef<HTMLDivElement>(null);
+
   const [items, setItems] = useState<FortuneItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -355,9 +359,10 @@ export function FortuneAllPage() {
   const fetchData = useCallback(async () => {
     try {
       const category = TAB_CATEGORIES[activeTab] || '전체';
+      const pContentType = contentTypeFilter === '심화' ? 'paid' : contentTypeFilter === '무료' ? 'free' : 'all';
       const { data, error } = await supabase.rpc('get_home_contents', {
         p_category: category,
-        p_content_type: 'all',
+        p_content_type: pContentType,
         p_offset: 0,
         p_limit: 100,
       });
@@ -405,7 +410,7 @@ export function FortuneAllPage() {
     } catch (e) {
       logger.error('FortuneAllPage fetchData 실패:', e);
     }
-  }, [activeTab, sortBy]);
+  }, [activeTab, sortBy, contentTypeFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -433,6 +438,21 @@ export function FortuneAllPage() {
       document.removeEventListener('touchstart', handler);
     };
   }, [sortOpen]);
+
+  useEffect(() => {
+    if (!contentTypeFilterOpen) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (contentTypeFilterRef.current && !contentTypeFilterRef.current.contains(e.target as Node)) {
+        setContentTypeFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [contentTypeFilterOpen]);
 
   return (
     <div className="flex justify-center min-h-screen" style={{ backgroundColor: C.white }}>
@@ -574,14 +594,69 @@ export function FortuneAllPage() {
           </div>
         </div>
 
-        {/* ── Content header: count + sort ── */}
+        {/* ── Content header: count + filters ── */}
         <div className="flex items-center justify-between w-full" style={{ padding: '8px 22px', backgroundColor: C.white }}>
-          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
+            {/* ── Content type filter ── */}
+            <div className="relative" ref={contentTypeFilterRef}>
+              <button
+                className="flex items-center cursor-pointer"
+                style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
+                onClick={() => { setContentTypeFilterOpen(v => !v); setSortOpen(false); }}
+              >
+                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{contentTypeFilter}</span>
+                <ArrowDownFillIcon />
+              </button>
+              {contentTypeFilterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: -6,
+                    width: 140,
+                    backgroundColor: C.white,
+                    borderRadius: 16,
+                    border: '1px solid #f3f3f3',
+                    boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
+                    zIndex: 200,
+                    paddingTop: 14,
+                    paddingBottom: 12,
+                  }}
+                >
+                  <div style={{ padding: '0 22px', marginBottom: 4 }}>
+                    <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>유형</span>
+                  </div>
+                  {(['전체', '심화', '무료'] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => { setContentTypeFilter(t); setContentTypeFilterOpen(false); }}
+                      className="flex items-center w-full cursor-pointer"
+                      style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
+                        {contentTypeFilter === t ? (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
+                        )}
+                      </div>
+                      <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>{t}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+          </div>
           <div className="relative" ref={sortRef}>
             <button
               className="flex items-center cursor-pointer"
               style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
-              onClick={() => setSortOpen(v => !v)}
+              onClick={() => { setSortOpen(v => !v); setContentTypeFilterOpen(false); }}
             >
               <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{sortBy}</span>
               <ArrowDownFillIcon />
