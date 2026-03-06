@@ -774,10 +774,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       purchaseFunnel: purchaseFunnel ? {
         period: periodLabel,
         paidDetailViews: purchaseFunnel.paidDetailViews,
-        paymentViews: Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeCouponOrders),
+        paymentViews: Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeSproutOrders),
         completedOrders: purchaseFunnel.completedOrders,
-        freeCouponOrders: purchaseFunnel.freeCouponOrders,
-        paymentRate: purchaseFunnel.paidDetailViews > 0 ? Math.round(Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeCouponOrders) / purchaseFunnel.paidDetailViews * 1000) / 10 : 0,
+        freeSproutOrders: purchaseFunnel.freeSproutOrders,
+        paymentRate: purchaseFunnel.paidDetailViews > 0 ? Math.round(Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeSproutOrders) / purchaseFunnel.paidDetailViews * 1000) / 10 : 0,
         completionRate: purchaseFunnel.paidDetailViews > 0 ? Math.round(purchaseFunnel.completedOrders / purchaseFunnel.paidDetailViews * 1000) / 10 : 0,
       } : null,
       recentOrders: purchaseStats.recentOrders.map(o => ({
@@ -1688,11 +1688,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </div>
                 </section>
 
-                {/* 무료 쿠폰 주문 추이 */}
+                {/* 무료 새싹 주문 추이 */}
                 <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
                   <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>무료 쿠폰 주문 추이</h3>
-                    <span style={{ ...typography.small, color: '#999' }}>총 {trendData.reduce((sum, d) => sum + d.freeCouponOrders, 0)}건</span>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>무료 새싹 주문 추이</h3>
+                    <span style={{ ...typography.small, color: '#999' }}>총 {trendData.reduce((sum, d) => sum + d.freeSproutOrders, 0)}건</span>
                   </div>
                   <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -1700,12 +1700,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                        <Tooltip formatter={(value: number) => [`${value}건`, '무료 쿠폰 주문']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey="freeCouponOrders" name="무료 쿠폰 주문" stroke="#F97316" strokeWidth={2} dot={{ r: 3, fill: '#F97316' }} activeDot={{ r: 5 }} />
+                        <Tooltip formatter={(value: number) => [`${value}건`, '무료 새싹 주문']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
+                        <Line type="monotone" dataKey="freeSproutOrders" name="무료 새싹 주문" stroke="#F97316" strokeWidth={2} dot={{ r: 3, fill: '#F97316' }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>0원 결제 주문</p>
+                  <p style={{ ...typography.small, color: '#bbb', margin: '8px 0 0', textAlign: 'right' }}>리워드 새싹 주문</p>
                 </section>
 
                 {/* 구매 전환율 추이 */}
@@ -2577,11 +2577,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   />
                   <StatCard
                     icon={Gift}
-                    label="무료 쿠폰 주문"
-                    value={overviewPurchaseStats.freeCouponOrders}
+                    label="무료 새싹 주문"
+                    value={overviewPurchaseStats.freeSproutOrders}
                     unit="건"
                     color="#F97316"
-                    subValue="0원 결제 주문"
+                    subValue="리워드 새싹 주문"
                   />
                   <StatCard
                     icon={Users}
@@ -3519,7 +3519,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     <tbody>
                       {(() => {
                         const base = purchaseFunnel.paidDetailViews;
-                        const adjustedPaymentViews = Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeCouponOrders);
+                        const adjustedPaymentViews = Math.max(0, purchaseFunnel.paymentViews - purchaseFunnel.freeSproutOrders);
                         return [
                           { label: '유료 상세', value: purchaseFunnel.paidDetailViews, rate: 100 },
                           { label: '결제', value: adjustedPaymentViews, rate: base > 0 ? Math.round(adjustedPaymentViews / base * 1000) / 10 : 0 },

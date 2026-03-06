@@ -618,7 +618,7 @@ export interface DailyTrendData {
   revenue: number;
   uniqueBuyers: number;  // 구매 고객 수 (고유 user_id)
   totalOrders: number;  // 총 주문 수 (KRW결제 + 새싹충전)
-  freeCouponOrders: number;  // 무료 쿠폰 주문 수 (paid_amount = 0)
+  freeSproutOrders: number;  // 무료 새싹 주문 수 (리워드 새싹으로 결제)
   // 태그 지표
   tagSaved: number;  // 전체 태그 수
   tagConfirmed: number;  // 확인 태그 수
@@ -708,7 +708,8 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     returningCustomersResult,
     freeContentResult,
     paidContentResult,
-    freeCouponOrdersResult,
+    sproutOrdersResult,
+    rewardUsersResult,
     chargeResult,
     tagDataResult,
     gaDataResult,
@@ -746,17 +747,24 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 5. 무료 쿠폰 주문 데이터 (paid_amount = 0, 관리자 제외)
+    // 5. 새싹 결제 주문 데이터 (pay_method = 'sprout', 무료 새싹 주문 집계용)
     supabase
       .from('orders')
-      .select('created_at')
+      .select('user_id, created_at')
       .eq('pstatus', 'completed')
-      .eq('paid_amount', 0)
+      .eq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
       .lt('created_at', dateRange.endDate),
 
-    // 5-1. 새싹 충전 데이터 (매출/구매자 추세용)
+    // 5-1. 리워드 새싹 수령 유저 (무료 새싹 주문 판별용)
+    supabase
+      .from('sprout_transactions')
+      .select('user_id')
+      .eq('transaction_type', 'reward')
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 5-2. 새싹 충전 데이터 (매출/구매자 추세용)
     supabase
       .from('sprout_transactions')
       .select('user_id, created_at, payment_amount')
@@ -784,7 +792,8 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
   const returningCustomersData = returningCustomersResult.data;
   const freeContentData = freeContentResult.data;
   const paidContentData = paidContentResult.data;
-  const freeCouponOrdersData = freeCouponOrdersResult.data;
+  const sproutOrdersData = sproutOrdersResult.data;
+  const rewardUserIds = new Set((rewardUsersResult.data || []).map(r => r.user_id));
   const chargeData = chargeResult.data;
   const tagData = tagDataResult.data;
   const gaData = gaDataResult;
@@ -842,9 +851,9 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     const freeContentUsage = freeContentList.length;
     const uniqueFreeUsers = new Set(freeContentList.map(d => d.user_id).filter(id => dayCustomerIds.has(id)));
 
-    // 무료 쿠폰 주문 (0원)
-    const freeCouponOrdersList = freeCouponOrdersData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
-    const freeCouponOrders = freeCouponOrdersList.length;
+    // 무료 새싹 주문 (리워드 새싹 유저의 sprout 결제)
+    const freeSproutOrdersList = sproutOrdersData?.filter(d => getDateKey(d.created_at) === dateKey && rewardUserIds.has(d.user_id)) || [];
+    const freeSproutOrders = freeSproutOrdersList.length;
 
     // 유료 콘텐츠 (콘텐츠 이용율 계산용)
     const paidContentList = paidContentData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
@@ -961,7 +970,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       revenue,
       uniqueBuyers,
       totalOrders,
-      freeCouponOrders,
+      freeSproutOrders,
       tagSaved,
       tagConfirmed,
       uniqueTagUsers,
@@ -1063,7 +1072,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     const revenue = data.reduce((sum, d) => sum + d.revenue, 0);
     const uniqueBuyers = new Set(data.flatMap(d => d._buyerIds || [])).size;
     const totalOrders = data.reduce((sum, d) => sum + d.totalOrders, 0);
-    const freeCouponOrders = data.reduce((sum, d) => sum + d.freeCouponOrders, 0);
+    const freeSproutOrders = data.reduce((sum, d) => sum + d.freeSproutOrders, 0);
     const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
     const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
     const uniqueTagUsers = new Set(data.flatMap(d => d._tagUserIds || [])).size;
@@ -1109,7 +1118,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
       revenue,
       uniqueBuyers,
       totalOrders,
-      freeCouponOrders,
+      freeSproutOrders,
       tagSaved,
       tagConfirmed,
       uniqueTagUsers,
@@ -1348,7 +1357,7 @@ export interface PurchaseFunnelData {
   paidDetailViews: number;
   paymentViews: number;
   completedOrders: number;
-  freeCouponOrders: number;
+  freeSproutOrders: number;
 }
 
 /**
@@ -1437,18 +1446,24 @@ export async function fetchPurchaseFunnelStats(
     if (dateRange?.startDate) paidOrderQuery = paidOrderQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) paidOrderQuery = paidOrderQuery.lte('created_at', dateRange.endDate);
 
-    // 0원 쿠폰 주문 쿼리 빌더
-    let freeCouponQuery = supabase
+    // 무료 새싹 주문 쿼리 (pay_method = 'sprout' 주문 + reward 유저)
+    let sproutOrderQuery = supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true })
+      .select('user_id')
       .eq('pstatus', 'completed')
-      .eq('paid_amount', 0)
+      .eq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`);
-    if (dateRange?.startDate) freeCouponQuery = freeCouponQuery.gte('created_at', dateRange.startDate);
-    if (dateRange?.endDate) freeCouponQuery = freeCouponQuery.lte('created_at', dateRange.endDate);
+    if (dateRange?.startDate) sproutOrderQuery = sproutOrderQuery.gte('created_at', dateRange.startDate);
+    if (dateRange?.endDate) sproutOrderQuery = sproutOrderQuery.lte('created_at', dateRange.endDate);
 
-    // GA + charge + paidOrders + freeCoupon 병렬 호출
-    const [gaResponse, chargeResult, paidOrderResult, freeCouponResult] = await Promise.all([
+    const rewardUserQuery = supabase
+      .from('sprout_transactions')
+      .select('user_id')
+      .eq('transaction_type', 'reward')
+      .not('user_id', 'in', `(${adminFilter})`);
+
+    // GA + charge + paidOrders + sproutOrders + rewardUsers 병렬 호출
+    const [gaResponse, chargeResult, paidOrderResult, sproutOrderResult, rewardUserResult] = await Promise.all([
       fetch(functionUrl, {
         method: 'GET',
         headers: {
@@ -1458,7 +1473,8 @@ export async function fetchPurchaseFunnelStats(
       }),
       chargeQuery,
       paidOrderQuery,
-      freeCouponQuery,
+      sproutOrderQuery,
+      rewardUserQuery,
     ]);
 
     // GA 결과 파싱
@@ -1483,13 +1499,17 @@ export async function fetchPurchaseFunnelStats(
       console.error('구매 퍼널 유료 주문 조회 실패:', paidOrderResult.error);
     }
 
-    // 0원 쿠폰 주문 결과
-    const freeCouponOrders = freeCouponResult.count || 0;
-    if (freeCouponResult.error) {
-      console.error('구매 퍼널 freeCoupon 조회 실패:', freeCouponResult.error);
+    // 무료 새싹 주문 결과 (리워드 유저의 sprout 결제)
+    if (sproutOrderResult.error) {
+      console.error('구매 퍼널 sprout 주문 조회 실패:', sproutOrderResult.error);
     }
+    if (rewardUserResult.error) {
+      console.error('구매 퍼널 리워드 유저 조회 실패:', rewardUserResult.error);
+    }
+    const funnelRewardUserIds = new Set((rewardUserResult.data || []).map(r => r.user_id));
+    const freeSproutOrders = (sproutOrderResult.data || []).filter(o => funnelRewardUserIds.has(o.user_id)).length;
 
-    return { paidDetailViews, paymentViews, completedOrders, freeCouponOrders };
+    return { paidDetailViews, paymentViews, completedOrders, freeSproutOrders };
   } catch (error) {
     console.error('구매 퍼널 통계 조회 예외:', error);
     return null;
@@ -1998,7 +2018,7 @@ export interface PurchaseStatsData {
   customerSummary: PurchaseCustomerData[];
   totalOrders: number;
   totalRevenue: number;
-  freeCouponOrders: number;
+  freeSproutOrders: number;
   uniqueBuyers: number;
   avgPurchasesPerBuyer: number;
 }
@@ -2022,13 +2042,13 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     return q;
   };
 
-  // 0원 쿠폰 주문 쿼리 빌더
-  const buildFreeCouponQuery = () => {
+  // 무료 새싹 주문 쿼리 빌더 (sprout 결제 주문)
+  const buildSproutOrderQuery = () => {
     let q = supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true })
+      .select('user_id')
       .eq('pstatus', 'completed')
-      .eq('paid_amount', 0)
+      .eq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`);
     if (dateRange?.startDate) q = q.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) q = q.lte('created_at', dateRange.endDate);
@@ -2055,7 +2075,8 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     recentChargesResult,
     allChargesResult,
     allPaidOrdersResult,
-    freeCouponOrdersResult,
+    sproutOrdersResult,
+    rewardUsersForPurchaseResult,
     usersResult,
     tagStatsResult,
     contentsResult,
@@ -2076,8 +2097,15 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     // 2-1. 전체 유료 주문 건 (매출 집계용)
     buildPaidOrderQuery('user_id, paid_amount'),
 
-    // 3. 무료 쿠폰 주문 수 (paid_amount = 0)
-    buildFreeCouponQuery(),
+    // 3. 새싹 결제 주문 (무료 새싹 주문 집계용)
+    buildSproutOrderQuery(),
+
+    // 3-1. 리워드 새싹 수령 유저 (무료 새싹 주문 판별용)
+    supabase
+      .from('sprout_transactions')
+      .select('user_id')
+      .eq('transaction_type', 'reward')
+      .not('user_id', 'in', `(${adminFilter})`),
 
     // 4. 유저 데이터
     supabase
@@ -2103,7 +2131,8 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
   if (recentChargesResult.error) throw new Error('최근 새싹 충전 데이터 조회에 실패했습니다.');
   if (allChargesResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
   if (allPaidOrdersResult.error) throw new Error('유료 주문 데이터 조회에 실패했습니다.');
-  if (freeCouponOrdersResult.error) throw new Error('무료 쿠폰 주문 데이터 조회에 실패했습니다.');
+  if (sproutOrdersResult.error) throw new Error('새싹 결제 주문 데이터 조회에 실패했습니다.');
+  if (rewardUsersForPurchaseResult.error) throw new Error('리워드 유저 데이터 조회에 실패했습니다.');
   if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
   if (tagStatsResult.error) throw new Error('태그 데이터 조회에 실패했습니다.');
   if (contentsResult.error) throw new Error('콘텐츠 데이터 조회에 실패했습니다.');
@@ -2228,7 +2257,10 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
     customerSummary,
     totalOrders,
     totalRevenue,
-    freeCouponOrders: freeCouponOrdersResult.count || 0,
+    freeSproutOrders: (() => {
+      const purchaseRewardUserIds = new Set((rewardUsersForPurchaseResult.data || []).map(r => r.user_id));
+      return (sproutOrdersResult.data || []).filter(o => purchaseRewardUserIds.has(o.user_id)).length;
+    })(),
     uniqueBuyers,
     avgPurchasesPerBuyer,
   };
