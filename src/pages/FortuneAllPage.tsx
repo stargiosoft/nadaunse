@@ -74,7 +74,7 @@ export function LabelBadge({ type }: { type: LabelType }) {
   return (
     <span
       className="flex items-center justify-center shrink-0"
-      style={{ backgroundColor: bg, color, fontFamily: font, fontSize: 11, fontWeight: 500, lineHeight: '15px', borderRadius: 4, padding: '0 4px' }}
+      style={{ backgroundColor: bg, color, fontFamily: font, fontSize: 10, fontWeight: 500, lineHeight: '15px', borderRadius: 4, padding: '0 3px' }}
     >
       {type}
     </span>
@@ -134,7 +134,7 @@ function FeaturedCard({ item }: { item: FortuneItem }) {
       <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
         <div
           className="flex flex-col items-start justify-center cursor-pointer"
-          style={{ padding: '0 16px 16px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
+          style={{ padding: '0 16px 6px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
           onTouchStart={() => {}}
           onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#FBFBFB'; }}
           onPointerUp={(e) => { e.currentTarget.style.backgroundColor = ''; }}
@@ -173,7 +173,7 @@ function FeaturedCard({ item }: { item: FortuneItem }) {
           {/* Text details */}
           <div
             className="flex flex-col items-start"
-            style={{ gap: 4, padding: '0 8px', position: 'relative', flexShrink: 0, width: '100%', marginTop: 8 }}
+            style={{ gap: 3, padding: '0 8px', position: 'relative', flexShrink: 0, width: '100%', marginTop: 8 }}
           >
             <p
               style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}
@@ -213,7 +213,7 @@ function RowCard({ item }: { item: FortuneItem }) {
       <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
         <div
           className="flex flex-col items-start justify-center cursor-pointer"
-          style={{ padding: '10px 20px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
+          style={{ padding: '8px 20px 4px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
           onTouchStart={() => {}}
           onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#FBFBFB'; }}
           onPointerUp={(e) => { e.currentTarget.style.backgroundColor = ''; }}
@@ -233,23 +233,23 @@ function RowCard({ item }: { item: FortuneItem }) {
               >
                 <div
                   className="flex flex-col items-center justify-center"
-                  style={{ backgroundColor: C.white, padding: '1px 3px 2px', position: 'relative', borderRadius: 4, flexShrink: 0 }}
+                  style={{ backgroundColor: C.white, padding: '1px 3px 2px', position: 'relative', borderRadius: 6, flexShrink: 0 }}
                 >
                   <span style={{ fontFamily: font, fontSize: 10, fontWeight: 600, color: C.black, lineHeight: 'normal' }}>{item.rank}</span>
                 </div>
               </div>
               {/* Thumbnail image */}
               <div
-                style={{ pointerEvents: 'none', position: 'relative', borderRadius: 8, flexShrink: 0, width: 69, height: 47, marginRight: -rankW, zIndex: 1 }}
+                style={{ pointerEvents: 'none', position: 'relative', borderRadius: 10, flexShrink: 0, width: 69, height: 47, marginRight: -rankW, zIndex: 1 }}
               >
-                <img alt={item.title} style={{ position: 'absolute', inset: 0, maxWidth: 'none', objectFit: 'cover', borderRadius: 8, width: '100%', height: '100%' }} src={item.img} />
-                <div aria-hidden="true" style={{ position: 'absolute', inset: -1, border: '1px solid #f9f9f9', borderRadius: 9 }} />
+                <img alt={item.title} style={{ position: 'absolute', inset: 0, maxWidth: 'none', objectFit: 'cover', borderRadius: 10, width: '100%', height: '100%' }} src={item.img} />
+                <div aria-hidden="true" style={{ position: 'absolute', inset: -1, border: '1px solid #f9f9f9', borderRadius: 11 }} />
               </div>
             </div>
             {/* Text details */}
             <div
               className="flex flex-col items-start"
-              style={{ flex: '1 0 0', gap: 4, minHeight: 1, minWidth: 1, position: 'relative' }}
+              style={{ flex: '1 0 0', gap: 3, minHeight: 1, minWidth: 1, position: 'relative' }}
             >
               <p
                 style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}
@@ -524,7 +524,7 @@ export function FortuneAllPage() {
                   e.currentTarget.style.userSelect = '';
                 }}
               >
-                <div className="flex items-center" style={{ padding: '8px 16px', gap: 2, minWidth: 'max-content' }}>
+                <div className="flex items-center" style={{ padding: '4px 16px 8px', gap: 2, minWidth: 'max-content' }}>
                   {TABS.map((t, i) => {
                     const isActive = activeTab === i;
                     return (
@@ -558,7 +558,7 @@ export function FortuneAllPage() {
         </div>
 
         {/* ── Content header: count + sort ── */}
-        <div className="flex items-center justify-between w-full" style={{ padding: '12px 22px', backgroundColor: C.white }}>
+        <div className="flex items-center justify-between w-full" style={{ padding: '10px 22px', backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="relative" ref={sortRef}>
             <button

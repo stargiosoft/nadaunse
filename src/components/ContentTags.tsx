@@ -20,12 +20,12 @@ export function ContentTags({ isPaid, isNew, isRead }: { isPaid: boolean; isNew?
     <div className="flex gap-[6px] items-center">
       <div className="flex gap-[3px] items-start">
         {isNew && (
-          <div className="flex items-center justify-center px-[4px] rounded-[4px]" style={{ backgroundColor: '#fff6f7' }}>
-            <p style={{ fontSize: '11px', fontWeight: 600, lineHeight: '15px', color: '#ef6878', fontFamily: 'Pretendard Variable' }}>New</p>
+          <div className="flex items-center justify-center px-[3px] rounded-[4px]" style={{ backgroundColor: '#fff6f7' }}>
+            <p style={{ fontSize: '10px', fontWeight: 600, lineHeight: '15px', color: '#ef6878', fontFamily: 'Pretendard Variable' }}>New</p>
           </div>
         )}
-        <div className="flex items-center justify-center rounded-[4px]" style={{ backgroundColor: isPaid ? '#f0f8f8' : '#f0f8ff', padding: '1px 5px' }}>
-          <p style={{ fontSize: '11px', fontWeight: 600, lineHeight: '15px', color: isPaid ? '#41a09e' : '#4590d6', fontFamily: 'Pretendard Variable' }}>
+        <div className="flex items-center justify-center rounded-[4px]" style={{ backgroundColor: isPaid ? '#f0f8f8' : '#f0f8ff', padding: '1px 4px' }}>
+          <p style={{ fontSize: '10px', fontWeight: 600, lineHeight: '15px', color: isPaid ? '#41a09e' : '#4590d6', fontFamily: 'Pretendard Variable' }}>
             {isPaid ? '심화' : '무료'}
           </p>
         </div>

@@ -70,7 +70,7 @@ function LabelBadge({ type }: { type: LabelType }) {
   return (
     <span
       className="flex items-center justify-center shrink-0"
-      style={{ backgroundColor: bg, color, fontFamily: font, fontSize: 11, fontWeight: 500, lineHeight: '15px', borderRadius: 4, padding: '0 4px' }}
+      style={{ backgroundColor: bg, color, fontFamily: font, fontSize: 10, fontWeight: 500, lineHeight: '15px', borderRadius: 4, padding: '0 3px' }}
     >
       {type}
     </span>
@@ -132,8 +132,8 @@ function TopCard({ item }: { item: NoRankFortuneItem }) {
     <div className="bg-white relative shrink-0 w-full">
       <div className="flex flex-col justify-center size-full">
         <div
-          className="content-stretch flex flex-col items-start justify-center pb-[16px] px-[16px] relative w-full cursor-pointer"
-          style={{ transition: 'background-color 0.15s ease' }}
+          className="content-stretch flex flex-col items-start justify-center relative w-full cursor-pointer"
+          style={{ padding: '0 16px 6px', transition: 'background-color 0.15s ease' }}
           {...pressHandlers}
         >
           {/* Image — no rank badge */}
@@ -189,18 +189,18 @@ function RowCard({ item }: { item: NoRankFortuneItem }) {
     <div className="bg-white relative shrink-0 w-full">
       <div className="flex flex-col justify-center size-full">
         <div
-          className="content-stretch flex flex-col items-start justify-center px-[20px] py-[10px] relative w-full cursor-pointer"
-          style={{ transition: 'background-color 0.15s ease' }}
+          className="content-stretch flex flex-col items-start justify-center relative w-full cursor-pointer"
+          style={{ padding: '8px 20px 4px', transition: 'background-color 0.15s ease' }}
           {...pressHandlers}
         >
           <div className="content-stretch flex gap-[12px] h-[61px] items-start relative shrink-0 w-full">
             {/* Thumbnail — no rank badge overlay */}
             <div
-              className="pointer-events-none relative rounded-[8px] shrink-0"
-              style={{ width: 69, height: 47 }}
+              className="pointer-events-none relative shrink-0"
+              style={{ width: 69, height: 47, borderRadius: 10 }}
             >
-              <img alt={item.title} className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full" src={item.img} />
-              <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[9px]" />
+              <img alt={item.title} className="absolute inset-0 max-w-none object-cover size-full" style={{ borderRadius: 10 }} src={item.img} />
+              <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px]" style={{ borderRadius: 11 }} />
             </div>
             {/* Text details */}
             <div
@@ -467,7 +467,7 @@ export function NewFreeFortuneAllPage() {
         </div>
 
         {/* ── Content header: count + sort ── */}
-        <div className="flex items-center justify-between w-full" style={{ padding: '12px 22px', backgroundColor: C.white }}>
+        <div className="flex items-center justify-between w-full" style={{ padding: '10px 22px', backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="relative" ref={sortRef}>
             <button

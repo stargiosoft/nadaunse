@@ -137,6 +137,12 @@
   input, textarea, [contenteditable="true"] {
     caret-color: auto;
   }
+
+}
+
+.search-input::placeholder {
+  color: #B7B7B7 !important;
+  opacity: 1;
 }
 
 /**

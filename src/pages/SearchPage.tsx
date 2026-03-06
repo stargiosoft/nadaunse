@@ -130,23 +130,24 @@ function SearchResultItem({ item, onClick }: { item: SearchItem; onClick?: () =>
     >
       <div
         className="flex items-start"
-        style={{ padding: '10px 20px', gap: 12 }}
+        style={{ padding: '8px 20px 4px', gap: 12 }}
       >
         {/* 썸네일 */}
         <div
-          className="pointer-events-none relative rounded-[8px] shrink-0"
-          style={{ width: 69, height: 47 }}
+          className="pointer-events-none relative shrink-0"
+          style={{ width: 69, height: 47, borderRadius: 10 }}
         >
           <img
             alt={item.title}
-            className="absolute inset-0 max-w-none object-cover rounded-[8px] size-full"
+            className="absolute inset-0 max-w-none object-cover size-full"
+            style={{ borderRadius: 10 }}
             src={item.img}
           />
-          <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px] rounded-[9px]" />
+          <div aria-hidden="true" className="absolute border border-[#f9f9f9] border-solid inset-[-1px]" style={{ borderRadius: 11 }} />
         </div>
 
         {/* 텍스트 영역 */}
-        <div className="flex flex-col flex-1 min-w-0" style={{ gap: 4 }}>
+        <div className="flex flex-col flex-1 min-w-0" style={{ gap: 3 }}>
           <p
             className="w-full overflow-hidden"
             style={{
@@ -182,29 +183,14 @@ function EmptyResult({ query }: { query: string }) {
   return (
     <div
       className="flex flex-col items-center justify-center"
-      style={{ padding: '60px 20px', gap: 16 }}
+      style={{ padding: '44px 20px', gap: 16 }}
     >
       {/* 돋보기 + X 아이콘 */}
-      <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0, overflow: 'hidden' }}>
-        {/* 손잡이 */}
-        <div style={{ position: 'absolute', inset: '55.36% 12.5% 12.5% 55.36%' }}>
-          <svg style={{ position: 'absolute', display: 'block', width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 20.5667 20.566">
-            <path d={svgPathsCnax.p2e8d380} fill="#D4D4D4" />
-          </svg>
-        </div>
-        {/* 외곽 링 */}
-        <div style={{ position: 'absolute', inset: '12.5% 29.17% 29.17% 12.5%' }}>
-          <svg style={{ position: 'absolute', display: 'block', width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 37.3333 37.3333">
-            <path d={svgPathsCnax.p12fbf9a0} fill="#999999" />
-          </svg>
-        </div>
-        {/* X 마크 */}
-        <div style={{ position: 'absolute', inset: '31.25% 46.85% 46.83% 31.25%' }}>
-          <svg style={{ position: 'absolute', display: 'block', width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 14.0153 14.0293">
-            <path d={svgPathsCnax.pf506180} fill="#D4D4D4" />
-          </svg>
-        </div>
-      </div>
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style={{ flexShrink: 0 }}>
+        <line x1="38.5" y1="38.5" x2="54.5" y2="54.5" stroke="#E7E7E7" strokeWidth="4.3" strokeLinecap="round"/>
+        <circle cx="26.6667" cy="26.6667" r="16" stroke="#D4D4D4" strokeWidth="4.3"/>
+        <path d="M30.2778 27.0146L33.3145 23.975C34.2488 23.0397 34.2488 21.6367 33.3145 20.7015C32.3801 19.7662 30.9786 19.7662 30.0443 20.7015L27.0076 23.7411L23.971 20.7015C23.0366 19.7662 21.6351 19.7662 20.7008 20.7015C19.7664 21.6367 19.7664 23.0397 20.7008 23.975L23.7374 27.0146L20.7008 30.0543C19.7664 30.9896 19.7664 32.3925 20.7008 33.3278C21.6351 34.2631 23.0366 34.2631 23.971 33.3278L27.0076 30.2881L30.0443 33.3278C30.9786 34.2631 32.3801 34.2631 33.3145 33.3278C34.2488 32.3925 34.2488 30.9896 33.3145 30.0543L30.2778 27.0146Z" fill="#E7E7E7" transform="translate(27,27) scale(0.82) translate(-27,-27)"/>
+      </svg>
 
       <div className="flex flex-col items-center" style={{ gap: 8 }}>
         <p
@@ -212,7 +198,7 @@ function EmptyResult({ query }: { query: string }) {
             fontFamily: font,
             fontSize: 16,
             fontWeight: 500,
-            color: C.gray400,
+            color: '#6D6D6D',
             letterSpacing: '-0.32px',
             lineHeight: '28.5px',
             textAlign: 'center',
@@ -488,6 +474,7 @@ export function SearchPage() {
                 letterSpacing: '-0.3px',
                 minWidth: 0,
               } as React.CSSProperties}
+              className="search-input"
             />
 
             {query ? (
@@ -530,26 +517,14 @@ export function SearchPage() {
           {!searched && (
             <div
               className="flex flex-col items-center justify-center"
-              style={{ padding: '60px 20px', gap: 20 }}
+              style={{ padding: '44px 20px', gap: 20 }}
             >
               {/* 돋보기 일러스트 */}
-              <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0, overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: '37.5% 54.17% 45.83% 29.17%' }}>
-                  <svg style={{ position: 'absolute', display: 'block', width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 10.6667 10.6667">
-                    <path d={svgPathsSearch.p9f04000} fill="#D4D4D4" />
-                  </svg>
-                </div>
-                <div style={{ position: 'absolute', inset: '55.36% 12.5% 12.5% 55.36%' }}>
-                  <svg style={{ position: 'absolute', display: 'block', width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 20.5667 20.566">
-                    <path d={svgPathsSearch.p2e8d380} fill="#D4D4D4" />
-                  </svg>
-                </div>
-                <div style={{ position: 'absolute', inset: '12.5% 29.17% 29.17% 12.5%' }}>
-                  <svg style={{ position: 'absolute', display: 'block', width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 37.3333 37.3333">
-                    <path d={svgPathsSearch.p12fbf9a0} fill="#999999" />
-                  </svg>
-                </div>
-              </div>
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style={{ flexShrink: 0 }}>
+                <line x1="38.5" y1="38.5" x2="54.5" y2="54.5" stroke="#E7E7E7" strokeWidth="4.3" strokeLinecap="round"/>
+                <circle cx="26.6667" cy="26.6667" r="16" stroke="#D4D4D4" strokeWidth="4.3"/>
+                <path d="M26.6641 34.6667C22.2534 34.6667 18.6641 31.0773 18.6641 26.6667C18.6641 25.1947 19.8587 24 21.3307 24C22.8027 24 23.9974 25.1947 23.9974 26.6667C23.9974 28.136 25.1947 29.3333 26.6641 29.3333C28.1361 29.3333 29.3307 30.528 29.3307 32C29.3307 33.472 28.1361 34.6667 26.6641 34.6667Z" fill="#E7E7E7" transform="translate(24,29.3) scale(0.82) translate(-24,-29.3)"/>
+              </svg>
 
               <div className="flex flex-col" style={{ gap: 8, width: '100%', textAlign: 'center' }}>
                 <p
@@ -557,7 +532,7 @@ export function SearchPage() {
                     fontFamily: font,
                     fontSize: 16,
                     fontWeight: 500,
-                    color: '#999999',
+                    color: '#B7B7B7',
                     letterSpacing: '-0.32px',
                     lineHeight: '28.5px',
                     whiteSpace: 'pre-wrap',
