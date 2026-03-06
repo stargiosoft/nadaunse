@@ -176,11 +176,11 @@ function LabelBadge({ type }: { type: LabelType }) {
         backgroundColor: bg,
         color,
         fontFamily: font,
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: 500,
         lineHeight: '15px',
         borderRadius: 4,
-        padding: '0 4px',
+        padding: '0 3px',
       }}
     >
       {type}
@@ -216,32 +216,14 @@ function RankNumber({ n }: { n: number }) {
 
 function CrystalBallIcon() {
   return (
-    <div
-      className="inline-grid place-items-start shrink-0"
-      style={{ gridTemplateColumns: 'max-content', gridTemplateRows: 'max-content' }}
-    >
-      <div className="col-start-1 row-start-1 relative overflow-hidden" style={{ width: 28, height: 28 }}>
-        <div className="absolute" style={{ inset: '4.17% 10.66% 17.13% 10.63%' }}>
-          <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 22.0373 22.0367">
-            <path d={svgPaths.p1b9ce4d0} fill="#4DB2FF" />
-            <path d={svgPaths.p31f5d300} fill="black" opacity="0.2" />
-          </svg>
-        </div>
-        <div className="absolute" style={{ inset: '73.62% 9.24% 4.69% 9.21%' }}>
-          <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 22.8356 6.07345">
-            <path d={svgPaths.p1509d000} fill="#576268" />
-            <path d={svgPaths.p8434500} fill="black" opacity="0.2" />
-          </svg>
-        </div>
-      </div>
-      <div
-        className="col-start-1 row-start-1 relative"
-        style={{ width: '8.196px', height: '9.09px', marginLeft: '6.19px', marginTop: '4.2px' }}
-      >
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 8.19641 9.08988">
-          <path d={svgPaths.p21ca7d80} fill="white" />
-        </svg>
-      </div>
+    <div className="relative shrink-0" style={{ width: 28, height: 28 }}>
+      <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13.9925 23.1999C20.0765 23.1999 25.0085 18.2679 25.0085 12.1839C25.0085 6.09998 20.0765 1.16797 13.9925 1.16797C7.90858 1.16797 2.97656 6.09998 2.97656 12.1839C2.97656 18.2679 7.90858 23.1999 13.9925 23.1999Z" fill="#4DB2FF"/>
+        <path opacity="0.2" d="M24.7675 9.87993C26.0411 15.8262 22.2496 21.6844 16.3032 22.958C13.8719 23.4787 11.4564 23.1537 9.36719 22.1842C18.9217 22.0423 23.4891 8.411 17.229 1.66211C20.9176 2.78503 23.9001 5.83043 24.7675 9.87993Z" fill="black"/>
+        <path d="M24.3307 23.9505C24.8499 25.2632 23.8825 26.686 22.4709 26.686H5.51977C4.10818 26.686 3.14081 25.2632 3.65992 23.9505L4.53649 21.734C4.80397 21.0576 5.45749 20.6133 6.18483 20.6133H21.8058C22.5332 20.6133 23.1867 21.0576 23.4542 21.734L24.3307 23.9505Z" fill="#576268"/>
+        <path opacity="0.2" d="M24.3322 23.9504C24.8512 25.263 23.8838 26.6858 22.4723 26.6858H15.8047C16.8692 25.9856 17.6408 25.0497 18.0051 23.9853C18.4338 22.7351 18.2338 21.5063 17.948 20.6133H21.8059C22.5346 20.6133 23.1919 21.0562 23.4562 21.7349L24.3322 23.9504Z" fill="black"/>
+        <path d="M11.8516 4.29773L12.0997 5.10228C12.3048 5.7674 12.8255 6.28809 13.4906 6.49321L14.2952 6.74132C14.4239 6.78103 14.4239 6.96327 14.2952 7.00297L13.4906 7.25109C12.8255 7.4562 12.3048 7.97689 12.0997 8.64202L11.8516 9.44657C11.8119 9.57531 11.6296 9.57531 11.5899 9.44657L11.3418 8.64202C11.1367 7.97689 10.616 7.4562 9.95089 7.25109L9.14634 7.00297C9.0176 6.96327 9.0176 6.78103 9.14634 6.74132L9.95089 6.49321C10.616 6.28809 11.1367 5.7674 11.3418 5.10228L11.5899 4.29773C11.6296 4.16899 11.8119 4.16899 11.8516 4.29773ZM8.16106 9.61087L8.33514 10.1753C8.47905 10.642 8.84437 11.0073 9.31103 11.1512L9.8755 11.3253C9.96583 11.3532 9.96583 11.481 9.8755 11.5089L9.31103 11.683C8.84437 11.8269 8.47906 12.1922 8.33514 12.6588L8.16106 13.2233C8.13321 13.3136 8.00535 13.3136 7.97749 13.2233L7.80342 12.6588C7.65951 12.1922 7.29418 11.8269 6.82753 11.683L6.26306 11.5089C6.17273 11.481 6.17273 11.3532 6.26306 11.3253L6.82753 11.1512C7.29418 11.0073 7.6595 10.642 7.80342 10.1753L7.97749 9.61087C8.00535 9.52054 8.13321 9.52054 8.16106 9.61087Z" fill="white"/>
+      </svg>
     </div>
   );
 }
@@ -305,56 +287,18 @@ function ChevronRightIcon() {
 function LogoLarge() {
   return (
     <div className="relative shrink-0" style={{ width: 80, height: 27 }}>
-      <div className="absolute" style={{ inset: '6.7% 79.05% 28.44% 0' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 16.7594 17.5105">
-          <path d={svgLogo.p1fd6b071} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '7.75% 51.93% 28.16% 27.15%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 16.7405 17.3035">
-          <path d={svgLogo.p6d74400} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.2% 47.26% 21.76% 43.61%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 7.30099 20.5292">
-          <path d={svgLogo.p3a63c900} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.2% 74.17% 21.76% 16.7%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 7.30099 20.5292">
-          <path d={svgLogo.p38191700} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '39.15% 22.23% 31.85% 52.48%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 20.2373 7.82961">
-          <path d={svgLogo.pe66ed00} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '0 24.53% 63.35% 54.55%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 16.7305 9.89616">
-          <path d={svgLogo.p1fd9a700} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.24% 0 21.76% 94.83%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 4.13337 20.5214">
-          <path d={svgLogo.p2df4d700} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '2.63% 5.75% 22.23% 85.73%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 6.8178 20.289">
-          <path d={svgLogo.p1b6f5680} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '4.28% 11.29% 24.97% 75.49%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 10.5811 19.1019">
-          <path d={svgLogo.p131a3380} fill="#151515" />
-        </svg>
-      </div>
-      <div className="absolute" style={{ inset: '56.28% 14.07% 0 54.48%' }}>
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 25.1564 11.8038">
-          <path d={svgLogo.p1cfcff80} fill="#151515" />
-        </svg>
-      </div>
+      <svg width="80" height="27" viewBox="0 0 80 27" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+        <path d="M3.97329 14.8055C3.99937 15.0923 4.1385 15.2611 4.45155 15.3286C5.95591 15.6829 7.52983 15.666 9.06897 15.5985C10.6603 15.531 12.2429 15.3117 13.8168 15.067C14.4951 14.9658 15.0864 14.8308 15.7299 15.1345C16.2255 15.3623 16.5821 15.7926 16.7125 16.3072C16.9473 17.2605 16.2603 18.1464 15.5647 18.4585C14.3473 19.0069 8.12114 19.3191 6.52113 19.3191C4.82547 19.3191 2.94719 18.9816 2.01675 18.5514C1.41675 18.2392 0.442829 17.6149 0.225436 16.5181C-0.148479 14.4933 -0.000652312 5.5252 0.260219 3.35699C0.355872 2.52176 1.32979 1.66123 2.5211 1.82996C4.36459 2.09993 4.1559 3.75351 4.07763 5.12024C3.90372 8.32616 3.72111 11.608 3.97329 14.8139V14.8055Z" fill="#151515"/>
+        <path d="M38.4101 16.3075C38.6449 17.3874 38.0014 18.1045 37.2623 18.5095C36.097 19.1507 29.5753 19.3953 27.9579 19.3953C26.3405 19.3953 24.6448 18.9904 23.7404 18.6107C23.123 18.2986 22.1404 17.6827 21.9317 16.5775C21.5491 14.5443 21.7665 5.70267 21.9317 3.74538C22.0013 2.83422 23.0535 2.0918 23.723 2.0918H32.1144C32.9492 2.0918 33.6362 2.95233 33.6362 3.93098C33.6362 4.7409 33.0622 5.8461 32.1144 5.8461H26.2709C25.7491 5.8461 25.7231 6.13294 25.7231 6.32698C25.6013 8.36021 25.5057 12.587 25.6796 14.7636C25.7057 15.1011 25.8709 15.2867 26.2013 15.3879C26.6796 15.506 27.2709 15.582 28.1057 15.582C29.5405 15.582 35.2449 15.2023 35.7405 15.0336C36.8362 14.6792 38.1231 14.983 38.4101 16.3244V16.3075Z" fill="#151515"/>
+        <path d="M39.1394 9.95389C39.1133 13.3454 39.0003 18.1965 38.8786 19.462C38.7394 20.4153 37.7307 21.2084 36.7133 21.1155C35.5481 20.9974 34.8524 20.061 34.9046 19.1076C35.2177 15.4714 35.2611 6.34302 34.9046 2.66465C34.7655 1.66069 35.6872 0.707349 36.6438 0.60611C37.7394 0.487997 38.7394 1.23042 38.8873 2.23438C39.0264 3.38176 39.122 3.81203 39.1481 6.18272H40.6699C41.5047 6.18272 42.1916 7.13606 42.1916 8.07252C42.1916 8.88244 41.6438 9.96233 40.6699 9.96233H39.1481L39.1394 9.95389Z" fill="#151515"/>
+        <path d="M17.6082 9.95389C17.5821 13.3454 17.469 18.1965 17.3473 19.462C17.2082 20.4153 16.1995 21.2084 15.1821 21.1155C14.0168 20.9974 13.3212 20.061 13.3734 19.1076C13.6864 15.4714 13.7299 6.34302 13.3734 2.66465C13.2342 1.66069 14.156 0.707349 15.1125 0.60611C16.2082 0.487997 17.2082 1.23042 17.356 2.23438C17.4951 3.38176 17.5908 3.81203 17.6169 6.18272H19.1386C19.9734 6.18272 20.6604 7.13606 20.6604 8.07252C20.6604 8.88244 20.1125 9.96233 19.1386 9.96233H17.6169L17.6082 9.95389Z" fill="#151515"/>
+        <path d="M41.9988 12.0809C42.0944 10.9082 43.3118 10.5032 44.1466 10.5792C47.8684 10.9335 56.425 11.0094 60.0685 10.5792C60.9467 10.5117 62.1641 10.8154 62.2163 12.1568C62.2598 13.397 61.3554 13.9707 60.5206 14.1141C59.425 14.2575 57.138 14.3503 54.5815 14.401V16.991C54.5815 17.995 53.4597 18.3999 52.5554 18.3999C51.651 18.3999 50.5727 17.9443 50.5727 16.991V14.4263C47.7118 14.401 45.0423 14.3082 43.6857 14.1141C42.7814 13.9707 41.877 13.4223 41.9901 12.0809H41.9988Z" fill="#151515"/>
+        <path d="M52.0098 0C56.349 0 60.3751 1.40892 60.3751 4.9523C60.3751 8.49568 56.4446 9.89616 52.0098 9.89616C47.575 9.89616 43.6445 8.48725 43.6445 4.9523C43.6445 1.41735 47.5315 0 52.0098 0ZM52.0098 6.38653C54.8185 6.38653 56.4185 5.93095 56.4185 4.9523C56.4185 3.97365 54.7229 3.51807 52.0098 3.51807C49.2967 3.51807 47.6011 3.89772 47.6011 4.9523C47.6011 6.00688 49.3141 6.38653 52.0098 6.38653Z" fill="#151515"/>
+        <path d="M79.7393 19.4639C79.6002 20.4173 78.6437 21.2103 77.6437 21.1175C76.6176 21.0247 75.8523 20.0629 75.8784 19.1096C76.1915 15.4734 76.261 6.34496 75.8784 2.66659C75.7567 1.66263 76.6436 0.683985 77.5741 0.608055C78.6263 0.540562 79.6002 1.23237 79.7393 2.23632C80.1654 5.50973 80.0002 16.8148 79.7393 19.4724V19.4639Z" fill="#151515"/>
+        <path d="M69.9646 9.82018C69.1299 9.82018 68.582 8.74873 68.582 7.93038C68.582 7.11202 69.1994 6.04057 69.9646 6.04057H71.5125C71.4864 3.77112 71.4168 4.1592 71.2777 2.7756C71.156 1.77164 71.9734 0.8183 72.9734 0.717061C74.0255 0.624258 74.9995 1.34137 75.1386 2.34533C75.5647 5.61874 75.3995 16.6876 75.1386 19.3367C74.9995 20.29 73.9908 21.1253 73.069 20.9818C71.9994 20.8131 71.2603 19.9273 71.2777 18.9739C71.3994 17.4469 71.4951 12.4608 71.5125 9.81174H69.9646V9.82018Z" fill="#151515"/>
+        <path d="M70.3214 16.8821C68.5301 15.3045 67.5823 13.6762 67.5562 9.37352V2.59048C67.5562 2.44705 67.5214 2.31207 67.4779 2.16865C67.4779 2.15177 67.4692 2.1349 67.4605 2.11803C67.2431 1.59495 66.6779 1.15625 65.7736 1.15625C64.9301 1.15625 64.2431 1.50215 63.9475 2.02522C63.9475 2.02522 63.904 2.09272 63.8953 2.12646C63.8779 2.16865 63.8692 2.20239 63.8605 2.24457C63.8257 2.35425 63.7996 2.47236 63.7996 2.59891V9.31447C63.7996 9.31447 63.7996 9.35665 63.7996 9.38196C63.7736 13.6931 62.8257 15.3129 61.0344 16.8906C60.3648 17.4642 60.2083 18.2826 60.6083 19.2613C61.0083 20.2315 62.4431 20.5689 63.3562 19.9277C64.2518 19.2697 65.0518 18.4176 65.6866 17.3461C66.3388 18.4092 67.1214 19.2697 68.0171 19.9277C68.9214 20.5689 70.3562 20.2399 70.7562 19.2613C71.1562 18.2826 70.991 17.4642 70.3301 16.8906L70.3214 16.8821Z" fill="#151515"/>
+        <path d="M43.6878 17.548C45.0269 21.9266 48.6009 24.8795 52.8791 26.204C57.714 27.6973 62.6618 26.9211 67.3401 25.2507C68.314 24.9048 68.9662 23.943 68.6705 22.8969C68.4097 21.952 67.2966 21.2095 66.3227 21.5554C62.4357 22.9475 58.4618 23.7743 54.4009 22.6606C51.227 21.7917 48.3661 19.8006 47.3661 16.5356C46.6443 14.1818 42.9573 15.1858 43.6791 17.5565L43.6878 17.548Z" fill="#151515"/>
+      </svg>
     </div>
   );
 }
@@ -422,7 +366,7 @@ function AppSearchBar() {
         <span
           style={{
             fontFamily: font, fontSize: 15, fontWeight: 400,
-            color: C.gray400, lineHeight: '25.5px', letterSpacing: '-0.3px',
+            color: '#B7B7B7', lineHeight: '25.5px', letterSpacing: '-0.3px',
           }}
         >
           궁금한 운세를 검색해보세요
@@ -495,7 +439,27 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
   ];
 
   return (
-    <section className="w-full" style={{ backgroundColor: C.white, padding: '4px 20px 12px' }}>
+    <section className="w-full" style={{ backgroundColor: C.white, padding: '0px 20px 12px' }}>
+      {/* 인사말 */}
+      <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingLeft: 6, paddingTop: 16 }}>
+        <p
+          style={{
+            fontFamily: font, fontSize: 17, fontWeight: 600,
+            color: C.black, letterSpacing: '-0.34px', lineHeight: '24px',
+          }}
+        >
+          {nickname ? `${nickname}님, 오늘 마음은 어떠세요?` : '오늘 마음은 어떠세요?'}
+        </p>
+        <p
+          style={{
+            fontFamily: font, fontSize: 13, fontWeight: 400,
+            color: '#848484', letterSpacing: '-0.26px', lineHeight: '19px',
+          }}
+        >
+          하루 한 번, 무료로 상담해보세요
+        </p>
+      </div>
+
       <div
         className="w-full"
         style={{
@@ -507,30 +471,10 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
       >
         <div
           className="flex flex-col items-start"
-          style={{ padding: '20px 20px 22px 24px', gap: 20 }}
+          style={{ padding: "20px 24px 22px 24px", gap: 16 }}
         >
-          {/* 인사말 */}
-          <div className="flex flex-col" style={{ gap: 4 }}>
-            <p
-              style={{
-                fontFamily: font, fontSize: 17, fontWeight: 600,
-                color: C.black, letterSpacing: '-0.34px', lineHeight: '24px',
-              }}
-            >
-              {nickname ? `${nickname}님, 오늘 마음은 어떠세요?` : '오늘 마음은 어떠세요?'}
-            </p>
-            <p
-              style={{
-                fontFamily: font, fontSize: 13, fontWeight: 400,
-                color: C.gray400, letterSpacing: '-0.26px', lineHeight: '19px',
-              }}
-            >
-              하루 한 번, 무료로 상담해보세요
-            </p>
-          </div>
-
           {/* 상담 항목 목록 */}
-          <div className="flex flex-col w-full" style={{ gap: 20 }}>
+          <div className="flex flex-col w-full" style={{ gap: 16 }}>
             {consultItems.map(({ label, icon, path, resultPath, statusKey }) => {
               const isCompleted = statuses[statusKey] === 'completed';
               return (
@@ -538,8 +482,8 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
 
                   {/* 왼쪽: 아이콘 + [타이틀 행 + 서브텍스트] */}
                   <div className="flex items-center" style={{ gap: 12, flex: '1 0 0', minWidth: 0 }}>
-                    {icon}
-                    <div className="flex flex-col items-start justify-center">
+                    <div style={{ marginTop: 1 }}>{icon}</div>
+                    <div className="flex flex-col items-start justify-center" style={{ marginTop: 4 }}>
                       {/* 타이틀 + Dev 토글 버튼 */}
                       <div className="flex items-center" style={{ gap: 6 }}>
                         <span
@@ -589,12 +533,13 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
                       backgroundColor: C.primary,
                       width: 88, height: 38, borderRadius: 12, border: 'none',
                       WebkitTapHighlightColor: 'transparent',
+                      transition: 'transform 0.1s ease',
                     }}
                     onTouchStart={() => {}}
-                    onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; }}
-                    onPointerUp={(e)   => { e.currentTarget.style.backgroundColor = C.primary; }}
-                    onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
-                    onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
+                    onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; e.currentTarget.style.transform = 'scale(0.995)'; }}
+                    onPointerUp={(e)   => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+                    onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+                    onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
                     onClick={async () => {
                       if (isCompleted) {
                         if (statusKey === 'taro') {
@@ -615,7 +560,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
                   >
                     <span
                       style={{
-                        fontFamily: font, fontSize: 14, fontWeight: 400,
+                        fontFamily: font, fontSize: 14, fontWeight: 500,
                         color: C.white, letterSpacing: '-0.42px', lineHeight: '20px',
                         whiteSpace: 'nowrap',
                       }}
@@ -681,9 +626,10 @@ function NewFortuneSection({
   const [tx, setTx]                 = useState(0);
   const [isSnapping, setIsSnapping] = useState(false);
 
-  const gestureOn = useRef(false);
-  const mouseOn   = useRef(false);
-  const startCX   = useRef(0);
+  const gestureOn  = useRef(false);
+  const mouseOn    = useRef(false);
+  const hasDragged = useRef(false);
+  const startCX    = useRef(0);
   const startTx   = useRef(0);
   const lastCX    = useRef(0);
   const lastT     = useRef(0);
@@ -719,6 +665,7 @@ function NewFortuneSection({
 
   const gestureStart = (cx: number) => {
     startCX.current = cx;
+    hasDragged.current = false;
     startTx.current = txRef.current;
     lastCX.current  = cx;
     lastT.current   = Date.now();
@@ -728,6 +675,7 @@ function NewFortuneSection({
 
   const gestureMove = (cx: number) => {
     const delta   = cx - startCX.current;
+    if (Math.abs(delta) > 5) hasDragged.current = true;
     const sw      = getSnapW();
     const minTx   = -(N - 1) * sw;
     const raw     = startTx.current + delta;
@@ -813,10 +761,40 @@ function NewFortuneSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Wheel: non-passive (트랙패드 가로 스와이프 → 슬라이드, 브라우저 뒤로가기 차단) ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let wheelAccum = 0;
+    let wheelActive = false;
+    let snapTimer: ReturnType<typeof setTimeout> | null = null;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      if (!wheelActive) {
+        wheelActive = true;
+        wheelAccum = 0;
+        gestureStart(0);
+      }
+      wheelAccum -= e.deltaX;
+      gestureMove(wheelAccum);
+      if (snapTimer) clearTimeout(snapTimer);
+      snapTimer = setTimeout(() => {
+        gestureEnd();
+        wheelActive = false;
+        wheelAccum = 0;
+      }, 150);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Mouse: window 글로벌 리스너 ─────────────────────────────────────────────
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!mouseOn.current) return;
+      e.preventDefault();
       gestureMove(e.clientX);
     };
     const onMouseUp = () => {
@@ -834,7 +812,7 @@ function NewFortuneSection({
   }, []);
 
   return (
-    <section className="w-full" style={{ backgroundColor: C.white, padding: '26px 20px 32px' }}>
+    <section className="w-full" style={{ backgroundColor: C.white, padding: '26px 20px 0px' }}>
       <div className="flex flex-col items-start w-full" style={{ gap: 20 }}>
         {/* 섹션 타이틀 */}
         <span
@@ -853,19 +831,11 @@ function NewFortuneSection({
           className="w-full"
           style={{ userSelect: 'none', cursor: 'grab' }}
           onMouseDown={(e) => {
+            e.preventDefault();
             mouseOn.current = true;
             gestureStart(e.clientX);
           }}
-          onWheel={(e) => {
-            if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-            if (wheelCooldown.current) return;
-            e.preventDefault();
-            wheelCooldown.current = true;
-            const cur = dotRef.current;
-            if (e.deltaX > 0 && cur < N - 1) onDotChange(cur + 1);
-            if (e.deltaX < 0 && cur > 0)     onDotChange(cur - 1);
-            setTimeout(() => { wheelCooldown.current = false; }, 500);
-          }}
+
         >
           <div className="w-full overflow-hidden">
             <div
@@ -883,8 +853,9 @@ function NewFortuneSection({
                 <div
                   key={slide.id || i}
                   className="flex flex-col cursor-pointer"
-                  style={{ flex: '0 0 100%', gap: 12 }}
+                  style={{ flex: '0 0 100%', gap: 10 }}
                   onClick={() => {
+                    if (hasDragged.current) return;
                     if (slide.id) {
                       trackContentClick(slide.id);
                       navigate(`/free/content/${slide.id}`, { state: { canGoBack: true } });
@@ -911,7 +882,7 @@ function NewFortuneSection({
                   </div>
 
                   {/* 텍스트 영역 */}
-                  <div className="flex flex-col w-full" style={{ gap: 2, padding: '0 4px' }}>
+                  <div className="flex flex-col w-full" style={{ gap: 1, padding: '0 4px' }}>
                     <p
                       style={{
                         fontFamily: font, fontSize: 16, fontWeight: 500,
@@ -937,7 +908,7 @@ function NewFortuneSection({
         </div>
 
         {/* 페이지네이션 닷 */}
-        <div className="flex items-center justify-center w-full">
+        <div className="flex items-center justify-center w-full" style={{ marginTop: -4 }}>
           <div className="flex items-center" style={{ gap: 4 }}>
             {slides.map((_, i) => (
               <button
@@ -956,18 +927,18 @@ function NewFortuneSection({
 
         {/* 모두보기 버튼 */}
         <button
-          className="flex items-center justify-center w-full cursor-pointer transition-all active:scale-[0.995]"
-          style={{ backgroundColor: C.primary, height: 48, borderRadius: 12, border: 'none' }}
+          className="flex items-center justify-center w-full cursor-pointer"
+          style={{ backgroundColor: C.primary, height: 48, borderRadius: 16, border: 'none', transition: 'transform 0.1s ease' }}
           onClick={() => navigate('/new-free')}
           onTouchStart={() => {}}
-          onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; }}
-          onPointerUp={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
-          onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
-          onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; }}
+          onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; e.currentTarget.style.transform = 'scale(0.995)'; }}
+          onPointerUp={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+          onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+          onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
         >
           <span
             style={{
-              fontFamily: font, fontSize: 15, fontWeight: 400,
+              fontFamily: font, fontSize: 15, fontWeight: 500,
               color: C.white, letterSpacing: '-0.45px', lineHeight: '20px',
             }}
           >
@@ -975,6 +946,7 @@ function NewFortuneSection({
           </span>
         </button>
       </div>
+      <div style={{ height: 8, backgroundColor: '#F9F9F9', marginTop: 32, marginLeft: -20, marginRight: -20 }} />
     </section>
   );
 }
@@ -994,7 +966,7 @@ function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () =>
       <div
         className="flex flex-col cursor-pointer"
         style={{
-          padding: '18px 16px',
+          padding: '16px 16px 12px',
           borderRadius: 16,
           transition: 'background-color 0.15s ease',
         }}
@@ -1013,9 +985,9 @@ function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () =>
         }}
         onClick={onClick}
       >
-        <div className="flex items-start" style={{ gap: 10 }}>
-          <RankNumber n={item.rank} />
-          <div className="flex flex-1 items-start min-w-0" style={{ gap: 12 }}>
+        <div className="flex items-start" style={{ gap: 11 }}>
+          <div style={{ marginTop: -6 }}><RankNumber n={item.rank} /></div>
+          <div className="flex flex-1 items-start min-w-0" style={{ gap: 10 }}>
             {/* 썸네일 */}
             <div
               className="relative shrink-0 overflow-hidden"
@@ -1029,7 +1001,7 @@ function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () =>
               />
             </div>
             {/* 텍스트 */}
-            <div className="flex flex-1 flex-col items-start min-w-0" style={{ gap: 4 }}>
+            <div className="flex flex-1 flex-col items-start min-w-0" style={{ gap: 3 }}>
               <p
                 className="w-full overflow-hidden"
                 style={{
@@ -1084,18 +1056,25 @@ function BestFortuneSection({
   const clipperRef = useRef<HTMLDivElement>(null);
   const tabBarRef = useRef<HTMLDivElement>(null);
   const [slideW, setSlideW] = useState(0);
+  const slideWRef = useRef(0);
 
   useEffect(() => {
     const measure = () => {
-      if (clipperRef.current) {
-        setSlideW(clipperRef.current.offsetWidth - PAD_LEFT - GAP - PEEK);
+      const w = clipperRef.current?.offsetWidth ?? window.innerWidth;
+      let cardW: number;
+      if (w >= 390) {
+        cardW = w - 94;                                          // 390→296, 440→346
+      } else {
+        cardW = Math.round(276 + (w - 320) * (296 - 276) / (390 - 320)); // 320→276, 390→296
       }
+      setSlideW(Math.max(276, Math.min(346, cardW)));
     };
     measure();
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, []);
 
+  slideWRef.current = slideW;
   const trackOffset = bestPage * (slideW + GAP);
 
   const touchStartX  = useRef<number>(0);
@@ -1163,6 +1142,40 @@ function BestFortuneSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Wheel: non-passive (트랙패드 가로 스와이프 → 슬라이드, 브라우저 뒤로가기 차단) ──
+  useEffect(() => {
+    const el = clipperRef.current;
+    if (!el) return;
+    let wheelAccum = 0;
+    let snapTimer: ReturnType<typeof setTimeout> | null = null;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      wheelAccum += e.deltaX;
+      // dragOffset = -wheelAccum: deltaX>0(스와이프 좌) → 음수 → 콘텐츠 좌로 이동(다음)
+      const pageW = slideWRef.current + GAP;
+      const minDrag = -(totalPagesRef.current - 1 - bestPageRef.current) * pageW;
+      const maxDrag = bestPageRef.current * pageW;
+      const clampedDrag = Math.max(minDrag, Math.min(maxDrag, -wheelAccum));
+      setDragOffset(clampedDrag);
+      if (snapTimer) clearTimeout(snapTimer);
+      snapTimer = setTimeout(() => {
+        const totalOffset = bestPageRef.current * pageW - clampedDrag;
+        const targetPage = Math.max(0, Math.min(totalPagesRef.current - 1, Math.round(totalOffset / pageW)));
+        setBestPage(targetPage);
+        setDragOffset(0);
+        wheelAccum = 0;
+      }, 150);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      if (snapTimer) clearTimeout(snapTimer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Mouse: window 글로벌 리스너 (드래그 추적 + 페이지 전환) ──
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
@@ -1220,7 +1233,7 @@ function BestFortuneSection({
       {/* 헤더 */}
       <div
         className="flex items-center justify-between w-full"
-        style={{ padding: '0 12px 0 20px', marginBottom: 4 }}
+        style={{ padding: '0 12px 0 20px', marginBottom: 0 }}
       >
         <span
           style={{
@@ -1361,14 +1374,7 @@ function BestFortuneSection({
                 gridTemplateRows: 'repeat(3, auto)',
                 rowGap: '8px',
               }}
-              onWheel={(e) => {
-                if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-                if (wheelCooldown.current) return;
-                e.preventDefault();
-                wheelCooldown.current = true;
-                goTo(e.deltaX > 0 ? bestPage + 1 : bestPage - 1);
-                setTimeout(() => { wheelCooldown.current = false; }, 500);
-              }}
+
             >
               {pageItems.map((item) => (
                 <BestFortuneCard
@@ -1545,9 +1551,6 @@ export function HomeScreenNew() {
         {newFreeSlides.length > 0 && (
           <NewFortuneSection dot={dot} onDotChange={setDot} slides={newFreeSlides} />
         )}
-
-        {/* 섹션 구분선 */}
-        <div style={{ height: 8, backgroundColor: C.cardBorder }} />
 
         <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
         <div style={{ marginTop: 130 }}>
