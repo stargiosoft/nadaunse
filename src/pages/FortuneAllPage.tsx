@@ -455,7 +455,7 @@ export function FortuneAllPage() {
   }, [contentTypeFilterOpen]);
 
   return (
-    <div className="flex justify-center h-[100dvh] overflow-hidden" style={{ backgroundColor: C.white }}>
+    <div className="fixed inset-0 flex justify-center overflow-hidden" style={{ backgroundColor: C.white, touchAction: 'none' }}>
       <SEO
         title="인기 운세 모아보기 - 사주 타로 궁합 베스트"
         description="나다운세에서 가장 인기 있는 사주, 타로, 궁합 콘텐츠를 모아보세요. 사주연애운, 사주결혼시기, 사주재물운 등 다양한 AI 운세를 확인하세요."
@@ -463,8 +463,8 @@ export function FortuneAllPage() {
         canonical="/best-fortune"
       />
       <div
-        className="flex flex-col relative overflow-y-auto overscroll-y-contain"
-        style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440 }}
+        className="flex flex-col relative overflow-y-auto overscroll-y-none"
+        style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440, touchAction: 'pan-y', WebkitOverflowScrolling: 'auto' }}
       >
         {/* ── Sticky header ── */}
         <div className="sticky top-0" style={{ zIndex: 50 }}>
