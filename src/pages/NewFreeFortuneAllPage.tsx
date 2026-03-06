@@ -323,8 +323,15 @@ export function NewFreeFortuneAllPage() {
 
       let sorted = [...data];
       if (sortBy === '최신순') {
-        sorted.sort((a: { created_at: string; weekly_clicks: number }, b: { created_at: string; weekly_clicks: number }) => {
-          const d = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        sorted.sort((a: { created_at: string; weekly_clicks: number; is_read: boolean }, b: { created_at: string; weekly_clicks: number; is_read: boolean }) => {
+          // 1순위: 읽지 않은 콘텐츠 먼저
+          const readDiff = (a.is_read ? 1 : 0) - (b.is_read ? 1 : 0);
+          if (readDiff !== 0) return readDiff;
+          // 2순위: 최신순 (날짜 기준)
+          const dateA = new Date(a.created_at).toISOString().slice(0, 10);
+          const dateB = new Date(b.created_at).toISOString().slice(0, 10);
+          if (dateA !== dateB) return dateB < dateA ? -1 : 1;
+          // 3순위: 동일 날짜면 인기순
           return d !== 0 ? d : b.weekly_clicks - a.weekly_clicks;
         });
       }
