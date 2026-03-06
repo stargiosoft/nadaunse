@@ -6,6 +6,7 @@ import lottieData from '../imports/animated-shape-effect.json';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { recordConsultUsed } from '../lib/consultLimitService';
+import { DEV } from '../lib/env';
 import SEO from '../components/SEO';
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ export function SajuConsultLoadingPage() {
           }
 
           const { data, error } = await supabase.functions.invoke('generate-saju-consult', {
-            body: { question: question.trim(), sajuRecordId, userId: user.id }
+            body: { question: question.trim(), sajuRecordId, userId: user.id, devBypass: DEV }
           });
 
           if (data?.error === 'DAILY_CONSULT_LIMIT') {

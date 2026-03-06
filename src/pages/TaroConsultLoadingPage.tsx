@@ -6,6 +6,7 @@ import lottieData from '../imports/animated-shape-effect.json';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { recordConsultUsed } from '../lib/consultLimitService';
+import { DEV } from '../lib/env';
 import SEO from '../components/SEO';
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
@@ -73,7 +74,7 @@ export function TaroConsultLoadingPage() {
 
         // 3. Edge Function 호출
         const { data, error } = await supabase.functions.invoke('generate-tarot-consult', {
-          body: { question: question.trim(), userId }
+          body: { question: question.trim(), userId, devBypass: DEV }
         });
 
         // CONSULT_LIMIT_REACHED 처리

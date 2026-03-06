@@ -65,7 +65,13 @@ serve(async (req) => {
     console.log('🚀 [Edge Function] generate-tarot-consult 시작')
 
     const requestBody = await req.json()
-    const { question, userId } = requestBody
+    const { question, userId, devBypass } = requestBody
+
+    // staging 환경에서 devBypass 허용
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const isStaging = supabaseUrl.includes('hyltbeewxaqashyivilu')
+    const isDevBypass = devBypass === true && isStaging
 
     // 입력 검증
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
@@ -85,8 +91,6 @@ serve(async (req) => {
     }
 
     // ⭐ 비회원 상담 체험 1회 제한 (fingerprint 기반)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
     if (!userId) {
       console.log('🔒 [Edge Function] 비회원 타로 상담 → fingerprint 체크')
@@ -146,7 +150,7 @@ serve(async (req) => {
     }
 
     // ⭐ 로그인 유저 하루 1회 제한 (user_consult_daily 테이블)
-    if (userId) {
+    if (userId && !isDevBypass) {
       console.log('🔒 [Edge Function] 로그인 유저 일일 상담 제한 체크')
 
       const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -325,7 +329,7 @@ ${question.trim()}
     console.log('✅ [Edge Function] 타로 상담 답변 생성 완료')
 
     // 로그인 유저 일일 상담 기록 저장
-    if (userId) {
+    if (userId && !isDevBypass) {
       const supabaseForDaily = createClient(supabaseUrl, supabaseServiceKey)
       const { error: insertDailyError } = await supabaseForDaily
         .from('user_consult_daily')

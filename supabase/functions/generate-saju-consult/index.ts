@@ -18,7 +18,12 @@ serve(async (req) => {
     const requestBody = await req.json()
     console.log('📥 [Edge Function] 요청 body:', JSON.stringify({ question: requestBody.question?.substring(0, 50), sajuRecordId: requestBody.sajuRecordId, userId: requestBody.userId?.substring(0, 8), hasBirthInfo: !!requestBody.birthInfo }))
 
-    const { question, sajuRecordId, userId, birthInfo } = requestBody
+    const { question, sajuRecordId, userId, birthInfo, devBypass } = requestBody
+
+    // staging 환경에서 devBypass 허용
+    const supabaseUrlForCheck = Deno.env.get('SUPABASE_URL') ?? ''
+    const isStaging = supabaseUrlForCheck.includes('hyltbeewxaqashyivilu')
+    const isDevBypass = devBypass === true && isStaging
 
     // 입력 검증
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
@@ -105,7 +110,7 @@ serve(async (req) => {
     }
 
     // ⭐ 로그인 유저 하루 1회 제한 (user_consult_daily 테이블)
-    if (userId) {
+    if (userId && !isDevBypass) {
       console.log('🔒 [Edge Function] 로그인 유저 일일 상담 제한 체크')
 
       const { data: existingConsult, error: consultCheckError } = await supabase
@@ -419,7 +424,7 @@ ${fullQuestionerInfo}
     console.log('📌 [Edge Function] point:', parsedResult.todayCore.point)
 
     // 로그인 유저 일일 상담 기록 저장
-    if (userId) {
+    if (userId && !isDevBypass) {
       const { error: insertDailyError } = await supabase
         .from('user_consult_daily')
         .upsert(
