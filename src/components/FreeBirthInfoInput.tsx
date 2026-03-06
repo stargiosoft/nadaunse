@@ -598,7 +598,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
         >
           {/* 이름 입력 */}
           <motion.div 
-            className="flex flex-col gap-[4px] mb-[32px]"
+            className="flex flex-col gap-[4px] mb-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -607,7 +607,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               이름
             </label>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors ${
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors ${
               errors.name 
                 ? 'bg-white border-[#FF0000]' 
                 : name.length > 0 
@@ -631,7 +631,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
                   }}
                   placeholder="예: 홍길동"
                   autoFocus
-                  className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent ${
+                  className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent placeholder:text-[15px] ${
                     errors.name ? 'text-[#151515] placeholder:text-[#b7b7b7]' : 'text-[#151515] placeholder:text-[#b7b7b7]'
                   }`}
                 />
@@ -644,7 +644,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
 
           {/* 성별 선택 */}
           <motion.div 
-            className="flex flex-col gap-[4px] mb-[32px]"
+            className="flex flex-col gap-[4px] mb-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -653,16 +653,16 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               성별
             </label>
-            <div className="bg-[#f8f8f8] rounded-[16px] p-[8px] overflow-hidden isolate">
+            <div className="bg-[#f8f8f8] rounded-[20px] p-[8px] overflow-hidden isolate">
               <div className="flex gap-[8px]">
                 <button
                   onClick={() => setGender('female')}
-                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
+                  className="flex-1 h-[48px] rounded-[17px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
                   {gender === 'female' && (
                     <motion.div
                       layoutId="gender-selection-indicator"
-                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[17px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -682,12 +682,12 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
                 </button>
                 <button
                   onClick={() => setGender('male')}
-                  className="flex-1 h-[48px] rounded-[12px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
+                  className="flex-1 h-[48px] rounded-[17px] flex items-center justify-between px-[20px] py-[12px] relative bg-transparent transition-colors duration-200"
                 >
                   {gender === 'male' && (
                     <motion.div
                       layoutId="gender-selection-indicator"
-                      className="absolute inset-0 bg-[#48b2af] rounded-[12px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
+                      className="absolute inset-0 bg-[#48b2af] rounded-[17px] shadow-[0px_2px_7px_0px_rgba(0,0,0,0.12)]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -711,7 +711,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
 
           {/* 생년월일 입력 */}
           <motion.div 
-            className="flex flex-col gap-[4px] mb-[32px]"
+            className="flex flex-col gap-[4px] mb-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
@@ -720,7 +720,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
             <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
               생년월일 (양력 기준으로 입력해 주세요)
             </label>
-            <div className={`h-[56px] relative rounded-[16px] border transition-colors ${
+            <div className={`h-[56px] relative rounded-[20px] border transition-colors ${
               errors.birthDate 
                 ? 'bg-white border-[#FF0000]' 
                 : birthDate.length > 0
@@ -741,7 +741,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
                     }
                   }}
                   placeholder="예: 1992-07-15 (양력)"
-                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] ${
+                  className={`peer flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent text-left placeholder:text-[#b7b7b7] placeholder:text-[15px] ${
                     isValidDate(birthDate) ? 'text-transparent focus:text-[#151515]' : 'text-[#151515]'
                   }`}
                 />
@@ -774,7 +774,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
               <label className="px-[4px] text-[12px] text-[#848484] leading-[16px] tracking-[-0.24px]">
                 태어난 시간
               </label>
-              <div className={`h-[48px] relative rounded-[12px] border transition-colors ${
+              <div className={`h-[56px] relative rounded-[20px] border transition-colors ${
                 unknownTime
                   ? 'bg-[#f5f5f5] border-[#e7e7e7]' 
                   : errors.birthTime
@@ -800,7 +800,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
                     }}
                     placeholder={unknownTime ? "오후 12:00" : "예: 21:00"}
                     disabled={unknownTime}
-                    className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent min-w-0 ${
+                    className={`flex-1 text-[16px] leading-[20px] tracking-[-0.45px] outline-none bg-transparent min-w-0 placeholder:text-[15px] ${
                       unknownTime
                         ? 'text-[#b7b7b7] placeholder:text-[#b7b7b7]'
                         : 'text-[#151515] placeholder:text-[#b7b7b7]'
@@ -851,7 +851,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
               onClick={handleSubmit}
               onTouchStart={() => {}}
               disabled={!isFormValid() || isSubmitting}
-              className={`w-full h-[56px] rounded-[16px] flex items-center justify-center overflow-hidden border-none transition-colors duration-150 ${
+              className={`w-full h-[56px] rounded-[20px] flex items-center justify-center overflow-hidden border-none transition-colors duration-150 ${
                 isFormValid() && !isSubmitting
                   ? 'bg-[#48b2af] text-white cursor-pointer active:bg-[#3a9693]'
                   : 'bg-[#f8f8f8] text-[#b7b7b7] cursor-not-allowed'
