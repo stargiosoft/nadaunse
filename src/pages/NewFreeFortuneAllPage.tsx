@@ -216,9 +216,19 @@ function RowCard({ item }: { item: NoRankFortuneItem }) {
               <div className="flex items-center" style={{ gap: 3 }}>
                 {item.labels.map((l) => <LabelBadge key={l} type={l} />)}
               </div>
-              <div className="content-stretch flex gap-[2px] items-center relative shrink-0">
-                <EyeIcon />
-                <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>{item.views}</span>
+              <div className="flex items-center" style={{ gap: 4, flexShrink: 0 }}>
+                <div className="flex items-center" style={{ gap: 2, flexShrink: 0 }}>
+                  <EyeIcon />
+                  <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>{item.views}</span>
+                </div>
+                {item.showRead && (
+                  <>
+                    <svg width="1" height="7" fill="none" viewBox="0 0 1 7" style={{ flexShrink: 0 }}>
+                      <path d="M0.5 0.5V6.5" stroke="#E7E7E7" strokeLinecap="round" />
+                    </svg>
+                    <span style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.gray400, lineHeight: '16px' }}>읽어봄</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
