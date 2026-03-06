@@ -442,7 +442,7 @@ export function SajuConsultPage() {
               <p style={{ fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px' }}>
                 나가시겠어요?
               </p>
-              <p style={{ fontFamily: font, fontSize: 16, fontWeight: 300, color: C.gray600, letterSpacing: '-0.32px', lineHeight: '28.5px' }}>
+              <p style={{ fontFamily: font, fontSize: 16, fontWeight: 400, color: C.gray600, letterSpacing: '-0.32px', lineHeight: '28.5px' }}>
                 지금 나가면 작성한 내용이 사라져요
               </p>
             </div>
@@ -457,7 +457,7 @@ export function SajuConsultPage() {
                 style={{
                   flex: 1,
                   height: 48,
-                  borderRadius: 12,
+                  borderRadius: 16,
                   border: 'none',
                   backgroundColor: '#f3f3f3',
                   cursor: 'pointer',
@@ -468,7 +468,7 @@ export function SajuConsultPage() {
                   justifyContent: 'center',
                 }}
               >
-                <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#525252', letterSpacing: '-0.45px', lineHeight: '20px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: font, fontSize: 15, fontWeight: 500, color: '#525252', letterSpacing: '-0.45px', lineHeight: '20px', whiteSpace: 'nowrap' }}>
                   계속 작성하기
                 </span>
               </button>
@@ -486,7 +486,7 @@ export function SajuConsultPage() {
                 style={{
                   flex: 1,
                   height: 48,
-                  borderRadius: 12,
+                  borderRadius: 16,
                   border: 'none',
                   backgroundColor: C.primary,
                   cursor: 'pointer',
@@ -497,7 +497,7 @@ export function SajuConsultPage() {
                   justifyContent: 'center',
                 }}
               >
-                <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.white, letterSpacing: '-0.45px', lineHeight: '20px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: font, fontSize: 15, fontWeight: 500, color: C.white, letterSpacing: '-0.45px', lineHeight: '20px', whiteSpace: 'nowrap' }}>
                   나갈래요
                 </span>
               </button>
