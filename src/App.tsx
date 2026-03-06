@@ -1517,6 +1517,7 @@ function FreeResultPage() {
   const [isLoading, setIsLoading] = useState(!initialProduct);
   const [recommendedContents, setRecommendedContents] = useState<any[]>([]);
   const [recommendedPaidContent, setRecommendedPaidContent] = useState<MasterContent | null>(null);
+  const [upsellHookText, setUpsellHookText] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -1528,7 +1529,7 @@ function FreeResultPage() {
         // ⭐ 추천 콘텐츠 조회
         try {
           const { freeContentService } = await import('./lib/freeContentService');
-          const [recommended, paidRec] = await Promise.all([
+          const [recommended, paidResult] = await Promise.all([
             freeContentService.fetchRecommendedContents(initialProduct.id),
             (async () => {
               const { data: { session } } = await supabase.auth.getSession();
@@ -1546,7 +1547,8 @@ function FreeResultPage() {
           }));
 
           setRecommendedContents(formattedRecommended);
-          setRecommendedPaidContent(paidRec);
+          setRecommendedPaidContent(paidResult.content);
+          setUpsellHookText(paidResult.hookText);
         } catch (error) {
           console.error('❌ [FreeResultPage] 추천 콘텐츠 조회 실패:', error);
         }
@@ -1597,7 +1599,7 @@ function FreeResultPage() {
             // ⭐️ 추천 콘텐츠 조회 (동일한 카테고리, 인기도 순)
             const { freeContentService } = await import('./lib/freeContentService');
             const { data: { session } } = await supabase.auth.getSession();
-            const [recommended, paidRec] = await Promise.all([
+            const [recommended, paidResult] = await Promise.all([
               freeContentService.fetchRecommendedContents(data.id),
               freeContentService.fetchRecommendedPaidContent(data.id, session?.user?.id)
             ]);
@@ -1613,7 +1615,8 @@ function FreeResultPage() {
             }));
 
             setRecommendedContents(formattedRecommended);
-            setRecommendedPaidContent(paidRec);
+            setRecommendedPaidContent(paidResult.content);
+            setUpsellHookText(paidResult.hookText);
             setIsLoading(false);
           } else {
             console.error('❌ [FreeResultPage] 상품 없음');
@@ -1724,7 +1727,7 @@ function FreeResultPage() {
       contentId={id}
       onClose={handleClose}
       recommendedPaidContent={recommendedPaidContent}
-      upsellHookText={product?.upsell_hook_text}
+      upsellHookText={upsellHookText}
       onUserIconClick={() => navigate('/profile')}
       fromDB={effectiveFromDB}
       dbRecordId={effectiveDbRecordId}
