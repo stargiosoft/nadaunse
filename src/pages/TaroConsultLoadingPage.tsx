@@ -143,10 +143,10 @@ export function TaroConsultLoadingPage() {
             </div>
           </div>
           <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.text, letterSpacing: '-0.3px', lineHeight: '25.5px', textAlign: 'center', width: 302 }}>
+            <p style={{ fontFamily: font, fontSize: 15.5, fontWeight: 400, color: C.text, letterSpacing: '-0.31px', lineHeight: '25.5px', textAlign: 'center', width: 302 }}>
               지금의 마음을 읽고 있어요
             </p>
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.text, letterSpacing: '-0.3px', lineHeight: '25.5px', textAlign: 'center', width: 302 }}>
+            <p style={{ fontFamily: font, fontSize: 15.5, fontWeight: 400, color: C.text, letterSpacing: '-0.31px', lineHeight: '25.5px', textAlign: 'center', width: 302 }}>
               잠시만 기다려주세요.
             </p>
           </div>

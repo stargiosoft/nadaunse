@@ -319,10 +319,10 @@ export function SajuConsultLoadingPage() {
             <p
               style={{
                 fontFamily: font,
-                fontSize: 15,
+                fontSize: 15.5,
                 fontWeight: 400,
                 color: C.text,
-                letterSpacing: '-0.3px',
+                letterSpacing: '-0.31px',
                 lineHeight: '25.5px',
                 textAlign: 'center',
                 width: 302,
@@ -333,10 +333,10 @@ export function SajuConsultLoadingPage() {
             <p
               style={{
                 fontFamily: font,
-                fontSize: 15,
+                fontSize: 15.5,
                 fontWeight: 400,
                 color: C.text,
-                letterSpacing: '-0.3px',
+                letterSpacing: '-0.31px',
                 lineHeight: '25.5px',
                 textAlign: 'center',
                 width: 302,
