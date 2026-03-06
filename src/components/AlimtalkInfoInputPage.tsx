@@ -391,7 +391,7 @@ export default function AlimtalkInfoInputPage({
                   height: '56px',
                   backgroundColor: '#ffffff',
                   border: `1px solid ${error ? '#e87878' : '#e7e7e7'}`,
-                  borderRadius: '16px',
+                  borderRadius: '20px',
                   padding: '0 12px',
                 }}
               >
@@ -449,10 +449,10 @@ export default function AlimtalkInfoInputPage({
               className="w-full flex items-center justify-center transition-colors"
               style={{
                 height: '56px',
-                borderRadius: '16px',
                 backgroundColor: (isValidPhoneNumber() && !isSubmitting) ? '#41a09e' : '#f8f8f8',
                 cursor: (isValidPhoneNumber() && !isSubmitting) ? 'pointer' : 'not-allowed',
                 border: 'none',
+                borderRadius: '20px',
               }}
             >
               <span

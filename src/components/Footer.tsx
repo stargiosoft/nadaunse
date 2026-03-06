@@ -52,7 +52,8 @@ export default function Footer({ onNavigateToTerms, onNavigateToPrivacy }: Foote
             <div className="content-stretch flex gap-[0px] items-center relative shrink-0 -mt-[2px]">
               <button
                 onClick={onNavigateToTerms}
-                className="content-stretch flex flex-col h-[34px] items-center justify-center px-[8px] py-0 relative rounded-[12px] shrink-0 cursor-pointer transition-colors active:bg-[#E7E7E7]"
+                className="content-stretch flex flex-col h-[30px] items-center justify-center relative rounded-[12px] shrink-0 cursor-pointer active:bg-[#E7E7E7]"
+                style={{ padding: '0 6px' }}
               >
                 <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full">
                   <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] text-nowrap tracking-[-0.42px]">
@@ -71,7 +72,8 @@ export default function Footer({ onNavigateToTerms, onNavigateToPrivacy }: Foote
               
               <button
                 onClick={onNavigateToPrivacy}
-                className="content-stretch flex flex-col h-[34px] items-center justify-center px-[8px] py-0 relative rounded-[12px] shrink-0 cursor-pointer transition-colors active:bg-[#E7E7E7]"
+                className="content-stretch flex flex-col h-[30px] items-center justify-center relative rounded-[12px] shrink-0 cursor-pointer transition-colors active:bg-[#E7E7E7]"
+                style={{ padding: '0 6px' }}
               >
                 <div className="content-stretch flex gap-[4px] items-center relative shrink-0 w-full">
                   <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium leading-[22px] relative shrink-0 text-[#848484] text-[14px] text-nowrap tracking-[-0.42px]">

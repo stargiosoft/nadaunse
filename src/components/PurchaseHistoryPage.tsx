@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DEV } from '../lib/env';
@@ -84,18 +84,20 @@ interface GroupedFreeRecords {
   [date: string]: FreeContentRecord[];
 }
 
-// ⭐ 빈 둥지 아이콘 컴포넌트 (52x52px 고정)
+// ⭐ 빈 둥지 아이콘 컴포넌트 (56x56px, SajuManagementPage 동일)
 function EmptyNestIcon() {
   return (
-    <svg width="52" height="52" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d={emptyStateSvgPaths.p3a144140} fill="#E7E7E7" />
-      <path d={emptyStateSvgPaths.p15b23580} fill="#D4D4D4" />
-      <path d={emptyStateSvgPaths.p3b09d000} fill="#D4D4D4" />
-      <path d={emptyStateSvgPaths.p1c433500} fill="#E7E7E7" />
-      <path d={emptyStateSvgPaths.p136e2000} fill="#F3F3F3" />
-      <path d={emptyStateSvgPaths.p15328600} fill="#D4D4D4" />
-      <path d={emptyStateSvgPaths.p1d148980} fill="#E7E7E7" />
-      <path d={emptyStateSvgPaths.p2d904400} fill="#F3F3F3" />
+    <svg className="block" style={{ width: '56px', height: '56px' }} fill="none" preserveAspectRatio="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <g id="Icons">
+        <path d={emptyStateSvgPaths.p3a144140} fill="var(--fill-0, #E7E7E7)" id="Vector" />
+        <path d={emptyStateSvgPaths.p15b23580} fill="var(--fill-0, #D4D4D4)" id="Vector_2" />
+        <path d={emptyStateSvgPaths.p3b09d000} fill="var(--fill-0, #D4D4D4)" id="Vector_3" />
+        <path d={emptyStateSvgPaths.p1c433500} fill="var(--fill-0, #E7E7E7)" id="Vector_4" />
+        <path d={emptyStateSvgPaths.p136e2000} fill="var(--fill-0, #F3F3F3)" id="Vector_5" />
+        <path d={emptyStateSvgPaths.p15328600} fill="var(--fill-0, #D4D4D4)" id="Vector_6" />
+        <path d={emptyStateSvgPaths.p1d148980} fill="var(--fill-0, #E7E7E7)" id="Vector_7" />
+        <path d={emptyStateSvgPaths.p2d904400} fill="var(--fill-0, #F3F3F3)" id="Vector_8" />
+      </g>
     </svg>
   );
 }
@@ -116,6 +118,11 @@ export default function PurchaseHistoryPage() {
   const [freeLoading, setFreeLoading] = useState(false);
   const [devForcePaidEmpty, setDevForcePaidEmpty] = useState(false);
   const [devForceFreeEmpty, setDevForceFreeEmpty] = useState(false);
+
+  // ⭐ 탭바 스크롤 숨김/노출
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef(0);
+  const [isTabVisible, setIsTabVisible] = useState(true);
 
   // ⭐ 세션 체크
   useEffect(() => {
@@ -322,7 +329,6 @@ export default function PurchaseHistoryPage() {
   };
 
   // ⭐ 탭 변경 시 무료 기록 로드
-  // ⭐ 탭 변경 시 무료 기록 로드
   useEffect(() => {
     if (activeTab === 'free') {
       // ⭐ 갱신 플래그가 있거나 데이터가 없으면 로드
@@ -332,6 +338,37 @@ export default function PurchaseHistoryPage() {
       }
     }
   }, [activeTab]);
+
+  // ⭐ 스크롤 방향 감지 → 탭바 숨김/노출
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const currentScrollTop = container.scrollTop;
+      const delta = currentScrollTop - lastScrollTopRef.current;
+
+      if (delta > 4 && currentScrollTop > 52) {
+        setIsTabVisible(false);
+      } else if (delta < -4) {
+        setIsTabVisible(true);
+      }
+
+      lastScrollTopRef.current = currentScrollTop;
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // ⭐ 탭 전환 시 탭바 노출 + 스크롤 초기화
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setIsTabVisible(true);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  };
 
   // 날짜별 그룹핑
   const groupByDate = (items: PurchaseItem[]): GroupedPurchases => {
@@ -644,64 +681,69 @@ export default function PurchaseHistoryPage() {
         </div>
       </div>
 
-      {/* ⭐ Tab Bar (화면 너비 꽉 채움, 균등 분할) */}
-      <div className="bg-white border-b border-[#f8f8f8] flex items-center w-full sticky top-[52px] z-40" style={{ padding: '8px 16px' }}>
-        <button
-          onClick={() => setActiveTab('paid')}
-          className={`flex-1 flex items-center justify-center rounded-[12px] transition-colors ${
-            activeTab === 'paid' ? 'bg-[#f8f8f8]' : ''
-          }`}
-          style={{ padding: '8px 16px' }}
-        >
-          <span style={{
-            fontSize: '15px',
-            fontWeight: activeTab === 'paid' ? 600 : 500,
-            lineHeight: '20px',
-            letterSpacing: '-0.45px',
-            color: activeTab === 'paid' ? '#151515' : '#999'
-          }}>
-            심화 운세
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('free')}
-          className={`flex-1 flex items-center justify-center rounded-[12px] transition-colors ${
-            activeTab === 'free' ? 'bg-[#f8f8f8]' : ''
-          }`}
-          style={{ padding: '8px 16px' }}
-        >
-          <span style={{
-            fontSize: '15px',
-            fontWeight: activeTab === 'free' ? 600 : 500,
-            lineHeight: '20px',
-            letterSpacing: '-0.45px',
-            color: activeTab === 'free' ? '#151515' : '#999'
-          }}>
-            무료 운세
-          </span>
-        </button>
-      </div>
-
-      {/* ===== DEV 전용 빈 화면 테스트 버튼 ===== */}
-      {DEV && (
-        <div className="flex gap-[8px] px-[20px] py-[6px] bg-white">
-          <button
-            onClick={() => setDevForcePaidEmpty(v => !v)}
-            style={{ fontSize: '11px', color: devForcePaidEmpty ? '#fff' : '#999', backgroundColor: devForcePaidEmpty ? '#ff6b6b' : '#f3f3f3', padding: '3px 8px', borderRadius: '6px' }}
-          >
-            심화 운세 기록없음
-          </button>
-          <button
-            onClick={() => setDevForceFreeEmpty(v => !v)}
-            style={{ fontSize: '11px', color: devForceFreeEmpty ? '#fff' : '#999', backgroundColor: devForceFreeEmpty ? '#ff6b6b' : '#f3f3f3', padding: '3px 8px', borderRadius: '6px' }}
-          >
-            무료 운세 기록없음
-          </button>
+      {/* ⭐ Tab Bar (스크롤 다운 시 숨김, 스크롤 업 시 노출) */}
+      <motion.div
+        animate={{ height: isTabVisible ? 'auto' : 0, opacity: isTabVisible ? 1 : 0 }}
+        initial={false}
+        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        className="bg-white border-b border-[#f8f8f8] w-full z-40 overflow-hidden shrink-0"
+      >
+        <div className="flex items-center overflow-clip relative w-full" style={{ padding: '8px 16px' }}>
+          {(['paid', 'free'] as TabType[]).map((tab) => (
+            <div
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              className="flex-1 relative cursor-pointer"
+              style={{ borderRadius: '12px', WebkitTapHighlightColor: 'transparent' }}
+            >
+              {activeTab === tab && (
+                <motion.div
+                  layoutId="purchase-tab-indicator"
+                  className="absolute inset-0"
+                  style={{ backgroundColor: '#f8f8f8', borderRadius: '12px' }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                />
+              )}
+              <div className="flex items-center justify-center relative z-10" style={{ padding: '8px 16px' }}>
+                <span style={{
+                  fontSize: '15px',
+                  fontWeight: activeTab === tab ? 600 : 500,
+                  lineHeight: '20px',
+                  letterSpacing: '-0.45px',
+                  color: activeTab === tab ? '#151515' : '#999',
+                  transition: 'color 0.25s ease',
+                }}>
+                  {tab === 'paid' ? '심화 운세' : '무료 운세'}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+        {/* ===== DEV 전용 빈 화면 테스트 버튼 ===== */}
+        {DEV && (
+          <div className="flex gap-[8px] px-[20px] py-[6px] bg-white">
+            {activeTab === 'paid' && (
+              <button
+                onClick={() => setDevForcePaidEmpty(v => !v)}
+                style={{ fontSize: '11px', color: devForcePaidEmpty ? '#fff' : '#999', backgroundColor: devForcePaidEmpty ? '#ff6b6b' : '#f3f3f3', padding: '3px 8px', borderRadius: '6px' }}
+              >
+                심화 운세 기록없음
+              </button>
+            )}
+            {activeTab === 'free' && (
+              <button
+                onClick={() => setDevForceFreeEmpty(v => !v)}
+                style={{ fontSize: '11px', color: devForceFreeEmpty ? '#fff' : '#999', backgroundColor: devForceFreeEmpty ? '#ff6b6b' : '#f3f3f3', padding: '3px 8px', borderRadius: '6px' }}
+              >
+                무료 운세 기록없음
+              </button>
+            )}
+          </div>
+        )}
+      </motion.div>
 
       {/* ⭐ Content */}
-      <div className={`flex-1 w-full safe-area-bottom ${
+      <div ref={scrollContainerRef} className={`flex-1 w-full safe-area-bottom ${
         (activeTab === 'paid' && isPaidEmpty) || (activeTab === 'free' && isFreeEmpty)
           ? 'overflow-hidden flex flex-col items-center'
           : 'overflow-y-auto'
@@ -719,29 +761,23 @@ export default function PurchaseHistoryPage() {
           >
             <div className="flex flex-col gap-[20px] items-center justify-center w-full">
               <EmptyNestIcon />
-              <div className="flex flex-col gap-[1px] items-center w-full text-center" style={{ color: '#b7b7b7' }}>
-                <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '28.5px', letterSpacing: '-0.32px' }}>
-                  아직 운세 기록이 없어요
-                </p>
-                <p style={{ fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px' }}>
-                  운세를 보면 여기에서 다시 확인할 수 있어요
-                </p>
-              </div>
+              <p className="w-full text-center" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, lineHeight: '26.5px', letterSpacing: '-0.3px', color: '#B7B7B7' }}>
+                아직 운세 기록이 없어요<br />
+                운세를 보면 여기에서 다시 확인할 수 있어요
+              </p>
             </div>
             <button
-              onClick={() => {
-                // ⭐ 홈에서 '심화 해석판' 필터 자동 선택
-                sessionStorage.setItem('homepage_filter_state', JSON.stringify({
-                  category: '전체',
-                  contentType: 'paid'
-                }));
-                navigate('/');
-              }}
-              className="w-full h-[48px] rounded-[12px] flex items-center justify-center"
-              style={{ backgroundColor: '#48b2af' }}
+              onClick={() => navigate('/best-fortune')}
+              className="w-full h-[48px] flex items-center justify-center"
+              style={{ backgroundColor: '#48b2af', borderRadius: '20px', border: 'none', transition: 'transform 0.15s ease' }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.45px', color: 'white' }}>
-                심화 운세 보러 가기
+                운세 보러 가기
               </span>
             </button>
           </motion.div>
@@ -909,29 +945,23 @@ export default function PurchaseHistoryPage() {
           >
             <div className="flex flex-col gap-[20px] items-center justify-center w-full">
               <EmptyNestIcon />
-              <div className="flex flex-col gap-[1px] items-center w-full text-center" style={{ color: '#b7b7b7' }}>
-                <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '28.5px', letterSpacing: '-0.32px' }}>
-                  아직 무료 운세 기록이 없어요
-                </p>
-                <p style={{ fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px' }}>
-                  무료 운세를 보면 여기에서 다시 확인할 수 있어요
-                </p>
-              </div>
+              <p className="w-full text-center" style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, lineHeight: '26.5px', letterSpacing: '-0.3px', color: '#B7B7B7' }}>
+                아직 운세 기록이 없어요<br />
+                운세를 보면 여기에서 다시 확인할 수 있어요
+              </p>
             </div>
             <button
-              onClick={() => {
-                // ⭐ 홈에서 '무료 체험판' 필터 자동 선택
-                sessionStorage.setItem('homepage_filter_state', JSON.stringify({
-                  category: '전체',
-                  contentType: 'free'
-                }));
-                navigate('/');
-              }}
-              className="w-full h-[48px] rounded-[12px] flex items-center justify-center"
-              style={{ backgroundColor: '#48b2af' }}
+              onClick={() => navigate('/best-fortune')}
+              className="w-full h-[48px] flex items-center justify-center"
+              style={{ backgroundColor: '#48b2af', borderRadius: '20px', border: 'none', transition: 'transform 0.15s ease' }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <span style={{ fontSize: '15px', fontWeight: 500, lineHeight: '20px', letterSpacing: '-0.45px', color: 'white' }}>
-                무료 운세 보러 가기
+                운세 보러 가기
               </span>
             </button>
           </motion.div>
