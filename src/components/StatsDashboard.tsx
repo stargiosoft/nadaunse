@@ -942,10 +942,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           avgPerUser: d.avgTagsPerUser,
         },
         purchase: {
-          orders: d.paidContentUsage,
+          orders: d.totalOrders,
           revenue: d.revenue,
-          conversionRate: d.gaActiveUsers > 0 ? Math.round(d.paidContentUsage / d.gaActiveUsers * 1000) / 10 : 0,
-          avgOrderValue: d.paidContentUsage > 0 ? Math.round(d.revenue / d.paidContentUsage) : 0,
+          conversionRate: d.gaActiveUsers > 0 ? Math.round(d.totalOrders / d.gaActiveUsers * 1000) / 10 : 0,
+          avgOrderValue: d.totalOrders > 0 ? Math.round(d.revenue / d.totalOrders) : 0,
           arpu: d.gaActiveUsers > 0 ? Math.round(d.revenue / d.gaActiveUsers) : 0,
         },
       })),
@@ -987,10 +987,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           paid: currentPeriodStats.paidContentUsage,
         },
         purchase: {
-          orders: currentPeriodStats.paidContentUsage,
+          orders: currentPeriodStats.totalOrders,
           revenue: currentPeriodStats.totalRevenue,
-          avgOrderValue: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0,
-          conversionRate: currentGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / currentGaUsers * 1000) / 10 : 0,
+          avgOrderValue: currentPeriodStats.totalOrders > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.totalOrders) : 0,
+          conversionRate: currentGaUsers > 0 ? Math.round(currentPeriodStats.totalOrders / currentGaUsers * 1000) / 10 : 0,
           arpu: currentGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / currentGaUsers) : 0,
         },
         tags: {
@@ -1017,10 +1017,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
           paid: previousPeriodStats.paidContentUsage,
         },
         purchase: {
-          orders: previousPeriodStats.paidContentUsage,
+          orders: previousPeriodStats.totalOrders,
           revenue: previousPeriodStats.totalRevenue,
-          avgOrderValue: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0,
-          conversionRate: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0,
+          avgOrderValue: previousPeriodStats.totalOrders > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.totalOrders) : 0,
+          conversionRate: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalOrders / prevGaUsers * 1000) / 10 : 0,
           arpu: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0,
         },
         tags: {
@@ -1661,7 +1661,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} allowDecimals={false} />
                         <Tooltip formatter={(value: number) => [`${value}건`, '주문 수']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey="paidContentUsage" name="주문 수" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="totalOrders" name="주문 수" stroke={TREND_COLORS.primary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.primary }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1728,7 +1728,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
                         <Tooltip formatter={(value: number) => [`${value}%`, '구매 전환율']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey={(d) => d.gaActiveUsers > 0 ? Math.round(d.paidContentUsage / d.gaActiveUsers * 1000) / 10 : 0} name="구매 전환율" stroke="#10B981" strokeWidth={2} dot={{ r: 3, fill: '#10B981' }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey={(d) => d.gaActiveUsers > 0 ? Math.round(d.totalOrders / d.gaActiveUsers * 1000) / 10 : 0} name="구매 전환율" stroke="#10B981" strokeWidth={2} dot={{ r: 3, fill: '#10B981' }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1776,7 +1776,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                         <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} tickFormatter={(v) => v >= 10000 ? `${Math.round(v / 10000)}만` : String(v)} />
                         <Tooltip formatter={(value: number) => [`${value.toLocaleString()}원`, 'AOV']} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} />
-                        <Line type="monotone" dataKey={(d) => d.paidContentUsage > 0 ? Math.round(d.revenue / d.paidContentUsage) : 0} name="AOV" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey={(d) => d.totalOrders > 0 ? Math.round(d.revenue / d.totalOrders) : 0} name="AOV" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3, fill: '#8B5CF6' }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -2299,10 +2299,10 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                     const prevGaUsers = previousGaStats?.activeUsers ?? 0;
                     const items = [
                       { label: '기간 매출', current: currentPeriodStats.totalRevenue, previous: previousPeriodStats.totalRevenue, unit: '', prefix: '₩' },
-                      { label: '주문수', current: currentPeriodStats.paidContentUsage, previous: previousPeriodStats.paidContentUsage, unit: '건', prefix: '' },
+                      { label: '주문수', current: currentPeriodStats.totalOrders, previous: previousPeriodStats.totalOrders, unit: '건', prefix: '' },
                       { label: '객단가', current: currentPeriodStats.uniqueBuyers > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.uniqueBuyers) : 0, previous: previousPeriodStats.uniqueBuyers > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.uniqueBuyers) : 0, unit: '', prefix: '₩' },
-                      { label: 'AOV', current: currentPeriodStats.paidContentUsage > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.paidContentUsage) : 0, previous: previousPeriodStats.paidContentUsage > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.paidContentUsage) : 0, unit: '', prefix: '₩' },
-                      { label: '구매 전환율', current: curGaUsers > 0 ? Math.round(currentPeriodStats.paidContentUsage / curGaUsers * 1000) / 10 : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.paidContentUsage / prevGaUsers * 1000) / 10 : 0, unit: '%', prefix: '' },
+                      { label: 'AOV', current: currentPeriodStats.totalOrders > 0 ? Math.round(currentPeriodStats.totalRevenue / currentPeriodStats.totalOrders) : 0, previous: previousPeriodStats.totalOrders > 0 ? Math.round(previousPeriodStats.totalRevenue / previousPeriodStats.totalOrders) : 0, unit: '', prefix: '₩' },
+                      { label: '구매 전환율', current: curGaUsers > 0 ? Math.round(currentPeriodStats.totalOrders / curGaUsers * 1000) / 10 : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalOrders / prevGaUsers * 1000) / 10 : 0, unit: '%', prefix: '' },
                       { label: 'ARPU', current: curGaUsers > 0 ? Math.round(currentPeriodStats.totalRevenue / curGaUsers) : 0, previous: prevGaUsers > 0 ? Math.round(previousPeriodStats.totalRevenue / prevGaUsers) : 0, unit: '', prefix: '₩' },
                     ];
                     return items.map((item, idx) => {

@@ -56,6 +56,7 @@ export interface DashboardStats {
   confirmedTagCount: number;    // 확인된 태그 수
   avgTagsPerUser: number;       // 회원 당 평균 태그 저장 개수
   uniqueBuyers: number;         // 기간 내 구매 고객 수 (고유 user_id)
+  totalOrders: number;          // 총 주문 수 (KRW결제 + 새싹충전)
 }
 
 // 기간 필터 옵션
@@ -276,7 +277,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     .select('paid_amount, user_id')
     .eq('pstatus', 'completed')
     .gt('paid_amount', 0)
-    .neq('pay_method', 'sprout')
+    .in('pay_method', ['kakaopay', 'card'])
     .not('user_id', 'in', `(${adminFilter})`);
 
   if (dateRange?.startDate) {
@@ -536,6 +537,9 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     ? Math.round(individualConfirmedTags / tagUserCount * 10) / 10
     : 0;
 
+  // 총 주문 수 (KRW 결제 건 + 새싹 충전 건)
+  const totalOrders = (chargeRevenueResult.data?.length || 0) + (orderRevenueResult.data?.length || 0);
+
   return {
     totalCustomers,
     newCustomers: newCustomers || 0,
@@ -559,6 +563,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     confirmedTagCount: individualConfirmedTags,  // 개별 확인 태그 수
     avgTagsPerUser,
     uniqueBuyers,
+    totalOrders,
   };
 }
 
@@ -612,6 +617,7 @@ export interface DailyTrendData {
   // 매출
   revenue: number;
   uniqueBuyers: number;  // 구매 고객 수 (고유 user_id)
+  totalOrders: number;  // 총 주문 수 (KRW결제 + 새싹충전)
   freeCouponOrders: number;  // 무료 쿠폰 주문 수 (paid_amount = 0)
   // 태그 지표
   tagSaved: number;  // 전체 태그 수
@@ -848,7 +854,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
     // 매출 (새싹 충전 + 기존 원화 직접 결제, sprout 소비 제외)
     const chargeList = chargeData?.filter(d => getDateKey(d.created_at) === dateKey) || [];
     const chargeRevenue = chargeList.reduce((sum, d) => sum + (d.payment_amount || 0), 0);
-    const krwOrderList = paidContentList.filter(d => d.pay_method !== 'sprout');
+    const krwOrderList = paidContentList.filter(d => d.pay_method === 'kakaopay' || d.pay_method === 'card');
     const orderRevenue = krwOrderList.reduce((sum, d) => sum + (d.paid_amount || 0), 0);
     const revenue = chargeRevenue + orderRevenue;
     const _buyerIds = [...new Set([
@@ -856,6 +862,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       ...krwOrderList.map(d => d.user_id),
     ])];
     const uniqueBuyers = _buyerIds.length;
+    const totalOrders = krwOrderList.length + chargeList.length;
 
     // 콘텐츠 이용 고유 유저 (totalCustomers에 포함된 유저만)
     const uniqueContentUsers = new Set([...uniqueFreeUsers, ...uniquePaidUsers]).size;
@@ -953,6 +960,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       contentUsageRate,
       revenue,
       uniqueBuyers,
+      totalOrders,
       freeCouponOrders,
       tagSaved,
       tagConfirmed,
@@ -1054,6 +1062,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     const totalContentUsage = freeContentUsage + paidContentUsage;
     const revenue = data.reduce((sum, d) => sum + d.revenue, 0);
     const uniqueBuyers = new Set(data.flatMap(d => d._buyerIds || [])).size;
+    const totalOrders = data.reduce((sum, d) => sum + d.totalOrders, 0);
     const freeCouponOrders = data.reduce((sum, d) => sum + d.freeCouponOrders, 0);
     const tagSaved = data.reduce((sum, d) => sum + d.tagSaved, 0);
     const tagConfirmed = data.reduce((sum, d) => sum + d.tagConfirmed, 0);
@@ -1099,6 +1108,7 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
       contentUsageRate,
       revenue,
       uniqueBuyers,
+      totalOrders,
       freeCouponOrders,
       tagSaved,
       tagConfirmed,
@@ -1422,7 +1432,7 @@ export async function fetchPurchaseFunnelStats(
       .select('*', { count: 'exact', head: true })
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
-      .neq('pay_method', 'sprout')
+      .in('pay_method', ['kakaopay', 'card'])
       .not('user_id', 'in', `(${adminFilter})`);
     if (dateRange?.startDate) paidOrderQuery = paidOrderQuery.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) paidOrderQuery = paidOrderQuery.lte('created_at', dateRange.endDate);
@@ -2032,7 +2042,7 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
       .select(select)
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
-      .neq('pay_method', 'sprout')
+      .in('pay_method', ['kakaopay', 'card'])
       .not('user_id', 'in', `(${adminFilter})`);
     if (dateRange?.startDate) q = q.gte('created_at', dateRange.startDate);
     if (dateRange?.endDate) q = q.lte('created_at', dateRange.endDate);
@@ -2295,7 +2305,7 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .select('user_id')
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
-      .neq('pay_method', 'sprout')
+      .in('pay_method', ['kakaopay', 'card'])
       .not('user_id', 'in', `(${adminFilter})`),
   ]);
 
