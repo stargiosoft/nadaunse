@@ -444,8 +444,8 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
       <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingLeft: 6, paddingTop: 16 }}>
         <p
           style={{
-            fontFamily: font, fontSize: 17, fontWeight: 600,
-            color: C.black, letterSpacing: '-0.34px', lineHeight: '24px',
+            fontFamily: font, fontSize: 18, fontWeight: 600,
+            color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px',
           }}
         >
           {nickname ? `${nickname}님, 오늘 마음은 어떠세요?` : '오늘 마음은 어떠세요?'}
@@ -471,7 +471,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
       >
         <div
           className="flex flex-col items-start"
-          style={{ padding: "20px 24px 22px 24px", gap: 16 }}
+          style={{ padding: "22px 24px 22px 24px", gap: 16 }}
         >
           {/* 상담 항목 목록 */}
           <div className="flex flex-col w-full" style={{ gap: 16 }}>
@@ -958,16 +958,15 @@ function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () =>
       className="relative w-full"
       style={{
         backgroundColor: C.white,
-        borderRadius: 16,
-        border: `1px solid ${C.cardBorder}`,
-        boxShadow: '4.855px 3.641px 12.137px 0px rgba(0,0,0,0.05)',
+        borderRadius: 20,
+        border: '1px solid #F6F6F6',
       }}
     >
       <div
         className="flex flex-col cursor-pointer"
         style={{
           padding: '16px 16px 12px',
-          borderRadius: 16,
+          borderRadius: 20,
           transition: 'background-color 0.15s ease',
         }}
         onTouchStart={() => {}}
@@ -991,17 +990,17 @@ function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () =>
             {/* 썸네일 */}
             <div
               className="relative shrink-0 overflow-hidden"
-              style={{ width: 69, height: 47, borderRadius: 8 }}
+              style={{ width: 69, height: 47, borderRadius: 10 }}
             >
               <img
                 alt={item.title}
                 className="absolute inset-0 object-cover"
-                style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                style={{ width: '100%', height: '100%', borderRadius: 10 }}
                 src={item.img}
               />
             </div>
             {/* 텍스트 */}
-            <div className="flex flex-1 flex-col items-start min-w-0" style={{ gap: 3 }}>
+            <div className="flex flex-1 flex-col items-start min-w-0" style={{ gap: 2 }}>
               <p
                 className="w-full overflow-hidden"
                 style={{
@@ -1061,13 +1060,8 @@ function BestFortuneSection({
   useEffect(() => {
     const measure = () => {
       const w = clipperRef.current?.offsetWidth ?? window.innerWidth;
-      let cardW: number;
-      if (w >= 390) {
-        cardW = w - 94;                                          // 390→296, 440→346
-      } else {
-        cardW = Math.round(276 + (w - 320) * (296 - 276) / (390 - 320)); // 320→276, 390→296
-      }
-      setSlideW(Math.max(276, Math.min(346, cardW)));
+      // peek 60px: slideW = w - PAD_LEFT - GAP - 60
+      setSlideW(Math.max(276, w - PAD_LEFT - GAP - 60));
     };
     measure();
     window.addEventListener('resize', measure);

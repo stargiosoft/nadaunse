@@ -173,7 +173,7 @@ function FeaturedCard({ item }: { item: FortuneItem }) {
           {/* Text details */}
           <div
             className="flex flex-col items-start"
-            style={{ gap: 3, padding: '0 8px', position: 'relative', flexShrink: 0, width: '100%', marginTop: 8 }}
+            style={{ gap: 2, padding: '0 8px', position: 'relative', flexShrink: 0, width: '100%', marginTop: 8 }}
           >
             <p
               style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}
@@ -249,7 +249,7 @@ function RowCard({ item }: { item: FortuneItem }) {
             {/* Text details */}
             <div
               className="flex flex-col items-start"
-              style={{ flex: '1 0 0', gap: 3, minHeight: 1, minWidth: 1, position: 'relative' }}
+              style={{ flex: '1 0 0', gap: 2, minHeight: 1, minWidth: 1, position: 'relative' }}
             >
               <p
                 style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}
@@ -558,7 +558,7 @@ export function FortuneAllPage() {
         </div>
 
         {/* ── Content header: count + sort ── */}
-        <div className="flex items-center justify-between w-full" style={{ padding: '10px 22px', backgroundColor: C.white }}>
+        <div className="flex items-center justify-between w-full" style={{ padding: '8px 22px', backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="relative" ref={sortRef}>
             <button

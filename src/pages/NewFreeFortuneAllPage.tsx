@@ -146,8 +146,8 @@ function TopCard({ item }: { item: NoRankFortuneItem }) {
           </div>
           {/* Text details */}
           <div
-            className="content-stretch flex flex-col gap-[4px] items-start px-[8px] relative shrink-0 w-full"
-            style={{ marginTop: 8 }}
+            className="content-stretch flex flex-col items-start relative shrink-0 w-full"
+            style={{ marginTop: 8, gap: 2, padding: '0 8px' }}
           >
             <p
               className="w-full overflow-hidden"
@@ -204,7 +204,8 @@ function RowCard({ item }: { item: NoRankFortuneItem }) {
             </div>
             {/* Text details */}
             <div
-              className="content-stretch flex flex-[1_0_0] flex-col gap-[4px] items-start min-h-px min-w-px relative"
+              className="content-stretch flex flex-[1_0_0] flex-col items-start min-h-px min-w-px relative"
+              style={{ gap: 2 }}
             >
               <p
                 className="w-full overflow-hidden"
@@ -467,7 +468,7 @@ export function NewFreeFortuneAllPage() {
         </div>
 
         {/* ── Content header: count + sort ── */}
-        <div className="flex items-center justify-between w-full" style={{ padding: '10px 22px', backgroundColor: C.white }}>
+        <div className="flex items-center justify-between w-full" style={{ padding: '8px 22px', backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="relative" ref={sortRef}>
             <button

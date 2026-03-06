@@ -147,7 +147,7 @@ function SearchResultItem({ item, onClick }: { item: SearchItem; onClick?: () =>
         </div>
 
         {/* 텍스트 영역 */}
-        <div className="flex flex-col flex-1 min-w-0" style={{ gap: 3 }}>
+        <div className="flex flex-col flex-1 min-w-0" style={{ gap: 2 }}>
           <p
             className="w-full overflow-hidden"
             style={{
