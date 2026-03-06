@@ -856,7 +856,7 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
                   ? 'bg-[#48b2af] text-white cursor-pointer active:bg-[#3a9693]'
                   : 'bg-[#f8f8f8] text-[#b7b7b7] cursor-not-allowed'
               }`}
-              whileTap={isFormValid() && !isSubmitting ? { scale: 0.96 } : undefined}
+              whileTap={isFormValid() && !isSubmitting ? { scale: 0.995 } : undefined}
               transition={{ duration: 0.1 }}
             >
               <span className="text-[16px] font-medium leading-[25px] tracking-[-0.32px]">
