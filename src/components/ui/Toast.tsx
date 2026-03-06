@@ -98,15 +98,15 @@ export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps)
     <div
       className="inline-block shadow-lg pointer-events-auto toast-animate-enter"
       style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(15px)',
-        WebkitBackdropFilter: 'blur(15px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.40)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
         borderRadius: '9999px'
       }}
     >
-      <div className="flex flex-row items-center" style={{ padding: '10px 16px 10px 12px', gap: '10px' }}>
+      <div className="flex flex-row items-center" style={{ padding: '6px 11px 6px 8px', gap: '6px' }}>
         {/* Icon Container */}
-        <div className="relative shrink-0 size-[24px] flex items-center justify-center">
+        <div className="relative shrink-0 size-[23px] flex items-center justify-center">
           <IconComponent />
         </div>
 
@@ -114,8 +114,8 @@ export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps)
         <div className="flex flex-col gap-[2px]">
           <p style={{
             fontFamily: 'Pretendard Variable',
-            fontWeight: 500,
-            fontSize: '14px',
+            fontWeight: 400,
+            fontSize: '13px',
             lineHeight: '20px',
             color: '#ffffff'
           }}>

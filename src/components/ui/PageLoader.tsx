@@ -7,7 +7,7 @@
  * - 메시지 없이: <PageLoader showMessage={false} />
  */
 
-import { DotLoading } from './LoadingWithMessage';
+import { DotLoading, LoadingWithMessage } from './LoadingWithMessage';
 
 // Re-export for backward compatibility
 export { DotLoading };
@@ -23,7 +23,7 @@ interface PageLoaderProps {
 
 /**
  * PageLoader - 전체 페이지 로딩 UI
- * 중앙에 DotLoading + 메시지를 표시
+ * 중앙에 DotLoading + 메시지를 표시 (LoadingWithMessage 공통 컴포넌트 사용)
  */
 export function PageLoader({
   message = '잠시만 기다려 주세요',
@@ -32,23 +32,10 @@ export function PageLoader({
 }: PageLoaderProps) {
   return (
     <div className={`bg-white fixed inset-0 w-full h-full flex items-center justify-center overflow-hidden ${className || ''}`}>
-      <div className="flex flex-col items-center gap-[20px]">
-        <DotLoading />
-        {showMessage && (
-          <p
-            className="text-center"
-            style={{
-              fontFamily: "'Pretendard Variable', sans-serif",
-              fontSize: '18px',
-              fontWeight: 600,
-              color: '#1a1a1a',
-              letterSpacing: '-0.36px'
-            }}
-          >
-            {message}
-          </p>
-        )}
-      </div>
+      {showMessage
+        ? <LoadingWithMessage message={message} padding="0" />
+        : <DotLoading />
+      }
     </div>
   );
 }

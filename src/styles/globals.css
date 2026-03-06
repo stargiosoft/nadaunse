@@ -243,9 +243,9 @@ html, body {
   left: 0 !important;
   right: 0 !important;
   /* ⭐ CSS 변수로 동적 위치 제어:
-     기본 24px + safe-area,
-     CTA 있으면 --toast-bottom-offset에 CTA 높이 + 24px 지정 */
-  bottom: calc(var(--toast-bottom-offset, 24px) + env(safe-area-inset-bottom, 0px)) !important;
+     기본 20px + safe-area,
+     CTA 있으면 --toast-bottom-offset에 CTA 높이 + 12px 지정 */
+  bottom: calc(var(--toast-bottom-offset, 20px) + env(safe-area-inset-bottom, 0px)) !important;
   transform: none !important; /* ⭐ translateX 제거 */
   display: flex !important;
   flex-direction: column !important; /* ⭐ 세로 스택 */
@@ -270,7 +270,7 @@ html, body {
   position: fixed !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: calc(var(--toast-bottom-offset, 24px) + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--toast-bottom-offset, 20px) + env(safe-area-inset-bottom, 0px)) !important;
   transform: none !important; /* ⭐ translateX 제거 */
   width: 100% !important;
   max-width: none !important;
@@ -286,11 +286,13 @@ html, body {
 @keyframes toast-slide-up {
   from {
     opacity: 0;
-    transform: translateY(10px); /* ⭐ 8~12px 범위 */
+    transform: translateY(16px) scale(0.82);
+    transform-origin: bottom center;
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    transform-origin: bottom center;
   }
 }
 
@@ -307,7 +309,7 @@ html, body {
 }
 
 .toast-animate-enter {
-  animation: toast-slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1); /* ⭐ 200~300ms ease-out */
+  animation: toast-slide-up 320ms cubic-bezier(0.34, 1.56, 0.64, 1); /* spring: 아래→위 + scale up */
 }
 
 .toast-animate-exit {
