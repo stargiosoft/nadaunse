@@ -136,9 +136,9 @@ export function TaroConsultLoadingPage() {
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingLeft: 20, paddingRight: 20, paddingBottom: 48 }}>
-          <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)' }}>
-            <style>{`.lottie-crystal svg { overflow: visible !important; }`}</style>
-            <div className="lottie-crystal">
+          <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)', overflow: 'visible' }}>
+            <style>{`.lottie-crystal svg { overflow: visible !important; } .lottie-crystal > div { overflow: visible !important; }`}</style>
+            <div className="lottie-crystal" style={{ overflow: 'visible' }}>
               <Lottie animationData={lottieData} loop autoplay renderer="svg" style={{ width: '100%', height: '100%', overflow: 'visible' }} />
             </div>
           </div>

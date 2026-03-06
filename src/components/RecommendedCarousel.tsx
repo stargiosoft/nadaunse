@@ -135,7 +135,7 @@ export function RecommendedCarousel({ items, onMoreClick, onCardClick, style, hi
           </div>
 
           {/* Card body */}
-          <div className="flex flex-col w-full" style={{ gap: 3, paddingLeft: 2, paddingRight: 2 }}>
+          <div className="flex flex-col w-full" style={{ gap: 2, paddingLeft: 2, paddingRight: 2 }}>
 
             {/* Labels row + views */}
             <div className="flex items-center justify-between w-full">
@@ -143,11 +143,11 @@ export function RecommendedCarousel({ items, onMoreClick, onCardClick, style, hi
               <div className="flex items-center" style={{ gap: 6 }}>
                 <div className="flex items-center" style={{ gap: 3 }}>
                   {item.isNew && (
-                    <div style={{ backgroundColor: '#fff6f7', borderRadius: 4, padding: '2px 6px', display: 'inline-flex', alignItems: 'center' }}>
+                    <div style={{ backgroundColor: '#fff6f7', borderRadius: 4, padding: '2px 4px', display: 'inline-flex', alignItems: 'center' }}>
                       <span style={{ fontFamily: font, fontSize: 10, fontWeight: 500, color: '#ef6878', lineHeight: 'normal', whiteSpace: 'nowrap' }}>New</span>
                     </div>
                   )}
-                  <div style={{ backgroundColor: '#f0f8f8', borderRadius: 4, padding: '2px 6px', display: 'inline-flex', alignItems: 'center' }}>
+                  <div style={{ backgroundColor: '#f0f8f8', borderRadius: 4, padding: '2px 4px', display: 'inline-flex', alignItems: 'center' }}>
                     <span style={{ fontFamily: font, fontSize: 10, fontWeight: 500, color: '#41a09e', lineHeight: 'normal', whiteSpace: 'nowrap' }}>심화</span>
                   </div>
                 </div>
@@ -175,7 +175,7 @@ export function RecommendedCarousel({ items, onMoreClick, onCardClick, style, hi
             </div>
 
             {/* Title */}
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 500, color: C.black, letterSpacing: '-0.3px', lineHeight: '25.5px', width: '100%', marginBottom: -3 }}>
+            <p style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.3px', lineHeight: '25.5px', width: '100%', marginBottom: -3, paddingLeft: 2 }}>
               {item.title}
             </p>
 

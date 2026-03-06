@@ -98,7 +98,7 @@ function ResultSection({
             {title}
           </span>
         </div>
-        <div style={{ backgroundColor: C.grayBg, borderRadius: 16, padding: 20 }}>
+        <div style={{ backgroundColor: C.grayBg, borderRadius: 16, padding: '14px 20px' }}>
           <p style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: C.dark, letterSpacing: '-0.3px', lineHeight: '25.5px' }}>
             {text}
           </p>
@@ -498,7 +498,7 @@ export function TaroConsultResultPage() {
                       <MoonIcon />
                       <span style={{ fontFamily: font, fontSize: 17, fontWeight: 600, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>카드가 전하는 메시지</span>
                     </div>
-                    <div style={{ backgroundColor: C.grayBg, borderRadius: 16, padding: 20 }}>
+                    <div style={{ backgroundColor: C.grayBg, borderRadius: 16, padding: '17px 20px 14px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                         {/* Card image + name */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>

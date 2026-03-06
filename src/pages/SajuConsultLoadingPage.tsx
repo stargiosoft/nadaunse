@@ -294,9 +294,9 @@ export function SajuConsultLoadingPage() {
             paddingBottom: 48,
           }}
         >
-          <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)' }}>
-            <style>{`.lottie-crystal svg { overflow: visible !important; }`}</style>
-            <div className="lottie-crystal">
+          <div style={{ width: 160, height: 160, flexShrink: 0, transform: 'translateZ(0)', overflow: 'visible' }}>
+            <style>{`.lottie-crystal svg { overflow: visible !important; } .lottie-crystal > div { overflow: visible !important; }`}</style>
+            <div className="lottie-crystal" style={{ overflow: 'visible' }}>
               <Lottie
                 animationData={lottieData}
                 loop

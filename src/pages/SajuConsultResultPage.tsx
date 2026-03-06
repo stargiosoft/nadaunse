@@ -188,7 +188,7 @@ function Card({ children }: { children: React.ReactNode }) {
         borderRadius: 16,
         width: '100%',
         flexShrink: 0,
-        padding: 20,
+        padding: '14px 20px',
       }}
     >
       {children}
@@ -359,13 +359,13 @@ export function SajuConsultResultPage() {
               <div className="flex flex-col w-full" style={{ gap: 10 }}>
                 <SectionHeader icon={<BullseyeIcon />} title="오늘의 핵심" />
                 <div className="flex w-full" style={{ gap: 8 }}>
-                  <div style={{ flex: 1, backgroundColor: C.cardBg, borderRadius: 16, padding: 20 }}>
+                  <div style={{ flex: 1, backgroundColor: C.cardBg, borderRadius: 16, padding: '16px 20px' }}>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>키워드</span>
                       <span style={{ ...bodyText, fontWeight: 400 }}>{result.todayCore.keyword}</span>
                     </div>
                   </div>
-                  <div style={{ flex: 1, backgroundColor: C.cardBg, borderRadius: 16, padding: 20 }}>
+                  <div style={{ flex: 1, backgroundColor: C.cardBg, borderRadius: 16, padding: '16px 20px' }}>
                     <div className="flex flex-col" style={{ gap: 6 }}>
                       <span style={labelText}>포인트</span>
                       <span style={{ ...bodyText, fontWeight: 400 }}>{result.todayCore.point}</span>
