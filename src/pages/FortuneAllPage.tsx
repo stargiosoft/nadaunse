@@ -596,7 +596,7 @@ export function FortuneAllPage() {
 
         {/* ── Content header: count + filters ── */}
         <div className="flex items-center justify-between w-full" style={{ padding: '8px 22px', backgroundColor: C.white }}>
-          <div className="flex items-center" style={{ gap: 8 }}>
+          <div className="flex items-center" style={{ gap: 4 }}>
             <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
             {/* ── Content type filter ── */}
             <div className="relative" ref={contentTypeFilterRef}>
