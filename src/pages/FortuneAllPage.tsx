@@ -602,10 +602,13 @@ export function FortuneAllPage() {
             <div className="relative" ref={contentTypeFilterRef}>
               <button
                 className="flex items-center cursor-pointer"
-                style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
+                style={{
+                  backgroundColor: C.white, border: '1px solid #e7e7e7', borderRadius: 6,
+                  gap: 2, padding: '2px 6px 2px 8px', WebkitTapHighlightColor: 'transparent',
+                }}
                 onClick={() => { setContentTypeFilterOpen(v => !v); setSortOpen(false); }}
               >
-                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{contentTypeFilter}</span>
+                <span style={{ fontFamily: font, fontSize: 12, fontWeight: 500, color: C.gray600, lineHeight: '18px' }}>{contentTypeFilter}</span>
                 <ArrowDownFillIcon />
               </button>
               {contentTypeFilterOpen && (
