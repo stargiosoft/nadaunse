@@ -369,7 +369,7 @@ export function NewFreeFortuneAllPage() {
   };
 
   return (
-    <div className="flex justify-center h-[100dvh] overflow-hidden" style={{ backgroundColor: C.white }}>
+    <div className="fixed inset-0 flex justify-center overflow-hidden" style={{ backgroundColor: C.white, touchAction: 'none' }}>
       <SEO
         title="무료 운세 모아보기 - 무료사주 무료타로"
         description="무료사주풀이사이트 나다운세의 무료 운세 콘텐츠를 모아보세요. 생년월일운세, 무료타로, 오늘의운세를 무료로 만나보세요."
@@ -377,8 +377,8 @@ export function NewFreeFortuneAllPage() {
         canonical="/new-free"
       />
       <div
-        className="flex flex-col relative overflow-y-auto overscroll-y-contain"
-        style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440 }}
+        className="flex flex-col relative overflow-y-auto overscroll-y-none"
+        style={{ backgroundColor: C.white, width: '100%', minWidth: 320, maxWidth: 440, touchAction: 'pan-y', WebkitOverflowScrolling: 'auto' }}
       >
         {/* ── Sticky header ── */}
         <div className="sticky top-0" style={{ zIndex: 50 }}>
