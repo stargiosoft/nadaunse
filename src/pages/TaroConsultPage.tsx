@@ -181,11 +181,11 @@ export function TaroConsultPage() {
       {showExitModal && (
         <div onClick={() => setShowExitModal(false)} onTouchStart={() => {}} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 320, backgroundColor: C.white, borderRadius: 24, overflow: 'hidden', border: '1px solid #f3f3f3' }}>
-            <div style={{ padding: '32px 28px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ padding: '32px 28px 24px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <p style={{ fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px' }}>나가시겠어요?</p>
               <p style={{ fontFamily: font, fontSize: 16, fontWeight: 400, color: C.gray600, letterSpacing: '-0.32px', lineHeight: '28.5px' }}>지금 나가면 작성한 내용이 사라져요</p>
             </div>
-            <div style={{ padding: '0 24px 20px', display: 'flex', gap: 10 }}>
+            <div style={{ padding: '4px 24px 20px', display: 'flex', gap: 10 }}>
               <button onTouchStart={() => {}} onClick={() => setShowExitModal(false)} onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#e8e8e8'; }} onPointerUp={(e) => { e.currentTarget.style.backgroundColor = '#f3f3f3'; }} onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = '#f3f3f3'; }} onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = '#f3f3f3'; }} style={{ flex: 1, height: 48, borderRadius: 16, border: 'none', backgroundColor: '#f3f3f3', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', transition: 'background-color 0.15s ease-out', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontFamily: font, fontSize: 15, fontWeight: 500, color: '#525252', letterSpacing: '-0.45px', lineHeight: '20px', whiteSpace: 'nowrap' }}>계속 작성하기</span>
               </button>

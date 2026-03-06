@@ -438,7 +438,7 @@ export function SajuConsultPage() {
               border: '1px solid #f3f3f3',
             }}
           >
-            <div style={{ padding: '32px 28px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ padding: '32px 28px 24px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <p style={{ fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px' }}>
                 나가시겠어요?
               </p>
@@ -446,7 +446,7 @@ export function SajuConsultPage() {
                 지금 나가면 작성한 내용이 사라져요
               </p>
             </div>
-            <div style={{ padding: '0 24px 20px', display: 'flex', gap: 10 }}>
+            <div style={{ padding: '4px 24px 20px', display: 'flex', gap: 10 }}>
               <button
                 onTouchStart={() => {}}
                 onClick={() => setShowExitModal(false)}
