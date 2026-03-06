@@ -45,6 +45,7 @@ export interface CachedData {
   questions: Question[];
   recommended: MasterContent[];
   recommendedPaid?: MasterContent | null;
+  upsellHookText?: string | null;
 }
 
 /**
@@ -237,19 +238,21 @@ export class FreeContentService {
   public async fetchRecommendedPaidContent(
     contentId: string,
     userId?: string
-  ): Promise<MasterContent | null> {
+  ): Promise<{ content: MasterContent | null; hookText: string | null }> {
     try {
-      // 1. 현재 콘텐츠의 카테고리 + 추천 유료 콘텐츠 ID 조회
+      // 1. 현재 콘텐츠의 카테고리 + 추천 유료 콘텐츠 ID + 후킹 멘트 조회
       const { data: currentContent, error: contentError } = await supabase
         .from('master_contents')
-        .select('category_main, category_sub, recommended_paid_content_id')
+        .select('category_main, category_sub, recommended_paid_content_id, upsell_hook_text')
         .eq('id', contentId)
         .single();
 
       if (contentError || !currentContent) {
         console.error('❌ [추천유료] 현재 콘텐츠 조회 실패:', contentError);
-        return null;
+        return { content: null, hookText: null };
       }
+
+      const hookText = (currentContent as Record<string, unknown>).upsell_hook_text as string | null;
 
       // 1-1. 명시적 추천 유료 콘텐츠가 설정된 경우 우선 반환
       if (currentContent.recommended_paid_content_id) {
@@ -262,7 +265,7 @@ export class FreeContentService {
 
         if (recommended) {
           console.log('✅ [추천유료] 명시적 매핑:', recommended.title);
-          return recommended;
+          return { content: recommended, hookText };
         }
       }
 
@@ -297,7 +300,7 @@ export class FreeContentService {
         const { data } = await query;
         if (data && data.length > 0) {
           console.log('✅ [추천유료] 1순위(category_sub) 매칭:', data[0].title);
-          return data[0];
+          return { content: data[0], hookText };
         }
       }
 
@@ -319,15 +322,15 @@ export class FreeContentService {
         const { data } = await query;
         if (data && data.length > 0) {
           console.log('✅ [추천유료] 2순위(category_main) 매칭:', data[0].title);
-          return data[0];
+          return { content: data[0], hookText };
         }
       }
 
       console.log('ℹ️ [추천유료] 추천 가능한 유료 콘텐츠 없음');
-      return null;
+      return { content: null, hookText };
     } catch (error) {
       console.error('❌ [추천유료] 조회 중 예외:', error);
-      return null;
+      return { content: null, hookText: null };
     }
   }
 
@@ -411,7 +414,7 @@ export class FreeContentService {
    * @returns 콘텐츠, 질문지, 추천 콘텐츠, 추천 유료 콘텐츠
    */
   private async fetchDataFromDB(contentId: string, userId?: string): Promise<CachedData> {
-    const [content, questions, recommended, recommendedPaid] = await Promise.all([
+    const [content, questions, recommended, paidResult] = await Promise.all([
       this.fetchContent(contentId),
       this.fetchQuestions(contentId),
       this.fetchRecommendedContents(contentId),
@@ -422,7 +425,8 @@ export class FreeContentService {
       content,
       questions,
       recommended,
-      recommendedPaid
+      recommendedPaid: paidResult.content,
+      upsellHookText: paidResult.hookText
     };
 
     // 캐시 저장
