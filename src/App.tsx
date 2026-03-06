@@ -3736,11 +3736,10 @@ export default function App() {
         <Toaster
           position="bottom-center"
           visibleToasts={1}
-          offset={0}
+          offset="20px"
           style={{ zIndex: 9999 }}
           toastOptions={{
             unstyled: true,
-            className: 'toast-viewport-center',
           }}
         />
         </ErrorBoundary>

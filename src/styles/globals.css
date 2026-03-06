@@ -236,50 +236,16 @@ html, body {
   animation: fade-in 0.3s ease-out;
 }
 
-/* ⭐ Sonner Toast 컨테이너 스타일 오버라이드 (흔들림 방지) */
-/* Sonner의 기본 컨테이너를 flex 레이아웃으로 중앙 정렬 */
+/* ⭐ Sonner Toast 위치 제어 - bottom만 오버라이드, 나머지는 Sonner 기본값 유지 */
 [data-sonner-toaster] {
-  position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  /* ⭐ CSS 변수로 동적 위치 제어:
-     기본 20px + safe-area,
-     CTA 있으면 --toast-bottom-offset에 CTA 높이 + 12px 지정 */
-  bottom: calc(var(--toast-bottom-offset, 20px) + env(safe-area-inset-bottom, 0px)) !important;
-  transform: none !important; /* ⭐ translateX 제거 */
-  display: flex !important;
-  flex-direction: column !important; /* ⭐ 세로 스택 */
-  justify-content: flex-end !important; /* ⭐ 하단부터 쌓임 */
-  align-items: center !important;
-  gap: 10px !important; /* ⭐ 토스트 간격 10px (8~12px 범위) */
-  pointer-events: none !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--toast-bottom-offset, 20px)) !important;
   z-index: 9999 !important;
 }
 
-/* ⭐ Toast 아이템 개별 스타일 */
+/* ⭐ Toast 아이템 - 최대 너비만 제한 */
 [data-sonner-toast] {
-  position: relative !important;
-  transform: none !important; /* ⭐ translateX 제거 */
   max-width: calc(100vw - 40px) !important;
   width: auto !important;
-  pointer-events: auto !important;
-}
-
-/* ⭐ Toast viewport 중앙 정렬 (fallback) */
-.toast-viewport-center {
-  position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: calc(var(--toast-bottom-offset, 20px) + env(safe-area-inset-bottom, 0px)) !important;
-  transform: none !important; /* ⭐ translateX 제거 */
-  width: 100% !important;
-  max-width: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-  gap: 10px !important;
-  pointer-events: none !important;
 }
 
 /* ⭐ Toast 등장 애니메이션 (opacity + translateY, 아래→위 slide + fade) */
