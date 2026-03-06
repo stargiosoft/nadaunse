@@ -441,7 +441,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
   return (
     <section className="w-full" style={{ backgroundColor: C.white, padding: '0px 20px 12px' }}>
       {/* 인사말 */}
-      <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingLeft: 6, paddingTop: 16 }}>
+      <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingLeft: 4, paddingTop: 16 }}>
         <p
           style={{
             fontFamily: font, fontSize: 18, fontWeight: 600,
@@ -1043,10 +1043,10 @@ function BestFortuneSection({
 
   const [bestPage, setBestPage] = useState(0);
 
-  // 탭(items) 변경 시 페이지 초기화
+  // 탭 변경 또는 items 변경 시 페이지 즉시 초기화
   useEffect(() => {
     setBestPage(0);
-  }, [items]);
+  }, [tab, items]);
 
   const PEEK    = 20;
   const GAP     = 10;
@@ -1060,8 +1060,8 @@ function BestFortuneSection({
   useEffect(() => {
     const measure = () => {
       const w = clipperRef.current?.offsetWidth ?? window.innerWidth;
-      // peek 60px: slideW = w - PAD_LEFT - GAP - 60
-      setSlideW(Math.max(276, w - PAD_LEFT - GAP - 60));
+      const cardW = w >= 390 ? w - 94 : Math.round(276 + (w - 320) * (296 - 276) / (390 - 320));
+      setSlideW(Math.max(276, Math.min(346, cardW)));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -1069,7 +1069,8 @@ function BestFortuneSection({
   }, []);
 
   slideWRef.current = slideW;
-  const trackOffset = bestPage * (slideW + GAP);
+  const safePage = TOTAL_PAGES > 0 ? Math.min(bestPage, TOTAL_PAGES - 1) : 0;
+  const trackOffset = safePage * (slideW + GAP);
 
   const touchStartX  = useRef<number>(0);
   const touchStartY  = useRef<number>(0);
@@ -1318,7 +1319,7 @@ function BestFortuneSection({
                 <span
                   className="relative transition-colors duration-[250ms]"
                   style={{
-                    fontFamily: font, fontSize: 15, lineHeight: '20px', letterSpacing: '-0.45px',
+                    fontFamily: font, fontSize: 14, lineHeight: '20px', letterSpacing: '-0.42px',
                     fontWeight: isActive ? 600 : 500,
                     color: isActive ? C.charcoal : C.gray400,
                   }}
@@ -1364,9 +1365,10 @@ function BestFortuneSection({
                 width: slideW > 0 ? slideW : `calc(100% - ${PAD_LEFT + GAP + PEEK}px)`,
                 minWidth: slideW > 0 ? slideW : `calc(100% - ${PAD_LEFT + GAP + PEEK}px)`,
                 flexShrink: 0,
-                display: 'grid',
-                gridTemplateRows: 'repeat(3, auto)',
-                rowGap: '8px',
+                alignSelf: 'flex-start',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
               }}
 
             >
