@@ -294,12 +294,12 @@ export function SajuConsultLoadingPage() {
             paddingBottom: 48,
           }}
         >
-          <div style={{ width: 160, height: 160, flexShrink: 0 }}>
+          <div style={{ width: 240, height: 240, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <style>{`
               .lottie-anim svg { -webkit-transform: translate(0px,0px); transform: translate(0px,0px); }
               .lottie-anim svg mask { x: -10%; y: -10%; width: 120%; height: 120%; }
             `}</style>
-            <div className="lottie-anim">
+            <div className="lottie-anim" style={{ width: 160, height: 160 }}>
               <Lottie animationData={lottieData} loop autoplay renderer="svg" rendererSettings={{ progressiveLoad: false }} style={{ width: '100%', height: '100%' }} />
             </div>
           </div>
