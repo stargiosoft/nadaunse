@@ -1402,18 +1402,26 @@ function BestFortuneSection({
 
 /** 로그인 유저 닉네임 가져오기 */
 function useNickname(): string {
-  const [nickname, setNickname] = useState('');
+  const [nickname, setNickname] = useState(() => {
+    return localStorage.getItem('home_nickname_cache') || '';
+  });
   useEffect(() => {
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
+        // 캐시가 있으면 DB 조회 스킵 (세션 내 1회만 조회)
+        const cached = localStorage.getItem('home_nickname_cache');
+        if (cached) return;
         const { data } = await supabase
           .from('users')
           .select('nickname')
           .eq('id', session.user.id)
           .single();
-        if (data?.nickname) setNickname(data.nickname);
+        if (data?.nickname) {
+          setNickname(data.nickname);
+          localStorage.setItem('home_nickname_cache', data.nickname);
+        }
       } catch (e) {
         logger.error('useNickname 실패:', e);
       }

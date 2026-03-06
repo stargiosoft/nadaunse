@@ -303,6 +303,7 @@ export const clearUserCaches = () => {
     'taro_last_result',
     'saju_consult_result',
     'taro_consult_result',
+    'home_nickname_cache',         // 홈 닉네임 캐시
   ];
 
   // ⭐ cached_saju_info가 있으면 항상 보존 (로그인 후 사주 저장 필요)
