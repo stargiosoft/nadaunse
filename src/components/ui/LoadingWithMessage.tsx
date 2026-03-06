@@ -56,16 +56,16 @@ export function LoadingWithMessage({
       className={`flex items-center justify-center w-full ${className || ''}`}
       style={{ padding }}
     >
-      <div className="flex flex-col items-center gap-[20px]">
+      <div className="flex flex-col items-center gap-[24px]">
         <DotLoading />
         <p
           className="text-center"
           style={{
             fontFamily: "'Pretendard Variable', sans-serif",
-            fontSize: '18px',
-            fontWeight: 600,
+            fontSize: '17px',
+            fontWeight: 500,
             color: '#1a1a1a',
-            letterSpacing: '-0.36px'
+            letterSpacing: '-0.34px'
           }}
         >
           {message}
