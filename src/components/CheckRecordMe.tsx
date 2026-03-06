@@ -1368,9 +1368,9 @@ export default function CheckRecordMe({
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
 
-                  // ⭐ 미션 쿠폰 이미 받은 사람 → 바로 스킵 (체리피커 방지)
-                  if (hasMissionCoupon) {
-                    console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 바로 스킵');
+                  // ⭐ 미션 리워드 이미 받은 사람 → 바로 스킵 (체리피커 방지)
+                  if (hasMissionReward) {
+                    console.log('🎫 [CheckRecordMe] 미션 리워드 이미 수령 → 바로 스킵');
                     if (session?.user?.id) {
                       await executeSkipLogic(session.user.id);
                     }
@@ -1423,7 +1423,7 @@ export default function CheckRecordMe({
                     return;
                   }
 
-                  // ⭐ 미션 쿠폰 이미 받은 사람 → 바로 스킵 (체리피커 방지)
+                  // ⭐ 미션 리워드 이미 받은 사람 → 바로 스킵 (체리피커 방지)
                   if (hasMissionCoupon) {
                     console.log('🎫 [CheckRecordMe] 미션 쿠폰 이미 수령 → 바로 스킵');
                     await executeSkipLogic(session.user.id);
