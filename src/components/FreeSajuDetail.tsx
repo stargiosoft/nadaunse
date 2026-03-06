@@ -12,6 +12,7 @@ interface FreeSajuDetailProps {
   contentId?: string;  // 🔙 시스템 뒤로가기 시 콘텐츠 상세로 이동하기 위한 ID
   onClose: () => void;
   recommendedPaidContent?: MasterContent | null;  // ⭐ 유료 추천 콘텐츠 1개
+  upsellHookText?: string | null;  // ⭐ 유료 전환 유도 문구 (동적)
   onUserIconClick?: () => void;
   // DB 조회 모드 (운세 기록 페이지에서 진입 시)
   fromDB?: boolean;
@@ -45,6 +46,7 @@ export default function FreeSajuDetail({
   contentId,
   onClose,
   recommendedPaidContent,
+  upsellHookText,
   onUserIconClick,
   fromDB = false,
   dbRecordId,
@@ -379,7 +381,7 @@ export default function FreeSajuDetail({
                   className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full px-[20px]"
                 >
                   <p className="leading-[28.5px] text-[16px] text-[#41a09e] tracking-[-0.32px]" style={{ fontWeight: 500 }}>
-                    구체적인 흐름이 궁금하다면...
+                    {upsellHookText || '구체적인 흐름이 궁금하다면...'}
                   </p>
                   <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#000', fontFamily: 'Pretendard Variable' }}>
                     이런 운세는 어때요?
