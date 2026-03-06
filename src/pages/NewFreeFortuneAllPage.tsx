@@ -190,7 +190,7 @@ function RowCard({ item }: { item: NoRankFortuneItem }) {
       <div className="flex flex-col justify-center size-full">
         <div
           className="content-stretch flex flex-col items-start justify-center relative w-full cursor-pointer"
-          style={{ padding: '8px 20px 4px', transition: 'background-color 0.15s ease' }}
+          style={{ padding: '8px 20px 5px', transition: 'background-color 0.15s ease' }}
           {...pressHandlers}
         >
           <div className="content-stretch flex gap-[12px] h-[61px] items-start relative shrink-0 w-full">
@@ -205,7 +205,7 @@ function RowCard({ item }: { item: NoRankFortuneItem }) {
             {/* Text details */}
             <div
               className="content-stretch flex flex-[1_0_0] flex-col items-start min-h-px min-w-px relative"
-              style={{ gap: 2 }}
+              style={{ gap: 2, marginTop: -2 }}
             >
               <p
                 className="w-full overflow-hidden"

@@ -213,7 +213,7 @@ function RowCard({ item }: { item: FortuneItem }) {
       <div className="flex flex-col justify-center" style={{ width: '100%', height: '100%' }}>
         <div
           className="flex flex-col items-start justify-center cursor-pointer"
-          style={{ padding: '8px 20px 4px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
+          style={{ padding: '8px 20px 5px', position: 'relative', width: '100%', transition: 'background-color 0.15s ease' }}
           onTouchStart={() => {}}
           onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#FBFBFB'; }}
           onPointerUp={(e) => { e.currentTarget.style.backgroundColor = ''; }}
@@ -249,7 +249,7 @@ function RowCard({ item }: { item: FortuneItem }) {
             {/* Text details */}
             <div
               className="flex flex-col items-start"
-              style={{ flex: '1 0 0', gap: 2, minHeight: 1, minWidth: 1, position: 'relative' }}
+              style={{ flex: '1 0 0', gap: 2, minHeight: 1, minWidth: 1, position: 'relative', marginTop: -2 }}
             >
               <p
                 style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.black, letterSpacing: '-0.42px', lineHeight: '22px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}

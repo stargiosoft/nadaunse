@@ -130,7 +130,7 @@ function SearchResultItem({ item, onClick }: { item: SearchItem; onClick?: () =>
     >
       <div
         className="flex items-start"
-        style={{ padding: '8px 20px 4px', gap: 12 }}
+        style={{ padding: '8px 20px 5px', gap: 12 }}
       >
         {/* 썸네일 */}
         <div
@@ -147,7 +147,7 @@ function SearchResultItem({ item, onClick }: { item: SearchItem; onClick?: () =>
         </div>
 
         {/* 텍스트 영역 */}
-        <div className="flex flex-col flex-1 min-w-0" style={{ gap: 2 }}>
+        <div className="flex flex-col flex-1 min-w-0" style={{ gap: 2, marginTop: -2 }}>
           <p
             className="w-full overflow-hidden"
             style={{

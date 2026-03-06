@@ -1000,7 +1000,7 @@ function BestFortuneCard({ item, onClick }: { item: FortuneItem; onClick?: () =>
               />
             </div>
             {/* 텍스트 */}
-            <div className="flex flex-1 flex-col items-start min-w-0" style={{ gap: 2 }}>
+            <div className="flex flex-1 flex-col items-start min-w-0" style={{ gap: 2, marginTop: -2 }}>
               <p
                 className="w-full overflow-hidden"
                 style={{
