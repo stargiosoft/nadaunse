@@ -441,7 +441,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
   return (
     <section className="w-full" style={{ backgroundColor: C.white, padding: '0px 20px 12px' }}>
       {/* 인사말 */}
-      <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingLeft: 4, paddingTop: 16 }}>
+      <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingTop: 16 }}>
         <p
           style={{
             fontFamily: font, fontSize: 18, fontWeight: 600,
@@ -1301,7 +1301,7 @@ function BestFortuneSection({
                 onClick={() => onTabChange(i)}
                 className="relative flex items-center justify-center shrink-0 cursor-pointer"
                 style={{
-                  padding: '8px 16px',
+                  padding: '8px 10px',
                   borderRadius: 12,
                   backgroundColor: 'transparent',
                   border: 'none',

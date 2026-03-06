@@ -442,7 +442,7 @@ export function NewFreeFortuneAllPage() {
                         key={t}
                         onClick={() => setActiveTab(i)}
                         className="relative flex items-center justify-center shrink-0 cursor-pointer"
-                        style={{ padding: '8px 16px', borderRadius: 12, backgroundColor: 'transparent', border: 'none', WebkitTapHighlightColor: 'transparent' }}
+                        style={{ padding: '8px 10px', borderRadius: 12, backgroundColor: 'transparent', border: 'none', WebkitTapHighlightColor: 'transparent' }}
                       >
                         {isActive && (
                           <motion.div
@@ -454,7 +454,7 @@ export function NewFreeFortuneAllPage() {
                         )}
                         <span
                           className="relative transition-colors duration-[250ms]"
-                          style={{ fontFamily: font, fontSize: 15, lineHeight: '20px', letterSpacing: '-0.45px', fontWeight: isActive ? 600 : 500, color: isActive ? C.charcoal : C.gray400 }}
+                          style={{ fontFamily: font, fontSize: 14, lineHeight: '20px', letterSpacing: '-0.42px', fontWeight: isActive ? 600 : 500, color: isActive ? C.charcoal : C.gray400 }}
                         >
                           {t}
                         </span>
