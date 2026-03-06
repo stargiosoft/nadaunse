@@ -137,7 +137,13 @@ export function TaroConsultLoadingPage() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingLeft: 20, paddingRight: 20, paddingBottom: 48 }}>
           <div style={{ width: 160, height: 160, flexShrink: 0 }}>
-            <Lottie animationData={lottieData} loop autoplay renderer="svg" style={{ width: '100%', height: '100%' }} />
+            <style>{`
+              .lottie-anim svg { -webkit-transform: translate(0px,0px); transform: translate(0px,0px); }
+              .lottie-anim svg mask { x: -10%; y: -10%; width: 120%; height: 120%; }
+            `}</style>
+            <div className="lottie-anim">
+              <Lottie animationData={lottieData} loop autoplay renderer="svg" rendererSettings={{ progressiveLoad: false }} style={{ width: '100%', height: '100%' }} />
+            </div>
           </div>
           <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <p style={{ fontFamily: font, fontSize: 15.5, fontWeight: 400, color: C.text, letterSpacing: '-0.31px', lineHeight: '25.5px', textAlign: 'center', width: 302 }}>
