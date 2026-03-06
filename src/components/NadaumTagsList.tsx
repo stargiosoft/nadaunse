@@ -332,8 +332,8 @@ function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: 
     toast.custom((t) => (
       <div className="w-full flex justify-center" style={{ pointerEvents: 'auto' }}>
         <div className="w-fit">
-          <div className="backdrop-blur-[15px] flex items-center" style={{ padding: '8px 16px 8px 12px', borderRadius: '999px', gap: '8px', backgroundColor: 'rgba(0,0,0,0.8)' }}>
-            <div className="relative shrink-0" style={{ width: '24px', height: '24px' }}>
+          <div className="flex items-center" style={{ padding: '6px 11px 6px 8px', borderRadius: '9999px', gap: '6px', backgroundColor: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+            <div className="relative shrink-0" style={{ width: '23px', height: '23px', overflow: 'hidden' }}>
                <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
                  <path d={svgPaths.p19b5fe00} fill="#46BB6F" />
                </svg>
