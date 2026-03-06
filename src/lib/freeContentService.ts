@@ -239,16 +239,31 @@ export class FreeContentService {
     userId?: string
   ): Promise<MasterContent | null> {
     try {
-      // 1. 현재 콘텐츠의 카테고리 조회
+      // 1. 현재 콘텐츠의 카테고리 + 추천 유료 콘텐츠 ID 조회
       const { data: currentContent, error: contentError } = await supabase
         .from('master_contents')
-        .select('category_main, category_sub')
+        .select('category_main, category_sub, recommended_paid_content_id')
         .eq('id', contentId)
         .single();
 
       if (contentError || !currentContent) {
         console.error('❌ [추천유료] 현재 콘텐츠 조회 실패:', contentError);
         return null;
+      }
+
+      // 1-1. 명시적 추천 유료 콘텐츠가 설정된 경우 우선 반환
+      if (currentContent.recommended_paid_content_id) {
+        const { data: recommended } = await supabase
+          .from('master_contents')
+          .select('*')
+          .eq('id', currentContent.recommended_paid_content_id)
+          .eq('status', 'deployed')
+          .single();
+
+        if (recommended) {
+          console.log('✅ [추천유료] 명시적 매핑:', recommended.title);
+          return recommended;
+        }
       }
 
       // 2. 이미 읽은 콘텐츠 ID 수집 (로그인 시)
