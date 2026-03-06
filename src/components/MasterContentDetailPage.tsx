@@ -1466,6 +1466,21 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       <span style={{ fontWeight: 400, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>에너지 흐름</span>
                       <img src="/icon-thunder.svg" alt="thunder" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                     </div>
+                    <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
+                    <div className="flex items-center justify-between" style={{ padding: '12px 20px', opacity: 0.3 }}>
+                      <span style={{ fontWeight: 400, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>구체적 원인</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
+                    <div className="flex items-center justify-between" style={{ padding: '12px 20px', opacity: 0.3 }}>
+                      <span style={{ fontWeight: 400, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>운의 시기</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
+                    <div className="flex items-center justify-between" style={{ padding: '12px 20px', opacity: 0.3 }}>
+                      <span style={{ fontWeight: 400, fontSize: 14, color: '#525252', letterSpacing: '-0.42px', lineHeight: '22px' }}>맞춤 대응법</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
                   </div>
                   {/* 심화 운세 카드 */}
                   <div className="flex-1 min-w-0" style={{ borderRadius: 20, border: '2px solid transparent', background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #8EDEDD 0%, #9ACFFF 25%, #C8B8EE 55%, #9ACFFF 80%, #8EDEDD 100%) border-box', boxShadow: '0px 2px 7px 0px rgba(0,0,0,0.12)', position: 'relative' }}>
@@ -1496,12 +1511,17 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       </div>
                       <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
                       <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
-                        <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>구체적 시기</span>
+                        <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>구체적 원인</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      </div>
+                      <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
+                      <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
+                        <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>운의 시기</span>
                         <img src="/icon-calendar.svg" alt="calendar" style={{ width: 20, height: 20, objectFit: 'contain' }} />
                       </div>
                       <div style={{ width: '100%', height: 0, borderTop: '1px dashed #f3f3f3' }} />
                       <div className="flex items-center justify-between" style={{ backgroundColor: '#fff', padding: '12px 20px' }}>
-                        <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>맞춤 조언</span>
+                        <span style={{ fontWeight: 400, fontSize: 14, color: '#000', letterSpacing: '-0.42px', lineHeight: '22px' }}>맞춤 대응법</span>
                         <img src="/icon-compass.svg" alt="compass" style={{ width: 21, height: 21, objectFit: 'contain', marginRight: '-1.5px' }} />
                       </div>
                     </div>
@@ -1510,7 +1530,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 <div className="flex gap-[14px] items-start mt-[16px] rounded-[16px]" style={{ backgroundColor: '#fbfbfb', padding: '18px 18px' }}>
                   <img src="/icon-arrow-right-gradient.svg" alt="arrow" style={{ width: '23px', height: '23px', flexShrink: 0, marginTop: '0px' }} />
                   <p style={{ fontSize: '15px', fontWeight: 400, lineHeight: '26.5px', letterSpacing: '-0.3px', color: '#444', margin: 0 }}>
-                    무료 운세보다 더 깊이 있는 분석을 제공합니다.<br />지금의 흐름과 앞으로의 시기까지 종합적으로 해석해 드려요.
+                    나는 어떤 사람인지 알았다면, 이제 <span style={{ fontWeight: 600 }}>왜 그런지, 언제, 어떻게</span> 해야 하는지 알아볼 차례예요.
                   </p>
                 </div>
               </div>
