@@ -1724,6 +1724,7 @@ function FreeResultPage() {
       contentId={id}
       onClose={handleClose}
       recommendedPaidContent={recommendedPaidContent}
+      upsellHookText={product?.upsell_hook_text}
       onUserIconClick={() => navigate('/profile')}
       fromDB={effectiveFromDB}
       dbRecordId={effectiveDbRecordId}
