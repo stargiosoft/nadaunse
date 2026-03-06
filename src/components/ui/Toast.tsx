@@ -61,7 +61,7 @@ export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps)
       >
         <div className="flex flex-row items-center pl-[16px] pr-[20px] py-[12px] gap-[12px]">
           {/* Icon Container */}
-          <div className="relative shrink-0 flex items-center justify-center" style={{ width: '32px', height: '32px' }}>
+          <div style={{ width: '32px', height: '32px', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
             <IconComponent />
           </div>
 
@@ -106,7 +106,7 @@ export function Toast({ type, message, subtitle, variant = 'dark' }: ToastProps)
     >
       <div className="flex flex-row items-center" style={{ padding: '6px 11px 6px 8px', gap: '6px' }}>
         {/* Icon Container */}
-        <div className="relative shrink-0 flex items-center justify-center" style={{ width: '23px', height: '23px' }}>
+        <div style={{ width: '23px', height: '23px', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
           <IconComponent />
         </div>
 

@@ -309,7 +309,7 @@ html, body {
 }
 
 .toast-animate-enter {
-  animation: toast-slide-up 320ms cubic-bezier(0.34, 1.56, 0.64, 1); /* spring: 아래→위 + scale up */
+  animation: toast-slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1); /* ease-out: 아래→위 + scale up */
 }
 
 .toast-animate-exit {
