@@ -348,7 +348,7 @@ function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: 
                 toast.dismiss(t);
                 deletingRef.current.delete(tagToDelete.id);
               }}
-              style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '13px', color: '#48b2af', marginLeft: '4px', whiteSpace: 'nowrap' }}
+              style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '13px', color: '#ffffff', marginLeft: '4px', whiteSpace: 'nowrap' }}
               className="active:opacity-70 transition-opacity"
             >
               실행 취소
