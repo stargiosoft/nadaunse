@@ -2693,7 +2693,7 @@ function AccessDeniedDialog() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
+        <div className="flex flex-col" style={{ gap: '4px', padding: '40px 32px 36px' }}>
           <p
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',

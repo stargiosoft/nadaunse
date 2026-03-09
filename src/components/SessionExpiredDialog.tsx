@@ -43,7 +43,7 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
         style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}
       >
         {/* 텍스트 영역 */}
-        <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
+        <div className="flex flex-col" style={{ gap: '4px', padding: '40px 32px 36px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,

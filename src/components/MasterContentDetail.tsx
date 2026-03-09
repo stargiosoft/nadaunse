@@ -1557,7 +1557,7 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         {showOrderExistsDialog && (
           <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
             <div className="bg-white overflow-hidden transform-gpu" style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}>
-              <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
+              <div className="flex flex-col" style={{ gap: '4px', padding: '40px 32px 36px' }}>
                 <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 600, fontSize: '17.5px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#151515' }}>
                   삭제할 수 없어요
                 </p>
