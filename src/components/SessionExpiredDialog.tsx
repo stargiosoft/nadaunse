@@ -21,7 +21,7 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* 배경 dim 처리 */}
-      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }} />
 
       {/* ⭐️ [DEV] 개발 모드: Dev User일 경우 세션 만료 모달을 강제로 숨김 */}
       {localStorage.getItem('user')?.includes('"provider":"dev"') && (

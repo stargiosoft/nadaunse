@@ -2685,7 +2685,7 @@ function AccessDeniedDialog() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
     >
       <div
         className="bg-white overflow-hidden transform-gpu"
