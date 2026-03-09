@@ -189,7 +189,9 @@ export default function ShareRewardModal({
               textAlign: 'center',
               color: '#151515',
             }}>
-              공유하면 <span style={{ color: '#48b2af' }}>30새싹 </span>받아요
+              공유하면 친구랑 나랑
+              <br />
+              서로 <span style={{ color: '#48b2af' }}>30새싹</span> 받아요
             </p>
 
             {/* Subtitle */}

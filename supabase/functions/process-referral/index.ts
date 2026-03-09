@@ -5,7 +5,7 @@
  * @input {
  *   referral_code: string
  * }
- * @output { success: boolean, reward_granted?: boolean, error?: string }
+ * @output { success: boolean, reward_granted?: boolean, referred_reward_granted?: boolean, error?: string }
  *
  * @description
  * - User B 회원가입 완료 시 AuthCallback에서 호출
@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
 
     console.log('✅ [레퍼럴] 처리 완료:', {
       reward_granted: data.reward_granted,
+      referred_reward_granted: data.referred_reward_granted,
       current_round: data.current_round,
       current_count: data.current_count,
       required_count: data.required_count,
@@ -165,6 +166,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         reward_granted: data.reward_granted,
+        referred_reward_granted: data.referred_reward_granted,
         current_round: data.current_round,
         current_count: data.current_count,
         required_count: data.required_count,
