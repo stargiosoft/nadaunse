@@ -322,9 +322,10 @@ export function FortuneAllPage() {
     const st = (location.state as { sort?: string } | null);
     return st?.sort === 'popular' ? '인기순' : '인기순';
   });
-  const [filterPaid, setFilterPaid] = useState(false);
-  const [filterFree, setFilterFree] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterType, setFilterType] = useState<'전체' | '심화' | '무료'>('전체');
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<FortuneItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -357,7 +358,7 @@ export function FortuneAllPage() {
   const fetchData = useCallback(async () => {
     try {
       const category = TAB_CATEGORIES[activeTab] || '전체';
-      const pContentType = (filterPaid && !filterFree) ? 'paid' : (!filterPaid && filterFree) ? 'free' : 'all';
+      const pContentType = filterType === '심화' ? 'paid' : filterType === '무료' ? 'free' : 'all';
       const { data, error } = await supabase.rpc('get_home_contents', {
         p_category: category,
         p_content_type: pContentType,
@@ -408,7 +409,7 @@ export function FortuneAllPage() {
     } catch (e) {
       logger.error('FortuneAllPage fetchData 실패:', e);
     }
-  }, [activeTab, sortBy, filterPaid, filterFree]);
+  }, [activeTab, sortBy, filterType]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -436,6 +437,21 @@ export function FortuneAllPage() {
       document.removeEventListener('touchstart', handler);
     };
   }, [sortOpen]);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [filterOpen]);
 
   return (
     <div className="fixed inset-0 flex justify-center overflow-hidden" style={{ backgroundColor: C.white, touchAction: 'none' }}>
@@ -577,50 +593,63 @@ export function FortuneAllPage() {
           </div>
         </div>
 
-        {/* ── Content header: count + filter checkboxes + sort ── */}
+        {/* ── Content header: count + sort ── */}
         <div className="flex items-center justify-between w-full" style={{ paddingTop: 8, paddingBottom: 10, paddingLeft: 22, paddingRight: 22, backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="flex items-center" style={{ gap: 16 }}>
-            {/* 체크박스 필터 */}
-            <div className="flex items-center" style={{ gap: 10 }}>
-              {/* 심화 체크박스 */}
+            {/* 필터 드롭다운 */}
+            <div className="relative" ref={filterRef}>
               <button
                 className="flex items-center cursor-pointer"
-                style={{ backgroundColor: 'transparent', border: 'none', padding: 0, gap: 5, WebkitTapHighlightColor: 'transparent' }}
-                onClick={() => setFilterPaid(v => !v)}
+                style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
+                onClick={() => setFilterOpen(v => !v)}
               >
-                <div
-                  className="flex items-center justify-center shrink-0"
-                  style={{ width: 20, height: 20, borderRadius: 6, backgroundColor: filterPaid ? '#48b2af' : '#ffffff', border: filterPaid ? 'none' : '1px solid #e7e7e7', transition: 'all 0.15s ease' }}
-                >
-                  {filterPaid && (
-                    <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                      <path d="M1 4L4.5 7.5L11 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>심화</span>
+                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{filterType}</span>
+                <ArrowDownFillIcon />
               </button>
-              {/* 무료 체크박스 */}
-              <button
-                className="flex items-center cursor-pointer"
-                style={{ backgroundColor: 'transparent', border: 'none', padding: 0, gap: 5, WebkitTapHighlightColor: 'transparent' }}
-                onClick={() => setFilterFree(v => !v)}
-              >
-                <div
-                  className="flex items-center justify-center shrink-0"
-                  style={{ width: 20, height: 20, borderRadius: 6, backgroundColor: filterFree ? '#48b2af' : '#ffffff', border: filterFree ? 'none' : '1px solid #e7e7e7', transition: 'all 0.15s ease' }}
+              {filterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: -6,
+                    width: 140,
+                    backgroundColor: C.white,
+                    borderRadius: 16,
+                    border: '1px solid #f3f3f3',
+                    boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
+                    zIndex: 200,
+                    paddingTop: 14,
+                    paddingBottom: 12,
+                  }}
                 >
-                  {filterFree && (
-                    <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                      <path d="M1 4L4.5 7.5L11 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>무료</span>
-              </button>
+                  <div style={{ padding: '0 22px', marginBottom: 4 }}>
+                    <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>필터</span>
+                  </div>
+                  {(['전체', '심화', '무료'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => { setFilterType(opt); setFilterOpen(false); }}
+                      className="flex items-center w-full cursor-pointer"
+                      style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
+                        {filterType === opt ? (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
+                        ) : (
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
+                        )}
+                      </div>
+                      <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>{opt}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
             </div>
-
             {/* 정렬 드롭다운 */}
           <div className="relative" ref={sortRef}>
             <button
@@ -690,7 +719,7 @@ export function FortuneAllPage() {
               </motion.div>
             )}
           </div>
-          </div> {/* 정렬 + 체크박스 묶음 닫기 */}
+          </div>
         </div>
 
         {/* ── Content list ── */}
