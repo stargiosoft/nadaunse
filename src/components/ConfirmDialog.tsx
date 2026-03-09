@@ -44,7 +44,7 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="flex flex-col px-[28px] py-[32px]" style={{ gap: '4px' }}>
+        <div className="flex flex-col px-[32px] py-[36px]" style={{ gap: '4px' }}>
           <p
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
@@ -74,7 +74,7 @@ export function ConfirmDialog({
         </div>
 
         {/* 버튼 영역 */}
-        <div className="flex gap-[10px] px-[24px] pb-[20px]">
+        <div className="flex gap-[10px] px-[28px] pb-[20px]">
           {/* 취소 버튼 */}
           <button
             onClick={onCancel}
