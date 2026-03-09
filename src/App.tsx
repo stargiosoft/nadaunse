@@ -3665,6 +3665,32 @@ export default function App() {
     recordTodayVisit();
   }, []);
 
+  // 🍞 Toast 위치 고정 - Sonner v2 CSS !important 덮어쓰기 (동일 specificity, 나중 순서가 승리)
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'toast-position-override';
+    style.textContent = `
+      [data-sonner-toaster] {
+        position: fixed !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + var(--toast-bottom-offset, 16px)) !important;
+        z-index: 9999 !important;
+        pointer-events: none !important;
+      }
+      [data-sonner-toaster] li, [data-sonner-toaster] [data-sonner-toast] {
+        pointer-events: auto !important;
+        transform: none !important;
+      }
+      [data-sonner-toast][data-removed="true"] .toast-animate-enter {
+        animation: toast-slide-down 180ms ease-in forwards !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.getElementById('toast-position-override')?.remove(); };
+  }, []);
+
   return (
     <HelmetProvider>
       <Router>
@@ -3783,11 +3809,7 @@ export default function App() {
         <Toaster
           position="bottom-center"
           visibleToasts={1}
-          offset="20px"
-          style={{ zIndex: 9999 }}
-          toastOptions={{
-            unstyled: true,
-          }}
+          toastOptions={{ unstyled: true }}
         />
         </ErrorBoundary>
       </Router>

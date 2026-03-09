@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
 import { motion } from 'motion/react';
 import { DEV } from '../lib/env';
+import { toast } from '../lib/toast';
 import {
   CONSULT_STORAGE_KEY,
   LAST_RESULT_KEY,
@@ -1550,6 +1551,15 @@ export function HomeScreenNew() {
           maxWidth: 440,
         }}
       >
+        {DEV && (
+          <div style={{ display: 'flex', gap: 8, padding: '8px 16px', flexWrap: 'wrap' }}>
+            <button onClick={() => toast.success('성공 토스트입니다')} style={{ padding: '4px 10px', borderRadius: 8, background: '#48b2af', color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>success</button>
+            <button onClick={() => toast.error('오류 토스트입니다')} style={{ padding: '4px 10px', borderRadius: 8, background: '#ef6878', color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>error</button>
+            <button onClick={() => toast.warning('경고 토스트입니다')} style={{ padding: '4px 10px', borderRadius: 8, background: '#f5a623', color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>warning</button>
+            <button onClick={() => toast.info('안내 토스트입니다')} style={{ padding: '4px 10px', borderRadius: 8, background: '#3b82f6', color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>info</button>
+            <button onClick={() => toast.success('서브타이틀 포함', { subtitle: '서브타이틀 예시입니다' })} style={{ padding: '4px 10px', borderRadius: 8, background: '#848484', color: '#fff', fontSize: 12, border: 'none', cursor: 'pointer' }}>subtitle</button>
+          </div>
+        )}
         <AppHeader />
         <AppSearchBar />
         <FreeConsultationSection nickname={nickname} />
