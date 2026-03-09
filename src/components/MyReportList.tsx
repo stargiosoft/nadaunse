@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ConfirmDialog } from './ConfirmDialog';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -971,6 +972,7 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
   } | null>(null);
   const [isLoadingFailedReports, setIsLoadingFailedReports] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [showResendConfirm, setShowResendConfirm] = useState(false);
   const weekOptions = getRecentWeeks(8);
 
   // ⭐ 주간 보고서 목록 조회 함수
@@ -1500,13 +1502,13 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
 
     if (isResending) return;
 
-    const confirmed = window.confirm(
-      `${failedReportInfo.failedCount}명의 사용자에게 보고서를 재발송하시겠습니까?\n\n` +
-      `⚠️ 주의: 이미 보고서가 있는 사용자는 제외됩니다.\n` +
-      `📦 서버에서 자동 처리됩니다. 브라우저를 닫아도 됩니다.`
-    );
+    setShowResendConfirm(true);
+  };
 
-    if (!confirmed) return;
+  const handleResendConfirmed = async () => {
+    setShowResendConfirm(false);
+    if (!failedReportInfo || failedReportInfo.failedCount === 0) return;
+    if (isResending) return;
 
     try {
       setIsResending(true);
@@ -2258,6 +2260,15 @@ export default function MyReportList({ onBack, onTabChange, onReportClick, force
         )}
 
       </div>
+      <ConfirmDialog
+        isOpen={showResendConfirm}
+        title="보고서를 재발송하시겠습니까?"
+        message={failedReportInfo ? `${failedReportInfo.failedCount}명에게 발송됩니다.` : undefined}
+        confirmText="재발송"
+        cancelText="취소"
+        onConfirm={handleResendConfirmed}
+        onCancel={() => setShowResendConfirm(false)}
+      />
     </div>
   );
 }

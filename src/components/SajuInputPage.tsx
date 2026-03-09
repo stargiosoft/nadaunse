@@ -10,6 +10,7 @@ import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import svgPaths from "../imports/svg-0762m0vok8";
 import { SessionExpiredDialog } from './SessionExpiredDialog';
+import { ConfirmDialog } from './ConfirmDialog';
 import { toast } from '../lib/toast';
 import { NavigationHeader } from './NavigationHeader';
 
@@ -66,6 +67,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
+  const [showWithdrawDoubleConfirm, setShowWithdrawDoubleConfirm] = useState(false);
 
   const dragControls = useDragControls();
 
@@ -563,21 +566,12 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     }
   };
 
-  const handleWithdraw = async () => {
-    const confirmWithdraw = window.confirm(
-      '정말로 탈퇴하시겠습니까?\n\n' +
-      '탈퇴 시 다음 정보가 삭제됩니다:\n' +
-      '- 등록된 모든 사주 정보\n' +
-      '- 프로필 정보\n' +
-      '- 계정 정보\n\n' +
-      '※ 구매 내역은 법적 의무에 따라 익명화되어 보존됩니다.\n' +
-      '이 작업은 되돌릴 수 없습니다.'
-    );
+  const handleWithdraw = () => {
+    setShowWithdrawConfirm(true);
+  };
 
-    if (!confirmWithdraw) return;
-
-    const doubleConfirm = window.confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.');
-    if (!doubleConfirm) return;
+  const handleWithdrawConfirmed = async () => {
+    setShowWithdrawDoubleConfirm(false);
 
     try {
       console.log('🚪 [탈퇴] 탈퇴 프로세스 시작');
@@ -1123,6 +1117,24 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         </div>
       </div>
       <SessionExpiredDialog isOpen={isSessionExpired} />
+      <ConfirmDialog
+        isOpen={showWithdrawConfirm}
+        title="정말 탈퇴하시겠습니까?"
+        message="탈퇴 시 모든 사주 정보 및 계정 정보가 삭제됩니다."
+        confirmText="다음"
+        cancelText="취소"
+        onConfirm={() => { setShowWithdrawConfirm(false); setShowWithdrawDoubleConfirm(true); }}
+        onCancel={() => setShowWithdrawConfirm(false)}
+      />
+      <ConfirmDialog
+        isOpen={showWithdrawDoubleConfirm}
+        title="탈퇴를 최종 확인합니다"
+        message="이 작업은 되돌릴 수 없습니다."
+        confirmText="탈퇴"
+        cancelText="취소"
+        onConfirm={handleWithdrawConfirmed}
+        onCancel={() => setShowWithdrawDoubleConfirm(false)}
+      />
 
       {/* 관계 선택 Bottom Sheet */}
       {createPortal(

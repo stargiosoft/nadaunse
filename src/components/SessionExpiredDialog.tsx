@@ -22,16 +22,13 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* 배경 dim 처리 */}
       <div className="absolute inset-0 bg-black/50" />
-      
+
       {/* ⭐️ [DEV] 개발 모드: Dev User일 경우 세션 만료 모달을 강제로 숨김 */}
-      {/* 이를 통해 로그인 없이 UI 테스트가 가능하도록 함 */}
       {localStorage.getItem('user')?.includes('"provider":"dev"') && (
-        <span 
+        <span
           ref={(node) => {
-            // 부모 요소(모달 전체 컨테이너)를 숨김 처리
             if (node && node.parentElement) {
               node.parentElement.style.display = 'none';
-              // 배경 스크롤 잠금 해제 (혹시 걸려있다면)
               document.body.style.overflow = '';
               console.log('⚡ [DEV] 세션 만료 모달 강제 숨김 처리 (Dev User)');
             }
@@ -41,28 +38,53 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
       )}
 
       {/* 다이얼로그 */}
-      <div className="relative w-[320px] bg-white rounded-[20px] overflow-hidden border border-[#f3f3f3]">
+      <div
+        className="relative bg-white w-[320px] overflow-hidden transform-gpu"
+        style={{ borderRadius: 24, border: '1px solid #f3f3f3' }}
+      >
         {/* 텍스트 영역 */}
-        <div className="px-[28px] py-[20px]">
-          <div className="flex flex-col gap-[8px] items-center text-center">
-            <p className="font-['Pretendard_Variable:SemiBold',sans-serif] font-semibold text-[17px] leading-[25.5px] tracking-[-0.34px] text-black">
-              로그인이 필요해요
-            </p>
-            <p className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[15px] leading-[20px] tracking-[-0.3px] text-[#868686]">
-              계속 보시려면 다시 로그인해 주세요.
-            </p>
-          </div>
+        <div className="flex flex-col px-[32px] py-[36px]" style={{ gap: '4px' }}>
+          <p style={{
+            fontFamily: 'Pretendard Variable, sans-serif',
+            fontWeight: 600,
+            fontSize: '18px',
+            lineHeight: '25.5px',
+            letterSpacing: '-0.36px',
+            color: '#151515'
+          }}>
+            로그인이 필요해요
+          </p>
+          <p style={{
+            fontFamily: 'Pretendard Variable, sans-serif',
+            fontWeight: 400,
+            fontSize: '16px',
+            lineHeight: '28.5px',
+            letterSpacing: '-0.32px',
+            color: '#848484'
+          }}>
+            계속 보시려면 다시 로그인해 주세요.
+          </p>
         </div>
 
         {/* 버튼 영역 */}
-        <div className="px-[24px] pb-[20px]">
+        <div className="px-[28px] pb-[20px]">
           <button
             onClick={handleLogin}
-            className="w-full h-[48px] bg-[#48b2af] rounded-[12px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+            className="w-full"
+            style={{ height: 48, backgroundColor: '#48b2af', borderRadius: 16, transition: 'transform 0.1s ease' }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
-            <span className="font-['Pretendard_Variable:Medium',sans-serif] font-medium text-[16px] leading-[25px] tracking-[-0.32px] text-white">
+            <p style={{
+              fontFamily: 'Pretendard Variable, sans-serif',
+              fontWeight: 500,
+              fontSize: '15px',
+              lineHeight: '20px',
+              letterSpacing: '-0.45px',
+              color: '#ffffff'
+            }}>
               로그인 하기
-            </span>
+            </p>
           </button>
         </div>
       </div>

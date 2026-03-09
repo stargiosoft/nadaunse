@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
+  confirmLoading?: boolean;
 }
 
 /**
@@ -28,7 +29,8 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   confirmText = '네',
-  cancelText = '아니요'
+  cancelText = '아니요',
+  confirmLoading = false
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
@@ -99,10 +101,11 @@ export function ConfirmDialog({
 
           {/* 확인 버튼 */}
           <button
-            onClick={onConfirm}
+            onClick={confirmLoading ? undefined : onConfirm}
+            disabled={confirmLoading}
             className="flex-1"
-            style={{ backgroundColor: '#48b2af', borderRadius: 16, height: 48, transition: 'transform 0.1s ease' }}
-            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            style={{ backgroundColor: '#48b2af', borderRadius: 16, height: 48, transition: 'transform 0.1s ease', opacity: confirmLoading ? 0.6 : 1 }}
+            onPointerDown={e => { if (!confirmLoading) e.currentTarget.style.transform = 'scale(0.99)'; }}
             onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
             <p
@@ -115,7 +118,7 @@ export function ConfirmDialog({
                 color: '#ffffff'
               }}
             >
-              {confirmText}
+              {confirmLoading ? '처리 중...' : confirmText}
             </p>
           </button>
         </div>
