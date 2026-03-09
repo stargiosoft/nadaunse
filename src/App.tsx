@@ -2698,7 +2698,7 @@ function AccessDeniedDialog() {
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
-              fontSize: '17px',
+              fontSize: '17.5px',
               lineHeight: '24px',
               letterSpacing: '-0.34px',
               color: '#151515'
