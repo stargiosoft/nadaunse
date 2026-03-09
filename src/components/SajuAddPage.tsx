@@ -404,9 +404,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         }
 
         console.log('✅ [SajuAddPage] 사주 정보 업데이트 완료');
-        toast.success('수정되었습니다.', {
-          duration: 2200
-        });
+        // ⭐ 토스트는 onSaved 콜백(App.tsx)에서 navigate 이후 표시
       } else {
         // ⭐ 신규 등록 모드: INSERT
         console.log('➕ [신규등록] 사주 정보 저장:', sajuPayload);

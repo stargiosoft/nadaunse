@@ -3143,6 +3143,8 @@ function SajuAddPageWrapper() {
         } else {
           navigate('/saju/management', { replace: true });
         }
+        // ⭐ navigate 후 토스트 표시 (수정 완료 화면에서 노출)
+        setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
       }}
     />
   );
