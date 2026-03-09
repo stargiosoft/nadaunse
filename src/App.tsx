@@ -78,6 +78,9 @@ import ReportWeeklyMemoQuickEdit from './components/ReportWeeklyMemoQuickEdit';
 import AuthCallback from './pages/AuthCallback';
 import SproutChargingStation from './components/SproutChargingStation'; // ⭐ 새싹 충전소
 import ShareRewardInfoPage from './components/ShareRewardInfoPage'; // ⭐ 공유 새싹 지급 안내
+import InquiryWritePage from './components/InquiryWritePage'; // ⭐ 문의 작성
+import InquiryListPage from './components/InquiryListPage'; // ⭐ 문의 내역
+import MasterInquiryPage from './components/MasterInquiryPage'; // ⭐ 문의 관리 (마스터)
 import { useSproutBalance, writeSproutBalanceCache } from './hooks/useSproutBalance'; // ⭐ 새싹 잔액 훅
 // TarotDemo 백업됨 (TarotFlowPage 제거로 인해)
 import { allProducts } from './data/products';
@@ -356,6 +359,9 @@ function GAInit() {
         '/paid/tag-loading': '태그 추출 중',
         '/master/content': '콘텐츠 관리',
         '/master/stats': '통계 대시보드',
+        '/master/inquiries': '문의 관리',
+        '/inquiry': '문의 내역',
+        '/inquiry/write': '문의하기',
         '/master/content/create': '콘텐츠 생성',
         '/master/content/create/questions': '질문 작성',
         '/error/404': '페이지를 찾을 수 없음',
@@ -2092,6 +2098,44 @@ function StatsDashboardWrapper() {
   );
 }
 
+// ⭐ 문의 내역 Wrapper (로그인 필수)
+function InquiryListPageWrapper() {
+  const goBack = useGoBack('/profile');
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <InquiryListPage onBack={goBack} />;
+}
+
+// ⭐ 문의 작성 Wrapper (로그인 필수)
+function InquiryWritePageWrapper() {
+  const goBack = useGoBack('/inquiry');
+  const loginAuth = useLoginRequired();
+
+  if (loginAuth === 'checking') return <PageLoader />;
+  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+
+  return <InquiryWritePage onBack={goBack} />;
+}
+
+// ⭐ 문의 관리 Wrapper (마스터 전용)
+function MasterInquiryPageWrapper() {
+  const navigate = useNavigate();
+  const masterAuth = useMasterAuth();
+
+  if (masterAuth === 'checking') return <PageLoader />;
+  if (masterAuth === 'denied') return <AccessDeniedDialog />;
+
+  return (
+    <MasterInquiryPage
+      onBack={() => navigate(-1)}
+      onHome={() => navigate('/')}
+    />
+  );
+}
+
 // ⭐ 로그인 후 pending_trait_tags 처리 페이지
 // - 사주 정보 저장 (cached_saju_info → saju_records)
 // - 무료 콘텐츠 결과 저장 (localStorage → free_content_records)
@@ -3668,6 +3712,9 @@ export default function App() {
           <Route path="/purchase-history" element={<PurchaseHistoryPageWrapper />} />
           <Route path="/master/content" element={<MasterContentListWrapper />} />
           <Route path="/master/stats" element={<StatsDashboardWrapper />} /> {/* ⭐ 통계 대시보드 */}
+          <Route path="/master/inquiries" element={<MasterInquiryPageWrapper />} /> {/* ⭐ 문의 관리 */}
+          <Route path="/inquiry" element={<InquiryListPageWrapper />} /> {/* ⭐ 문의 내역 */}
+          <Route path="/inquiry/write" element={<InquiryWritePageWrapper />} /> {/* ⭐ 문의 작성 */}
           <Route path="/master/content/create" element={<MasterContentCreateFlowWrapper />} />
           <Route path="/master/content/create/questions" element={<MasterContentCreateFlowWrapper />} />
           <Route path="/master/content/detail/:id/payment" element={<MasterContentPaymentPageWrapper />} />

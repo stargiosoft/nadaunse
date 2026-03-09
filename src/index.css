@@ -5522,21 +5522,25 @@ html {
 [data-sonner-toaster] {
   pointer-events: none !important;
   z-index: 9999 !important;
-  justify-content: center !important;
-  align-items: center !important;
-  display: flex !important;
   position: fixed !important;
-  bottom: 96px !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
   left: 0 !important;
   right: 0 !important;
+  width: 100% !important;
+  max-width: 440px !important;
+  margin: 0 auto !important;
   transform: none !important;
+  display: flex !important;
+  justify-content: center !important;
 }
 
 [data-sonner-toast] {
   pointer-events: auto !important;
   width: auto !important;
-  max-width: calc(100vw - 40px) !important;
+  max-width: min(calc(100vw - 40px), 400px) !important;
   position: relative !important;
+  left: auto !important;
+  right: auto !important;
   transform: none !important;
 }
 
@@ -5544,7 +5548,8 @@ html {
   pointer-events: none !important;
   justify-content: center !important;
   width: 100% !important;
-  max-width: none !important;
+  max-width: 440px !important;
+  margin: 0 auto !important;
   display: flex !important;
   position: fixed !important;
   bottom: 96px !important;
