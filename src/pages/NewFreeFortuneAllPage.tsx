@@ -351,7 +351,7 @@ export function NewFreeFortuneAllPage() {
           id: row.id,
           title: row.title,
           labels,
-          views: row.weekly_clicks,
+          views: row.view_count,
           showRead: row.is_read === true,
           img: row.thumbnail_url || '/home-v2/card-1.png',
         };
