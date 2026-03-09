@@ -2698,9 +2698,9 @@ function AccessDeniedDialog() {
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
-              fontSize: '18px',
-              lineHeight: '25.5px',
-              letterSpacing: '-0.36px',
+              fontSize: '17px',
+              lineHeight: '24px',
+              letterSpacing: '-0.34px',
               color: '#151515'
             }}
           >
@@ -2710,9 +2710,9 @@ function AccessDeniedDialog() {
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 400,
-              fontSize: '16px',
-              lineHeight: '28.5px',
-              letterSpacing: '-0.32px',
+              fontSize: '15px',
+              lineHeight: '26px',
+              letterSpacing: '-0.3px',
               color: '#848484'
             }}
           >

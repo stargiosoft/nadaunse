@@ -13,11 +13,11 @@ function ConfirmDialogPreview({ title, message, cancelText = '아니요', confir
   return (
     <div className="bg-white overflow-hidden transform-gpu" style={{ width: 320, borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', border: '1px solid #f3f3f3' }}>
       <div className="flex flex-col px-[32px] py-[36px]" style={{ gap: '4px' }}>
-        <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515' }}>
+        <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 600, fontSize: 17, lineHeight: '24px', letterSpacing: '-0.34px', color: '#151515' }}>
           {title}
         </p>
         {message && (
-          <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400, fontSize: 16, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#848484' }}>
+          <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400, fontSize: 15, lineHeight: '26px', letterSpacing: '-0.3px', color: '#848484' }}>
             {message}
           </p>
         )}

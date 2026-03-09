@@ -47,9 +47,9 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
           <p style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
-            fontSize: '18px',
-            lineHeight: '25.5px',
-            letterSpacing: '-0.36px',
+            fontSize: '17px',
+            lineHeight: '24px',
+            letterSpacing: '-0.34px',
             color: '#151515'
           }}>
             로그인이 필요해요
@@ -57,9 +57,9 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
           <p style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 400,
-            fontSize: '16px',
-            lineHeight: '28.5px',
-            letterSpacing: '-0.32px',
+            fontSize: '15px',
+            lineHeight: '26px',
+            letterSpacing: '-0.3px',
             color: '#848484'
           }}>
             계속 보시려면 다시 로그인해 주세요.
