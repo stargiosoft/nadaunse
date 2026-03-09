@@ -414,11 +414,6 @@ export default function FreeSajuDetail({
                       <p style={{ fontSize: '16px', fontWeight: 500, lineHeight: '24px', letterSpacing: '-0.32px', color: '#000', fontFamily: 'Pretendard Variable' }} className="line-clamp-2 overflow-hidden">
                         {recommendedPaidContent.title}
                       </p>
-                      {recommendedPaidContent.description && (
-                        <p className="line-clamp-3" style={{ fontSize: '14px', fontWeight: 400, lineHeight: '22px', color: '#555', fontFamily: 'Pretendard Variable', margin: 0 }}>
-                          {recommendedPaidContent.description}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
