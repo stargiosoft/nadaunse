@@ -6,6 +6,7 @@ import { generateImagePrompt, generateThumbnail } from '../lib/masterContentAI';
 import FreeContentDetail from './FreeContentDetail';
 import { toast } from '../lib/toast';
 import { PageLoader } from './ui/PageLoader';
+import { ConfirmDialog } from './ConfirmDialog';
 
 // 🔧 Build v1.2.6 - Router alias fix
 
@@ -207,40 +208,6 @@ function Dropdown({
   );
 }
 
-// 확인 다이얼로그
-function ConfirmDialog({
-  message,
-  onConfirm,
-  onCancel,
-}: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[16px]">
-      <div className="bg-white rounded-[12px] p-[24px] max-w-[340px] w-full">
-        <p className="font-['Pretendard_Variable:Medium',sans-serif] text-[16px] text-[#1b1b1b] text-center mb-[24px] whitespace-pre-line">
-          {message}
-        </p>
-        <div className="flex gap-[8px]">
-          <button
-            onClick={onCancel}
-            className="flex-1 h-[48px] bg-[#f0f0f0] rounded-[8px] font-['Pretendard_Variable:Medium',sans-serif] text-[14px] text-[#666666]"
-          >
-            취소
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 h-[48px] bg-[#48b2af] rounded-[8px] font-['Pretendard_Variable:Medium',sans-serif] text-[14px] text-white"
-          >
-            확인
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // 이미지 모달
 function ImageModal({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) {
@@ -1595,7 +1562,11 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         {/* 수정 확인 다이얼로그 */}
         {showEditConfirm && (
           <ConfirmDialog
-            message="배포전 상태로 변경됩니다.&#10;수정하시겠어요?"
+            isOpen={true}
+            title="수정하시겠어요?"
+            message="배포전 상태로 변경됩니다."
+            confirmText="확인"
+            cancelText="취소"
             onConfirm={() => {
               setShowEditConfirm(false);
               handleSave();
@@ -1607,7 +1578,11 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         {/* 삭제 확인 다이얼로그 */}
         {showDeleteConfirm && (
           <ConfirmDialog
-            message="이 콘텐츠를 삭제하시겠습니까?&#10;삭제된 콘텐츠는 복구할 수 없습니다."
+            isOpen={true}
+            title="이 콘텐츠를 삭제하시겠습니까?"
+            message="삭제된 콘텐츠는 복구할 수 없습니다."
+            confirmText="확인"
+            cancelText="취소"
             onConfirm={() => {
               setShowDeleteConfirm(false);
               handleDelete();
@@ -1618,20 +1593,29 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
 
         {/* 주문 데이터 존재 안내 다이얼로그 */}
         {showOrderExistsDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[16px]">
-            <div className="bg-white rounded-[12px] p-[24px] max-w-[340px] w-full">
-              <p className="font-['Pretendard_Variable:SemiBold',sans-serif] text-[18px] text-[#1b1b1b] text-center mb-[12px]">
-                삭제할 수 없어요
-              </p>
-              <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[14px] text-[#666666] text-center mb-[24px]">
-                주문 데이터가 있어 삭제할 수 없어요.
-              </p>
-              <button
-                onClick={() => setShowOrderExistsDialog(false)}
-                className="w-full h-[48px] bg-[#48b2af] rounded-[8px] font-['Pretendard_Variable:Medium',sans-serif] text-[14px] text-white"
-              >
-                확인
-              </button>
+          <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+            <div className="bg-white overflow-hidden transform-gpu" style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}>
+              <div className="flex flex-col" style={{ gap: '4px', padding: '40px 32px 36px' }}>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 600, fontSize: '18px', lineHeight: '24px', letterSpacing: '-0.34px', color: '#151515' }}>
+                  삭제할 수 없어요
+                </p>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400, fontSize: '15px', lineHeight: '26px', letterSpacing: '-0.3px', color: '#848484' }}>
+                  주문 데이터가 있어 삭제할 수 없어요.
+                </p>
+              </div>
+              <div style={{ padding: '0 28px 20px' }}>
+                <button
+                  onClick={() => setShowOrderExistsDialog(false)}
+                  className="w-full"
+                  style={{ height: 48, backgroundColor: '#48b2af', borderRadius: 16, transition: 'transform 0.1s ease' }}
+                  onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                  onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
+                >
+                  <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
+                    확인
+                  </p>
+                </button>
+              </div>
             </div>
           </div>
         )}

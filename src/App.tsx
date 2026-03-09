@@ -59,6 +59,7 @@ import { TaroConsultPage } from './pages/TaroConsultPage';
 import { TaroConsultLoadingPage } from './pages/TaroConsultLoadingPage';
 import { TaroConsultResultPage } from './pages/TaroConsultResultPage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
+import TestConfirmModals from './pages/TestConfirmModals';
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
@@ -2684,34 +2685,33 @@ function AccessDeniedDialog() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
     >
       <div
-        className="bg-white rounded-[16px] w-[320px] overflow-hidden"
+        className="bg-white overflow-hidden transform-gpu"
+        style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="px-[24px] pt-[32px] pb-[24px]">
+        <div className="flex flex-col" style={{ gap: '4px', padding: '40px 32px 36px' }}>
           <p
-            className="text-center"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
               fontSize: '18px',
-              lineHeight: '25.5px',
-              letterSpacing: '-0.36px',
+              lineHeight: '24px',
+              letterSpacing: '-0.34px',
               color: '#151515'
             }}
           >
             접근 권한이 없어요
           </p>
           <p
-            className="text-center mt-[8px]"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 400,
               fontSize: '15px',
-              lineHeight: '20px',
+              lineHeight: '26px',
               letterSpacing: '-0.3px',
               color: '#848484'
             }}
@@ -2721,16 +2721,18 @@ function AccessDeniedDialog() {
         </div>
 
         {/* 버튼 영역 */}
-        <div className="px-[16px] pb-[16px]">
+        <div style={{ padding: '0 28px 20px' }}>
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="w-full h-[48px] rounded-[12px] transition-colors active:opacity-80"
-            style={{ backgroundColor: '#48b2af' }}
+            className="w-full"
+            style={{ height: 48, backgroundColor: '#48b2af', borderRadius: 16, transition: 'transform 0.1s ease' }}
+            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
           >
             <p
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: '15px',
                 lineHeight: '20px',
                 letterSpacing: '-0.45px',
@@ -3083,6 +3085,8 @@ function SajuInputPageWrapper() {
         } else {
           navigate('/saju/management', { replace: true });
         }
+        // ⭐ navigate 후 토스트 표시 (수정 완료 화면에서 노출)
+        setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
       }}
     />
   );
@@ -3140,6 +3144,8 @@ function SajuAddPageWrapper() {
         } else {
           navigate('/saju/management', { replace: true });
         }
+        // ⭐ navigate 후 토스트 표시 (수정 완료 화면에서 노출)
+        setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
       }}
     />
   );
@@ -3773,6 +3779,7 @@ export default function App() {
           <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} onHome={() => {}} />} />
           {/* ⭐ 프로필 > 나다움 태그 전체보기 */}
           <Route path="/profile/nadaum-tags" element={<NadaumTagsListWrapper />} />
+          <Route path="/test/confirm-modals" element={<TestConfirmModals />} />
           <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail />} />
           <Route path="/test/report-weekly-tarot" element={<ReportWeeklyTarot />} />
           <Route path="/test/report-weekly-tarot-result" element={<ReportWeeklyTarotResult />} />

@@ -13,7 +13,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useDragControls } from "motion/react";
 import svgPaths from "../imports/svg-br5ag5z658";
 import { supabase } from '../lib/supabase';
-import { toast } from '../lib/toast';
+import { toast, setToastBottomOffset, resetToastBottomOffset } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { NavigationHeader } from './NavigationHeader';
 
@@ -75,6 +75,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+  }, []);
+
+  // CTA 버튼 위로 토스트 위치 조정 (pb-28 + pt-12 + h-56 = 96px)
+  useEffect(() => {
+    setToastBottomOffset(96);
+    return () => resetToastBottomOffset();
   }, []);
 
   // 세션 체크
@@ -404,9 +410,7 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         }
 
         console.log('✅ [SajuAddPage] 사주 정보 업데이트 완료');
-        toast.success('수정되었습니다.', {
-          duration: 2200
-        });
+        // ⭐ 토스트는 onSaved 콜백(App.tsx)에서 navigate 이후 표시
       } else {
         // ⭐ 신규 등록 모드: INSERT
         console.log('➕ [신규등록] 사주 정보 저장:', sajuPayload);
@@ -467,13 +471,9 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         console.log('🗑️ [SajuAddPage] saju_records_cache, primary_saju 캐시 무효화');
       }
 
-      // 저장 완료 후 관리 페이지로 이동
+      // 저장 완료 후 관리 페이지로 이동 (navigate + toast는 onSaved에서 처리)
       setTimeout(() => {
-        if (returnTo) {
-          navigate(returnTo);
-        } else {
-          onSaved();
-        }
+        onSaved();
       }, 300);
     } catch (error) {
       console.error('❌ [SajuAddPage] 저장 중 오류:', error);

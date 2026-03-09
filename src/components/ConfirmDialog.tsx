@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
+  confirmLoading?: boolean;
 }
 
 /**
@@ -28,30 +29,31 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   confirmText = '네',
-  cancelText = '아니요'
+  cancelText = '아니요',
+  confirmLoading = false
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-[16px] w-[320px] overflow-hidden"
+        className="bg-white overflow-hidden transform-gpu"
+        style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="px-[24px] pt-[32px] pb-[24px]">
+        <div className="flex flex-col" style={{ gap: '4px', padding: '40px 32px 36px' }}>
           <p
-            className="text-center"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
               fontSize: '18px',
-              lineHeight: '25.5px',
-              letterSpacing: '-0.36px',
+              lineHeight: '24px',
+              letterSpacing: '-0.34px',
               color: '#151515'
             }}
           >
@@ -59,12 +61,11 @@ export function ConfirmDialog({
           </p>
           {message && (
             <p
-              className="text-center mt-[8px]"
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
                 fontWeight: 400,
                 fontSize: '15px',
-                lineHeight: '20px',
+                lineHeight: '26px',
                 letterSpacing: '-0.3px',
                 color: '#848484'
               }}
@@ -75,21 +76,23 @@ export function ConfirmDialog({
         </div>
 
         {/* 버튼 영역 */}
-        <div className="flex gap-[8px] px-[16px] pb-[16px]">
+        <div className="flex" style={{ gap: 10, padding: '0 28px 20px' }}>
           {/* 취소 버튼 */}
           <button
             onClick={onCancel}
-            className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
-            style={{ backgroundColor: '#f5f5f5' }}
+            className="flex-1"
+            style={{ backgroundColor: '#f3f3f3', borderRadius: 16, height: 48, transition: 'transform 0.1s ease' }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
             <p
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: '15px',
                 lineHeight: '20px',
                 letterSpacing: '-0.45px',
-                color: '#848484'
+                color: '#525252'
               }}
             >
               {cancelText}
@@ -98,21 +101,24 @@ export function ConfirmDialog({
 
           {/* 확인 버튼 */}
           <button
-            onClick={onConfirm}
-            className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
-            style={{ backgroundColor: '#48b2af' }}
+            onClick={confirmLoading ? undefined : onConfirm}
+            disabled={confirmLoading}
+            className="flex-1"
+            style={{ backgroundColor: '#48b2af', borderRadius: 16, height: 48, transition: 'transform 0.1s ease', opacity: confirmLoading ? 0.6 : 1 }}
+            onPointerDown={e => { if (!confirmLoading) e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
             <p
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: '15px',
                 lineHeight: '20px',
                 letterSpacing: '-0.45px',
                 color: '#ffffff'
               }}
             >
-              {confirmText}
+              {confirmLoading ? '처리 중...' : confirmText}
             </p>
           </button>
         </div>

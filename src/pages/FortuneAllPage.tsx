@@ -302,7 +302,7 @@ export function FortuneCardList({ items }: { items: FortuneItem[] }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-const TAB_BAR_HEIGHT = 53;
+const TAB_BAR_HEIGHT = 45;
 
 export function FortuneAllPage() {
   const navigate = useNavigate();
@@ -323,10 +323,9 @@ export function FortuneAllPage() {
     return st?.sort === 'popular' ? '인기순' : '인기순';
   });
   const sortRef = useRef<HTMLDivElement>(null);
-
-  const [contentTypeFilter, setContentTypeFilter] = useState<'전체' | '심화' | '무료'>('전체');
-  const [contentTypeFilterOpen, setContentTypeFilterOpen] = useState(false);
-  const contentTypeFilterRef = useRef<HTMLDivElement>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterType, setFilterType] = useState<'전체' | '심화' | '무료'>('전체');
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<FortuneItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -359,7 +358,7 @@ export function FortuneAllPage() {
   const fetchData = useCallback(async () => {
     try {
       const category = TAB_CATEGORIES[activeTab] || '전체';
-      const pContentType = contentTypeFilter === '심화' ? 'paid' : contentTypeFilter === '무료' ? 'free' : 'all';
+      const pContentType = filterType === '심화' ? 'paid' : filterType === '무료' ? 'free' : 'all';
       const { data, error } = await supabase.rpc('get_home_contents', {
         p_category: category,
         p_content_type: pContentType,
@@ -410,7 +409,7 @@ export function FortuneAllPage() {
     } catch (e) {
       logger.error('FortuneAllPage fetchData 실패:', e);
     }
-  }, [activeTab, sortBy, contentTypeFilter]);
+  }, [activeTab, sortBy, filterType]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -440,10 +439,10 @@ export function FortuneAllPage() {
   }, [sortOpen]);
 
   useEffect(() => {
-    if (!contentTypeFilterOpen) return;
+    if (!filterOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (contentTypeFilterRef.current && !contentTypeFilterRef.current.contains(e.target as Node)) {
-        setContentTypeFilterOpen(false);
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -452,7 +451,7 @@ export function FortuneAllPage() {
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('touchstart', handler);
     };
-  }, [contentTypeFilterOpen]);
+  }, [filterOpen]);
 
   return (
     <div className="fixed inset-0 flex justify-center overflow-hidden" style={{ backgroundColor: C.white, touchAction: 'none' }}>
@@ -561,7 +560,7 @@ export function FortuneAllPage() {
                   e.currentTarget.style.userSelect = '';
                 }}
               >
-                <div className="flex items-center" style={{ padding: '4px 16px 8px', gap: 2, minWidth: 'max-content' }}>
+                <div className="flex items-center" style={{ padding: '4px 16px 4px', gap: 2, minWidth: 'max-content' }}>
                   {TABS.map((t, i) => {
                     const isActive = activeTab === i;
                     return (
@@ -594,24 +593,21 @@ export function FortuneAllPage() {
           </div>
         </div>
 
-        {/* ── Content header: count + filters ── */}
-        <div className="flex items-center justify-between w-full" style={{ padding: '8px 22px', backgroundColor: C.white }}>
-          <div className="flex items-center" style={{ gap: 4 }}>
-            <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
-            {/* ── Content type filter ── */}
-            <div className="relative" ref={contentTypeFilterRef}>
+        {/* ── Content header: count + sort ── */}
+        <div className="flex items-center justify-between w-full" style={{ paddingTop: 8, paddingBottom: 10, paddingLeft: 22, paddingRight: 22, backgroundColor: C.white }}>
+          <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
+          <div className="flex items-center" style={{ gap: 16 }}>
+            {/* 필터 드롭다운 */}
+            <div className="relative" ref={filterRef}>
               <button
                 className="flex items-center cursor-pointer"
-                style={{
-                  backgroundColor: C.white, border: '1px solid #e7e7e7', borderRadius: 6,
-                  gap: 2, padding: '2px 6px 2px 8px', WebkitTapHighlightColor: 'transparent',
-                }}
-                onClick={() => { setContentTypeFilterOpen(v => !v); setSortOpen(false); }}
+                style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
+                onClick={() => setFilterOpen(v => !v)}
               >
-                <span style={{ fontFamily: font, fontSize: 12, fontWeight: 500, color: C.gray600, lineHeight: '18px' }}>{contentTypeFilter}</span>
+                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{filterType}</span>
                 <ArrowDownFillIcon />
               </button>
-              {contentTypeFilterOpen && (
+              {filterOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: -6, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -620,7 +616,7 @@ export function FortuneAllPage() {
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 6px)',
-                    left: -6,
+                    right: -6,
                     width: 140,
                     backgroundColor: C.white,
                     borderRadius: 16,
@@ -632,34 +628,34 @@ export function FortuneAllPage() {
                   }}
                 >
                   <div style={{ padding: '0 22px', marginBottom: 4 }}>
-                    <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>유형</span>
+                    <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>필터</span>
                   </div>
-                  {(['전체', '심화', '무료'] as const).map((t) => (
+                  {(['전체', '심화', '무료'] as const).map((opt) => (
                     <button
-                      key={t}
-                      onClick={() => { setContentTypeFilter(t); setContentTypeFilterOpen(false); }}
+                      key={opt}
+                      onClick={() => { setFilterType(opt); setFilterOpen(false); }}
                       className="flex items-center w-full cursor-pointer"
                       style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
                     >
                       <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
-                        {contentTypeFilter === t ? (
+                        {filterType === opt ? (
                           <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
                         ) : (
                           <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
                         )}
                       </div>
-                      <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>{t}</span>
+                      <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>{opt}</span>
                     </button>
                   ))}
                 </motion.div>
               )}
             </div>
-          </div>
+            {/* 정렬 드롭다운 */}
           <div className="relative" ref={sortRef}>
             <button
               className="flex items-center cursor-pointer"
               style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
-              onClick={() => { setSortOpen(v => !v); setContentTypeFilterOpen(false); }}
+              onClick={() => setSortOpen(v => !v)}
             >
               <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{sortBy}</span>
               <ArrowDownFillIcon />
@@ -723,6 +719,7 @@ export function FortuneAllPage() {
               </motion.div>
             )}
           </div>
+          </div>
         </div>
 
         {/* ── Content list ── */}
@@ -739,6 +736,7 @@ export function FortuneAllPage() {
             </div>
           ))}
           <div style={{ height: 130 }} />
+
         </div>
       </div>
     </div>

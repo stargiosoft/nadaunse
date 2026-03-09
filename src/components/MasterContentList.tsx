@@ -8,6 +8,7 @@ import FileUploadDialog from './FileUploadDialog';
 import ArrowLeft from './ArrowLeft';
 import CheckboxIcon from './CheckboxIcon';
 import { toast } from '../lib/toast';
+import { ConfirmDialog } from './ConfirmDialog';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 
 // 🔧 Build v1.2.6 - Router alias fix
@@ -55,40 +56,6 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
   );
 }
 
-// 확인 다이얼로그 컴포넌트
-function ConfirmDialog({ 
-  message, 
-  onConfirm, 
-  onCancel 
-}: { 
-  message: string; 
-  onConfirm: () => void; 
-  onCancel: () => void; 
-}) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-[16px] p-[24px] max-w-[320px] mx-[20px]">
-        <p className="font-['Pretendard_Variable:SemiBold',sans-serif] text-[16px] text-[#1b1b1b] text-center mb-[24px]">
-          {message}
-        </p>
-        <div className="flex gap-[12px]">
-          <button
-            onClick={onCancel}
-            className="flex-1 h-[44px] rounded-[8px] border border-[#e0e0e0] font-['Pretendard_Variable:Regular',sans-serif] text-[14px] text-[#1b1b1b]"
-          >
-            아니요
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 h-[44px] rounded-[8px] bg-[#48b2af] font-['Pretendard_Variable:SemiBold',sans-serif] text-[14px] text-white"
-          >
-            예
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ContentItem({ 
   content, 
@@ -1259,7 +1226,10 @@ export default function MasterContentList({ onBack, onNavigateHome }: MasterCont
       {/* 확인 다이얼로그 */}
       {showConfirmDialog && (
         <ConfirmDialog
-          message="선택한 콘텐츠를 운영 서버에 배포하시겠어요?"
+          isOpen={true}
+          title="선택한 콘텐츠를 운영 서버에 배포하시겠어요?"
+          confirmText="예"
+          cancelText="아니요"
           onConfirm={handleConfirmDeploy}
           onCancel={() => setShowConfirmDialog(false)}
         />
