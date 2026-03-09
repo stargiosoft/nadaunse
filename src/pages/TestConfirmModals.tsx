@@ -11,8 +11,8 @@ function ConfirmDialogPreview({ title, message, cancelText = '아니요', confir
   confirmText?: string;
 }) {
   return (
-    <div className="bg-white w-[320px] overflow-hidden" style={{ borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', border: '1px solid #f3f3f3' }}>
-      <div className="flex flex-col px-[28px] py-[32px]" style={{ gap: '4px' }}>
+    <div className="bg-white overflow-hidden transform-gpu" style={{ width: 320, borderRadius: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', border: '1px solid #f3f3f3' }}>
+      <div className="flex flex-col px-[32px] py-[36px]" style={{ gap: '4px' }}>
         <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515' }}>
           {title}
         </p>
@@ -22,7 +22,7 @@ function ConfirmDialogPreview({ title, message, cancelText = '아니요', confir
           </p>
         )}
       </div>
-      <div className="flex gap-[10px] px-[24px] pb-[20px]">
+      <div className="flex gap-[10px] px-[28px] pb-[20px]">
         <button className="flex-1" style={{ height: 48, backgroundColor: '#f3f3f3', borderRadius: 16, border: 'none', fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: 15, color: '#525252', cursor: 'pointer' }}>{cancelText}</button>
         <button className="flex-1" style={{ height: 48, backgroundColor: '#48b2af', borderRadius: 16, border: 'none', fontFamily: 'Pretendard Variable', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer' }}>{confirmText}</button>
       </div>
