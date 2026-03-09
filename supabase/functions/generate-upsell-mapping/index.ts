@@ -1,4 +1,4 @@
-// Supabase Edge Function: 업셀링 자동 매핑 (GPT-4.1-nano)
+// Supabase Edge Function: 업셀링 자동 매핑 (GPT-4.1-mini)
 // 무료 콘텐츠 생성 시 같은 대분류 유료 콘텐츠 중 최적 매핑 + 후킹 멘트 자동 생성
 // generate-master-content에서 내부 호출 (--no-verify-jwt)
 
@@ -222,7 +222,7 @@ ${candidatesText}
 반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트 없이 JSON만 출력하세요.
 {"selectedContentId": "선택한 유료 콘텐츠 ID", "hookText": "후킹 멘트", "strategy": "사용한 전략명"}`
 
-    console.log('🤖 [upsell-mapping] GPT-4.1-nano 호출 시작...')
+    console.log('🤖 [upsell-mapping] GPT-4.1-mini 호출 시작...')
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
