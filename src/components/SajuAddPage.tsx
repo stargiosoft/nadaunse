@@ -465,13 +465,9 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
         console.log('🗑️ [SajuAddPage] saju_records_cache, primary_saju 캐시 무효화');
       }
 
-      // 저장 완료 후 관리 페이지로 이동
+      // 저장 완료 후 관리 페이지로 이동 (navigate + toast는 onSaved에서 처리)
       setTimeout(() => {
-        if (returnTo) {
-          navigate(returnTo);
-        } else {
-          onSaved();
-        }
+        onSaved();
       }, 300);
     } catch (error) {
       console.error('❌ [SajuAddPage] 저장 중 오류:', error);
