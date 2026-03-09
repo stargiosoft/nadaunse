@@ -3189,7 +3189,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                           { label: '알림톡 발송', value: reportFunnel.alimtalkSent, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.alimtalkSent / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '타로 3장 완료', value: reportFunnel.tarotCompleted, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.tarotCompleted / reportFunnel.totalReports * 1000) / 10 : 0 },
                           { label: '응원글 작성', value: reportFunnel.wroteEncouragement, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.wroteEncouragement / reportFunnel.totalReports * 1000) / 10 : 0 },
-                          { label: '쿠폰 발급', value: reportFunnel.couponIssued, rate: reportFunnel.totalReports > 0 ? Math.round(reportFunnel.couponIssued / reportFunnel.totalReports * 1000) / 10 : 0 },
                         ].map((row, idx) => (
                           <tr key={idx}>
                             <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, color: '#1a1a1a', padding: '10px 12px', borderBottom: '1px solid #f8f8f8' }}>{row.label}</td>
@@ -3300,7 +3299,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                             { label: '알림톡 발송', value: reportCountFunnel.alimtalkSent, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.alimtalkSent / reportCountFunnel.totalReports * 1000) / 10 : 0 },
                             { label: '타로 3장 완료', value: reportCountFunnel.tarotCompleted, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.tarotCompleted / reportCountFunnel.totalReports * 1000) / 10 : 0 },
                             { label: '응원글 작성', value: reportCountFunnel.wroteEncouragement, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.wroteEncouragement / reportCountFunnel.totalReports * 1000) / 10 : 0 },
-                            { label: '쿠폰 발급', value: reportCountFunnel.couponIssued, rate: reportCountFunnel.totalReports > 0 ? Math.round(reportCountFunnel.couponIssued / reportCountFunnel.totalReports * 1000) / 10 : 0 },
                           ].map((row, idx) => (
                             <tr key={idx}>
                               <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, color: '#1a1a1a', padding: '10px 12px', borderBottom: '1px solid #f8f8f8' }}>{row.label}</td>
@@ -3427,32 +3425,6 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                       </div>
                     </section>
 
-                    {/* 차트 3: 쿠폰 발급율 */}
-                    <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', marginBottom: '40px' }}>
-                      <h3 style={{ ...typography.sectionTitle, margin: 0, marginBottom: '16px' }}>쿠폰 발급율</h3>
-                      <div style={{ width: '100%', height: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={reportTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={{ stroke: '#f0f0f0' }} />
-                            <YAxis tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} unit="%" />
-                            <Tooltip content={({ active, payload, label }) => {
-                              if (!active || !payload || payload.length === 0) return null;
-                              const d = payload[0].payload as ReportTrendData;
-                              return (
-                                <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e5e5', padding: '10px 14px', fontFamily: 'Pretendard Variable', fontSize: '13px' }}>
-                                  <p style={{ fontWeight: 600, color: '#333', margin: '0 0 6px' }}>{label}</p>
-                                  <p style={{ color: TREND_COLORS.tertiary, margin: '2px 0' }}>쿠폰 발급율 : {d.couponIssuedRate}%</p>
-                                  <p style={{ color: '#666', margin: '2px 0' }}>쿠폰 발급 : {d.couponIssued}건</p>
-                                  <p style={{ color: '#999', margin: '2px 0' }}>보고서 발행 : {d.totalReports}건</p>
-                                </div>
-                              );
-                            }} />
-                            <Line type="monotone" dataKey="couponIssuedRate" name="쿠폰 발급율" stroke={TREND_COLORS.tertiary} strokeWidth={2} dot={{ r: 3, fill: TREND_COLORS.tertiary }} activeDot={{ r: 5 }} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </section>
                   </>
                 )}
               </motion.div>
