@@ -1242,6 +1242,27 @@ export default function ProfilePage({
                       </div>
                     </motion.div>
                   )}
+                  {/* 1-3. 문의 관리 (마스터 전용) */}
+                  {isMaster && (
+                    <motion.div
+                      variants={itemVariants}
+                      className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
+                      style={{ width: '100%', marginTop: '-6px' }}
+                      onClick={() => navigate('/master/inquiries', { state: { canGoBack: true } })}
+                    >
+                      <div className="flex items-center gap-[8px]">
+                        <div className="relative shrink-0 size-[20px]">
+                          <MessageCircleIcon />
+                        </div>
+                        <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
+                          문의 관리
+                        </p>
+                      </div>
+                      <div className="relative shrink-0 size-[16px]">
+                        <MenuArrowRightIcon />
+                      </div>
+                    </motion.div>
+                  )}
                   {/* 2. 이용 기록 */}
                   <motion.div
                     variants={itemVariants}
@@ -1314,10 +1335,10 @@ export default function ProfilePage({
                       <MenuArrowRightIcon />
                     </div>
                   </motion.div>
-                  {/* 5. 의견 전달하기 */}
+                  {/* 5. 의견 전달하기 (문의 내역으로 이동) */}
                   <motion.div
                     variants={itemVariants}
-                    onClick={() => window.open('https://docs.google.com/forms/d/1yHM5cioHLaZWCaevJ0ib7Y8i6zmCQTnTfG-KK4nMceU/edit', '_blank')}
+                    onClick={() => navigate('/inquiry', { state: { canGoBack: true } })}
                     className="flex items-center justify-between px-[16px] py-[12px] rounded-[16px] cursor-pointer hover-bg-gray active:bg-[#f9f9f9] transition-colors"
                     style={{ width: '100%', marginTop: '-6px' }}
                   >

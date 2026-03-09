@@ -601,13 +601,14 @@ ${freeList}
     let stoppedByTimeLimit = false
 
     // ⭐ 그룹별 직렬 처리 함수
-    async function processGroupSerially(groupQuestions: any[], groupName: string) {
+    async function processGroupInBatches(groupQuestions: any[], groupName: string, batchSize = 3) {
       const results: any[] = []
       const accumulatedAnswers: Array<{ questionText: string; answerText: string }> = []
 
-      console.log(`🔄 ${groupName} 그룹 직렬 처리 시작 (${groupQuestions.length}개)`)
+      const totalBatches = Math.ceil(groupQuestions.length / batchSize)
+      console.log(`🔄 ${groupName} 그룹 배치 처리 시작 (${groupQuestions.length}개, ${totalBatches}배치, 배치당 ${batchSize}개)`)
 
-      for (const question of groupQuestions) {
+      for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
         // ⭐ 시간 제한 체크 (shutdown 방지)
         const elapsed = Date.now() - functionStartTime
         if (elapsed > SELF_CONTINUE_CONFIG.maxExecutionMs) {
@@ -617,15 +618,27 @@ ${freeList}
           break
         }
 
-        const result = await processQuestion(question, accumulatedAnswers)
-        results.push(result)
+        const batch = groupQuestions.slice(batchIdx * batchSize, (batchIdx + 1) * batchSize)
+        console.log(`📦 ${groupName} 배치 ${batchIdx + 1}/${totalBatches} (${batch.length}개 병렬 처리, 이전답변 ${accumulatedAnswers.length}개)`)
 
-        // 성공한 답변만 컨텍스트에 누적
-        if (result.success && result.answerText) {
-          accumulatedAnswers.push({
-            questionText: question.question_text,
-            answerText: result.answerText
-          })
+        // 배치 내 질문들은 같은 accumulatedAnswers를 공유하며 병렬 처리
+        const batchResults = await Promise.all(
+          batch.map(question => processQuestion(question, [...accumulatedAnswers]))
+        )
+
+        results.push(...batchResults)
+
+        // 성공한 답변만 컨텍스트에 누적 → 다음 배치에 전달
+        for (const result of batchResults) {
+          if (result.success && result.answerText) {
+            const question = batch.find((q: any) => q.id === result.questionId)
+            if (question) {
+              accumulatedAnswers.push({
+                questionText: question.question_text,
+                answerText: result.answerText
+              })
+            }
+          }
         }
       }
 
@@ -634,11 +647,11 @@ ${freeList}
     }
 
     // ⭐ 사주/타로 그룹 병렬 실행
-    console.log('🔄 그룹별 답변 생성 시작 (사주↔타로 병렬, 그룹 내 직렬)...')
+    console.log('🔄 그룹별 답변 생성 시작 (사주↔타로 병렬, 그룹 내 배치 처리)...')
 
     const [sajuResults, tarotResults] = await Promise.all([
-      sajuQuestions.length > 0 ? processGroupSerially(sajuQuestions, '사주') : Promise.resolve([]),
-      tarotQuestions.length > 0 ? processGroupSerially(tarotQuestions, '타로') : Promise.resolve([])
+      sajuQuestions.length > 0 ? processGroupInBatches(sajuQuestions, '사주', 3) : Promise.resolve([]),
+      tarotQuestions.length > 0 ? processGroupInBatches(tarotQuestions, '타로', 3) : Promise.resolve([])
     ])
 
     const results = [...sajuResults, ...tarotResults]

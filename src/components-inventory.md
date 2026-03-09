@@ -264,13 +264,15 @@
 - **파일 경로**: `/components/FreeSajuSelectPageWrapper.tsx`
 
 ### FreeSajuDetail.tsx
-- **역할**: 무료 콘텐츠용 사주 상세 정보 페이지
+- **역할**: 무료 콘텐츠용 사주 결과 표시 페이지
 - **사용처**: 무료 콘텐츠 플로우
 - **타입**: Page Component
-- **주요 기능**: 
-  - 선택한 사주 정보 확인
-  - AI 운세 생성 시작
+- **주요 기능**:
+  - AI 생성 운세 결과 표시
+  - 동적 업셀링 후킹 멘트 (`upsellHookText` prop, 없으면 기본 문구 폴백)
+  - 추천 유료 콘텐츠 연결
 - **파일 경로**: `/components/FreeSajuDetail.tsx`
+- **최근 업데이트**: 2026-03-06 - `upsellHookText` prop 추가 (DB 기반 동적 유료 전환 유도 문구)
 
 ### FreeContentDetail.tsx
 - **역할**: 무료 콘텐츠 상세 페이지 (메인 로직)

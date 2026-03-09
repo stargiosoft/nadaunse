@@ -175,7 +175,17 @@
 
 ---
 
-### 1️⃣2️⃣ **유틸리티** (2개)
+### 1️⃣2️⃣ **업셀링** (1개)
+
+34. `generate-upsell-mapping` - 무료 콘텐츠 업셀링 자동 매핑 (GPT-4.1-nano, --no-verify-jwt)
+    - `generate-master-content`에서 무료 콘텐츠 생성 시 내부 호출
+    - 같은 category_main의 유료 콘텐츠 중 최적 매핑 + 후킹 멘트 자동 생성
+    - `recommended_paid_content_id`, `upsell_hook_text` 자동 저장
+    - 실패해도 콘텐츠 생성에 영향 없음 (try-catch)
+
+---
+
+### 1️⃣3️⃣ **유틸리티** (2개)
 
 34. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
 35. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
@@ -207,7 +217,8 @@ generate-master-content (백그라운드)
     ├─→ generate-image-prompt (프롬프트 생성)
     ├─→ generate-thumbnail (썸네일 생성)
     ├─→ generate-saju-preview (사주 미리보기)
-    └─→ generate-tarot-preview (타로 미리보기)
+    ├─→ generate-tarot-preview (타로 미리보기)
+    └─→ [무료] generate-upsell-mapping (업셀링 자동 매핑)
 ```
 
 ### 쿠폰 플로우

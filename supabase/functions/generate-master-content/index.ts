@@ -294,6 +294,22 @@ serve(async (req) => {
       // 4. 각 질문의 미리보기 생성 (무료 콘텐츠는 스킵)
       if (isFreeContent) {
         console.log('🆓 무료 콘텐츠이므로 미리보기 생성을 건너뜁니다.')
+
+        // 업셀링 매핑 자동 생성
+        try {
+          const upsellResponse = await fetch(
+            `${supabaseUrl}/functions/v1/generate-upsell-mapping`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contentId }),
+            }
+          )
+          const upsellData = await upsellResponse.json()
+          console.log('🔗 업셀링 매핑:', upsellData.success ? '완료' : (upsellData.skipped ? '스킵' : '실패'))
+        } catch (e) {
+          console.warn('⚠️ 업셀링 매핑 실패 (무시):', e)
+        }
       } else {
         // 🎯 유료 콘텐츠는 처음 3개 질문만 미리보기 생성
         const questionsToGenerate = dbQuestions.slice(0, 3)

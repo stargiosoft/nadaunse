@@ -86,9 +86,12 @@
 | `status` | text | - | `'loading'` | 상태 (loading, deployed, archived 등) |
 | `created_at` | timestamptz | NOT NULL | `now()` | 생성 일시 |
 | `updated_at` | timestamptz | NOT NULL | `now()` | 수정 일시 |
+| `recommended_paid_content_id` | uuid | FOREIGN KEY | - | 추천 유료 콘텐츠 ID (무료→유료 업셀링 매핑) |
+| `upsell_hook_text` | text | - | - | 유료 전환 유도 문구 (동적 후킹 멘트) |
 | `published_at` | timestamptz | - | - | 배포 일시 |
 
 **제약조건**: `content_type` CHECK: free/paid
+**자기참조 FK**: `recommended_paid_content_id` → `master_contents(id)` (무료 콘텐츠가 추천할 유료 콘텐츠)
 
 ### `master_content_questions`
 
@@ -504,7 +507,7 @@
 users ─→ saju_records (1:N), orders (1:N), user_coupons (1:N), alimtalk_logs (1:N),
          user_trait_tags (1:N), weekly_reports (1:N), sprout_transactions (1:N),
          referral_signups (1:N, referrer_id), share_rewards (1:N)
-master_contents ─→ master_content_questions (1:N), orders (1:N)
+master_contents ─→ master_content_questions (1:N), orders (1:N), master_contents (self-ref, recommended_paid_content_id)
 orders ─→ order_results (1:N), user_coupons (1:N), alimtalk_logs (1:N)
 saju_records ─→ orders (1:N)
 master_content_questions ─→ order_results (1:N)
@@ -551,6 +554,7 @@ weekly_reports ─→ weekly_report_sections (1:N), report_tarot_selections (1:N
 | 2.2.0 | 2026-02-25 | user_situation_summaries 테이블 추가 (주간 보고서 + 콘텐츠 풀이 심리 상태 통합 관리) | AI Assistant |
 | 2.3.0 | 2026-02-26 | users 테이블에 sprout_balance 컬럼 추가, sprout_transactions/sprout_packages 테이블 추가 (새싹 충전소 기능) | AI Assistant |
 | 2.4.0 | 2026-03-05 | user_consult_daily 테이블 추가, process_mission_reward RPC 추가, 테이블 수 25개 | AI Assistant |
+| 2.5.0 | 2026-03-06 | master_contents에 recommended_paid_content_id(자기참조 FK), upsell_hook_text 컬럼 추가 (업셀링 시스템) | AI Assistant |
 
 ---
 

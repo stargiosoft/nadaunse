@@ -3,7 +3,7 @@ chcp 65001 > nul
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo 🚀 나다운세 프로덕션 Edge Functions 배포
 echo    Project: kcthtpmxffppfbkjjkub (Production)
-echo    함수: 41개 (--no-verify-jwt: 11개)
+echo    함수: 42개 (--no-verify-jwt: 12개)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set PROJECT_REF=kcthtpmxffppfbkjjkub
@@ -254,16 +254,24 @@ echo.
 echo ──── 미션 리워드 (1개) ────
 echo.
 
-echo [41/41] grant-mission-sprout (태그 5개 달성 새싹 리워드)
+echo [41/42] grant-mission-sprout (태그 5개 달성 새싹 리워드)
 call npx supabase functions deploy grant-mission-sprout --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.
+echo ──── 업셀링 (1개) ────
+echo.
+
+echo [42/42] generate-upsell-mapping (--no-verify-jwt, 내부 호출용)
+call npx supabase functions deploy generate-upsell-mapping --no-verify-jwt --project-ref %PROJECT_REF%
+if errorlevel 1 goto :error
+
+echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ✅ 프로덕션 배포 완료! (41개 함수)
+echo ✅ 프로덕션 배포 완료! (42개 함수)
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
-echo 📌 --no-verify-jwt 적용된 함수 (11개):
+echo 📌 --no-verify-jwt 적용된 함수 (12개):
 echo    - generate-saju-answer (내부 호출)
 echo    - generate-tarot-answer (내부 호출)
 echo    - send-alimtalk (내부 호출)
@@ -275,6 +283,7 @@ echo    - payment-webhook (PortOne 콜백)
 echo    - sentry-slack-webhook (Sentry 콜백)
 echo    - generate-sitemap (Google 크롤러)
 echo    - get-manse-data (비로그인 공개 접근)
+echo    - generate-upsell-mapping (내부 호출)
 echo.
 goto :end
 

@@ -32,6 +32,8 @@ interface MasterContent {
   price_original: number;
   price_discount: number;
   discount_rate: number;
+  recommended_paid_content_id: string | null;
+  upsell_hook_text: string | null;
 }
 
 interface MasterContentQuestion {
@@ -279,6 +281,9 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   const [userConcern, setUserConcern] = useState('');
   const [mainCategory, setMainCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
+  const [recommendedPaidContentId, setRecommendedPaidContentId] = useState('');
+  const [upsellHookText, setUpsellHookText] = useState('');
+  const [recommendedPaidContentTitle, setRecommendedPaidContentTitle] = useState('');
   
   // UI states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -532,6 +537,20 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
         setUserConcern(content.user_concern || '');
         setMainCategory(content.category_main || '');
         setSubCategory(content.category_sub || '');
+        setRecommendedPaidContentId(content.recommended_paid_content_id || '');
+        setUpsellHookText(content.upsell_hook_text || '');
+
+        // 추천 유료 콘텐츠 제목 조회
+        if (content.recommended_paid_content_id) {
+          const { data: paidContent } = await supabase
+            .from('master_contents')
+            .select('title')
+            .eq('id', content.recommended_paid_content_id)
+            .single();
+          if (paidContent) {
+            setRecommendedPaidContentTitle(paidContent.title);
+          }
+        }
 
         setIsLoading(false);
       } catch (error) {
@@ -635,6 +654,8 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
           questioner_info: questionerInfo || null,
           description: description || null,
           user_concern: userConcern || null,
+          recommended_paid_content_id: recommendedPaidContentId || null,
+          upsell_hook_text: upsellHookText || null,
           price_original: priceOriginal,
           price_discount: priceDiscount,
           discount_rate: discountRate,
@@ -1290,6 +1311,64 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
                 className="w-full h-[100px] px-[16px] py-[12px] bg-white border border-[#e0e0e0] rounded-[8px] font-['Pretendard_Variable:Regular',sans-serif] text-[14px] text-[#1b1b1b] placeholder:text-[#999999] resize-none"
               />
             </div>
+
+            {/* 추천 유료 콘텐츠 & 후킹 멘트 - 무료 콘텐츠만 표시 */}
+            {contentData.content_type === 'free' && (
+              <div className="flex flex-col gap-[12px] p-[16px] bg-[#f8f8f8] rounded-[12px] border border-[#e0e0e0]">
+                <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: '22px', color: '#1b1b1b' }}>
+                  업셀링 설정
+                </p>
+
+                {/* 추천 유료 콘텐츠 ID */}
+                <div className="flex flex-col gap-[6px]">
+                  <p style={{ fontSize: '13px', fontWeight: 500, color: '#868686' }}>
+                    추천 유료 콘텐츠 ID
+                  </p>
+                  <input
+                    type="text"
+                    value={recommendedPaidContentId}
+                    onChange={async (e) => {
+                      const newId = e.target.value;
+                      setRecommendedPaidContentId(newId);
+                      // UUID 형식이면 제목 조회
+                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newId)) {
+                        const { data } = await supabase
+                          .from('master_contents')
+                          .select('title')
+                          .eq('id', newId)
+                          .single();
+                        setRecommendedPaidContentTitle(data?.title || '(존재하지 않는 콘텐츠)');
+                      } else {
+                        setRecommendedPaidContentTitle('');
+                      }
+                    }}
+                    placeholder="유료 콘텐츠 UUID (자동 매핑됨)"
+                    className="w-full h-[44px] px-[12px] bg-white border border-[#e0e0e0] rounded-[8px] text-[13px] text-[#1b1b1b] placeholder:text-[#999999]"
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                  {recommendedPaidContentTitle && (
+                    <p style={{ fontSize: '13px', color: '#41a09e', fontWeight: 500 }}>
+                      → {recommendedPaidContentTitle}
+                    </p>
+                  )}
+                </div>
+
+                {/* 후킹 멘트 */}
+                <div className="flex flex-col gap-[6px]">
+                  <p style={{ fontSize: '13px', fontWeight: 500, color: '#868686' }}>
+                    후킹 멘트
+                  </p>
+                  <input
+                    type="text"
+                    value={upsellHookText}
+                    onChange={(e) => setUpsellHookText(e.target.value)}
+                    placeholder="예: 구체적인 흐름이 궁금하다면..."
+                    className="w-full h-[44px] px-[12px] bg-white border border-[#e0e0e0] rounded-[8px] text-[14px] text-[#1b1b1b] placeholder:text-[#999999]"
+                    style={{ fontFamily: "'Pretendard Variable', sans-serif" }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* 사용자 고민글 - 유료 콘텐츠만 표시 */}
             {contentData.content_type === 'paid' && (
