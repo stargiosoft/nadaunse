@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { toast } from "sonner";
 import FeedbackToast from "@/imports/FeedbackToast-17-10455";
 import svgPathsBase from '@/imports/svg-o5jcc01aog';
 import svgPathsHome from '@/imports/svg-rr05b2c3l6';
@@ -272,6 +271,154 @@ function MoreTagItem({ count }: { count: number }) {
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Undo Toast Stack – 태그 삭제 후 실행 취소 스택 (Sonner 미사용, 자체 구현)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface UndoToastItem {
+  id: string;
+  tagToDelete: TraitTag;
+  index: number;
+  startTime: number;
+}
+
+function UndoToastStack({
+  toasts,
+  onUndo,
+  onDismiss,
+  onExpandedChange,
+}: {
+  toasts: UndoToastItem[];
+  onUndo: (id: string, tag: TraitTag, index: number) => void;
+  onDismiss: (id: string) => void;
+  onExpandedChange?: (expanded: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const expand = () => { setExpanded(true); onExpandedChange?.(true); };
+  const collapse = () => { setExpanded(false); onExpandedChange?.(false); };
+
+  // 바깥 터치 시 접기 (모바일)
+  useEffect(() => {
+    if (!expanded) return;
+    const handleOutsideTouch = (e: TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        collapse();
+      }
+    };
+    document.addEventListener('touchstart', handleOutsideTouch, { passive: true });
+    return () => document.removeEventListener('touchstart', handleOutsideTouch);
+  }, [expanded]);
+
+  // 토스트 사라지면 접힘 상태로
+  useEffect(() => {
+    if (toasts.length === 0) collapse();
+  }, [toasts.length]);
+
+  const TOAST_HEIGHT = 38;
+  const GAP = 4;
+  const visibleCount = Math.min(toasts.length, 3);
+
+  // 펼쳐질 때 컨테이너 높이: gap 포함 전체 높이 + 여유분
+  const containerHeight = expanded
+    ? visibleCount * TOAST_HEIGHT + (visibleCount - 1) * GAP + 16
+    : TOAST_HEIGHT + (visibleCount - 1) * 6 + 12;
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: 'fixed',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--toast-bottom-offset, 16px))',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        // hit area: gap 사이에서도 mouseLeave 방지하도록 충분한 너비/높이 확보
+        width: '340px',
+        height: `${containerHeight}px`,
+        transition: 'height 240ms ease-out',
+        zIndex: 9999,
+        pointerEvents: 'auto',
+      }}
+      onMouseEnter={expand}
+      onMouseLeave={collapse}
+      // 모바일: 첫 터치로 펼침 (버튼 클릭 방지)
+      onTouchStart={(e) => {
+        if (!expanded) {
+          expand();
+          e.preventDefault(); // 펼침 시 버튼 click 이벤트 억제
+        }
+      }}
+    >
+      {toasts.slice(0, visibleCount).map((item, i) => {
+        const translateY = expanded
+          ? -(i * (TOAST_HEIGHT + GAP))
+          : -(i * 6);
+        const scale = expanded ? 1 : 1 - i * 0.02;
+        const opacity = !expanded && i >= 2 ? 0.65 : 1;
+        const delay = expanded ? i * 25 : 0;
+
+        return (
+          <div
+            key={item.id}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: '50%',
+              transform: `translateX(-50%) translateY(${translateY}px) scale(${scale})`,
+              transformOrigin: 'bottom center',
+              transition: `transform 240ms ease-out ${delay}ms, opacity 200ms ease-out ${delay}ms`,
+              opacity,
+              zIndex: visibleCount - i,
+              pointerEvents: 'none', // 컨테이너가 pointerEvents:auto이므로 버블링으로 처리
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '6px 11px 6px 8px',
+              borderRadius: '9999px',
+              gap: '6px',
+              backgroundColor: 'rgba(0, 0, 0, 0.40)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}>
+              <div style={{ width: '23px', height: '23px', flexShrink: 0 }}>
+                <svg style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 24 24">
+                  <path d={svgPaths.p19b5fe00} fill="#46BB6F" />
+                </svg>
+              </div>
+              <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '22px', color: '#ffffff' }}>
+                태그가 삭제되었어요
+              </p>
+              <button
+                onClick={() => onUndo(item.id, item.tagToDelete, item.index)}
+                style={{
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  color: '#ffffff',
+                  marginLeft: '4px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  pointerEvents: 'auto',
+                }}
+              >
+                실행 취소
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface TagContainerProps {
   isExpanded: boolean;
   tagType: 'positive' | 'negative';
@@ -282,8 +429,10 @@ interface TagContainerProps {
 
 function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: TagContainerProps) {
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const [undoToasts, setUndoToasts] = useState<UndoToastItem[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const deletingRef = useRef<Set<string>>(new Set()); // 삭제 중인 태그 ID 추적
+  const deletingRef = useRef<Set<string>>(new Set());
+  const timerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // 🔧 Stale closure 방지: 항상 최신 onRestoreTag 호출
   const onRestoreTagRef = useRef(onRestoreTag);
@@ -291,18 +440,18 @@ function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: 
     onRestoreTagRef.current = onRestoreTag;
   }, [onRestoreTag]);
 
-  // Handle outside click/touch to deselect
+  // 언마운트 시 모든 타이머 정리
+  useEffect(() => {
+    return () => { timerRef.current.forEach(t => clearTimeout(t)); };
+  }, []);
+
+  // Handle outside click/touch to deselect tag
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        // Only deselect if we're not clicking on the toast or other critical elements
-        const target = event.target as Element;
-        if (!target.closest('[data-sonner-toaster]')) {
-             setSelectedTagId(null);
-        }
+        setSelectedTagId(null);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("touchstart", handleClickOutside);
     return () => {
@@ -311,61 +460,60 @@ function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: 
     };
   }, []);
 
-  const handleDelete = (tagToDelete: TraitTag) => {
-    // 이미 삭제 중인 태그는 무시 (중복 방지)
-    if (deletingRef.current.has(tagToDelete.id)) {
-      return;
+  const dismissUndoToast = useCallback((id: string) => {
+    setUndoToasts(prev => prev.filter(t => t.id !== id));
+    const timer = timerRef.current.get(id);
+    if (timer) clearTimeout(timer);
+    timerRef.current.delete(id);
+  }, []);
+
+  // hover 시 타이머 일시정지 → 토스트 만료 방지
+  const handleStackExpandedChange = useCallback((stackExpanded: boolean) => {
+    if (stackExpanded) {
+      // 모든 타이머 정지
+      timerRef.current.forEach(t => clearTimeout(t));
+      timerRef.current.clear();
+    } else {
+      // hover 해제 시 남은 토스트에 타이머 재시작 (4s 처음부터)
+      setUndoToasts(prev => {
+        prev.forEach(item => {
+          const timer = setTimeout(() => {
+            dismissUndoToast(item.id);
+            deletingRef.current.delete(item.tagToDelete.id);
+          }, 4000);
+          timerRef.current.set(item.id, timer);
+        });
+        return prev;
+      });
     }
+  }, [dismissUndoToast]);
+
+  const handleDelete = (tagToDelete: TraitTag) => {
+    if (deletingRef.current.has(tagToDelete.id)) return;
     deletingRef.current.add(tagToDelete.id);
 
     const index = tags.findIndex(t => t.id === tagToDelete.id);
     onDeleteTag(tagToDelete, index);
 
-    if (selectedTagId === tagToDelete.id) {
-      setSelectedTagId(null);
-    }
+    if (selectedTagId === tagToDelete.id) setSelectedTagId(null);
 
-    // 고유 토스트 ID로 중복 방지
-    const toastId = `delete-tag-${tagToDelete.id}`;
+    const id = `delete-tag-${tagToDelete.id}`;
 
-    // Custom toast with Undo (2.2초 = 2200ms)
-    toast.custom((t) => (
-      <div className="w-full flex justify-center" style={{ pointerEvents: 'auto' }}>
-        <div className="w-fit">
-          <div className="flex items-center" style={{ padding: '6px 11px 6px 8px', borderRadius: '9999px', gap: '6px', backgroundColor: 'rgba(0, 0, 0, 0.40)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-            <div className="relative shrink-0" style={{ width: '23px', height: '23px', overflow: 'hidden' }}>
-               <svg className="block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                 <path d={svgPaths.p19b5fe00} fill="#46BB6F" />
-               </svg>
-            </div>
-            <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '13px', lineHeight: '22px', color: '#ffffff', whiteSpace: 'nowrap' }}>
-              태그가 삭제되었어요
-            </p>
-            <button
-              onClick={() => {
-                // 🔧 ref를 통해 항상 최신 함수 호출 (stale closure 방지)
-                onRestoreTagRef.current(tagToDelete, index);
-                toast.dismiss(t);
-                deletingRef.current.delete(tagToDelete.id);
-              }}
-              style={{ fontFamily: 'Pretendard Variable', fontWeight: 600, fontSize: '13px', color: '#48b2af', marginLeft: '4px', whiteSpace: 'nowrap' }}
-              className="active:opacity-70 transition-opacity"
-            >
-              실행 취소
-            </button>
-          </div>
-        </div>
-      </div>
-    ), {
-      id: toastId,
-      duration: 2200, // 기획서: 2.2초
-      unstyled: true,
-      position: 'bottom-center',
-      onDismiss: () => {
-        // 토스트가 사라지면 삭제 완료로 간주
-        deletingRef.current.delete(tagToDelete.id);
-      }
-    });
+    // 스택에 추가 (최신이 index 0)
+    setUndoToasts(prev => [{ id, tagToDelete, index, startTime: Date.now() }, ...prev]);
+
+    // 4s 후 자동 dismiss → 삭제 확정
+    const timer = setTimeout(() => {
+      dismissUndoToast(id);
+      deletingRef.current.delete(tagToDelete.id);
+    }, 4000);
+    timerRef.current.set(id, timer);
+  };
+
+  const handleUndo = (id: string, tagToRestore: TraitTag, index: number) => {
+    dismissUndoToast(id);
+    onRestoreTagRef.current(tagToRestore, index);
+    deletingRef.current.delete(tagToRestore.id);
   };
 
   const handleSelect = (tagId: string) => {
@@ -377,52 +525,62 @@ function TagContainer({ isExpanded, tagType, tags, onDeleteTag, onRestoreTag }: 
   const remainingCount = tags.length - 7;
 
   return (
-    <div className="flex flex-col w-full items-start" ref={containerRef}>
-      <motion.div className="flex items-center w-full relative z-10" style={{ flexWrap: 'wrap', gap: '10px 8px', padding: '0 20px' }}>
-        {/* Render visible tags */}
-        {visibleTags.map((tag) => (
-          <TagItem
-            key={tag.id}
-            label={tag.tag_name}
-            isSelected={selectedTagId === tag.id}
-            onSelect={() => handleSelect(tag.id)}
-            onDelete={() => handleDelete(tag)}
-          />
-        ))}
-
-        {/* Dynamic content: either More button or Hidden tags */}
-        <AnimatePresence mode="popLayout">
-          {!isExpanded && remainingCount > 0 && (
-            <motion.div
-              key="more-tag"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <MoreTagItem count={remainingCount} />
-            </motion.div>
-          )}
-
-          {isExpanded && hiddenTags.map((tag) => (
-            <motion.div
+    <>
+      <div className="flex flex-col w-full items-start" ref={containerRef}>
+        <motion.div className="flex items-center w-full relative z-10" style={{ flexWrap: 'wrap', gap: '10px 8px', padding: '0 20px' }}>
+          {/* Render visible tags */}
+          {visibleTags.map((tag) => (
+            <TagItem
               key={tag.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="shrink-0"
-            >
-              <TagItem
-                label={tag.tag_name}
-                isSelected={selectedTagId === tag.id}
-                onSelect={() => handleSelect(tag.id)}
-                onDelete={() => handleDelete(tag)}
-              />
-            </motion.div>
+              label={tag.tag_name}
+              isSelected={selectedTagId === tag.id}
+              onSelect={() => handleSelect(tag.id)}
+              onDelete={() => handleDelete(tag)}
+            />
           ))}
-        </AnimatePresence>
-      </motion.div>
-    </div>
+
+          {/* Dynamic content: either More button or Hidden tags */}
+          <AnimatePresence mode="popLayout">
+            {!isExpanded && remainingCount > 0 && (
+              <motion.div
+                key="more-tag"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <MoreTagItem count={remainingCount} />
+              </motion.div>
+            )}
+
+            {isExpanded && hiddenTags.map((tag) => (
+              <motion.div
+                key={tag.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="shrink-0"
+              >
+                <TagItem
+                  label={tag.tag_name}
+                  isSelected={selectedTagId === tag.id}
+                  onSelect={() => handleSelect(tag.id)}
+                  onDelete={() => handleDelete(tag)}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      </div>
+
+      {/* 실행 취소 스택 토스트 */}
+      <UndoToastStack
+        toasts={undoToasts}
+        onUndo={handleUndo}
+        onDismiss={dismissUndoToast}
+        onExpandedChange={handleStackExpandedChange}
+      />
+    </>
   );
 }
 

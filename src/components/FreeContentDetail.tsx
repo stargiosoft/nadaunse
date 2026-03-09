@@ -45,9 +45,6 @@ import {
   PaidContentCard
 } from './FreeContentDetailComponents';
 import { trackPageView, trackViewItem } from '../utils/analytics';
-import { DEV } from '../lib/env';
-import { toast } from '../lib/toast';
-
 import LoginBottomSheet from './LoginBottomSheet';
 import ShareRewardModal from './ShareRewardModal';
 
@@ -724,16 +721,6 @@ export default function FreeContentDetail({
           </motion.div>
         </div>
         {/* ⭐ 스크롤 컨테이너 끝 */}
-
-          {/* DEV: CTA 있을 때 토스트 위치 테스트 */}
-          {DEV && (
-            <div style={{ position: 'fixed', bottom: 92, left: '50%', transform: 'translateX(-50%)', zIndex: 100, display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => toast.success('CTA 위 토스트입니다', { bottomOffset: 80 })}
-                style={{ fontSize: 12, padding: '4px 10px', background: '#333', color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer' }}
-              >토스트 테스트</button>
-            </div>
-          )}
 
           {/* Bottom Button */}
           <BottomButton
