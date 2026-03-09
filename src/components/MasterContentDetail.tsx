@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Home, ChevronDown, Plus, X } from 'lucide-react';
+import { Home, ChevronDown, Plus, X, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ArrowLeft from './ArrowLeft';
 import { generateImagePrompt, generateThumbnail } from '../lib/masterContentAI';
@@ -251,7 +251,8 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
   const [recommendedPaidContentId, setRecommendedPaidContentId] = useState('');
   const [upsellHookText, setUpsellHookText] = useState('');
   const [recommendedPaidContentTitle, setRecommendedPaidContentTitle] = useState('');
-  
+  const [isRegeneratingUpsell, setIsRegeneratingUpsell] = useState(false);
+
   // UI states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false); // 수정 확인 다이얼로그
@@ -1282,9 +1283,46 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
             {/* 추천 유료 콘텐츠 & 후킹 멘트 - 무료 콘텐츠만 표시 */}
             {contentData.content_type === 'free' && (
               <div className="flex flex-col gap-[12px] p-[16px] bg-[#f8f8f8] rounded-[12px] border border-[#e0e0e0]">
-                <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: '22px', color: '#1b1b1b' }}>
-                  업셀링 설정
-                </p>
+                <div className="flex items-center justify-between">
+                  <p style={{ fontSize: '15px', fontWeight: 600, lineHeight: '22px', color: '#1b1b1b' }}>
+                    업셀링 설정
+                  </p>
+                  <button
+                    type="button"
+                    disabled={isRegeneratingUpsell}
+                    onClick={async () => {
+                      setIsRegeneratingUpsell(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('generate-upsell-mapping', {
+                          body: { contentId },
+                        });
+                        if (error) throw error;
+                        if (data?.success) {
+                          setRecommendedPaidContentId(data.recommendedPaidContentId || '');
+                          setUpsellHookText(data.hookText || '');
+                          // 제목도 갱신
+                          if (data.recommendedPaidContentId) {
+                            const { data: titleData } = await supabase
+                              .from('master_contents')
+                              .select('title')
+                              .eq('id', data.recommendedPaidContentId)
+                              .single();
+                            setRecommendedPaidContentTitle(titleData?.title || '');
+                          }
+                        }
+                      } catch (e) {
+                        console.error('업셀링 재생성 실패:', e);
+                        alert('업셀링 재생성에 실패했습니다.');
+                      } finally {
+                        setIsRegeneratingUpsell(false);
+                      }
+                    }}
+                    className="flex items-center gap-[4px] px-[8px] py-[4px] rounded-[6px] bg-white border border-[#e0e0e0] active:bg-[#f0f0f0] disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={isRegeneratingUpsell ? 'animate-spin' : ''} style={{ color: '#868686' }} />
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#868686' }}>다시 생성</span>
+                  </button>
+                </div>
 
                 {/* 추천 유료 콘텐츠 ID */}
                 <div className="flex flex-col gap-[6px]">
