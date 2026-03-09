@@ -12,11 +12,13 @@ interface ToastOptions extends ExternalToast {
 }
 
 const showToast = (type: ToastType, message: string, options?: ToastOptions) => {
-  const { subtitle, variant, bottomOffset, ...rest } = options || {};
+  const { subtitle, variant, bottomOffset, onDismiss, onAutoClose, ...rest } = options || {};
 
-  // ⭐ bottomOffset이 있으면 CSS 변수 설정
+  // ⭐ bottomOffset 지정 시 설정, 없으면 즉시 리셋 (이전 CTA 오프셋 제거)
   if (bottomOffset !== undefined) {
     setToastBottomOffset(bottomOffset);
+  } else {
+    resetToastBottomOffset();
   }
 
   sonnerToast.custom((t) => (
@@ -24,6 +26,15 @@ const showToast = (type: ToastType, message: string, options?: ToastOptions) => 
   ), {
     duration: 3000,
     unstyled: true,
+    // ⭐ 토스트 사라질 때 오프셋 리셋 (CTA 위 토스트가 끝난 후 기본값 복원)
+    onDismiss: (t) => {
+      if (bottomOffset !== undefined) resetToastBottomOffset();
+      onDismiss?.(t);
+    },
+    onAutoClose: (t) => {
+      if (bottomOffset !== undefined) resetToastBottomOffset();
+      onAutoClose?.(t);
+    },
     ...rest,
   });
 };
@@ -37,7 +48,7 @@ export const setToastBottomOffset = (ctaHeight: number) => {
 };
 
 /**
- * Toast 위치를 기본값으로 리셋 (CSS 기본값 20px 복원)
+ * Toast 위치를 기본값으로 리셋 (safe-area + 16px 복원)
  */
 export const resetToastBottomOffset = () => {
   document.documentElement.style.removeProperty('--toast-bottom-offset');

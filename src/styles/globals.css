@@ -236,23 +236,17 @@ html, body {
   animation: fade-in 0.3s ease-out;
 }
 
-/* ⭐ Sonner Toast 위치 제어 - bottom만 오버라이드, 나머지는 Sonner 기본값 유지 */
-[data-sonner-toaster] {
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--toast-bottom-offset, 20px)) !important;
-  z-index: 9999 !important;
-}
-
-/* ⭐ Toast 아이템 - 최대 너비만 제한 */
+/* ⭐ Toast 아이템 너비 */
 [data-sonner-toast] {
-  max-width: calc(100vw - 40px) !important;
-  width: auto !important;
+  max-width: calc(100vw - 40px);
+  width: auto;
 }
 
-/* ⭐ Toast 등장 애니메이션 (opacity + translateY, 아래→위 slide + fade) */
+/* ⭐ Toast 등장 애니메이션: 아래→위 + 살짝 커지는 모션 */
 @keyframes toast-slide-up {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.82);
+    transform: translateY(14px) scale(0.96);
     transform-origin: bottom center;
   }
   to {
@@ -262,24 +256,27 @@ html, body {
   }
 }
 
-/* ⭐ Toast 사라짐 애니메이션 (반대 방향) */
+/* ⭐ Toast 사라짐 애니메이션 */
 @keyframes toast-slide-down {
   from {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    transform-origin: bottom center;
   }
   to {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
+    transform-origin: bottom center;
   }
 }
 
 .toast-animate-enter {
-  animation: toast-slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1); /* ease-out: 아래→위 + scale up */
+  animation: toast-slide-up 240ms ease-out;
 }
 
-.toast-animate-exit {
-  animation: toast-slide-down 200ms cubic-bezier(0.4, 0, 1, 1); /* ⭐ 150~250ms ease-in */
+/* Sonner가 data-removed="true" 설정 시 exit 애니메이션 */
+[data-sonner-toast][data-removed="true"] .toast-animate-enter {
+  animation: toast-slide-down 180ms ease-in forwards;
 }
 
 /* Skeleton shimmer animation */
