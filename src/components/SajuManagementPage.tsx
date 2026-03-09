@@ -8,7 +8,7 @@ import svgPaths from "../imports/svg-b51v8udqqu";
 import emptyStateSvgPaths from "../imports/svg-297vu4q7h0"; // Empty State 아이콘
 import { supabase } from '../lib/supabase';
 import { DEV } from '../lib/env';
-import { toast } from '../lib/toast';
+import { toast, setToastBottomOffset, resetToastBottomOffset } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { PrimarySajuChangeDialog } from './PrimarySajuChangeDialog';
 import { SajuKebabMenu } from './SajuKebabMenu';
@@ -125,6 +125,12 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
     // ⭐ 페이지 진입 시 케밥 메뉴 닫기
     setKebabMenuOpen(false);
     setSelectedSajuForKebab(null);
+  }, []);
+
+  // CTA 버튼 위로 토스트 위치 조정 (py-12 + h-56 + py-12 = 80px)
+  useEffect(() => {
+    setToastBottomOffset(80);
+    return () => resetToastBottomOffset();
   }, []);
 
   // ⭐ iOS Safari 스와이프 뒤로가기 대응 - 페이지가 다시 보일 때 케밥 메뉴 닫기
