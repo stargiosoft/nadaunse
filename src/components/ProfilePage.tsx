@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { ConfirmDialog } from './ConfirmDialog';
 import SEO from './SEO';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom'; // ⭐ useNavigate 추가
@@ -1370,78 +1371,12 @@ export default function ProfilePage({
       <SessionExpiredDialog isOpen={isSessionExpired} />
 
       {/* 로그아웃 확인 다이얼로그 */}
-      {showLogoutDialog && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={handleLogoutCancel}
-        >
-          <div
-            className="bg-white rounded-[16px] w-[320px] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 제목 */}
-            <div className="px-[24px] pt-[32px] pb-[24px]">
-              <p
-                className="text-center"
-                style={{
-                  fontFamily: 'Pretendard Variable, sans-serif',
-                  fontWeight: 600,
-                  fontSize: '18px',
-                  lineHeight: '25.5px',
-                  letterSpacing: '-0.36px',
-                  color: '#151515'
-                }}
-              >
-                로그아웃하시겠어요?
-              </p>
-            </div>
-
-            {/* 버튼 영역 */}
-            <div className="flex gap-[8px] px-[16px] pb-[16px]">
-              {/* 아니요 버튼 */}
-              <button
-                onClick={handleLogoutCancel}
-                className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
-                style={{ backgroundColor: '#f5f5f5' }}
-              >
-                <p
-                  style={{
-                    fontFamily: 'Pretendard Variable, sans-serif',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    lineHeight: '20px',
-                    letterSpacing: '-0.45px',
-                    color: '#848484'
-                  }}
-                >
-                  아니요
-                </p>
-              </button>
-
-              {/* 네 버튼 */}
-              <button
-                onClick={handleLogoutConfirm}
-                className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
-                style={{ backgroundColor: '#48b2af' }}
-              >
-                <p
-                  style={{
-                    fontFamily: 'Pretendard Variable, sans-serif',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    lineHeight: '20px',
-                    letterSpacing: '-0.45px',
-                    color: '#ffffff'
-                  }}
-                >
-                  네
-                </p>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showLogoutDialog}
+        title="로그아웃하시겠어요?"
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
       </div>
 
       {/* ⭐ 핸드폰 번호 입력 바텀시트 */}
