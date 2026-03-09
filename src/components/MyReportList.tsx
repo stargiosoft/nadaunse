@@ -689,11 +689,11 @@ function Footer() {
       <div className="flex flex-col w-full" style={{ gap: '8px' }}>
         <CommonLogo />
         <div className="flex flex-col w-full" style={{ gap: '4px', paddingLeft: '8px', fontSize: '13px', color: '#6d6d6d', lineHeight: '19px', letterSpacing: '-0.26px' }}>
-          <p>Copyright 2024@Stargiosoft All Rights Reserved.</p>
+          <p>Copyright 2025@Stargiosoft All Rights Reserved.</p>
           <p>대표자 서지현 | 사업자등록번호 827-88-01815</p>
           <p>통신판매업번호 2024-서울영등포-2084</p>
           <p>서울시 영등포구 양평로 149, 1507호</p>
-          <p>문의 stargiosoft@gmail.com</p>
+          <p>문의 stargiosoft2@gmail.com</p>
         </div>
         <div className="flex items-center" style={{ gap: '0px', marginTop: '-4px' }}>
           <button className="flex items-center justify-center transition-all duration-200 active:scale-97" style={{ height: '34px', padding: '0 8px', borderRadius: '6px' }}>

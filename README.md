@@ -38,7 +38,7 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 41개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 42개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Claude-3.5-Sonnet, Gemini |
 | 결제 | PortOne v2 |
 | 배포 | Vercel |
@@ -62,4 +62,4 @@ VITE_SUPABASE_ANON_KEY=<staging-anon-key>
 
 ---
 
-**최종 업데이트**: 2026-03-05
+**최종 업데이트**: 2026-03-06

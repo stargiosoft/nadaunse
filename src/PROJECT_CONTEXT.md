@@ -2,14 +2,14 @@
 
 > **AI 디버깅 전용 컨텍스트 파일** — 프로젝트 아키텍처, 데이터 흐름, 파일 참조
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-05
+> **최종 업데이트**: 2026-03-06
 
 ---
 
 ## Tech Stack
 
 - **Frontend**: React 18.3.1 + TypeScript + React Router v7.11.0 + Tailwind CSS v4.0 + Vite 6.3.5
-- **Backend**: Supabase (Auth, PostgreSQL + RLS, Edge Functions 41개, pg_cron + pg_net)
+- **Backend**: Supabase (Auth, PostgreSQL + RLS, Edge Functions 42개, pg_cron + pg_net)
 - **Auth**: Google (Supabase OAuth) | Kakao (SDK + signInWithPassword)
 - **AI**: OpenAI GPT-4o/GPT-5.1 | Claude-3.5-Sonnet | Gemini 2.5 Flash
 - **Payment**: PortOne v2 | **Notification**: TalkDream API | **Monitoring**: Sentry | **Deploy**: Vercel
@@ -167,7 +167,7 @@
 </details>
 
 <details>
-<summary><b>마스터 콘텐츠 관리 (6개)</b></summary>
+<summary><b>마스터 콘텐츠 관리 (6개 + Edge Function 1개)</b></summary>
 
 ```
 /components/MasterContentCreate.tsx     → 콘텐츠 생성
@@ -177,6 +177,8 @@
 /components/MasterContentList.tsx       → 목록 관리
 /components/MasterContentLoadingPage.tsx → AI 썸네일 로딩
 ```
+
+**Edge Functions**: `generate-upsell-mapping` (무료 콘텐츠 생성 시 업셀링 자동 매핑, GPT-4.1-nano)
 </details>
 
 <details>
@@ -256,7 +258,7 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 |--------|------|
 | `users` | 사용자 (provider, role, sprout_balance, rejected_tags, visit_dates) |
 | `saju_records` | 사주 정보 (생년월일, 성별, is_primary) |
-| `master_contents` | 콘텐츠 (제목, 가격, status, weekly_clicks) |
+| `master_contents` | 콘텐츠 (제목, 가격, status, weekly_clicks, recommended_paid_content_id, upsell_hook_text) |
 | `orders` | 결제 주문 (PortOne, ai_generation_completed) |
 | `order_results` | AI 생성 결과 (질문/답변, 타로 카드) |
 | `coupons` / `user_coupons` | 쿠폰 마스터/발급 |
@@ -334,4 +336,4 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 
 ---
 
-**최종 업데이트**: 2026-03-05
+**최종 업데이트**: 2026-03-06

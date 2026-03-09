@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-05
-> **주요 결정**: 상세 페이지 History Guard 제거 및 navigate(-1) 전환, IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-03-06
+> **주요 결정**: 업셀링 후킹 멘트 아키텍처, 상세 페이지 History Guard 제거 및 navigate(-1) 전환, IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
 
 ---
 
@@ -13,6 +13,52 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-03-06
+
+### 업셀링 후킹 멘트 아키텍처 — 추천 쿼리 경유 방식 채택
+
+**결정**: `upsell_hook_text`를 product 객체가 아닌 `fetchRecommendedPaidContent()` 반환값으로 전달
+
+**문제**:
+- `master_contents.upsell_hook_text` 컬럼에 데이터가 있지만 UI에 "구체적인 흐름이 궁금하다면..." 하드코딩 문구만 노출
+- App.tsx의 FreeResultPage에서 `product` 객체는 `id, title, type, category, image, description`만 매핑하는 변환 로직을 거침
+- `upsell_hook_text`가 변환 과정에서 누락됨
+
+**해결 방법**:
+1. `fetchRecommendedPaidContent()` 반환 타입을 `MasterContent | null` → `{ content: MasterContent | null; hookText: string | null }`로 변경
+2. 추천 유료 콘텐츠 조회 시 `upsell_hook_text`도 함께 SELECT
+3. `CachedData` 인터페이스에 `upsellHookText` 필드 추가
+4. App.tsx에서 별도 state로 관리하여 FreeSajuDetail에 prop 전달
+5. FreeSajuDetail에서 `upsellHookText || '구체적인 흐름이 궁금하다면...'` 폴백 렌더링
+
+**원칙**: DB 컬럼 → 프론트엔드 전달 시, 변환/매핑 로직을 거치는 경로(product 객체)보다 직접 전달 경로(추천 쿼리)가 안전
+
+**영향 범위**:
+- `src/lib/freeContentService.ts` — `fetchRecommendedPaidContent()` 반환 타입, `CachedData` 인터페이스
+- `src/App.tsx` — `upsellHookText` state, FreeSajuDetail prop
+- `src/components/FreeSajuDetail.tsx` — `upsellHookText` prop 수신 및 렌더링
+
+### 무료→유료 콘텐츠 명시적 매핑 (`recommended_paid_content_id`)
+
+**결정**: `master_contents`에 자기참조 FK `recommended_paid_content_id` 추가, 카테고리 자동 폴백과 명시적 매핑 2단계 구조
+
+**배경**:
+- 기존: 카테고리(category_sub → category_main) 기반 자동 매칭만 존재
+- 문제: 같은 카테고리 내에서도 테마적 연관성이 떨어지는 유료 콘텐츠가 추천됨
+- 예: "바람기 감별" 무료 → 카테고리 매칭으로 무관한 "결혼 시기" 유료가 추천
+
+**구현**:
+- `recommended_paid_content_id` (uuid, self-referencing FK): 명시적 1:1 매핑
+- `upsell_hook_text` (text): 콘텐츠별 맞춤 후킹 멘트 (행동경제학 기반)
+- 우선순위: 명시적 매핑 → category_sub 폴백 → category_main 폴백
+- 기타/재미 카테고리는 매핑 제외 (NULL)
+
+**현황** (2026-03-06): 무료 123개 중 117개 매핑 완료, 6개 기타/재미 제외
+
+**영향 범위**: DB 컬럼 2개 추가, `freeContentService.ts` 쿼리 로직 수정
 
 ---
 
