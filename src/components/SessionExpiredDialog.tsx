@@ -39,11 +39,11 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
 
       {/* 다이얼로그 */}
       <div
-        className="relative bg-white w-[320px] overflow-hidden transform-gpu"
-        style={{ borderRadius: 24, border: '1px solid #f3f3f3' }}
+        className="relative bg-white overflow-hidden transform-gpu"
+        style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}
       >
         {/* 텍스트 영역 */}
-        <div className="flex flex-col px-[32px] py-[36px]" style={{ gap: '4px' }}>
+        <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
           <p style={{
             fontFamily: 'Pretendard Variable, sans-serif',
             fontWeight: 600,
@@ -67,7 +67,7 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
         </div>
 
         {/* 버튼 영역 */}
-        <div className="px-[28px] pb-[20px]">
+        <div style={{ padding: '0 28px 20px' }}>
           <button
             onClick={handleLogin}
             className="w-full"

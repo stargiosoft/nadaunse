@@ -1555,20 +1555,29 @@ export default function MasterContentDetail({ contentId, onBack, onHome }: Maste
 
         {/* 주문 데이터 존재 안내 다이얼로그 */}
         {showOrderExistsDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[16px]">
-            <div className="bg-white rounded-[12px] p-[24px] max-w-[340px] w-full">
-              <p className="font-['Pretendard_Variable:SemiBold',sans-serif] text-[18px] text-[#1b1b1b] text-center mb-[12px]">
-                삭제할 수 없어요
-              </p>
-              <p className="font-['Pretendard_Variable:Regular',sans-serif] text-[14px] text-[#666666] text-center mb-[24px]">
-                주문 데이터가 있어 삭제할 수 없어요.
-              </p>
-              <button
-                onClick={() => setShowOrderExistsDialog(false)}
-                className="w-full h-[48px] bg-[#48b2af] rounded-[8px] font-['Pretendard_Variable:Medium',sans-serif] text-[14px] text-white"
-              >
-                확인
-              </button>
+          <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <div className="bg-white overflow-hidden transform-gpu" style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}>
+              <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 600, fontSize: '18px', lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515' }}>
+                  삭제할 수 없어요
+                </p>
+                <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#848484' }}>
+                  주문 데이터가 있어 삭제할 수 없어요.
+                </p>
+              </div>
+              <div style={{ padding: '0 28px 20px' }}>
+                <button
+                  onClick={() => setShowOrderExistsDialog(false)}
+                  className="w-full"
+                  style={{ height: 48, backgroundColor: '#48b2af', borderRadius: 16, transition: 'transform 0.1s ease' }}
+                  onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                  onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
+                >
+                  <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontWeight: 500, fontSize: '15px', lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff' }}>
+                    확인
+                  </p>
+                </button>
+              </div>
             </div>
           </div>
         )}

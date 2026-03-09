@@ -2688,13 +2688,13 @@ function AccessDeniedDialog() {
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
     >
       <div
-        className="bg-white rounded-[16px] w-[320px] overflow-hidden"
+        className="bg-white overflow-hidden transform-gpu"
+        style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="px-[24px] pt-[32px] pb-[24px]">
+        <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
           <p
-            className="text-center"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
@@ -2707,13 +2707,12 @@ function AccessDeniedDialog() {
             접근 권한이 없어요
           </p>
           <p
-            className="text-center mt-[8px]"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 400,
-              fontSize: '15px',
-              lineHeight: '20px',
-              letterSpacing: '-0.3px',
+              fontSize: '16px',
+              lineHeight: '28.5px',
+              letterSpacing: '-0.32px',
               color: '#848484'
             }}
           >
@@ -2722,16 +2721,18 @@ function AccessDeniedDialog() {
         </div>
 
         {/* 버튼 영역 */}
-        <div className="px-[16px] pb-[16px]">
+        <div style={{ padding: '0 28px 20px' }}>
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="w-full h-[48px] rounded-[12px] transition-colors active:opacity-80"
-            style={{ backgroundColor: '#48b2af' }}
+            className="w-full"
+            style={{ height: 48, backgroundColor: '#48b2af', borderRadius: 16, transition: 'transform 0.1s ease' }}
+            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
           >
             <p
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: '15px',
                 lineHeight: '20px',
                 letterSpacing: '-0.45px',
