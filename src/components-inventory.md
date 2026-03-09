@@ -985,7 +985,8 @@
    - **파일 경로**: `/pages/HomeScreenNew.tsx`
 
 2. **FortuneAllPage.tsx** (/best-fortune)
-   - **역할**: BEST 운세 전체보기 (탭, 정렬, FeaturedCard+RowCard)
+   - **역할**: BEST 운세 전체보기 (탭, 심화/무료 체크박스 필터, 정렬, FeaturedCard+RowCard)
+   - **주요 상태**: `filterPaid` (심화), `filterFree` (무료) — 미선택 시 전체 표시
    - **파일 경로**: `/pages/FortuneAllPage.tsx`
 
 3. **NewFreeFortuneAllPage.tsx** (/new-free)

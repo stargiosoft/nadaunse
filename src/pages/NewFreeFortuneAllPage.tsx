@@ -254,7 +254,7 @@ export function NewFreeCardList({ items, onItemClick }: { items: NoRankFortuneIt
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-const TAB_BAR_HEIGHT = 53;
+const TAB_BAR_HEIGHT = 45;
 
 export function NewFreeFortuneAllPage() {
   const navigate = useNavigate();
@@ -451,7 +451,7 @@ export function NewFreeFortuneAllPage() {
                   window.addEventListener('mouseup', onMouseUp);
                 }}
               >
-                <div className="flex items-center" style={{ padding: '4px 16px 8px', gap: 2, minWidth: 'max-content' }}>
+                <div className="flex items-center" style={{ padding: '4px 16px 4px', gap: 2, minWidth: 'max-content' }}>
                   {TABS.map((t, i) => {
                     const isActive = activeTab === i;
                     return (
@@ -485,7 +485,7 @@ export function NewFreeFortuneAllPage() {
         </div>
 
         {/* ── Content header: count + sort ── */}
-        <div className="flex items-center justify-between w-full" style={{ padding: '8px 22px', backgroundColor: C.white }}>
+        <div className="flex items-center justify-between w-full" style={{ paddingTop: 8, paddingBottom: 10, paddingLeft: 22, paddingRight: 22, backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="relative" ref={sortRef}>
             <button
