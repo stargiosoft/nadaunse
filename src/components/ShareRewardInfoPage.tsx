@@ -148,10 +148,10 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
           <motion.div className="flex flex-col items-center" style={{ padding: '24px 20px 32px', gap: '28px' }} {...slideUp(0)}>
             <div className="flex flex-col items-center w-full" style={{ gap: '2px' }}>
               <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#151515' }}>
-                공유하면, 새싹이 쌓여요
+                공유하면 친구랑 나랑
               </p>
               <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '22px', fontWeight: 700, lineHeight: '32.5px', letterSpacing: '-0.22px', textAlign: 'center', color: '#48B2AF' }}>
-                제한 없이 계속 적립돼요
+                서로 30새싹 받아요
               </p>
             </div>
             <motion.div
@@ -301,7 +301,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                 </div>
               </div>
 
-              {/* Step 3: 30새싹 바로 적립 */}
+              {/* Step 3: 서로 30새싹 바로 적립 */}
               <div className="rounded-[20px]" style={{ backgroundColor: '#f8f8f8', padding: '17px 20px 24px' }}>
                 <div className="flex items-start" style={{ gap: '12px' }}>
                   <div style={{ paddingTop: '3px' }}>
@@ -310,20 +310,26 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
                   <div className="flex flex-col flex-1 min-w-0" style={{ gap: '12px' }}>
                     <div className="flex flex-col" style={{ padding: '0 4px', gap: '1px' }}>
                       <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '16px', fontWeight: 600, lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#151515' }}>
-                        30새싹 바로 적립
+                        서로 30새싹 바로 적립
                       </p>
                       <p style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 400, lineHeight: '22px', letterSpacing: '-0.42px', color: '#848484' }}>
-                        콘텐츠 1개 볼 수 있어요
+                        나도, 가입한 친구도 30새싹 받아요
                       </p>
                     </div>
                     <div
-                      className="flex items-center justify-center w-full rounded-[20px]"
-                      style={{ backgroundColor: '#ffffff', border: '1px solid #f3f3f3', padding: '16px 0' }}
+                      className="flex flex-col items-center w-full rounded-[20px]"
+                      style={{ backgroundColor: '#ffffff', border: '1px solid #f3f3f3', padding: '16px 0', gap: '6px' }}
                     >
                       <div className="flex items-center" style={{ gap: '7px' }}>
                         <SproutSmallIcon size={22} />
                         <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px', letterSpacing: '-0.42px', color: '#151515' }}>
-                          30새싹
+                          나 → 30새싹
+                        </span>
+                      </div>
+                      <div className="flex items-center" style={{ gap: '7px' }}>
+                        <SproutSmallIcon size={22} />
+                        <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px', letterSpacing: '-0.42px', color: '#151515' }}>
+                          친구 → 30새싹
                         </span>
                       </div>
                     </div>
@@ -340,7 +346,7 @@ export default function ShareRewardInfoPage({ onBack }: ShareRewardInfoPageProps
           <motion.div className="flex flex-col" style={{ padding: '26px 20px', gap: '11px' }} {...slideUp(0.16)}>
             <SectionHeader title="알아두세요" />
             <ul className="flex flex-col" style={{ gap: '8px', paddingLeft: '6px' }}>
-              <BulletItem>링크로 가입해야 인정돼요</BulletItem>
+              <BulletItem>링크로 가입하면 나와 친구 모두 30새싹을 받아요</BulletItem>
               <BulletItem>기존 회원은 포함되지 않아요</BulletItem>
               <BulletItem>
                 회차가 올라갈수록 더 많이 필요해요
