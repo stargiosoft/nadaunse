@@ -13,7 +13,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useDragControls } from "motion/react";
 import svgPaths from "../imports/svg-br5ag5z658";
 import { supabase } from '../lib/supabase';
-import { toast } from '../lib/toast';
+import { toast, setToastBottomOffset, resetToastBottomOffset } from '../lib/toast';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { NavigationHeader } from './NavigationHeader';
 
@@ -75,6 +75,12 @@ export default function SajuAddPage({ onBack, onSaved }: SajuAddPageProps) {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+  }, []);
+
+  // CTA 버튼 위로 토스트 위치 조정 (pb-28 + pt-12 + h-56 = 96px)
+  useEffect(() => {
+    setToastBottomOffset(96);
+    return () => resetToastBottomOffset();
   }, []);
 
   // 세션 체크

@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import svgPaths from "../imports/svg-0762m0vok8";
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import { ConfirmDialog } from './ConfirmDialog';
-import { toast } from '../lib/toast';
+import { toast, setToastBottomOffset, resetToastBottomOffset } from '../lib/toast';
 import { NavigationHeader } from './NavigationHeader';
 
 interface SajuInputPageProps {
@@ -85,6 +85,12 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+  }, []);
+
+  // CTA 버튼 위로 토스트 위치 조정 (py-12 + h-56 + py-12 = 80px)
+  useEffect(() => {
+    setToastBottomOffset(80);
+    return () => resetToastBottomOffset();
   }, []);
 
   // ⭐ 뒤로가기 감지 - 유료 콘텐츠 플로우에서 진입한 경우 콘텐츠 상세 페이지로 리다이렉트
