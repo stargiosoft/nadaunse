@@ -240,7 +240,7 @@ async function searchContents(q: string): Promise<SearchItem[]> {
 
   const { data, error } = await supabase
     .from('master_contents')
-    .select('id, title, content_type, thumbnail_url, weekly_clicks, created_at')
+    .select('id, title, content_type, thumbnail_url, weekly_clicks, view_count, created_at')
     .eq('status', 'deployed')
     .or(orParts.join(','))
     .order('weekly_clicks', { ascending: false })
@@ -261,7 +261,7 @@ async function searchContents(q: string): Promise<SearchItem[]> {
       title: row.title,
       contentType: row.content_type as 'free' | 'paid',
       labels,
-      views: row.weekly_clicks,
+      views: row.view_count,
       img: row.thumbnail_url || '/home-v2/card-1.png',
     };
   });
