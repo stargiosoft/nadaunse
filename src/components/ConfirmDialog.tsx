@@ -39,13 +39,13 @@ export function ConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-[16px] w-[320px] overflow-hidden"
+        className="bg-white w-[320px] overflow-hidden transform-gpu"
+        style={{ borderRadius: 24, border: '1px solid #f3f3f3' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="px-[24px] pt-[32px] pb-[24px]">
+        <div className="flex flex-col px-[28px] py-[32px]" style={{ gap: '4px' }}>
           <p
-            className="text-center"
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
               fontWeight: 600,
@@ -59,13 +59,12 @@ export function ConfirmDialog({
           </p>
           {message && (
             <p
-              className="text-center mt-[8px]"
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
                 fontWeight: 400,
-                fontSize: '15px',
-                lineHeight: '20px',
-                letterSpacing: '-0.3px',
+                fontSize: '16px',
+                lineHeight: '28.5px',
+                letterSpacing: '-0.32px',
                 color: '#848484'
               }}
             >
@@ -75,21 +74,23 @@ export function ConfirmDialog({
         </div>
 
         {/* 버튼 영역 */}
-        <div className="flex gap-[8px] px-[16px] pb-[16px]">
+        <div className="flex gap-[10px] px-[24px] pb-[20px]">
           {/* 취소 버튼 */}
           <button
             onClick={onCancel}
-            className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
-            style={{ backgroundColor: '#f5f5f5' }}
+            className="flex-1"
+            style={{ backgroundColor: '#f3f3f3', borderRadius: 16, height: 48, transition: 'transform 0.1s ease' }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
             <p
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: '15px',
                 lineHeight: '20px',
                 letterSpacing: '-0.45px',
-                color: '#848484'
+                color: '#525252'
               }}
             >
               {cancelText}
@@ -99,13 +100,15 @@ export function ConfirmDialog({
           {/* 확인 버튼 */}
           <button
             onClick={onConfirm}
-            className="flex-1 h-[48px] rounded-[12px] transition-colors active:opacity-80"
-            style={{ backgroundColor: '#48b2af' }}
+            className="flex-1"
+            style={{ backgroundColor: '#48b2af', borderRadius: 16, height: 48, transition: 'transform 0.1s ease' }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
             <p
               style={{
                 fontFamily: 'Pretendard Variable, sans-serif',
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: '15px',
                 lineHeight: '20px',
                 letterSpacing: '-0.45px',
