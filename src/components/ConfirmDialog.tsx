@@ -41,12 +41,12 @@ export function ConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="bg-white w-[320px] overflow-hidden transform-gpu"
-        style={{ borderRadius: 24, border: '1px solid #f3f3f3' }}
+        className="bg-white overflow-hidden transform-gpu"
+        style={{ width: 320, borderRadius: 24, border: '1px solid #f3f3f3' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 제목 */}
-        <div className="flex flex-col px-[32px] py-[36px]" style={{ gap: '4px' }}>
+        <div className="flex flex-col" style={{ gap: '4px', padding: '36px 32px' }}>
           <p
             style={{
               fontFamily: 'Pretendard Variable, sans-serif',
@@ -76,7 +76,7 @@ export function ConfirmDialog({
         </div>
 
         {/* 버튼 영역 */}
-        <div className="flex gap-[10px] px-[28px] pb-[20px]">
+        <div className="flex" style={{ gap: 10, padding: '0 28px 20px' }}>
           {/* 취소 버튼 */}
           <button
             onClick={onCancel}
