@@ -495,12 +495,7 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
 
         if (error) throw error;
 
-        // ⭐ 본인 사주 수정 시 토스트 메시지 표시 안 함 (returnTo가 있을 때만 표시)
-        if (returnTo) {
-          toast.success('수정되었습니다.', {
-            duration: 2200
-          });
-        }
+        // ⭐ 토스트는 onSaved 콜백(App.tsx)에서 navigate 이후 표시
       } else {
         // ⭐ 신규 등록 모드: INSERT
         console.log('➕ [신규등록] 사주 정보 저장:', sajuPayload);

@@ -59,6 +59,7 @@ import { TaroConsultPage } from './pages/TaroConsultPage';
 import { TaroConsultLoadingPage } from './pages/TaroConsultLoadingPage';
 import { TaroConsultResultPage } from './pages/TaroConsultResultPage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
+import TestConfirmModals from './pages/TestConfirmModals';
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
@@ -3083,6 +3084,8 @@ function SajuInputPageWrapper() {
         } else {
           navigate('/saju/management', { replace: true });
         }
+        // ⭐ navigate 후 토스트 표시 (수정 완료 화면에서 노출)
+        setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
       }}
     />
   );
@@ -3773,6 +3776,7 @@ export default function App() {
           <Route path="/test/nadaum-tags-list" element={<NadaumTagsList onBack={() => {}} onHome={() => {}} />} />
           {/* ⭐ 프로필 > 나다움 태그 전체보기 */}
           <Route path="/profile/nadaum-tags" element={<NadaumTagsListWrapper />} />
+          <Route path="/test/confirm-modals" element={<TestConfirmModals />} />
           <Route path="/test/report-weekly-detail" element={<ReportWeeklyDetail />} />
           <Route path="/test/report-weekly-tarot" element={<ReportWeeklyTarot />} />
           <Route path="/test/report-weekly-tarot-result" element={<ReportWeeklyTarotResult />} />
