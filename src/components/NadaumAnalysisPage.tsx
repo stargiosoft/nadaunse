@@ -268,6 +268,7 @@ export default function NadaumAnalysisPage() {
         let oheng: OhengData[] = [];
         if (sajuRes.data) {
           try {
+            console.log('[나다움] 만세력 요청 시작...');
             const manseResult = await getManseData({
               id: sajuRes.data.id,
               birth_date: sajuRes.data.birth_date,
@@ -275,8 +276,10 @@ export default function NadaumAnalysisPage() {
               gender: sajuRes.data.gender,
               calendar_type: sajuRes.data.calendar_type,
             });
+            console.log('[나다움] 만세력 결과:', manseResult.success, manseResult.success ? '키:' + Object.keys(manseResult.data).length : ('에러:' + (manseResult as { error: string }).error));
             if (manseResult.success) {
               const baldal = manseResult.data['발달오행'] as Record<string, number> | undefined;
+              console.log('[나다움] 발달오행:', baldal);
               if (baldal) {
                 oheng = OHENG_CONFIG.map((cfg) => ({
                   name: cfg.name,
@@ -284,11 +287,14 @@ export default function NadaumAnalysisPage() {
                   color: cfg.color,
                   label: cfg.label,
                 })).filter((d) => d.value > 0);
+                console.log('[나다움] 파싱된 오행:', oheng.length, '개');
               }
             }
-          } catch {
-            // 오행 로드 실패해도 나머지는 정상 표시
+          } catch (err) {
+            console.error('[나다움] 만세력 에러:', err);
           }
+        } else {
+          console.log('[나다움] saju 데이터 없음, 오행 스킵');
         }
 
         if (!cancelled) {
