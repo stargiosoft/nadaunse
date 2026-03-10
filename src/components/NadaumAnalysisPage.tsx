@@ -689,6 +689,10 @@ export default function NadaumAnalysisPage() {
         )}
 
         {/* ─── 오행 에너지 분포 ──────────────────────────────────── */}
+        {/* DEBUG */}
+        <p style={{ padding: '0 20px', fontFamily: font, fontSize: '12px', color: 'red' }}>
+          [DEBUG] isUnlocked={String(isUnlocked)} oheng={ohengData.length} saju={saju?.id?.slice(0,8) || 'null'}
+        </p>
         {isUnlocked && ohengData.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
