@@ -8,6 +8,8 @@ import BottomTabBar from './BottomTabBar';
 import SEO from './SEO';
 import { getZodiacImageUrl } from '../lib/zodiacUtils';
 import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
+import { useShareRewardStatus } from '../hooks/useShareRewardStatus';
+import ShareRewardModal from './ShareRewardModal';
 
 const font = "'Pretendard Variable', sans-serif";
 
@@ -171,16 +173,16 @@ interface AnalysisCard {
   emoji: string;
   color: string;
   bgColor: string;
-  unlockCount: number;
+  referralRequired: number; // 0 = 무료, 1+ = 친구 초대 N명 필요
   description: string;
 }
 
 const ANALYSIS_CARDS: AnalysisCard[] = [
-  { key: 'love', title: '연애·궁합', emoji: '💕', color: C.love, bgColor: C.loveBg, unlockCount: 5, description: '나의 연애 성향과 이상형, 궁합 분석' },
-  { key: 'nature', title: '기질·성격', emoji: '🧬', color: C.nature, bgColor: C.natureBg, unlockCount: 5, description: '타고난 기질과 성격 심층 분석' },
-  { key: 'money', title: '재물·금전', emoji: '💰', color: C.money, bgColor: C.moneyBg, unlockCount: 8, description: '나의 재물운과 금전 관리 성향' },
-  { key: 'career', title: '직업·적성', emoji: '💼', color: C.career, bgColor: C.careerBg, unlockCount: 12, description: '적성에 맞는 진로와 업무 스타일' },
-  { key: 'health', title: '건강·체질', emoji: '🏥', color: C.health, bgColor: C.healthBg, unlockCount: 15, description: '사주로 보는 체질과 건강 관리법' },
+  { key: 'nature', title: '기질·성격', emoji: '🧬', color: C.nature, bgColor: C.natureBg, referralRequired: 0, description: '타고난 기질과 성격 심층 분석' },
+  { key: 'love', title: '연애·궁합', emoji: '💕', color: C.love, bgColor: C.loveBg, referralRequired: 1, description: '나의 연애 성향과 이상형, 궁합 분석' },
+  { key: 'money', title: '재물·금전', emoji: '💰', color: C.money, bgColor: C.moneyBg, referralRequired: 2, description: '나의 재물운과 금전 관리 성향' },
+  { key: 'career', title: '직업·적성', emoji: '💼', color: C.career, bgColor: C.careerBg, referralRequired: 3, description: '적성에 맞는 진로와 업무 스타일' },
+  { key: 'health', title: '건강·체질', emoji: '🏥', color: C.health, bgColor: C.healthBg, referralRequired: 4, description: '사주로 보는 체질과 건강 관리법' },
 ];
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
@@ -226,6 +228,9 @@ export default function NadaumAnalysisPage() {
   const [tags, setTags] = useState<TraitTag[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [ohengData, setOhengData] = useState<OhengData[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const { status: rewardStatus } = useShareRewardStatus();
+  const totalReferred = rewardStatus?.totalFriendsReferred ?? 0;
 
   // Fetch data
   useEffect(() => {
@@ -746,7 +751,7 @@ export default function NadaumAnalysisPage() {
         </div>
 
         {ANALYSIS_CARDS.map((card, i) => {
-          const unlocked = confirmedCount >= card.unlockCount;
+          const unlocked = card.referralRequired === 0 || totalReferred >= card.referralRequired;
           return (
             <motion.div
               key={card.key}
@@ -754,10 +759,13 @@ export default function NadaumAnalysisPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.15 + i * 0.05 }}
               onClick={() => {
-                if (!unlocked) return;
-                navigate(`/nadaum/${card.key}`);
+                if (unlocked) {
+                  navigate(`/nadaum/${card.key}`);
+                } else {
+                  setShowShareModal(true);
+                }
               }}
-              className={unlocked ? 'cursor-pointer' : ''}
+              className="cursor-pointer"
               style={{
                 margin: '0 20px 10px',
                 padding: '16px 20px',
@@ -775,7 +783,7 @@ export default function NadaumAnalysisPage() {
                       {card.title}
                     </p>
                     <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: unlocked ? C.gray700 : C.gray400, marginTop: '2px' }}>
-                      {card.description}
+                      {unlocked ? card.description : `친구 ${card.referralRequired}명 초대로 해금`}
                     </p>
                   </div>
                 </div>
@@ -784,10 +792,10 @@ export default function NadaumAnalysisPage() {
                     <path d="M6 12L10 8L6 4" stroke={C.gray400} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ) : (
-                  <div className="flex items-center gap-1" style={{ padding: '3px 8px', backgroundColor: C.white, borderRadius: '8px' }}>
-                    <span style={{ fontSize: '10px' }}>🔒</span>
-                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600 }}>
-                      태그 {card.unlockCount}개
+                  <div className="flex items-center gap-1" style={{ padding: '4px 10px', backgroundColor: C.white, borderRadius: '10px' }}>
+                    <span style={{ fontSize: '12px' }}>🔗</span>
+                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 500, color: C.primary }}>
+                      초대하기
                     </span>
                   </div>
                 )}
@@ -796,12 +804,12 @@ export default function NadaumAnalysisPage() {
           );
         })}
 
-        {/* ─── CTA: 운세 보러가기 ─────────────────────────────────── */}
-        {!isUnlocked && (
+        {/* ─── CTA: 친구 초대 안내 (잠긴 카드가 있을 때) ───────────── */}
+        {ANALYSIS_CARDS.some((card) => card.referralRequired > 0 && totalReferred < card.referralRequired) && (
           <div style={{ padding: '12px 20px 20px' }}>
             <button
-              onClick={() => navigate('/')}
-              className="w-full flex items-center justify-center cursor-pointer"
+              onClick={() => setShowShareModal(true)}
+              className="w-full flex items-center justify-center gap-2 cursor-pointer"
               style={{
                 height: '52px',
                 borderRadius: '16px',
@@ -816,9 +824,12 @@ export default function NadaumAnalysisPage() {
               onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <span style={{ fontFamily: font, fontSize: '15px', fontWeight: 500, color: C.white, letterSpacing: '-0.3px' }}>
-                운세 보고 태그 모으러 가기
+                친구 초대하고 분석 해금하기
               </span>
             </button>
+            <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600, textAlign: 'center', marginTop: '8px' }}>
+              현재 {totalReferred}명 초대 완료
+            </p>
           </div>
         )}
 
@@ -826,6 +837,13 @@ export default function NadaumAnalysisPage() {
         <div style={{ height: '20px' }} />
 
         <BottomTabBar />
+
+        {/* Share Reward Modal */}
+        <ShareRewardModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          contentId="nadaum-analysis"
+        />
       </div>
     </div>
   );
