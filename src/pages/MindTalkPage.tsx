@@ -265,16 +265,24 @@ export default function MindTalkPage() {
         body: JSON.stringify({ message: userMessage, conversation_id: conversationId, meta }),
       });
 
-      if (!response.ok) {
+      // Content-Type으로 에러 응답(JSON) vs 스트리밍(SSE) 구분
+      const contentType = response.headers.get('Content-Type') || '';
+
+      if (!response.ok || contentType.includes('application/json')) {
         const errData = await response.json().catch(() => ({}));
         if (errData.error === 'FREE_LIMIT_REACHED') {
+          // 무료 횟수 소진 시 유저 메시지 제거 (전송 안 된 것이므로)
+          if (userMessage) {
+            setMessages(prev => prev.filter(m => m.content !== userMessage || m.role !== 'user'));
+          }
           setMessages(prev => [...prev, {
             id: crypto.randomUUID(), role: 'assistant',
-            content: '오늘의 무료 대화를 모두 사용했어요.\n내일 다시 만나자!',
+            content: '오늘의 무료 대화를 모두 사용했어요.\n내일 다시 만나자! 🌿',
           }]);
+          setFreeUsed(FREE_LIMIT);
           return;
         }
-        throw new Error('Chat request failed');
+        throw new Error(errData.error || 'Chat request failed');
       }
 
       const reader = response.body!.getReader();
@@ -315,9 +323,11 @@ export default function MindTalkPage() {
     }
   };
 
+  const isLimitReached = freeUsed >= FREE_LIMIT;
+
   const handleSend = () => {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending || isLimitReached) return;
     sendMessage(text);
   };
 
@@ -615,7 +625,8 @@ export default function MindTalkPage() {
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="메시지를 입력하세요..."
+                placeholder={isLimitReached ? '오늘의 무료 대화를 모두 사용했어요' : '메시지를 입력하세요...'}
+                disabled={isLimitReached}
                 rows={1}
                 className="flex-1 resize-none outline-none bg-transparent"
                 style={{
@@ -627,12 +638,12 @@ export default function MindTalkPage() {
             </div>
             <button
               onClick={handleSend}
-              disabled={!input.trim() || sending}
+              disabled={!input.trim() || sending || isLimitReached}
               className="shrink-0 flex items-center justify-center"
               style={{
                 width: 44, height: 44, borderRadius: 22, border: 'none',
-                backgroundColor: input.trim() && !sending ? C.primary : C.gray100,
-                cursor: input.trim() && !sending ? 'pointer' : 'default',
+                backgroundColor: input.trim() && !sending && !isLimitReached ? C.primary : C.gray100,
+                cursor: input.trim() && !sending && !isLimitReached ? 'pointer' : 'default',
                 transition: 'all 0.15s ease',
                 WebkitTapHighlightColor: 'transparent',
               }}
