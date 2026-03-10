@@ -264,9 +264,37 @@ export default function NadaumAnalysisPage() {
             .eq('is_confirmed', true),
         ]);
 
+        // 오행 데이터도 여기서 가져오기
+        let oheng: OhengData[] = [];
+        if (sajuRes.data) {
+          try {
+            const manseResult = await getManseData({
+              id: sajuRes.data.id,
+              birth_date: sajuRes.data.birth_date,
+              birth_time: sajuRes.data.birth_time,
+              gender: sajuRes.data.gender,
+              calendar_type: sajuRes.data.calendar_type,
+            });
+            if (manseResult.success) {
+              const baldal = manseResult.data['발달오행'] as Record<string, number> | undefined;
+              if (baldal) {
+                oheng = OHENG_CONFIG.map((cfg) => ({
+                  name: cfg.name,
+                  value: baldal[cfg.key] || 0,
+                  color: cfg.color,
+                  label: cfg.label,
+                })).filter((d) => d.value > 0);
+              }
+            }
+          } catch {
+            // 오행 로드 실패해도 나머지는 정상 표시
+          }
+        }
+
         if (!cancelled) {
           if (sajuRes.data) setSaju(sajuRes.data);
           if (tagsRes.data) setTags(tagsRes.data);
+          if (oheng.length > 0) setOhengData(oheng);
           setIsLoading(false);
         }
       } catch {
@@ -277,37 +305,6 @@ export default function NadaumAnalysisPage() {
     load();
     return () => { cancelled = true; };
   }, []);
-
-  // 오행 데이터 로드 (saju 세팅 후 별도 fetch)
-  useEffect(() => {
-    if (!saju) return;
-
-    getManseData({
-      id: saju.id,
-      birth_date: saju.birth_date,
-      birth_time: saju.birth_time,
-      gender: saju.gender,
-      calendar_type: saju.calendar_type,
-    }).then((result) => {
-      if (!result.success) {
-        console.warn('[나다움] 만세력 실패:', result.error);
-        return;
-      }
-      const baldal = result.data['발달오행'] as Record<string, number> | undefined;
-      console.log('[나다움] 발달오행:', baldal);
-      if (baldal) {
-        const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
-          name: cfg.name,
-          value: baldal[cfg.key] || 0,
-          color: cfg.color,
-          label: cfg.label,
-        })).filter((d) => d.value > 0);
-        if (parsed.length > 0) setOhengData(parsed);
-      }
-    }).catch((err) => {
-      console.warn('[나다움] 만세력 에러:', err);
-    });
-  }, [saju?.id]);
 
   // Compute radar data
   const confirmedCount = tags.length;
