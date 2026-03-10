@@ -238,7 +238,7 @@ export default function InquiryWritePage({ onBack }: { onBack: () => void }) {
         <div
           className="shrink-0 w-full bg-white"
           style={{
-            padding: '12px 20px',
+            padding: '12px 20px calc(12px + env(safe-area-inset-bottom, 0px)) 20px',
             boxShadow: '0px -8px 16px 0px rgba(255, 255, 255, 0.76)',
           }}
         >
