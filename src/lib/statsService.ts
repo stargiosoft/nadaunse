@@ -2288,6 +2288,15 @@ export interface CustomerStatsData {
     male: { total: number; paid: number; rate: number };
     female: { total: number; paid: number; rate: number };
   };
+  tagStats: {
+    totalUsersWithTags: number;
+    totalUsers: number;
+    avgTagsPerUser: number;
+    rateWith1Plus: number;   // 1개 이상 보유 비율
+    rateWith5Plus: number;   // 5개 이상 보유 비율
+    rateWith10Plus: number;  // 10개 이상 보유 비율
+    distribution: { group: string; count: number; rate: number }[];
+  };
 }
 
 /**
@@ -2297,13 +2306,14 @@ export interface CustomerStatsData {
 export async function fetchCustomerStats(): Promise<CustomerStatsData> {
   const adminFilter = ADMIN_IDS.join(',');
 
-  // 5개 쿼리 병렬 실행
+  // 6개 쿼리 병렬 실행
   const [
     sajuOwnResult,
     sajuAllResult,
     usersResult,
     chargeUsersResult,
     paidOrderUsersResult,
+    tagResult,
   ] = await Promise.all([
     // 1. 본인 사주 레코드 (notes='본인' 또는 notes IS NULL)
     supabase
@@ -2339,6 +2349,12 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .gt('paid_amount', 0)
       .in('pay_method', ['kakaopay', 'card'])
       .not('user_id', 'in', `(${adminFilter})`),
+
+    // 6. 나다움 태그 (유저별 태그 수 집계용)
+    supabase
+      .from('user_trait_tags')
+      .select('user_id')
+      .not('user_id', 'in', `(${adminFilter})`),
   ]);
 
   if (sajuOwnResult.error) throw new Error('본인 사주 데이터 조회에 실패했습니다.');
@@ -2346,12 +2362,14 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
   if (usersResult.error) throw new Error('유저 데이터 조회에 실패했습니다.');
   if (chargeUsersResult.error) throw new Error('새싹 충전 데이터 조회에 실패했습니다.');
   if (paidOrderUsersResult.error) throw new Error('유료 주문 데이터 조회에 실패했습니다.');
+  if (tagResult.error) throw new Error('태그 데이터 조회에 실패했습니다.');
 
   const sajuOwn = sajuOwnResult.data || [];
   const sajuAll = sajuAllResult.data || [];
   const users = usersResult.data || [];
   const chargeUsers = chargeUsersResult.data || [];
   const paidOrderUsers = paidOrderUsersResult.data || [];
+  const tagRecords = tagResult.data || [];
 
   // 본인 사주 user 중복 제거 (user_id 기준 첫 레코드)
   const seenUserIds = new Set<string>();
@@ -2479,6 +2497,43 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
     },
   };
 
+  // 나다움 태그 통계
+  const tagCountByUser = new Map<string, number>();
+  for (const t of tagRecords) {
+    tagCountByUser.set(t.user_id, (tagCountByUser.get(t.user_id) || 0) + 1);
+  }
+  const totalUsersForTags = users.length;
+  const totalUsersWithTags = tagCountByUser.size;
+  const tagCounts = Array.from(tagCountByUser.values());
+  const avgTagsPerUser = totalUsersWithTags > 0
+    ? Math.round(tagCounts.reduce((a, b) => a + b, 0) / totalUsersWithTags * 10) / 10
+    : 0;
+  const with1Plus = totalUsersWithTags;
+  const with5Plus = tagCounts.filter(c => c >= 5).length;
+  const with10Plus = tagCounts.filter(c => c >= 10).length;
+
+  const tagDistGroups = [
+    { group: '1~2개', min: 1, max: 2 },
+    { group: '3~4개', min: 3, max: 4 },
+    { group: '5~9개', min: 5, max: 9 },
+    { group: '10~19개', min: 10, max: 19 },
+    { group: '20개+', min: 20, max: Infinity },
+  ];
+  const tagDistribution = tagDistGroups.map(({ group, min, max }) => {
+    const count = tagCounts.filter(c => c >= min && c <= max).length;
+    return { group, count, rate: totalUsersWithTags > 0 ? Math.round(count / totalUsersWithTags * 1000) / 10 : 0 };
+  }).filter(d => d.count > 0);
+
+  const tagStats = {
+    totalUsersWithTags,
+    totalUsers: totalUsersForTags,
+    avgTagsPerUser,
+    rateWith1Plus: totalUsersForTags > 0 ? Math.round(with1Plus / totalUsersForTags * 1000) / 10 : 0,
+    rateWith5Plus: totalUsersForTags > 0 ? Math.round(with5Plus / totalUsersForTags * 1000) / 10 : 0,
+    rateWith10Plus: totalUsersForTags > 0 ? Math.round(with10Plus / totalUsersForTags * 1000) / 10 : 0,
+    distribution: tagDistribution,
+  };
+
   return {
     totalSajuUsers,
     totalSajuRecords,
@@ -2489,6 +2544,7 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
     zodiacDistribution,
     relationshipDistribution,
     paidConversionByGender,
+    tagStats,
   };
 }
 

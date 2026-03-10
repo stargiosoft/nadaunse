@@ -3802,6 +3802,48 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
                   </section>
                 )}
 
+                {/* 나다움 태그 지표 */}
+                {customerStats.tagStats && (
+                  <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                    <SectionHeader icon="🏷️" title="나다움 태그 지표" />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                      <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>태그 보유 회원</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#333' }}>{customerStats.tagStats.totalUsersWithTags}<span style={{ fontSize: '12px', color: '#888', fontWeight: 400 }}>명</span></div>
+                        <div style={{ fontSize: '12px', color: '#4CAF50', fontWeight: 600 }}>{customerStats.tagStats.rateWith1Plus}%</div>
+                      </div>
+                      <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>1인당 평균 태그</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#333' }}>{customerStats.tagStats.avgTagsPerUser}<span style={{ fontSize: '12px', color: '#888', fontWeight: 400 }}>개</span></div>
+                      </div>
+                      <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>5개 이상 보유</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#6366f1' }}>{customerStats.tagStats.rateWith5Plus}%</div>
+                      </div>
+                      <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>10개 이상 보유</div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: '#8b5cf6' }}>{customerStats.tagStats.rateWith10Plus}%</div>
+                      </div>
+                    </div>
+                    {customerStats.tagStats.distribution.length > 0 && (
+                      <div style={{ width: '100%', height: Math.max(120, customerStats.tagStats.distribution.length * 40) }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={customerStats.tagStats.distribution} layout="vertical" margin={{ top: 5, right: 40, left: 10, bottom: 5 }}>
+                            <XAxis type="number" tick={{ fontSize: 11, fill: '#999' }} tickLine={false} axisLine={false} />
+                            <YAxis type="category" dataKey="group" tick={{ fontSize: 12, fill: '#333' }} tickLine={false} axisLine={false} width={55} />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontFamily: 'Pretendard Variable', fontSize: '13px' }} formatter={(value: number, _name: string, props: { payload: { rate: number } }) => [`${value}명 (${props.payload.rate}%)`, '인원']} />
+                            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={20}>
+                              {customerStats.tagStats.distribution.map((_, index) => (
+                                <Cell key={`tag-${index}`} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </section>
+                )}
+
                 {/* 가입 채널 - 세로 바 차트 */}
                 {customerStats.providerDistribution.length > 0 && (
                   <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
