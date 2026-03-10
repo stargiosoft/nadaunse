@@ -532,12 +532,13 @@ export default function NadaumAnalysisPage() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Top Tags */}
+              {/* Top Tags - 가로 스크롤 */}
               {topPositive.length > 0 && (
-                <div className="flex flex-wrap gap-2" style={{ marginTop: '12px' }}>
+                <div className="flex gap-2 overflow-x-auto" style={{ marginTop: '12px', paddingBottom: '4px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                   {topPositive.map((tag) => (
                     <span
                       key={tag}
+                      className="shrink-0"
                       style={{
                         fontFamily: font,
                         fontSize: '13px',
@@ -554,10 +555,11 @@ export default function NadaumAnalysisPage() {
                 </div>
               )}
               {topNegative.length > 0 && (
-                <div className="flex flex-wrap gap-2" style={{ marginTop: '8px' }}>
+                <div className="flex gap-2 overflow-x-auto" style={{ marginTop: '8px', paddingBottom: '4px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                   {topNegative.map((tag) => (
                     <span
                       key={tag}
+                      className="shrink-0"
                       style={{
                         fontFamily: font,
                         fontSize: '13px',
