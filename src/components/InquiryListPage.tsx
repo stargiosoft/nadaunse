@@ -58,6 +58,14 @@ export default function InquiryListPage({ onBack }: { onBack: () => void }) {
 
       if (error) throw error;
       setInquiries(data || []);
+
+      // ⭐ 읽음 처리: 답변된 문의 중 가장 최신 replied_at 저장
+      const repliedItems = (data || []).filter((d: Inquiry) => d.replied_at);
+      if (repliedItems.length > 0) {
+        const latestRepliedAt = repliedItems.reduce((max: string, d: Inquiry) =>
+          d.replied_at! > max ? d.replied_at! : max, repliedItems[0].replied_at!);
+        localStorage.setItem('last_viewed_inquiry_reply_at', latestRepliedAt);
+      }
     } catch {
       // 조용히 실패
     } finally {
