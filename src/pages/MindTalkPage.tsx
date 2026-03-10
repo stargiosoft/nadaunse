@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { projectId } from '../utils/supabase/info';
+import ArrowLeft from '../components/ArrowLeft';
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 
@@ -51,14 +52,18 @@ interface Message {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-/** AI 아바타 (마음이 🌿) */
+/** AI 아바타 (마음이) */
 function AiAvatar() {
   return (
     <div
-      className="shrink-0 flex items-center justify-center rounded-full"
-      style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #e8f5f4 0%, #d6eeee 100%)' }}
+      className="shrink-0 rounded-full overflow-hidden transform-gpu"
+      style={{ width: 36, height: 36 }}
     >
-      <span style={{ fontSize: 18, lineHeight: 1 }}>🌿</span>
+      <img
+        src="/maumi-avatar.png"
+        alt="마음이"
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
     </div>
   );
 }
@@ -333,10 +338,10 @@ export default function MindTalkPage() {
         <div className="w-full max-w-[440px] flex flex-col items-center justify-center" style={{ padding: '0 24px 80px' }}>
           {/* 일러스트 영역 */}
           <div
-            className="flex items-center justify-center rounded-full"
-            style={{ width: 88, height: 88, background: 'linear-gradient(135deg, #e8f5f4 0%, #d6eeee 100%)', marginBottom: 20 }}
+            className="rounded-full overflow-hidden transform-gpu"
+            style={{ width: 88, height: 88, marginBottom: 20 }}
           >
-            <span style={{ fontSize: 40 }}>🌿</span>
+            <img src="/maumi-avatar.png" alt="마음이" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <p style={{ fontFamily: F, fontSize: '22px', fontWeight: 600, lineHeight: '32.5px', letterSpacing: '-0.22px', color: C.black, marginBottom: 8 }}>
             마음톡
@@ -384,8 +389,9 @@ export default function MindTalkPage() {
       <div className="w-full max-w-[440px] h-full flex flex-col" style={{ backgroundColor: C.white }}>
 
         {/* ── Header ── */}
-        <div className="shrink-0 flex items-center justify-between w-full" style={{ height: 52, padding: '0 20px', borderBottom: `1px solid ${C.gray100}` }}>
-          <div className="flex items-center" style={{ gap: 8 }}>
+        <div className="shrink-0 flex items-center w-full" style={{ height: 52, padding: '0 12px', borderBottom: `1px solid ${C.gray100}` }}>
+          <ArrowLeft onClick={() => navigate(-1)} />
+          <div className="flex-1 flex items-center justify-center" style={{ gap: 8 }}>
             <span style={{ fontFamily: F, fontSize: '18px', fontWeight: 700, letterSpacing: '-0.36px', color: C.black }}>
               마음톡
             </span>
@@ -398,6 +404,7 @@ export default function MindTalkPage() {
               </span>
             </div>
           </div>
+          <div style={{ width: 44 }} />
         </div>
 
         {/* ── Scrollable Area ── */}
