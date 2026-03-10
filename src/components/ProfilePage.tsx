@@ -273,6 +273,9 @@ export default function ProfilePage({
   const navigate = useNavigate(); // ⭐ useNavigate 사용
   const { balance: sproutBalance } = useSproutBalance();
 
+  // ⭐ 의견 전달하기 미읽은 답변 알림 dot
+  const [hasUnreadReply, setHasUnreadReply] = useState(false);
+
   // ⭐ 핸드폰 번호 바텀시트 상태
   const [showPhoneBottomSheet, setShowPhoneBottomSheet] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -622,6 +625,37 @@ export default function ProfilePage({
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // ⭐ 의견 전달하기: 미읽은 답변 체크
+  useEffect(() => {
+    const checkUnreadReplies = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+
+        const lastViewed = localStorage.getItem('last_viewed_inquiry_reply_at');
+
+        let query = supabase
+          .from('customer_inquiries')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', authUser.id)
+          .eq('status', 'replied');
+
+        if (lastViewed) {
+          query = query.gt('replied_at', lastViewed);
+        }
+
+        const { count, error } = await query;
+        if (!error && (count ?? 0) > 0) {
+          setHasUnreadReply(true);
+        }
+      } catch {
+        // 조용히 실패
+      }
+    };
+
+    checkUnreadReplies();
   }, []);
 
   // 🔧 태그 리프레시: 페이지 가시성 변경 또는 포커스 시 refresh 플래그 체크
@@ -1348,6 +1382,9 @@ export default function ProfilePage({
                         <MessageCircleIcon />
                       </div>
                       <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>의견 전달하기</p>
+                      {hasUnreadReply && (
+                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#6AC9C6', marginTop: '-7px' }} />
+                      )}
                     </div>
                     <div className="relative shrink-0 size-[16px]">
                       <MenuArrowRightIcon />
