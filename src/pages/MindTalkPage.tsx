@@ -677,7 +677,7 @@ export default function MindTalkPage() {
         {/* ── Scrollable Chat Area ── */}
         <div
           className="flex-1 overflow-auto w-full"
-          style={{ padding: '16px 20px 0', WebkitOverflowScrolling: 'touch' }}
+          style={{ padding: '16px 20px 16px', WebkitOverflowScrolling: 'touch' }}
         >
           {/* 로딩 */}
           {loadingConv && (
