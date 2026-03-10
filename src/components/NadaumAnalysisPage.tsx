@@ -168,7 +168,7 @@ export default function NadaumAnalysisPage() {
 
     async function load() {
       try {
-        const user = await getAuthUser();
+        const { data: { user } } = await getAuthUser();
         if (!user) {
           if (!cancelled) {
             setIsLoggedIn(false);

@@ -137,7 +137,7 @@ export default function NadaumAnalysisDetail() {
 
     async function generate() {
       try {
-        const user = await getAuthUser();
+        const { data: { user } } = await getAuthUser();
         if (!user) {
           navigate('/login');
           return;
