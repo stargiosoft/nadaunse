@@ -54,7 +54,7 @@ export default function InquiryWritePage({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="bg-white fixed inset-0 flex justify-center">
+    <div className="bg-white fixed inset-x-0 top-0 flex justify-center" style={{ height: '100dvh' }}>
       <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
 
         {/* 상단 네비게이션 */}
