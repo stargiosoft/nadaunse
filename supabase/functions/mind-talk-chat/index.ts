@@ -182,7 +182,7 @@ ${recentEmotionText}
       body: JSON.stringify({
         contents: geminiMessages,
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { temperature: 0.85, maxOutputTokens: 300, topP: 0.95 },
+        generationConfig: { temperature: 0.85, maxOutputTokens: 800, topP: 0.95 },
       }),
     });
 
