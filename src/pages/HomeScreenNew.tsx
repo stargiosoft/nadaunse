@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
+import BottomTabBar from '../components/BottomTabBar';
 import { motion } from 'motion/react';
 import { DEV } from '../lib/env';
 import {
@@ -1558,12 +1559,14 @@ export function HomeScreenNew() {
         )}
 
         <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
-        <div style={{ marginTop: 130 }}>
+        <div style={{ marginTop: 130, marginBottom: 80 }}>
           <Footer
             onNavigateToTerms={() => navigate('/terms-of-service')}
             onNavigateToPrivacy={() => navigate('/privacy-policy')}
           />
         </div>
+
+        <BottomTabBar />
       </div>
     </div>
   );

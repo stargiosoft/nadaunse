@@ -61,6 +61,8 @@ import { TaroConsultResultPage } from './pages/TaroConsultResultPage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
 import TestConfirmModals from './pages/TestConfirmModals';
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
+import NadaumAnalysisPage from './components/NadaumAnalysisPage'; // ⭐ 나다움 분석 페이지
+import NadaumAnalysisDetail from './components/NadaumAnalysisDetail'; // ⭐ 나다움 분석 상세
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
 import ReceiveMyAnalysis from './components/ReceiveMyAnalysis';
@@ -3708,6 +3710,8 @@ export default function App() {
         <PortOneInit />
         <Routes>
           <Route path="/" element={<HomeScreenNew />} />
+          <Route path="/nadaum" element={<NadaumAnalysisPage />} /> {/* ⭐ 나다움 분석 */}
+          <Route path="/nadaum/:category" element={<NadaumAnalysisDetail />} /> {/* ⭐ 나다움 분석 상세 */}
           {/* ── 홈 고도화 라우트 ── */}
           <Route path="/best-fortune" element={<FortuneAllPage />} />
           <Route path="/new-free" element={<NewFreeFortuneAllPage />} />
