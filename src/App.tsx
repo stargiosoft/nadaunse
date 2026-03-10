@@ -61,6 +61,9 @@ import { TaroConsultResultPage } from './pages/TaroConsultResultPage';
 import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 페이지
 import TestConfirmModals from './pages/TestConfirmModals';
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
+import MindTalkPage from './pages/MindTalkPage'; // ⭐ 마음톡 (AI 심리 상담)
+import NadaumAnalysisPage from './components/NadaumAnalysisPage'; // ⭐ 나다움 분석 페이지
+import NadaumAnalysisDetail from './components/NadaumAnalysisDetail'; // ⭐ 나다움 분석 상세
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
 import ReceiveMyAnalysis from './components/ReceiveMyAnalysis';
@@ -3683,6 +3686,43 @@ export default function App() {
     warmupEdgeFunctions();
   }, []);
 
+  // 📱 네이티브 앱 딥링크 처리 (Google OAuth 콜백)
+  useEffect(() => {
+    const setupDeepLinks = async () => {
+      const { Capacitor } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform()) return;
+
+      const { App: CapApp } = await import('@capacitor/app');
+      CapApp.addListener('appUrlOpen', async (event) => {
+        console.log('🔗 딥링크 수신:', event.url);
+        // nadaunse://auth/callback#access_token=...
+        const url = new URL(event.url);
+        if (url.host === 'auth' && url.pathname.startsWith('/callback')) {
+          // URL fragment에서 토큰 추출하여 Supabase 세션 설정
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (error) {
+              console.error('❌ 딥링크 세션 설정 실패:', error);
+            } else {
+              console.log('✅ 딥링크 Google 로그인 성공');
+              // Browser 닫기
+              const { Browser } = await import('@capacitor/browser');
+              await Browser.close();
+            }
+          }
+        }
+      });
+    };
+    setupDeepLinks();
+  }, []);
+
   // 🔐 세션 만료 감지 및 모든 사용자 캐시 정리
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -3745,6 +3785,9 @@ export default function App() {
         <PortOneInit />
         <Routes>
           <Route path="/" element={<HomeScreenNew />} />
+          <Route path="/nadaum" element={<NadaumAnalysisPage />} /> {/* ⭐ 나다움 분석 */}
+          <Route path="/nadaum/:category" element={<NadaumAnalysisDetail />} /> {/* ⭐ 나다움 분석 상세 */}
+          <Route path="/maumtalk" element={<MindTalkPage />} /> {/* ⭐ 마음톡 AI 심리 상담 */}
           {/* ── 홈 고도화 라우트 ── */}
           <Route path="/best-fortune" element={<FortuneAllPage />} />
           <Route path="/new-free" element={<NewFreeFortuneAllPage />} />
