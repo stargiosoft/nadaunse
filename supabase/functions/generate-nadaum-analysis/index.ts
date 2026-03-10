@@ -25,10 +25,26 @@ interface CategoryConfig {
   minTags: number
 }
 
+interface SpectrumAxis {
+  left: string
+  right: string
+}
+
+interface CategoryConfig {
+  title: string
+  prompt: string
+  minTags: number
+  spectrumAxes: SpectrumAxis[]
+}
+
 const CATEGORIES: Record<string, CategoryConfig> = {
   love: {
     title: '연애·궁합 분석',
     minTags: 5,
+    spectrumAxes: [
+      { left: '열정적', right: '안정적' },
+      { left: '주도적', right: '맞춤형' },
+    ],
     prompt: `## 역할
 당신은 명리학과 성격 심리학에 정통한 연애 상담 전문가입니다.
 
@@ -40,17 +56,15 @@ const CATEGORIES: Record<string, CategoryConfig> = {
 2. **이상형 분석** - 사주 오행 균형과 태그 기반 어울리는 상대 유형 (2~3문장)
 3. **연애 강점** - 관계에서 빛나는 점 (2~3문장)
 4. **연애 주의점** - 관계에서 조심할 점 (2~3문장)
-5. **궁합 포인트** - 잘 맞는 사주/성향 조합 힌트 (2~3문장)
-
-## 형식
-- 각 항목을 **제목**과 본문으로 구분
-- 친근하고 따뜻한 말투 (반말 OK)
-- 순수 텍스트만, 마크다운 서식 금지
-- 전체 800~1200자`,
+5. **궁합 포인트** - 잘 맞는 사주/성향 조합 힌트 (2~3문장)`,
   },
   nature: {
     title: '기질·성격 분석',
     minTags: 5,
+    spectrumAxes: [
+      { left: '외향적', right: '내향적' },
+      { left: '이성적', right: '감성적' },
+    ],
     prompt: `## 역할
 당신은 명리학과 성격 유형론에 정통한 기질 분석 전문가입니다.
 
@@ -62,17 +76,15 @@ const CATEGORIES: Record<string, CategoryConfig> = {
 2. **성격 강점 TOP 3** - 태그에서 가장 두드러지는 강점 (각 1~2문장)
 3. **성격 보완점** - 부정 태그에서 보이는 조심할 점 (2~3문장)
 4. **대인관계 스타일** - 사람들과의 관계 패턴 (2~3문장)
-5. **성장 포인트** - 더 나은 나를 위한 조언 (2~3문장)
-
-## 형식
-- 각 항목을 **제목**과 본문으로 구분
-- 친근하고 따뜻한 말투
-- 순수 텍스트만, 마크다운 서식 금지
-- 전체 800~1200자`,
+5. **성장 포인트** - 더 나은 나를 위한 조언 (2~3문장)`,
   },
   money: {
     title: '재물·금전 분석',
     minTags: 8,
+    spectrumAxes: [
+      { left: '공격투자', right: '안전저축' },
+      { left: '소비형', right: '절약형' },
+    ],
     prompt: `## 역할
 당신은 명리학 재물운 분석과 금전 심리 전문가입니다.
 
@@ -84,17 +96,15 @@ const CATEGORIES: Record<string, CategoryConfig> = {
 2. **수입 스타일** - 돈을 버는 방식과 강점 (2~3문장)
 3. **소비 패턴** - 태그에서 보이는 소비 성향 (2~3문장)
 4. **재테크 적성** - 어울리는 재테크/투자 스타일 (2~3문장)
-5. **금전 조언** - 재물운을 높이기 위한 실질적 팁 (2~3문장)
-
-## 형식
-- 각 항목을 **제목**과 본문으로 구분
-- 친근하고 따뜻한 말투
-- 순수 텍스트만, 마크다운 서식 금지
-- 전체 800~1200자`,
+5. **금전 조언** - 재물운을 높이기 위한 실질적 팁 (2~3문장)`,
   },
   career: {
     title: '직업·적성 분석',
     minTags: 12,
+    spectrumAxes: [
+      { left: '리더형', right: '서포터형' },
+      { left: '전문가형', right: '제너럴리스트' },
+    ],
     prompt: `## 역할
 당신은 명리학 적성 분석과 커리어 코칭 전문가입니다.
 
@@ -106,17 +116,15 @@ const CATEGORIES: Record<string, CategoryConfig> = {
 2. **적성 분야 TOP 3** - 어울리는 직업/분야 구체적 제시 (각 1~2문장)
 3. **직장 내 강점** - 동료/상사에게 인정받는 포인트 (2~3문장)
 4. **커리어 주의점** - 직장에서 조심할 점 (2~3문장)
-5. **성장 전략** - 커리어 발전을 위한 구체적 조언 (2~3문장)
-
-## 형식
-- 각 항목을 **제목**과 본문으로 구분
-- 친근하고 따뜻한 말투
-- 순수 텍스트만, 마크다운 서식 금지
-- 전체 800~1200자`,
+5. **성장 전략** - 커리어 발전을 위한 구체적 조언 (2~3문장)`,
   },
   health: {
     title: '건강·체질 분석',
     minTags: 15,
+    spectrumAxes: [
+      { left: '활동적', right: '정적' },
+      { left: '규칙적', right: '자유로운' },
+    ],
     prompt: `## 역할
 당신은 명리학 오행 체질 분석과 건강 관리 전문가입니다.
 
@@ -128,14 +136,7 @@ const CATEGORIES: Record<string, CategoryConfig> = {
 2. **강한 부분** - 건강하게 유지되는 영역 (2~3문장)
 3. **주의 부분** - 신경 써야 할 건강 영역 (2~3문장)
 4. **스트레스 패턴** - 태그에서 보이는 스트레스 해소 방식 (2~3문장)
-5. **건강 관리 팁** - 체질에 맞는 실질적 건강 관리법 (2~3문장)
-
-## 형식
-- 각 항목을 **제목**과 본문으로 구분
-- 친근하고 따뜻한 말투
-- 순수 텍스트만, 마크다운 서식 금지
-- 전체 800~1200자
-- 의학적 진단이 아닌 명리학 기반 참고 정보임을 명시`,
+5. **건강 관리 팁** - 체질에 맞는 실질적 건강 관리법 (2~3문장)`,
   },
 }
 
@@ -205,6 +206,7 @@ serve(async (req) => {
               category: cached.category,
               analysis_text: cached.analysis_text,
               tag_count: cached.tag_count,
+              metadata: cached.metadata || {},
               created_at: cached.created_at,
               is_cached: true,
             },
@@ -278,9 +280,18 @@ serve(async (req) => {
       ? summaries.map(s => s.situation_summary).join('\n')
       : '최근 상황 정보 없음'
 
+    // ─── 스펙트럼 축 설명 ─────────────────────────────────────
+    const spectrumInstruction = config.spectrumAxes.map((axis, i) =>
+      `  스펙트럼${i + 1}: "${axis.left}" ←→ "${axis.right}" (0=${axis.left} 쪽, 100=${axis.right} 쪽)`
+    ).join('\n')
+
     // ─── AI 프롬프트 구성 ──────────────────────────────────────
     const fullPrompt = `${config.prompt}
 
+## 형식
+- 친근하고 따뜻한 말투 (반말 OK)
+- 전체 800~1200자
+${category === 'health' ? '- 의학적 진단이 아닌 명리학 기반 참고 정보임을 명시\n' : ''}
 ## 사주 정보
 ${sajuInfo}
 
@@ -293,12 +304,27 @@ ${topNegative.join(', ') || '없음'}
 ## 최근 관심사/상황
 ${situationText}
 
+## 출력 형식 (반드시 아래 JSON 형태로만 출력하세요)
+\`\`\`json
+{
+  "text": "[제목1] 본문 내용... [제목2] 본문 내용...",
+  "score": 75,
+  "spectrum": [${config.spectrumAxes.map((_, i) => `{"value": 50}`).join(', ')}]
+}
+\`\`\`
+
+### JSON 필드 설명
+- **text**: 분석 본문. 각 항목 제목은 대괄호 [제목]으로 감싸세요. 순수 텍스트만, 마크다운 서식 금지.
+- **score**: 이 카테고리의 종합 점수 (0~100). 사주와 태그를 종합하여 현재 상태를 평가.
+- **spectrum**: 성향 스펙트럼 위치값 배열 (각 0~100)
+${spectrumInstruction}
+
 ## 주의사항
+- 반드시 유효한 JSON만 출력하세요. JSON 외 텍스트 금지.
 - 사용자 이름은 언급하지 마세요
 - "당신은" 대신 "너는" 같은 친근한 표현 사용
 - 구체적이고 실질적인 분석을 제공하세요
-- 긍정적이되 현실적인 톤 유지
-- 각 항목 제목은 대괄호로 감싸세요: [제목]`
+- 긍정적이되 현실적인 톤 유지`
 
     console.log('🤖 AI 호출 시작...')
 
@@ -329,14 +355,41 @@ ${situationText}
     }
 
     const aiData = await aiResponse.json()
-    const analysisText = aiData.choices?.[0]?.message?.content?.trim()
+    const rawContent = aiData.choices?.[0]?.message?.content?.trim()
 
-    if (!analysisText) {
+    if (!rawContent) {
       console.error('❌ AI 응답 비어있음')
       return errorResponse(req, 'AI 분석 결과가 비어있습니다.', 500)
     }
 
-    console.log('✅ AI 생성 완료 (길이:', analysisText.length, '자)')
+    console.log('✅ AI 생성 완료 (길이:', rawContent.length, '자)')
+
+    // ─── JSON 파싱 ──────────────────────────────────────────────
+    let analysisText = rawContent
+    let metadata: Record<string, unknown> = {}
+
+    try {
+      // ```json ... ``` 블록 또는 순수 JSON 파싱
+      const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)```/) || rawContent.match(/(\{[\s\S]*\})/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1].trim())
+        analysisText = parsed.text || rawContent
+        metadata = {
+          score: typeof parsed.score === 'number' ? Math.min(100, Math.max(0, parsed.score)) : null,
+          spectrum: Array.isArray(parsed.spectrum)
+            ? parsed.spectrum.map((s: { value?: number }, i: number) => ({
+                ...config.spectrumAxes[i],
+                value: typeof s.value === 'number' ? Math.min(100, Math.max(0, s.value)) : 50,
+              }))
+            : null,
+        }
+        console.log('✅ JSON 파싱 성공 (score:', metadata.score, ')')
+      } else {
+        console.log('⚠️ JSON 파싱 실패, 텍스트 모드로 폴백')
+      }
+    } catch (parseErr) {
+      console.log('⚠️ JSON 파싱 에러, 텍스트 모드로 폴백:', parseErr)
+    }
 
     // ─── DB 저장 (upsert) ──────────────────────────────────────
     const { error: upsertError } = await supabase
@@ -348,6 +401,7 @@ ${situationText}
           analysis_text: analysisText,
           tag_count: tags.length,
           model_used: 'gpt-4.1-mini',
+          metadata,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id,category' }
@@ -355,7 +409,6 @@ ${situationText}
 
     if (upsertError) {
       console.error('❌ DB 저장 실패:', upsertError)
-      // 저장 실패해도 결과는 반환 (Graceful Degradation)
     } else {
       console.log('✅ DB 저장 성공')
     }
@@ -368,6 +421,7 @@ ${situationText}
         category,
         analysis_text: analysisText,
         tag_count: tags.length,
+        metadata,
         created_at: new Date().toISOString(),
         is_cached: false,
       },

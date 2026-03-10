@@ -16,6 +16,7 @@ const C = {
   gray700: '#6d6d6d',
   gray600: '#848484',
   gray400: '#b7b7b7',
+  gray200: '#e7e7e7',
   bg: '#f7f8f9',
   white: '#ffffff',
 } as const;
@@ -25,25 +26,38 @@ interface CategoryInfo {
   emoji: string;
   color: string;
   bgColor: string;
+  scoreLabel: string;
 }
 
 const CATEGORY_INFO: Record<string, CategoryInfo> = {
-  love: { title: '연애·궁합 분석', emoji: '💕', color: '#ef6878', bgColor: '#fff6f7' },
-  nature: { title: '기질·성격 분석', emoji: '🧬', color: '#41a09e', bgColor: '#f0f8f8' },
-  money: { title: '재물·금전 분석', emoji: '💰', color: '#f5a623', bgColor: '#fff9f0' },
-  career: { title: '직업·적성 분석', emoji: '💼', color: '#4590d6', bgColor: '#f0f6ff' },
-  health: { title: '건강·체질 분석', emoji: '🏥', color: '#8b5cf6', bgColor: '#f5f3ff' },
+  love: { title: '연애·궁합 분석', emoji: '💕', color: '#ef6878', bgColor: '#fff6f7', scoreLabel: '연애력' },
+  nature: { title: '기질·성격 분석', emoji: '🧬', color: '#41a09e', bgColor: '#f0f8f8', scoreLabel: '자아 이해도' },
+  money: { title: '재물·금전 분석', emoji: '💰', color: '#f5a623', bgColor: '#fff9f0', scoreLabel: '재물운' },
+  career: { title: '직업·적성 분석', emoji: '💼', color: '#4590d6', bgColor: '#f0f6ff', scoreLabel: '적성 매칭' },
+  health: { title: '건강·체질 분석', emoji: '🏥', color: '#8b5cf6', bgColor: '#f5f3ff', scoreLabel: '건강 밸런스' },
 };
 
-// ─── Section Parser ─────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────
 
 interface Section {
   title: string;
   content: string;
 }
 
+interface SpectrumItem {
+  left: string;
+  right: string;
+  value: number;
+}
+
+interface AnalysisMetadata {
+  score?: number | null;
+  spectrum?: SpectrumItem[] | null;
+}
+
+// ─── Section Parser ─────────────────────────────────────────
+
 function parseSections(text: string): Section[] {
-  // [제목] 패턴으로 분리
   const regex = /\[([^\]]+)\]/g;
   const sections: Section[] = [];
   let lastIndex = 0;
@@ -61,7 +75,6 @@ function parseSections(text: string): Section[] {
     lastIndex = match.index + match[0].length;
   }
 
-  // 마지막 섹션
   if (lastTitle) {
     sections.push({
       title: lastTitle,
@@ -69,7 +82,6 @@ function parseSections(text: string): Section[] {
     });
   }
 
-  // 파싱 실패 시 전체 텍스트를 하나의 섹션으로
   if (sections.length === 0) {
     return [{ title: '분석 결과', content: text.trim() }];
   }
@@ -77,7 +89,120 @@ function parseSections(text: string): Section[] {
   return sections;
 }
 
-// ─── Loading Animation ──────────────────────────────────────────
+// ─── Score Gauge (반원형) ───────────────────────────────────
+
+function ScoreGauge({ score, color, label }: { score: number; color: string; label: string }) {
+  const radius = 70;
+  const strokeWidth = 12;
+  const cx = 90;
+  const cy = 80;
+  const circumference = Math.PI * radius;
+  const progress = (score / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center" style={{ padding: '20px 0' }}>
+      <svg width="180" height="100" viewBox="0 0 180 100">
+        {/* Background arc */}
+        <path
+          d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+          fill="none"
+          stroke={C.gray200}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+        />
+        {/* Progress arc */}
+        <motion.path
+          d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          initial={{ strokeDasharray: `0 ${circumference}` }}
+          animate={{ strokeDasharray: `${progress} ${circumference - progress}` }}
+          transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+        />
+      </svg>
+      <motion.p
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+        style={{
+          fontFamily: font,
+          fontSize: '32px',
+          fontWeight: 700,
+          color,
+          marginTop: '-40px',
+        }}
+      >
+        {score}
+      </motion.p>
+      <p style={{
+        fontFamily: font,
+        fontSize: '13px',
+        fontWeight: 400,
+        color: C.gray600,
+        marginTop: '4px',
+      }}>
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ─── Spectrum Bar ───────────────────────────────────────────
+
+function SpectrumBar({ item, color, delay }: { item: SpectrumItem; color: string; delay: number }) {
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+        <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.gray700 }}>
+          {item.left}
+        </span>
+        <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.gray700 }}>
+          {item.right}
+        </span>
+      </div>
+      <div style={{
+        position: 'relative',
+        height: '8px',
+        backgroundColor: C.gray200,
+        borderRadius: '4px',
+        overflow: 'visible',
+      }}>
+        {/* Gradient fill */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: '4px',
+          background: `linear-gradient(to right, ${color}, ${C.gray200}, ${color})`,
+          opacity: 0.3,
+        }} />
+        {/* Indicator dot */}
+        <motion.div
+          initial={{ left: '50%' }}
+          animate={{ left: `${item.value}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut', delay }}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '18px',
+            height: '18px',
+            borderRadius: '50%',
+            backgroundColor: color,
+            boxShadow: `0 2px 8px ${color}40`,
+            border: `2px solid ${C.white}`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Loading Animation ──────────────────────────────────────
 
 function AnalysisLoading({ emoji, title }: { emoji: string; title: string }) {
   const messages = [
@@ -119,7 +244,7 @@ function AnalysisLoading({ emoji, title }: { emoji: string; title: string }) {
   );
 }
 
-// ─── Main Component ─────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────
 
 export default function NadaumAnalysisDetail() {
   const navigate = useNavigate();
@@ -128,6 +253,7 @@ export default function NadaumAnalysisDetail() {
   const [sections, setSections] = useState<Section[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [tagCount, setTagCount] = useState(0);
+  const [metadata, setMetadata] = useState<AnalysisMetadata>({});
 
   const info = category ? CATEGORY_INFO[category] : null;
 
@@ -167,6 +293,9 @@ export default function NadaumAnalysisDetail() {
           if (data.success && data.analysis) {
             setSections(parseSections(data.analysis.analysis_text));
             setTagCount(data.analysis.tag_count);
+            if (data.analysis.metadata) {
+              setMetadata(data.analysis.metadata);
+            }
           } else {
             setError(data.error || '분석 생성에 실패했습니다.');
           }
@@ -174,7 +303,7 @@ export default function NadaumAnalysisDetail() {
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('❌ [NadaumAnalysisDetail] 에러:', err);
+          console.error('[NadaumAnalysisDetail] 에러:', err);
           setError('분석을 불러오는 중 오류가 발생했습니다.');
           setIsLoading(false);
         }
@@ -242,7 +371,7 @@ export default function NadaumAnalysisDetail() {
         {!isLoading && !error && sections.length > 0 && (
           <div style={{ padding: '0 20px 40px' }}>
             {/* Category Badge */}
-            <div className="flex items-center gap-2" style={{ marginBottom: '20px' }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
               <span style={{ fontSize: '28px' }}>{info.emoji}</span>
               <div>
                 <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600 }}>
@@ -251,13 +380,61 @@ export default function NadaumAnalysisDetail() {
               </div>
             </div>
 
-            {/* Sections */}
+            {/* Score Gauge + Spectrum Card */}
+            {(metadata.score != null || (metadata.spectrum && metadata.spectrum.length > 0)) && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                style={{
+                  marginBottom: '16px',
+                  padding: '20px',
+                  backgroundColor: C.white,
+                  borderRadius: '16px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                }}
+              >
+                {/* Score Gauge */}
+                {metadata.score != null && (
+                  <ScoreGauge
+                    score={metadata.score}
+                    color={info.color}
+                    label={info.scoreLabel}
+                  />
+                )}
+
+                {/* Spectrum Bars */}
+                {metadata.spectrum && metadata.spectrum.length > 0 && (
+                  <div style={{ marginTop: metadata.score != null ? '8px' : '0', padding: '0 4px' }}>
+                    <p style={{
+                      fontFamily: font,
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: C.black,
+                      marginBottom: '16px',
+                    }}>
+                      성향 스펙트럼
+                    </p>
+                    {metadata.spectrum.map((item, i) => (
+                      <SpectrumBar
+                        key={i}
+                        item={item}
+                        color={info.color}
+                        delay={0.5 + i * 0.2}
+                      />
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Text Sections */}
             {sections.map((section, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
+                transition={{ duration: 0.4, delay: (metadata.score != null ? 0.3 : 0) + i * 0.1 }}
                 style={{
                   marginBottom: '16px',
                   padding: '20px',

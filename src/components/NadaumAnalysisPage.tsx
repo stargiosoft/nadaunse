@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { supabase, getAuthUser } from '../lib/supabase';
+import { getManseData } from '../lib/manseService';
 import BottomTabBar from './BottomTabBar';
 import SEO from './SEO';
 import { getZodiacImageUrl } from '../lib/zodiacUtils';
@@ -38,6 +39,69 @@ const C = {
   health: '#8b5cf6',
   healthBg: '#f5f3ff',
 } as const;
+
+// ─── 오행 (Five Elements) ────────────────────────────────────────────────────
+
+const OHENG_CONFIG = [
+  { key: '목', label: '木', color: '#22c55e', name: '목(木)' },
+  { key: '화', label: '火', color: '#ef4444', name: '화(火)' },
+  { key: '토', label: '土', color: '#a16207', name: '토(土)' },
+  { key: '금', label: '金', color: '#6b7280', name: '금(金)' },
+  { key: '수', label: '水', color: '#3b82f6', name: '수(水)' },
+] as const;
+
+interface OhengData {
+  name: string;
+  value: number;
+  color: string;
+  label: string;
+}
+
+// ─── 나다움 유형 카드 ───────────────────────────────────────────────────────
+
+interface NadaumType {
+  title: string;
+  subtitle: string;
+  emoji: string;
+}
+
+function computeNadaumType(radarData: { category: string; count: number }[]): NadaumType {
+  // 6축: 실행력, 사고력, 감성, 관계, 의지력, 안정감
+  const map = new Map(radarData.map(d => [d.category, d.count]));
+  const get = (k: string) => map.get(k) || 0;
+
+  // 축1: 실행력 vs 사고력 → 행동파/분석파
+  const axis1 = get('실행력') >= get('사고력') ? '행동파' : '분석파';
+  // 축2: 감성 vs 안정감 → 감성형/이성형
+  const axis2 = get('감성') >= get('안정감') ? '감성형' : '이성형';
+  // 축3: 관계 → 높으면 사교적, 낮으면 독립적
+  const axis3 = get('관계') >= 3 ? '사교적' : '독립적';
+  // 축4: 의지력 → 높으면 꾸준한, 낮으면 유연한
+  const axis4 = get('의지력') >= 3 ? '꾸준한' : '유연한';
+
+  // 유형명 조합: 감성형 + 행동파 = 메인 타이틀
+  const typeMap: Record<string, NadaumType> = {
+    '감성형_행동파_사교적_꾸준한': { title: '열정적 리더', subtitle: '감성과 실행력을 겸비한 사람', emoji: '🔥' },
+    '감성형_행동파_사교적_유연한': { title: '자유로운 무드메이커', subtitle: '분위기를 이끄는 에너자이저', emoji: '🎉' },
+    '감성형_행동파_독립적_꾸준한': { title: '묵묵한 열정가', subtitle: '자기 길을 꿋꿋이 가는 사람', emoji: '🌋' },
+    '감성형_행동파_독립적_유연한': { title: '감각적 모험가', subtitle: '느낌대로 움직이는 자유영혼', emoji: '🦋' },
+    '감성형_분석파_사교적_꾸준한': { title: '다정한 전략가', subtitle: '따뜻한 마음에 냉철한 머리', emoji: '🧠' },
+    '감성형_분석파_사교적_유연한': { title: '공감형 탐험가', subtitle: '사람과 세상을 깊이 이해하는', emoji: '🌊' },
+    '감성형_분석파_독립적_꾸준한': { title: '깊은 사색가', subtitle: '풍부한 내면을 가진 사람', emoji: '🌙' },
+    '감성형_분석파_독립적_유연한': { title: '감성적 몽상가', subtitle: '상상력이 풍부한 예술형', emoji: '🎨' },
+    '이성형_행동파_사교적_꾸준한': { title: '믿음직한 실행자', subtitle: '약속은 반드시 지키는 사람', emoji: '🏔️' },
+    '이성형_행동파_사교적_유연한': { title: '사교적 해결사', subtitle: '어디서든 적응하는 만능형', emoji: '⚡' },
+    '이성형_행동파_독립적_꾸준한': { title: '철두철미 추진가', subtitle: '목표를 향해 흔들림 없이', emoji: '🎯' },
+    '이성형_행동파_독립적_유연한': { title: '쿨한 실용주의자', subtitle: '효율을 추구하는 현실파', emoji: '💎' },
+    '이성형_분석파_사교적_꾸준한': { title: '신뢰의 조언자', subtitle: '논리와 배려를 겸비한 참모형', emoji: '🦉' },
+    '이성형_분석파_사교적_유연한': { title: '유연한 중재자', subtitle: '갈등을 풀어내는 소통 전문가', emoji: '🤝' },
+    '이성형_분석파_독립적_꾸준한': { title: '냉철한 전문가', subtitle: '깊이 파고드는 장인 기질', emoji: '🔬' },
+    '이성형_분석파_독립적_유연한': { title: '자유로운 분석가', subtitle: '통찰력 있는 관찰자', emoji: '🔭' },
+  };
+
+  const key = `${axis2}_${axis1}_${axis3}_${axis4}`;
+  return typeMap[key] || { title: '성장하는 나', subtitle: '태그를 더 모으면 유형이 선명해져요', emoji: '✨' };
+}
 
 // ─── Tag Category Mapping ───────────────────────────────────────────────────
 
@@ -161,6 +225,7 @@ export default function NadaumAnalysisPage() {
   const [saju, setSaju] = useState<SajuRecord | null>(null);
   const [tags, setTags] = useState<TraitTag[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [ohengData, setOhengData] = useState<OhengData[]>([]);
 
   // Fetch data
   useEffect(() => {
@@ -195,7 +260,30 @@ export default function NadaumAnalysisPage() {
         ]);
 
         if (!cancelled) {
-          if (sajuRes.data) setSaju(sajuRes.data);
+          if (sajuRes.data) {
+            setSaju(sajuRes.data);
+            // 오행 데이터 로드 (비동기, 로딩 블로킹 안 함)
+            getManseData({
+              id: sajuRes.data.id,
+              birth_date: sajuRes.data.birth_date,
+              birth_time: sajuRes.data.birth_time,
+              gender: sajuRes.data.gender,
+              calendar_type: sajuRes.data.calendar_type,
+            }).then((result) => {
+              if (!cancelled && result.success) {
+                const baldal = result.data['발달오행'] as Record<string, number> | undefined;
+                if (baldal) {
+                  const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
+                    name: cfg.name,
+                    value: baldal[cfg.key] || 0,
+                    color: cfg.color,
+                    label: cfg.label,
+                  })).filter((d) => d.value > 0);
+                  setOhengData(parsed);
+                }
+              }
+            }).catch(() => { /* 오행 로드 실패해도 무시 */ });
+          }
           if (tagsRes.data) setTags(tagsRes.data);
           setIsLoading(false);
         }
@@ -225,6 +313,11 @@ export default function NadaumAnalysisPage() {
       count: counts[i],
     }));
   }, [tags]);
+
+  // 나다움 유형
+  const nadaumType = useMemo(() => {
+    return computeNadaumType(radarData);
+  }, [radarData]);
 
   // Top tags
   const topPositive = useMemo(() => {
@@ -545,6 +638,89 @@ export default function NadaumAnalysisPage() {
               <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, color: '#e88090' }}>
                 보완점 {100 - positivePercent}%
               </span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── 나다움 유형 카드 ──────────────────────────────────── */}
+        {isUnlocked && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.25 }}
+            style={{
+              margin: '8px 20px',
+              padding: '24px 20px',
+              backgroundColor: C.cardBg,
+              borderRadius: '20px',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ fontFamily: font, fontSize: '17px', fontWeight: 600, color: C.black, marginBottom: '16px' }}>
+              나다움 유형
+            </p>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>{nadaumType.emoji}</div>
+            <p style={{ fontFamily: font, fontSize: '20px', fontWeight: 700, color: C.primary, letterSpacing: '-0.4px' }}>
+              {nadaumType.title}
+            </p>
+            <p style={{ fontFamily: font, fontSize: '13px', fontWeight: 400, color: C.gray700, marginTop: '6px' }}>
+              {nadaumType.subtitle}
+            </p>
+          </motion.div>
+        )}
+
+        {/* ─── 오행 에너지 분포 ──────────────────────────────────── */}
+        {isUnlocked && ohengData.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            style={{
+              margin: '8px 20px',
+              padding: '24px 16px',
+              backgroundColor: C.cardBg,
+              borderRadius: '20px',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}
+          >
+            <p style={{ fontFamily: font, fontSize: '17px', fontWeight: 600, color: C.black, marginBottom: '4px' }}>
+              오행 에너지 분포
+            </p>
+            <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600, marginBottom: '8px' }}>
+              사주 만세력 기반 타고난 에너지 비율
+            </p>
+            <div style={{ width: '100%', height: '200px' }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={ohengData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                    animationBegin={300}
+                    animationDuration={800}
+                  >
+                    {ohengData.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap items-center justify-center gap-3" style={{ marginTop: '4px' }}>
+              {ohengData.map((entry) => (
+                <div key={entry.name} className="flex items-center gap-1">
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: entry.color }} />
+                  <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.gray700 }}>
+                    {entry.name} {entry.value}%
+                  </span>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}
