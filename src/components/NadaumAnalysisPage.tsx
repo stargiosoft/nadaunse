@@ -281,7 +281,6 @@ export default function NadaumAnalysisPage() {
   // 오행 데이터 로드 (saju 세팅 후 별도 fetch)
   useEffect(() => {
     if (!saju) return;
-    let cancelled = false;
 
     getManseData({
       id: saju.id,
@@ -290,9 +289,12 @@ export default function NadaumAnalysisPage() {
       gender: saju.gender,
       calendar_type: saju.calendar_type,
     }).then((result) => {
-      if (cancelled) return;
-      if (!result.success) return;
+      if (!result.success) {
+        console.warn('[나다움] 만세력 실패:', result.error);
+        return;
+      }
       const baldal = result.data['발달오행'] as Record<string, number> | undefined;
+      console.log('[나다움] 발달오행:', baldal);
       if (baldal) {
         const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
           name: cfg.name,
@@ -302,10 +304,10 @@ export default function NadaumAnalysisPage() {
         })).filter((d) => d.value > 0);
         if (parsed.length > 0) setOhengData(parsed);
       }
-    }).catch(() => {});
-
-    return () => { cancelled = true; };
-  }, [saju]);
+    }).catch((err) => {
+      console.warn('[나다움] 만세력 에러:', err);
+    });
+  }, [saju?.id]);
 
   // Compute radar data
   const confirmedCount = tags.length;
