@@ -54,9 +54,26 @@ export default function InquiryWritePage({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="bg-white fixed inset-x-0 top-0 flex justify-center" style={{ height: '100dvh' }}>
-      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
-
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: '#ffffff',
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 440,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#ffffff',
+          position: 'relative',
+        }}
+      >
         {/* 상단 네비게이션 */}
         <div className="bg-white shrink-0 w-full z-20" style={{ height: '52px' }}>
           <div className="flex flex-col justify-center size-full">
@@ -79,7 +96,14 @@ export default function InquiryWritePage({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* 메인 콘텐츠 (스크롤 영역) */}
-        <div className="flex-1 overflow-auto w-full">
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            paddingBottom: 100,
+            WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+          }}
+        >
           <div style={{ padding: '12px 20px 40px 20px' }}>
 
             {/* 문의 유형 */}
@@ -234,43 +258,73 @@ export default function InquiryWritePage({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
-        {/* 하단 고정 버튼 */}
+        {/* 하단 고정 버튼 (absolute — SajuConsultPage 동일 패턴) */}
         <div
-          className="shrink-0 w-full bg-white"
           style={{
-            padding: '12px 20px calc(12px + env(safe-area-inset-bottom, 0px)) 20px',
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#ffffff',
             boxShadow: '0px -8px 16px 0px rgba(255, 255, 255, 0.76)',
           }}
         >
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="w-full flex items-center justify-center"
-            style={{
-              height: '56px',
-              borderRadius: '16px',
-              backgroundColor: canSubmit ? '#41a09e' : '#f8f8f8',
-              cursor: canSubmit ? 'pointer' : 'not-allowed',
-              border: 'none',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseDown={(e) => { if (canSubmit) { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#368683'; } }}
-            onMouseUp={(e) => { if (canSubmit) { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#41a09e'; } }}
-            onMouseLeave={(e) => { if (canSubmit) { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#41a09e'; } }}
-            onTouchStart={(e) => { if (canSubmit) { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#368683'; } }}
-            onTouchEnd={(e) => { if (canSubmit) { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = '#41a09e'; } }}
-          >
-            <span style={{
-              fontFamily: 'Pretendard Variable, sans-serif',
-              fontSize: '16px',
-              fontWeight: 500,
-              lineHeight: '25px',
-              letterSpacing: '-0.32px',
-              color: canSubmit ? '#ffffff' : '#b7b7b7',
-            }}>
-              {isSubmitting ? '등록 중...' : '문의 등록'}
-            </span>
-          </button>
+          <div style={{ padding: '12px 20px' }}>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              onTouchStart={() => {}}
+              onPointerDown={(e) => {
+                if (!canSubmit) return;
+                e.currentTarget.style.transform = 'scale(0.995) translateZ(0)';
+                e.currentTarget.style.backgroundColor = '#368683';
+              }}
+              onPointerUp={(e) => {
+                if (!canSubmit) return;
+                e.currentTarget.style.transform = 'scale(1) translateZ(0)';
+                e.currentTarget.style.backgroundColor = '#41a09e';
+              }}
+              onPointerLeave={(e) => {
+                if (!canSubmit) return;
+                e.currentTarget.style.transform = 'scale(1) translateZ(0)';
+                e.currentTarget.style.backgroundColor = '#41a09e';
+              }}
+              onPointerCancel={(e) => {
+                if (!canSubmit) return;
+                e.currentTarget.style.transform = 'scale(1) translateZ(0)';
+                e.currentTarget.style.backgroundColor = '#41a09e';
+              }}
+              style={{
+                width: '100%',
+                height: 56,
+                borderRadius: 20,
+                border: 'none',
+                backgroundColor: canSubmit ? '#41a09e' : '#f8f8f8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: canSubmit ? 'pointer' : 'default',
+                transition: 'background-color 0.2s ease, transform 0.15s ease-out',
+                WebkitTapHighlightColor: 'transparent',
+                transform: 'scale(1) translateZ(0)',
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+              }}
+            >
+              <span style={{
+                fontFamily: 'Pretendard Variable, sans-serif',
+                fontSize: '16px',
+                fontWeight: 500,
+                lineHeight: '25px',
+                letterSpacing: '-0.32px',
+                color: canSubmit ? '#ffffff' : '#b7b7b7',
+                transition: 'color 0.2s ease',
+              }}>
+                {isSubmitting ? '등록 중...' : '문의 등록'}
+              </span>
+            </button>
+          </div>
         </div>
 
       </div>
