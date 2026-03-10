@@ -456,7 +456,7 @@ export default function NadaumAnalysisPage() {
                   <img
                     src={getZodiacImageUrl(zodiacText)}
                     alt={zodiacText}
-                    style={{ width: '36px', height: '36px', objectFit: 'contain' }}
+                    style={{ width: '48px', height: '48px', objectFit: 'cover' }}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 </div>
