@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { getManseData } from '../lib/manseService';
 import BottomTabBar from './BottomTabBar';
@@ -705,40 +705,42 @@ export default function NadaumAnalysisPage() {
             <p style={{ fontFamily: font, fontSize: '17px', fontWeight: 600, color: C.black, marginBottom: '4px' }}>
               오행 에너지 분포
             </p>
-            <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600, marginBottom: '8px' }}>
+            <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600, marginBottom: '16px' }}>
               사주 만세력 기반 타고난 에너지 비율
             </p>
-            <div style={{ width: '100%', height: '200px' }}>
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={ohengData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                    animationBegin={300}
-                    animationDuration={800}
-                  >
-                    {ohengData.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            {/* Legend */}
-            <div className="flex flex-wrap items-center justify-center gap-3" style={{ marginTop: '4px' }}>
-              {ohengData.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-1">
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: entry.color }} />
-                  <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.gray700 }}>
-                    {entry.name} {entry.value}%
-                  </span>
-                </div>
-              ))}
+            {/* 오행 수평 바 차트 */}
+            <div className="flex flex-col gap-3">
+              {ohengData.map((entry, i) => {
+                const maxVal = Math.max(...ohengData.map((d) => d.value));
+                const barWidth = Math.max((entry.value / maxVal) * 100, 8);
+                return (
+                  <div key={entry.name} className="flex items-center gap-3">
+                    <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 600, color: entry.color, width: '52px', textAlign: 'right' }}>
+                      {entry.name}
+                    </span>
+                    <div className="flex-1" style={{ height: '22px', backgroundColor: '#f3f3f3', borderRadius: '11px', overflow: 'hidden' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${barWidth}%` }}
+                        transition={{ duration: 0.6, delay: 0.1 + i * 0.08, ease: 'easeOut' }}
+                        style={{
+                          height: '100%',
+                          backgroundColor: entry.color,
+                          borderRadius: '11px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          paddingRight: '8px',
+                        }}
+                      >
+                        <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.white }}>
+                          {entry.value}%
+                        </span>
+                      </motion.div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}
