@@ -256,7 +256,7 @@ export default function MasterInquiryPage({ onBack }: MasterInquiryPageProps) {
         </div>
 
         {/* 메인 콘텐츠 */}
-        <div className="flex-1 overflow-auto w-full">
+        <div className="flex-1 min-h-0 overflow-auto w-full" style={{ WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
 
           {/* 통계 바 */}
           <div className="flex items-center justify-between" style={{ padding: '12px 20px' }}>

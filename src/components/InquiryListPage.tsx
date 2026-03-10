@@ -110,7 +110,7 @@ export default function InquiryListPage({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* 메인 콘텐츠 */}
-        <div className="flex-1 overflow-auto w-full">
+        <div className="flex-1 min-h-0 overflow-auto w-full" style={{ WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
           {isLoading ? (
             /* 로딩 */
             <div className="flex items-center justify-center" style={{ paddingTop: '80px' }}>
