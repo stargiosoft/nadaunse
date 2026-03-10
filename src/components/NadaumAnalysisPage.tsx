@@ -1,0 +1,643 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
+import { supabase, getAuthUser } from '../lib/supabase';
+import BottomTabBar from './BottomTabBar';
+import SEO from './SEO';
+import { getZodiacImageUrl } from '../lib/zodiacUtils';
+import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
+
+const font = "'Pretendard Variable', sans-serif";
+
+// ─── Design Tokens ──────────────────────────────────────────────────────────
+
+const C = {
+  primary: '#41a09e',
+  primaryLight: '#f0f8f8',
+  primaryDark: '#368683',
+  black: '#151515',
+  gray700: '#6d6d6d',
+  gray600: '#848484',
+  gray400: '#b7b7b7',
+  gray200: '#e7e7e7',
+  bg: '#f7f8f9',
+  cardBg: '#ffffff',
+  divider: '#f3f3f3',
+  white: '#ffffff',
+  lockBg: '#f9f9f9',
+  // Analysis card colors
+  love: '#ef6878',
+  loveBg: '#fff6f7',
+  money: '#f5a623',
+  moneyBg: '#fff9f0',
+  career: '#4590d6',
+  careerBg: '#f0f6ff',
+  nature: '#41a09e',
+  natureBg: '#f0f8f8',
+  health: '#8b5cf6',
+  healthBg: '#f5f3ff',
+} as const;
+
+// ─── Tag Category Mapping ───────────────────────────────────────────────────
+
+interface CategoryMap {
+  label: string;
+  keywords: string[];
+}
+
+const TAG_CATEGORIES: CategoryMap[] = [
+  {
+    label: '실행력',
+    keywords: ['추진력', '도전', '적극', '결단', '행동', '실천', '진취', '주도', '과감', '대범'],
+  },
+  {
+    label: '사고력',
+    keywords: ['분석', '논리', '전략', '통찰', '지적', '지혜', '탐구', '관찰', '냉철', '사려'],
+  },
+  {
+    label: '감성',
+    keywords: ['감성', '감수성', '섬세', '공감', '따뜻', '다정', '포근', '온화', '감정', '깊은'],
+  },
+  {
+    label: '관계',
+    keywords: ['사교', '배려', '친화', '소통', '친근', '협력', '포용', '이해심', '친절', '헌신'],
+  },
+  {
+    label: '의지력',
+    keywords: ['끈기', '인내', '꾸준', '집중', '묵묵', '뚝심', '견디', '굳건', '일관', '우직'],
+  },
+  {
+    label: '안정감',
+    keywords: ['차분', '신중', '균형', '현실', '안정', '절제', '침착', '담담', '조심', '신뢰'],
+  },
+];
+
+function categorizeTag(tagName: string): number {
+  for (let i = 0; i < TAG_CATEGORIES.length; i++) {
+    if (TAG_CATEGORIES[i].keywords.some((kw) => tagName.includes(kw))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface SajuRecord {
+  id: string;
+  full_name: string;
+  gender: string;
+  birth_date: string;
+  birth_time: string;
+  calendar_type: string;
+  zodiac: string;
+  is_primary: boolean;
+}
+
+interface TraitTag {
+  tag_name: string;
+  tag_type: string;
+  is_confirmed: boolean;
+}
+
+interface AnalysisCard {
+  key: string;
+  title: string;
+  emoji: string;
+  color: string;
+  bgColor: string;
+  unlockCount: number;
+  description: string;
+}
+
+const ANALYSIS_CARDS: AnalysisCard[] = [
+  { key: 'love', title: '연애·궁합', emoji: '💕', color: C.love, bgColor: C.loveBg, unlockCount: 5, description: '나의 연애 성향과 이상형, 궁합 분석' },
+  { key: 'nature', title: '기질·성격', emoji: '🧬', color: C.nature, bgColor: C.natureBg, unlockCount: 5, description: '타고난 기질과 성격 심층 분석' },
+  { key: 'money', title: '재물·금전', emoji: '💰', color: C.money, bgColor: C.moneyBg, unlockCount: 8, description: '나의 재물운과 금전 관리 성향' },
+  { key: 'career', title: '직업·적성', emoji: '💼', color: C.career, bgColor: C.careerBg, unlockCount: 12, description: '적성에 맞는 진로와 업무 스타일' },
+  { key: 'health', title: '건강·체질', emoji: '🏥', color: C.health, bgColor: C.healthBg, unlockCount: 15, description: '사주로 보는 체질과 건강 관리법' },
+];
+
+// ─── Skeleton ───────────────────────────────────────────────────────────────
+
+function NadaumSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" style={{ padding: '20px' }}>
+      <div className="rounded-2xl" style={{ height: '120px', backgroundColor: '#f3f3f3' }} />
+      <div className="rounded-2xl" style={{ height: '280px', backgroundColor: '#f3f3f3' }} />
+      <div className="rounded-2xl" style={{ height: '80px', backgroundColor: '#f3f3f3' }} />
+      <div className="rounded-2xl" style={{ height: '80px', backgroundColor: '#f3f3f3' }} />
+    </div>
+  );
+}
+
+// ─── Radar Chart Custom Tick ────────────────────────────────────────────────
+
+function CustomAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor="middle"
+      dominantBaseline="central"
+      style={{
+        fontFamily: font,
+        fontSize: '11px',
+        fontWeight: 500,
+        fill: C.gray700,
+      }}
+    >
+      {payload?.value}
+    </text>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+
+export default function NadaumAnalysisPage() {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [saju, setSaju] = useState<SajuRecord | null>(null);
+  const [tags, setTags] = useState<TraitTag[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Fetch data
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const { data: { user } } = await getAuthUser();
+        if (!user) {
+          if (!cancelled) {
+            setIsLoggedIn(false);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (!cancelled) setIsLoggedIn(true);
+
+        // Parallel fetch
+        const [sajuRes, tagsRes] = await Promise.all([
+          supabase
+            .from('saju_records')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_primary', true)
+            .single(),
+          supabase
+            .from('user_trait_tags')
+            .select('tag_name, tag_type, is_confirmed')
+            .eq('user_id', user.id)
+            .eq('is_confirmed', true),
+        ]);
+
+        if (!cancelled) {
+          if (sajuRes.data) setSaju(sajuRes.data);
+          if (tagsRes.data) setTags(tagsRes.data);
+          setIsLoading(false);
+        }
+      } catch {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Compute radar data
+  const confirmedCount = tags.length;
+  const isUnlocked = confirmedCount >= 5;
+
+  const radarData = useMemo(() => {
+    const counts = new Array(TAG_CATEGORIES.length).fill(0);
+    for (const tag of tags) {
+      const idx = categorizeTag(tag.tag_name);
+      if (idx >= 0) counts[idx]++;
+    }
+    const max = Math.max(...counts, 1);
+    return TAG_CATEGORIES.map((cat, i) => ({
+      category: cat.label,
+      value: Math.round((counts[i] / max) * 100),
+      count: counts[i],
+    }));
+  }, [tags]);
+
+  // Top tags
+  const topPositive = useMemo(() => {
+    const positives = tags.filter((t) => t.tag_type === 'positive');
+    const freq = new Map<string, number>();
+    for (const t of positives) freq.set(t.tag_name, (freq.get(t.tag_name) || 0) + 1);
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name]) => name);
+  }, [tags]);
+
+  const topNegative = useMemo(() => {
+    const negatives = tags.filter((t) => t.tag_type === 'negative');
+    const freq = new Map<string, number>();
+    for (const t of negatives) freq.set(t.tag_name, (freq.get(t.tag_name) || 0) + 1);
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name);
+  }, [tags]);
+
+  // Positive / Negative ratio
+  const positiveCount = tags.filter((t) => t.tag_type === 'positive').length;
+  const negativeCount = tags.filter((t) => t.tag_type === 'negative').length;
+  const totalPN = positiveCount + negativeCount || 1;
+  const positivePercent = Math.round((positiveCount / totalPN) * 100);
+
+  // Format birth date
+  const birthText = useMemo(() => {
+    if (!saju) return '';
+    const d = new Date(saju.birth_date);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const cal = saju.calendar_type === 'lunar' ? '음력' : '양력';
+    const gen = saju.gender === 'male' ? '남' : '여';
+    return `${cal} ${yyyy}.${mm}.${dd} · ${gen}`;
+  }, [saju]);
+
+  // Zodiac
+  const zodiacText = useMemo(() => {
+    if (!saju) return '';
+    if (saju.zodiac) return saju.zodiac;
+    try {
+      const d = new Date(saju.birth_date);
+      return getChineseZodiacByLichun(d.getFullYear(), d.getMonth() + 1, d.getDate()) || '';
+    } catch {
+      return '';
+    }
+  }, [saju]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center" style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+        <div className="w-full max-w-[440px] relative" style={{ paddingBottom: '80px' }}>
+          <NadaumSkeleton />
+          <BottomTabBar />
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!isLoggedIn) {
+    return (
+      <div className="flex justify-center" style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+        <div className="w-full max-w-[440px] relative flex flex-col items-center justify-center" style={{ paddingBottom: '80px' }}>
+          <SEO title="나다움 분석 | 나다운세" description="나만의 성향 분석 리포트" />
+          <div className="flex flex-col items-center gap-4" style={{ padding: '40px 20px' }}>
+            <div style={{ fontSize: '48px' }}>🔮</div>
+            <p style={{ fontFamily: font, fontSize: '18px', fontWeight: 600, color: C.black, textAlign: 'center' }}>
+              나다움 분석
+            </p>
+            <p style={{ fontFamily: font, fontSize: '14px', fontWeight: 400, color: C.gray700, textAlign: 'center', lineHeight: '22px' }}>
+              로그인하고 운세를 보면{'\n'}나만의 성향 분석 리포트가 만들어져요
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="flex items-center justify-center cursor-pointer"
+              style={{
+                width: '200px',
+                height: '48px',
+                borderRadius: '14px',
+                backgroundColor: C.primary,
+                border: 'none',
+                marginTop: '8px',
+              }}
+            >
+              <span style={{ fontFamily: font, fontSize: '15px', fontWeight: 500, color: C.white }}>
+                로그인하기
+              </span>
+            </button>
+          </div>
+          <BottomTabBar />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-center" style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
+      <div className="w-full max-w-[440px] relative" style={{ paddingBottom: '80px' }}>
+        <SEO title="나다움 분석 | 나다운세" description="나만의 성향 분석 리포트" />
+
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div style={{ padding: '16px 20px 8px' }}>
+          <p style={{ fontFamily: font, fontSize: '22px', fontWeight: 600, lineHeight: '32px', letterSpacing: '-0.22px', color: C.black }}>
+            나다움 분석
+          </p>
+          <p style={{ fontFamily: font, fontSize: '14px', fontWeight: 400, lineHeight: '20px', color: C.gray700, marginTop: '4px' }}>
+            운세를 볼수록 나를 더 정확히 알 수 있어요
+          </p>
+        </div>
+
+        {/* ─── Profile Card ───────────────────────────────────────── */}
+        {saju && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{ margin: '12px 20px', padding: '20px', backgroundColor: C.cardBg, borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+          >
+            <div className="flex items-center gap-3">
+              {/* Zodiac Image */}
+              {zodiacText && (
+                <div
+                  className="flex items-center justify-center shrink-0 overflow-hidden rounded-full transform-gpu"
+                  style={{ width: '48px', height: '48px', backgroundColor: C.primaryLight }}
+                >
+                  <img
+                    src={getZodiacImageUrl(zodiacText)}
+                    alt={zodiacText}
+                    style={{ width: '36px', height: '36px', objectFit: 'contain' }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <p style={{ fontFamily: font, fontSize: '16px', fontWeight: 600, color: C.black }}>
+                  {saju.full_name}
+                </p>
+                <p style={{ fontFamily: font, fontSize: '13px', fontWeight: 400, color: C.gray700 }}>
+                  {birthText} {zodiacText && `· ${zodiacText}띠`}
+                </p>
+              </div>
+            </div>
+
+            {/* Tag Count Badge */}
+            <div className="flex items-center gap-2" style={{ marginTop: '16px' }}>
+              <div
+                className="flex items-center gap-1"
+                style={{ padding: '4px 10px', backgroundColor: C.primaryLight, borderRadius: '20px' }}
+              >
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.primaryDark }}>
+                  나다움 태그 {confirmedCount}개
+                </span>
+              </div>
+              {!isUnlocked && (
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600 }}>
+                  {5 - confirmedCount}개 더 모으면 분석이 열려요!
+                </span>
+              )}
+            </div>
+
+            {/* Progress Bar (if locked) */}
+            {!isUnlocked && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ height: '6px', backgroundColor: '#f3f3f3', borderRadius: '3px', overflow: 'hidden' }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((confirmedCount / 5) * 100, 100)}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    style={{ height: '100%', backgroundColor: C.primary, borderRadius: '3px' }}
+                  />
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ─── Radar Chart (나다움 DNA) ───────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          style={{ margin: '8px 20px', padding: '24px 16px', backgroundColor: C.cardBg, borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+        >
+          <div className="flex items-center justify-between">
+            <p style={{ fontFamily: font, fontSize: '17px', fontWeight: 600, color: C.black }}>
+              나다움 DNA
+            </p>
+            {!isUnlocked && (
+              <div className="flex items-center gap-1" style={{ padding: '3px 8px', backgroundColor: C.lockBg, borderRadius: '8px' }}>
+                <span style={{ fontSize: '12px' }}>🔒</span>
+                <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600 }}>
+                  태그 5개 필요
+                </span>
+              </div>
+            )}
+          </div>
+
+          {isUnlocked ? (
+            <>
+              <div style={{ width: '100%', height: '260px', marginTop: '8px' }}>
+                <ResponsiveContainer>
+                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                    <PolarGrid stroke="#e7e7e7" />
+                    <PolarAngleAxis dataKey="category" tick={<CustomAxisTick />} />
+                    <Radar
+                      dataKey="value"
+                      stroke={C.primary}
+                      fill={C.primary}
+                      fillOpacity={0.15}
+                      strokeWidth={2}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Top Tags */}
+              {topPositive.length > 0 && (
+                <div className="flex flex-wrap gap-2" style={{ marginTop: '12px' }}>
+                  {topPositive.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        fontFamily: font,
+                        fontSize: '13px',
+                        fontWeight: 400,
+                        color: C.primaryDark,
+                        backgroundColor: C.primaryLight,
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {topNegative.length > 0 && (
+                <div className="flex flex-wrap gap-2" style={{ marginTop: '8px' }}>
+                  {topNegative.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        fontFamily: font,
+                        fontSize: '13px',
+                        fontWeight: 400,
+                        color: '#9b6d6d',
+                        backgroundColor: '#fdf5f5',
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            /* Locked State */
+            <div className="flex flex-col items-center justify-center" style={{ height: '200px' }}>
+              <div style={{ fontSize: '40px', opacity: 0.4 }}>📊</div>
+              <p style={{ fontFamily: font, fontSize: '14px', fontWeight: 400, color: C.gray600, textAlign: 'center', marginTop: '12px', lineHeight: '22px' }}>
+                운세를 보고 나다움 태그를 모으면{'\n'}나만의 DNA 차트가 완성돼요
+              </p>
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center justify-center cursor-pointer"
+                style={{
+                  marginTop: '16px',
+                  padding: '8px 20px',
+                  borderRadius: '12px',
+                  backgroundColor: C.primaryLight,
+                  border: 'none',
+                }}
+              >
+                <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, color: C.primary }}>
+                  운세 보러가기
+                </span>
+              </button>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ─── Balance Bar (긍정/부정 비율) ────────────────────────── */}
+        {isUnlocked && (positiveCount > 0 || negativeCount > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            style={{ margin: '8px 20px', padding: '20px', backgroundColor: C.cardBg, borderRadius: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+          >
+            <p style={{ fontFamily: font, fontSize: '17px', fontWeight: 600, color: C.black }}>
+              성향 밸런스
+            </p>
+            <div className="flex items-center" style={{ marginTop: '16px', height: '24px', borderRadius: '12px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${positivePercent}%`,
+                  height: '100%',
+                  backgroundColor: C.primary,
+                  borderRadius: positivePercent === 100 ? '12px' : '12px 0 0 12px',
+                  transition: 'width 0.6s ease',
+                }}
+              />
+              <div
+                style={{
+                  width: `${100 - positivePercent}%`,
+                  height: '100%',
+                  backgroundColor: '#f0a0a8',
+                  borderRadius: positivePercent === 0 ? '12px' : '0 12px 12px 0',
+                  transition: 'width 0.6s ease',
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between" style={{ marginTop: '8px' }}>
+              <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, color: C.primary }}>
+                긍정 {positivePercent}%
+              </span>
+              <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, color: '#e88090' }}>
+                보완점 {100 - positivePercent}%
+              </span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── Analysis Cards ─────────────────────────────────────── */}
+        <div style={{ padding: '8px 20px 0' }}>
+          <p style={{ fontFamily: font, fontSize: '17px', fontWeight: 600, color: C.black, marginBottom: '12px' }}>
+            상세 분석
+          </p>
+        </div>
+
+        {ANALYSIS_CARDS.map((card, i) => {
+          const unlocked = confirmedCount >= card.unlockCount;
+          return (
+            <motion.div
+              key={card.key}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15 + i * 0.05 }}
+              onClick={() => {
+                if (!unlocked) return;
+                navigate(`/nadaum/${card.key}`);
+              }}
+              className={unlocked ? 'cursor-pointer' : ''}
+              style={{
+                margin: '0 20px 10px',
+                padding: '16px 20px',
+                backgroundColor: unlocked ? card.bgColor : C.lockBg,
+                borderRadius: '16px',
+                opacity: unlocked ? 1 : 0.7,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span style={{ fontSize: '24px' }}>{card.emoji}</span>
+                  <div>
+                    <p style={{ fontFamily: font, fontSize: '15px', fontWeight: 600, color: unlocked ? C.black : C.gray600 }}>
+                      {card.title}
+                    </p>
+                    <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: unlocked ? C.gray700 : C.gray400, marginTop: '2px' }}>
+                      {card.description}
+                    </p>
+                  </div>
+                </div>
+                {unlocked ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 12L10 8L6 4" stroke={C.gray400} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <div className="flex items-center gap-1" style={{ padding: '3px 8px', backgroundColor: C.white, borderRadius: '8px' }}>
+                    <span style={{ fontSize: '10px' }}>🔒</span>
+                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600 }}>
+                      태그 {card.unlockCount}개
+                    </span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+
+        {/* ─── CTA: 운세 보러가기 ─────────────────────────────────── */}
+        {!isUnlocked && (
+          <div style={{ padding: '12px 20px 20px' }}>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full flex items-center justify-center cursor-pointer"
+              style={{
+                height: '52px',
+                borderRadius: '16px',
+                backgroundColor: C.primary,
+                border: 'none',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onTouchStart={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onTouchEnd={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <span style={{ fontFamily: font, fontSize: '15px', fontWeight: 500, color: C.white, letterSpacing: '-0.3px' }}>
+                운세 보고 태그 모으러 가기
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Bottom padding for tab bar */}
+        <div style={{ height: '20px' }} />
+
+        <BottomTabBar />
+      </div>
+    </div>
+  );
+}
