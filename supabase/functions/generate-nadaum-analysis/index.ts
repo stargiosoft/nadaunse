@@ -199,7 +199,10 @@ serve(async (req) => {
           .eq('user_id', user.id)
           .eq('is_confirmed', true)
 
-        if (currentTagCount && Math.abs(currentTagCount - cached.tag_count) < 10) {
+        // metadata에 score가 있으면 새 포맷, 없으면 구 포맷 → 재생성
+        const hasMetadata = cached.metadata && typeof cached.metadata === 'object' && cached.metadata.score != null
+
+        if (hasMetadata && currentTagCount && Math.abs(currentTagCount - cached.tag_count) < 10) {
           return jsonResponse(req, {
             success: true,
             analysis: {
@@ -212,7 +215,7 @@ serve(async (req) => {
             },
           })
         }
-        console.log('⚠️ 태그 수 변화 감지, 재생성 (이전:', cached.tag_count, '현재:', currentTagCount, ')')
+        console.log('⚠️ 재생성 필요 (metadata:', hasMetadata ? '있음' : '없음', ', 이전 태그:', cached.tag_count, ', 현재:', currentTagCount, ')')
       }
     }
 
