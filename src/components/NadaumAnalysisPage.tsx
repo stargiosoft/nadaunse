@@ -265,38 +265,7 @@ export default function NadaumAnalysisPage() {
         ]);
 
         if (!cancelled) {
-          if (sajuRes.data) {
-            setSaju(sajuRes.data);
-            // 오행 데이터 로드 (비동기, 로딩 블로킹 안 함)
-            getManseData({
-              id: sajuRes.data.id,
-              birth_date: sajuRes.data.birth_date,
-              birth_time: sajuRes.data.birth_time,
-              gender: sajuRes.data.gender,
-              calendar_type: sajuRes.data.calendar_type,
-            }).then((result) => {
-              if (cancelled) return;
-              if (!result.success) {
-                console.warn('[나다움] 만세력 로드 실패:', result.error);
-                return;
-              }
-              // 발달오행 키 탐색 (API 응답 형태에 따라 다를 수 있음)
-              const data = result.data;
-              const baldal = (data['발달오행'] || data['baldal_oheng'] || data['developedOheng']) as Record<string, number> | undefined;
-              console.log('[나다움] 만세력 키:', Object.keys(data).slice(0, 10), '발달오행:', baldal);
-              if (baldal) {
-                const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
-                  name: cfg.name,
-                  value: baldal[cfg.key] || 0,
-                  color: cfg.color,
-                  label: cfg.label,
-                })).filter((d) => d.value > 0);
-                if (parsed.length > 0) setOhengData(parsed);
-              }
-            }).catch((err) => {
-              console.warn('[나다움] 오행 로드 에러:', err);
-            });
-          }
+          if (sajuRes.data) setSaju(sajuRes.data);
           if (tagsRes.data) setTags(tagsRes.data);
           setIsLoading(false);
         }
@@ -308,6 +277,35 @@ export default function NadaumAnalysisPage() {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  // 오행 데이터 로드 (saju 세팅 후 별도 fetch)
+  useEffect(() => {
+    if (!saju) return;
+    let cancelled = false;
+
+    getManseData({
+      id: saju.id,
+      birth_date: saju.birth_date,
+      birth_time: saju.birth_time,
+      gender: saju.gender,
+      calendar_type: saju.calendar_type,
+    }).then((result) => {
+      if (cancelled) return;
+      if (!result.success) return;
+      const baldal = result.data['발달오행'] as Record<string, number> | undefined;
+      if (baldal) {
+        const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
+          name: cfg.name,
+          value: baldal[cfg.key] || 0,
+          color: cfg.color,
+          label: cfg.label,
+        })).filter((d) => d.value > 0);
+        if (parsed.length > 0) setOhengData(parsed);
+      }
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [saju]);
 
   // Compute radar data
   const confirmedCount = tags.length;
