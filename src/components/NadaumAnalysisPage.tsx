@@ -365,8 +365,11 @@ export default function NadaumAnalysisPage() {
     if (!saju) return '';
     if (saju.zodiac) return saju.zodiac;
     try {
-      const d = new Date(saju.birth_date);
-      return getChineseZodiacByLichun(d.getFullYear(), d.getMonth() + 1, d.getDate()) || '';
+      // getChineseZodiacByLichun expects (birthDate: string, birthTime?: string)
+      const dateStr = typeof saju.birth_date === 'string'
+        ? saju.birth_date
+        : new Date(saju.birth_date).toISOString().split('T')[0];
+      return getChineseZodiacByLichun(dateStr, saju.birth_time) || '';
     } catch {
       return '';
     }
