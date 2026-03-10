@@ -49,6 +49,24 @@ function NadaumIcon({ active }: { active: boolean }) {
   );
 }
 
+function MaumTalkIcon({ active }: { active: boolean }) {
+  const color = active ? '#41a09e' : '#b7b7b7';
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="9" cy="12" r="1" fill={color} />
+      <circle cx="12.5" cy="12" r="1" fill={color} />
+      <circle cx="16" cy="12" r="1" fill={color} />
+    </svg>
+  );
+}
+
 function ProfileIcon({ active }: { active: boolean }) {
   const color = active ? '#41a09e' : '#b7b7b7';
   return (
@@ -67,7 +85,7 @@ function ProfileIcon({ active }: { active: boolean }) {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-type TabKey = 'home' | 'nadaum' | 'profile';
+type TabKey = 'home' | 'nadaum' | 'maumtalk' | 'profile';
 
 interface Tab {
   key: TabKey;
@@ -79,6 +97,7 @@ interface Tab {
 const tabs: Tab[] = [
   { key: 'home', label: '홈', path: '/', icon: (a) => <HomeIcon active={a} /> },
   { key: 'nadaum', label: '나다움', path: '/nadaum', icon: (a) => <NadaumIcon active={a} /> },
+  { key: 'maumtalk', label: '마음톡', path: '/maumtalk', icon: (a) => <MaumTalkIcon active={a} /> },
   { key: 'profile', label: '프로필', path: '/profile', icon: (a) => <ProfileIcon active={a} /> },
 ];
 
@@ -88,6 +107,7 @@ export default function BottomTabBar() {
 
   const activeTab: TabKey =
     pathname === '/nadaum' ? 'nadaum'
+    : pathname === '/maumtalk' || pathname.startsWith('/maumtalk/') ? 'maumtalk'
     : pathname === '/profile' || pathname.startsWith('/profile/') ? 'profile'
     : 'home';
 
