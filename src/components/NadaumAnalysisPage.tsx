@@ -270,19 +270,27 @@ export default function NadaumAnalysisPage() {
               gender: sajuRes.data.gender,
               calendar_type: sajuRes.data.calendar_type,
             }).then((result) => {
-              if (!cancelled && result.success) {
-                const baldal = result.data['발달오행'] as Record<string, number> | undefined;
-                if (baldal) {
-                  const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
-                    name: cfg.name,
-                    value: baldal[cfg.key] || 0,
-                    color: cfg.color,
-                    label: cfg.label,
-                  })).filter((d) => d.value > 0);
-                  setOhengData(parsed);
-                }
+              if (cancelled) return;
+              if (!result.success) {
+                console.warn('[나다움] 만세력 로드 실패:', result.error);
+                return;
               }
-            }).catch(() => { /* 오행 로드 실패해도 무시 */ });
+              // 발달오행 키 탐색 (API 응답 형태에 따라 다를 수 있음)
+              const data = result.data;
+              const baldal = (data['발달오행'] || data['baldal_oheng'] || data['developedOheng']) as Record<string, number> | undefined;
+              console.log('[나다움] 만세력 키:', Object.keys(data).slice(0, 10), '발달오행:', baldal);
+              if (baldal) {
+                const parsed: OhengData[] = OHENG_CONFIG.map((cfg) => ({
+                  name: cfg.name,
+                  value: baldal[cfg.key] || 0,
+                  color: cfg.color,
+                  label: cfg.label,
+                })).filter((d) => d.value > 0);
+                if (parsed.length > 0) setOhengData(parsed);
+              }
+            }).catch((err) => {
+              console.warn('[나다움] 오행 로드 에러:', err);
+            });
           }
           if (tagsRes.data) setTags(tagsRes.data);
           setIsLoading(false);
