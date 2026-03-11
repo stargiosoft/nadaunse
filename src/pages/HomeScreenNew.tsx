@@ -948,7 +948,6 @@ function NewFortuneSection({
           </span>
         </button>
       </div>
-      <div style={{ height: 8, backgroundColor: '#F9F9F9', marginTop: 32, marginLeft: -20, marginRight: -20 }} />
     </section>
   );
 }
@@ -1554,11 +1553,11 @@ export function HomeScreenNew() {
         <AppHeader />
         <AppSearchBar />
         <FreeConsultationSection nickname={nickname} />
+        <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
+
         {newFreeSlides.length > 0 && (
           <NewFortuneSection dot={dot} onDotChange={setDot} slides={newFreeSlides} />
         )}
-
-        <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
         <div style={{ marginTop: 130, marginBottom: 80 }}>
           <Footer
             onNavigateToTerms={() => navigate('/terms-of-service')}

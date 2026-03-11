@@ -3,6 +3,9 @@
       "version": "0.1.0",
       "private": true,
       "dependencies": {
+            "@capacitor/app": "^8.0.1",
+            "@capacitor/browser": "^8.0.2",
+            "@capacitor/core": "^8.2.0",
             "@jsr/supabase__supabase-js": "^2.49.8",
             "@radix-ui/react-accordion": "*",
             "@radix-ui/react-alert-dialog": "^1.1.6",
