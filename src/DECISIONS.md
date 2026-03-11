@@ -16,6 +16,29 @@
 
 ---
 
+## 2026-03-11
+
+### BEST 운세 추천순 정렬 — 지수 감쇠 카테고리 점수 + 비로그인 localStorage 폴백
+
+**결정**: 개인화된 '추천순' 정렬을 기본값으로 추가하고, 로그인/비로그인 사용자에 따라 다른 추천 전략 사용
+
+**설계**:
+- **테이블**: `user_category_interactions` — 사용자별 콘텐츠 카테고리 이용 기록 (UPSERT 방식)
+- **트리거**: `orders`(유료 완료)와 `free_content_records`(무료 이용) AFTER INSERT 시 자동 기록
+- **RPC**: `get_recommended_contents` — `get_home_contents`와 동일 시그니처 + 추천 로직
+- **추천 로직 (로그인+이력)**:
+  1. 대분류(`category_main`) 점수: `e^(-0.01d)` 지수 감쇠 (365일 이내)
+  2. 중분류(`category_sub`) 점수: 동일 감쇠
+  3. `recommended_paid_content_id` 부스트: 최근 90일 무료 콘텐츠의 업셀 대상 우선
+  4. 폴백: `weekly_clicks DESC, created_at DESC`
+- **비로그인 추천**: localStorage `recommended_paid_ids` 키에 최근 무료 결과의 추천 유료 콘텐츠 ID 저장 (최대 20개, 최신순) → 프론트엔드에서 인기순 결과를 재정렬
+
+**이유**: DB 기반 추천은 로그인 사용자에게만 의미 있고, 비로그인 사용자는 localStorage가 유일한 개인화 수단. 지수 감쇠는 최근 관심사에 자연스럽게 가중치를 부여하면서도 과거 이력을 완전히 무시하지 않음
+
+**영향**: FortuneAllPage.tsx, App.tsx, 4개 마이그레이션 파일, 4개 문서
+
+---
+
 ## 2026-03-06
 
 ### 업셀링 후킹 멘트 아키텍처 — 추천 쿼리 경유 방식 채택
@@ -5218,6 +5241,72 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.6.0
-**최종 업데이트**: 2026-03-06
+## 2026-03-10 iOS 모바일 스크롤 & 하단 버튼 가림 문제 해결
+
+### 배경
+- 문의하기(InquiryWritePage), 문의 내역(InquiryListPage), 문의 관리(MasterInquiryPage) 페이지에서 iOS Chrome 하단 툴바에 CTA 버튼이 가려지고, 스크롤이 동작하지 않는 문제 발생
+
+### 문제 1: 하단 CTA 버튼이 iOS Chrome 툴바에 가려짐
+
+**원인**: flex `shrink-0`로 배치된 하단 버튼이 iOS Chrome에서 브라우저 하단 툴바 뒤에 위치
+
+**해결**: SajuConsultPage와 동일한 `position: absolute; bottom: 0` 패턴 적용
+
+```
+❌ 기존 (flex shrink-0 패턴)
+<div class="h-full flex flex-col">
+  <div class="shrink-0">헤더</div>
+  <div class="flex-1 overflow-auto">콘텐츠</div>
+  <div class="shrink-0">CTA 버튼</div>  ← iOS Chrome 툴바에 가려짐
+</div>
+
+✅ 수정 (absolute 패턴 — SajuConsultPage 동일)
+<div style="position: relative; height: 100%; display: flex; flex-direction: column">
+  <div>헤더</div>
+  <div style="flex: 1; overflow-y: auto; padding-bottom: 100px">콘텐츠</div>
+  <div style="position: absolute; bottom: 0; left: 0; right: 0">CTA 버튼</div>
+</div>
+```
+
+**핵심 포인트**:
+- 스크롤 영역에 `paddingBottom: 100px`을 줘서 absolute 버튼 뒤의 콘텐츠 가림 방지
+- `position: absolute; bottom: 0`이 iOS Chrome에서도 브라우저 툴바 위에 정상 배치됨
+- `100dvh`, `env(safe-area-inset-bottom)` 등은 iOS Chrome에서 효과 없음
+
+### 문제 2: iOS에서 스크롤이 동작하지 않음
+
+**원인**: `overflow-auto` 사용 시 iOS에서 스크롤 전파 문제 발생
+
+**해결**: ProfilePage에서 검증된 패턴으로 통일
+
+```
+❌ 기존
+<div class="flex-1 overflow-auto">
+
+✅ 수정 (ProfilePage 동일 패턴)
+<div class="flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
+```
+
+**핵심 포인트**:
+- `overflow-y-auto`: 세로 스크롤만 활성화
+- `overflow-x-hidden`: 좌우 스와이프 방지
+- `overscroll-y-contain`: iOS에서 스크롤 전파 차단 (부모 스크롤로 전파되지 않음)
+
+### 적용 규칙 (향후 새 페이지 작성 시)
+
+1. **하단 고정 CTA가 있는 페이지**: absolute 패턴 사용 + 스크롤 영역 paddingBottom
+2. **스크롤 영역**: 항상 `overflow-y-auto overflow-x-hidden overscroll-y-contain` 사용
+3. **참고 페이지**: SajuConsultPage (CTA), ProfilePage (스크롤)
+
+### 관련 파일
+- `/src/components/InquiryWritePage.tsx`
+- `/src/components/InquiryListPage.tsx`
+- `/src/components/MasterInquiryPage.tsx`
+- `/src/pages/SajuConsultPage.tsx` (참조 패턴)
+- `/src/components/ProfilePage.tsx` (참조 패턴)
+
+---
+
+**문서 버전**: 3.7.0
+**최종 업데이트**: 2026-03-10
 **문서 끝**

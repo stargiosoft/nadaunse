@@ -860,6 +860,7 @@ function NewFortuneSection({
                     if (hasDragged.current) return;
                     if (slide.id) {
                       trackContentClick(slide.id);
+                      sessionStorage.setItem('content_entry_source', '/new-free');
                       navigate(`/free/content/${slide.id}`, { state: { canGoBack: true } });
                     }
                   }}
@@ -1251,7 +1252,7 @@ function BestFortuneSection({
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           onTouchStart={e => (e.currentTarget.style.backgroundColor = '#F8F8F8')}
           onTouchEnd={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-          onClick={() => navigate('/best-fortune', { state: { sort: 'popular' } })}
+          onClick={() => navigate('/best-fortune')}
         >
           <span className="group-active:scale-90 transition-transform duration-150 flex items-center justify-center">
             <ChevronRightIcon />
@@ -1379,6 +1380,7 @@ function BestFortuneSection({
                   item={item}
                   onClick={() => {
                     trackContentClick(item.id);
+                    sessionStorage.setItem('content_entry_source', '/best-fortune');
                     navigate(
                       item.contentType === 'free'
                         ? `/free/content/${item.id}`

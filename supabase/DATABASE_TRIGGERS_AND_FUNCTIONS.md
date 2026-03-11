@@ -2,8 +2,8 @@
 
 본 문서는 Supabase 데이터베이스의 Triggers와 Functions를 정리한 문서입니다.
 
-> **Triggers**: 6개 | **Functions**: 13개 | **pg_cron Jobs**: 4개
-> **최종 업데이트**: 2026-03-05
+> **Triggers**: 8개 | **Functions**: 15개 | **pg_cron Jobs**: 4개
+> **최종 업데이트**: 2026-03-11
 > **환경**: Production & Staging 공통
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
@@ -30,6 +30,8 @@
 | `trigger_fill_gname` | `orders` | BEFORE | INSERT, UPDATE | `fill_gname_from_content()` | `content_id` 기반으로 `gname` 자동 채움 |
 | `update_orders_updated_at` | `orders` | BEFORE | UPDATE | `update_updated_at_column()` | `updated_at` 자동 갱신 |
 | `protect_sprout_balance_trigger` | `users` | BEFORE | UPDATE | `protect_sprout_balance()` | `sprout_balance` 직접 수정 차단 (authenticated/anon) |
+| `trigger_log_order_interaction` | `orders` | AFTER | INSERT, UPDATE OF pstatus | `log_order_category_interaction()` | 유료 주문 완료 시 카테고리 이용 기록 자동 저장 |
+| `trigger_log_free_content_interaction` | `free_content_records` | AFTER | INSERT | `log_free_content_category_interaction()` | 무료 콘텐츠 이용 시 카테고리 이용 기록 자동 저장 |
 
 ---
 
@@ -110,6 +112,18 @@
 **반환값**: `jsonb` - `{ success, new_balance, reward_amount }` / `{ success: false, already_granted: true }` / `{ success: false, fingerprint_used: true }` / `{ success: true, eligible: true }` (check_only 모드) (SECURITY DEFINER)
 **사용처**: Edge Function `grant-mission-sprout`에서 호출. user_id 중복 + ip_fingerprint 기기 중복 이중 체크. `p_check_only=true`면 자격 확인만 수행(지급X)
 
+### 14. `log_order_category_interaction`
+**목적**: 유료 콘텐츠 주문 완료(pstatus='completed'/'paid') 시 `user_category_interactions` 테이블에 카테고리 이용 기록 UPSERT
+**파라미터**: 없음 (트리거 함수, NEW 레코드 사용)
+**반환값**: TRIGGER (SECURITY DEFINER)
+**사용처**: `orders` 테이블 AFTER INSERT OR UPDATE OF pstatus 트리거
+
+### 15. `log_free_content_category_interaction`
+**목적**: 무료 콘텐츠 이용 시 `user_category_interactions` 테이블에 카테고리 이용 기록 UPSERT
+**파라미터**: 없음 (트리거 함수, NEW 레코드 사용)
+**반환값**: TRIGGER (SECURITY DEFINER)
+**사용처**: `free_content_records` 테이블 AFTER INSERT 트리거
+
 ---
 
 ## pg_cron 스케줄 작업
@@ -159,6 +173,8 @@ SELECT trigger_weekly_report_batch();
 | `trigger_fill_gname` | `orders` | `fill_gname_from_content` | BEFORE | INSERT, UPDATE |
 | `update_orders_updated_at` | `orders` | `update_updated_at_column` | BEFORE | UPDATE |
 | `protect_sprout_balance_trigger` | `users` | `protect_sprout_balance` | BEFORE | UPDATE |
+| `trigger_log_order_interaction` | `orders` | `log_order_category_interaction` | AFTER | INSERT, UPDATE OF pstatus |
+| `trigger_log_free_content_interaction` | `free_content_records` | `log_free_content_category_interaction` | AFTER | INSERT |
 
 ---
 

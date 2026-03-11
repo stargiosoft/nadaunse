@@ -200,6 +200,30 @@
 
 ---
 
+## 추천순 정렬 테이블
+
+### `user_category_interactions`
+
+사용자별 콘텐츠 카테고리 이용 기록 (추천순 정렬에 사용)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 레코드 고유 ID |
+| `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (auth.users.id, ON DELETE CASCADE) |
+| `content_id` | uuid | FOREIGN KEY, NOT NULL | - | 콘텐츠 ID (master_contents.id, ON DELETE CASCADE) |
+| `category_main` | text | NOT NULL | - | 주 카테고리 |
+| `category_sub` | text | - | - | 서브 카테고리 |
+| `content_type` | text | NOT NULL, CHECK | - | 콘텐츠 타입 ('free' 또는 'paid') |
+| `interacted_at` | timestamptz | NOT NULL | `now()` | 이용 일시 (재이용 시 갱신) |
+| `created_at` | timestamptz | NOT NULL | `now()` | 최초 생성 일시 |
+
+**인덱스**: `idx_uci_user_created` (user_id, interacted_at DESC), `idx_uci_user_main` (user_id, category_main)
+**UNIQUE**: `idx_uci_user_content` (user_id, content_id) — 같은 콘텐츠 재이용 시 UPSERT
+**RLS**: SELECT만 허용 (`auth.uid() = user_id`), INSERT/UPDATE는 SECURITY DEFINER 트리거가 담당
+**트리거**: `log_order_category_interaction()` (orders), `log_free_content_category_interaction()` (free_content_records)
+
+---
+
 ## 무료 콘텐츠 기록 테이블
 
 ### `free_content_records`
@@ -555,6 +579,7 @@ weekly_reports ─→ weekly_report_sections (1:N), report_tarot_selections (1:N
 | 2.3.0 | 2026-02-26 | users 테이블에 sprout_balance 컬럼 추가, sprout_transactions/sprout_packages 테이블 추가 (새싹 충전소 기능) | AI Assistant |
 | 2.4.0 | 2026-03-05 | user_consult_daily 테이블 추가, process_mission_reward RPC 추가, 테이블 수 25개 | AI Assistant |
 | 2.5.0 | 2026-03-06 | master_contents에 recommended_paid_content_id(자기참조 FK), upsell_hook_text 컬럼 추가 (업셀링 시스템) | AI Assistant |
+| 2.6.0 | 2026-03-11 | user_category_interactions 테이블 추가 (추천순 정렬), get_recommended_contents RPC 추가, 2개 트리거 함수 추가 | AI Assistant |
 
 ---
 
