@@ -546,6 +546,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
                       if (isCompleted) {
                         if (statusKey === 'taro') {
                           sessionStorage.setItem('taro_result_phase', 'result');
+                          sessionStorage.setItem('taro_enter_anim', '1');
                         }
                         navigate(resultPath);
                         return;
