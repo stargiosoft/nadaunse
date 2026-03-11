@@ -860,6 +860,7 @@ function NewFortuneSection({
                     if (slide.id) {
                       trackContentClick(slide.id);
                       sessionStorage.setItem('content_entry_source', '/new-free');
+                      window.history.pushState(null, '', '/new-free');
                       navigate(`/free/content/${slide.id}`, { state: { canGoBack: true } });
                     }
                   }}
@@ -1380,6 +1381,7 @@ function BestFortuneSection({
                   onClick={() => {
                     trackContentClick(item.id);
                     sessionStorage.setItem('content_entry_source', '/best-fortune');
+                    window.history.pushState(null, '', '/best-fortune');
                     navigate(
                       item.contentType === 'free'
                         ? `/free/content/${item.id}`

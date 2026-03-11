@@ -926,13 +926,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const backTabState = categoryTabIndex >= 0 ? { tab: categoryTabIndex } : undefined;
 
   const onBack = () => {
-    const entrySource = sessionStorage.getItem('content_entry_source');
+    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex });
     sessionStorage.removeItem('content_entry_source');
-    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex, entrySource });
-    if (entrySource) {
-      navigate(entrySource, { replace: true, state: backTabState });
-      return;
-    }
     navigate(-1);
   };
   
