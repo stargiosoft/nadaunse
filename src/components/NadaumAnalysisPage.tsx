@@ -726,8 +726,8 @@ export default function NadaumAnalysisPage() {
   };
 
   return (
-    <div className="flex justify-center" style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
-      <div className="w-full max-w-[440px] relative" style={{ paddingBottom: '80px' }}>
+    <div className="fixed inset-0 flex justify-center" style={{ backgroundColor: C.bg }}>
+      <div className="w-full max-w-[440px] relative h-full overflow-y-auto overflow-x-hidden overscroll-y-contain" style={{ paddingBottom: '80px' }}>
         <SEO title="나다움 분석 | 나다운세" description="나만의 성향 분석 리포트" />
 
         {/* ─── Header ─────────────────────────────────────────────── */}

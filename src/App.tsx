@@ -2463,14 +2463,11 @@ function LoginPageNewWrapper() {
   const navigate = useNavigate();
   const goBack = useGoBack('/'); // ⭐ 직전 페이지로 돌아가기 (fallback: 홈)
 
-  // ⭐ 이미 로그인된 상태면 홈으로 리다이렉트 (뒤로가기로 돌아왔을 때 처리)
-  useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      console.log('🔄 [LoginPage] 이미 로그인된 상태 → 홈으로 리다이렉트');
-      navigate('/', { replace: true });
-    }
-  }, [navigate]);
+  // ⭐ 이미 로그인된 상태면 즉시 리다이렉트 (뒤로가기로 돌아왔을 때 로그인 페이지 깜빡임 방지)
+  const user = localStorage.getItem('user');
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleLoginSuccess = (user: any) => {
     console.log('🎉 로그인 성공! user:', user);
