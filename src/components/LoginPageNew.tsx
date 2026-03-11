@@ -509,6 +509,18 @@ export default function LoginPageNew({
   const [lastLoginProvider, setLastLoginProviderState] = useState<'kakao' | 'google' | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // ⭐ iOS bfcache 복원 시 isLoggingIn 리셋 (로그인 완료 후 뒤로가기로 돌아온 경우)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted && isLoggingIn) {
+        console.log('🔄 [LoginPageNew] bfcache 복원 → isLoggingIn 리셋');
+        setIsLoggingIn(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [isLoggingIn]);
+
   useEffect(() => {
     const provider = getLastLoginProvider();
     setLastLoginProviderState(provider);

@@ -397,6 +397,8 @@ function GAInit() {
         '/taro-consult': '타로 상담',
         '/taro-consult/loading': '타로 상담 생성 중',
         '/taro-consult/result': '타로 상담 결과',
+        // 데일리 마음 상담
+        '/consult-type-select': '상담 유형 선택',
         // 나다움 분석 & 마음톡
         '/nadaum': '나다움 분석',
         '/maumtalk': '마음톡',
@@ -2488,7 +2490,6 @@ function LoginPageNewWrapper() {
   const loginProcessingRef = useRef(false);
 
   // ⭐ 이미 로그인된 상태면 즉시 뒤로 (bfcache/뒤로가기 복원 대응)
-  // loginProcessingRef로 handleLoginSuccess 실행 중에는 스킵
   useEffect(() => {
     const user = localStorage.getItem('user');
     if (user && !loginProcessingRef.current) {
@@ -2500,7 +2501,7 @@ function LoginPageNewWrapper() {
   // ⭐ iOS bfcache 복원 시 로그인 상태면 즉시 뒤로 (pageshow 이벤트)
   useEffect(() => {
     const handlePageShow = (e: PageTransitionEvent) => {
-      if (e.persisted && localStorage.getItem('user') && !loginProcessingRef.current) {
+      if (e.persisted && localStorage.getItem('user')) {
         console.log('🔄 [LoginPage] bfcache 복원 + 로그인 상태 → 뒤로 이동');
         navigate(-1);
       }
@@ -2508,10 +2509,6 @@ function LoginPageNewWrapper() {
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [navigate]);
-
-  // ⭐ 동기 렌더 가드: 이미 로그인된 상태면 LoginPageNew를 렌더링하지 않음
-  // bfcache 복원 시 isLoggingIn=true 상태의 "로그인 중..." 깜빡임 방지
-  const isAlreadyLoggedIn = !!localStorage.getItem('user') && !loginProcessingRef.current;
 
   const handleLoginSuccess = (userData: any) => {
     loginProcessingRef.current = true;
@@ -2528,18 +2525,26 @@ function LoginPageNewWrapper() {
     const redirectUrl = localStorage.getItem('redirectAfterLogin');
     console.log('📍 리다이렉트 URL 확인:', redirectUrl);
 
+    const targetUrl = redirectUrl || '/';
     if (redirectUrl) {
-      console.log('✅ 리다이렉트 URL 존재 → 이동:', redirectUrl);
       localStorage.removeItem('redirectAfterLogin');
-      navigate(redirectUrl, { replace: true });
-    } else {
-      console.log('❌ 리다이렉트 URL 없음 → 홈으로 이동');
-      navigate('/', { replace: true });
     }
+
+    // ⭐ 브라우저 히스토리 레벨에서 먼저 교체 (React Router replace 실패 대비)
+    // iOS Safari에서 navigate({replace}) 가 pushState로 동작하는 케이스 방어
+    try {
+      window.history.replaceState(null, '', targetUrl);
+    } catch (e) {
+      // replaceState 실패 시 무시 (cross-origin 등)
+    }
+    navigate(targetUrl, { replace: true });
   };
 
-  // ⭐ 이미 로그인된 상태면 LoginPageNew 렌더링 차단 (useEffect에서 navigate(-1) 처리)
-  if (isAlreadyLoggedIn) {
+  // ⭐ 동기 렌더 가드: 이미 로그인된 상태면 LoginPageNew를 렌더링하지 않음
+  // bfcache 복원 시 isLoggingIn=true 상태의 "로그인 중..." 깜빡임 방지
+  // loginProcessingRef 체크 제거: handleLoginSuccess에서 true로 설정 후 리셋 안 되므로
+  // bfcache 복원 시에도 true → 가드 무력화되는 버그 수정
+  if (localStorage.getItem('user') && !loginProcessingRef.current) {
     return null;
   }
 
