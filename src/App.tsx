@@ -2842,7 +2842,8 @@ function MasterContentDetailPageWrapper() {
 function FreeContentDetailWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const goBack = useGoBack('/new-free'); // 🛡️ iOS 안전한 뒤로가기
+  const entrySource = sessionStorage.getItem('content_entry_source');
+  const goBack = useGoBack(entrySource || '/new-free'); // 🛡️ iOS 안전한 뒤로가기 (진입 경로 반영)
 
   if (!id) {
     return <Navigate to="/" replace />;
@@ -2852,6 +2853,12 @@ function FreeContentDetailWrapper() {
     <FreeContentDetail
       contentId={id}
       onBack={(categoryMain) => {
+        const entrySource = sessionStorage.getItem('content_entry_source');
+        sessionStorage.removeItem('content_entry_source');
+        if (entrySource && entrySource !== '/new-free') {
+          navigate(entrySource, { replace: true });
+          return;
+        }
         const tabs = ['전체', '연애', '이별', '궁합', '개인운세', '재물', '직업', '시험/학업', '건강', '인간관계', '자녀', '이사/매매', '기타'];
         const tabIdx = categoryMain ? tabs.indexOf(categoryMain) : -1;
         navigate('/new-free', { replace: true, state: tabIdx >= 0 ? { tab: tabIdx } : undefined });
