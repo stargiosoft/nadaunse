@@ -170,7 +170,7 @@ export function TaroConsultPage() {
               onPointerCancel={(e) => { if (!isActive) return; e.currentTarget.style.transform = 'scale(1) translateZ(0)'; e.currentTarget.style.backgroundColor = C.primary; }}
               style={{ width: '100%', maxWidth: 400, height: 56, borderRadius: 20, border: 'none', backgroundColor: isActive ? C.primary : '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isActive ? 'pointer' : 'default', transition: 'background-color 0.2s ease, transform 0.15s ease-out', WebkitTapHighlightColor: 'transparent', transform: 'scale(1) translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
             >
-              <span style={{ fontFamily: font, fontSize: 16, fontWeight: 400, color: isActive ? C.white : C.gray200, letterSpacing: '-0.32px', lineHeight: '25px', transition: 'color 0.2s ease' }}>
+              <span style={{ fontFamily: font, fontSize: 16, fontWeight: 500, color: isActive ? C.white : C.gray200, letterSpacing: '-0.32px', lineHeight: '25px', transition: 'color 0.2s ease' }}>
                 상담 요청하기
               </span>
             </button>
