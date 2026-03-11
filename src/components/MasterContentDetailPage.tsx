@@ -934,6 +934,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const onPurchase = async () => {
     if (isPurchasing) return; // ⭐ 중복 클릭 방지
     setIsPurchasing(true);
+    let navigated = false;
+    try {
     console.log('🔵 [MasterContentDetailPage] onPurchase 함수 시작', {
       timestamp: new Date().toISOString(),
       contentId
@@ -954,6 +956,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       const redirectUrl = `/sprout-charging/${contentId}`;
       console.log('🔐 로그아웃 상태 → 리다이렉트 URL 저장 (새싹 충전소):', redirectUrl);
       localStorage.setItem('redirectAfterLogin', redirectUrl);
+      navigated = true;
       navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${contentId}` } });
       return;
     }
@@ -981,7 +984,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       if (userError) {
         console.error('❌ [MasterContentDetailPage] 잔액 조회 실패:', userError);
         alert('잔액 조회에 실패했습니다. 다시 시도해주세요.');
-        setIsPurchasing(false);
         return;
       }
       currentBalance = userData?.sprout_balance ?? 0;
@@ -991,6 +993,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
     if (currentBalance < requiredAmount) {
       console.log('🌱 잔액 부족 → 새싹 충전소로 이동');
+      navigated = true;
       navigate(`/sprout-charging/${contentId}`, {
         state: { requiredAmount, currentBalance },
       });
@@ -1027,7 +1030,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
       if (!result.success) {
         if (result.error === 'insufficient_balance') {
-          setIsPurchasing(false);
+          navigated = true;
           navigate(`/sprout-charging/${contentId}`, {
             state: { requiredAmount, currentBalance: result.current_balance ?? 0 },
           });
@@ -1035,7 +1038,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         }
         console.error('❌ [MasterContentDetailPage] 차감 실패:', result);
         alert('새싹 차감에 실패했습니다. 다시 시도해주세요.');
-        setIsPurchasing(false);
         return;
       }
 
@@ -1075,7 +1077,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         if (orderResult.error || !orderResult.data) {
           console.error('❌ [MasterContentDetailPage] 주문 생성 실패:', orderResult.error);
           alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
-          setIsPurchasing(false);
           return;
         }
 
@@ -1096,7 +1097,6 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         if (orderError || !newOrder) {
           console.error('❌ [MasterContentDetailPage] 주문 생성 실패:', orderError);
           alert('주문 생성에 실패했습니다. 다시 시도해주세요.');
-          setIsPurchasing(false);
           return;
         }
 
@@ -1111,14 +1111,18 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       preloadLoadingPageImages();
 
       if (hasSaju) {
+        navigated = true;
         navigate(`/product/${contentId}/saju-select`);
       } else {
+        navigated = true;
         navigate(`/product/${contentId}/birthinfo`);
       }
     } catch (err) {
       console.error('❌ [MasterContentDetailPage] 차감 처리 예외:', err);
       alert('처리 중 오류가 발생했습니다. 다시 시도해주세요.');
-      setIsPurchasing(false);
+    }
+    } finally {
+      if (!navigated) setIsPurchasing(false);
     }
   };
 

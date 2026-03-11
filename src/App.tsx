@@ -52,6 +52,7 @@ import { FortuneAllPage } from './pages/FortuneAllPage';
 import { NewFreeFortuneAllPage } from './pages/NewFreeFortuneAllPage';
 import { SearchPage } from './pages/SearchPage';
 import { SajuConsultPage } from './pages/SajuConsultPage';
+import ConsultTypeSelectPage from './pages/ConsultTypeSelectPage';
 import { SajuConsultLoadingPage } from './pages/SajuConsultLoadingPage';
 import { SajuConsultResultPage } from './pages/SajuConsultResultPage';
 import { SajuRecommendedFortunePage } from './pages/SajuRecommendedFortunePage';
@@ -94,7 +95,7 @@ import { Toaster } from 'sonner';
 import { toast } from './lib/toast'; // ⭐ 커스텀 토스트 (subtitle 지원)
 import { prefetchZodiacImages } from './lib/zodiacUtils'; // 🔥 이미지 프리페칭
 import { preloadLoadingPageImages } from './lib/imagePreloader'; // ⭐ 로딩 페이지 이미지 프리로드
-import { DEV } from './lib/env'; // ⭐ 프로덕션 환경 체크
+import { DEV, isLocalhost } from './lib/env'; // ⭐ 프로덕션 환경 체크
 import { clearUserCaches, recordTodayVisit } from './lib/auth'; // ⭐ 캐시 삭제 + 방문 기록 함수
 import { initTestMode, isTestMode } from './lib/testAuth'; // 🧪 TestSprite 테스트 모드
 import { projectId } from './utils/supabase/info'; // ⚡ Edge Function warm-up용
@@ -130,6 +131,14 @@ if (window.location.pathname === '/') {
 function DirectEntryHistoryGuard() {
   const { pathname, search, hash } = useLocation();
   const hasHandled = useRef(false);
+
+  // ── 환경별 파비콘 교체 ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!DEV) return;
+    const href = isLocalhost() ? '/favicon-local.svg' : '/favicon-staging.svg';
+    const links = document.querySelectorAll<HTMLLinkElement>("link[rel~='icon'], link[rel~='apple-touch-icon']");
+    links.forEach(link => { link.href = href; });
+  }, []);
 
   useEffect(() => {
     if (hasHandled.current) return;
@@ -3789,6 +3798,7 @@ export default function App() {
           <Route path="/best-fortune" element={<FortuneAllPage />} />
           <Route path="/new-free" element={<NewFreeFortuneAllPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/consult-type-select" element={<ConsultTypeSelectPage />} />
           <Route path="/saju-consult" element={<SajuConsultPage />} />
           <Route path="/saju-consult/loading" element={<SajuConsultLoadingPage />} />
           <Route path="/saju-consult/result" element={<SajuConsultResultPage />} />

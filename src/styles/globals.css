@@ -589,6 +589,14 @@ div.blog-content .blog-crosslinks ul li a:hover {
   text-decoration: underline !important;
 }
 
+/* Button press scale-down */
+.btn-press {
+  transition: transform 0.1s ease;
+}
+.btn-press:active {
+  transform: scale(0.995);
+}
+
 /* Mobile-friendly hover - only applies on devices with hover capability (not touch screens) */
 @media (hover: hover) and (pointer: fine) {
   .hover-bg-gray:hover {

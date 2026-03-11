@@ -332,7 +332,7 @@ export function SajuConsultResultPage() {
               textOverflow: 'ellipsis',
             }}
           >
-            사주 상담
+            사주 상담 풀이
           </p>
           <button {...closePress} style={navBtnStyle}>
             <span className="btn-icon-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s ease-out', transformOrigin: 'center' }}>

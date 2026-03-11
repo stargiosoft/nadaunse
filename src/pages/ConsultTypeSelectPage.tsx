@@ -63,7 +63,7 @@ export default function ConsultTypeSelectPage() {
       </div>
 
       {/* 본문 */}
-      <div className="flex flex-col w-full" style={{ gap: 14, paddingTop: 0 }}>
+      <div className="flex flex-col w-full" style={{ gap: 14, paddingTop: 8 }}>
         {/* 타이틀 */}
         <div
           className="flex items-center w-full"
@@ -165,7 +165,7 @@ export default function ConsultTypeSelectPage() {
 
           {/* 제목 */}
           <div style={{ padding: '0 4px' }}>
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#696969', letterSpacing: '-0.3px', lineHeight: '28.5px' }}>
+            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 500, color: '#696969', letterSpacing: '-0.3px', lineHeight: '28.5px' }}>
               데일리 상담 방식
             </p>
           </div>

@@ -261,24 +261,6 @@ export function SajuConsultLoadingPage() {
           }}
         >
           <BackButton onPress={() => navigate('/', { replace: true })} />
-          <p
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              fontFamily: font,
-              fontSize: 18,
-              fontWeight: 600,
-              color: C.black,
-              letterSpacing: '-0.36px',
-              lineHeight: '25.5px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            사주 상담
-          </p>
-          <div style={{ width: 44, flexShrink: 0 }} />
         </div>
 
         {/* ── 로딩 콘텐츠 ── */}

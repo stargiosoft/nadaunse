@@ -254,24 +254,6 @@ export function SajuConsultPage() {
               navigate(-1);
             }
           }} />
-          <p
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              fontFamily: font,
-              fontSize: 18,
-              fontWeight: 600,
-              color: C.black,
-              letterSpacing: '-0.36px',
-              lineHeight: '25.5px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            사주 상담
-          </p>
-          <div style={{ width: 44, flexShrink: 0 }} />
         </div>
 
         {/* ── 본문 스크롤 영역 ── */}
@@ -293,7 +275,7 @@ export function SajuConsultPage() {
             }, 350);
           }}
         >
-          {/* 질문 문구 */}
+          {/* 헤더: 아이콘 + 질문 문구 */}
           <div
             style={{
               backgroundColor: C.white,
@@ -301,20 +283,36 @@ export function SajuConsultPage() {
               paddingBottom: 12,
               paddingLeft: 20,
               paddingRight: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
             }}
           >
-            <p
+            <div
               style={{
-                fontFamily: font,
-                fontSize: 17,
-                fontWeight: 500,
-                color: C.black,
-                letterSpacing: '-0.34px',
-                lineHeight: '24px',
+                backgroundColor: '#f7f8f9',
+                borderRadius: 16,
+                padding: 14,
+                display: 'inline-flex',
+                alignSelf: 'flex-start',
               }}
             >
-              오늘, 어떤 일이 가장 마음에 걸리나요?
-            </p>
+              <img src="/consult/crystal-ball.svg" alt="" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+            </div>
+            <div style={{ paddingLeft: 4, paddingRight: 4 }}>
+              <p
+                style={{
+                  fontFamily: font,
+                  fontSize: 17,
+                  fontWeight: 500,
+                  color: C.black,
+                  letterSpacing: '-0.34px',
+                  lineHeight: '24px',
+                }}
+              >
+                오늘, 어떤 일이 가장 마음에 걸리나요?
+              </p>
+            </div>
           </div>
 
           {/* 입력 영역 */}

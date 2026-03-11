@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { signOut, clearUserCaches } from '../lib/auth';
 import { SessionExpiredDialog } from './SessionExpiredDialog';
 import Footer from './Footer';
+import BottomTabBar from './BottomTabBar';
 import { getZodiacImageUrl, getConstellation } from '../lib/zodiacUtils';
 import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { ProfileSkeletonWithSaju } from './skeletons/ProfileSkeleton';
@@ -1417,7 +1418,7 @@ export default function ProfilePage({
           {/* Footer Spacer - 최소 130px, 남은 공간 채움 */}
           <div className="grow" style={{ minHeight: 130 }} />
           {/* Footer */}
-          <div className="shrink-0">
+          <div className="shrink-0" style={{ marginBottom: 80 }}>
             <Footer
               onNavigateToTerms={onNavigateToTermsOfService}
               onNavigateToPrivacy={onNavigateToPrivacyPolicy}
@@ -1510,6 +1511,8 @@ export default function ProfilePage({
           />
         )}
       </AnimatePresence>
+
+      <BottomTabBar />
     </>
   );
 }
