@@ -6,6 +6,7 @@ import ArrowLeft from '../components/ArrowLeft';
 import { useSproutBalance, writeSproutBalanceCache } from '../hooks/useSproutBalance';
 import { getRandomTarotCards, getTarotCardImageUrl } from '../lib/tarotCards';
 import SproutChargingStation from '../components/SproutChargingStation';
+import BottomTabBar from '../components/BottomTabBar';
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 
@@ -49,6 +50,12 @@ const MODES: { key: ChatMode; label: string; color: string; bg: string; border: 
   { key: 'tarot', label: '타로', color: C.purple, bg: C.purpleLight, border: C.purpleBorder },
 ];
 
+const GREETINGS: Record<ChatMode, string> = {
+  general: '안녕! 잘 지냈어? 오늘은 어떤 이야기 하고 싶어서 찾아왔을까? 😊',
+  saju: '안녕! 오늘의 운세가 궁금한 거야? 어떤 이야기가 듣고 싶은지 골라봐 😊',
+  tarot: '안녕! 마음속에 궁금한 게 있구나? 카드가 답을 알려줄지도 몰라 🔮',
+};
+
 const SUGGESTIONS: Record<ChatMode, string[]> = {
   general: ['오늘 좀 힘들었어', '요즘 고민이 있어', '나에 대해 더 알려줘', '기분 전환할 방법 있을까?'],
   saju: ['오늘 운세가 궁금해', '이번 달 흐름이 어때?', '연애운이 궁금해', '직장 운이 어떻게 될까?'],
@@ -57,6 +64,12 @@ const SUGGESTIONS: Record<ChatMode, string[]> = {
 
 const FREE_LIMIT = 3;
 const SPROUT_COST = 5;
+
+// AI 메시지에서 타로 카드 뽑기 유도 감지
+const TAROT_DRAW_KEYWORDS = ['카드를 뽑', '카드를 골라', '카드를 선택', '뽑아볼까', '뽑아보', '골라볼까', '골라보'];
+function suggestsCardDraw(text: string): boolean {
+  return TAROT_DRAW_KEYWORDS.some(kw => text.includes(kw));
+}
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -129,7 +142,43 @@ function TypingIndicator() {
   );
 }
 
-/** 타로 카드 뽑기 오버레이 */
+/** 타로 카드 뽑기 인라인 CTA (채팅 내) */
+function TarotDrawCTA({ onClick }: { onClick: () => void }) {
+  return (
+    <div className="flex justify-start" style={{ marginBottom: 12 }}>
+      <div className="shrink-0" style={{ width: 36, marginRight: 8 }} />
+      <button
+        onClick={onClick}
+        className="flex flex-col items-center transform-gpu"
+        style={{
+          padding: '16px 24px', borderRadius: 16,
+          background: 'linear-gradient(135deg, #e8f5f4 0%, #f0f8f8 40%, #f5f0ff 100%)',
+          border: `1px solid ${C.primaryBorder}`,
+          cursor: 'pointer', transition: 'transform 0.15s ease',
+          WebkitTapHighlightColor: 'transparent',
+          gap: 10,
+        }}
+        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+        onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+        onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+      >
+        <img
+          src="/home-v2/taro-card-back.png"
+          alt="타로 카드"
+          style={{ width: 72, height: 108, objectFit: 'contain', borderRadius: 8 }}
+        />
+        <span style={{
+          fontFamily: F, fontSize: '14px', fontWeight: 600,
+          letterSpacing: '-0.28px', color: C.primary,
+        }}>
+          카드 뽑으러 가기
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** 타로 카드 1장 뽑기 오버레이 (타로 상담 스타일 플립) */
 function TarotDrawOverlay({
   onComplete,
   onClose,
@@ -137,159 +186,142 @@ function TarotDrawOverlay({
   onComplete: (cards: string[]) => void;
   onClose: () => void;
 }) {
-  const [candidates] = useState(() => getRandomTarotCards(7));
-  const [selected, setSelected] = useState<number[]>([]);
-  const [revealed, setRevealed] = useState(false);
+  const [card] = useState(() => getRandomTarotCards(1)[0]);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const shineRef = useRef<HTMLDivElement>(null);
 
-  const toggleCard = (idx: number) => {
-    if (revealed) return;
-    setSelected(prev => {
-      if (prev.includes(idx)) return prev.filter(i => i !== idx);
-      if (prev.length >= 3) return prev;
-      return [...prev, idx];
-    });
+  useEffect(() => {
+    const id = 'mind-talk-tarot-keyframes';
+    if (document.getElementById(id)) return;
+    const s = document.createElement('style');
+    s.id = id;
+    s.textContent = `
+      @keyframes mtTaroShine {
+        0%   { transform: translateX(-160%) skewX(-20deg); opacity: 1; }
+        30%  { transform: translateX(320%)  skewX(-20deg); opacity: 1; }
+        31%  { transform: translateX(320%)  skewX(-20deg); opacity: 0; }
+        99%  { transform: translateX(-160%) skewX(-20deg); opacity: 0; }
+        100% { transform: translateX(-160%) skewX(-20deg); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(s);
+    return () => { document.getElementById(id)?.remove(); };
+  }, []);
+
+  const handleFlip = () => {
+    if (isFlipped || isAnimating) return;
+    if (shineRef.current) {
+      shineRef.current.style.animation = 'none';
+      shineRef.current.style.opacity = '0';
+    }
+    setIsAnimating(true);
+    setIsFlipped(true);
   };
 
-  const handleReveal = () => setRevealed(true);
-
-  const handleConfirm = () => {
-    const cards = selected.map(i => candidates[i]);
-    onComplete(cards);
+  const handleFlipEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.propertyName === 'transform' && isFlipped) {
+      setIsAnimating(false);
+      setShowConfirm(true);
+    }
   };
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100 }}
+      className="fixed inset-0 flex flex-col items-center justify-center"
+      style={{ backgroundColor: C.white, zIndex: 100 }}
     >
-      <div className="w-full max-w-[400px] flex flex-col items-center" style={{ padding: '0 24px' }}>
-        {/* 닫기 */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute', top: 16, right: 16,
-            width: 40, height: 40, borderRadius: 20,
-            backgroundColor: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M18 6L6 18M6 6l12 12" stroke="white" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
+      {/* 닫기 */}
+      <button
+        onClick={onClose}
+        style={{
+          position: 'absolute', top: 16, right: 16,
+          width: 40, height: 40, borderRadius: 20,
+          backgroundColor: C.gray100, border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M18 6L6 18M6 6l12 12" stroke={C.gray600} strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
 
-        <p style={{
-          fontFamily: F, fontSize: '20px', fontWeight: 700, lineHeight: '28px',
-          letterSpacing: '-0.4px', color: C.white, marginBottom: 8, textAlign: 'center',
-        }}>
-          카드를 3장 선택하세요
-        </p>
-        <p style={{
-          fontFamily: F, fontSize: '14px', fontWeight: 400, lineHeight: '20px',
-          letterSpacing: '-0.28px', color: 'rgba(255,255,255,0.6)', marginBottom: 32, textAlign: 'center',
-        }}>
-          마음이 이끄는 대로 골라보세요
-        </p>
+      {/* 가이드 텍스트 */}
+      <p style={{
+        fontFamily: F, fontSize: '17px', fontWeight: 500, lineHeight: '24px',
+        letterSpacing: '-0.34px', color: C.black, textAlign: 'center',
+        opacity: isFlipped ? 0 : 1, transition: 'opacity 0.3s ease',
+        marginBottom: 24,
+      }}>
+        오늘의 고민 카드를 뽑아보세요
+      </p>
 
-        {/* 카드 그리드 */}
+      {/* 카드 (190×318 비율) */}
+      <div style={{ width: 190, aspectRatio: '160 / 268', position: 'relative' }}>
         <div
-          className="flex flex-wrap justify-center"
-          style={{ gap: 12, marginBottom: 32 }}
+          style={{ position: 'absolute', inset: 0, perspective: 1000, cursor: isFlipped ? 'default' : 'pointer', zIndex: 1 }}
+          onClick={handleFlip}
         >
-          {candidates.map((card, idx) => {
-            const isSelected = selected.includes(idx);
-            const selectionOrder = isSelected ? selected.indexOf(idx) + 1 : 0;
-            return (
-              <button
-                key={idx}
-                onClick={() => toggleCard(idx)}
-                style={{
-                  width: 80, height: 120, borderRadius: 10, border: 'none',
-                  cursor: revealed ? 'default' : 'pointer',
-                  transition: 'all 0.4s ease',
-                  transform: isSelected && !revealed ? 'translateY(-8px)' : 'none',
-                  position: 'relative', overflow: 'hidden', padding: 0,
-                  boxShadow: isSelected ? `0 4px 16px rgba(139,92,246,0.4)` : '0 2px 8px rgba(0,0,0,0.3)',
-                }}
-              >
-                {revealed && isSelected ? (
-                  /* 앞면: 카드 이미지 */
-                  <img
-                    src={getTarotCardImageUrl(card)}
-                    alt={card}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
-                  />
-                ) : (
-                  /* 뒷면 */
-                  <div style={{
-                    width: '100%', height: '100%',
-                    background: isSelected
-                      ? 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)'
-                      : 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #1E1B4B 100%)',
-                    borderRadius: 10,
-                    border: isSelected ? '2px solid #A78BFA' : '1px solid rgba(255,255,255,0.1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {isSelected ? (
-                      <span style={{ fontFamily: F, fontSize: '20px', fontWeight: 700, color: C.white }}>
-                        {selectionOrder}
-                      </span>
-                    ) : (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                          stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" fill="none" />
-                      </svg>
-                    )}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 버튼 */}
-        {!revealed && selected.length === 3 && (
-          <button
-            onClick={handleReveal}
+          <div
             style={{
-              width: '100%', maxWidth: 280, height: 52, borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
-              cursor: 'pointer', transition: 'all 0.15s ease',
+              width: '100%', height: '100%', position: 'relative',
+              transformStyle: 'preserve-3d', transition: 'transform 0.6s ease-in-out',
+              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
             }}
+            onTransitionEnd={handleFlipEnd}
+          >
+            {/* 뒷면 */}
+            <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', overflow: 'hidden' }}>
+              <img alt="카드 뒷면" src="/home-v2/taro-card-back.png" style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', display: 'block', transform: 'translateZ(0)' }} />
+              {/* Shine overlay */}
+              <div ref={shineRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '45%', height: '100%', background: 'linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.38) 50%, transparent 100%)', willChange: 'transform', animation: 'mtTaroShine 3.6s ease-in-out infinite' }} />
+              </div>
+            </div>
+            {/* 앞면 */}
+            <div style={{ position: 'absolute', inset: 0, transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)' }}>
+              <img alt={card} src={getTarotCardImageUrl(card)} style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', display: 'block', borderRadius: 16 }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 탭하여 공개 버튼 */}
+      {!isFlipped && (
+        <button onClick={handleFlip} style={{
+          marginTop: 16, backgroundColor: 'rgba(0,0,0,0.8)', border: 'none', borderRadius: 12,
+          padding: '6px 16px 4px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        }}>
+          <span style={{ fontFamily: F, fontSize: '13px', fontWeight: 400, color: C.white, letterSpacing: '-0.42px', lineHeight: '22px' }}>
+            탭하여 공개
+          </span>
+        </button>
+      )}
+
+      {/* 카드 이름 + 해석 받기 */}
+      {showConfirm && (
+        <div className="flex flex-col items-center" style={{ marginTop: 20, gap: 12 }}>
+          <p style={{ fontFamily: F, fontSize: '15px', fontWeight: 600, color: C.black, letterSpacing: '-0.3px' }}>
+            {card}
+          </p>
+          <button
+            onClick={() => onComplete([card])}
+            style={{
+              width: 220, height: 48, borderRadius: 14, border: 'none',
+              backgroundColor: C.primary, cursor: 'pointer',
+              transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
             <span style={{ fontFamily: F, fontSize: '16px', fontWeight: 600, color: C.white }}>
-              카드 확인하기
+              해석 받기
             </span>
           </button>
-        )}
-
-        {revealed && (
-          <div className="w-full flex flex-col items-center" style={{ gap: 12 }}>
-            <div className="flex justify-center" style={{ gap: 8, marginBottom: 8 }}>
-              {selected.map(idx => (
-                <p key={idx} style={{
-                  fontFamily: F, fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.8)',
-                  textAlign: 'center',
-                }}>
-                  {candidates[idx]}
-                </p>
-              ))}
-            </div>
-            <button
-              onClick={handleConfirm}
-              style={{
-                width: '100%', maxWidth: 280, height: 52, borderRadius: 14, border: 'none',
-                background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontFamily: F, fontSize: '16px', fontWeight: 600, color: C.white }}>
-                해석 받기
-              </span>
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -300,6 +332,8 @@ export default function MindTalkPage() {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
 
   // Auth
   const [userId, setUserId] = useState<string | null>(null);
@@ -315,8 +349,9 @@ export default function MindTalkPage() {
   const [streaming, setStreaming] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [freeUsed, setFreeUsed] = useState(0);
-  const [loadingConv, setLoadingConv] = useState(false);
-  const greetedModesRef = useRef<Set<string>>(new Set());
+  const [loadingConv, setLoadingConv] = useState(true);
+  const [round, setRound] = useState(1);
+  const [roundLoaded, setRoundLoaded] = useState(false);
 
   // Sprout
   const { balance: sproutBalance, refetch: refetchSprout } = useSproutBalance();
@@ -335,20 +370,45 @@ export default function MindTalkPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streaming]);
 
-  // ── Auth check ──
+  // ── Auth check + load current round ──
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
       setAuthChecked(true);
+
+      if (user) {
+        const today = new Date().toISOString().slice(0, 10);
+
+        // sessionStorage에 저장된 round 우선 (페이지 이동 후 복귀 대응)
+        const savedDate = sessionStorage.getItem('mind_talk_round_date');
+        const savedRound = sessionStorage.getItem('mind_talk_round');
+        if (savedDate === today && savedRound) {
+          setRound(parseInt(savedRound, 10));
+        } else {
+          // DB에서 최신 round 로드
+          const { data } = await supabase
+            .from('mind_talk_conversations')
+            .select('round')
+            .eq('user_id', user.id)
+            .eq('session_date', today)
+            .order('round', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const r = data?.round ?? 1;
+          setRound(r);
+          sessionStorage.setItem('mind_talk_round', String(r));
+          sessionStorage.setItem('mind_talk_round_date', today);
+        }
+      }
+      setRoundLoaded(true);
     })();
   }, []);
 
-  // ── Load conversation when mode changes ──
-  const loadConversation = useCallback(async (chatMode: ChatMode) => {
+  // ── Load conversation when mode/round changes ──
+  const loadConversation = useCallback(async (chatMode: ChatMode, currentRound: number) => {
     if (!userId) return;
     setLoadingConv(true);
-    setMessages([]);
     setConversationId(null);
     setFreeUsed(0);
     setStreaming('');
@@ -361,6 +421,7 @@ export default function MindTalkPage() {
         .eq('user_id', userId)
         .eq('session_date', today)
         .eq('mode', chatMode)
+        .eq('round', currentRound)
         .maybeSingle();
 
       if (conv) {
@@ -376,31 +437,23 @@ export default function MindTalkPage() {
         if (msgs && msgs.length > 0) {
           setMessages(msgs.map(m => ({ id: m.id, role: m.role as 'user' | 'assistant', content: m.content })));
           setLoadingConv(false);
-          return; // Already has messages, no greeting needed
+          return;
         }
       }
     } catch (err) {
       console.error('Load conversation error:', err);
     }
 
+    // 기존 대화 없음 → 빈 상태로 전환
+    setMessages([]);
     setLoadingConv(false);
-
-    // Trigger AI greeting if not already greeted for this mode today
-    const greetKey = `${new Date().toISOString().slice(0, 10)}_${chatMode}`;
-    if (!greetedModesRef.current.has(greetKey)) {
-      greetedModesRef.current.add(greetKey);
-      // Small delay to let UI settle
-      setTimeout(() => {
-        sendMessage(null, { type: 'greeting' }, chatMode);
-      }, 300);
-    }
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (authChecked && userId) {
-      loadConversation(mode);
+    if (authChecked && userId && roundLoaded) {
+      loadConversation(mode, round);
     }
-  }, [authChecked, userId, mode, loadConversation]);
+  }, [authChecked, userId, mode, round, roundLoaded, loadConversation]);
 
   // ── Send message ──
   const sendMessage = async (
@@ -435,6 +488,7 @@ export default function MindTalkPage() {
           message: userMessage,
           conversation_id: conversationId,
           mode: chatMode,
+          round,
           meta,
         }),
       });
@@ -463,7 +517,11 @@ export default function MindTalkPage() {
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // flush remaining bytes from decoder (한국어 멀티바이트 잔여분)
+          buffer += decoder.decode();
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -482,6 +540,21 @@ export default function MindTalkPage() {
               writeSproutBalanceCache(data.new_sprout_balance);
               refetchSprout();
             }
+          } catch { /* ignore */ }
+        }
+      }
+
+      // 루프 종료 후 남은 버퍼 처리
+      if (buffer.trim()) {
+        for (const line of buffer.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const dataStr = line.slice(6).trim();
+          if (dataStr === '[DONE]' || !dataStr) continue;
+          try {
+            const data = JSON.parse(dataStr);
+            if (data.text) { fullText += data.text; setStreaming(fullText); }
+            if (data.conversation_id) setConversationId(data.conversation_id);
+            if (data.free_messages_used !== undefined) setFreeUsed(data.free_messages_used);
           } catch { /* ignore */ }
         }
       }
@@ -523,6 +596,7 @@ export default function MindTalkPage() {
 
   const handleModeChange = (newMode: ChatMode) => {
     if (newMode === mode || sending) return;
+    setMessages([]);
     setMode(newMode);
   };
 
@@ -556,34 +630,37 @@ export default function MindTalkPage() {
   // ── 미로그인 ──
   if (authChecked && !userId) {
     return (
-      <div className="fixed inset-0 flex justify-center" style={{ backgroundColor: C.white }}>
-        <div className="w-full max-w-[440px] flex flex-col items-center justify-center" style={{ padding: '0 24px 80px' }}>
-          <div className="rounded-full overflow-hidden transform-gpu" style={{ width: 88, height: 88, marginBottom: 20 }}>
-            <img src="/maumi-avatar.png" alt="마음이" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div className="flex justify-center" style={{ backgroundColor: '#f7f8f9', minHeight: '100vh' }}>
+        <div className="w-full max-w-[440px] relative flex flex-col items-center justify-center" style={{ paddingBottom: '80px' }}>
+          <div className="flex flex-col items-center" style={{ padding: '40px 20px', gap: '12px' }}>
+            <div style={{ fontSize: '48px' }}>💭</div>
+            <p style={{ fontFamily: F, fontSize: '18px', fontWeight: 600, color: C.black, textAlign: 'center', letterSpacing: '-0.36px' }}>
+              마음톡
+            </p>
+            <p style={{ fontFamily: F, fontSize: '14px', fontWeight: 400, color: C.gray700, textAlign: 'center', lineHeight: '22px' }}>
+              나보다 나를 더 잘 아는 AI 친구,{'\n'}로그인하고 마음 친구를 만나보세요
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="flex items-center justify-center cursor-pointer"
+              style={{
+                width: '200px',
+                height: '48px',
+                borderRadius: '16px',
+                backgroundColor: C.primary,
+                border: 'none',
+                marginTop: '4px',
+                transition: 'transform 0.1s ease',
+              }}
+              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+            >
+              <span style={{ fontFamily: F, fontSize: '15px', fontWeight: 500, color: C.white, letterSpacing: '-0.3px' }}>
+                로그인하기
+              </span>
+            </button>
           </div>
-          <p style={{ fontFamily: F, fontSize: '22px', fontWeight: 600, lineHeight: '32.5px', letterSpacing: '-0.22px', color: C.black, marginBottom: 8 }}>
-            마음톡
-          </p>
-          <p style={{ fontFamily: F, fontSize: '15px', fontWeight: 400, lineHeight: '23px', letterSpacing: '-0.3px', color: C.gray700, textAlign: 'center', marginBottom: 32 }}>
-            나보다 나를 더 잘 아는 AI 친구<br />로그인하고 나만의 마음 친구를 만나보세요
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="w-full flex items-center justify-center"
-            style={{
-              height: 56, borderRadius: 16, backgroundColor: C.primary, border: 'none',
-              cursor: 'pointer', transition: 'all 0.15s ease',
-            }}
-            onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = C.primaryPressed; }}
-            onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = C.primary; }}
-            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = C.primaryPressed; }}
-            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = C.primary; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.backgroundColor = C.primary; }}
-          >
-            <span style={{ fontFamily: F, fontSize: '16px', fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: C.white }}>
-              로그인하기
-            </span>
-          </button>
+          <BottomTabBar />
         </div>
       </div>
     );
@@ -630,7 +707,24 @@ export default function MindTalkPage() {
               </div>
             )}
           </div>
-          <div style={{ width: 44 }} />
+          <button
+            onClick={() => {
+              if (sending) return;
+              setRound(prev => {
+                const next = prev + 1;
+                sessionStorage.setItem('mind_talk_round', String(next));
+                sessionStorage.setItem('mind_talk_round_date', new Date().toISOString().slice(0, 10));
+                return next;
+              });
+            }}
+            disabled={sending}
+            className="flex items-center justify-center"
+            style={{ width: 44, height: 44, border: 'none', background: 'none', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.4 : 1 }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.gray600} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6" /><path d="M21.34 15.57a10 10 0 1 1-.57-8.38L21.5 8" />
+            </svg>
+          </button>
         </div>
 
         {/* ── Mode Selector ── */}
@@ -686,41 +780,41 @@ export default function MindTalkPage() {
             </div>
           )}
 
-          {/* 추천 질문 */}
+          {/* 오프닝: 마음이 인사 메시지 */}
           {showSuggestions && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontFamily: F, fontSize: '13px', fontWeight: 500, lineHeight: '18px', letterSpacing: '-0.26px', color: C.gray600, marginBottom: 10 }}>
-                이런 대화를 시작해볼까요?
-              </p>
-              <div className="flex flex-wrap" style={{ gap: 8 }}>
-                {SUGGESTIONS[mode].map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => sendMessage(s)}
-                    className="flex items-center"
-                    style={{
-                      padding: '8px 16px', borderRadius: 20,
-                      backgroundColor: C.white, border: `1px solid ${currentModeConfig.border}`,
-                      cursor: 'pointer', transition: 'all 0.15s ease',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                    onTouchStart={e => { e.currentTarget.style.backgroundColor = currentModeConfig.bg; }}
-                    onTouchEnd={e => { e.currentTarget.style.backgroundColor = C.white; }}
-                    onMouseDown={e => { e.currentTarget.style.backgroundColor = currentModeConfig.bg; }}
-                    onMouseUp={e => { e.currentTarget.style.backgroundColor = C.white; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.white; }}
-                  >
-                    <span style={{ fontFamily: F, fontSize: '13px', fontWeight: 500, lineHeight: '18px', letterSpacing: '-0.26px', color: currentModeConfig.color }}>
-                      {s}
-                    </span>
-                  </button>
-                ))}
+            <div className="flex justify-start" style={{ marginBottom: 16 }}>
+              <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
+                <AiAvatar />
+              </div>
+              <div
+                className="transform-gpu"
+                style={{
+                  maxWidth: '78%', padding: '12px 16px', borderRadius: 18, borderBottomLeftRadius: 4,
+                  backgroundColor: C.white, border: `1px solid ${C.gray100}`,
+                }}
+              >
+                <p style={{
+                  fontFamily: F, fontSize: '15px', fontWeight: 400, lineHeight: '23px',
+                  letterSpacing: '-0.3px', color: C.black, whiteSpace: 'pre-wrap', margin: 0,
+                }}>
+                  {GREETINGS[mode]}
+                </p>
               </div>
             </div>
           )}
 
           {/* 메시지 목록 */}
-          {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+          {messages.map((msg, idx) => (
+            <div key={msg.id}>
+              <MessageBubble msg={msg} />
+              {/* 타로 모드: AI가 카드 뽑기 유도 시 인라인 CTA */}
+              {mode === 'tarot' && msg.role === 'assistant' && idx === messages.length - 1
+                && !sending && !showTarotDraw && suggestsCardDraw(msg.content)
+                && (
+                  <TarotDrawCTA onClick={handleTarotDraw} />
+                )}
+            </div>
+          ))}
 
           {/* 스트리밍 중인 AI 메시지 */}
           {streaming && (
@@ -749,6 +843,60 @@ export default function MindTalkPage() {
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* ── 고민지 슬라이드 (입력창 바로 위) ── */}
+        {showSuggestions && (
+          <div
+            ref={suggestionsRef}
+            className="shrink-0 flex overflow-x-auto scrollbar-hide"
+            style={{
+              gap: 10, padding: '10px 16px',
+              scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x', cursor: 'grab',
+              backgroundColor: C.white, borderTop: `1px solid ${C.gray100}`,
+            }}
+            onMouseDown={e => {
+              const el = suggestionsRef.current;
+              if (!el) return;
+              dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+              el.style.cursor = 'grabbing';
+            }}
+            onMouseMove={e => {
+              if (!dragState.current.isDown) return;
+              e.preventDefault();
+              const el = suggestionsRef.current!;
+              const x = e.pageX - el.offsetLeft;
+              el.scrollLeft = dragState.current.scrollLeft - (x - dragState.current.startX);
+            }}
+            onMouseUp={() => { dragState.current.isDown = false; if (suggestionsRef.current) suggestionsRef.current.style.cursor = 'grab'; }}
+            onMouseLeave={() => { dragState.current.isDown = false; if (suggestionsRef.current) suggestionsRef.current.style.cursor = 'grab'; }}
+          >
+            {SUGGESTIONS[mode].map((s, i) => (
+              <button
+                key={i}
+                onClick={() => sendMessage(s)}
+                className="shrink-0 flex items-center transform-gpu"
+                style={{
+                  padding: '10px 18px', borderRadius: 20,
+                  backgroundColor: C.white, border: `1px solid ${C.gray100}`,
+                  cursor: 'pointer', transition: 'transform 0.1s ease',
+                  scrollSnapAlign: 'start',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+                onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+              >
+                <span style={{
+                  fontFamily: F, fontSize: '14px', fontWeight: 500, lineHeight: '20px',
+                  letterSpacing: '-0.28px', color: C.black, whiteSpace: 'nowrap',
+                }}>
+                  {s}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ── Input Area ── */}
         <div className="shrink-0 w-full" style={{ padding: '10px 16px', borderTop: `1px solid ${C.gray100}`, backgroundColor: C.white }}>

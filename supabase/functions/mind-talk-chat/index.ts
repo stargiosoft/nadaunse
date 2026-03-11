@@ -33,7 +33,7 @@ serve(async (req) => {
     const userId = user.id;
 
     // ── 2. Parse request ──
-    const { message, conversation_id, mode = 'general', meta } = await req.json();
+    const { message, conversation_id, mode = 'general', round = 1, meta } = await req.json();
     const today = new Date().toISOString().slice(0, 10);
     const isGreeting = meta?.type === 'greeting';
     const isTarotCards = meta?.type === 'tarot_cards';
@@ -57,6 +57,7 @@ serve(async (req) => {
         .eq('user_id', userId)
         .eq('session_date', today)
         .eq('mode', mode)
+        .eq('round', round)
         .maybeSingle();
 
       if (existing) {
@@ -65,7 +66,7 @@ serve(async (req) => {
       } else {
         const { data: newConv } = await supabase
           .from('mind_talk_conversations')
-          .insert({ user_id: userId, session_date: today, mode })
+          .insert({ user_id: userId, session_date: today, mode, round })
           .select('id')
           .single();
         convId = newConv!.id;
@@ -147,30 +148,15 @@ serve(async (req) => {
       .order('count', { ascending: false })
       .limit(15);
 
-    // 상황 요약
-    const { data: situationSummaries } = await supabase
+    // 최근 4주 심리 흐름 (주차별 최신 1건만)
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    const { data: recentSummaries } = await supabase
       .from('user_situation_summaries')
-      .select('situation_summary, source_type')
+      .select('situation_summary, created_at')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(3);
-
-    // 오늘 감정
-    const { data: todayEmotion } = await supabase
-      .from('mind_talk_emotions')
-      .select('emotion_score, emotion_label, memo')
-      .eq('user_id', userId)
-      .eq('checked_date', today)
-      .maybeSingle();
-
-    // 최근 7일 감정
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    const { data: recentEmotions } = await supabase
-      .from('mind_talk_emotions')
-      .select('checked_date, emotion_label, memo')
-      .eq('user_id', userId)
-      .gte('checked_date', weekAgo)
-      .order('checked_date', { ascending: false });
+      .gte('created_at', fourWeeksAgo.toISOString())
+      .order('created_at', { ascending: true });
 
     // 대화 히스토리
     const { data: history } = await supabase
@@ -180,40 +166,106 @@ serve(async (req) => {
       .order('created_at', { ascending: true })
       .limit(20);
 
-    // ── 7. Build context strings ──
-    const emotionMap: Record<string, string> = {
-      great: '좋아요', good: '괜찮아요', neutral: '그저 그래요',
-      bad: '별로예요', terrible: '힘들어요',
-    };
+    // ── 6-1. 사주 모드: 통합 사주 API 호출 ──
+    let detailedSajuInfo = '';
+    if (mode === 'saju') {
+      try {
+        // 사용자의 최근 사주 정보 가져오기
+        const { data: sajuRecord } = await supabase
+          .from('saju_records')
+          .select('full_name, gender, birth_date, birth_time')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
+        if (sajuRecord?.birth_date) {
+          const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim();
+          if (sajuApiKey) {
+            const birthDateStr = sajuRecord.birth_date as string;
+            const birthTimeStr = (sajuRecord.birth_time as string) || '12:00';
+
+            const datePart = birthDateStr.includes('T') ? birthDateStr.split('T')[0] : birthDateStr.split(' ')[0];
+            const dateOnly = datePart.replace(/-/g, '');
+            const timeOnly = birthTimeStr.replace(/:/g, '').substring(0, 4);
+            const birthday = dateOnly + timeOnly;
+
+            const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=false&gender=${sajuRecord.gender}&apiKey=${sajuApiKey}`;
+
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              try {
+                const sajuResponse = await fetch(sajuApiUrl, {
+                  method: 'GET',
+                  headers: {
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive',
+                    'Host': 'service.stargio.co.kr:8400',
+                    'Origin': 'https://nadaunse.com',
+                    'Referer': 'https://nadaunse.com/',
+                    'Sec-Fetch-Dest': 'empty',
+                    'Sec-Fetch-Mode': 'cors',
+                    'Sec-Fetch-Site': 'cross-site',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                  },
+                });
+
+                if (!sajuResponse.ok) throw new Error(`사주 API HTTP 오류: ${sajuResponse.status}`);
+
+                const rawText = await sajuResponse.text();
+                const sajuData = JSON.parse(rawText);
+
+                if (sajuData && Object.keys(sajuData).length > 0) {
+                  detailedSajuInfo = `\n\n[상세 사주 데이터]\n${JSON.stringify(sajuData, null, 2)}`;
+                  console.log('✅ 사주 API 호출 성공 (키 개수:', Object.keys(sajuData).length, ')');
+                  break;
+                }
+              } catch (err) {
+                console.error(`사주 API 시도 ${attempt}/3 실패:`, err);
+                if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+              }
+            }
+          }
+        } else {
+          console.log('사주 정보 없음, 사주 API 호출 스킵');
+        }
+      } catch (err) {
+        console.error('사주 API 처리 오류:', err);
+      }
+    }
+
+    // ── 7. Build context strings ──
     const tagText = tags?.length
       ? tags.map(t => `#${t.tag_name}(${t.sentiment === 'positive' ? '+' : t.sentiment === 'negative' ? '-' : ''})`).join(' ')
       : '아직 없음';
 
-    const situationText = situationSummaries?.length
-      ? situationSummaries.map(s => s.situation_summary).join('\n---\n')
-      : '없음';
-
-    const todayEmotionText = todayEmotion
-      ? `${emotionMap[todayEmotion.emotion_label] ?? '?'}${todayEmotion.memo ? ` — "${todayEmotion.memo}"` : ''}`
-      : '체크인하지 않음';
-
-    const recentEmotionText = recentEmotions?.length
-      ? recentEmotions.map(e => `${e.checked_date}: ${emotionMap[e.emotion_label] ?? '?'}${e.memo ? ` "${e.memo}"` : ''}`).join('\n')
-      : '없음';
+    // 주차별 그룹핑 (같은 주 여러 건 → 최신 1건만)
+    let situationText = '없음';
+    if (recentSummaries?.length) {
+      const now = new Date();
+      const weekMap = new Map<number, string>();
+      for (const s of recentSummaries) {
+        const daysAgo = Math.floor((now.getTime() - new Date(s.created_at).getTime()) / (1000 * 60 * 60 * 24));
+        const weekNum = Math.floor(daysAgo / 7) + 1;
+        if (weekNum >= 1 && weekNum <= 4) {
+          weekMap.set(weekNum, s.situation_summary); // ASC 순서 → 나중 것이 덮어씀 = 최신
+        }
+      }
+      const lines: string[] = [];
+      for (let w = 1; w <= 4; w++) {
+        if (weekMap.has(w)) lines.push(`[${w}주 전] ${weekMap.get(w)!}`);
+      }
+      if (lines.length) situationText = lines.join('\n');
+    }
 
     // ── 8. System prompt per mode ──
     const contextBlock = `[사용자 성향 태그]
 ${tagText}
 
 [사용자 심리 상황 요약]
-${situationText}
-
-[오늘 감정]
-${todayEmotionText}
-
-[최근 7일 감정 흐름]
-${recentEmotionText}`;
+${situationText}${detailedSajuInfo}`;
 
     const safetyRules = `- 의학적 진단, 약물 추천, 치료 조언 절대 금지
 - 사용자가 자해/자살을 언급하면 즉시 안내:
@@ -238,12 +290,14 @@ ${safetyRules}`;
     } else if (mode === 'saju') {
       systemPrompt = `너는 나다운세 앱의 사주 상담사 '마음이'야.
 사용자의 사주와 운세를 기반으로 따뜻하고 친근한 반말 톤으로 상담해.
-실제 사주 전문가처럼 오행, 음양, 천간지지의 개념을 활용해 이야기하되, 너무 어렵지 않게 풀어서 설명해.
+제공된 상세 사주 데이터를 분석의 핵심 근거로 활용해. 특히 격국, 일주, 대운의 특성을 바탕으로 구체적인 조언을 해줘.
 
 ${contextBlock}
 
 [대화 규칙]
 - 답변은 2~4문장으로
+- 사주 데이터가 있으면 반드시 활용하여 맞춤 상담 제공
+- 사주 전문 용어(종살격, 상관, 편관, 대운, 오행 등)는 직접 언급하지 않고 쉬운 일상 언어로 풀어서 설명
 - 사용자의 현재 고민이나 상황에 맞는 운세 해석을 제공
 - 긍정적인 방향으로 안내하되 현실적으로
 - 첫 인사 시 사용자의 상황을 바탕으로 오늘의 흐름이나 기운에 대해 이야기를 시작해
@@ -299,7 +353,7 @@ ${safetyRules}`;
       body: JSON.stringify({
         contents: geminiMessages,
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { temperature: 0.85, maxOutputTokens: 800, topP: 0.95 },
+        generationConfig: { temperature: 0.85, maxOutputTokens: 2000, topP: 0.95 },
       }),
     });
 
@@ -341,7 +395,11 @@ ${safetyRules}`;
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            // 한국어 멀티바이트 잔여분 flush
+            sseBuffer += decoder.decode();
+            break;
+          }
 
           sseBuffer += decoder.decode(value, { stream: true });
           const lines = sseBuffer.split('\n');
