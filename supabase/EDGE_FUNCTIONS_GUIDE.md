@@ -1,8 +1,8 @@
 # 📡 Edge Functions 가이드
 
 > **프로젝트**: 나다운세 (운세 서비스)
-> **총 함수 수**: 34개
-> **최종 업데이트**: 2026-03-05
+> **총 함수 수**: 38개
+> **최종 업데이트**: 2026-03-11
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -42,9 +42,11 @@
 | 📊 **모니터링/통계** | 2개 | 6% | Sentry, Slack, Google Analytics |
 | 🔍 **SEO** | 1개 | 3% | 동적 Sitemap 생성 |
 | 🔐 **소유자 확인** | 2개 | 6% | Service Role Key, 계정 불일치 처리 |
-| 🧹 **유틸리티** | 2개 | 6% | 태그 정리, Vercel 재빌드 |
+| 🧬 **나다움 분석** | 2개 | 5% | OpenAI GPT-4.1-nano, 만세력 API |
+| 💬 **마음톡** | 1개 | 3% | Gemini 2.5 Flash, SSE 스트리밍 |
+| 🧹 **유틸리티** | 2개 | 5% | 태그 정리, Vercel 재빌드 |
 
-**총 35개** (로컬 함수 기준)
+**총 38개** (로컬 함수 기준)
 
 ---
 
@@ -189,6 +191,19 @@
 
 34. `cleanup-unconfirmed-tags` - 미확인 태그 자동 정리 (pg_cron, 72시간 이상 미확인 태그 삭제)
 35. `trigger-rebuild` - Vercel 재빌드 트리거 (Deploy Hook 호출)
+
+---
+
+### 1️⃣4️⃣ **나다움 분석** (2개)
+
+36. `generate-nadaum-analysis` - 나다움 분석 AI 생성 (JSON 포맷: text+score+spectrum, metadata JSONB 저장, --no-verify-jwt)
+37. `analyze-nadaum-dna` - 나다움 DNA AI 분석 (GPT-4.1-nano, JWT 인증)
+
+---
+
+### 1️⃣5️⃣ **마음톡** (1개)
+
+38. `mind-talk-chat` - 마음톡 AI 대화 (Gemini 2.5 Flash, SSE 스트리밍, 모드별 시스템 프롬프트, 새싹 차감, --no-verify-jwt)
 
 ---
 

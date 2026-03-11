@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-06
-> **주요 결정**: 업셀링 후킹 멘트 아키텍처, 상세 페이지 History Guard 제거 및 navigate(-1) 전환, IndexNow 프로토콜 도입, iOS 스와이프 뒤로가기 FreeContentDetail 버그 수정, 직접 URL 진입 시 뒤로가기/홈 버튼 네비게이션 수정, visit_dates 기반 재방문 통계 전환
+> **최종 업데이트**: 2026-03-11
+> **주요 결정**: 마음톡 모드 시스템 + SSE 아키텍처, 나다움 분석 시각화, Vite outputDirectory dist 통일, 업셀링 후킹 멘트 아키텍처, 상세 페이지 History Guard 제거, IndexNow, iOS 스와이프 뒤로가기, visit_dates 기반 재방문 통계
 
 ---
 
@@ -17,6 +17,57 @@
 ---
 
 ## 2026-03-11
+
+### 마음톡 모드 시스템 — 일반/사주/타로 3모드 + 라운드 + SSE 스트리밍
+
+**결정**: 마음톡을 3가지 모드(일반/사주/타로)로 분리하고, 라운드 시스템으로 세션 관리
+
+**설계**:
+- **모드별 과금**: 일반(무료 무제한), 사주/타로(3회 무료→5새싹/회)
+- **라운드 시스템**: `mind_talk_conversations` UNIQUE(user_id, session_date, mode, round) — 새로고침 시 round+1
+- **SSE 스트리밍**: Gemini 2.5 Flash → Edge Function `mind-talk-chat`에서 SSE 전송 → 프론트 실시간 표시
+- **한국어 멀티바이트 처리**: TextDecoder flush + 잔여 buffer 처리로 잘림 방지
+- **4주 심리 흐름**: `user_situation_summaries` 주차별 최신 1건씩 AI에 전달
+- **AI 선제 인사**: 모드 진입 시 심리 데이터 기반 첫 메시지 자동 생성
+
+**이유**: 모드별 분리로 과금 모델 유연화, 라운드 시스템으로 대화 컨텍스트 격리, SSE로 UX 향상
+
+**영향**: MindTalkPage.tsx, mind-talk-chat Edge Function, mind_talk_conversations/messages 테이블
+
+---
+
+### 나다움 분석 시각화 — AI JSON 포맷 + 오행 바 차트 + 게이지/스펙트럼
+
+**결정**: 나다움 분석 결과를 구조화된 JSON(text+score+spectrum)으로 AI가 생성하고, 다양한 시각화 컴포넌트로 표시
+
+**설계**:
+- **AI 출력 포맷**: `{ text: string, score: number, spectrum: { left: string, right: string, value: number } }`
+- **시각화**: ScoreGauge(반원형 0-100), SpectrumBar(2축 스펙트럼), 오행 수평 바 차트
+- **나다움 유형 카드**: MBTI 스타일 16유형 + 그라디언트 + 명언
+- **metadata JSONB**: `nadaum_analyses.metadata`에 AI JSON 전체 저장 (캐시 재생성용)
+- **상세 해금 → 초대 기반**: ShareRewardModal 재사용, 친구 초대 0~4명 기반 단계적 해금
+
+**이유**: 구조화된 JSON으로 일관된 시각화 가능, metadata 저장으로 재분석 없이 UI 렌더링
+
+**영향**: NadaumAnalysisPage.tsx, NadaumAnalysisDetail.tsx, generate-nadaum-analysis Edge Function
+
+---
+
+### Vite outputDirectory — build → dist 통일
+
+**결정**: Vite 빌드 출력 디렉토리를 `dist`로 통일하고, 관련 설정 모두 업데이트
+
+**문제**: Vite `outDir: 'dist'`인데 prerender.mjs와 Vercel이 `build/`를 찾아서 배포 3연속 실패
+
+**수정**:
+1. `scripts/prerender.mjs`: `BUILD_DIR = resolve(__dirname, '..', 'dist')`
+2. `vercel.json`: `"outputDirectory": "dist"` 추가
+
+**이유**: Vite 기본값이 `dist`이므로 이에 맞춰 통일
+
+**영향**: vercel.json, scripts/prerender.mjs
+
+---
 
 ### BEST 운세 추천순 정렬 — 지수 감쇠 카테고리 점수 + 비로그인 localStorage 폴백
 

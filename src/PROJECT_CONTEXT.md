@@ -2,14 +2,14 @@
 
 > **AI 디버깅 전용 컨텍스트 파일** — 프로젝트 아키텍처, 데이터 흐름, 파일 참조
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-06
+> **최종 업데이트**: 2026-03-11
 
 ---
 
 ## Tech Stack
 
 - **Frontend**: React 18.3.1 + TypeScript + React Router v7.11.0 + Tailwind CSS v4.0 + Vite 6.3.5
-- **Backend**: Supabase (Auth, PostgreSQL + RLS, Edge Functions 42개, pg_cron + pg_net)
+- **Backend**: Supabase (Auth, PostgreSQL + RLS, Edge Functions 46개, pg_cron + pg_net)
 - **Auth**: Google (Supabase OAuth) | Kakao (SDK + signInWithPassword)
 - **AI**: OpenAI GPT-4o/GPT-5.1 | Claude-3.5-Sonnet | Gemini 2.5 Flash
 - **Payment**: PortOne v2 | **Notification**: TalkDream API | **Monitoring**: Sentry | **Deploy**: Vercel
@@ -31,6 +31,8 @@
 4. **타로**: 결제 → generate-content-answers(카드 사전 선택) → TarotShufflePage(UI 연출만) → 결과 표시
 5. **마스터 관리**: MasterContentCreate → Questions → generate-image-prompt → generate-thumbnail → 배포
 6. **주간 보고서**: pg_cron → generate-weekly-reports-batch → generate-weekly-report → 알림톡 → MyReportList → Detail → Tarot → MindCare → Memo → Coupon
+7. **나다움 분석**: NadaumAnalysisPage → generate-nadaum-analysis(AI JSON) → 유형 카드 + 오행 바 차트 + 상세 게이지/스펙트럼
+8. **마음톡**: MindTalkPage → 모드 선택(일반/사주/타로) → mind-talk-chat(SSE 스트리밍) → 라운드 시스템
 
 ---
 
@@ -218,6 +220,33 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 </details>
 
 <details>
+<summary><b>나다움 분석 (나다움DNA) - 3개</b></summary>
+
+```
+/components/NadaumAnalysisPage.tsx     → 나다움 분석 메인 (/nadaum)
+/components/NadaumAnalysisDetail.tsx   → 상세 분석 (/nadaum/:category) — ScoreGauge + SpectrumBar
+/lib/platform.ts                       → Capacitor 플랫폼 감지
+```
+
+**Edge Functions**: `generate-nadaum-analysis` (AI JSON: text+score+spectrum), `analyze-nadaum-dna` (GPT-4.1-nano)
+**DB**: `nadaum_analyses` (metadata JSONB)
+**시각화**: 나다움 유형 카드(16유형), 오행 수평 바 차트, ScoreGauge(반원형 0-100), SpectrumBar(2축)
+</details>
+
+<details>
+<summary><b>마음톡 (AI 채팅) - 1개</b></summary>
+
+```
+/pages/MindTalkPage.tsx                → 마음톡 채팅 (/maumtalk)
+```
+
+**Edge Functions**: `mind-talk-chat` (Gemini 2.5 Flash, SSE 스트리밍)
+**DB**: `mind_talk_conversations`, `mind_talk_messages`
+**모드**: 일반(무료 무제한), 사주(3회 무료→5새싹), 타로(3회 무료→5새싹)
+**기능**: AI 선제 인사, 라운드 시스템, 타로 카드 뽑기 해석, 4주 심리 흐름(user_situation_summaries)
+</details>
+
+<details>
 <summary><b>공통 UI</b></summary>
 
 ```
@@ -225,7 +254,8 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 /components/skeletons/*                 → 스켈레톤 (5개)
 /components/NavigationHeader.tsx        → 헤더
 /components/Footer.tsx                  → 푸터
-/components/BottomNavigation.tsx        → 하단 네비게이션
+/components/BottomNavigation.tsx        → 하단 네비게이션 (레거시)
+/components/BottomTabBar.tsx           → 하단 탭바 (홈/나다움/마음톡/프로필)
 /components/ErrorPage.tsx               → 에러 페이지
 /components/ErrorBoundary.tsx           → 에러 바운더리
 /components/ImageWithFallback.tsx       → 이미지 fallback
@@ -268,6 +298,8 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 | `free_content_records` | 무료 콘텐츠 기록 |
 | `anonymous_free_views` | 비회원 일일 제한 |
 | `sprout_transactions` / `sprout_packages` | 새싹 거래 |
+| `mind_talk_conversations` / `mind_talk_messages` | 마음톡 AI 채팅 |
+| `nadaum_analyses` | 나다움 분석 결과 (metadata JSONB) |
 
 **상세**: [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
 
@@ -279,6 +311,8 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 |----------|------|------|
 | AI 생성 | 9 | generate-free-preview, generate-saju/tarot-answer, generate-content-answers, extract-trait-tags |
 | AI 상담 | 2 | generate-saju/tarot-consult |
+| 나다움 분석 | 2 | generate-nadaum-analysis, analyze-nadaum-dna |
+| 마음톡 | 1 | mind-talk-chat (Gemini SSE) |
 | 주간 보고서 | 4 | generate-weekly-report(s-batch), send-report-alimtalk, get-failed-reports |
 | 쿠폰 | 4 | issue-welcome/revisit-coupon, get-available-coupons, apply-coupon-to-order |
 | 결제/환불/새싹 | 5 | payment-webhook, process-payment/refund, sprout-charge/deduct |
@@ -336,4 +370,4 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 
 ---
 
-**최종 업데이트**: 2026-03-06
+**최종 업데이트**: 2026-03-11

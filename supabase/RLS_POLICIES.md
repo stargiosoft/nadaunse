@@ -1,6 +1,6 @@
 # RLS (Row Level Security) 정책 가이드
 
-> **최종 업데이트**: 2026-03-05
+> **최종 업데이트**: 2026-03-11
 
 ## 개요
 
@@ -27,6 +27,8 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | `sprout_transactions` | Enabled | Masters can view all | `users.role = 'master'` |
 | `sprout_packages` | Enabled | Authenticated SELECT active | `is_active = true` |
 | `user_category_interactions` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+| `mind_talk_conversations` | Enabled | Users SELECT own | `auth.uid() = user_id` |
+| `mind_talk_messages` | Enabled | Users SELECT own | `auth.uid() = user_id` |
 | `anonymous_free_views` | Enabled | (정책 없음 — Service Role Key 전용) | - |
 | `anonymous_consult_views` | - | RLS 없음 (Service Role Key 전용) | - |
 | `user_consult_daily` | Enabled | (정책 없음 — Service Role Key 전용) | - |
@@ -211,7 +213,9 @@ const { count } = await supabase
 | share_rewards | 1 | Enabled |
 | anonymous_consult_views | 0 | RLS 없음 (Service Role 전용) |
 | user_consult_daily | 0 | Enabled (Service Role 전용) |
-| **총계** | **47** | - |
+| mind_talk_conversations | 1 | Enabled |
+| mind_talk_messages | 1 | Enabled |
+| **총계** | **49** | - |
 
 ---
 
