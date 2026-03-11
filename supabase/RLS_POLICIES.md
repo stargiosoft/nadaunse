@@ -26,6 +26,7 @@ Staging과 Production 환경 모두 동일한 정책이 적용되어 있습니�
 | `sprout_transactions` | Enabled | Users SELECT own | `auth.uid() = user_id` |
 | `sprout_transactions` | Enabled | Masters can view all | `users.role = 'master'` |
 | `sprout_packages` | Enabled | Authenticated SELECT active | `is_active = true` |
+| `user_category_interactions` | Enabled | Users SELECT own | `auth.uid() = user_id` |
 | `anonymous_free_views` | Enabled | (정책 없음 — Service Role Key 전용) | - |
 | `anonymous_consult_views` | - | RLS 없음 (Service Role Key 전용) | - |
 | `user_consult_daily` | Enabled | (정책 없음 — Service Role Key 전용) | - |

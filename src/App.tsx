@@ -1556,6 +1556,18 @@ function FreeResultPage() {
           setRecommendedContents(formattedRecommended);
           setRecommendedPaidContent(paidResult.content);
           setUpsellHookText(paidResult.hookText);
+
+          // 추천순 정렬용: recommended_paid_content_id를 localStorage에 저장
+          if (paidResult.content?.id) {
+            try {
+              const stored: Array<{ id: string; ts: number }> = JSON.parse(
+                localStorage.getItem('recommended_paid_ids') || '[]'
+              );
+              const filtered = stored.filter(item => item.id !== paidResult.content!.id);
+              filtered.unshift({ id: paidResult.content.id, ts: Date.now() });
+              localStorage.setItem('recommended_paid_ids', JSON.stringify(filtered.slice(0, 20)));
+            } catch { /* silent */ }
+          }
         } catch (error) {
           console.error('❌ [FreeResultPage] 추천 콘텐츠 조회 실패:', error);
         }
@@ -1624,6 +1636,19 @@ function FreeResultPage() {
             setRecommendedContents(formattedRecommended);
             setRecommendedPaidContent(paidResult.content);
             setUpsellHookText(paidResult.hookText);
+
+            // 추천순 정렬용: recommended_paid_content_id를 localStorage에 저장
+            if (paidResult.content?.id) {
+              try {
+                const stored: Array<{ id: string; ts: number }> = JSON.parse(
+                  localStorage.getItem('recommended_paid_ids') || '[]'
+                );
+                const filtered = stored.filter(item => item.id !== paidResult.content!.id);
+                filtered.unshift({ id: paidResult.content.id, ts: Date.now() });
+                localStorage.setItem('recommended_paid_ids', JSON.stringify(filtered.slice(0, 20)));
+              } catch { /* silent */ }
+            }
+
             setIsLoading(false);
           } else {
             console.error('❌ [FreeResultPage] 상품 없음');
@@ -2940,6 +2965,12 @@ function NadaumRecordWrapper() {
   // ⭐ localStorage 결과 키 (게스트→로그인 시 정확한 결과 매칭용)
   const resultKeyFromState = location.state?.resultKey as string | undefined;
 
+  const returnPath = sessionStorage.getItem('content_entry_source') || '/';
+  const handleReturn = () => {
+    sessionStorage.removeItem('content_entry_source');
+    navigate(returnPath);
+  };
+
   return (
     <CheckRecordMe
       contentId={id}
@@ -2947,8 +2978,8 @@ function NadaumRecordWrapper() {
       tags={tags}
       resultKey={resultKeyFromState}
       onBack={() => navigate(`/product/${id}/result/free`)} // 무료 운세 결과 페이지로 이동
-      onHome={() => navigate('/')}
-      onSkip={() => navigate('/')} // 다음에 할래요
+      onHome={handleReturn}
+      onSkip={handleReturn} // 다음에 할래요
     />
   );
 }
@@ -3042,6 +3073,12 @@ function PaidNadaumRecordWrapper() {
 
   const { orderId, contentId, tags } = location.state || {};
 
+  const returnPath = sessionStorage.getItem('content_entry_source') || '/';
+  const handleReturn = () => {
+    sessionStorage.removeItem('content_entry_source');
+    navigate(returnPath);
+  };
+
   if (!orderId || !contentId) {
     console.warn('⚠️ [PaidNadaumRecordWrapper] orderId 또는 contentId 없음 → 홈으로 이동');
     navigate('/');
@@ -3055,9 +3092,9 @@ function PaidNadaumRecordWrapper() {
       tags={tags}
       sourceType="paid_content"
       onBack={() => navigate(-1)}
-      onHome={() => navigate('/')}
-      onSkip={() => navigate('/')}
-      onComplete={() => navigate('/')}  // ⭐ 무료와 동일하게 홈으로 이동 + 토스트 표시
+      onHome={handleReturn}
+      onSkip={handleReturn}
+      onComplete={handleReturn}  // ⭐ 유입 경로로 복귀
     />
   );
 }

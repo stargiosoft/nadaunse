@@ -318,9 +318,11 @@ export function FortuneAllPage() {
     return 0;
   });
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<'인기순' | '최신순'>(() => {
+  const [sortBy, setSortBy] = useState<'추천순' | '인기순' | '최신순'>(() => {
     const st = (location.state as { sort?: string } | null);
-    return st?.sort === 'popular' ? '인기순' : '인기순';
+    if (st?.sort === 'popular') return '인기순';
+    if (st?.sort === 'latest') return '최신순';
+    return '추천순';
   });
   const sortRef = useRef<HTMLDivElement>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -359,7 +361,10 @@ export function FortuneAllPage() {
     try {
       const category = TAB_CATEGORIES[activeTab] || '전체';
       const pContentType = filterType === '심화' ? 'paid' : filterType === '무료' ? 'free' : 'all';
-      const { data, error } = await supabase.rpc('get_home_contents', {
+
+      // 추천순: get_recommended_contents RPC, 그 외: get_home_contents RPC
+      const rpcName = sortBy === '추천순' ? 'get_recommended_contents' : 'get_home_contents';
+      const { data, error } = await supabase.rpc(rpcName, {
         p_category: category,
         p_content_type: pContentType,
         p_offset: 0,
@@ -370,7 +375,26 @@ export function FortuneAllPage() {
 
       // 정렬 적용
       let sorted = [...data];
-      if (sortBy === '최신순') {
+
+      if (sortBy === '추천순') {
+        // 비로그인 시 localStorage의 recommended_paid_ids로 재정렬
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          try {
+            const stored: Array<{ id: string; ts: number }> = JSON.parse(
+              localStorage.getItem('recommended_paid_ids') || '[]'
+            );
+            if (stored.length > 0) {
+              const idSet = new Set(stored.map(s => s.id));
+              const tsMap = new Map(stored.map(s => [s.id, s.ts]));
+              const boosted = sorted.filter((r: { id: string }) => idSet.has(r.id));
+              const rest = sorted.filter((r: { id: string }) => !idSet.has(r.id));
+              boosted.sort((a: { id: string }, b: { id: string }) => (tsMap.get(b.id) || 0) - (tsMap.get(a.id) || 0));
+              sorted = [...boosted, ...rest];
+            }
+          } catch { /* silent */ }
+        }
+      } else if (sortBy === '최신순') {
         sorted.sort((a: { created_at: string; weekly_clicks: number; is_read: boolean }, b: { created_at: string; weekly_clicks: number; is_read: boolean }) => {
           // 1순위: 읽지 않은 콘텐츠 먼저
           const readDiff = (a.is_read ? 1 : 0) - (b.is_read ? 1 : 0);
@@ -415,6 +439,7 @@ export function FortuneAllPage() {
 
   const handleItemClick = (item: FortuneItem) => {
     trackContentClick(item.id);
+    sessionStorage.setItem('content_entry_source', '/best-fortune');
     navigate(
       item.contentType === 'free'
         ? `/free/content/${item.id}`
@@ -686,6 +711,21 @@ export function FortuneAllPage() {
                 <div style={{ padding: '0 22px', marginBottom: 4 }}>
                   <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>정렬</span>
                 </div>
+                {/* 추천순 */}
+                <button
+                  onClick={() => { setSortBy('추천순'); setSortOpen(false); }}
+                  className="flex items-center w-full cursor-pointer"
+                  style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
+                    {sortBy === '추천순' ? (
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
+                    ) : (
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
+                    )}
+                  </div>
+                  <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>추천순</span>
+                </button>
                 {/* 인기순 */}
                 <button
                   onClick={() => { setSortBy('인기순'); setSortOpen(false); }}
