@@ -926,10 +926,13 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const backTabState = categoryTabIndex >= 0 ? { tab: categoryTabIndex } : undefined;
 
   const onBack = () => {
-    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex });
-    // ⭐ navigate(-1)로 이전 페이지 자연스럽게 복귀 (DECISIONS.md 패턴)
-    // - 탭 상태는 FortuneAllPage가 sessionStorage에서 복원
-    // - navigate('/best-fortune', { replace: true }) 사용 시 히스토리 스택 오염 버그 발생
+    const entrySource = sessionStorage.getItem('content_entry_source');
+    sessionStorage.removeItem('content_entry_source');
+    console.log('🔙 [MasterContentDetailPage] onBack 호출됨', { category_main: content.category_main, categoryTabIndex, entrySource });
+    if (entrySource) {
+      navigate(entrySource, { replace: true, state: backTabState });
+      return;
+    }
     navigate(-1);
   };
   
@@ -2281,6 +2284,10 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
           <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
             <div className="bg-white relative shrink-0 w-full">
               <div className="flex flex-col items-center justify-center size-full">
+                {/* 급진적 투명성 멘트 */}
+                <p className="text-center px-[20px]" style={{ fontSize: '12px', fontWeight: 400, lineHeight: '18px', letterSpacing: '-0.24px', color: '#848484', paddingTop: '10px' }}>
+                  AI 해석이라 매번 표현은 조금 달라요. <span style={{ color: '#151515', fontWeight: 500 }}>대신 핵심 흐름은 깊게 분석해요.</span>
+                </p>
                 <div className="box-border content-stretch flex flex-col gap-[10px] items-center justify-center px-[20px] py-[12px] relative w-full">
                   <motion.div
                     role="button"
