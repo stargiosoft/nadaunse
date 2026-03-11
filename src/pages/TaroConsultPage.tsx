@@ -144,7 +144,7 @@ export function TaroConsultPage() {
         >
           <div style={{ backgroundColor: C.white, paddingTop: 16, paddingBottom: 12, paddingLeft: 20, paddingRight: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ backgroundColor: '#f7f8f9', borderRadius: 16, padding: 14, display: 'inline-flex', alignSelf: 'flex-start' }}>
-              <img src="/consult/the-lover.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain', marginTop: -2 }} />
+              <img src="/consult/the-lover.svg" alt="" style={{ width: 32, height: 32, objectFit: 'contain', marginTop: -2 }} />
             </div>
             <div style={{ paddingLeft: 4, paddingRight: 4 }}>
               <p style={{ fontFamily: font, fontSize: 17, fontWeight: 500, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>

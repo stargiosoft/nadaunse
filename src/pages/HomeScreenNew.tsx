@@ -229,9 +229,9 @@ function AnonymousShieldIcon() {
 /** 익명 상담 뱃지 */
 function AnonymousBadge() {
   return (
-    <div className="flex items-center shrink-0" style={{ backgroundColor: '#f3f3f3', borderRadius: 999, padding: '4px 8px', gap: 4 }}>
+    <div className="flex items-center shrink-0" style={{ backgroundColor: '#F8F8F8', borderRadius: 999, padding: '4px 8px', gap: 4, alignSelf: 'flex-start', width: 'fit-content' }}>
       <AnonymousShieldIcon />
-      <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: '#525252', lineHeight: '16px', whiteSpace: 'nowrap', paddingTop: 2 }}>
+      <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: '#525252', lineHeight: '16px', whiteSpace: 'nowrap', paddingTop: 1.5 }}>
         익명 상담
       </span>
     </div>
@@ -454,7 +454,7 @@ function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) 
   };
 
   return (
-    <section className="w-full" style={{ padding: '0px 20px 8px' }}>
+    <section className="w-full" style={{ padding: '0px 20px 16px' }}>
       {isCompleted ? (
         /* ── 상담 후 카드 ── */
         <div
@@ -467,23 +467,23 @@ function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) 
             padding: '20px 24px 22px',
           }}
         >
-          <div className="flex flex-col w-full" style={{ gap: 21 }}>
+          <div className="flex flex-col w-full" style={{ gap: 18 }}>
             {/* 뱃지 + 남은 시간 */}
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center" style={{ gap: 6 }}>
+            <div style={{ position: 'relative' }}>
+              <div className="flex items-center justify-between w-full">
                 <AnonymousBadge />
-                {DEV && (
-                  <button
-                    onClick={devToggle}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.gray600, padding: 0, paddingTop: 4 }}
-                  >
-                    Dev
-                  </button>
-                )}
+                <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: C.primary, lineHeight: '16px', whiteSpace: 'nowrap' }}>
+                  {timeUntilMidnight} 후 상담 가능
+                </span>
               </div>
-              <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: C.primary, lineHeight: '16px', whiteSpace: 'nowrap' }}>
-                {timeUntilMidnight} 후 상담 가능
-              </span>
+              {DEV && (
+                <button
+                  onClick={devToggle}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.gray600, padding: 0, position: 'absolute', top: '100%', right: 0, marginTop: 2 }}
+                >
+                  Dev
+                </button>
+              )}
             </div>
 
             {/* 본문 */}
@@ -527,12 +527,12 @@ function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) 
           }}
         >
           {/* 뱃지 */}
-          <div className="flex items-center" style={{ gap: 6 }}>
+          <div style={{ position: 'relative', alignSelf: 'flex-start' }}>
             <AnonymousBadge />
             {DEV && (
               <button
                 onClick={devToggle}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.gray600, padding: 0, paddingTop: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.gray600, padding: 0, position: 'absolute', top: '100%', left: 6, marginTop: 2 }}
               >
                 Dev
               </button>
@@ -1550,7 +1550,7 @@ export function HomeScreenNew() {
         <AppHeader />
         <AppSearchBar />
         <FreeConsultationSection nickname={nickname} />
-        <div style={{ height: 8 }} />
+        <div style={{ height: 16 }} />
         <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
 
         {newFreeSlides.length > 0 && (

@@ -13,7 +13,7 @@ const C = {
   gray800: '#525252',
   gray900: '#151515',
   bgCard: '#f7f8f9',
-  bgBadge: '#f3f3f3',
+  bgBadge: '#F8F8F8',
   white: '#ffffff',
 } as const;
 
@@ -56,14 +56,14 @@ export default function ConsultTypeSelectPage() {
         >
           <span className="btn-icon-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s ease-out', transformOrigin: 'center' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M15 19L8 12L15 5" stroke="#848484" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" />
+              <path d="M15 19.92L8.48 13.4C7.71 12.63 7.71 11.37 8.48 10.6L15 4.08" stroke="#848484" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" />
             </svg>
           </span>
         </button>
       </div>
 
       {/* 본문 */}
-      <div className="flex flex-col w-full" style={{ gap: 14, paddingTop: 52 }}>
+      <div className="flex flex-col w-full" style={{ gap: 14, paddingTop: 0 }}>
         {/* 타이틀 */}
         <div
           className="flex items-center w-full"
@@ -132,7 +132,7 @@ export default function ConsultTypeSelectPage() {
             onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.bgCard; }}
           >
             <div className="flex flex-col items-center" style={{ gap: 11, width: 145 }}>
-              <img src="/consult/the-lover.png" alt="타로" style={{ width: 46, height: 46, objectFit: 'contain' }} />
+              <img src="/consult/the-lover.svg" alt="타로" style={{ width: 42, height: 42, objectFit: 'contain' }} />
               <div className="flex flex-col items-center text-center" style={{ paddingBottom: 1, width: 145 }}>
                 <p style={{ fontFamily: font, fontSize: 16, fontWeight: 600, color: C.gray900, letterSpacing: '-0.32px', lineHeight: '28.5px' }}>
                   타로
@@ -158,7 +158,7 @@ export default function ConsultTypeSelectPage() {
               <path d="M6 1L10.5 2.8V6.5C10.5 8.9 8.5 11 6 11.5C3.5 11 1.5 8.9 1.5 6.5V2.8L6 1Z" fill="#4CAF50" />
               <path d="M4 6.5L5.5 8L8 5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: C.gray800, lineHeight: '16px', whiteSpace: 'nowrap', paddingTop: 2 }}>
+            <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: C.gray800, lineHeight: '16px', whiteSpace: 'nowrap', paddingTop: 1.5 }}>
               익명 상담
             </span>
           </div>
