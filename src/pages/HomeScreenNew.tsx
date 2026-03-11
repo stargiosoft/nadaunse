@@ -441,7 +441,7 @@ function FreeConsultationSection({ nickname }: { nickname: string }) {
   ];
 
   return (
-    <section className="w-full" style={{ backgroundColor: C.white, padding: '0px 20px 12px' }}>
+    <section className="w-full" style={{ backgroundColor: C.white, padding: '0px 20px 28px' }}>
       {/* 인사말 */}
       <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingTop: 16 }}>
         <p
@@ -814,7 +814,7 @@ function NewFortuneSection({
   }, []);
 
   return (
-    <section className="w-full" style={{ backgroundColor: C.white, padding: '26px 20px 0px' }}>
+    <section className="w-full" style={{ backgroundColor: C.white, padding: '10px 20px 0px' }}>
       <div className="flex flex-col items-start w-full" style={{ gap: 20 }}>
         {/* 섹션 타이틀 */}
         <span
@@ -1224,7 +1224,7 @@ function BestFortuneSection({
   return (
     <section
       className="flex flex-col items-start w-full"
-      style={{ backgroundColor: C.white, paddingTop: 22, paddingBottom: 12 }}
+      style={{ backgroundColor: C.white, paddingTop: 14, paddingBottom: 12 }}
     >
       {/* 헤더 */}
       <div
@@ -1553,12 +1553,13 @@ export function HomeScreenNew() {
         <AppHeader />
         <AppSearchBar />
         <FreeConsultationSection nickname={nickname} />
+        <div style={{ height: 8, backgroundColor: '#F9F9F9', flexShrink: 0 }} />
         <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
 
         {newFreeSlides.length > 0 && (
           <NewFortuneSection dot={dot} onDotChange={setDot} slides={newFreeSlides} />
         )}
-        <div style={{ marginTop: 130, marginBottom: 80 }}>
+        <div style={{ marginTop: 130, marginBottom: 56 }}>
           <Footer
             onNavigateToTerms={() => navigate('/terms-of-service')}
             onNavigateToPrivacy={() => navigate('/privacy-policy')}
