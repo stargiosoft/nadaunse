@@ -2467,14 +2467,34 @@ function LoginPageNewWrapper() {
   const navigate = useNavigate();
   const goBack = useGoBack('/'); // ⭐ 직전 페이지로 돌아가기 (fallback: 홈)
 
-  // ⭐ 이미 로그인된 상태면 즉시 리다이렉트 (뒤로가기로 돌아왔을 때 로그인 페이지 깜빡임 방지)
-  const user = localStorage.getItem('user');
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
+  // ⭐ 로그인 성공 처리 중 플래그 (Navigate 경합 방지)
+  const loginProcessingRef = useRef(false);
 
-  const handleLoginSuccess = (user: any) => {
-    console.log('🎉 로그인 성공! user:', user);
+  // ⭐ 이미 로그인된 상태면 즉시 뒤로 (bfcache/뒤로가기 복원 대응)
+  // loginProcessingRef로 handleLoginSuccess 실행 중에는 스킵
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user && !loginProcessingRef.current) {
+      console.log('🔄 [LoginPage] 이미 로그인된 상태 → 뒤로 이동');
+      navigate(-1);
+    }
+  }, [navigate]);
+
+  // ⭐ iOS bfcache 복원 시 로그인 상태면 즉시 뒤로 (pageshow 이벤트)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted && localStorage.getItem('user') && !loginProcessingRef.current) {
+        console.log('🔄 [LoginPage] bfcache 복원 + 로그인 상태 → 뒤로 이동');
+        navigate(-1);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [navigate]);
+
+  const handleLoginSuccess = (userData: any) => {
+    loginProcessingRef.current = true;
+    console.log('🎉 로그인 성공! user:', userData);
 
     // ⭐ iOS Safari: 로그인 후 홈 버퍼 재생성 (스와이프 뒤로가기 → 이전 페이지/탭 닫힘 방지)
     sessionStorage.removeItem('homepage_history_initialized');
@@ -2490,10 +2510,10 @@ function LoginPageNewWrapper() {
     if (redirectUrl) {
       console.log('✅ 리다이렉트 URL 존재 → 이동:', redirectUrl);
       localStorage.removeItem('redirectAfterLogin');
-      navigate(redirectUrl, { replace: true });  // ⭐ replace 추가: 로그인 페이지를 히스토리에서 제거
+      navigate(redirectUrl, { replace: true });
     } else {
       console.log('❌ 리다이렉트 URL 없음 → 홈으로 이동');
-      navigate('/', { replace: true });  // ⭐ replace 추가: 로그인 페이지를 히스토리에서 제거
+      navigate('/', { replace: true });
     }
   };
 
