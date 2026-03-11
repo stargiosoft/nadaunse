@@ -12,7 +12,7 @@
 | 분류 | 기술 |
 |------|------|
 | Frontend | React 18 + TypeScript + Tailwind CSS v4.0 + Vite |
-| Backend | Supabase (PostgreSQL + Edge Functions 42개) |
+| Backend | Supabase (PostgreSQL + Edge Functions 46개) |
 | AI | OpenAI GPT-4o/GPT-5.1, Claude-3.5-Sonnet, Gemini |
 | 자동화 | pg_cron + pg_net (주간 보고서) |
 | 결제 | PortOne v2 |
@@ -20,7 +20,7 @@
 | 에러 모니터링 | Sentry |
 | 배포 | Vercel |
 
-**주요 통계**: 컴포넌트 72개 | Edge Functions 42개 | 페이지 52개 | shadcn/ui 48개 | 타로 78장
+**주요 통계**: 컴포넌트 72개 | Edge Functions 46개 | 페이지 55개 | shadcn/ui 52개 | 타로 78장
 
 ---
 
@@ -65,7 +65,7 @@ import { DEV } from '../lib/env';  // 권장 (Figma Make에서도 정확)
 ### 8. Edge Functions
 
 - Deno runtime | CORS 헤더 필수 | 에러 핸들링 + 구조화된 로깅
-- **소스**: `/supabase/functions/` | **총 42개**
+- **소스**: `/supabase/functions/` | **총 46개**
 
 **배포 (반드시 스크립트 사용)**:
 ```bash
@@ -81,7 +81,7 @@ npx supabase functions deploy <함수명> --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 ```
 
-**--no-verify-jwt 필수 함수**: `generate-saju-answer`, `generate-tarot-answer`, `send-alimtalk`, `generate-weekly-report`, `send-report-alimtalk`, `generate-sitemap`, `generate-upsell-mapping`
+**--no-verify-jwt 필수 함수**: `generate-saju-answer`, `generate-tarot-answer`, `send-alimtalk`, `generate-weekly-report`, `send-report-alimtalk`, `generate-sitemap`, `generate-upsell-mapping`, `generate-nadaum-analysis`, `mind-talk-chat`
 
 **배포 스크립트**: `/scripts/` (deploy-production.bat, deploy-staging.bat, deploy-core.bat)
 
@@ -154,7 +154,7 @@ npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref
 └── imports/        # SVG, 이미지 임포트
 
 supabase/
-├── functions/      # Edge Functions (41개)
+├── functions/      # Edge Functions (46개)
 ├── migrations/     # SQL 마이그레이션
 └── *.md            # Supabase 문서
 ```
@@ -218,4 +218,4 @@ FigmaMake 코드는 Tailwind arbitrary value를 사용하지만, globals.css bas
 
 ---
 
-**최종 업데이트**: 2026-03-06
+**최종 업데이트**: 2026-03-11

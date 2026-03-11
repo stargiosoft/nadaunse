@@ -518,6 +518,49 @@
 
 ---
 
+## 마음톡 테이블
+
+### `mind_talk_conversations`
+
+마음톡 AI 채팅 대화 세션 (모드별 라운드 관리)
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 대화 고유 ID |
+| `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (auth.users.id, ON DELETE CASCADE) |
+| `session_date` | date | NOT NULL | `CURRENT_DATE` | 세션 날짜 |
+| `mode` | text | NOT NULL, CHECK | `'general'` | 모드 (general, saju, tarot) |
+| `round` | integer | NOT NULL | `1` | 라운드 번호 |
+| `message_count` | integer | NOT NULL | `0` | 메시지 수 |
+| `free_messages_used` | integer | NOT NULL | `0` | 사용한 무료 메시지 수 |
+| `summary` | text | - | - | 대화 요약 |
+| `created_at` | timestamptz | NOT NULL | `NOW()` | 생성 일시 |
+| `updated_at` | timestamptz | NOT NULL | `NOW()` | 수정 일시 |
+
+**제약조건**: `mode` CHECK: general/saju/tarot | UNIQUE (user_id, session_date, mode, round)
+**인덱스**: `idx_mind_talk_conversations_user_date_mode_round` (user_id, session_date, mode, round)
+**RLS**: Enabled — SELECT `auth.uid() = user_id`
+
+### `mind_talk_messages`
+
+마음톡 AI 채팅 개별 메시지
+
+| 컬럼명 | 타입 | 제약조건 | 기본값 | 설명 |
+|--------|------|----------|--------|------|
+| `id` | uuid | PRIMARY KEY | `gen_random_uuid()` | 메시지 고유 ID |
+| `conversation_id` | uuid | FOREIGN KEY, NOT NULL | - | 대화 ID (mind_talk_conversations.id, ON DELETE CASCADE) |
+| `user_id` | uuid | FOREIGN KEY, NOT NULL | - | 사용자 ID (auth.users.id, ON DELETE CASCADE) |
+| `role` | text | NOT NULL, CHECK | - | 역할 (user, assistant) |
+| `content` | text | NOT NULL | - | 메시지 내용 |
+| `is_paid` | boolean | NOT NULL | `false` | 유료 메시지 여부 |
+| `created_at` | timestamptz | NOT NULL | `NOW()` | 생성 일시 |
+
+**외래키**: `conversation_id` → `mind_talk_conversations(id)` ON DELETE CASCADE | `user_id` → `auth.users(id)` ON DELETE CASCADE
+**인덱스**: `idx_mind_talk_messages_conv` (conversation_id, created_at)
+**RLS**: Enabled — SELECT `auth.uid() = user_id`
+
+---
+
 ## 백업 테이블
 
 - `master_contents_backup`: `master_contents` 백업 (컬럼 구조 동일, 제약조건 없음)
@@ -537,6 +580,7 @@ saju_records ─→ orders (1:N)
 master_content_questions ─→ order_results (1:N)
 coupons ─→ user_coupons (1:N)
 weekly_reports ─→ weekly_report_sections (1:N), report_tarot_selections (1:N)
+mind_talk_conversations ─→ mind_talk_messages (1:N)
 ```
 
 ---
@@ -580,6 +624,7 @@ weekly_reports ─→ weekly_report_sections (1:N), report_tarot_selections (1:N
 | 2.4.0 | 2026-03-05 | user_consult_daily 테이블 추가, process_mission_reward RPC 추가, 테이블 수 25개 | AI Assistant |
 | 2.5.0 | 2026-03-06 | master_contents에 recommended_paid_content_id(자기참조 FK), upsell_hook_text 컬럼 추가 (업셀링 시스템) | AI Assistant |
 | 2.6.0 | 2026-03-11 | user_category_interactions 테이블 추가 (추천순 정렬), get_recommended_contents RPC 추가, 2개 트리거 함수 추가 | AI Assistant |
+| 2.7.0 | 2026-03-11 | mind_talk_conversations, mind_talk_messages 테이블 추가 (마음톡 AI 채팅), nadaum_analyses.metadata JSONB 컬럼 추가 | AI Assistant |
 
 ---
 
