@@ -242,12 +242,24 @@ serve(async (req) => {
           }
         }
 
-        // 사주 API 데이터를 문자열로 변환하여 프롬프트에 포함
+        // 사주 API 데이터를 문자열로 변환하여 프롬프트에 포함 (핵심 필드만 추출)
         if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
-          // 주요 사주 정보 추출 (API 응답 구조에 따라 조정)
-          const sajuDataStr = JSON.stringify(cachedSajuData, null, 2)
+          const essentialKeys = [
+            '격국', '격국설명', '일주', '일주설명',
+            '천간', '지지', '십성', '십이운성',
+            '대운', '대운수', '세운',
+            '발달오행', '오행비율',
+            '용신', '용신설명', '희신',
+            '성격', '적성', '건강',
+            '올해운세', '이달운세', '오늘운세',
+          ]
+          const essentialData: Record<string, unknown> = {}
+          for (const k of essentialKeys) {
+            if (cachedSajuData[k] !== undefined) essentialData[k] = cachedSajuData[k]
+          }
+          const sajuDataStr = JSON.stringify(essentialData, null, 2)
           detailedSajuInfo = `\n\n### 상세 사주 데이터 (명리학 분석용)\n${sajuDataStr}`
-          console.log('✅ [Edge Function] 상세 사주 정보 추가 완료')
+          console.log('✅ [Edge Function] 상세 사주 정보 추가 완료 (전체:', Object.keys(cachedSajuData).length, '키, 추출:', Object.keys(essentialData).length, '키)')
         } else {
           console.warn('⚠️ [Edge Function] 사주 API 호출 실패, 기본 정보만 사용')
         }

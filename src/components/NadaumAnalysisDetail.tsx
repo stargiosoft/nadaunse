@@ -254,64 +254,70 @@ export default function NadaumAnalysisDetail() {
   const [error, setError] = useState<string | null>(null);
   const [tagCount, setTagCount] = useState(0);
   const [metadata, setMetadata] = useState<AnalysisMetadata>({});
+  const [isCached, setIsCached] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentTagCount, setCurrentTagCount] = useState(0);
 
   const info = category ? CATEGORY_INFO[category] : null;
 
+  async function fetchAnalysis(forceRefresh = false) {
+    try {
+      setError(null);
+      if (forceRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      const { data: { user } } = await getAuthUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-nadaum-analysis`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ category, forceRefresh }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.analysis) {
+        setSections(parseSections(data.analysis.analysis_text));
+        setTagCount(data.analysis.tag_count);
+        setCurrentTagCount(data.analysis.current_tag_count || data.analysis.tag_count);
+        setIsCached(!!data.analysis.is_cached);
+        if (data.analysis.metadata) {
+          setMetadata(data.analysis.metadata);
+        }
+      } else {
+        setError(data.error || '분석 생성에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('[NadaumAnalysisDetail] 에러:', err);
+      setError('분석을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }
+
   useEffect(() => {
     if (!category || !info) return;
-    let cancelled = false;
-
-    async function generate() {
-      try {
-        const { data: { user } } = await getAuthUser();
-        if (!user) {
-          navigate('/login');
-          return;
-        }
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate('/login');
-          return;
-        }
-
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/generate-nadaum-analysis`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ category }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!cancelled) {
-          if (data.success && data.analysis) {
-            setSections(parseSections(data.analysis.analysis_text));
-            setTagCount(data.analysis.tag_count);
-            if (data.analysis.metadata) {
-              setMetadata(data.analysis.metadata);
-            }
-          } else {
-            setError(data.error || '분석 생성에 실패했습니다.');
-          }
-          setIsLoading(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('[NadaumAnalysisDetail] 에러:', err);
-          setError('분석을 불러오는 중 오류가 발생했습니다.');
-          setIsLoading(false);
-        }
-      }
-    }
-
-    generate();
-    return () => { cancelled = true; };
+    fetchAnalysis();
   }, [category]);
 
   if (!info) {
@@ -371,12 +377,40 @@ export default function NadaumAnalysisDetail() {
         {!isLoading && !error && sections.length > 0 && (
           <div style={{ padding: '0 20px 40px' }}>
             {/* Category Badge */}
-            <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
-              <span style={{ fontSize: '28px' }}>{info.emoji}</span>
-              <div>
-                <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600 }}>
-                  나다움 태그 {tagCount}개 기반 분석
-                </p>
+            <div style={{ marginBottom: '12px' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: '20px', lineHeight: 1 }}>{info.emoji}</span>
+                  <div>
+                    <p style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600 }}>
+                      나다움 태그 {tagCount}개 기반 분석
+                    </p>
+                    {currentTagCount - tagCount < 5 && (
+                      <p style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray400, marginTop: '2px' }}>
+                        {5 - (currentTagCount - tagCount)}개 더 모으면 다시 분석!
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {currentTagCount - tagCount >= 5 && (
+                  <button
+                    onClick={() => fetchAnalysis(true)}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-1 cursor-pointer shrink-0"
+                    style={{
+                      padding: '4px 10px',
+                      backgroundColor: info.bgColor,
+                      borderRadius: '10px',
+                      border: 'none',
+                      opacity: isRefreshing ? 0.6 : 1,
+                    }}
+                  >
+                    <span style={{ fontSize: '11px' }}>{isRefreshing ? '...' : '🔄'}</span>
+                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 500, color: info.color }}>
+                      {isRefreshing ? '분석 중' : '다시 분석'}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
 

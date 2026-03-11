@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { logger } from './logger';
 import { setUser as setSentryUser } from './sentry';
+import { isNativeApp } from './platform';
 
 /**
  * 카카오 로그인 (Kakao SDK → Supabase Auth)
@@ -148,9 +149,12 @@ export const signInWithKakao = async () => {
 /**
  * 구글 OAuth URL 생성 (공통)
  * signInWithOAuth의 skipBrowserRedirect로 URL만 획득
+ * 네이티브 앱에서는 딥링크(nadaunse://auth/callback) 사용
  */
 export const getGoogleOAuthUrl = async (): Promise<string | null> => {
-  const redirectUrl = `${window.location.origin}/auth/callback`;
+  const redirectUrl = isNativeApp()
+    ? 'nadaunse://auth/callback'
+    : `${window.location.origin}/auth/callback`;
   logger.debug('구글 OAuth redirectTo:', redirectUrl);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -270,6 +274,22 @@ export const signInWithGoogleRedirect = async (): Promise<void> => {
     logger.info('구글 OAuth 시작 (redirect fallback 모드)');
     window.location.replace(oauthUrl);
   }
+};
+
+/**
+ * 구글 로그인 - 네이티브 앱 모드
+ * WebView에서 Google OAuth가 차단되므로 시스템 브라우저(Custom Tab)로 진행
+ * 로그인 완료 후 딥링크(nadaunse://auth/callback)로 앱 복귀
+ */
+export const signInWithGoogleNative = async (): Promise<void> => {
+  const oauthUrl = await getGoogleOAuthUrl();
+  if (!oauthUrl) {
+    throw new Error('OAuth URL을 가져올 수 없습니다');
+  }
+
+  logger.info('구글 OAuth 시작 (네이티브 앱 모드 - Custom Tab)');
+  const { Browser } = await import('@capacitor/browser');
+  await Browser.open({ url: oauthUrl, presentationStyle: 'popover' });
 };
 
 /**

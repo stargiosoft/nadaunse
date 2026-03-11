@@ -8,12 +8,16 @@
 /**
  * 프로덕션 환경 여부 체크
  * nadaunse.com 또는 nadaunse.figma.site 도메인이면 프로덕션으로 간주
+ * Capacitor 네이티브 앱도 프로덕션으로 간주 (hostname이 localhost)
  */
 export const isProduction = (): boolean => {
   if (typeof window === 'undefined') return false;
-  
+
+  // Capacitor 네이티브 앱: 프로덕션 Supabase를 사용하면 프로덕션
+  if (import.meta.env.VITE_SUPABASE_PROJECT_ID === 'kcthtpmxffppfbkjjkub') return true;
+
   const hostname = window.location.hostname;
-  return hostname === 'nadaunse.com' 
+  return hostname === 'nadaunse.com'
       || hostname === 'www.nadaunse.com'
       || hostname === 'nadaunse.figma.site';
 };
@@ -57,16 +61,19 @@ export const isFigmaSite = (): boolean => {
  */
 export const DEV = (() => {
   if (typeof window === 'undefined') return false;
-  
+
+  // 프로덕션 Supabase 사용 시 DEV=false (네이티브 앱 포함)
+  if (import.meta.env.VITE_SUPABASE_PROJECT_ID === 'kcthtpmxffppfbkjjkub') return false;
+
   const hostname = window.location.hostname;
-  
+
   // 프로덕션 도메인 체크
-  if (hostname === 'nadaunse.com' 
+  if (hostname === 'nadaunse.com'
       || hostname === 'www.nadaunse.com'
       || hostname === 'nadaunse.figma.site') {
     return false;
   }
-  
+
   // 그 외 모든 환경 (localhost, 다른 figma.site 등)
   return true;
 })();

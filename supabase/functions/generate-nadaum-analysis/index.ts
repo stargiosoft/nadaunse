@@ -40,7 +40,7 @@ interface CategoryConfig {
 const CATEGORIES: Record<string, CategoryConfig> = {
   love: {
     title: '연애·궁합 분석',
-    minTags: 5,
+    minTags: 20,
     spectrumAxes: [
       { left: '열정적', right: '안정적' },
       { left: '주도적', right: '맞춤형' },
@@ -80,7 +80,7 @@ const CATEGORIES: Record<string, CategoryConfig> = {
   },
   money: {
     title: '재물·금전 분석',
-    minTags: 8,
+    minTags: 25,
     spectrumAxes: [
       { left: '공격투자', right: '안전저축' },
       { left: '소비형', right: '절약형' },
@@ -100,7 +100,7 @@ const CATEGORIES: Record<string, CategoryConfig> = {
   },
   career: {
     title: '직업·적성 분석',
-    minTags: 12,
+    minTags: 10,
     spectrumAxes: [
       { left: '리더형', right: '서포터형' },
       { left: '전문가형', right: '제너럴리스트' },
@@ -192,30 +192,31 @@ serve(async (req) => {
       if (cached) {
         console.log('✅ 캐시 히트 (tag_count:', cached.tag_count, ')')
 
-        // 태그 수가 크게 변했으면 재생성 (10개 이상 차이)
-        const { count: currentTagCount } = await supabase
-          .from('user_trait_tags')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('is_confirmed', true)
-
-        // metadata에 score가 있으면 새 포맷, 없으면 구 포맷 → 재생성
+        // metadata에 score가 있으면 새 포맷 → 캐시 반환 (재분석은 forceRefresh로만)
         const hasMetadata = cached.metadata && typeof cached.metadata === 'object' && cached.metadata.score != null
 
-        if (hasMetadata && currentTagCount && Math.abs(currentTagCount - cached.tag_count) < 10) {
+        if (hasMetadata) {
+          // 현재 태그 수도 함께 반환 (프론트에서 다시 분석 버튼 표시용)
+          const { count: currentTagCount } = await supabase
+            .from('user_trait_tags')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_confirmed', true)
+
           return jsonResponse(req, {
             success: true,
             analysis: {
               category: cached.category,
               analysis_text: cached.analysis_text,
               tag_count: cached.tag_count,
+              current_tag_count: currentTagCount || cached.tag_count,
               metadata: cached.metadata || {},
               created_at: cached.created_at,
               is_cached: true,
             },
           })
         }
-        console.log('⚠️ 재생성 필요 (metadata:', hasMetadata ? '있음' : '없음', ', 이전 태그:', cached.tag_count, ', 현재:', currentTagCount, ')')
+        console.log('⚠️ 구 포맷 → 재생성 필요 (metadata 없음)')
       }
     }
 
@@ -278,6 +279,96 @@ serve(async (req) => {
       sajuInfo = `이름: ${saju.full_name}, 성별: ${gen}, 생년월일: ${cal} ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 태어난 시간: ${saju.birth_time || '모름'}, 띠: ${saju.zodiac || '모름'}`
     }
 
+    // ─── 사주 API 호출 (상세 사주 데이터) ─────────────────────
+    let detailedSajuInfo = ''
+
+    if (saju) {
+      try {
+        const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim()
+
+        if (!sajuApiKey) {
+          console.warn('⚠️ SAJU_API_KEY 환경변수 없음, 기본 사주 정보만 사용')
+        } else {
+          const birthDateStr = saju.birth_date as string
+          const birthTimeStr = (saju.birth_time as string) || '12:00'
+          const genderStr = saju.gender as string
+
+          if (!birthDateStr) {
+            console.warn('⚠️ 생년월일이 없음, 사주 API 호출 스킵')
+          } else {
+            // 날짜 포맷: YYYY-MM-DD → YYYYMMDD
+            const datePart = birthDateStr.includes('T') ? birthDateStr.split('T')[0] : birthDateStr.split(' ')[0]
+            const dateOnly = datePart.replace(/-/g, '')
+
+            // 시간 포맷: HH:mm → HHmm
+            const timeOnly = birthTimeStr.replace(/:/g, '').substring(0, 4)
+            const birthday = dateOnly + timeOnly
+
+            const lunar = saju.calendar_type === 'lunar' ? 'true' : 'false'
+            const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=${lunar}&gender=${genderStr}&apiKey=${sajuApiKey}`
+            console.log('📞 사주 API 호출:', sajuApiUrl.replace(sajuApiKey, '***'))
+
+            // 최대 3번 재시도
+            let cachedSajuData: Record<string, unknown> | null = null
+
+            for (let sajuAttempt = 1; sajuAttempt <= 3; sajuAttempt++) {
+              try {
+                const sajuResponse = await fetch(sajuApiUrl, {
+                  method: 'GET',
+                  headers: {
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive',
+                    'Host': 'service.stargio.co.kr:8400',
+                    'Origin': 'https://nadaunse.com',
+                    'Referer': 'https://nadaunse.com/',
+                    'Sec-Fetch-Dest': 'empty',
+                    'Sec-Fetch-Mode': 'cors',
+                    'Sec-Fetch-Site': 'cross-site',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                  }
+                })
+
+                console.log(`📡 사주 API 응답 (시도 ${sajuAttempt}/3):`, sajuResponse.status)
+
+                if (!sajuResponse.ok) {
+                  throw new Error(`사주 API HTTP 오류: ${sajuResponse.status}`)
+                }
+
+                const rawText = await sajuResponse.text()
+                cachedSajuData = JSON.parse(rawText)
+
+                if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
+                  console.log('✅ 사주 API 호출 성공 (키 개수:', Object.keys(cachedSajuData).length, ')')
+                  break
+                } else {
+                  throw new Error('사주 API가 빈 데이터를 반환했습니다.')
+                }
+              } catch (sajuError) {
+                console.error(`❌ 사주 API 시도 ${sajuAttempt}/3 실패:`, sajuError)
+                if (sajuAttempt < 3) {
+                  await new Promise(resolve => setTimeout(resolve, 1000 * sajuAttempt))
+                }
+              }
+            }
+
+            if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
+              const sajuDataStr = JSON.stringify(cachedSajuData, null, 2)
+              detailedSajuInfo = `\n\n### 상세 사주 데이터 (명리학 분석용)\n${sajuDataStr}`
+              console.log('✅ 상세 사주 정보 추가 완료')
+            } else {
+              console.warn('⚠️ 사주 API 호출 실패, 기본 정보만 사용')
+            }
+          }
+        }
+      } catch (sajuApiError) {
+        console.error('❌ 사주 API 처리 오류:', sajuApiError)
+        console.warn('⚠️ 기본 사주 정보만 사용하여 계속 진행')
+      }
+    }
+
     // ─── 상황 요약 ────────────────────────────────────────────
     const situationText = summaries.length > 0
       ? summaries.map(s => s.situation_summary).join('\n')
@@ -296,7 +387,7 @@ serve(async (req) => {
 - 전체 800~1200자
 ${category === 'health' ? '- 의학적 진단이 아닌 명리학 기반 참고 정보임을 명시\n' : ''}
 ## 사주 정보
-${sajuInfo}
+${sajuInfo}${detailedSajuInfo}
 
 ## 성향 태그 (긍정)
 ${topPositive.join(', ') || '없음'}

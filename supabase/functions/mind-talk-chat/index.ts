@@ -41,7 +41,7 @@ serve(async (req) => {
 
     // ── 3. Get or create conversation ──
     let convId = conversation_id;
-    let freeUsed = 0;
+    let convFreeUsed = 0; // 현재 conversation의 free_messages_used (DB 저장용)
 
     if (convId) {
       const { data: conv } = await supabase
@@ -49,7 +49,7 @@ serve(async (req) => {
         .select('free_messages_used')
         .eq('id', convId)
         .single();
-      freeUsed = conv?.free_messages_used ?? 0;
+      convFreeUsed = conv?.free_messages_used ?? 0;
     } else {
       const { data: existing } = await supabase
         .from('mind_talk_conversations')
@@ -62,7 +62,7 @@ serve(async (req) => {
 
       if (existing) {
         convId = existing.id;
-        freeUsed = existing.free_messages_used;
+        convFreeUsed = existing.free_messages_used;
       } else {
         const { data: newConv } = await supabase
           .from('mind_talk_conversations')
@@ -73,10 +73,20 @@ serve(async (req) => {
       }
     }
 
-    // ── 4. Limit & sprout check (paid modes only) ──
+    // ── 4. Limit & sprout check (paid modes only, 하루 기준 서버 검증) ──
     let sproutDeducted = false;
+    let dailyFreeUsed = 0; // 오늘 해당 모드의 일일 무료 사용 합계 (클라이언트 전달용)
     if (isPaidMode && !isGreeting) {
-      if (freeUsed >= FREE_LIMIT) {
+      // 오늘 해당 모드의 전체 무료 사용량 집계 (라운드 무관, 서버 기반)
+      const { data: todayConvs } = await supabase
+        .from('mind_talk_conversations')
+        .select('free_messages_used')
+        .eq('user_id', userId)
+        .eq('session_date', today)
+        .eq('mode', mode);
+      dailyFreeUsed = todayConvs?.reduce((sum, c) => sum + (c.free_messages_used ?? 0), 0) ?? 0;
+
+      if (dailyFreeUsed >= FREE_LIMIT) {
         // Check sprout balance
         const { data: userData } = await supabase
           .from('users')
@@ -158,13 +168,15 @@ serve(async (req) => {
       .gte('created_at', fourWeeksAgo.toISOString())
       .order('created_at', { ascending: true });
 
-    // 대화 히스토리
+    // 대화 히스토리 (최근 10개만)
     const { data: history } = await supabase
       .from('mind_talk_messages')
       .select('role, content')
       .eq('conversation_id', convId)
-      .order('created_at', { ascending: true })
-      .limit(20);
+      .order('created_at', { ascending: false })
+      .limit(10);
+    // DESC로 가져왔으므로 시간순 정렬
+    if (history) history.reverse();
 
     // ── 6-1. 사주 모드: 통합 사주 API 호출 ──
     let detailedSajuInfo = '';
@@ -218,8 +230,23 @@ serve(async (req) => {
                 const sajuData = JSON.parse(rawText);
 
                 if (sajuData && Object.keys(sajuData).length > 0) {
-                  detailedSajuInfo = `\n\n[상세 사주 데이터]\n${JSON.stringify(sajuData, null, 2)}`;
-                  console.log('✅ 사주 API 호출 성공 (키 개수:', Object.keys(sajuData).length, ')');
+                  // 핵심 사주 필드만 추출 (전체 JSON은 너무 커서 토큰 낭비)
+                  const pick = (keys: string[]) => {
+                    const obj: Record<string, unknown> = {};
+                    for (const k of keys) { if (sajuData[k] !== undefined) obj[k] = sajuData[k]; }
+                    return obj;
+                  };
+                  const essentialData = pick([
+                    '격국', '격국설명', '일주', '일주설명',
+                    '천간', '지지', '십성', '십이운성',
+                    '대운', '대운수', '세운',
+                    '발달오행', '오행비율',
+                    '용신', '용신설명', '희신',
+                    '성격', '적성', '건강',
+                    '올해운세', '이달운세', '오늘운세',
+                  ]);
+                  detailedSajuInfo = `\n\n[상세 사주 데이터]\n${JSON.stringify(essentialData, null, 2)}`;
+                  console.log('✅ 사주 API 호출 성공 (전체:', Object.keys(sajuData).length, '키, 추출:', Object.keys(essentialData).length, '키)');
                   break;
                 }
               } catch (err) {
@@ -353,7 +380,7 @@ ${safetyRules}`;
       body: JSON.stringify({
         contents: geminiMessages,
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { temperature: 0.85, maxOutputTokens: 2000, topP: 0.95 },
+        generationConfig: { temperature: 0.85, maxOutputTokens: 4000, topP: 0.95 },
       }),
     });
 
@@ -368,14 +395,16 @@ ${safetyRules}`;
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
-    const newFreeUsed = (isPaidMode && !isGreeting) ? freeUsed + 1 : freeUsed;
+    // 일일 합계 (클라이언트에 전달) + conversation 단위 (DB 저장)
+    const newDailyFreeUsed = (isPaidMode && !isGreeting) ? dailyFreeUsed + 1 : dailyFreeUsed;
+    const newConvFreeUsed = (isPaidMode && !isGreeting) ? convFreeUsed + 1 : convFreeUsed;
 
     (async () => {
       try {
         // 메타데이터 전송
         const metaPayload: Record<string, unknown> = {
           conversation_id: convId,
-          free_messages_used: newFreeUsed,
+          free_messages_used: newDailyFreeUsed,
           mode,
         };
         if (sproutDeducted) {
@@ -443,7 +472,7 @@ ${safetyRules}`;
           await supabase
             .from('mind_talk_conversations')
             .update({
-              free_messages_used: newFreeUsed,
+              free_messages_used: newConvFreeUsed,
               message_count: (history?.length || 0) + (message ? 2 : 1),
               updated_at: new Date().toISOString(),
             })

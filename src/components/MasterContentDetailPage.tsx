@@ -1178,9 +1178,9 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       aria-label="홈으로"
                       onTouchEnd={(e) => {
                         e.preventDefault();
-                        onBack();
+                        navigate('/', { replace: true });
                       }}
-                      onClick={onBack}
+                      onClick={() => navigate('/', { replace: true })}
                       className="box-border content-stretch flex gap-[10px] items-center justify-center p-[4px] relative rounded-[12px] shrink-0 size-[44px] cursor-pointer group hover:bg-[#F3F3F3] active:bg-[#F3F3F3] touch-manipulation pointer-events-auto select-none z-30"
                     >
                       <svg className="block w-6 h-6 group-active:scale-95 transition-transform pointer-events-none" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
