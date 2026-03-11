@@ -5307,6 +5307,6 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.7.0
-**최종 업데이트**: 2026-03-10
+**문서 버전**: 3.8.0
+**최종 업데이트**: 2026-03-11
 **문서 끝**
