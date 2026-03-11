@@ -147,7 +147,7 @@ export default function ConsultTypeSelectPage() {
       </div>
 
       {/* 하단 안내 */}
-      <div className="flex flex-col w-full mt-auto" style={{ gap: 2, padding: '0 20px 40px' }}>
+      <div className="flex flex-col w-full mt-auto" style={{ gap: 2, padding: '0 24px 40px' }}>
         <div className="flex flex-col w-full" style={{ gap: 7 }}>
           {/* 익명 상담 뱃지 */}
           <div
@@ -165,7 +165,7 @@ export default function ConsultTypeSelectPage() {
 
           {/* 제목 */}
           <div style={{ padding: '0 4px' }}>
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.gray800, letterSpacing: '-0.3px', lineHeight: '28.5px' }}>
+            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#696969', letterSpacing: '-0.3px', lineHeight: '28.5px' }}>
               데일리 상담 방식
             </p>
           </div>
@@ -183,7 +183,7 @@ export default function ConsultTypeSelectPage() {
             <ul key={i} className="block w-full" style={{ margin: 0, padding: 0 }}>
               <li
                 className="list-disc"
-                style={{ fontFamily: font, fontSize: 14, fontWeight: 400, color: C.gray750, letterSpacing: '-0.28px', lineHeight: '24px', marginLeft: 21 }}
+                style={{ fontFamily: font, fontSize: 14, fontWeight: 400, color: '#909090', letterSpacing: '-0.28px', lineHeight: '24px', marginLeft: 21 }}
               >
                 {text}
               </li>
