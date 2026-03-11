@@ -1834,7 +1834,11 @@ function SproutChargingStationPage() {
 
   // 로그인 체크
   if (loginAuth === 'checking' || balanceLoading) return <PageLoader />;
-  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  if (loginAuth === 'not_logged_in') {
+    // ⭐ 로그인 후 돌아올 수 있도록 현재 URL 저장 + 로그인 페이지로 직행 (replace로 히스토리 오염 방지)
+    localStorage.setItem('redirectAfterLogin', location.pathname);
+    return <Navigate to="/login/new" replace />;
+  }
   // 직접 접속 가드 (⭐ 결제 리다이렉트 시에는 허용)
   if (location.key === 'default' && !isPaymentRedirect) return <Navigate to="/" replace />;
 
