@@ -57,15 +57,28 @@ const OHENG_ELEMENTS = [
 
 // ─── AI 분석 캐시 ──────────────────────────────────────────────────────────
 
-const DNA_CACHE_KEY = 'nadaum_dna_v1';
+const DNA_CACHE_KEY = 'nadaum_dna_v2';
 
-function getCachedAnalysis(userId: string): Record<string, number> | null {
+interface AiFlowerData {
+  flower: string;
+  flower_tone: string | null;
+  roots: string[];
+  stems: string[];
+  petals: string[];
+}
+
+interface AiAnalysisResult {
+  radar: Record<string, number>;
+  flower_data: AiFlowerData | null;
+}
+
+function getCachedAnalysis(userId: string): AiAnalysisResult | null {
   try {
     const raw = localStorage.getItem(`${DNA_CACHE_KEY}_${userId}`);
     if (!raw) return null;
     const cached = JSON.parse(raw);
     if (Date.now() - cached.cached_at > 7 * 24 * 60 * 60 * 1000) return null;
-    return cached.radar as Record<string, number>;
+    return { radar: cached.radar, flower_data: cached.flower_data || null };
   } catch { return null; }
 }
 
@@ -81,15 +94,15 @@ function clearAnalysisCache(userId: string) {
   try { localStorage.removeItem(`${DNA_CACHE_KEY}_${userId}`); } catch { /* ignore */ }
 }
 
-function setCachedAnalysis(userId: string, tagCount: number, radar: Record<string, number>) {
+function setCachedAnalysis(userId: string, tagCount: number, result: AiAnalysisResult) {
   try {
     localStorage.setItem(`${DNA_CACHE_KEY}_${userId}`, JSON.stringify({
-      tag_count: tagCount, radar, cached_at: Date.now(),
+      tag_count: tagCount, radar: result.radar, flower_data: result.flower_data, cached_at: Date.now(),
     }));
   } catch { /* ignore */ }
 }
 
-async function fetchAiAnalysis(accessToken: string): Promise<Record<string, number> | null> {
+async function fetchAiAnalysis(accessToken: string): Promise<AiAnalysisResult | null> {
   try {
     const url = `https://${projectId}.supabase.co/functions/v1/analyze-nadaum-dna`;
     const res = await fetch(url, {
@@ -103,7 +116,7 @@ async function fetchAiAnalysis(accessToken: string): Promise<Record<string, numb
     if (!res.ok) return null;
     const data = await res.json();
     if (data.error) return null;
-    return data.radar;
+    return { radar: data.radar, flower_data: data.flower_data || null };
   } catch { return null; }
 }
 
@@ -127,54 +140,110 @@ interface OhengData {
   label: string;
 }
 
-// ─── 나다움 유형 카드 ───────────────────────────────────────────────────────
+// ─── 나다움 꽃 시스템 ────────────────────────────────────────────────────────
 
-interface NadaumType {
-  title: string;
-  subtitle: string;
+interface FlowerType {
+  name: string;
   emoji: string;
-  quote: string;
+  meaning: string;
+  color: string;
+  bgFrom: string;
+  bgTo: string;
 }
 
-function computeNadaumType(radarData: { category: string; count: number }[]): NadaumType {
-  // 6축: 실행력, 사고력, 감성, 관계, 의지력, 안정감
-  const map = new Map(radarData.map(d => [d.category, d.count]));
-  const get = (k: string) => map.get(k) || 0;
-  // AI 점수(0~100) vs 룰베이스 카운트(0~10) 자동 감지
-  const maxVal = Math.max(...radarData.map(d => d.count));
-  const threshold = maxVal > 10 ? 50 : 3;
+const FLOWER_DEFS: FlowerType[] = [
+  { name: '해바라기', emoji: '🌻', meaning: '어디서든 빛을 향해 자라는', color: '#f59e0b', bgFrom: '#fef9ee', bgTo: '#fef3c7' },
+  { name: '라벤더', emoji: '🪻', meaning: '조용히 깊은 향기를 품은', color: '#8b5cf6', bgFrom: '#faf5ff', bgTo: '#ede9fe' },
+  { name: '장미', emoji: '🌹', meaning: '감정의 깊이로 세상을 물들이는', color: '#ec4899', bgFrom: '#fdf2f8', bgTo: '#fce7f3' },
+  { name: '벚꽃', emoji: '🌸', meaning: '주변을 환하게 밝히는', color: '#f472b6', bgFrom: '#fff5f7', bgTo: '#ffe4e6' },
+  { name: '매화', emoji: '🏵️', meaning: '추위 속에서도 피어나는', color: '#dc2626', bgFrom: '#fef5f5', bgTo: '#fee2e2' },
+  { name: '연꽃', emoji: '🪷', meaning: '고요한 물 위에 피어오르는', color: '#14b8a6', bgFrom: '#f0fdfa', bgTo: '#ccfbf1' },
+];
 
-  // 축1: 실행력 vs 사고력 → 행동파/분석파
-  const axis1 = get('실행력') >= get('사고력') ? '행동파' : '분석파';
-  // 축2: 감성 vs 안정감 → 감성형/이성형
-  const axis2 = get('감성') >= get('안정감') ? '감성형' : '이성형';
-  // 축3: 관계 → 높으면 사교적, 낮으면 독립적
-  const axis3 = get('관계') >= threshold ? '사교적' : '독립적';
-  // 축4: 의지력 → 높으면 꾸준한, 낮으면 유연한
-  const axis4 = get('의지력') >= threshold ? '꾸준한' : '유연한';
+// 꽃 이름 → FlowerType (AI가 꽃 이름으로 반환)
+const FLOWER_MAP: Record<string, FlowerType> = {};
+for (const f of FLOWER_DEFS) FLOWER_MAP[f.name] = f;
 
-  // 유형명 조합: 감성형 + 행동파 = 메인 타이틀
-  const typeMap: Record<string, NadaumType> = {
-    '감성형_행동파_사교적_꾸준한': { title: '열정적 리더', subtitle: '감성과 실행력을 겸비한 사람', emoji: '🔥', quote: '세상을 바꾸는 건 논리가 아니라 당신의 열정입니다' },
-    '감성형_행동파_사교적_유연한': { title: '자유로운 무드메이커', subtitle: '분위기를 이끄는 에너자이저', emoji: '🎉', quote: '당신이 있는 곳이 곧 축제입니다' },
-    '감성형_행동파_독립적_꾸준한': { title: '묵묵한 열정가', subtitle: '자기 길을 꿋꿋이 가는 사람', emoji: '🌋', quote: '조용하지만 누구보다 뜨거운 사람, 그게 당신이에요' },
-    '감성형_행동파_독립적_유연한': { title: '감각적 모험가', subtitle: '느낌대로 움직이는 자유영혼', emoji: '🦋', quote: '느낌이 맞으면 바로 움직이는 게 당신의 매력' },
-    '감성형_분석파_사교적_꾸준한': { title: '다정한 전략가', subtitle: '따뜻한 마음에 냉철한 머리', emoji: '🧠', quote: '따뜻한 마음에 냉철한 머리, 최강의 조합이에요' },
-    '감성형_분석파_사교적_유연한': { title: '공감형 탐험가', subtitle: '사람과 세상을 깊이 이해하는', emoji: '🌊', quote: '사람의 마음을 읽는 게 당신의 초능력이에요' },
-    '감성형_분석파_독립적_꾸준한': { title: '깊은 사색가', subtitle: '풍부한 내면을 가진 사람', emoji: '🌙', quote: '깊이 있는 사람은 쉽게 흔들리지 않아요' },
-    '감성형_분석파_독립적_유연한': { title: '감성적 몽상가', subtitle: '상상력이 풍부한 예술형', emoji: '🎨', quote: '상상이 현실이 되는 순간을 아는 사람' },
-    '이성형_행동파_사교적_꾸준한': { title: '믿음직한 실행자', subtitle: '약속은 반드시 지키는 사람', emoji: '🏔️', quote: '당신의 한마디면 모두가 안심합니다' },
-    '이성형_행동파_사교적_유연한': { title: '사교적 해결사', subtitle: '어디서든 적응하는 만능형', emoji: '⚡', quote: '어떤 자리든 빛나는 만능 해결사, 못 하는 게 뭐예요?' },
-    '이성형_행동파_독립적_꾸준한': { title: '철두철미 추진가', subtitle: '목표를 향해 흔들림 없이', emoji: '🎯', quote: '목표가 생기면 흔들림 없이 직진하는 사람' },
-    '이성형_행동파_독립적_유연한': { title: '쿨한 실용주의자', subtitle: '효율을 추구하는 현실파', emoji: '💎', quote: '복잡한 건 딱 질색, 효율이 곧 정의' },
-    '이성형_분석파_사교적_꾸준한': { title: '신뢰의 조언자', subtitle: '논리와 배려를 겸비한 참모형', emoji: '🦉', quote: '모두가 당신에게 먼저 물어보는 이유가 있어요' },
-    '이성형_분석파_사교적_유연한': { title: '유연한 중재자', subtitle: '갈등을 풀어내는 소통 전문가', emoji: '🤝', quote: '갈등 속에서 답을 찾아내는 소통의 달인' },
-    '이성형_분석파_독립적_꾸준한': { title: '냉철한 전문가', subtitle: '깊이 파고드는 장인 기질', emoji: '🔬', quote: '한 분야를 파고드는 프로의 눈빛, 그게 당신이에요' },
-    '이성형_분석파_독립적_유연한': { title: '자유로운 분석가', subtitle: '통찰력 있는 관찰자', emoji: '🔭', quote: '세상을 관찰하는 것 자체가 즐거운 사람' },
-  };
+// 레이더 축 → FlowerType (룰베이스 폴백용)
+const FLOWER_BY_AXIS: Record<string, FlowerType> = {
+  '실행력': FLOWER_DEFS[0], '사고력': FLOWER_DEFS[1], '감성': FLOWER_DEFS[2],
+  '관계': FLOWER_DEFS[3], '의지력': FLOWER_DEFS[4], '안정감': FLOWER_DEFS[5],
+};
 
-  const key = `${axis2}_${axis1}_${axis3}_${axis4}`;
-  return typeMap[key] || { title: '성장하는 나', subtitle: '태그를 더 모으면 유형이 선명해져요', emoji: '✨', quote: '모든 경험이 나를 만들어가는 중이에요' };
+interface GrowthStage {
+  name: string;
+  emoji: string;
+  description: string;
+  minTags: number;
+}
+
+const GROWTH_STAGES: GrowthStage[] = [
+  { name: '새싹', emoji: '🌱', description: '나다움이 싹트기 시작했어요', minTags: 0 },
+  { name: '줄기', emoji: '🌿', description: '나다움이 자라나고 있어요', minTags: 5 },
+  { name: '봉오리', emoji: '🌷', description: '곧 나다움 꽃이 피어나요', minTags: 10 },
+  { name: '개화', emoji: '🌼', description: '나다움 꽃이 활짝 피었어요', minTags: 15 },
+  { name: '만개', emoji: '💐', description: '나다움이 만개했어요!', minTags: 25 },
+];
+
+function getGrowthStage(tagCount: number): GrowthStage {
+  for (let i = GROWTH_STAGES.length - 1; i >= 0; i--) {
+    if (tagCount >= GROWTH_STAGES[i].minTags) return GROWTH_STAGES[i];
+  }
+  return GROWTH_STAGES[0];
+}
+
+interface FlowerLayers {
+  roots: string[];   // 뿌리 — 전체 빈도 TOP 2 (변하지 않는 본질)
+  stems: string[];   // 줄기 — 빈도 3~5위 (나를 지탱하는 성향)
+  petals: string[];  // 꽃잎 — 최근 태그 중 새로운 것 (지금의 나)
+}
+
+function computeFlowerLayers(tags: TraitTag[]): FlowerLayers {
+  const nonNeutral = tags.filter(t => t.tag_type !== 'neutral');
+
+  // 전체 빈도 집계
+  const freqMap = new Map<string, number>();
+  for (const t of nonNeutral) {
+    freqMap.set(t.tag_name, (freqMap.get(t.tag_name) || 0) + 1);
+  }
+  const sorted = [...freqMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  // 뿌리: TOP 2
+  const roots = sorted.slice(0, 2).map(([name]) => name);
+  // 줄기: 3~5위
+  const stems = sorted.slice(2, 5).map(([name]) => name);
+
+  // 꽃잎: 최근 태그 중 뿌리/줄기에 없는 것 (tags는 이미 created_at DESC)
+  const used = new Set([...roots, ...stems]);
+  const petals: string[] = [];
+  const seen = new Set<string>();
+  for (const t of nonNeutral) {
+    if (!used.has(t.tag_name) && !seen.has(t.tag_name)) {
+      petals.push(t.tag_name);
+      seen.add(t.tag_name);
+      if (petals.length >= 3) break;
+    }
+  }
+
+  return { roots, stems, petals };
+}
+
+function getFlowerType(radarData: { category: string; count: number }[]): FlowerType {
+  const sorted = [...radarData].sort((a, b) => b.count - a.count);
+  const topCat = sorted[0]?.category || '감성';
+  return FLOWER_BY_AXIS[topCat] || FLOWER_DEFS[2]; // 장미 폴백
+}
+
+// 긍정/부정 비율로 꽃 톤 결정
+function getFlowerTone(tags: TraitTag[]): { label: string; ratio: number } {
+  const nonNeutral = tags.filter(t => t.tag_type !== 'neutral');
+  if (nonNeutral.length === 0) return { label: '밝은', ratio: 50 };
+  const positive = nonNeutral.filter(t => t.tag_type === 'positive').length;
+  const ratio = Math.round((positive / nonNeutral.length) * 100);
+  if (ratio >= 75) return { label: '화사한', ratio };
+  if (ratio >= 50) return { label: '따뜻한', ratio };
+  if (ratio >= 30) return { label: '깊은', ratio };
+  return { label: '복합적인', ratio };
 }
 
 // ─── Tag Category Mapping ───────────────────────────────────────────────────
@@ -260,12 +329,12 @@ const ANALYSIS_CARDS: AnalysisCard[] = [
 // ─── Insight Generators ─────────────────────────────────────────────────────
 
 const RADAR_INSIGHTS: Record<string, string> = {
-  '실행력': '생각보다 행동이 먼저! 망설이지 않는 실행의 아이콘',
-  '사고력': '분석과 판단력이 탁월한 전략형 두뇌의 소유자',
-  '감성': '감정이 풍부하고 공감 능력이 남다른 사람',
-  '관계': '사람과의 연결에서 에너지를 얻는 관계 중심형',
-  '의지력': '한번 시작하면 끝까지! 꺾이지 않는 마음의 소유자',
-  '안정감': '어디서든 중심을 잡는 든든한 안정형',
+  '실행력': '해바라기처럼 빛을 향해 달려가는 실행의 아이콘 🌻',
+  '사고력': '라벤더처럼 깊은 향기를 품은 전략형 두뇌 💜',
+  '감성': '장미처럼 감정의 깊이로 세상을 물들이는 사람 🌹',
+  '관계': '벚꽃처럼 주변을 환하게 밝히는 관계 중심형 🌸',
+  '의지력': '매화처럼 추위 속에서도 피어나는 의지의 소유자 🏵️',
+  '안정감': '연꽃처럼 고요한 물 위에 피어오르는 안정형 🪷',
 };
 
 function getRadarInsight(radarData: { category: string; count: number }[]): string {
@@ -351,7 +420,7 @@ export default function NadaumAnalysisPage() {
   const [tags, setTags] = useState<TraitTag[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [ohengData, setOhengData] = useState<OhengData[]>([]);
-  const [aiScores, setAiScores] = useState<Record<string, number> | null>(null);
+  const [aiResult, setAiResult] = useState<AiAnalysisResult | null>(null);
   const [lastAnalyzedTagCount, setLastAnalyzedTagCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -387,16 +456,16 @@ export default function NadaumAnalysisPage() {
             .single(),
           supabase
             .from('user_trait_tags')
-            .select('tag_name, tag_type, is_confirmed')
+            .select('tag_name, tag_type, is_confirmed, created_at')
             .eq('user_id', user.id)
-            .eq('is_confirmed', true),
+            .eq('is_confirmed', true)
+            .order('created_at', { ascending: false }),
         ]);
 
         // 오행 데이터도 여기서 가져오기
         let oheng: OhengData[] = [];
         if (sajuRes.data) {
           try {
-            console.log('[나다움] 만세력 요청 시작...');
             const manseResult = await getManseData({
               id: sajuRes.data.id,
               birth_date: sajuRes.data.birth_date,
@@ -404,41 +473,34 @@ export default function NadaumAnalysisPage() {
               gender: sajuRes.data.gender,
               calendar_type: sajuRes.data.calendar_type,
             });
-            console.log('[나다움] 만세력 결과:', manseResult.success, manseResult.success ? '키:' + Object.keys(manseResult.data).length : ('에러:' + (manseResult as { error: string }).error));
             if (manseResult.success) {
               const baldal = manseResult.data['발달오행'] as Record<string, number> | undefined;
-              console.log('[나다움] 발달오행:', baldal);
               if (baldal) {
                 oheng = parseOhengData(baldal);
-                console.log('[나다움] 파싱된 오행:', oheng.length, '개');
               }
             }
           } catch (err) {
-            console.error('[나다움] 만세력 에러:', err);
+            // 만세력 에러는 무시 (오행 미표시)
           }
-        } else {
-          console.log('[나다움] saju 데이터 없음, 오행 스킵');
         }
 
-        // ── AI DNA 분석 (태그 5개 이상일 때) ──
-        let aiRadar: Record<string, number> | null = null;
+        // ── AI DNA + 꽃 분석 (태그 5개 이상일 때) ──
+        let aiData: AiAnalysisResult | null = null;
         if (tagsRes.data && tagsRes.data.length >= 5) {
           const cached = getCachedAnalysis(user.id);
           if (cached) {
-            aiRadar = cached;
-            console.log('[나다움] AI 분석 캐시 히트');
+            aiData = cached;
           } else {
             try {
               const { data: { session } } = await supabase.auth.getSession();
               if (session) {
-                aiRadar = await fetchAiAnalysis(session.access_token);
-                if (aiRadar) {
-                  setCachedAnalysis(user.id, tagsRes.data.length, aiRadar);
-                  console.log('[나다움] AI 분석 완료:', aiRadar);
+                aiData = await fetchAiAnalysis(session.access_token);
+                if (aiData) {
+                  setCachedAnalysis(user.id, tagsRes.data.length, aiData);
                 }
               }
             } catch (err) {
-              console.error('[나다움] AI 분석 에러:', err);
+              // AI 분석 에러는 무시 (분석 미표시)
             }
           }
         }
@@ -446,7 +508,7 @@ export default function NadaumAnalysisPage() {
         if (!cancelled) {
           if (sajuRes.data) setSaju(sajuRes.data);
           if (tagsRes.data) setTags(tagsRes.data);
-          if (aiRadar) setAiScores(aiRadar);
+          if (aiData) setAiResult(aiData);
           if (oheng.length > 0) setOhengData(oheng);
           setIsLoading(false);
         }
@@ -473,15 +535,15 @@ export default function NadaumAnalysisPage() {
       clearAnalysisCache(userId);
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const newRadar = await fetchAiAnalysis(session.access_token);
-        if (newRadar) {
-          setAiScores(newRadar);
-          setCachedAnalysis(userId, confirmedCount, newRadar);
+        const newResult = await fetchAiAnalysis(session.access_token);
+        if (newResult) {
+          setAiResult(newResult);
+          setCachedAnalysis(userId, confirmedCount, newResult);
           setLastAnalyzedTagCount(confirmedCount);
         }
       }
     } catch (err) {
-      console.error('[나다움] 다시 분석 에러:', err);
+      // 다시 분석 에러는 무시
     } finally {
       setIsRefreshing(false);
     }
@@ -489,12 +551,12 @@ export default function NadaumAnalysisPage() {
 
   const radarData = useMemo(() => {
     // AI 점수가 있으면 우선 사용
-    if (aiScores) {
+    if (aiResult?.radar) {
       const axes = ['실행력', '사고력', '감성', '관계', '의지력', '안정감'];
       return axes.map(axis => ({
         category: axis,
-        value: aiScores[axis] || 0,
-        count: aiScores[axis] || 0,
+        value: aiResult.radar[axis] || 0,
+        count: aiResult.radar[axis] || 0,
       }));
     }
     // Fallback: 룰베이스 (AI 실패 시)
@@ -509,12 +571,36 @@ export default function NadaumAnalysisPage() {
       value: Math.round((counts[i] / max) * 100),
       count: counts[i],
     }));
-  }, [tags, aiScores]);
+  }, [tags, aiResult]);
 
-  // 나다움 유형
-  const nadaumType = useMemo(() => {
-    return computeNadaumType(radarData);
-  }, [radarData]);
+  // 나다움 꽃 데이터 (AI 우선, 룰베이스 폴백)
+  const flowerType = useMemo(() => {
+    if (aiResult?.flower_data?.flower) {
+      const f = FLOWER_MAP[aiResult.flower_data.flower];
+      if (f) return f;
+    }
+    return getFlowerType(radarData);
+  }, [aiResult, radarData]);
+
+  const growthStage = useMemo(() => getGrowthStage(confirmedCount), [confirmedCount]);
+
+  const flowerLayers = useMemo(() => {
+    if (aiResult?.flower_data) {
+      const fd = aiResult.flower_data;
+      if (fd.roots.length > 0 || fd.stems.length > 0 || fd.petals.length > 0) {
+        return { roots: fd.roots, stems: fd.stems, petals: fd.petals };
+      }
+    }
+    return computeFlowerLayers(tags);
+  }, [aiResult, tags]);
+
+  const flowerTone = useMemo(() => {
+    if (aiResult?.flower_data?.flower_tone) {
+      const ratio = getFlowerTone(tags).ratio;
+      return { label: aiResult.flower_data.flower_tone, ratio };
+    }
+    return getFlowerTone(tags);
+  }, [aiResult, tags]);
 
   // Top tags
   const topPositive = useMemo(() => {
@@ -529,6 +615,19 @@ export default function NadaumAnalysisPage() {
     const freq = new Map<string, number>();
     for (const t of negatives) freq.set(t.tag_name, (freq.get(t.tag_name) || 0) + 1);
     return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name);
+  }, [tags]);
+
+  // 전체 태그 (중복 제거, 최신순 — tags가 이미 created_at DESC)
+  const allUniqueTags = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { name: string; type: string }[] = [];
+    for (const t of tags) {
+      if (!seen.has(t.tag_name)) {
+        seen.add(t.tag_name);
+        result.push({ name: t.tag_name, type: t.tag_type });
+      }
+    }
+    return result;
   }, [tags]);
 
   // 열정 / 냉정 밸런스 (레이더 기반)
@@ -588,10 +687,10 @@ export default function NadaumAnalysisPage() {
           <div className="flex flex-col items-center" style={{ padding: '40px 20px', gap: '12px' }}>
             <div style={{ fontSize: '48px' }}>🔮</div>
             <p style={{ fontFamily: font, fontSize: '18px', fontWeight: 600, color: C.black, textAlign: 'center', letterSpacing: '-0.36px' }}>
-              나다움 분석
+              너도 모르는 진짜 너,{'\n'}궁금하지 않아?
             </p>
             <p style={{ fontFamily: font, fontSize: '14px', fontWeight: 400, color: C.gray700, textAlign: 'center', lineHeight: '22px' }}>
-              당신의 숨겨진 성격 DNA,{'\n'}운세를 볼수록 정확해져요
+              운세를 볼수록 숨겨진 내 성격이 드러나요
             </p>
             <button
               onClick={() => navigate('/login')}
@@ -609,7 +708,7 @@ export default function NadaumAnalysisPage() {
               onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
             >
               <span style={{ fontFamily: font, fontSize: '15px', fontWeight: 500, color: C.white, letterSpacing: '-0.3px' }}>
-                로그인하기
+                내 성격 알아보기
               </span>
             </button>
           </div>
@@ -637,7 +736,7 @@ export default function NadaumAnalysisPage() {
             나다움 분석
           </p>
           <p style={{ fontFamily: font, fontSize: '13px', fontWeight: 400, lineHeight: '20px', color: C.gray600, marginTop: '4px' }}>
-            나다움 태그를 모을수록 선명해지는 성격 DNA
+            6가지 꽃 중 나는 어떤 꽃일까?
           </p>
         </div>
 
@@ -691,7 +790,7 @@ export default function NadaumAnalysisPage() {
               ) : (() => {
                 const nextMilestone = lastAnalyzedTagCount > 0
                   ? lastAnalyzedTagCount + 5
-                  : Math.ceil(confirmedCount / 5) * 5 + 5;
+                  : (Math.floor(confirmedCount / 5) + 1) * 5;
                 const remaining = nextMilestone - confirmedCount;
                 return remaining > 0 ? (
                   <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.gray600 }}>
@@ -717,7 +816,231 @@ export default function NadaumAnalysisPage() {
           </motion.div>
         )}
 
-        {/* ─── Radar Chart (나다움 DNA) ───────────────────────────── */}
+        {/* ─── 나다움 꽃 카드 ──────────────────────────────────────── */}
+        {isUnlocked && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            style={{ margin: '0 20px 12px', overflow: 'hidden', ...cardStyle }}
+          >
+            {/* 꽃 메인 비주얼 */}
+            <div
+              style={{
+                margin: '12px',
+                padding: '28px 24px 20px',
+                background: `linear-gradient(135deg, ${flowerType.bgFrom} 0%, ${flowerType.bgTo} 50%, #f5f0ff 100%)`,
+                borderRadius: '12px',
+                textAlign: 'center',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* 배경 데코 — 반투명 꽃잎 */}
+              <div style={{ position: 'absolute', top: '-10px', right: '-10px', fontSize: '60px', opacity: 0.08, transform: 'rotate(15deg)' }}>
+                {flowerType.emoji}
+              </div>
+              <div style={{ position: 'absolute', bottom: '-8px', left: '-8px', fontSize: '40px', opacity: 0.06, transform: 'rotate(-20deg)' }}>
+                {flowerType.emoji}
+              </div>
+
+              {/* 성장 단계 뱃지 */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 }}
+                className="inline-flex items-center gap-1"
+                style={{
+                  padding: '4px 12px',
+                  backgroundColor: `${flowerType.color}15`,
+                  borderRadius: '20px',
+                  marginBottom: '16px',
+                }}
+              >
+                <span style={{ fontSize: '12px' }}>{growthStage.emoji}</span>
+                <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 500, color: flowerType.color }}>
+                  {growthStage.name} 단계
+                </span>
+              </motion.div>
+
+              {/* 꽃 이모지 */}
+              <motion.div
+                initial={{ scale: 0.3, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.15, type: 'spring', stiffness: 180 }}
+                style={{ fontSize: '56px', marginBottom: '12px' }}
+              >
+                {flowerType.emoji}
+              </motion.div>
+
+              {/* 꽃 이름 */}
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                style={{ fontFamily: font, fontSize: '22px', fontWeight: 700, color: C.black, letterSpacing: '-0.44px' }}
+              >
+                {flowerTone.label} {flowerType.name}
+              </motion.p>
+              <p style={{ fontFamily: font, fontSize: '13px', fontWeight: 400, color: C.gray700, marginTop: '6px', letterSpacing: '-0.26px' }}>
+                {flowerType.meaning} 나다움
+              </p>
+
+              {/* 성장 프로그레스 */}
+              <div style={{ marginTop: '20px', padding: '0 12px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: '6px' }}>
+                  {GROWTH_STAGES.map((stage) => (
+                    <span
+                      key={stage.name}
+                      style={{
+                        fontFamily: font,
+                        fontSize: '10px',
+                        fontWeight: confirmedCount >= stage.minTags ? 600 : 400,
+                        color: confirmedCount >= stage.minTags ? flowerType.color : C.gray400,
+                        opacity: confirmedCount >= stage.minTags ? 1 : 0.6,
+                      }}
+                    >
+                      {stage.emoji}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ height: '4px', backgroundColor: `${flowerType.color}20`, borderRadius: '2px', overflow: 'hidden' }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((confirmedCount / 25) * 100, 100)}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+                    style={{ height: '100%', backgroundColor: flowerType.color, borderRadius: '2px' }}
+                  />
+                </div>
+                <p style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600, marginTop: '6px' }}>
+                  {growthStage.description}
+                </p>
+              </div>
+            </div>
+
+            {/* 3층 구조: 뿌리 / 줄기 / 꽃잎 */}
+            <div style={{ padding: '8px 16px 20px' }}>
+              {/* 뿌리 */}
+              {flowerLayers.roots.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.35 }}
+                  style={{ marginBottom: '14px' }}
+                >
+                  <div className="flex items-center gap-2" style={{ marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>🌱</span>
+                    <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 600, color: C.black, letterSpacing: '-0.26px' }}>
+                      뿌리
+                    </span>
+                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600 }}>
+                      변하지 않는 본질
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2" style={{ paddingLeft: '26px' }}>
+                    {flowerLayers.roots.map(tag => (
+                      <span
+                        key={tag}
+                        style={{
+                          fontFamily: font,
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          color: flowerType.color,
+                          backgroundColor: `${flowerType.color}12`,
+                          padding: '5px 12px',
+                          borderRadius: '20px',
+                          border: `1px solid ${flowerType.color}30`,
+                          letterSpacing: '-0.26px',
+                        }}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 줄기 */}
+              {flowerLayers.stems.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.45 }}
+                  style={{ marginBottom: '14px' }}
+                >
+                  <div className="flex items-center gap-2" style={{ marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>🌿</span>
+                    <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 600, color: C.black, letterSpacing: '-0.26px' }}>
+                      줄기
+                    </span>
+                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600 }}>
+                      나를 지탱하는 성향
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2" style={{ paddingLeft: '26px' }}>
+                    {flowerLayers.stems.map(tag => (
+                      <span
+                        key={tag}
+                        style={{
+                          fontFamily: font,
+                          fontSize: '13px',
+                          fontWeight: 400,
+                          color: C.primaryDark,
+                          backgroundColor: C.primaryLight,
+                          padding: '5px 12px',
+                          borderRadius: '20px',
+                          letterSpacing: '-0.26px',
+                        }}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 꽃잎 */}
+              {flowerLayers.petals.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.55 }}
+                >
+                  <div className="flex items-center gap-2" style={{ marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>🌸</span>
+                    <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 600, color: C.black, letterSpacing: '-0.26px' }}>
+                      꽃잎
+                    </span>
+                    <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 400, color: C.gray600 }}>
+                      지금 피어나는 모습
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2" style={{ paddingLeft: '26px' }}>
+                    {flowerLayers.petals.map(tag => (
+                      <span
+                        key={tag}
+                        style={{
+                          fontFamily: font,
+                          fontSize: '13px',
+                          fontWeight: 400,
+                          color: '#9b6d9b',
+                          backgroundColor: '#faf5ff',
+                          padding: '5px 12px',
+                          borderRadius: '20px',
+                          letterSpacing: '-0.26px',
+                        }}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── Radar Chart (나다움 성격 뿌리) ───────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -726,7 +1049,7 @@ export default function NadaumAnalysisPage() {
         >
           <div className="flex items-center justify-between" style={{ padding: '0 4px' }}>
             <p style={{ fontFamily: font, fontSize: '16px', fontWeight: 600, color: C.black, letterSpacing: '-0.32px' }}>
-              나다움 DNA
+              나다움 성격 뿌리
             </p>
             {!isUnlocked ? (
               <div className="flex items-center gap-1" style={{ padding: '3px 8px', backgroundColor: C.lockBg, borderRadius: '8px' }}>
@@ -774,43 +1097,28 @@ export default function NadaumAnalysisPage() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Top Tags (한 줄) */}
-              {(topPositive.length > 0 || topNegative.length > 0) && (
-                <div className="flex flex-wrap gap-2 overflow-hidden" style={{ marginTop: '8px', padding: '0 4px', maxHeight: '30px' }}>
-                  {topPositive.map((tag) => (
+              {/* 전체 태그 (좌우 스와이프) */}
+              {allUniqueTags.length > 0 && (
+                <div
+                  className="flex gap-2 overflow-x-auto"
+                  style={{ marginTop: '8px', padding: '2px 4px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                >
+                  {allUniqueTags.map((tag) => (
                     <span
-                      key={tag}
+                      key={tag.name}
                       className="shrink-0"
                       style={{
                         fontFamily: font,
                         fontSize: '13px',
                         fontWeight: 400,
-                        color: C.primaryDark,
-                        backgroundColor: C.primaryLight,
+                        color: tag.type === 'negative' ? '#9b6d6d' : C.primaryDark,
+                        backgroundColor: tag.type === 'negative' ? '#fdf5f5' : C.primaryLight,
                         padding: '4px 10px',
                         borderRadius: '20px',
                         letterSpacing: '-0.26px',
                       }}
                     >
-                      #{tag}
-                    </span>
-                  ))}
-                  {topNegative.map((tag) => (
-                    <span
-                      key={tag}
-                      className="shrink-0"
-                      style={{
-                        fontFamily: font,
-                        fontSize: '13px',
-                        fontWeight: 400,
-                        color: '#9b6d6d',
-                        backgroundColor: '#fdf5f5',
-                        padding: '4px 10px',
-                        borderRadius: '20px',
-                        letterSpacing: '-0.26px',
-                      }}
-                    >
-                      #{tag}
+                      #{tag.name}
                     </span>
                   ))}
                 </div>
@@ -839,9 +1147,9 @@ export default function NadaumAnalysisPage() {
           ) : (
             /* Locked State */
             <div className="flex flex-col items-center justify-center" style={{ height: '200px' }}>
-              <div style={{ fontSize: '40px', opacity: 0.4 }}>📊</div>
+              <div style={{ fontSize: '40px', opacity: 0.4 }}>🌱</div>
               <p style={{ fontFamily: font, fontSize: '14px', fontWeight: 400, color: C.gray600, textAlign: 'center', marginTop: '12px', lineHeight: '22px' }}>
-                운세를 {5 - confirmedCount}번만 더 보면{'\n'}나만의 성격 DNA가 공개돼요
+                나다움 태그 {5 - confirmedCount}개만 더 모으면{'\n'}나만의 성격 뿌리가 자라나요
               </p>
               <button
                 onClick={() => navigate('/')}
@@ -858,7 +1166,7 @@ export default function NadaumAnalysisPage() {
                 onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
               >
                 <span style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, color: C.primary, letterSpacing: '-0.26px' }}>
-                  운세 보러가기
+                  운세 보고 꽃 키우기
                 </span>
               </button>
             </div>
@@ -921,47 +1229,6 @@ export default function NadaumAnalysisPage() {
             }}>
               {getBalanceInsight(passionPercent)}
             </p>
-          </motion.div>
-        )}
-
-        {/* ─── 나다움 유형 카드 ───────────────────────────────────── */}
-        {isUnlocked && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.25 }}
-            style={{ margin: '0 20px 12px', overflow: 'hidden', ...cardStyle }}
-          >
-            {/* Gradient Result Card */}
-            <div
-              style={{
-                margin: '12px',
-                padding: '28px 24px 24px',
-                background: 'linear-gradient(135deg, #e8f5f4 0%, #f0f8f8 40%, #f5f0ff 100%)',
-                borderRadius: '12px',
-                textAlign: 'center',
-              }}
-            >
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.35, type: 'spring', stiffness: 200 }}
-                style={{ fontSize: '48px', marginBottom: '12px' }}
-              >
-                {nadaumType.emoji}
-              </motion.div>
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45 }}
-                style={{ fontFamily: font, fontSize: '22px', fontWeight: 700, color: C.black, letterSpacing: '-0.44px' }}
-              >
-                {nadaumType.title}
-              </motion.p>
-              <p style={{ fontFamily: font, fontSize: '13px', fontWeight: 400, color: C.gray700, marginTop: '6px', letterSpacing: '-0.26px' }}>
-                {nadaumType.subtitle}
-              </p>
-            </div>
           </motion.div>
         )}
 

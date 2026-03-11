@@ -2000,7 +2000,7 @@ function ProfilePageWrapper() {
   const loginAuth = useLoginRequired();
 
   if (loginAuth === 'checking') return <PageLoader />;
-  if (loginAuth === 'not_logged_in') return <SessionExpiredDialog isOpen={true} />;
+  if (loginAuth === 'not_logged_in') return <Navigate to="/login/new" replace />;
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -2981,7 +2981,7 @@ function NadaumRecordWrapper() {
       tags={tags}
       resultKey={resultKeyFromState}
       onBack={() => navigate(`/product/${id}/result/free`)} // 무료 운세 결과 페이지로 이동
-      onHome={handleReturn}
+      onHome={() => { sessionStorage.removeItem('content_entry_source'); navigate('/'); }}
       onSkip={handleReturn} // 다음에 할래요
     />
   );
@@ -3095,7 +3095,7 @@ function PaidNadaumRecordWrapper() {
       tags={tags}
       sourceType="paid_content"
       onBack={() => navigate(-1)}
-      onHome={handleReturn}
+      onHome={() => { sessionStorage.removeItem('content_entry_source'); navigate('/'); }}
       onSkip={handleReturn}
       onComplete={handleReturn}  // ⭐ 유입 경로로 복귀
     />

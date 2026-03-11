@@ -5307,6 +5307,63 @@ if (pData && (pData.recentPositiveTags.length > 0 || pData.allPositiveTags.lengt
 
 ---
 
-**문서 버전**: 3.8.0
+### 홈 버튼 네비게이션 — content_entry_source 무시, 항상 `/` 이동
+
+**결정**: 홈 버튼(🏠 아이콘)은 유입 경로(`content_entry_source`)와 무관하게 항상 홈(`/`)으로 이동하도록 통일
+
+**배경/문제**:
+- 나다움 기록하기(`CheckRecordMe`)와 유료 상세(`MasterContentDetailPage`)의 홈 버튼이 `sessionStorage`의 `content_entry_source`(BEST 운세, 무료 운세 전체보기 등) 경로로 돌아가고 있었음
+- 사용자가 홈 아이콘을 눌렀는데 홈이 아닌 중간 페이지로 이동하는 혼란 발생
+
+**수정 내용**:
+1. **`App.tsx` — `FreeNadaumRecordWrapper`**: `onHome={handleReturn}` → `onHome={() => navigate('/')}`
+2. **`App.tsx` — `PaidNadaumRecordWrapper`**: `onHome={handleReturn}` → `onHome={() => navigate('/')}`
+3. **`MasterContentDetailPage.tsx` — 헤더 홈 아이콘**: `onClick={onBack}` → `onClick={() => navigate('/', { replace: true })}`
+
+**설계 원칙**:
+- **홈 버튼(`onHome`)**: 항상 `/` — 사용자의 명시적 "홈으로 가겠다" 의사
+- **스킵/완료(`onSkip`, `onComplete`)**: `content_entry_source`로 복귀 — 콘텐츠 플로우 자연스러운 이어보기
+- **뒤로가기(`onBack`)**: `navigate(-1)` — 히스토리 자연 복귀
+
+**관련 파일**:
+- `/src/App.tsx` (FreeNadaumRecordWrapper, PaidNadaumRecordWrapper)
+- `/src/components/MasterContentDetailPage.tsx` (헤더 홈 아이콘)
+- `/src/components/CheckRecordMe.tsx` (handleHome → onHomeProp 호출)
+
+---
+
+### 사주 API 데이터 경량화 — 전체 JSON 대신 핵심 필드만 추출
+
+**결정**: 사주 API(StargioSaju) 응답에서 전체 JSON을 AI 프롬프트에 넣지 않고, 핵심 20개 필드만 추출하여 전달
+
+**배경/문제**:
+- 사주 API 응답이 수십~수백 개 키를 포함하는 대용량 JSON
+- 전체를 프롬프트에 포함하면 토큰 소모가 크고, AI 응답이 토큰 한도에 걸려 중간에 잘리는 현상 발생
+- 마음톡 사주 상담(`mind-talk-chat`)에서 스트리밍 응답이 반복적으로 끊김
+
+**추출 필드 (20개)**:
+- **사주 구조**: 격국, 격국설명, 일주, 일주설명, 천간, 지지, 십성, 십이운성
+- **운의 흐름**: 대운, 대운수, 세운
+- **오행**: 발달오행, 오행비율
+- **용신**: 용신, 용신설명, 희신
+- **해석**: 성격, 적성, 건강
+- **운세**: 올해운세, 이달운세, 오늘운세
+
+**적용 범위**:
+1. `supabase/functions/mind-talk-chat/index.ts` — 사주 모드 상담
+2. `supabase/functions/generate-free-preview/index.ts` — 무료 콘텐츠 답변 생성
+
+**효과**:
+- 토큰 소모 대폭 절감 (API 비용 절약)
+- AI 응답 잘림 현상 해소
+- 응답 속도 개선 (컨텍스트가 작아 처리 빠름)
+
+**관련 파일**:
+- `/supabase/functions/mind-talk-chat/index.ts`
+- `/supabase/functions/generate-free-preview/index.ts`
+
+---
+
+**문서 버전**: 4.0.0
 **최종 업데이트**: 2026-03-11
 **문서 끝**

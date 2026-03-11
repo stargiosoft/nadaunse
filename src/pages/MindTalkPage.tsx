@@ -81,6 +81,15 @@ function AiAvatar() {
   );
 }
 
+/** **bold** 마크다운을 <strong>으로 변환 */
+function renderBoldText(text: string) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <strong key={i} style={{ fontWeight: 700 }}>{part}</strong> : part
+  );
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === 'user';
   return (
@@ -106,7 +115,7 @@ function MessageBubble({ msg }: { msg: Message }) {
           letterSpacing: '-0.3px', color: isUser ? C.white : C.black,
           whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
         }}>
-          {msg.content}
+          {renderBoldText(msg.content)}
         </p>
       </div>
     </div>
@@ -361,6 +370,13 @@ export default function MindTalkPage() {
   const [showTarotDraw, setShowTarotDraw] = useState(false);
   const [lastTarotQuestion, setLastTarotQuestion] = useState('');
 
+  // 일일 무료 사용량 캐시 (모드별, 탭 전환 시 깜빡임 방지)
+  const dailyFreeCacheRef = useRef<{ date: string; saju: number; tarot: number }>({
+    date: new Date().toISOString().slice(0, 10),
+    saju: -1, // -1 = 아직 로드 안 됨
+    tarot: -1,
+  });
+
   const isPaidMode = mode === 'saju' || mode === 'tarot';
   const remainingFree = isPaidMode ? Math.max(0, FREE_LIMIT - freeUsed) : -1;
   const needsSprout = isPaidMode && freeUsed >= FREE_LIMIT;
@@ -410,11 +426,41 @@ export default function MindTalkPage() {
     if (!userId) return;
     setLoadingConv(true);
     setConversationId(null);
-    setFreeUsed(0);
     setStreaming('');
 
+    const today = new Date().toISOString().slice(0, 10);
+    const cache = dailyFreeCacheRef.current;
+
+    // 날짜 변경 시 캐시 초기화
+    if (cache.date !== today) {
+      cache.date = today;
+      cache.saju = -1;
+      cache.tarot = -1;
+    }
+
+    // 캐시에 값이 있으면 즉시 적용 (깜빡임 방지)
+    const cachedKey = chatMode as 'saju' | 'tarot';
+    if ((chatMode === 'saju' || chatMode === 'tarot') && cache[cachedKey] >= 0) {
+      setFreeUsed(cache[cachedKey]);
+    }
+
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      // 오늘 해당 모드 일일 무료 사용량 집계 (서버 기반, 라운드 무관)
+      const { data: todayConvs } = await supabase
+        .from('mind_talk_conversations')
+        .select('free_messages_used')
+        .eq('user_id', userId)
+        .eq('session_date', today)
+        .eq('mode', chatMode);
+      const dailyFreeUsed = todayConvs?.reduce((sum, c) => sum + (c.free_messages_used ?? 0), 0) ?? 0;
+      setFreeUsed(dailyFreeUsed);
+
+      // 캐시 업데이트
+      if (chatMode === 'saju' || chatMode === 'tarot') {
+        cache[chatMode] = dailyFreeUsed;
+      }
+
+      // 현재 라운드 conversation 로드
       const { data: conv } = await supabase
         .from('mind_talk_conversations')
         .select('id, free_messages_used')
@@ -426,7 +472,6 @@ export default function MindTalkPage() {
 
       if (conv) {
         setConversationId(conv.id);
-        setFreeUsed(conv.free_messages_used);
 
         const { data: msgs } = await supabase
           .from('mind_talk_messages')
@@ -455,6 +500,25 @@ export default function MindTalkPage() {
     }
   }, [authChecked, userId, mode, round, roundLoaded, loadConversation]);
 
+  // ── 날짜 변경 감지 → 캐시 초기화 + 재로드 ──
+  useEffect(() => {
+    const checkDateChange = () => {
+      const today = new Date().toISOString().slice(0, 10);
+      if (dailyFreeCacheRef.current.date !== today) {
+        dailyFreeCacheRef.current = { date: today, saju: -1, tarot: -1 };
+        setFreeUsed(0);
+        if (userId && roundLoaded) {
+          loadConversation(mode, round);
+        }
+      }
+    };
+    // 탭 포커스 복귀 시 + 1분마다 체크
+    const interval = setInterval(checkDateChange, 60_000);
+    const handleVisibility = () => { if (document.visibilityState === 'visible') checkDateChange(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', handleVisibility); };
+  }, [userId, mode, round, roundLoaded, loadConversation]);
+
   // ── Send message ──
   const sendMessage = async (
     userMessage: string | null,
@@ -463,6 +527,14 @@ export default function MindTalkPage() {
   ) => {
     if (sending) return;
     const chatMode = overrideMode ?? mode;
+
+    // 유료 모드 + 무료 소진 + 새싹 부족 → API 호출 없이 바로 충전 페이지
+    const chatIsPaid = chatMode === 'saju' || chatMode === 'tarot';
+    if (chatIsPaid && freeUsed >= FREE_LIMIT && sproutBalance < SPROUT_COST) {
+      setShowCharge(true);
+      return;
+    }
+
     setSending(true);
     setStreaming('');
 
@@ -535,7 +607,14 @@ export default function MindTalkPage() {
             const data = JSON.parse(dataStr);
             if (data.text) { fullText += data.text; setStreaming(fullText); }
             if (data.conversation_id) setConversationId(data.conversation_id);
-            if (data.free_messages_used !== undefined) setFreeUsed(data.free_messages_used);
+            if (data.free_messages_used !== undefined) {
+              setFreeUsed(data.free_messages_used);
+              // 캐시도 업데이트
+              const cm = overrideMode ?? mode;
+              if (cm === 'saju' || cm === 'tarot') {
+                dailyFreeCacheRef.current[cm] = data.free_messages_used;
+              }
+            }
             if (data.new_sprout_balance !== undefined) {
               writeSproutBalanceCache(data.new_sprout_balance);
               refetchSprout();
@@ -554,7 +633,13 @@ export default function MindTalkPage() {
             const data = JSON.parse(dataStr);
             if (data.text) { fullText += data.text; setStreaming(fullText); }
             if (data.conversation_id) setConversationId(data.conversation_id);
-            if (data.free_messages_used !== undefined) setFreeUsed(data.free_messages_used);
+            if (data.free_messages_used !== undefined) {
+              setFreeUsed(data.free_messages_used);
+              const cm = overrideMode ?? mode;
+              if (cm === 'saju' || cm === 'tarot') {
+                dailyFreeCacheRef.current[cm] = data.free_messages_used;
+              }
+            }
           } catch { /* ignore */ }
         }
       }
@@ -597,6 +682,11 @@ export default function MindTalkPage() {
   const handleModeChange = (newMode: ChatMode) => {
     if (newMode === mode || sending) return;
     setMessages([]);
+    // 캐시된 무료 사용량 즉시 적용 (깜빡임 방지)
+    if (newMode === 'saju' || newMode === 'tarot') {
+      const cached = dailyFreeCacheRef.current[newMode];
+      if (cached >= 0) setFreeUsed(cached);
+    }
     setMode(newMode);
   };
 
@@ -635,10 +725,10 @@ export default function MindTalkPage() {
           <div className="flex flex-col items-center" style={{ padding: '40px 20px', gap: '12px' }}>
             <div style={{ fontSize: '48px' }}>💭</div>
             <p style={{ fontFamily: F, fontSize: '18px', fontWeight: 600, color: C.black, textAlign: 'center', letterSpacing: '-0.36px' }}>
-              마음톡
+              나보다 나를 더 잘 아는{'\n'}AI 친구
             </p>
             <p style={{ fontFamily: F, fontSize: '14px', fontWeight: 400, color: C.gray700, textAlign: 'center', lineHeight: '22px' }}>
-              나보다 나를 더 잘 아는 AI 친구,{'\n'}로그인하고 마음 친구를 만나보세요
+              로그인하고 마음 친구를 만나보세요
             </p>
             <button
               onClick={() => navigate('/login')}
@@ -656,7 +746,7 @@ export default function MindTalkPage() {
               onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
             >
               <span style={{ fontFamily: F, fontSize: '15px', fontWeight: 500, color: C.white, letterSpacing: '-0.3px' }}>
-                로그인하기
+                마음 친구 만나기
               </span>
             </button>
           </div>
@@ -677,6 +767,9 @@ export default function MindTalkPage() {
 
   const currentModeConfig = MODES.find(m => m.key === mode)!;
   const showSuggestions = messages.length === 0 && !sending && !loadingConv;
+  // 캐시가 아직 로드되지 않은 상태(-1)에서는 배지 숨김 (깜빡임 방지)
+  const cacheKey = mode as 'saju' | 'tarot';
+  const freeBadgeReady = isPaidMode && dailyFreeCacheRef.current[cacheKey] >= 0;
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ backgroundColor: C.white }}>
@@ -689,7 +782,7 @@ export default function MindTalkPage() {
             <span style={{ fontFamily: F, fontSize: '18px', fontWeight: 700, letterSpacing: '-0.36px', color: C.black }}>
               마음톡
             </span>
-            {isPaidMode && (
+            {freeBadgeReady && (
               <div
                 className="flex items-center justify-center rounded-full"
                 style={{
@@ -702,7 +795,7 @@ export default function MindTalkPage() {
                   fontFamily: F, fontSize: '11px', fontWeight: 600, letterSpacing: '-0.22px',
                   color: remainingFree > 0 ? currentModeConfig.color : C.gray600,
                 }}>
-                  {remainingFree > 0 ? `${remainingFree}회 무료` : `${SPROUT_COST}새싹/회`}
+                  {remainingFree > 0 ? `하루 ${remainingFree}회 무료` : `${SPROUT_COST}새싹/회`}
                 </span>
               </div>
             )}
@@ -770,8 +863,8 @@ export default function MindTalkPage() {
 
         {/* ── Scrollable Chat Area ── */}
         <div
-          className="flex-1 overflow-auto w-full"
-          style={{ padding: '16px 20px 16px', WebkitOverflowScrolling: 'touch' }}
+          className="flex-1 w-full"
+          style={{ padding: '16px 20px 16px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}
         >
           {/* 로딩 */}
           {loadingConv && (
@@ -833,7 +926,7 @@ export default function MindTalkPage() {
                   fontFamily: F, fontSize: '15px', fontWeight: 400, lineHeight: '23px',
                   letterSpacing: '-0.3px', color: C.black, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
                 }}>
-                  {streaming}
+                  {renderBoldText(streaming)}
                 </p>
               </div>
             </div>
@@ -906,20 +999,26 @@ export default function MindTalkPage() {
               <button
                 onClick={handleTarotDraw}
                 disabled={sending}
-                className="shrink-0 flex items-center justify-center"
+                className="shrink-0 flex items-center justify-center transform-gpu"
                 style={{
-                  width: 44, height: 44, borderRadius: 22, border: `1px solid ${C.purpleBorder}`,
-                  backgroundColor: C.purpleLight,
+                  width: 44, height: 44, borderRadius: 14,
+                  background: 'linear-gradient(145deg, #f5f0ff 0%, #ede5ff 100%)',
+                  border: `1.5px solid ${C.purpleBorder}`,
+                  boxShadow: '0 2px 8px rgba(139,92,246,0.15)',
                   cursor: sending ? 'default' : 'pointer',
-                  transition: 'all 0.15s ease',
+                  transition: 'transform 0.1s ease',
                   WebkitTapHighlightColor: 'transparent',
                   opacity: sending ? 0.5 : 1,
                 }}
+                onPointerDown={e => { if (!sending) e.currentTarget.style.transform = 'scale(0.93)'; }}
+                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <rect x="4" y="2" width="16" height="20" rx="2" stroke={C.purple} strokeWidth="1.5" />
-                  <path d="M12 8L13.5 11H10.5L12 8Z" fill={C.purple} />
-                  <circle cx="12" cy="14" r="1.5" fill={C.purple} />
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  {/* 카드 뒷면 */}
+                  <rect x="4.5" y="1.5" width="15" height="21" rx="2.5" fill="#8B5CF6" fillOpacity="0.12" stroke={C.purple} strokeWidth="1.4" />
+                  {/* 별 문양 */}
+                  <path d="M12 7l1.18 2.39 2.64.38-1.91 1.86.45 2.63L12 13.13l-2.36 1.13.45-2.63-1.91-1.86 2.64-.38L12 7z" fill={C.purple} fillOpacity="0.85" />
                 </svg>
               </button>
             )}

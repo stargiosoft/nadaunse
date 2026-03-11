@@ -365,6 +365,7 @@ export function NewFreeFortuneAllPage() {
 
   const handleItemClick = (item: NoRankFortuneItem) => {
     trackContentClick(item.id);
+    sessionStorage.setItem('content_entry_source', '/new-free');
     navigate(`/free/content/${item.id}`, { state: { canGoBack: true } });
   };
 

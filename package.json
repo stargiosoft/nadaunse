@@ -3,8 +3,10 @@
       "version": "0.1.0",
       "private": true,
       "dependencies": {
+            "@capacitor/android": "^8.2.0",
             "@capacitor/app": "^8.0.1",
             "@capacitor/browser": "^8.0.2",
+            "@capacitor/cli": "^8.2.0",
             "@capacitor/core": "^8.2.0",
             "@jsr/supabase__supabase-js": "^2.49.8",
             "@radix-ui/react-accordion": "*",
@@ -75,6 +77,11 @@
       "scripts": {
             "dev": "vite",
             "build": "vite build && node scripts/prerender.mjs",
+            "build:app": "vite build --mode production && npx cap sync",
+            "cap:sync": "npx cap sync",
+            "cap:open:android": "npx cap open android",
+            "cap:open:ios": "npx cap open ios",
+            "run:android": "npm run build:app && npx cap run android",
             "deploy:prod": "scripts\\deploy-production.bat",
             "deploy:staging": "scripts\\deploy-staging.bat",
             "deploy:core": "scripts\\deploy-core.bat",

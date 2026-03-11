@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { signInWithKakao, signInWithGooglePopup, signInWithGoogleRedirect, clearUserCaches } from '../lib/auth';
+import { signInWithKakao, signInWithGooglePopup, signInWithGoogleRedirect, signInWithGoogleNative, clearUserCaches } from '../lib/auth';
+import { isNativeApp } from '../lib/platform';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -717,6 +718,20 @@ export default function LoginPageNew({
     if (existingProvider && existingProvider !== 'google' && existingEmail) {
       console.log(`⚠️ 이미 ${existingProvider}로 가입됨 → 기가입자 페이지로 이동`);
       onNavigateToExistingAccount(existingProvider);
+      return;
+    }
+
+    // ⭐ 네이티브 앱: 시스템 브라우저(Custom Tab)로 Google OAuth 진행
+    if (isNativeApp()) {
+      try {
+        setIsLoggingIn(true);
+        await signInWithGoogleNative();
+        // 브라우저가 열리고, 딥링크로 앱 복귀 후 App.tsx에서 세션 처리
+      } catch (error) {
+        console.error('❌ 구글 로그인 실패 (네이티브):', error);
+        alert('구글 로그인에 실패했습니다. 다시 시도해주세요.');
+        setIsLoggingIn(false);
+      }
       return;
     }
 
