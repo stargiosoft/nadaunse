@@ -539,9 +539,19 @@ export const trackConsultLoginClick = (source: 'saju_consult' | 'taro_consult' |
   trackEvent('consult_login_click', { source });
 };
 
-// 38. 홈에서 상담 시작 버튼 클릭
+// 38. 상담 유형 선택 페이지에서 사주/타로 선택 클릭
 export const trackConsultStartClick = (consultType: 'saju' | 'taro') => {
   trackEvent('consult_start_click', { consult_type: consultType });
+};
+
+// 38-1. 홈에서 "마음 털어놓기" 버튼 클릭 (상담 진입)
+export const trackConsultEntryClick = (source: 'home_new' | 'home_result') => {
+  trackEvent('consult_entry_click', { source });
+};
+
+// 38-2. 상담 유형 선택 페이지 조회
+export const trackConsultTypeSelectView = () => {
+  trackEvent('consult_type_select_view');
 };
 
 // 39. 상담 질문 제출 (로딩 페이지 진입 직전)
@@ -552,4 +562,115 @@ export const trackConsultSubmit = (consultType: 'saju' | 'taro', isLoggedIn: boo
 // 40. 상담 결과에서 추천 콘텐츠 클릭
 export const trackConsultRecommendationClick = (consultType: 'saju' | 'taro', contentId: string) => {
   trackEvent('consult_recommendation_click', { consult_type: consultType, content_id: contentId });
+};
+
+// ============================================
+// 나다움 분석 이벤트 (2026-03-11 추가)
+// ============================================
+
+// 41. 나다움 분석 메인 페이지 조회
+export const trackNadaumPageView = (isLoggedIn: boolean, tagCount: number, isUnlocked: boolean) => {
+  trackEvent('nadaum_page_view', {
+    is_logged_in: isLoggedIn,
+    tag_count: tagCount,
+    is_unlocked: isUnlocked,
+  });
+};
+
+// 42. 나다움 카테고리 카드 클릭
+export const trackNadaumCategoryClick = (category: string, isUnlocked: boolean) => {
+  trackEvent('nadaum_category_click', {
+    category,
+    is_unlocked: isUnlocked,
+  });
+};
+
+// 43. 나다움 분석 상세 조회 (AI 분석 완료 시)
+export const trackNadaumAnalysisView = (category: string, tagCount: number, isCached: boolean) => {
+  trackEvent('nadaum_analysis_view', {
+    category,
+    tag_count: tagCount,
+    is_cached: isCached,
+  });
+};
+
+// 44. 나다움 분석 다시 분석 클릭
+export const trackNadaumRefresh = (category: string, tagCount: number) => {
+  trackEvent('nadaum_refresh', {
+    category,
+    tag_count: tagCount,
+  });
+};
+
+// 45. 나다움 DNA 리포트 새로고침 (메인 페이지)
+export const trackNadaumDnaRefresh = (tagCount: number) => {
+  trackEvent('nadaum_dna_refresh', {
+    tag_count: tagCount,
+  });
+};
+
+// 46. 나다움 로그인 유도 클릭
+export const trackNadaumLoginClick = () => {
+  trackEvent('nadaum_login_click', { source: 'nadaum' });
+};
+
+// 47. 나다움 태그 모으기 CTA 클릭
+export const trackNadaumCollectTagClick = (source: 'main' | 'category') => {
+  trackEvent('nadaum_collect_tag_click', { source });
+};
+
+// ============================================
+// 마음톡 이벤트 (2026-03-11 추가)
+// ============================================
+
+// 48. 마음톡 페이지 조회
+export const trackMindTalkPageView = (isLoggedIn: boolean) => {
+  trackEvent('mindtalk_page_view', {
+    is_logged_in: isLoggedIn,
+  });
+};
+
+// 49. 마음톡 모드 변경
+export const trackMindTalkModeChange = (mode: 'general' | 'saju' | 'tarot') => {
+  trackEvent('mindtalk_mode_change', {
+    mode,
+  });
+};
+
+// 50. 마음톡 메시지 전송
+export const trackMindTalkMessageSend = (mode: 'general' | 'saju' | 'tarot', round: number, isSuggestion: boolean, isPaid: boolean) => {
+  trackEvent('mindtalk_message_send', {
+    mode,
+    round,
+    is_suggestion: isSuggestion,
+    is_paid: isPaid,
+  });
+};
+
+// 51. 마음톡 타로 카드 뽑기
+export const trackMindTalkTarotDraw = (cardCount: number) => {
+  trackEvent('mindtalk_tarot_draw', {
+    card_count: cardCount,
+  });
+};
+
+// 52. 마음톡 새싹 부족 (충전소 표시)
+export const trackMindTalkSproutInsufficient = (mode: 'saju' | 'tarot', currentBalance: number) => {
+  trackEvent('mindtalk_sprout_insufficient', {
+    mode,
+    current_balance: currentBalance,
+  });
+};
+
+// 53. 마음톡 로그인 유도 클릭
+export const trackMindTalkLoginClick = () => {
+  trackEvent('mindtalk_login_click', { source: 'mindtalk' });
+};
+
+// 54. 마음톡 새 대화 시작 (라운드 증가)
+export const trackMindTalkNewRound = (mode: 'general' | 'saju' | 'tarot', newRound: number) => {
+  trackEvent('mindtalk_new_round', {
+    mode,
+    round: newRound,
+  });
 };

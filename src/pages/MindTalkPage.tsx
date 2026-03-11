@@ -7,6 +7,7 @@ import { useSproutBalance, writeSproutBalanceCache } from '../hooks/useSproutBal
 import { getRandomTarotCards, getTarotCardImageUrl } from '../lib/tarotCards';
 import SproutChargingStation from '../components/SproutChargingStation';
 import BottomTabBar from '../components/BottomTabBar';
+import { trackMindTalkPageView, trackMindTalkModeChange, trackMindTalkMessageSend, trackMindTalkTarotDraw, trackMindTalkSproutInsufficient, trackMindTalkLoginClick, trackMindTalkNewRound } from '../utils/analytics';
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 
@@ -392,6 +393,7 @@ export default function MindTalkPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
       setAuthChecked(true);
+      trackMindTalkPageView(!!user);
 
       if (user) {
         const today = new Date().toISOString().slice(0, 10);
@@ -662,10 +664,12 @@ export default function MindTalkPage() {
 
     // For paid modes, check if we need sprouts and don't have enough
     if (needsSprout && sproutBalance < SPROUT_COST) {
+      trackMindTalkSproutInsufficient(mode as 'saju' | 'tarot', sproutBalance);
       setShowCharge(true);
       return;
     }
 
+    trackMindTalkMessageSend(mode, round, false, needsSprout);
     sendMessage(text);
   };
 
@@ -687,6 +691,7 @@ export default function MindTalkPage() {
       const cached = dailyFreeCacheRef.current[newMode];
       if (cached >= 0) setFreeUsed(cached);
     }
+    trackMindTalkModeChange(newMode);
     setMode(newMode);
   };
 
@@ -699,9 +704,11 @@ export default function MindTalkPage() {
 
   const handleTarotComplete = (cards: string[]) => {
     setShowTarotDraw(false);
+    trackMindTalkTarotDraw(cards.length);
 
     // Check sprout before sending
     if (needsSprout && sproutBalance < SPROUT_COST) {
+      trackMindTalkSproutInsufficient('tarot', sproutBalance);
       setShowCharge(true);
       return;
     }
@@ -731,7 +738,7 @@ export default function MindTalkPage() {
               로그인하고 마음 친구를 만나보세요
             </p>
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => { trackMindTalkLoginClick(); navigate('/login'); }}
               className="flex items-center justify-center cursor-pointer"
               style={{
                 width: '200px',
@@ -967,7 +974,7 @@ export default function MindTalkPage() {
             {SUGGESTIONS[mode].map((s, i) => (
               <button
                 key={i}
-                onClick={() => sendMessage(s)}
+                onClick={() => { trackMindTalkMessageSend(mode, round, true, needsSprout); sendMessage(s); }}
                 className="shrink-0 flex items-center transform-gpu"
                 style={{
                   padding: '10px 18px', borderRadius: 20,

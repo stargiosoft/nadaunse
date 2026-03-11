@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { getAuthUser } from '../lib/supabase';
 import { hasUsedConsult } from '../lib/consultLimitService';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LoginBottomSheet from '../components/LoginBottomSheet';
-import { trackConsultLoginClick, trackConsultStartClick } from '../utils/analytics';
+import { trackConsultLoginClick, trackConsultStartClick, trackConsultTypeSelectView } from '../utils/analytics';
 
 const C = {
   primary: '#48b2af',
@@ -23,6 +23,10 @@ export default function ConsultTypeSelectPage() {
   const navigate = useNavigate();
   const [showLoginSheet, setShowLoginSheet] = useState(false);
   const [pendingType, setPendingType] = useState<'saju' | 'taro' | null>(null);
+
+  useEffect(() => {
+    trackConsultTypeSelectView();
+  }, []);
 
   const handleSelect = async (type: 'saju' | 'taro') => {
     const { data: { user } } = await getAuthUser();

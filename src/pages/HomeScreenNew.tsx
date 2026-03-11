@@ -15,7 +15,7 @@ import {
 import { supabase, getAuthUser } from '../lib/supabase';
 import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
-import { trackConsultLoginClick } from '../utils/analytics';
+import { trackConsultLoginClick, trackConsultEntryClick } from '../utils/analytics';
 import { isContentNew } from '../components/ContentTags';
 import { logger } from '../lib/logger';
 import svgPaths from '../imports/svg-t3oztaafjr';
@@ -450,6 +450,7 @@ function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) 
 
   const handleConsultClick = async () => {
     if (isCompleted) {
+      trackConsultEntryClick('home_result');
       if (completedType === 'taro') {
         sessionStorage.setItem('taro_result_phase', 'result');
         sessionStorage.setItem('taro_enter_anim', '1');
@@ -459,6 +460,7 @@ function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) 
       }
       return;
     }
+    trackConsultEntryClick('home_new');
     const { data: { user } } = await getAuthUser();
     if (!user && hasUsedConsult()) {
       setShowLoginSheet(true);
