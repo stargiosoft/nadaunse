@@ -1470,14 +1470,14 @@ function useNewFreeContents(): NewFortuneSlide[] {
   return slides;
 }
 
-/** BEST 운세 — 카테고리별 weekly_clicks 상위 9개 (get_home_contents RPC) */
+/** BEST 운세 — 카테고리별 추천순 상위 9개 (get_recommended_contents RPC) */
 function useBestContents(category: string): FortuneItem[] {
   const [items, setItems] = useState<FortuneItem[]>([]);
   const prevCategory = useRef(category);
 
   const fetchBest = useCallback(async (cat: string) => {
     try {
-      const { data, error } = await supabase.rpc('get_home_contents', {
+      const { data, error } = await supabase.rpc('get_recommended_contents', {
         p_category: cat,
         p_content_type: 'all',
         p_offset: 0,
