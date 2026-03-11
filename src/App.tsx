@@ -2013,7 +2013,15 @@ function SproutChargingStationPage() {
       currentBalance={balance}
       requiredAmount={requiredAmount}
       fromProfile={isFromProfile}
-      onBack={() => navigate(-1)}
+      onBack={() => {
+        // ⭐ 유료 상세에서 로그인 거쳐 온 경우, navigate(-1)하면 로그인 페이지 히스토리에 걸림
+        // contentId가 있으면 유료 상세로 직접 이동
+        if (contentId && !isFromProfile) {
+          navigate(`/master/content/detail/${contentId}`, { replace: true });
+        } else {
+          navigate(-1);
+        }
+      }}
       onChargeComplete={handleChargeComplete}
       redirectPayment={redirectPayment}
     />
@@ -2542,9 +2550,9 @@ function LoginPageNewWrapper() {
 
   // ⭐ 동기 렌더 가드: 이미 로그인된 상태면 LoginPageNew를 렌더링하지 않음
   // bfcache 복원 시 isLoggingIn=true 상태의 "로그인 중..." 깜빡임 방지
-  // loginProcessingRef 체크 제거: handleLoginSuccess에서 true로 설정 후 리셋 안 되므로
-  // bfcache 복원 시에도 true → 가드 무력화되는 버그 수정
-  if (localStorage.getItem('user') && !loginProcessingRef.current) {
+  // loginProcessingRef 체크 안 함: handleLoginSuccess 중에도 user가 localStorage에 있지만
+  // 이미 navigate 예정이므로 null 반환해도 무방 (wrapper는 유지, LoginPageNew만 언마운트)
+  if (localStorage.getItem('user')) {
     return null;
   }
 
