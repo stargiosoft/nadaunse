@@ -408,41 +408,55 @@ function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) 
   const [showLoginSheet, setShowLoginSheet] = useState(false);
   const timeUntilMidnight = useTimeUntilMidnight();
 
-  const [status, setStatus] = useState<ConsultStatus>(() => readConsultStatus(CONSULT_STORAGE_KEY.saju));
+  const [sajuStatus, setSajuStatus] = useState<ConsultStatus>(() => readConsultStatus(CONSULT_STORAGE_KEY.saju));
+  const [taroStatus, setTaroStatus] = useState<ConsultStatus>(() => readConsultStatus(CONSULT_STORAGE_KEY.taro));
+
+  const completedType: 'saju' | 'taro' | null =
+    sajuStatus === 'completed' ? 'saju' : taroStatus === 'completed' ? 'taro' : null;
+  const isCompleted = completedType !== null;
 
   // ── 자정 자동 초기화 ──────────────────────────────────────────────────────
   useEffect(() => {
     const now = new Date();
     const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const timer = setTimeout(() => setStatus('idle'), midnight.getTime() - now.getTime());
+    const timer = setTimeout(() => { setSajuStatus('idle'); setTaroStatus('idle'); }, midnight.getTime() - now.getTime());
     return () => clearTimeout(timer);
   }, []);
 
   // ── 포커스 복귀 시 재동기화 ────────────────────────────────────────────────
   useEffect(() => {
-    const onFocus = () => setStatus(readConsultStatus(CONSULT_STORAGE_KEY.saju));
+    const onFocus = () => {
+      setSajuStatus(readConsultStatus(CONSULT_STORAGE_KEY.saju));
+      setTaroStatus(readConsultStatus(CONSULT_STORAGE_KEY.taro));
+    };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   // ── Dev 토글 ──────────────────────────────────────────────────────────────
   function devToggle() {
-    if (status === 'idle') {
+    if (!isCompleted) {
       if (!localStorage.getItem(LAST_RESULT_KEY.saju)) localStorage.setItem(LAST_RESULT_KEY.saju, 'dev');
       localStorage.setItem(CONSULT_STORAGE_KEY.saju, JSON.stringify({ status: 'completed', date: todayDateStr() }));
-      setStatus('completed');
+      setSajuStatus('completed');
     } else {
       localStorage.removeItem(CONSULT_STORAGE_KEY.saju);
+      localStorage.removeItem(CONSULT_STORAGE_KEY.taro);
       localStorage.removeItem('anonymous_consult_used_v1');
-      setStatus('idle');
+      setSajuStatus('idle');
+      setTaroStatus('idle');
     }
   }
 
-  const isCompleted = status === 'completed';
-
   const handleConsultClick = async () => {
     if (isCompleted) {
-      navigate('/saju-consult/result');
+      if (completedType === 'taro') {
+        sessionStorage.setItem('taro_result_phase', 'result');
+        sessionStorage.setItem('taro_enter_anim', '1');
+        navigate('/taro-consult/result');
+      } else {
+        navigate('/saju-consult/result');
+      }
       return;
     }
     const { data: { user } } = await getAuthUser();
