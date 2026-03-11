@@ -1,19 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Lottie from 'lottie-react';
+import lottieCommentLove from '../imports/comment-love.json';
 import Footer from '../components/Footer';
+import BottomTabBar from '../components/BottomTabBar';
 import { motion } from 'motion/react';
 import { DEV } from '../lib/env';
 import {
   CONSULT_STORAGE_KEY,
   LAST_RESULT_KEY,
-  type ConsultKey,
   type ConsultStatus,
   readConsultStatus,
 } from '../lib/consultStatus';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { hasUsedConsult } from '../lib/consultLimitService';
 import LoginBottomSheet from '../components/LoginBottomSheet';
-import { trackConsultLoginClick, trackConsultStartClick } from '../utils/analytics';
+import { trackConsultLoginClick } from '../utils/analytics';
 import { isContentNew } from '../components/ContentTags';
 import { logger } from '../lib/logger';
 import svgPaths from '../imports/svg-t3oztaafjr';
@@ -214,33 +216,57 @@ function RankNumber({ n }: { n: number }) {
 // Icon Components
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CrystalBallIcon() {
+/** 익명 상담 방패 아이콘 (14×14) */
+function AnonymousShieldIcon() {
   return (
-    <div className="relative shrink-0" style={{ width: 28, height: 28 }}>
-      <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13.9925 23.1999C20.0765 23.1999 25.0085 18.2679 25.0085 12.1839C25.0085 6.09998 20.0765 1.16797 13.9925 1.16797C7.90858 1.16797 2.97656 6.09998 2.97656 12.1839C2.97656 18.2679 7.90858 23.1999 13.9925 23.1999Z" fill="#4DB2FF"/>
-        <path opacity="0.2" d="M24.7675 9.87993C26.0411 15.8262 22.2496 21.6844 16.3032 22.958C13.8719 23.4787 11.4564 23.1537 9.36719 22.1842C18.9217 22.0423 23.4891 8.411 17.229 1.66211C20.9176 2.78503 23.9001 5.83043 24.7675 9.87993Z" fill="black"/>
-        <path d="M24.3307 23.9505C24.8499 25.2632 23.8825 26.686 22.4709 26.686H5.51977C4.10818 26.686 3.14081 25.2632 3.65992 23.9505L4.53649 21.734C4.80397 21.0576 5.45749 20.6133 6.18483 20.6133H21.8058C22.5332 20.6133 23.1867 21.0576 23.4542 21.734L24.3307 23.9505Z" fill="#576268"/>
-        <path opacity="0.2" d="M24.3322 23.9504C24.8512 25.263 23.8838 26.6858 22.4723 26.6858H15.8047C16.8692 25.9856 17.6408 25.0497 18.0051 23.9853C18.4338 22.7351 18.2338 21.5063 17.948 20.6133H21.8059C22.5346 20.6133 23.1919 21.0562 23.4562 21.7349L24.3322 23.9504Z" fill="black"/>
-        <path d="M11.8516 4.29773L12.0997 5.10228C12.3048 5.7674 12.8255 6.28809 13.4906 6.49321L14.2952 6.74132C14.4239 6.78103 14.4239 6.96327 14.2952 7.00297L13.4906 7.25109C12.8255 7.4562 12.3048 7.97689 12.0997 8.64202L11.8516 9.44657C11.8119 9.57531 11.6296 9.57531 11.5899 9.44657L11.3418 8.64202C11.1367 7.97689 10.616 7.4562 9.95089 7.25109L9.14634 7.00297C9.0176 6.96327 9.0176 6.78103 9.14634 6.74132L9.95089 6.49321C10.616 6.28809 11.1367 5.7674 11.3418 5.10228L11.5899 4.29773C11.6296 4.16899 11.8119 4.16899 11.8516 4.29773ZM8.16106 9.61087L8.33514 10.1753C8.47905 10.642 8.84437 11.0073 9.31103 11.1512L9.8755 11.3253C9.96583 11.3532 9.96583 11.481 9.8755 11.5089L9.31103 11.683C8.84437 11.8269 8.47906 12.1922 8.33514 12.6588L8.16106 13.2233C8.13321 13.3136 8.00535 13.3136 7.97749 13.2233L7.80342 12.6588C7.65951 12.1922 7.29418 11.8269 6.82753 11.683L6.26306 11.5089C6.17273 11.481 6.17273 11.3532 6.26306 11.3253L6.82753 11.1512C7.29418 11.0073 7.6595 10.642 7.80342 10.1753L7.97749 9.61087C8.00535 9.52054 8.13321 9.52054 8.16106 9.61087Z" fill="white"/>
-      </svg>
+    <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+      <path d="M6 1L10.5 2.8V6.5C10.5 8.9 8.5 11 6 11.5C3.5 11 1.5 8.9 1.5 6.5V2.8L6 1Z" fill="#4CAF50" />
+      <path d="M4 6.5L5.5 8L8 5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** 익명 상담 뱃지 */
+function AnonymousBadge() {
+  return (
+    <div className="flex items-center shrink-0" style={{ backgroundColor: '#F8F8F8', borderRadius: 999, padding: '4px 8px', gap: 4, alignSelf: 'flex-start', width: 'fit-content' }}>
+      <AnonymousShieldIcon />
+      <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: '#525252', lineHeight: '16px', whiteSpace: 'nowrap', paddingTop: 1.5 }}>
+        익명 상담
+      </span>
     </div>
   );
 }
 
-function TarotIcon() {
+/** 하트 메시지 아이콘 (Lottie 88×88) */
+function HeartMessageIcon() {
   return (
-    <div className="relative shrink-0" style={{ width: 28, height: 28 }}>
-      <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 28 28">
-        <path d={svgPaths.p33fbd900} fill="white" />
-        <path d={svgPaths.p1ff89980} fill="#576268" />
-        <path d={svgPaths.p317751f0} fill="#FA5F7F" />
-        <path d={svgPaths.p3f07c4f0} fill="white" />
-        <path d={svgPaths.p3ca10980} fill="#FFDE97" />
-        <path d={svgPaths.p2b7c2500} fill="#FFC741" />
-      </svg>
-    </div>
+    <Lottie
+      animationData={lottieCommentLove}
+      loop
+      autoplay
+      style={{ width: 92, height: 92 }}
+    />
   );
+}
+
+/** 자정까지 남은 시간 HH:MM */
+function useTimeUntilMidnight() {
+  const [timeStr, setTimeStr] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const diff = midnight.getTime() - now.getTime();
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      setTimeStr(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    };
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return timeStr;
 }
 
 function UserIcon() {
@@ -376,206 +402,174 @@ function AppSearchBar() {
   );
 }
 
-/** 무료 상담 카드 */
-function FreeConsultationSection({ nickname }: { nickname: string }) {
+/** 데일리 마음 상담 카드 */
+function FreeConsultationSection({ nickname: _nickname }: { nickname: string }) {
   const navigate = useNavigate();
   const [showLoginSheet, setShowLoginSheet] = useState(false);
+  const timeUntilMidnight = useTimeUntilMidnight();
 
-  // ── 상담 상태 (사주 / 타로) ────────────────────────────────────────────────
-  const [statuses, setStatuses] = useState<Record<ConsultKey, ConsultStatus>>(() => ({
-    saju: readConsultStatus(CONSULT_STORAGE_KEY.saju),
-    taro: readConsultStatus(CONSULT_STORAGE_KEY.taro),
-  }));
+  const [status, setStatus] = useState<ConsultStatus>(() => readConsultStatus(CONSULT_STORAGE_KEY.saju));
 
-  // ── 자정 자동 초기화 ────────────────────────────────────────────────────────
+  // ── 자정 자동 초기화 ──────────────────────────────────────────────────────
   useEffect(() => {
     const now = new Date();
     const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const msUntilMidnight = midnight.getTime() - now.getTime();
-    const timer = setTimeout(() => {
-      setStatuses({ saju: 'idle', taro: 'idle' });
-    }, msUntilMidnight);
+    const timer = setTimeout(() => setStatus('idle'), midnight.getTime() - now.getTime());
     return () => clearTimeout(timer);
   }, []);
 
-  // ── 결과 페이지에서 홈으로 복귀 시 상태 재동기화 ────────────────────────────
+  // ── 포커스 복귀 시 재동기화 ────────────────────────────────────────────────
   useEffect(() => {
-    const onFocus = () => {
-      setStatuses({
-        saju: readConsultStatus(CONSULT_STORAGE_KEY.saju),
-        taro: readConsultStatus(CONSULT_STORAGE_KEY.taro),
-      });
-    };
+    const onFocus = () => setStatus(readConsultStatus(CONSULT_STORAGE_KEY.saju));
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
-  // ── Dev 강제 토글 (idle ↔ completed, 날짜 무관) ──────────────────────────
-  function devToggle(key: ConsultKey) {
-    if (statuses[key] === 'idle') {
-      if (!localStorage.getItem(LAST_RESULT_KEY[key])) {
-        localStorage.setItem(LAST_RESULT_KEY[key], 'dev');
-      }
-      localStorage.setItem(
-        CONSULT_STORAGE_KEY[key],
-        JSON.stringify({ status: 'completed', date: todayDateStr() }),
-      );
-      setStatuses(prev => ({ ...prev, [key]: 'completed' }));
+  // ── Dev 토글 ──────────────────────────────────────────────────────────────
+  function devToggle() {
+    if (status === 'idle') {
+      if (!localStorage.getItem(LAST_RESULT_KEY.saju)) localStorage.setItem(LAST_RESULT_KEY.saju, 'dev');
+      localStorage.setItem(CONSULT_STORAGE_KEY.saju, JSON.stringify({ status: 'completed', date: todayDateStr() }));
+      setStatus('completed');
     } else {
-      localStorage.removeItem(CONSULT_STORAGE_KEY[key]);
+      localStorage.removeItem(CONSULT_STORAGE_KEY.saju);
       localStorage.removeItem('anonymous_consult_used_v1');
-      setStatuses(prev => ({ ...prev, [key]: 'idle' }));
+      setStatus('idle');
     }
   }
 
-  const consultItems: Array<{
-    label: string;
-    icon: React.ReactNode;
-    path: string;
-    resultPath: string;
-    statusKey: ConsultKey;
-  }> = [
-    { label: '사주 상담', icon: <CrystalBallIcon />, path: '/saju-consult', resultPath: '/saju-consult/result', statusKey: 'saju' },
-    { label: '타로 상담', icon: <TarotIcon />,       path: '/taro-consult',  resultPath: '/taro-consult/result',  statusKey: 'taro' },
-  ];
+  const isCompleted = status === 'completed';
+
+  const handleConsultClick = async () => {
+    if (isCompleted) {
+      navigate('/saju-consult/result');
+      return;
+    }
+    const { data: { user } } = await getAuthUser();
+    if (!user && hasUsedConsult()) {
+      setShowLoginSheet(true);
+      return;
+    }
+    navigate('/consult-type-select');
+  };
 
   return (
-    <section className="w-full" style={{ backgroundColor: C.white, padding: '0px 20px 33px' }}>
-      {/* 인사말 */}
-      <div className="flex flex-col" style={{ gap: 3, marginBottom: 12, paddingTop: 16 }}>
-        <p
-          style={{
-            fontFamily: font, fontSize: 18, fontWeight: 600,
-            color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px',
-          }}
-        >
-          {nickname ? `${nickname}님, 오늘 마음은 어떠세요?` : '오늘 마음은 어떠세요?'}
-        </p>
-        <p
-          style={{
-            fontFamily: font, fontSize: 13, fontWeight: 400,
-            color: '#848484', letterSpacing: '-0.26px', lineHeight: '19px',
-          }}
-        >
-          하루 한 번, 무료로 상담해보세요
-        </p>
-      </div>
-
-      <div
-        className="w-full"
-        style={{
-          backgroundColor: C.white,
-          borderRadius: 20,
-          border: `1px solid ${C.cardBorder}`,
-          boxShadow: '4.855px 3.641px 12.137px 0px rgba(0,0,0,0.04)',
-        }}
-      >
+    <section className="w-full" style={{ padding: '0px 20px 16px' }}>
+      {isCompleted ? (
+        /* ── 상담 후 카드 ── */
         <div
-          className="flex flex-col items-start"
-          style={{ padding: "22px 24px 22px 24px", gap: 16 }}
+          className="w-full"
+          style={{
+            backgroundColor: C.white,
+            borderRadius: 20,
+            border: '1px solid #f8f8f8',
+            boxShadow: '4px 4px 14px 0px rgba(0,0,0,0.04)',
+            padding: '20px 24px 22px',
+          }}
         >
-          {/* 상담 항목 목록 */}
-          <div className="flex flex-col w-full" style={{ gap: 16 }}>
-            {consultItems.map(({ label, icon, path, resultPath, statusKey }) => {
-              const isCompleted = statuses[statusKey] === 'completed';
-              return (
-                <div key={label} className="flex items-center justify-between w-full">
+          <div className="flex flex-col w-full" style={{ gap: 18 }}>
+            {/* 뱃지 + 남은 시간 */}
+            <div style={{ position: 'relative' }}>
+              <div className="flex items-center justify-between w-full">
+                <AnonymousBadge />
+                <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: C.primary, lineHeight: '16px', whiteSpace: 'nowrap' }}>
+                  {timeUntilMidnight} 후 상담 가능
+                </span>
+              </div>
+              {DEV && (
+                <button
+                  onClick={devToggle}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.gray600, padding: 0, position: 'absolute', top: '100%', right: 0, marginTop: 2 }}
+                >
+                  Dev
+                </button>
+              )}
+            </div>
 
-                  {/* 왼쪽: 아이콘 + [타이틀 행 + 서브텍스트] */}
-                  <div className="flex items-center" style={{ gap: 12, flex: '1 0 0', minWidth: 0 }}>
-                    <div style={{ marginTop: 1 }}>{icon}</div>
-                    <div className="flex flex-col items-start justify-center" style={{ marginTop: 4 }}>
-                      {/* 타이틀 + Dev 토글 버튼 */}
-                      <div className="flex items-center" style={{ gap: 6 }}>
-                        <span
-                          style={{
-                            fontFamily: font, fontSize: 15, fontWeight: 600,
-                            color: C.black, letterSpacing: '-0.3px', lineHeight: '25.5px',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {label}
-                        </span>
-                        {DEV && (
-                          <button
-                            onTouchStart={() => {}}
-                            onClick={() => devToggle(statusKey)}
-                            style={{
-                              background: 'none', border: 'none', padding: '0 2px',
-                              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                              fontFamily: font, fontSize: 11, fontWeight: 400,
-                              color: C.gray600, lineHeight: '16px',
-                              whiteSpace: 'nowrap', flexShrink: 0,
-                            }}
-                          >
-                            Dev
-                          </button>
-                        )}
-                      </div>
-                      {/* 완료 서브텍스트 */}
-                      {isCompleted && (
-                        <span
-                          style={{
-                            fontFamily: font, fontSize: 11, fontWeight: 400,
-                            color: C.gray400, lineHeight: '16px',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          내일 00:00에 다시 열려요
-                        </span>
-                      )}
-                    </div>
-                  </div>
+            {/* 본문 */}
+            <div className="flex flex-col w-full" style={{ gap: 22 }}>
+              <div className="flex flex-col" style={{ gap: 5, padding: '0 3px' }}>
+                <p style={{ fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px' }}>
+                  데일리 마음 상담
+                </p>
+                <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: '#848484', letterSpacing: '-0.26px', lineHeight: '19px' }}>
+                  상담 결과는 오늘까지만 확인 가능해요
+                </p>
+              </div>
 
-                  {/* 오른쪽: 버튼 */}
-                  <button
-                    className="flex items-center justify-center shrink-0 cursor-pointer"
-                    style={{
-                      backgroundColor: C.primary,
-                      width: 88, height: 38, borderRadius: 12, border: 'none',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'transform 0.1s ease',
-                    }}
-                    onTouchStart={() => {}}
-                    onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; e.currentTarget.style.transform = 'scale(0.995)'; }}
-                    onPointerUp={(e)   => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
-                    onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
-                    onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
-                    onClick={async () => {
-                      if (isCompleted) {
-                        if (statusKey === 'taro') {
-                          sessionStorage.setItem('taro_result_phase', 'result');
-                        }
-                        navigate(resultPath);
-                        return;
-                      }
-                      // 상담 시작: 비로그인 + 체험 사용 완료 → LoginBottomSheet
-                      const { data: { user } } = await getAuthUser();
-                      if (!user && hasUsedConsult()) {
-                        setShowLoginSheet(true);
-                        return;
-                      }
-                      trackConsultStartClick(statusKey as 'saju' | 'taro');
-                      navigate(path);
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: font, fontSize: 14, fontWeight: 500,
-                        color: C.white, letterSpacing: '-0.42px', lineHeight: '20px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {isCompleted ? '결과 보기' : '상담 시작'}
-                    </span>
-                  </button>
-
-                </div>
-              );
-            })}
+              <button
+                className="w-full flex items-center justify-center"
+                style={{ height: 38, backgroundColor: C.primary, borderRadius: 12, border: 'none', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                onTouchStart={() => {}}
+                onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; e.currentTarget.style.transform = 'scale(0.995)'; }}
+                onPointerUp={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+                onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+                onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+                onClick={handleConsultClick}
+              >
+                <span style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.white, letterSpacing: '-0.42px', lineHeight: '20px' }}>
+                  결과 보기
+                </span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* ── 상담 전 카드 ── */
+        <div
+          className="w-full"
+          style={{
+            backgroundColor: C.white,
+            borderRadius: 20,
+            border: '1px solid #f8f8f8',
+            boxShadow: '4px 4px 14px 0px rgba(0,0,0,0.04)',
+            padding: '20px 24px 22px',
+          }}
+        >
+          {/* 뱃지 */}
+          <div style={{ position: 'relative', alignSelf: 'flex-start' }}>
+            <AnonymousBadge />
+            {DEV && (
+              <button
+                onClick={devToggle}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.gray600, padding: 0, position: 'absolute', top: '100%', left: 6, marginTop: 2 }}
+              >
+                Dev
+              </button>
+            )}
+          </div>
+
+          {/* 센터 콘텐츠 */}
+          <div className="flex flex-col items-center w-full" style={{ gap: 20, marginTop: 0 }}>
+            <div className="flex flex-col items-center w-full" style={{ gap: 4 }}>
+              <div style={{ marginTop: -16 }}><HeartMessageIcon /></div>
+              <div className="flex flex-col items-center" style={{ gap: 5 }}>
+                <p style={{ fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', textAlign: 'center' }}>
+                  데일리 마음 상담
+                </p>
+                <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: '#848484', letterSpacing: '-0.26px', lineHeight: '19px', textAlign: 'center' }}>
+                  대화 내용은 기록되지 않아요
+                </p>
+              </div>
+            </div>
+
+            <button
+              className="w-full flex items-center justify-center"
+              style={{ height: 48, backgroundColor: C.primary, borderRadius: 16, border: 'none', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+              onTouchStart={() => {}}
+              onPointerDown={(e) => { e.currentTarget.style.backgroundColor = '#41A09E'; e.currentTarget.style.transform = 'scale(0.995)'; }}
+              onPointerUp={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+              onPointerLeave={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+              onPointerCancel={(e) => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'scale(1)'; }}
+              onClick={handleConsultClick}
+            >
+              <span style={{ fontFamily: font, fontSize: 15, fontWeight: 500, color: C.white, letterSpacing: '-0.45px', lineHeight: '20px' }}>
+                마음 털어놓기
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 로그인 유도 바텀시트 ── */}
       <LoginBottomSheet
@@ -813,7 +807,7 @@ function NewFortuneSection({
   }, []);
 
   return (
-    <section className="w-full" style={{ backgroundColor: C.white, padding: '12px 20px 0px' }}>
+    <section className="w-full" style={{ backgroundColor: C.white, padding: '10px 20px 0px' }}>
       <div className="flex flex-col items-start w-full" style={{ gap: 20 }}>
         {/* 섹션 타이틀 */}
         <span
@@ -1225,7 +1219,7 @@ function BestFortuneSection({
   return (
     <section
       className="flex flex-col items-start w-full"
-      style={{ backgroundColor: C.white, paddingTop: 18, paddingBottom: 12 }}
+      style={{ backgroundColor: C.white, paddingTop: 14, paddingBottom: 12 }}
     >
       {/* 헤더 */}
       <div
@@ -1556,7 +1550,7 @@ export function HomeScreenNew() {
         <AppHeader />
         <AppSearchBar />
         <FreeConsultationSection nickname={nickname} />
-        <div style={{ height: 8, backgroundColor: '#F9F9F9', flexShrink: 0 }} />
+        <div style={{ height: 16 }} />
         <BestFortuneSection tab={activeTab} onTabChange={handleTabChange} items={bestItems} />
 
         {newFreeSlides.length > 0 && (
@@ -1568,6 +1562,8 @@ export function HomeScreenNew() {
             onNavigateToPrivacy={() => navigate('/privacy-policy')}
           />
         </div>
+
+        <BottomTabBar />
       </div>
     </div>
   );
