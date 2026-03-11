@@ -188,7 +188,20 @@ export function TaroConsultResultPage() {
     dx: number; dy: number; sx: number; sy: number;
   } | null>(null);
   const [flyAnimating, setFlyAnimating]     = useState(false);
-  const [sectionsVisible, setSectionsVisible] = useState(_initPhase === 'result');
+  // ── Slide-up enter animation (홈에서 직접 진입 시) ──────────────────────
+  const _enterAnim = sessionStorage.getItem('taro_enter_anim') === '1';
+  if (_enterAnim) sessionStorage.removeItem('taro_enter_anim');
+  const [sectionsVisible, setSectionsVisible] = useState(_initPhase === 'result' && !_enterAnim);
+
+  useEffect(() => {
+    if (_enterAnim) {
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSectionsVisible(true));
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const cardWrapperRef = useRef<HTMLDivElement>(null);
@@ -354,8 +367,6 @@ export function TaroConsultResultPage() {
             {/* Nav */}
             <div style={{ height: 52, display: 'flex', alignItems: 'center', paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white, flexShrink: 0 }}>
               <BackButton onPress={() => navigate(-1)} />
-              <p style={{ flex: 1, textAlign: 'center', fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>타로 상담</p>
-              <div style={{ width: 44, flexShrink: 0 }} />
             </div>
 
             {/* Card reveal area */}
@@ -447,7 +458,7 @@ export function TaroConsultResultPage() {
             {/* Nav — close button */}
             <div style={{ height: 52, display: 'flex', alignItems: 'center', paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white, flexShrink: 0, position: 'relative', zIndex: 10 }}>
               <div style={{ width: 44, flexShrink: 0 }} />
-              <p style={{ flex: 1, textAlign: 'center', fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>타로 상담</p>
+              <p style={{ flex: 1, textAlign: 'center', fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>타로 상담 풀이</p>
               <button onClick={() => { sessionStorage.removeItem('taro_result_phase'); navigate('/'); }}
                 onTouchStart={() => {}}
                 onPointerDown={(e) => {
