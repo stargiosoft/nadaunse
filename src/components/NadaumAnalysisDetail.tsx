@@ -5,6 +5,7 @@ import ArrowLeft from './ArrowLeft';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { projectId } from '../utils/supabase/info';
 import SEO from './SEO';
+import { trackNadaumAnalysisView, trackNadaumRefresh } from '../utils/analytics';
 
 const font = "'Pretendard Variable', sans-serif";
 
@@ -265,6 +266,7 @@ export default function NadaumAnalysisDetail() {
       setError(null);
       if (forceRefresh) {
         setIsRefreshing(true);
+        if (category) trackNadaumRefresh(category, currentTagCount);
       } else {
         setIsLoading(true);
       }
@@ -302,6 +304,10 @@ export default function NadaumAnalysisDetail() {
         setIsCached(!!data.analysis.is_cached);
         if (data.analysis.metadata) {
           setMetadata(data.analysis.metadata);
+        }
+        // GA: 나다움 분석 상세 조회
+        if (category) {
+          trackNadaumAnalysisView(category, data.analysis.tag_count, !!data.analysis.is_cached);
         }
       } else {
         setError(data.error || '분석 생성에 실패했습니다.');

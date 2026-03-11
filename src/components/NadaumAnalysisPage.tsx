@@ -9,6 +9,7 @@ import BottomTabBar from './BottomTabBar';
 import SEO from './SEO';
 import { getZodiacImageUrl } from '../lib/zodiacUtils';
 import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
+import { trackNadaumPageView, trackNadaumCategoryClick, trackNadaumDnaRefresh, trackNadaumLoginClick, trackNadaumCollectTagClick } from '../utils/analytics';
 
 const font = "'Pretendard Variable', sans-serif";
 
@@ -436,6 +437,7 @@ export default function NadaumAnalysisPage() {
           if (!cancelled) {
             setIsLoggedIn(false);
             setIsLoading(false);
+            trackNadaumPageView(false, 0, false);
           }
           return;
         }
@@ -511,6 +513,10 @@ export default function NadaumAnalysisPage() {
           if (aiData) setAiResult(aiData);
           if (oheng.length > 0) setOhengData(oheng);
           setIsLoading(false);
+
+          // GA: 나다움 페이지 조회
+          const count = tagsRes.data?.length ?? 0;
+          trackNadaumPageView(true, count, count >= 5);
         }
       } catch {
         if (!cancelled) setIsLoading(false);
@@ -531,6 +537,7 @@ export default function NadaumAnalysisPage() {
   async function handleRefresh() {
     if (!userId || isRefreshing) return;
     setIsRefreshing(true);
+    trackNadaumDnaRefresh(confirmedCount);
     try {
       clearAnalysisCache(userId);
       const { data: { session } } = await supabase.auth.getSession();
@@ -693,7 +700,7 @@ export default function NadaumAnalysisPage() {
               운세를 볼수록 숨겨진 내 성격이 드러나요
             </p>
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => { trackNadaumLoginClick(); navigate('/login'); }}
               className="flex items-center justify-center cursor-pointer"
               style={{
                 width: '200px',
@@ -1152,7 +1159,7 @@ export default function NadaumAnalysisPage() {
                 나다움 태그 {5 - confirmedCount}개만 더 모으면{'\n'}나만의 성격 뿌리가 자라나요
               </p>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => { trackNadaumCollectTagClick('main'); navigate('/'); }}
                 className="flex items-center justify-center cursor-pointer"
                 style={{
                   marginTop: '16px',
@@ -1322,6 +1329,7 @@ export default function NadaumAnalysisPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.15 + i * 0.05 }}
               onClick={() => {
+                trackNadaumCategoryClick(card.key, unlocked);
                 if (unlocked) {
                   navigate(`/nadaum/${card.key}`);
                 }
@@ -1370,7 +1378,7 @@ export default function NadaumAnalysisPage() {
         {ANALYSIS_CARDS.some((card) => confirmedCount < card.tagRequired) && (
           <div style={{ padding: '12px 20px 20px' }}>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => { trackNadaumCollectTagClick('category'); navigate('/'); }}
               className="w-full flex items-center justify-center gap-2 cursor-pointer"
               style={{
                 height: '56px',
