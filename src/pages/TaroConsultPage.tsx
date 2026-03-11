@@ -135,10 +135,6 @@ export function TaroConsultPage() {
         {/* ── 상단 네비게이션 ── */}
         <div style={{ height: 52, display: 'flex', alignItems: 'center', paddingLeft: 12, paddingRight: 12, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white, flexShrink: 0 }}>
           <BackButton onPress={() => { if (text.trim().length > 0) { setShowExitModal(true); } else { navigate(-1); } }} />
-          <p style={{ flex: 1, textAlign: 'center', fontFamily: font, fontSize: 18, fontWeight: 600, color: C.black, letterSpacing: '-0.36px', lineHeight: '25.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            타로 상담
-          </p>
-          <div style={{ width: 44, flexShrink: 0 }} />
         </div>
 
         {/* ── 본문 스크롤 영역 ── */}
@@ -146,13 +142,18 @@ export function TaroConsultPage() {
           style={{ flex: 1, overflowY: 'auto', paddingBottom: keyboardHeight > 0 ? keyboardHeight + 80 : 80, transition: 'padding-bottom 0.2s cubic-bezier(0.4, 0, 0.2, 1)', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}
           onTouchStart={() => { const el = textareaRef.current; if (!el) return; if (document.activeElement === el) return; el.focus(); setTimeout(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 350); }}
         >
-          <div style={{ backgroundColor: C.white, paddingTop: 16, paddingBottom: 12, paddingLeft: 20, paddingRight: 20 }}>
-            <p style={{ fontFamily: font, fontSize: 17, fontWeight: 500, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>
-              카드에 무엇을 물어볼까요?
-            </p>
+          <div style={{ backgroundColor: C.white, paddingTop: 16, paddingBottom: 12, paddingLeft: 20, paddingRight: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ backgroundColor: '#f7f8f9', borderRadius: 16, padding: 14, display: 'inline-flex', alignSelf: 'flex-start' }}>
+              <img src="/consult/the-lover.png" alt="" style={{ width: 36, height: 36, objectFit: 'contain', marginTop: -2 }} />
+            </div>
+            <div style={{ paddingLeft: 4, paddingRight: 4 }}>
+              <p style={{ fontFamily: font, fontSize: 17, fontWeight: 500, color: C.black, letterSpacing: '-0.34px', lineHeight: '24px' }}>
+                오늘, 어떤 일이 가장 마음에 걸리나요?
+              </p>
+            </div>
           </div>
           <div style={{ paddingLeft: 20, paddingRight: 20 }}>
-            <TextareaInput ref={textareaRef} autoFocus value={text} onChange={handleChange} maxLength={MAX_LEN} rows={8} placeholder="지금 가장 궁금한 한 가지를 적어주세요." />
+            <TextareaInput ref={textareaRef} autoFocus value={text} onChange={handleChange} maxLength={MAX_LEN} rows={8} placeholder={`편하게 적어주세요\n예를 들면 이런 질문도 좋아요\n\n• 요즘 일이 잘 안 풀리는 이유가 궁금해요\n• 이직을 해도 괜찮을지 알고 싶어요\n• 그 사람과 다시 잘 될 수 있을까요?`} />
           </div>
         </div>
 

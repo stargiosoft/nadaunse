@@ -52,6 +52,7 @@ import { FortuneAllPage } from './pages/FortuneAllPage';
 import { NewFreeFortuneAllPage } from './pages/NewFreeFortuneAllPage';
 import { SearchPage } from './pages/SearchPage';
 import { SajuConsultPage } from './pages/SajuConsultPage';
+import ConsultTypeSelectPage from './pages/ConsultTypeSelectPage';
 import { SajuConsultLoadingPage } from './pages/SajuConsultLoadingPage';
 import { SajuConsultResultPage } from './pages/SajuConsultResultPage';
 import { SajuRecommendedFortunePage } from './pages/SajuRecommendedFortunePage';
@@ -3792,6 +3793,7 @@ export default function App() {
           <Route path="/best-fortune" element={<FortuneAllPage />} />
           <Route path="/new-free" element={<NewFreeFortuneAllPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/consult-type-select" element={<ConsultTypeSelectPage />} />
           <Route path="/saju-consult" element={<SajuConsultPage />} />
           <Route path="/saju-consult/loading" element={<SajuConsultLoadingPage />} />
           <Route path="/saju-consult/result" element={<SajuConsultResultPage />} />
