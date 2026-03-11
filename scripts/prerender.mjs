@@ -16,7 +16,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BUILD_DIR = resolve(__dirname, '..', 'build');
+const BUILD_DIR = resolve(__dirname, '..', 'dist');
 const SITE_URL = 'https://nadaunse.com';
 
 // 환경변수에서 Supabase 정보 읽기 (Vercel 빌드 환경에서 설정됨)
