@@ -397,6 +397,9 @@ function GAInit() {
         '/taro-consult': '타로 상담',
         '/taro-consult/loading': '타로 상담 생성 중',
         '/taro-consult/result': '타로 상담 결과',
+        // 나다움 분석 & 마음톡
+        '/nadaum': '나다움 분석',
+        '/maumtalk': '마음톡',
       };
 
       // 정적 라우트 확인
@@ -447,6 +450,20 @@ function GAInit() {
       if (pathname.startsWith('/master/content/')) {
         return `유료 콘텐츠 상세 | ${BASE_TITLE}`;
       }
+      // 나다움 분석 상세 페이지
+      if (pathname.startsWith('/nadaum/') && !pathname.startsWith('/nadaum-record/')) {
+        const category = pathname.split('/nadaum/')[1];
+        const categoryNames: Record<string, string> = {
+          love: '연애·궁합 분석',
+          nature: '기질·성격 분석',
+          money: '재물·금전 분석',
+          career: '직업·적성 분석',
+          health: '건강·체질 분석',
+        };
+        const name = categoryNames[category] || '나다움 분석 상세';
+        return `${name} | ${BASE_TITLE}`;
+      }
+
       // 나다움 기록하기 페이지 (유료/무료 구분)
       if (pathname === '/paid/nadaum-record') {
         return `[유료] 나다움 기록하기 | ${BASE_TITLE}`;
@@ -2492,6 +2509,10 @@ function LoginPageNewWrapper() {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [navigate]);
 
+  // ⭐ 동기 렌더 가드: 이미 로그인된 상태면 LoginPageNew를 렌더링하지 않음
+  // bfcache 복원 시 isLoggingIn=true 상태의 "로그인 중..." 깜빡임 방지
+  const isAlreadyLoggedIn = !!localStorage.getItem('user') && !loginProcessingRef.current;
+
   const handleLoginSuccess = (userData: any) => {
     loginProcessingRef.current = true;
     console.log('🎉 로그인 성공! user:', userData);
@@ -2516,6 +2537,11 @@ function LoginPageNewWrapper() {
       navigate('/', { replace: true });
     }
   };
+
+  // ⭐ 이미 로그인된 상태면 LoginPageNew 렌더링 차단 (useEffect에서 navigate(-1) 처리)
+  if (isAlreadyLoggedIn) {
+    return null;
+  }
 
   return (
     <LoginPageNew
