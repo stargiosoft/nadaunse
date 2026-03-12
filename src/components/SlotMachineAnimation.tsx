@@ -1,10 +1,12 @@
 /**
  * 슬롯머신 애니메이션 컴포넌트
- * 3개 릴이 순차적으로 정지하며 결과 공개
+ * ★DESIGN_SYSTEM★ 기반 — 3개 릴 순차 정지
  */
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+
+const font = "'Pretendard Variable', sans-serif";
 
 const ELEMENT_ICONS = ['🌳', '🔥', '⛰️', '⚔️', '🌊'];
 const ELEMENT_MAP: Record<string, string> = {
@@ -12,9 +14,9 @@ const ELEMENT_MAP: Record<string, string> = {
 };
 
 interface SlotMachineAnimationProps {
-  element: string; // 최종 결과 오행
+  element: string;
   onComplete: () => void;
-  duration?: number; // 총 애니메이션 시간 (ms)
+  duration?: number;
 }
 
 export default function SlotMachineAnimation({
@@ -28,23 +30,19 @@ export default function SlotMachineAnimation({
   const targetIcon = ELEMENT_MAP[element] || '⛰️';
 
   useEffect(() => {
-    // 릴 1 정지 (1초 후)
     const t1 = setTimeout(() => {
       setReelStates(prev => [targetIcon, prev[1], prev[2]]);
     }, duration * 0.33);
 
-    // 릴 2 정지 (2초 후)
     const t2 = setTimeout(() => {
       setReelStates(prev => [prev[0], targetIcon, prev[2]]);
     }, duration * 0.66);
 
-    // 릴 3 정지 (3초 후)
     const t3 = setTimeout(() => {
       setReelStates([targetIcon, targetIcon, targetIcon]);
       setIsComplete(true);
     }, duration);
 
-    // 완료 콜백 (약간의 딜레이 후)
     const t4 = setTimeout(onComplete, duration + 500);
 
     return () => {
@@ -56,25 +54,32 @@ export default function SlotMachineAnimation({
   }, [element, duration, onComplete, targetIcon]);
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center" style={{ gap: '24px' }}>
       {/* 슬롯머신 프레임 */}
       <div
-        className="flex items-center gap-3 p-6 rounded-3xl"
-        style={{ backgroundColor: '#1a1a2e', border: '3px solid #48b2af' }}
+        className="flex items-center"
+        style={{
+          gap: '8px',
+          padding: '20px',
+          borderRadius: '24px',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e7e7e7',
+        }}
       >
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="relative overflow-hidden rounded-xl flex items-center justify-center"
+            className="relative overflow-hidden flex items-center justify-center transform-gpu"
             style={{
               width: '80px',
               height: '100px',
-              backgroundColor: '#fff',
-              border: '2px solid #e0e0e0',
+              backgroundColor: '#f9f9f9',
+              borderRadius: '16px',
+              border: reelStates[i] ? '1.5px solid #48b2af' : '1px solid #e7e7e7',
+              transition: 'border 0.2s ease',
             }}
           >
             {reelStates[i] ? (
-              // 정지된 릴
               <motion.div
                 initial={{ scale: 1.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -84,7 +89,6 @@ export default function SlotMachineAnimation({
                 {reelStates[i]}
               </motion.div>
             ) : (
-              // 회전 중인 릴
               <motion.div
                 className="flex flex-col items-center"
                 animate={{ y: [0, -200, 0] }}
@@ -105,31 +109,37 @@ export default function SlotMachineAnimation({
         ))}
       </div>
 
-      {/* 분석 중 텍스트 */}
+      {/* 텍스트 */}
       <AnimatePresence>
         {!isComplete && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ fontSize: '15px', color: '#888', textAlign: 'center' }}
+            style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 400,
+              lineHeight: '26px', letterSpacing: '-0.3px', color: '#848484',
+              textAlign: 'center',
+            }}
           >
             당신의 운명을 분석하고 있어요...
           </motion.p>
         )}
       </AnimatePresence>
 
-      {/* 완료 효과 */}
       <AnimatePresence>
         {isComplete && (
-          <motion.div
+          <motion.p
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            style={{ fontSize: '15px', color: '#48b2af', fontWeight: 700 }}
+            style={{
+              fontFamily: font, fontSize: '16px', fontWeight: 600,
+              lineHeight: '22px', letterSpacing: '-0.32px', color: '#48b2af',
+            }}
           >
             결과가 나왔어요!
-          </motion.div>
+          </motion.p>
         )}
       </AnimatePresence>
     </div>

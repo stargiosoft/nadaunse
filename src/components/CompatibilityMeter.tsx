@@ -1,12 +1,15 @@
 /**
  * 궁합 점수 원형 게이지 애니메이션 컴포넌트
+ * ★DESIGN_SYSTEM★ 기반
  */
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 
+const font = "'Pretendard Variable', sans-serif";
+
 interface CompatibilityMeterProps {
-  score: number; // 0~100
+  score: number;
   myTitle: string;
   partnerTitle: string;
   onComplete?: () => void;
@@ -25,10 +28,10 @@ export default function CompatibilityMeter({
   const strokeDashoffset = circumference - (animatedScore / 100) * circumference;
 
   const getScoreColor = (s: number) => {
-    if (s >= 80) return '#ff6b9d';
+    if (s >= 80) return '#ef6878';
     if (s >= 60) return '#48b2af';
     if (s >= 40) return '#f5a623';
-    return '#888';
+    return '#b7b7b7';
   };
 
   const getScoreLabel = (s: number) => {
@@ -42,16 +45,14 @@ export default function CompatibilityMeter({
   };
 
   useEffect(() => {
-    // 점수 카운트 애니메이션
     const duration = 2000;
     const steps = 60;
     const increment = score / steps;
-    let current = 0;
     let step = 0;
 
     const interval = setInterval(() => {
       step++;
-      current = Math.min(score, Math.round(increment * step));
+      const current = Math.min(score, Math.round(increment * step));
       setAnimatedScore(current);
 
       if (step >= steps) {
@@ -67,19 +68,37 @@ export default function CompatibilityMeter({
   const color = getScoreColor(score);
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center" style={{ gap: '24px' }}>
       {/* 이름 표시 */}
-      <div className="flex items-center gap-4 w-full justify-center">
+      <div className="flex items-center justify-center" style={{ gap: '12px' }}>
         <div
-          className="px-4 py-2 rounded-full"
-          style={{ backgroundColor: '#f0f8f8', fontSize: '14px', fontWeight: 600, color: '#48b2af' }}
+          className="flex items-center justify-center"
+          style={{
+            height: '32px',
+            padding: '0 14px',
+            borderRadius: '16px',
+            backgroundColor: '#E4F7F7',
+            fontFamily: font,
+            fontSize: '13px',
+            fontWeight: 600,
+            color: '#48b2af',
+          }}
         >
           {myTitle}
         </div>
-        <span style={{ fontSize: '20px' }}>💕</span>
+        <span style={{ fontSize: '18px' }}>💕</span>
         <div
-          className="px-4 py-2 rounded-full"
-          style={{ backgroundColor: '#fff0f5', fontSize: '14px', fontWeight: 600, color: '#ff6b9d' }}
+          className="flex items-center justify-center"
+          style={{
+            height: '32px',
+            padding: '0 14px',
+            borderRadius: '16px',
+            backgroundColor: '#fff6f7',
+            fontFamily: font,
+            fontSize: '13px',
+            fontWeight: 600,
+            color: '#ef6878',
+          }}
         >
           {partnerTitle}
         </div>
@@ -88,19 +107,17 @@ export default function CompatibilityMeter({
       {/* 원형 게이지 */}
       <div className="relative" style={{ width: '200px', height: '200px' }}>
         <svg width="200" height="200" viewBox="0 0 200 200">
-          {/* 배경 원 */}
           <circle
             cx="100" cy="100" r={radius}
             fill="none"
-            stroke="#f0f0f0"
-            strokeWidth="12"
+            stroke="#f3f3f3"
+            strokeWidth="10"
           />
-          {/* 진행 원 */}
           <motion.circle
             cx="100" cy="100" r={radius}
             fill="none"
             stroke={color}
-            strokeWidth="12"
+            strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -111,19 +128,25 @@ export default function CompatibilityMeter({
           />
         </svg>
 
-        {/* 중앙 점수 */}
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center"
-        >
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.5, type: 'spring' }}
-            style={{ fontSize: '42px', fontWeight: 800, color }}
+            style={{
+              fontFamily: font, fontSize: '40px', fontWeight: 600,
+              lineHeight: '1', color,
+            }}
           >
             {animatedScore}
           </motion.span>
-          <span style={{ fontSize: '14px', color: '#888' }}>점</span>
+          <span style={{
+            fontFamily: font, fontSize: '14px', fontWeight: 400,
+            lineHeight: '20px', color: '#848484',
+            marginTop: '4px',
+          }}>
+            점
+          </span>
         </div>
       </div>
 
@@ -132,8 +155,17 @@ export default function CompatibilityMeter({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.5 }}
-        className="px-6 py-2 rounded-full"
-        style={{ backgroundColor: color, color: '#fff', fontSize: '16px', fontWeight: 700 }}
+        className="flex items-center justify-center"
+        style={{
+          height: '36px',
+          padding: '0 20px',
+          borderRadius: '18px',
+          backgroundColor: color,
+          fontFamily: font,
+          fontSize: '14px',
+          fontWeight: 600,
+          color: '#ffffff',
+        }}
       >
         {getScoreLabel(score)}
       </motion.div>

@@ -35,12 +35,22 @@ export default function UnteTestCard({
   };
 
   const typeLabel = templateType === 'compatibility' ? '궁합' : templateType === 'adult' ? '19+' : '테스트';
+  const typeBg = templateType === 'compatibility' ? '#fff6f7' : isAdult ? '#fff6f7' : '#f0f8f8';
+  const typeColor = templateType === 'compatibility' ? '#ef6878' : isAdult ? '#ef6878' : '#41a09e';
 
   return (
     <button
       onClick={() => navigate(`/unte/${slug}`)}
-      className="flex flex-col overflow-hidden rounded-2xl transform-gpu cursor-pointer w-full text-left"
-      style={{ backgroundColor: '#fff', border: '1px solid #f0f0f0' }}
+      className="flex flex-col overflow-hidden transform-gpu cursor-pointer w-full text-left"
+      style={{
+        backgroundColor: '#ffffff',
+        border: '1px solid #e7e7e7',
+        borderRadius: '16px',
+        transition: 'transform 0.1s ease',
+      }}
+      onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+      onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+      onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
     >
       {/* 썸네일 */}
       <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
@@ -53,55 +63,93 @@ export default function UnteTestCard({
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
-            style={{ backgroundColor: '#f5f5f5' }}
+            style={{ backgroundColor: '#f9f9f9' }}
           >
-            <span style={{ fontSize: '32px' }}>
+            <span style={{ fontSize: '36px' }}>
               {templateType === 'compatibility' ? '💑' : '🎰'}
             </span>
           </div>
         )}
 
-        {/* 유형 뱃지 */}
+        {/* 유형 뱃지 — ContentTags 스타일 */}
         <div
-          className="absolute top-2 left-2 rounded-full px-2 py-0.5"
-          style={{
-            backgroundColor: templateType === 'compatibility' ? '#ff6b9d' : isAdult ? '#ff4444' : '#48b2af',
-            color: '#fff',
-            fontSize: '11px',
-            fontWeight: 600,
-          }}
+          className="absolute flex items-center gap-1"
+          style={{ top: '8px', left: '8px' }}
         >
-          {typeLabel}
-        </div>
-
-        {/* 성인 뱃지 */}
-        {isAdult && (
-          <div
-            className="absolute top-2 right-2 rounded-full px-2 py-0.5"
-            style={{ backgroundColor: '#ff4444', color: '#fff', fontSize: '11px', fontWeight: 600 }}
+          <span
+            style={{
+              backgroundColor: typeBg,
+              color: typeColor,
+              fontFamily: "'Pretendard Variable', sans-serif",
+              fontSize: '10px',
+              fontWeight: 600,
+              lineHeight: '15px',
+              padding: '1px 4px',
+              borderRadius: '4px',
+            }}
           >
-            19+
-          </div>
-        )}
+            {typeLabel}
+          </span>
+          {isAdult && (
+            <span
+              style={{
+                backgroundColor: '#fff6f7',
+                color: '#ef6878',
+                fontFamily: "'Pretendard Variable', sans-serif",
+                fontSize: '10px',
+                fontWeight: 600,
+                lineHeight: '15px',
+                padding: '1px 4px',
+                borderRadius: '4px',
+              }}
+            >
+              19+
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 텍스트 */}
-      <div className="p-3 flex flex-col gap-1">
+      <div className="flex flex-col" style={{ padding: '10px 12px 12px' }}>
         <p
           className="line-clamp-2"
-          style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', lineHeight: '1.3' }}
+          style={{
+            fontFamily: "'Pretendard Variable', sans-serif",
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            letterSpacing: '-0.42px',
+            color: '#151515',
+          }}
         >
           {title}
         </p>
         {description && (
           <p
             className="line-clamp-1"
-            style={{ fontSize: '12px', color: '#888', lineHeight: '1.4' }}
+            style={{
+              fontFamily: "'Pretendard Variable', sans-serif",
+              fontSize: '12px',
+              fontWeight: 400,
+              lineHeight: '16px',
+              letterSpacing: '-0.24px',
+              color: '#848484',
+              marginTop: '4px',
+            }}
           >
             {description}
           </p>
         )}
-        <p style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+        <p
+          style={{
+            fontFamily: "'Pretendard Variable', sans-serif",
+            fontSize: '11px',
+            fontWeight: 400,
+            lineHeight: '16px',
+            color: '#b7b7b7',
+            marginTop: '6px',
+          }}
+        >
           {formatCount(playCount)}명 참여
         </p>
       </div>

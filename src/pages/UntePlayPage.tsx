@@ -1,6 +1,6 @@
 /**
  * 운테 플레이 페이지
- * 사주 입력 → 슬롯머신/궁합 애니메이션 → 결과 전환
+ * ★DESIGN_SYSTEM★ 기반 — 사주 입력 → 애니메이션 → 결과 전환
  */
 
 import { useState, useCallback } from 'react';
@@ -10,6 +10,8 @@ import { supabaseUrl } from '../lib/supabase';
 import UnteSajuInput, { type UnteBirthData } from '../components/UnteSajuInput';
 import SlotMachineAnimation from '../components/SlotMachineAnimation';
 import CompatibilityMeter from '../components/CompatibilityMeter';
+
+const font = "'Pretendard Variable', sans-serif";
 
 interface TestState {
   testId: string;
@@ -59,7 +61,6 @@ export function UntePlayPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // 브라우저 fingerprint 간이 생성
   const getFingerprint = (): string => {
     const nav = navigator;
     const raw = `${nav.userAgent}|${nav.language}|${screen.width}x${screen.height}|${new Date().getTimezoneOffset()}`;
@@ -136,7 +137,6 @@ export function UntePlayPage() {
 
   const handleAnimationComplete = useCallback(() => {
     setPhase('done');
-    // 결과 페이지로 이동
     setTimeout(() => {
       navigate(`/unte/${slug}/result`, {
         state: { result, test },
@@ -144,144 +144,204 @@ export function UntePlayPage() {
     }, 800);
   }, [navigate, slug, result, test]);
 
-  // testId가 없으면 랜딩으로 리다이렉트
+  /* testId 없으면 fallback */
   if (!testId || !test) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: '#fafafa' }}>
-        <p style={{ fontSize: '14px', color: '#888' }}>테스트 정보를 찾을 수 없어요</p>
-        <button
-          onClick={() => navigate(`/unte/${slug || ''}`)}
-          className="px-6 py-2 rounded-full cursor-pointer"
-          style={{ backgroundColor: '#48b2af', color: '#fff', fontSize: '14px', border: 'none' }}
-        >
-          돌아가기
-        </button>
+      <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
+        <div className="w-full max-w-[440px] relative flex flex-col items-center justify-center" style={{ paddingTop: '120px', gap: '20px' }}>
+          <div
+            className="flex items-center justify-center"
+            style={{ width: '76px', height: '76px', borderRadius: '24px', backgroundColor: '#f9f9f9' }}
+          >
+            <span style={{ fontSize: '32px' }}>😢</span>
+          </div>
+          <div className="flex flex-col items-center" style={{ gap: '8px' }}>
+            <p style={{
+              fontFamily: font, fontSize: '18px', fontWeight: 600,
+              lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
+              textAlign: 'center',
+            }}>
+              테스트 정보를 찾을 수 없어요
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(`/unte/${slug || ''}`)}
+            className="flex items-center justify-center cursor-pointer"
+            style={{
+              height: '48px', padding: '0 32px', borderRadius: '16px',
+              backgroundColor: '#48b2af', border: 'none', transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+          >
+            <span style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 500,
+              lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff',
+            }}>
+              돌아가기
+            </span>
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
-      {/* 헤더 */}
-      <div className="sticky top-0 z-10" style={{ backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
-        <div className="max-w-[440px] mx-auto px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="cursor-pointer"
-            style={{ background: 'none', border: 'none', fontSize: '20px' }}
+    <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
+      <div className="w-full max-w-[440px] relative">
+
+        {/* 헤더 — 52px */}
+        <div
+          className="sticky top-0 z-10"
+          style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #f3f3f3' }}
+        >
+          <div
+            className="flex items-center"
+            style={{ height: '52px', padding: '0 20px', gap: '12px' }}
           >
-            ←
-          </button>
-          <p
-            className="flex-1 truncate"
-            style={{ fontSize: '15px', fontWeight: 600, color: '#1a1a1a' }}
-          >
-            {test.title}
-          </p>
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center justify-center cursor-pointer"
+              style={{
+                width: '32px', height: '32px',
+                background: 'none', border: 'none',
+                fontFamily: font, fontSize: '18px', color: '#151515',
+              }}
+            >
+              ←
+            </button>
+            <span
+              className="flex-1 truncate"
+              style={{
+                fontFamily: font, fontSize: '16px', fontWeight: 600,
+                lineHeight: '22px', letterSpacing: '-0.32px', color: '#151515',
+              }}
+            >
+              {test.title}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="max-w-[440px] mx-auto px-4 py-8">
-        <AnimatePresence mode="wait">
-          {/* 내 사주 입력 */}
-          {phase === 'myInput' && (
-            <motion.div
-              key="myInput"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <UnteSajuInput
-                onSubmit={handleMySubmit}
-                isLoading={isLoading}
-                label={isCompatibility ? '내 정보 입력' : '정보를 입력해주세요'}
-              />
-              {error && (
-                <p style={{ fontSize: '13px', color: '#ff4444', marginTop: '12px' }}>{error}</p>
-              )}
-            </motion.div>
-          )}
-
-          {/* 상대방 사주 입력 (궁합) */}
-          {phase === 'partnerInput' && (
-            <motion.div
-              key="partnerInput"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <UnteSajuInput
-                onSubmit={handlePartnerSubmit}
-                isLoading={isLoading}
-                label="상대방 정보 입력"
-              />
-            </motion.div>
-          )}
-
-          {/* 로딩 */}
-          {phase === 'loading' && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-20 gap-4"
-            >
+        <div style={{ padding: '24px 20px' }}>
+          <AnimatePresence mode="wait">
+            {/* 내 사주 입력 */}
+            {phase === 'myInput' && (
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                style={{ fontSize: '48px' }}
+                key="myInput"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
               >
-                🔮
+                <UnteSajuInput
+                  onSubmit={handleMySubmit}
+                  isLoading={isLoading}
+                  label={isCompatibility ? '내 정보 입력' : '정보를 입력해주세요'}
+                />
+                {error && (
+                  <p style={{
+                    fontFamily: font, fontSize: '12px', color: '#d4183d', marginTop: '12px',
+                  }}>
+                    {error}
+                  </p>
+                )}
               </motion.div>
-              <p style={{ fontSize: '15px', color: '#888' }}>운명을 읽고 있어요...</p>
-            </motion.div>
-          )}
+            )}
 
-          {/* 애니메이션 */}
-          {phase === 'animation' && result && (
-            <motion.div
-              key="animation"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center py-16"
-            >
-              {isCompatibility && result.partnerResult ? (
-                <CompatibilityMeter
-                  score={Math.round((result.myResult.score + result.partnerResult.score) / 2)}
-                  myTitle={myData?.name || '나'}
-                  partnerTitle="상대"
-                  onComplete={handleAnimationComplete}
-                />
-              ) : (
-                <SlotMachineAnimation
-                  element={result.myResult.element}
-                  onComplete={handleAnimationComplete}
-                />
-              )}
-            </motion.div>
-          )}
-
-          {/* 전환 중 */}
-          {phase === 'done' && (
-            <motion.div
-              key="done"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center py-20"
-            >
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-                style={{ fontSize: '64px' }}
+            {/* 상대방 사주 입력 (궁합) */}
+            {phase === 'partnerInput' && (
+              <motion.div
+                key="partnerInput"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
               >
-                ✨
-              </motion.span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <UnteSajuInput
+                  onSubmit={handlePartnerSubmit}
+                  isLoading={isLoading}
+                  label="상대방 정보 입력"
+                />
+              </motion.div>
+            )}
+
+            {/* 로딩 */}
+            {phase === 'loading' && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center"
+                style={{ paddingTop: '100px', gap: '24px' }}
+              >
+                <div
+                  className="flex items-center justify-center"
+                  style={{ width: '76px', height: '76px', borderRadius: '24px', backgroundColor: '#E4F7F7' }}
+                >
+                  <motion.span
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    style={{ fontSize: '32px' }}
+                  >
+                    🔮
+                  </motion.span>
+                </div>
+                <p style={{
+                  fontFamily: font, fontSize: '15px', fontWeight: 400,
+                  lineHeight: '26px', letterSpacing: '-0.3px', color: '#848484',
+                }}>
+                  운명을 읽고 있어요...
+                </p>
+              </motion.div>
+            )}
+
+            {/* 애니메이션 */}
+            {phase === 'animation' && result && (
+              <motion.div
+                key="animation"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center"
+                style={{ paddingTop: '60px' }}
+              >
+                {isCompatibility && result.partnerResult ? (
+                  <CompatibilityMeter
+                    score={Math.round((result.myResult.score + result.partnerResult.score) / 2)}
+                    myTitle={myData?.name || '나'}
+                    partnerTitle="상대"
+                    onComplete={handleAnimationComplete}
+                  />
+                ) : (
+                  <SlotMachineAnimation
+                    element={result.myResult.element}
+                    onComplete={handleAnimationComplete}
+                  />
+                )}
+              </motion.div>
+            )}
+
+            {/* 전환 중 */}
+            {phase === 'done' && (
+              <motion.div
+                key="done"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center"
+                style={{ paddingTop: '100px' }}
+              >
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                  style={{ fontSize: '64px' }}
+                >
+                  ✨
+                </motion.span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

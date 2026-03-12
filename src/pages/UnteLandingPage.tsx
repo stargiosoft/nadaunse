@@ -1,6 +1,6 @@
 /**
  * 운테 테스트 랜딩 페이지
- * 썸네일 + 제목 + 참여자수 + 시작 CTA
+ * ★DESIGN_SYSTEM★ 기반 — 썸네일 + 제목 + 참여자수 + 시작 CTA
  */
 
 import { useState, useEffect } from 'react';
@@ -9,6 +9,9 @@ import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import AgeVerificationGate from '../components/AgeVerificationGate';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import { Skeleton } from '../components/ui/skeleton';
+
+const font = "'Pretendard Variable', sans-serif";
 
 interface TestData {
   id: string;
@@ -49,7 +52,6 @@ export function UnteLandingPage() {
 
       setTest(data);
 
-      // view_count 증가
       supabase.from('viral_tests')
         .update({ view_count: (data.play_count || 0) + 1 })
         .eq('id', data.id)
@@ -67,39 +69,80 @@ export function UnteLandingPage() {
     return n.toString();
   };
 
+  /* 로딩 */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#fafafa' }}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-          style={{ fontSize: '40px' }}
-        >
-          🎰
-        </motion.div>
+      <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
+        <div className="w-full max-w-[440px] relative">
+          <Skeleton className="w-full" style={{ aspectRatio: '1/1', borderRadius: 0 }} />
+          <div style={{ padding: '20px' }}>
+            <Skeleton style={{ height: '28px', width: '70%', borderRadius: '8px' }} />
+            <Skeleton style={{ height: '18px', width: '90%', borderRadius: '6px', marginTop: '12px' }} />
+            <Skeleton style={{ height: '14px', width: '30%', borderRadius: '4px', marginTop: '12px' }} />
+          </div>
+        </div>
       </div>
     );
   }
 
+  /* 404 */
   if (notFound || !test) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6" style={{ backgroundColor: '#fafafa' }}>
-        <span style={{ fontSize: '48px' }}>😢</span>
-        <p style={{ fontSize: '16px', color: '#888' }}>테스트를 찾을 수 없어요</p>
-        <button
-          onClick={() => navigate('/unte')}
-          className="px-6 py-2.5 rounded-full cursor-pointer"
-          style={{ backgroundColor: '#48b2af', color: '#fff', fontSize: '14px', fontWeight: 600, border: 'none' }}
-        >
-          다른 테스트 보기
-        </button>
+      <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
+        <div className="w-full max-w-[440px] relative flex flex-col items-center justify-center" style={{ paddingTop: '120px', gap: '20px' }}>
+          <div
+            className="flex items-center justify-center"
+            style={{ width: '76px', height: '76px', borderRadius: '24px', backgroundColor: '#f9f9f9' }}
+          >
+            <span style={{ fontSize: '32px' }}>😢</span>
+          </div>
+          <div className="flex flex-col items-center" style={{ gap: '8px' }}>
+            <p style={{
+              fontFamily: font, fontSize: '18px', fontWeight: 600,
+              lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
+              textAlign: 'center',
+            }}>
+              테스트를 찾을 수 없어요
+            </p>
+            <p style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 400,
+              lineHeight: '26px', letterSpacing: '-0.3px', color: '#848484',
+              textAlign: 'center',
+            }}>
+              삭제되었거나 존재하지 않는 테스트예요
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/unte')}
+            className="flex items-center justify-center cursor-pointer"
+            style={{
+              height: '48px', padding: '0 32px', borderRadius: '16px',
+              backgroundColor: '#48b2af', border: 'none', transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+          >
+            <span style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 500,
+              lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff',
+            }}>
+              다른 테스트 보기
+            </span>
+          </button>
+        </div>
       </div>
     );
   }
 
+  const typeBg = test.template_type === 'compatibility' ? '#fff6f7' : '#f0f8f8';
+  const typeColor = test.template_type === 'compatibility' ? '#ef6878' : '#41a09e';
+  const typeLabel = test.template_type === 'compatibility' ? '궁합' : '테스트';
+
   const content = (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1a1a2e' }}>
-      <div className="max-w-[440px] mx-auto w-full flex flex-col flex-1">
+    <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
+      <div className="w-full max-w-[440px] relative flex flex-col min-h-screen">
+
         {/* 썸네일 */}
         <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
           {test.thumbnail_url ? (
@@ -111,7 +154,7 @@ export function UnteLandingPage() {
           ) : (
             <div
               className="w-full h-full flex items-center justify-center"
-              style={{ backgroundColor: '#2a2a4e' }}
+              style={{ backgroundColor: '#f9f9f9' }}
             >
               <span style={{ fontSize: '80px' }}>
                 {test.template_type === 'compatibility' ? '💑' : '🎰'}
@@ -119,74 +162,87 @@ export function UnteLandingPage() {
             </div>
           )}
 
-          {/* 그라데이션 오버레이 */}
-          <div
-            className="absolute bottom-0 left-0 right-0"
-            style={{
-              height: '120px',
-              background: 'linear-gradient(transparent, #1a1a2e)',
-            }}
-          />
+          {/* 뱃지 */}
+          <div className="absolute" style={{ top: '12px', left: '12px' }}>
+            <span style={{
+              backgroundColor: typeBg,
+              color: typeColor,
+              fontFamily: font,
+              fontSize: '10px',
+              fontWeight: 600,
+              lineHeight: '15px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+            }}>
+              {typeLabel}
+            </span>
+          </div>
         </div>
 
-        {/* 텍스트 영역 */}
-        <div className="px-6 -mt-4 relative z-10 flex flex-col gap-4 flex-1">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ fontSize: '26px', fontWeight: 800, color: '#fff', lineHeight: '1.3' }}
-          >
-            {test.title}
-          </motion.h1>
-
-          {test.description && (
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5' }}
-            >
-              {test.description}
-            </motion.p>
-          )}
-
+        {/* 텍스트 + CTA */}
+        <div className="flex flex-col flex-1" style={{ padding: '20px 20px 0' }}>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-2"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col" style={{ gap: '8px' }}
           >
-            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+            <p style={{
+              fontFamily: font, fontSize: '22px', fontWeight: 600,
+              lineHeight: '32.5px', letterSpacing: '-0.22px', color: '#151515',
+            }}>
+              {test.title}
+            </p>
+
+            {test.description && (
+              <p style={{
+                fontFamily: font, fontSize: '15px', fontWeight: 400,
+                lineHeight: '26px', letterSpacing: '-0.3px', color: '#6d6d6d',
+              }}>
+                {test.description}
+              </p>
+            )}
+
+            <p style={{
+              fontFamily: font, fontSize: '12px', fontWeight: 400,
+              lineHeight: '16px', letterSpacing: '-0.24px', color: '#b7b7b7',
+              marginTop: '4px',
+            }}>
               {formatCount(test.play_count)}명 참여
-            </span>
+            </p>
           </motion.div>
         </div>
 
-        {/* CTA 버튼 */}
-        <div className="px-6 pb-8 pt-8 mt-auto">
+        {/* CTA — 하단 고정 */}
+        <div style={{ padding: '16px 20px 32px' }}>
           <motion.button
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            whileTap={{ scale: 0.97 }}
+            transition={{ delay: 0.2 }}
             onClick={() => navigate(`/unte/${slug}/play`, { state: { testId: test.id, test } })}
-            className="w-full py-4 rounded-2xl cursor-pointer"
+            className="w-full flex items-center justify-center cursor-pointer"
             style={{
+              height: '56px',
+              borderRadius: '16px',
               backgroundColor: '#48b2af',
-              color: '#fff',
-              fontSize: '18px',
-              fontWeight: 800,
               border: 'none',
+              transition: 'transform 0.1s ease',
             }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
-            시작하기
+            <span style={{
+              fontFamily: font, fontSize: '16px', fontWeight: 500,
+              lineHeight: '25px', letterSpacing: '-0.32px', color: '#ffffff',
+            }}>
+              시작하기
+            </span>
           </motion.button>
         </div>
       </div>
     </div>
   );
 
-  // 성인 콘텐츠면 게이트 적용
   if (test.is_adult) {
     return <AgeVerificationGate testId={test.id}>{content}</AgeVerificationGate>;
   }

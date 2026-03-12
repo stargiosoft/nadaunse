@@ -1,6 +1,6 @@
 /**
  * 운테 결과 페이지
- * 결과 카드 + 공유 버튼
+ * ★DESIGN_SYSTEM★ 기반 — 결과 카드 + 공유 버튼
  */
 
 import { useState, useEffect } from 'react';
@@ -13,6 +13,8 @@ declare global {
     Kakao: { isInitialized: () => boolean; init: (key: string) => void; Share: { sendDefault: (params: Record<string, unknown>) => void } };
   }
 }
+
+const font = "'Pretendard Variable', sans-serif";
 
 interface ResultState {
   result: {
@@ -54,21 +56,44 @@ export function UnteResultPage() {
   const partnerResult = result?.partnerResult;
 
   useEffect(() => {
-    // 스크롤 리셋
     window.scrollTo(0, 0);
   }, []);
 
   if (!myResult || !test) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: '#fafafa' }}>
-        <p style={{ fontSize: '14px', color: '#888' }}>결과를 찾을 수 없어요</p>
-        <button
-          onClick={() => navigate(`/unte/${slug || ''}`)}
-          className="px-6 py-2 rounded-full cursor-pointer"
-          style={{ backgroundColor: '#48b2af', color: '#fff', fontSize: '14px', border: 'none' }}
-        >
-          돌아가기
-        </button>
+      <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
+        <div className="w-full max-w-[440px] relative flex flex-col items-center justify-center" style={{ paddingTop: '120px', gap: '20px' }}>
+          <div
+            className="flex items-center justify-center"
+            style={{ width: '76px', height: '76px', borderRadius: '24px', backgroundColor: '#f9f9f9' }}
+          >
+            <span style={{ fontSize: '32px' }}>😢</span>
+          </div>
+          <p style={{
+            fontFamily: font, fontSize: '18px', fontWeight: 600,
+            lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
+          }}>
+            결과를 찾을 수 없어요
+          </p>
+          <button
+            onClick={() => navigate(`/unte/${slug || ''}`)}
+            className="flex items-center justify-center cursor-pointer"
+            style={{
+              height: '48px', padding: '0 32px', borderRadius: '16px',
+              backgroundColor: '#48b2af', border: 'none', transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+          >
+            <span style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 500,
+              lineHeight: '20px', letterSpacing: '-0.45px', color: '#ffffff',
+            }}>
+              돌아가기
+            </span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -131,7 +156,6 @@ export function UnteResultPage() {
       }
     }
 
-    // fallback
     if (navigator.share) {
       navigator.share({ title: test.title, url: shareUrl }).catch(() => {});
     } else {
@@ -151,21 +175,29 @@ export function UnteResultPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return '#ff6b9d';
+    if (score >= 80) return '#ef6878';
     if (score >= 60) return '#48b2af';
     if (score >= 40) return '#f5a623';
-    return '#888';
+    return '#b7b7b7';
+  };
+
+  const getScoreBg = (score: number) => {
+    if (score >= 80) return '#fff6f7';
+    if (score >= 60) return '#E4F7F7';
+    if (score >= 40) return '#FFF8E1';
+    return '#f9f9f9';
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#1a1a2e' }}>
-      <div className="max-w-[440px] mx-auto px-4 py-6 pb-24">
+    <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#f9f9f9' }}>
+      <div className="w-full max-w-[440px] relative" style={{ padding: '0 0 40px' }}>
+
         {/* 결과 카드 */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl overflow-hidden"
-          style={{ backgroundColor: '#fff' }}
+          className="overflow-hidden"
+          style={{ backgroundColor: '#ffffff', borderRadius: '0 0 24px 24px' }}
         >
           {/* 결과 이미지 */}
           {myResult.resultImageUrl && (
@@ -179,29 +211,40 @@ export function UnteResultPage() {
           )}
 
           {/* 결과 텍스트 */}
-          <div className="p-6 flex flex-col gap-4">
+          <div className="flex flex-col" style={{ padding: '24px 20px', gap: '16px' }}>
             <div className="flex items-center justify-between">
-              <p style={{ fontSize: '12px', color: '#888' }}>{test.title}</p>
+              <p style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
+              }}>
+                {test.title}
+              </p>
               {myResult.score && (
-                <div
-                  className="px-3 py-1 rounded-full"
-                  style={{
-                    backgroundColor: getScoreColor(myResult.score),
-                    color: '#fff',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                  }}
-                >
+                <span style={{
+                  backgroundColor: getScoreBg(myResult.score),
+                  color: getScoreColor(myResult.score),
+                  fontFamily: font,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                }}>
                   {myResult.score}점
-                </div>
+                </span>
               )}
             </div>
 
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1a1a1a', lineHeight: '1.3' }}>
+            <p style={{
+              fontFamily: font, fontSize: '22px', fontWeight: 600,
+              lineHeight: '32.5px', letterSpacing: '-0.22px', color: '#151515',
+            }}>
               {myResult.resultTitle}
-            </h2>
+            </p>
 
-            <p style={{ fontSize: '15px', color: '#444', lineHeight: '1.7' }}>
+            <p style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 400,
+              lineHeight: '26px', letterSpacing: '-0.3px', color: '#6d6d6d',
+            }}>
               {myResult.resultDescription}
             </p>
           </div>
@@ -210,17 +253,35 @@ export function UnteResultPage() {
         {/* 궁합 상대 결과 */}
         {partnerResult && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="mt-4 p-6 rounded-3xl"
-            style={{ backgroundColor: '#fff' }}
+            style={{
+              margin: '12px 20px 0',
+              padding: '20px',
+              borderRadius: '16px',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e7e7e7',
+            }}
           >
-            <p style={{ fontSize: '13px', color: '#888', marginBottom: '8px' }}>상대방 결과</p>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1a1a1a' }}>
+            <p style={{
+              fontFamily: font, fontSize: '12px', fontWeight: 400,
+              lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
+              marginBottom: '8px',
+            }}>
+              상대방 결과
+            </p>
+            <p style={{
+              fontFamily: font, fontSize: '18px', fontWeight: 600,
+              lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
+            }}>
               {partnerResult.resultTitle}
-            </h3>
-            <p style={{ fontSize: '14px', color: '#666', marginTop: '8px', lineHeight: '1.6' }}>
+            </p>
+            <p style={{
+              fontFamily: font, fontSize: '14px', fontWeight: 400,
+              lineHeight: '22px', letterSpacing: '-0.42px', color: '#6d6d6d',
+              marginTop: '8px',
+            }}>
               {partnerResult.resultDescription}
             </p>
           </motion.div>
@@ -231,32 +292,79 @@ export function UnteResultPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6 flex flex-col gap-3"
+          className="flex flex-col"
+          style={{ margin: '16px 20px 0', gap: '8px' }}
         >
+          {/* 카카오톡 */}
           <button
             onClick={handleKakaoShare}
-            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer"
-            style={{ backgroundColor: '#FEE500', color: '#1a1a1a', fontSize: '15px', fontWeight: 700, border: 'none' }}
+            className="w-full flex items-center justify-center cursor-pointer"
+            style={{
+              height: '52px',
+              borderRadius: '16px',
+              backgroundColor: '#FEE500',
+              border: 'none',
+              gap: '8px',
+              transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
-            <span style={{ fontSize: '18px' }}>💬</span>
-            카카오톡 공유
+            <span style={{ fontSize: '16px' }}>💬</span>
+            <span style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 600,
+              letterSpacing: '-0.3px', color: '#151515',
+            }}>
+              카카오톡 공유
+            </span>
           </button>
 
+          {/* 링크 복사 */}
           <button
             onClick={handleCopyLink}
-            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer"
-            style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: '15px', fontWeight: 600, border: '1px solid rgba(255,255,255,0.2)' }}
+            className="w-full flex items-center justify-center cursor-pointer"
+            style={{
+              height: '52px',
+              borderRadius: '16px',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e7e7e7',
+              transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
           >
-            {copied ? '복사 완료!' : '링크 복사'}
+            <span style={{
+              fontFamily: font, fontSize: '15px', fontWeight: 500,
+              letterSpacing: '-0.3px', color: copied ? '#48b2af' : '#6d6d6d',
+            }}>
+              {copied ? '복사 완료!' : '링크 복사'}
+            </span>
           </button>
 
+          {/* 이미지 저장 */}
           {(myResult.shareImageUrl || myResult.resultImageUrl) && (
             <button
               onClick={handleSaveImage}
-              className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer"
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', fontSize: '14px', fontWeight: 500, border: 'none' }}
+              className="w-full flex items-center justify-center cursor-pointer"
+              style={{
+                height: '52px',
+                borderRadius: '16px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e7e7e7',
+                transition: 'transform 0.1s ease',
+              }}
+              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+              onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+              onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
             >
-              이미지 저장
+              <span style={{
+                fontFamily: font, fontSize: '15px', fontWeight: 500,
+                letterSpacing: '-0.3px', color: '#6d6d6d',
+              }}>
+                이미지 저장
+              </span>
             </button>
           )}
         </motion.div>
@@ -266,12 +374,17 @@ export function UnteResultPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="mt-8 text-center"
+          className="flex justify-center"
+          style={{ marginTop: '24px' }}
         >
           <button
             onClick={() => navigate('/unte')}
             className="cursor-pointer"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}
+            style={{
+              background: 'none', border: 'none',
+              fontFamily: font, fontSize: '14px', fontWeight: 400,
+              letterSpacing: '-0.42px', color: '#b7b7b7',
+            }}
           >
             다른 테스트 해보기 →
           </button>
