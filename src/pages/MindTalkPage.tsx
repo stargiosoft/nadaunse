@@ -67,7 +67,7 @@ const FREE_LIMIT = 3;
 const SPROUT_COST = 5;
 
 // AI 메시지에서 타로 카드 뽑기 유도 감지
-const TAROT_DRAW_KEYWORDS = ['카드를 뽑', '카드를 골라', '카드를 선택', '뽑아볼까', '뽑아보', '골라볼까', '골라보'];
+const TAROT_DRAW_KEYWORDS = ['카드를 뽑', '카드를 골라', '카드를 선택', '뽑아볼까', '뽑아보', '뽑아봐', '골라볼까', '골라보', '골라봐', '카드 뽑', '직접 뽑'];
 function suggestsCardDraw(text: string): boolean {
   return TAROT_DRAW_KEYWORDS.some(kw => text.includes(kw));
 }
