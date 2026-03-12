@@ -320,8 +320,9 @@ ${contextBlock}
 - "~해야 한다" 식의 단정적 조언 자제
 ${safetyRules}
 
-[후속 질문 생성]
-답변 끝에 반드시 아래 형식으로, 사용자가 "나"의 입장에서 너(마음이)에게 이어서 물어볼 만한 짧은 질문 2~3개를 추가해.
+[후속 질문 생성 — 반드시 아래 형식을 정확히 지켜]
+답변 본문을 먼저 완성한 후, 반드시 "---SUGGESTIONS---"를 별도 줄에 출력하고, 그 다음 줄에 질문들을 "|"로 구분해서 작성해.
+사용자가 "나"의 입장에서 너(마음이)에게 이어서 물어볼 만한 짧은 질문 2~3개.
 질문은 사용자의 1인칭 화법으로 작성해 (예: "요즘 왜 이렇게 예민할까?", "나한테 맞는 직업이 뭘까?").
 사용자의 현재 대화 맥락과 성향 데이터를 기반으로 개인화된 질문을 만들어.
 ---SUGGESTIONS---
@@ -344,8 +345,9 @@ ${contextBlock}
 - "~해야 한다" 식의 단정적 조언 자제
 ${safetyRules}
 
-[후속 질문 생성]
-답변 끝에 반드시 아래 형식으로, 사용자가 "나"의 입장에서 너(마음이)에게 이어서 물어볼 만한 짧은 질문 2~3개를 추가해.
+[후속 질문 생성 — 반드시 아래 형식을 정확히 지켜]
+답변 본문을 먼저 완성한 후, 반드시 "---SUGGESTIONS---"를 별도 줄에 출력하고, 그 다음 줄에 질문들을 "|"로 구분해서 작성해.
+사용자가 "나"의 입장에서 너(마음이)에게 이어서 물어볼 만한 짧은 질문 2~3개.
 질문은 사용자의 1인칭 화법으로 작성해 (예: "이번 달 연애운은 어때?", "내 적성에 맞는 일이 뭘까?").
 사용자의 현재 대화 맥락과 사주 데이터를 기반으로 개인화된 질문을 만들어.
 ---SUGGESTIONS---
@@ -370,8 +372,9 @@ ${contextBlock}
 - 첫 인사 시 어떤 고민에 대해 카드를 뽑아볼지 물어봐
 ${safetyRules}
 
-[후속 질문 생성]
-답변 끝에 반드시 아래 형식으로, 사용자가 "나"의 입장에서 너(마음이)에게 이어서 물어볼 만한 짧은 질문 2~3개를 추가해.
+[후속 질문 생성 — 반드시 아래 형식을 정확히 지켜]
+답변 본문을 먼저 완성한 후, 반드시 "---SUGGESTIONS---"를 별도 줄에 출력하고, 그 다음 줄에 질문들을 "|"로 구분해서 작성해.
+사용자가 "나"의 입장에서 너(마음이)에게 이어서 물어볼 만한 짧은 질문 2~3개.
 질문은 사용자의 1인칭 화법으로 작성해 (예: "이 카드가 연애에도 해당돼?", "다른 카드도 뽑아볼까?").
 현재 대화 맥락에 맞는 개인화된 질문을 만들어.
 ---SUGGESTIONS---
@@ -447,11 +450,33 @@ ${safetyRules}
         const decoder = new TextDecoder();
         let fullResponse = '';
         let sseBuffer = '';
+        let suggestionsReached = false; // ---SUGGESTIONS--- 감지 후 텍스트 전송 중단
+        const MARKER = '---SUGGESTIONS---';
+
+        const processGeminiText = async (text: string) => {
+          if (!text) return;
+          fullResponse += text;
+          if (suggestionsReached) return; // 이미 마커 이후 → 클라이언트에 전송 안 함
+
+          const markerIdx = fullResponse.indexOf(MARKER);
+          if (markerIdx >= 0) {
+            suggestionsReached = true;
+            // 이번 청크에서 마커 이전 텍스트만 전송
+            const prevSentLen = fullResponse.length - text.length;
+            if (markerIdx > prevSentLen) {
+              const partialText = text.slice(0, markerIdx - prevSentLen);
+              if (partialText.trim()) {
+                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: partialText })}\n\n`));
+              }
+            }
+          } else {
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+          }
+        };
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
-            // 한국어 멀티바이트 잔여분 flush
             sseBuffer += decoder.decode();
             break;
           }
@@ -464,14 +489,10 @@ ${safetyRules}
             if (!line.startsWith('data: ')) continue;
             const dataStr = line.slice(6).trim();
             if (!dataStr) continue;
-
             try {
               const data = JSON.parse(dataStr);
               const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-              if (text) {
-                fullResponse += text;
-                await writer.write(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
-              }
+              await processGeminiText(text);
             } catch { /* ignore */ }
           }
         }
@@ -481,14 +502,11 @@ ${safetyRules}
           try {
             const data = JSON.parse(sseBuffer.slice(6).trim());
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (text) {
-              fullResponse += text;
-              await writer.write(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
-            }
+            await processGeminiText(text);
           } catch { /* ignore */ }
         }
 
-        // 사주/타로: 후속 질문 파싱 및 전송
+        // 후속 질문 파싱 및 전송 (전 모드)
         let cleanResponse = fullResponse;
         if (fullResponse.includes('---SUGGESTIONS---')) {
           const parts = fullResponse.split('---SUGGESTIONS---');
