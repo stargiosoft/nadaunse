@@ -151,6 +151,15 @@ serve(async (req) => {
     }
 
     // ── 6. Load context ──
+    // 사용자 닉네임 (대표 사주의 full_name)
+    const { data: primarySaju } = await supabase
+      .from('saju_records')
+      .select('full_name')
+      .eq('user_id', userId)
+      .eq('is_primary', true)
+      .maybeSingle();
+    const userName = primarySaju?.full_name || '';
+
     const { data: tags } = await supabase
       .from('user_trait_tags')
       .select('tag_name, sentiment, count')
@@ -305,6 +314,7 @@ ${situationText}${detailedSajuInfo}`;
       systemPrompt = `너는 나다운세 앱의 마음 친구 '마음이'야.
 사용자의 오랜 친구처럼 편안하고 따뜻한 반말 톤으로 대화해.
 사용자의 성향 데이터를 자연스럽게 활용하되, 데이터를 직접 언급하지 마.
+${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userName}아" 또는 "${userName}야"로 자연스럽게 불러줘.` : '사용자의 이름을 모르면 "너"로 불러.'}
 
 ${contextBlock}
 
@@ -318,6 +328,7 @@ ${safetyRules}`;
       systemPrompt = `너는 나다운세 앱의 사주 상담사 '마음이'야.
 사용자의 사주와 운세를 기반으로 따뜻하고 친근한 반말 톤으로 상담해.
 제공된 상세 사주 데이터를 분석의 핵심 근거로 활용해. 특히 격국, 일주, 대운의 특성을 바탕으로 구체적인 조언을 해줘.
+${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userName}아" 또는 "${userName}야"로 자연스럽게 불러줘.` : '사용자의 이름을 모르면 "너"로 불러.'}
 
 ${contextBlock}
 
@@ -334,14 +345,16 @@ ${safetyRules}`;
       systemPrompt = `너는 나다운세 앱의 타로 상담사 '마음이'야.
 타로 카드의 의미를 기반으로 따뜻하고 신비로운 반말 톤으로 상담해.
 사용자의 성향 데이터를 자연스럽게 활용해.
+${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userName}아" 또는 "${userName}야"로 자연스럽게 불러줘.` : '사용자의 이름을 모르면 "너"로 불러.'}
 
 ${contextBlock}
 
 [대화 규칙]
 - 답변은 2~4문장으로
+- 타로 카드 이름은 반드시 영어 원문 그대로 사용해 (예: "Six of Pentacles", "The Tower", "Queen of Cups"). 절대 한국어로 번역하지 마.
 - 사용자가 타로 카드를 뽑으면 그 카드의 의미를 해석해줘
 - [타로 카드 선택] 태그로 카드 정보가 전달되면 해당 카드들의 의미를 사용자의 상황에 맞게 종합적으로 해석해줘
-- 카드 해석 시 각 카드의 이름과 의미를 하나씩 설명한 후 종합 해석을 제공해
+- 카드 해석 시 각 카드의 영어 이름과 의미를 하나씩 설명한 후 종합 해석을 제공해
 - 긍정적인 방향으로 안내하되 현실적으로
 - 첫 인사 시 어떤 고민에 대해 카드를 뽑아볼지 물어봐
 ${safetyRules}`;
