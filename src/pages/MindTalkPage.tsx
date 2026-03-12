@@ -94,7 +94,7 @@ function renderBoldText(text: string) {
 const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === 'user';
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`} style={{ marginBottom: 12 }}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`} style={{ marginBottom: 8 }}>
       {!isUser && (
         <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
           <AiAvatar />
@@ -125,7 +125,7 @@ const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: Message 
 
 function TypingIndicator() {
   return (
-    <div className="flex justify-start" style={{ marginBottom: 12 }}>
+    <div className="flex justify-start" style={{ marginBottom: 8 }}>
       <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
         <AiAvatar />
       </div>
@@ -155,7 +155,7 @@ function TypingIndicator() {
 /** 타로 카드 뽑기 인라인 CTA (채팅 내) */
 function TarotDrawCTA({ onClick }: { onClick: () => void }) {
   return (
-    <div className="flex justify-start" style={{ marginBottom: 12 }}>
+    <div className="flex justify-start" style={{ marginBottom: 8 }}>
       <div className="shrink-0" style={{ width: 36, marginRight: 8 }} />
       <button
         onClick={onClick}
@@ -898,7 +898,6 @@ export default function MindTalkPage() {
           className="flex-1 w-full"
           style={{ padding: '16px 20px 4px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}
         >
-        <div className="flex flex-col justify-end" style={{ minHeight: '100%' }}>
           {/* 로딩 */}
           {loadingConv && (
             <div className="flex justify-center" style={{ padding: '40px 0' }}>
@@ -944,7 +943,7 @@ export default function MindTalkPage() {
 
           {/* 스트리밍 중인 AI 메시지 */}
           {streaming && (
-            <div className="flex justify-start" style={{ marginBottom: 12 }}>
+            <div className="flex justify-start" style={{ marginBottom: 8 }}>
               <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
                 <AiAvatar />
               </div>
@@ -968,7 +967,6 @@ export default function MindTalkPage() {
           {sending && !streaming && <TypingIndicator />}
 
           <div ref={messagesEndRef} />
-        </div>
         </div>
 
         {/* ── 질문 슬라이드 (입력창 바로 위): 정적(초기) + 동적(AI 추천) ── */}
