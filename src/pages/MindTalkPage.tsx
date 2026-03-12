@@ -116,7 +116,7 @@ function MessageBubble({ msg }: { msg: Message }) {
           letterSpacing: '-0.3px', color: isUser ? C.white : C.black,
           whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
         }}>
-          {renderBoldText(msg.content)}
+          {renderBoldText(msg.content.trim())}
         </p>
       </div>
     </div>
@@ -588,11 +588,63 @@ export default function MindTalkPage() {
       const decoder = new TextDecoder();
       let fullText = '';
       let buffer = '';
+      let rafHandle = 0;
+      let latestFullText = '';
+      let streamingStopped = false;
+
+      const stripSuggestions = (t: string) => {
+        // 완전한 마커 제거
+        const idx = t.indexOf('---SUGGESTIONS---');
+        if (idx >= 0) return t.slice(0, idx).trim();
+        // 부분 마커 제거 (스트리밍 중 ---SUG, ---SUGGES 등)
+        const partial = t.match(/\n?---S(?:U(?:G(?:G(?:E(?:S(?:T(?:I(?:O(?:N(?:S(?:-(?:-(?:-)?)?)?)?)?)?)?)?)?)?)?)?)?$/);
+        if (partial) return t.slice(0, partial.index).trim();
+        return t;
+      };
+
+      const flushStreaming = () => {
+        if (!streamingStopped) setStreaming(stripSuggestions(latestFullText));
+        rafHandle = 0;
+      };
+
+      const scheduleStreamingUpdate = () => {
+        if (!rafHandle) {
+          rafHandle = requestAnimationFrame(flushStreaming);
+        }
+      };
+
+      const processLine = (line: string) => {
+        if (!line.startsWith('data: ')) return;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === '[DONE]' || !dataStr) return;
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.text) {
+            fullText += data.text;
+            latestFullText = fullText;
+            scheduleStreamingUpdate();
+          }
+          if (data.conversation_id) setConversationId(data.conversation_id);
+          if (data.free_messages_used !== undefined) {
+            setFreeUsed(data.free_messages_used);
+            const cm = overrideMode ?? mode;
+            if (cm === 'saju' || cm === 'tarot') {
+              dailyFreeCacheRef.current[cm] = data.free_messages_used;
+            }
+          }
+          if (data.new_sprout_balance !== undefined) {
+            writeSproutBalanceCache(data.new_sprout_balance);
+            refetchSprout();
+          }
+          if (data.suggestions) {
+            setAiSuggestions(data.suggestions);
+          }
+        } catch { /* ignore */ }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          // flush remaining bytes from decoder (한국어 멀티바이트 잔여분)
           buffer += decoder.decode();
           break;
         }
@@ -600,54 +652,26 @@ export default function MindTalkPage() {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const dataStr = line.slice(6).trim();
-          if (dataStr === '[DONE]' || !dataStr) continue;
-          try {
-            const data = JSON.parse(dataStr);
-            if (data.text) { fullText += data.text; setStreaming(fullText); }
-            if (data.conversation_id) setConversationId(data.conversation_id);
-            if (data.free_messages_used !== undefined) {
-              setFreeUsed(data.free_messages_used);
-              // 캐시도 업데이트
-              const cm = overrideMode ?? mode;
-              if (cm === 'saju' || cm === 'tarot') {
-                dailyFreeCacheRef.current[cm] = data.free_messages_used;
-              }
-            }
-            if (data.new_sprout_balance !== undefined) {
-              writeSproutBalanceCache(data.new_sprout_balance);
-              refetchSprout();
-            }
-          } catch { /* ignore */ }
-        }
+        for (const line of lines) processLine(line);
       }
 
       // 루프 종료 후 남은 버퍼 처리
       if (buffer.trim()) {
-        for (const line of buffer.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const dataStr = line.slice(6).trim();
-          if (dataStr === '[DONE]' || !dataStr) continue;
-          try {
-            const data = JSON.parse(dataStr);
-            if (data.text) { fullText += data.text; setStreaming(fullText); }
-            if (data.conversation_id) setConversationId(data.conversation_id);
-            if (data.free_messages_used !== undefined) {
-              setFreeUsed(data.free_messages_used);
-              const cm = overrideMode ?? mode;
-              if (cm === 'saju' || cm === 'tarot') {
-                dailyFreeCacheRef.current[cm] = data.free_messages_used;
-              }
-            }
-          } catch { /* ignore */ }
-        }
+        for (const line of buffer.split('\n')) processLine(line);
+      }
+
+      // RAF 취소 + 스트리밍 정리
+      streamingStopped = true;
+      if (rafHandle) {
+        cancelAnimationFrame(rafHandle);
+        rafHandle = 0;
       }
 
       if (fullText) {
-        setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: fullText }]);
+        const cleanText = stripSuggestions(fullText);
+        if (cleanText) {
+          setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: cleanText }]);
+        }
       }
       setStreaming('');
     } catch (err) {
