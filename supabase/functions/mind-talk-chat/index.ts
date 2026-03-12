@@ -318,7 +318,13 @@ ${contextBlock}
 - 공감과 경청 중심, 사용자 스스로 인사이트를 얻도록 질문으로 유도
 - 첫 인사 시 사용자의 심리 상태와 성향을 바탕으로 따뜻하게 말을 걸어줘
 - "~해야 한다" 식의 단정적 조언 자제
-${safetyRules}`;
+${safetyRules}
+
+[후속 질문 생성]
+답변 끝에 반드시 아래 형식으로 사용자가 이어서 물어볼 만한 질문 2~3개를 추가해.
+사용자의 현재 대화 맥락과 성향 데이터를 기반으로 개인화된 질문을 만들어.
+---SUGGESTIONS---
+질문1|질문2|질문3`;
     } else if (mode === 'saju') {
       systemPrompt = `너는 나다운세 앱의 사주 상담사 '마음이'야.
 사용자의 사주와 운세를 기반으로 따뜻하고 친근한 반말 톤으로 상담해.
@@ -481,7 +487,7 @@ ${safetyRules}
 
         // 사주/타로: 후속 질문 파싱 및 전송
         let cleanResponse = fullResponse;
-        if ((mode === 'saju' || mode === 'tarot') && fullResponse.includes('---SUGGESTIONS---')) {
+        if (fullResponse.includes('---SUGGESTIONS---')) {
           const parts = fullResponse.split('---SUGGESTIONS---');
           cleanResponse = parts[0].trim();
           const suggestionsRaw = parts[1]?.trim();

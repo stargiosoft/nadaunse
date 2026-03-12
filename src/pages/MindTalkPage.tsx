@@ -796,7 +796,7 @@ export default function MindTalkPage() {
   }
 
   const currentModeConfig = MODES.find(m => m.key === mode)!;
-  const showStaticSuggestions = messages.length === 0 && !sending && !loadingConv && mode !== 'general';
+  const showStaticSuggestions = messages.length === 0 && !sending && !loadingConv;
   const showAiSuggestions = aiSuggestions.length > 0 && !sending && !streaming;
   // 캐시가 아직 로드되지 않은 상태(-1)에서는 배지 숨김 (깜빡임 방지)
   const cacheKey = mode as 'saju' | 'tarot';
