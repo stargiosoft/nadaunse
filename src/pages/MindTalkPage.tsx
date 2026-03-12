@@ -116,7 +116,7 @@ const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: Message 
           letterSpacing: '-0.3px', color: isUser ? C.white : C.black,
           whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
         }}>
-          {renderBoldText(msg.content)}
+          {renderBoldText(msg.content.trim())}
         </p>
       </div>
     </div>
@@ -598,8 +598,13 @@ export default function MindTalkPage() {
       let streamingStopped = false;
 
       const stripSuggestions = (t: string) => {
+        // 완전한 마커 제거
         const idx = t.indexOf('---SUGGESTIONS---');
-        return idx >= 0 ? t.slice(0, idx).trim() : t;
+        if (idx >= 0) return t.slice(0, idx).trim();
+        // 부분 마커 제거 (스트리밍 중 ---SUG, ---SUGGES 등)
+        const partial = t.match(/\n?---S(?:U(?:G(?:G(?:E(?:S(?:T(?:I(?:O(?:N(?:S(?:-(?:-(?:-)?)?)?)?)?)?)?)?)?)?)?)?)?$/);
+        if (partial) return t.slice(0, partial.index).trim();
+        return t;
       };
 
       const flushStreaming = () => {

@@ -314,7 +314,8 @@ ${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userN
 ${contextBlock}
 
 [대화 규칙]
-- 답변은 1~3문장으로 짧고 자연스럽게
+- 답변은 3~5문장으로, 충분히 공감하고 사용자의 감정을 구체적으로 읽어줘
+- 먼저 사용자의 감정에 공감한 뒤, 새로운 관점이나 따뜻한 질문을 건네줘
 - 공감과 경청 중심, 사용자 스스로 인사이트를 얻도록 질문으로 유도
 - 첫 인사 시 사용자의 심리 상태와 성향을 바탕으로 따뜻하게 말을 걸어줘
 - "~해야 한다" 식의 단정적 조언 자제
@@ -336,7 +337,7 @@ ${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userN
 ${contextBlock}
 
 [대화 규칙]
-- 답변은 2~4문장으로
+- 답변은 3~5문장으로, 사용자의 감정에 먼저 공감한 뒤 사주 기반 인사이트를 제공해
 - 사주 데이터가 있으면 반드시 활용하여 맞춤 상담 제공
 - 사주 전문 용어(종살격, 상관, 편관, 대운, 오행 등)는 직접 언급하지 않고 쉬운 일상 언어로 풀어서 설명
 - 사용자의 현재 고민이나 상황에 맞는 운세 해석을 제공
@@ -452,6 +453,7 @@ ${safetyRules}
         let sseBuffer = '';
         let suggestionsReached = false; // ---SUGGESTIONS--- 감지 후 텍스트 전송 중단
         const MARKER = '---SUGGESTIONS---';
+        let holdBuffer = ''; // 부분 마커 가능성이 있는 텍스트를 보류
 
         const processGeminiText = async (text: string) => {
           if (!text) return;
@@ -461,16 +463,30 @@ ${safetyRules}
           const markerIdx = fullResponse.indexOf(MARKER);
           if (markerIdx >= 0) {
             suggestionsReached = true;
-            // 이번 청크에서 마커 이전 텍스트만 전송
-            const prevSentLen = fullResponse.length - text.length;
-            if (markerIdx > prevSentLen) {
-              const partialText = text.slice(0, markerIdx - prevSentLen);
+            // 보류 중인 버퍼에서 마커 이전 텍스트만 전송
+            const combined = holdBuffer + text;
+            holdBuffer = '';
+            const combStart = fullResponse.length - combined.length;
+            if (markerIdx > combStart) {
+              const partialText = combined.slice(0, markerIdx - combStart);
               if (partialText.trim()) {
                 await writer.write(encoder.encode(`data: ${JSON.stringify({ text: partialText })}\n\n`));
               }
             }
           } else {
-            await writer.write(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+            // 부분 마커 감지: 끝에 ---S, ---SU, ---SUG... 등이 있으면 보류
+            const pending = holdBuffer + text;
+            const partialMatch = pending.match(/\n?---S(?:U(?:G(?:G(?:E(?:S(?:T(?:I(?:O(?:N(?:S(?:-(?:-(?:-)?)?)?)?)?)?)?)?)?)?)?)?)?$/);
+            if (partialMatch) {
+              const safeText = pending.slice(0, partialMatch.index);
+              holdBuffer = pending.slice(partialMatch.index!);
+              if (safeText) {
+                await writer.write(encoder.encode(`data: ${JSON.stringify({ text: safeText })}\n\n`));
+              }
+            } else {
+              holdBuffer = '';
+              await writer.write(encoder.encode(`data: ${JSON.stringify({ text: pending })}\n\n`));
+            }
           }
         };
 
@@ -504,6 +520,12 @@ ${safetyRules}
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             await processGeminiText(text);
           } catch { /* ignore */ }
+        }
+
+        // 스트림 종료 후 holdBuffer에 남은 텍스트 처리 (부분 마커가 결국 마커가 아니었을 경우)
+        if (holdBuffer && !suggestionsReached) {
+          await writer.write(encoder.encode(`data: ${JSON.stringify({ text: holdBuffer })}\n\n`));
+          holdBuffer = '';
         }
 
         // 후속 질문 파싱 및 전송 (전 모드)
