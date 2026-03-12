@@ -898,6 +898,7 @@ export default function MindTalkPage() {
           className="flex-1 w-full"
           style={{ padding: '16px 20px 4px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}
         >
+        <div className="flex flex-col justify-end" style={{ minHeight: '100%' }}>
           {/* 로딩 */}
           {loadingConv && (
             <div className="flex justify-center" style={{ padding: '40px 0' }}>
@@ -967,6 +968,7 @@ export default function MindTalkPage() {
           {sending && !streaming && <TypingIndicator />}
 
           <div ref={messagesEndRef} />
+        </div>
         </div>
 
         {/* ── 질문 슬라이드 (입력창 바로 위): 정적(초기) + 동적(AI 추천) ── */}
