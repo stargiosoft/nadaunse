@@ -950,10 +950,11 @@ export default function MindTalkPage() {
             ref={suggestionsRef}
             className="shrink-0 flex overflow-x-auto scrollbar-hide"
             style={{
-              gap: 10, padding: '10px 16px',
+              gap: 10, paddingTop: 10, paddingBottom: 10,
               scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x', cursor: 'grab',
               backgroundColor: C.white, borderTop: `1px solid ${C.gray100}`,
+              scrollPaddingLeft: 16, scrollPaddingRight: 16,
             }}
             onMouseDown={e => {
               const el = suggestionsRef.current;
@@ -982,6 +983,8 @@ export default function MindTalkPage() {
                   cursor: 'pointer', transition: 'transform 0.1s ease',
                   scrollSnapAlign: 'start',
                   WebkitTapHighlightColor: 'transparent',
+                  marginLeft: i === 0 ? 16 : undefined,
+                  marginRight: i === SUGGESTIONS[mode].length - 1 ? 16 : undefined,
                 }}
                 onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
                 onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
