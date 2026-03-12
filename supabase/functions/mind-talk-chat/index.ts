@@ -160,10 +160,8 @@ serve(async (req) => {
     const sajuRecordPromise = mode === 'saju'
       ? supabase.from('saju_records').select('full_name, gender, birth_date, birth_time').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle()
       : null;
-    // 일반 모드: 나다움 분석 요약 (개인화 강화)
-    const nadaumPromise = mode === 'general'
-      ? supabase.from('nadaum_analyses').select('category, analysis_text').eq('user_id', userId)
-      : null;
+    // 나다움 분석 요약 (전 모드 개인화)
+    const nadaumPromise = supabase.from('nadaum_analyses').select('category, analysis_text').eq('user_id', userId);
 
     const [primarySajuResult, tagsResult, summariesResult, historyResult, sajuRecordResult, nadaumResult] = await Promise.all([
       supabase.from('saju_records').select('full_name').eq('user_id', userId).eq('is_primary', true).maybeSingle(),
@@ -171,7 +169,7 @@ serve(async (req) => {
       supabase.from('user_situation_summaries').select('situation_summary, created_at').eq('user_id', userId).gte('created_at', fourWeeksAgo.toISOString()).order('created_at', { ascending: true }),
       supabase.from('mind_talk_messages').select('role, content').eq('conversation_id', convId).order('created_at', { ascending: false }).limit(10),
       sajuRecordPromise ?? Promise.resolve(null),
-      nadaumPromise ?? Promise.resolve(null),
+      nadaumPromise,
     ]);
 
     const userName = primarySajuResult.data?.full_name || '';
@@ -285,7 +283,7 @@ serve(async (req) => {
 
     // ── 7-1. 나다움 분석 요약 (일반 모드) ──
     let nadaumText = '';
-    if (mode === 'general' && nadaumResult?.data?.length) {
+    if (nadaumResult?.data?.length) {
       const categoryLabel: Record<string, string> = { love: '연애', nature: '성격', money: '금전', career: '직업', health: '건강' };
       nadaumText = nadaumResult.data
         .map(a => `[${categoryLabel[a.category] || a.category}] ${a.analysis_text.slice(0, 200)}`)
@@ -296,7 +294,7 @@ serve(async (req) => {
     const contextBlock = `[사용자 성향 태그]
 ${tagText}
 
-[사용자 심리 상황 요약]
+[사용자 심리 상황 요약 (1주 전이 가장 최근 — 최신 심리에 더 중점을 두고 상담해)]
 ${situationText}${nadaumText ? `\n\n[나다움 분석 요약]\n${nadaumText}` : ''}${detailedSajuInfo}`;
 
     const safetyRules = `- 의학적 진단, 약물 추천, 치료 조언 절대 금지
