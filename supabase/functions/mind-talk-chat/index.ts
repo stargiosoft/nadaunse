@@ -163,16 +163,13 @@ serve(async (req) => {
     // 나다움 분석 요약 (전 모드 개인화)
     const nadaumPromise = supabase.from('nadaum_analyses').select('category, analysis_text').eq('user_id', userId);
 
-    const [primarySajuResult, tagsResult, summariesResult, historyResult, sajuRecordResult, nadaumResult] = await Promise.all([
-      supabase.from('saju_records').select('full_name').eq('user_id', userId).eq('is_primary', true).maybeSingle(),
+    const [tagsResult, summariesResult, historyResult, sajuRecordResult, nadaumResult] = await Promise.all([
       supabase.from('user_trait_tags').select('tag_name, sentiment, count').eq('user_id', userId).order('count', { ascending: false }).limit(15),
       supabase.from('user_situation_summaries').select('situation_summary, created_at').eq('user_id', userId).gte('created_at', fourWeeksAgo.toISOString()).order('created_at', { ascending: true }),
       supabase.from('mind_talk_messages').select('role, content').eq('conversation_id', convId).order('created_at', { ascending: false }).limit(10),
       sajuRecordPromise ?? Promise.resolve(null),
       nadaumPromise,
     ]);
-
-    const userName = primarySajuResult.data?.full_name || '';
     const tags = tagsResult.data;
     const recentSummaries = summariesResult.data;
     const history = historyResult.data;
@@ -309,7 +306,7 @@ ${situationText}${nadaumText ? `\n\n[나다움 분석 요약]\n${nadaumText}` : 
 사용자의 오랜 친구처럼 편안하고 따뜻한 반말 톤으로 대화해.
 평소에는 사용자의 성향 데이터를 자연스럽게 활용하되 데이터 출처를 드러내지 마.
 단, 사용자가 "나에 대해 알려줘", "내 성격이 어때?" 등 자신에 대해 직접 물어보면, 아래 성향 태그와 나다움 분석 데이터를 바탕으로 친근하게 설명해줘.
-${userName ? `사용자의 이름은 "${userName}"이야. 이름은 3~4번에 한 번 정도만 불러줘. 매번 부르면 어색해. 반드시 반말로 "~아/야" 형태만 사용하고, "님"을 절대 붙이지 마.` : '사용자의 이름을 모르면 "너"로 불러.'}
+사용자를 "너"로 지칭해. 이름을 부르지 마.
 
 ${contextBlock}
 
@@ -332,7 +329,7 @@ ${safetyRules}
       systemPrompt = `너는 나다운세 앱의 사주 상담사 '마음이'야.
 사용자의 사주와 운세를 기반으로 따뜻하고 친근한 반말 톤으로 상담해.
 제공된 상세 사주 데이터를 분석의 핵심 근거로 활용해. 특히 격국, 일주, 대운의 특성을 바탕으로 구체적인 조언을 해줘.
-${userName ? `사용자의 이름은 "${userName}"이야. 이름은 3~4번에 한 번 정도만 불러줘. 매번 부르면 어색해. 반드시 반말로 "~아/야" 형태만 사용하고, "님"을 절대 붙이지 마.` : '사용자의 이름을 모르면 "너"로 불러.'}
+사용자를 "너"로 지칭해. 이름을 부르지 마.
 
 ${contextBlock}
 
@@ -358,7 +355,7 @@ ${safetyRules}
       systemPrompt = `너는 나다운세 앱의 타로 상담사 '마음이'야.
 타로 카드의 의미를 기반으로 따뜻하고 신비로운 반말 톤으로 상담해.
 사용자의 성향 데이터를 자연스럽게 활용해.
-${userName ? `사용자의 이름은 "${userName}"이야. 이름은 3~4번에 한 번 정도만 불러줘. 매번 부르면 어색해. 반드시 반말로 "~아/야" 형태만 사용하고, "님"을 절대 붙이지 마.` : '사용자의 이름을 모르면 "너"로 불러.'}
+사용자를 "너"로 지칭해. 이름을 부르지 마.
 
 ${contextBlock}
 
