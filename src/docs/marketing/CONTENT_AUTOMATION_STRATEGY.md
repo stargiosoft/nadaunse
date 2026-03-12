@@ -117,9 +117,72 @@ simple-shorts-generator        Remotion (React)
 
 ---
 
-## 5. AI 영상 자동화 파이프라인
+## 5. 밈 GIF 자동 생성 (API 불필요)
 
-### 5-1. 트랙 A: 정보형 숏츠 (simple-shorts-generator)
+### 5-1. 개요
+
+밈 수준의 GIF는 AI 모션 API 없이 **Remotion만으로 완전 자동화** 가능.
+나다운세 React 컴포넌트/데이터를 그대로 재활용하므로 추가 비용 없음.
+
+### 5-2. 밈 GIF 유형
+
+| 유형 | 예시 | 애니메이션 |
+|------|------|-----------|
+| **오행 에너지 밈** | "화(火) 80%인 사람 특징ㅋㅋ" | 🔥 이모지 바운스 + 바 차오르기 |
+| **유형 등장** | "열정적 리더 등장!" | 텍스트 타이핑 + 이모지 확대 |
+| **밸런스 비교** | "열정 vs 냉정 당신은?" | 좌우 바 동시 차오르기 + 비율 숫자 |
+| **MBTI vs 사주** | "ENFP인데 사주로 보면..." | 좌우 카드 슬라이드 + 텍스트 페이드 |
+| **오늘의 한마디** | "오늘은 금(金) 에너지의 날" | 배경 그라디언트 전환 + 텍스트 등장 |
+
+### 5-3. 사용 가능한 애니메이션 효과
+
+- 텍스트: 타이핑, 페이드인, 확대/축소, 슬라이드
+- 이모지: 바운스, 흔들림(wiggle), 회전, 팝업
+- 차트: 바 채우기, 숫자 카운트업
+- 배경: 그라디언트 전환, 컬러 시프트
+- 전환: 페이드, 슬라이드, 스케일
+
+### 5-4. 기술 구현
+
+**Remotion GIF 렌더링**:
+```bash
+# 단일 밈 GIF
+npx remotion render MemeOhang --codec=gif --image-format=png out/ohang-fire.gif
+
+# ffmpeg로 최적화 (용량 축소)
+ffmpeg -i out/ohang-fire.gif -vf "fps=15,scale=540:-1:flags=lanczos" -loop 0 out/ohang-fire-opt.gif
+```
+
+**GIF 스펙**:
+- 해상도: 540x960 (9:16) 또는 540x540 (1:1, 인스타 피드)
+- FPS: 12~15 (밈은 낮은 FPS가 오히려 자연스러움)
+- 길이: 2~5초
+- 용량 목표: 5MB 이하 (SNS 업로드 제한 고려)
+
+**Remotion 컴포지션 구조**:
+```
+nadaunse-video/src/compositions/memes/
+├── MemeOhang.tsx          → 오행 에너지 밈
+├── MemeTypeReveal.tsx     → 유형 등장 밈
+├── MemeBalance.tsx        → 밸런스 비교 밈
+├── MemeVsCompare.tsx      → MBTI vs 사주 밈
+└── MemeDailyQuote.tsx     → 오늘의 한마디 밈
+```
+
+### 5-5. 활용처
+
+| 채널 | 용도 |
+|------|------|
+| 인스타 스토리/피드 | 카드뉴스 대신 GIF로 주목도 ↑ |
+| 틱톡 댓글/커뮤니티 | 밈 GIF 공유 → 바이럴 |
+| 카카오톡 공유 | 결과 공유 시 GIF 첨부 |
+| 서비스 내 | 나다움 분석 결과를 GIF로 저장/공유 |
+
+---
+
+## 6. AI 영상 자동화 파이프라인
+
+### 6-1. 트랙 A: 정보형 숏츠 (simple-shorts-generator)
 
 ```bash
 # 설치
@@ -142,7 +205,7 @@ python main.py --topic "화(火) 에너지가 강한 사람의 3가지 특징"
 월/수/금 오전 9시 → Gemini로 주제 3개 생성 → 영상 3개 자동 렌더
 ```
 
-### 5-2. 트랙 B: 브랜드 릴스 (Remotion)
+### 6-2. 트랙 B: 브랜드 릴스 (Remotion)
 
 ```
 [프로젝트 구조]
@@ -187,7 +250,7 @@ npx ts-node render.ts --composition=TypeCardReel --all
 - FPS: 30
 - 포맷: MP4 (H.264)
 
-### 5-3. 이미지 모션 보강 (Pika API)
+### 6-3. 이미지 모션 보강 (Pika API)
 
 ```
 [정적 유형 카드 이미지]
@@ -204,9 +267,9 @@ npx ts-node render.ts --composition=TypeCardReel --all
 
 ---
 
-## 6. 게시 자동화
+## 7. 게시 자동화
 
-### 6-1. 플랫폼별 스펙
+### 7-1. 플랫폼별 스펙
 
 | 플랫폼 | 비율 | 최대 길이 | 게시 방법 |
 |--------|------|----------|----------|
@@ -215,7 +278,7 @@ npx ts-node render.ts --composition=TypeCardReel --all
 | 유튜브 숏츠 | 9:16 | 60초 | YouTube Data API |
 | 네이버 TV 클립 | 9:16 | 60초 | 수동 업로드 (API 미지원) |
 
-### 6-2. 자동 게시 파이프라인
+### 7-2. 자동 게시 파이프라인
 
 ```
 [렌더 완료된 영상 파일]
@@ -228,7 +291,7 @@ npx ts-node render.ts --composition=TypeCardReel --all
   └─ 네이버 TV → 수동 업로드 (알림만)
 ```
 
-### 6-3. 스케줄링
+### 7-3. 스케줄링
 
 | 요일 | 콘텐츠 | 트랙 |
 |------|--------|------|
@@ -240,7 +303,7 @@ npx ts-node render.ts --composition=TypeCardReel --all
 
 ---
 
-## 7. 실행 로드맵
+## 8. 실행 로드맵
 
 ### Phase 1: 빠른 시작 (1~2주)
 
@@ -274,7 +337,7 @@ npx ts-node render.ts --composition=TypeCardReel --all
 
 ---
 
-## 8. 비용 요약
+## 9. 비용 요약
 
 | 항목 | 월 비용 |
 |------|---------|
@@ -287,7 +350,7 @@ npx ts-node render.ts --composition=TypeCardReel --all
 
 ---
 
-## 9. 참고 자료
+## 10. 참고 자료
 
 | 리소스 | URL |
 |--------|-----|
