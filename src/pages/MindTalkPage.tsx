@@ -67,7 +67,7 @@ const FREE_LIMIT = 3;
 const SPROUT_COST = 5;
 
 // AI 메시지에서 타로 카드 뽑기 유도 감지
-const TAROT_DRAW_KEYWORDS = ['카드를 뽑', '카드를 골라', '카드를 선택', '뽑아볼까', '뽑아보', '뽑아봐', '골라볼까', '골라보', '골라봐', '카드 뽑', '직접 뽑'];
+const TAROT_DRAW_KEYWORDS = ['카드를 뽑', '카드를 골라', '카드를 선택', '뽑아볼까', '뽑아보', '뽑아봐', '골라볼까', '골라보', '골라봐', '카드 뽑', '직접 뽑', '카드를 보', '들여다볼', '카드로 확인', '카드에게 물어'];
 function suggestsCardDraw(text: string): boolean {
   return TAROT_DRAW_KEYWORDS.some(kw => text.includes(kw));
 }
@@ -602,7 +602,7 @@ export default function MindTalkPage() {
         const idx = t.indexOf('---SUGGESTIONS---');
         if (idx >= 0) return t.slice(0, idx).trim();
         // 부분 마커 제거 (스트리밍 중 ---SUG, ---SUGGES 등)
-        const partial = t.match(/\n?---S(?:U(?:G(?:G(?:E(?:S(?:T(?:I(?:O(?:N(?:S(?:-(?:-(?:-)?)?)?)?)?)?)?)?)?)?)?)?)?$/);
+        const partial = t.match(/\n---(?:S(?:U(?:G(?:G(?:E(?:S(?:T(?:I(?:O(?:N(?:S(?:-(?:-(?:-)?)?)?)?)?)?)?)?)?)?)?)?)?)?$/);
         if (partial) return t.slice(0, partial.index).trim();
         return t;
       };
