@@ -94,6 +94,25 @@ function MaumTalkIcon({ active }: { active: boolean }) {
   );
 }
 
+function UnteIcon({ active }: { active: boolean }) {
+  const color = active ? ACTIVE : INACTIVE;
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      {/* 클립보드 체크리스트 — 테스트/퀴즈 느낌 */}
+      <rect
+        x="5" y="3" width="14" height="18" rx="2"
+        stroke={color} strokeWidth="1.8"
+        fill={active ? ACTIVE : 'none'} fillOpacity={active ? 0.12 : 0}
+      />
+      <path d="M9 1.5V4.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M15 1.5V4.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      {/* 체크 항목들 */}
+      <path d="M9 10L10.5 11.5L13 9" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="9" y1="15" x2="15" y2="15" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ProfileIcon({ active }: { active: boolean }) {
   const color = active ? ACTIVE : INACTIVE;
   return (
@@ -112,7 +131,7 @@ function ProfileIcon({ active }: { active: boolean }) {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-type TabKey = 'home' | 'nadaum' | 'maumtalk' | 'profile';
+type TabKey = 'home' | 'nadaum' | 'maumtalk' | 'unte' | 'profile';
 
 interface Tab {
   key: TabKey;
@@ -125,6 +144,7 @@ const tabs: Tab[] = [
   { key: 'home', label: '홈', path: '/', icon: (a) => <HomeIcon active={a} /> },
   { key: 'nadaum', label: '나다움', path: '/nadaum', icon: (a) => <NadaumIcon active={a} /> },
   { key: 'maumtalk', label: '마음톡', path: '/maumtalk', icon: (a) => <MaumTalkIcon active={a} /> },
+  { key: 'unte', label: '운테', path: '/unte', icon: (a) => <UnteIcon active={a} /> },
   { key: 'profile', label: '프로필', path: '/profile', icon: (a) => <ProfileIcon active={a} /> },
 ];
 
@@ -135,6 +155,7 @@ export default function BottomTabBar() {
   const activeTab: TabKey =
     pathname === '/nadaum' ? 'nadaum'
     : pathname === '/maumtalk' || pathname.startsWith('/maumtalk/') ? 'maumtalk'
+    : pathname === '/unte' || pathname.startsWith('/unte/') ? 'unte'
     : pathname === '/profile' || pathname.startsWith('/profile/') ? 'profile'
     : 'home';
 

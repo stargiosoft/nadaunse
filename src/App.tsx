@@ -63,6 +63,12 @@ import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 �
 import TestConfirmModals from './pages/TestConfirmModals';
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
 import MindTalkPage from './pages/MindTalkPage'; // ⭐ 마음톡 (AI 심리 상담)
+// ── 운테 (바이럴 테스트) ──
+import UnteHomePage from './pages/UnteHomePage';
+import UnteCreatePage from './pages/UnteCreatePage';
+import UnteLandingPage from './pages/UnteLandingPage';
+import UntePlayPage from './pages/UntePlayPage';
+import UnteResultPage from './pages/UnteResultPage';
 import NadaumAnalysisPage from './components/NadaumAnalysisPage'; // ⭐ 나다움 분석 페이지
 import NadaumAnalysisDetail from './components/NadaumAnalysisDetail'; // ⭐ 나다움 분석 상세
 // ⭐ 테스트용 Figma 컴포넌트들
@@ -3857,6 +3863,12 @@ export default function App() {
           <Route path="/nadaum" element={<NadaumAnalysisPage />} /> {/* ⭐ 나다움 분석 */}
           <Route path="/nadaum/:category" element={<NadaumAnalysisDetail />} /> {/* ⭐ 나다움 분석 상세 */}
           <Route path="/maumtalk" element={<MindTalkPage />} /> {/* ⭐ 마음톡 AI 심리 상담 */}
+          {/* ── 운테 (바이럴 테스트) ── */}
+          <Route path="/unte" element={<UnteHomePage />} />
+          <Route path="/unte/create" element={<UnteCreatePage />} />
+          <Route path="/unte/:slug" element={<UnteLandingPage />} />
+          <Route path="/unte/:slug/play" element={<UntePlayPage />} />
+          <Route path="/unte/:slug/result" element={<UnteResultPage />} />
           {/* ── 홈 고도화 라우트 ── */}
           <Route path="/best-fortune" element={<FortuneAllPage />} />
           <Route path="/new-free" element={<NewFreeFortuneAllPage />} />

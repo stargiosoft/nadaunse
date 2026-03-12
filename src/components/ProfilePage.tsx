@@ -276,6 +276,8 @@ export default function ProfilePage({
 
   // ⭐ 의견 전달하기 미읽은 답변 알림 dot
   const [hasUnreadReply, setHasUnreadReply] = useState(false);
+  // ⭐ 문의 관리 미답변 CS 알림 dot (마스터 전용)
+  const [hasUnreadInquiry, setHasUnreadInquiry] = useState(false);
 
   // ⭐ 핸드폰 번호 바텀시트 상태
   const [showPhoneBottomSheet, setShowPhoneBottomSheet] = useState(false);
@@ -658,6 +660,28 @@ export default function ProfilePage({
 
     checkUnreadReplies();
   }, []);
+
+  // ⭐ 문의 관리: 미답변(pending) CS 체크 (마스터 전용)
+  useEffect(() => {
+    if (!isMaster) return;
+
+    const checkPendingInquiries = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('customer_inquiries')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        if (!error && (count ?? 0) > 0) {
+          setHasUnreadInquiry(true);
+        }
+      } catch {
+        // 조용히 실패
+      }
+    };
+
+    checkPendingInquiries();
+  }, [isMaster]);
 
   // 🔧 태그 리프레시: 페이지 가시성 변경 또는 포커스 시 refresh 플래그 체크
   useEffect(() => {
@@ -1293,6 +1317,9 @@ export default function ProfilePage({
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           문의 관리
                         </p>
+                        {hasUnreadInquiry && (
+                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#6AC9C6', marginTop: '-7px' }} />
+                        )}
                       </div>
                       <div className="relative shrink-0 size-[16px]">
                         <MenuArrowRightIcon />
