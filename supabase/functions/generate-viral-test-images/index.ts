@@ -129,8 +129,8 @@ serve(async (req) => {
       }
     }
 
-    // 3. 썸네일 생성
-    const thumbnailPrompt = `Create a vibrant, eye-catching thumbnail for a viral quiz/test titled "${test.title}".
+    // 3. 썸네일 생성 (DB에 저장된 프롬프트 우선 사용)
+    const thumbnailPrompt = test.thumbnail_prompt || `Create a vibrant, eye-catching thumbnail for a viral quiz/test titled "${test.title}".
 Style: Flat 2D illustration, bold colors, fun and playful mood.
 The image should be instantly readable as a quiz thumbnail at small sizes.
 No text in the image. Full-bleed, no borders or margins.
@@ -148,8 +148,13 @@ Aspect ratio: square (1:1).`
     }
 
     // 4. 결과 이미지 10장 (순차 생성 — API rate limit 고려)
+    const styleGuide = test.image_style_guide || ''
+
     for (const result of results) {
-      const resultPrompt = `Create a result card illustration for a quiz result: "${result.result_title}".
+      // DB에 저장된 이미지 가이드 에이전트의 프롬프트 우선 사용
+      const resultPrompt = result.image_prompt
+        ? `${result.image_prompt}\n\nStyle consistency: ${styleGuide}\nAspect ratio: 3:4 (portrait). No text in the image.`
+        : `Create a result card illustration for a quiz result: "${result.result_title}".
 Score: ${result.score}/100. Element: ${result.element}.
 Style: Flat 2D illustration, vibrant colors, expressive character.
 The image should visually represent the personality type described.
@@ -161,7 +166,9 @@ Aspect ratio: 3:4 (portrait).`
         `viral-tests/${testId}/result-${result.day_master}.webp`
       )
 
-      const sharePrompt = `Create a shareable social media card illustration for: "${result.result_title}" - ${test.title}.
+      const sharePrompt = result.image_prompt
+        ? `${result.image_prompt}\n\nAdapt for shareable social media card. Instagram Story format (9:16). No text. Bold and eye-catching.`
+        : `Create a shareable social media card illustration for: "${result.result_title}" - ${test.title}.
 Style: Bold, colorful, Instagram Story format (9:16).
 The image should make people want to share it.
 No text in the image. Full-bleed.`

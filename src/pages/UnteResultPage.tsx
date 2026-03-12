@@ -3,10 +3,12 @@
  * ★DESIGN_SYSTEM★ 기반 — 결과 카드 + 공유 버튼
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+import { supabase } from '../lib/supabase';
+import { generateShareCardBlob } from '../utils/generateShareCard';
 
 declare global {
   interface Window {
@@ -26,6 +28,7 @@ interface ResultState {
       resultImageUrl: string | null;
       shareImageUrl: string | null;
       score: number;
+      resultLabel?: string | null;
     };
     partnerResult?: {
       dayMaster: string;
@@ -34,6 +37,7 @@ interface ResultState {
       resultDescription: string;
       resultImageUrl: string | null;
       score: number;
+      resultLabel?: string | null;
     } | null;
   };
   test: {
@@ -48,6 +52,8 @@ export function UnteResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [generatedShareUrl, setGeneratedShareUrl] = useState<string | null>(null);
+  const shareCardGenerated = useRef(false);
 
   const state = location.state as ResultState | undefined;
   const result = state?.result;
@@ -58,6 +64,38 @@ export function UnteResultPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // AI 이미지가 없을 때 Canvas로 공유 카드 생성 → Storage 업로드
+  useEffect(() => {
+    if (!myResult || !test) return;
+    if (myResult.shareImageUrl || myResult.resultImageUrl) return;
+    if (shareCardGenerated.current) return;
+    shareCardGenerated.current = true;
+
+    (async () => {
+      try {
+        const blob = await generateShareCardBlob({
+          label: myResult.resultLabel || `${myResult.score}점`,
+          score: myResult.score,
+          element: myResult.element,
+          title: myResult.resultTitle,
+          testTitle: test.title,
+        });
+
+        const path = `viral-tests/${test.id}/share-card-${myResult.dayMaster}.png`;
+        const { error } = await supabase.storage
+          .from('assets')
+          .upload(path, blob, { contentType: 'image/png', upsert: true });
+
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(path);
+          setGeneratedShareUrl(publicUrl);
+        }
+      } catch (e) {
+        console.error('공유 카드 생성 실패:', e);
+      }
+    })();
+  }, [myResult, test]);
 
   if (!myResult || !test) {
     return (
@@ -142,7 +180,7 @@ export function UnteResultPage() {
           content: {
             title: `${test.title} - 내 결과: ${myResult.resultTitle}`,
             description: myResult.resultDescription.slice(0, 50),
-            imageUrl: myResult.shareImageUrl || myResult.resultImageUrl || `${window.location.origin}/og-image.png`,
+            imageUrl: myResult.shareImageUrl || myResult.resultImageUrl || generatedShareUrl || `${window.location.origin}/og-image.png`,
             link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
           },
           buttons: [{
@@ -164,12 +202,12 @@ export function UnteResultPage() {
   };
 
   const handleSaveImage = () => {
-    const imageUrl = myResult.shareImageUrl || myResult.resultImageUrl;
+    const imageUrl = myResult.shareImageUrl || myResult.resultImageUrl || generatedShareUrl;
     if (!imageUrl) return;
 
     const link = document.createElement('a');
     link.href = imageUrl;
-    link.download = `${test.title}-결과.webp`;
+    link.download = `${test.title}-결과.${imageUrl.endsWith('.png') ? 'png' : 'webp'}`;
     link.target = '_blank';
     link.click();
   };
@@ -199,8 +237,8 @@ export function UnteResultPage() {
           className="overflow-hidden"
           style={{ backgroundColor: '#ffffff', borderRadius: '0 0 24px 24px' }}
         >
-          {/* 결과 이미지 */}
-          {myResult.resultImageUrl && (
+          {/* 결과 비주얼 */}
+          {myResult.resultImageUrl ? (
             <div style={{ aspectRatio: '3/4' }}>
               <ImageWithFallback
                 src={myResult.resultImageUrl}
@@ -208,6 +246,14 @@ export function UnteResultPage() {
                 className="w-full h-full object-cover"
               />
             </div>
+          ) : (
+            /* 이미지 없을 때: resultLabel 강조 비주얼 카드 */
+            <ResultLabelCard
+              label={myResult.resultLabel || `${myResult.score}점`}
+              score={myResult.score}
+              element={myResult.element}
+              title={myResult.resultTitle}
+            />
           )}
 
           {/* 결과 텍스트 */}
@@ -219,7 +265,8 @@ export function UnteResultPage() {
               }}>
                 {test.title}
               </p>
-              {myResult.score && (
+              {/* 이미지가 있을 때만 작은 뱃지 표시 (이미지 없으면 카드에서 이미 강조) */}
+              {myResult.resultImageUrl && myResult.score && (
                 <span style={{
                   backgroundColor: getScoreBg(myResult.score),
                   color: getScoreColor(myResult.score),
@@ -229,7 +276,7 @@ export function UnteResultPage() {
                   padding: '4px 12px',
                   borderRadius: '9999px',
                 }}>
-                  {myResult.score}점
+                  {myResult.resultLabel || `${myResult.score}점`}
                 </span>
               )}
             </div>
@@ -344,7 +391,7 @@ export function UnteResultPage() {
           </button>
 
           {/* 이미지 저장 */}
-          {(myResult.shareImageUrl || myResult.resultImageUrl) && (
+          {(myResult.shareImageUrl || myResult.resultImageUrl || generatedShareUrl) && (
             <button
               onClick={handleSaveImage}
               className="w-full flex items-center justify-center cursor-pointer"
@@ -389,6 +436,136 @@ export function UnteResultPage() {
             다른 테스트 해보기 →
           </button>
         </motion.div>
+      </div>
+    </div>
+  );
+}
+
+/* ── 이미지 없을 때 라벨 강조 비주얼 카드 ──────────────────────────── */
+
+const ELEMENT_GRADIENT: Record<string, { from: string; to: string; accent: string }> = {
+  '목': { from: '#e8f5e9', to: '#c8e6c9', accent: '#43a047' },
+  '화': { from: '#fce4ec', to: '#f8bbd0', accent: '#e53935' },
+  '토': { from: '#fff8e1', to: '#ffecb3', accent: '#f9a825' },
+  '금': { from: '#f3e5f5', to: '#e1bee7', accent: '#8e24aa' },
+  '수': { from: '#e3f2fd', to: '#bbdefb', accent: '#1e88e5' },
+};
+
+const ELEMENT_EMOJI: Record<string, string> = {
+  '목': '🌿', '화': '🔥', '토': '🌏', '금': '⚡', '수': '💧',
+};
+
+function ResultLabelCard({
+  label,
+  score,
+  element,
+  title,
+}: {
+  label: string;
+  score: number;
+  element: string;
+  title: string;
+}) {
+  const grad = ELEMENT_GRADIENT[element] || ELEMENT_GRADIENT['토'];
+  const emoji = ELEMENT_EMOJI[element] || '✨';
+
+  // 라벨이 %인지 판단
+  const isPercentage = label.includes('%');
+  const numericValue = parseInt(label.replace(/[^0-9]/g, ''), 10) || score;
+
+  return (
+    <div
+      className="flex flex-col items-center justify-center"
+      style={{
+        aspectRatio: '1/1',
+        background: `linear-gradient(160deg, ${grad.from} 0%, ${grad.to} 50%, #ffffff 100%)`,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 배경 장식 원 */}
+      <div style={{
+        position: 'absolute', top: '-20%', right: '-20%',
+        width: '60%', height: '60%', borderRadius: '50%',
+        background: `radial-gradient(circle, ${grad.from} 0%, transparent 70%)`,
+        opacity: 0.5,
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-10%', left: '-10%',
+        width: '40%', height: '40%', borderRadius: '50%',
+        background: `radial-gradient(circle, ${grad.to} 0%, transparent 70%)`,
+        opacity: 0.4,
+      }} />
+
+      {/* 이모지 */}
+      <motion.span
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: 'spring', stiffness: 300, delay: 0.1 }}
+        style={{ fontSize: '48px', marginBottom: '12px' }}
+      >
+        {emoji}
+      </motion.span>
+
+      {/* 메인 라벨 (% 또는 점수) */}
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+        className="flex items-baseline justify-center"
+        style={{ gap: '2px' }}
+      >
+        <span style={{
+          fontFamily: font,
+          fontSize: isPercentage ? '80px' : '64px',
+          fontWeight: 800,
+          lineHeight: '1',
+          color: grad.accent,
+          letterSpacing: '-2px',
+        }}>
+          {isPercentage ? label.replace('%', '') : numericValue}
+        </span>
+        <span style={{
+          fontFamily: font,
+          fontSize: '32px',
+          fontWeight: 700,
+          color: grad.accent,
+          opacity: 0.7,
+        }}>
+          {isPercentage ? '%' : '점'}
+        </span>
+      </motion.div>
+
+      {/* 부제 */}
+      <motion.p
+        initial={{ y: 10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        style={{
+          fontFamily: font, fontSize: '16px', fontWeight: 600,
+          lineHeight: '24px', letterSpacing: '-0.32px',
+          color: '#151515', marginTop: '16px',
+          textAlign: 'center', padding: '0 32px',
+        }}
+      >
+        {title}
+      </motion.p>
+
+      {/* 게이지 바 (하단) */}
+      <div style={{
+        width: '60%', height: '8px', borderRadius: '4px',
+        backgroundColor: 'rgba(0,0,0,0.06)', marginTop: '20px',
+        overflow: 'hidden',
+      }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${numericValue}%` }}
+          transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
+          style={{
+            height: '100%', borderRadius: '4px',
+            backgroundColor: grad.accent,
+          }}
+        />
       </div>
     </div>
   );

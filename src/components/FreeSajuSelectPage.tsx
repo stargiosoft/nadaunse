@@ -19,11 +19,20 @@ import { getZodiacImageUrl } from '../lib/zodiacUtils';
 import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { Radio } from './ui/Radio';
 
+interface BirthInfoData {
+  name: string;
+  gender: 'female' | 'male';
+  birthDate: string;
+  birthTime: string;
+}
+
 interface FreeSajuSelectPageProps {
   productId: string;
   onBack: () => void;
   prefetchedSajuRecords?: SajuRecord[] | null; // ⭐ BirthInfoPage에서 전달받은 전체 사주 배열
   prefetchedMySaju?: SajuRecord | null; // ⭐ ProductDetailPage에서 전달받은 본인 사주 (하위 호환)
+  mode?: 'free' | 'consult'; // consult 모드: 선택 시 콜백 호출 (운테 등)
+  onConsultComplete?: (birthInfo: BirthInfoData) => void;
 }
 
 interface SajuRecord {
@@ -53,7 +62,7 @@ const formatBirthDate = (birthDate: string, calendarType?: string): string => {
   return `${prefix} ${year}.${month}.${day}`;
 };
 
-export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRecords, prefetchedMySaju }: FreeSajuSelectPageProps) {
+export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRecords, prefetchedMySaju, mode = 'free', onConsultComplete }: FreeSajuSelectPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -298,8 +307,24 @@ export default function FreeSajuSelectPage({ productId, onBack, prefetchedSajuRe
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('✅ [FreeSajuSelectPage] 다음 버튼 클릭');
     console.log('📌 [FreeSajuSelectPage] 선택된 사주:', selectedSaju);
-    console.log('🔀 [FreeSajuSelectPage] 로딩 페이지로 즉시 이동');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    // consult 모드: 콜백으로 사주 정보 전달 (운테 등)
+    if (mode === 'consult' && onConsultComplete) {
+      const birthDateObj = new Date(selectedSaju.birth_date);
+      const yyyy = birthDateObj.getFullYear();
+      const mm = String(birthDateObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(birthDateObj.getDate()).padStart(2, '0');
+      onConsultComplete({
+        name: selectedSaju.full_name || '',
+        gender: (selectedSaju.gender as 'female' | 'male') || 'female',
+        birthDate: `${yyyy}-${mm}-${dd}`,
+        birthTime: selectedSaju.birth_time === '시간 미상' ? '' : (selectedSaju.birth_time || ''),
+      });
+      return;
+    }
+
+    console.log('🔀 [FreeSajuSelectPage] 로딩 페이지로 즉시 이동');
 
     // 🚀 UX 개선: 먼저 로딩 페이지로 이동 (즉시 반응)
     // ⭐ replace: true - iOS 스와이프 뒤로가기 시 콘텐츠 상세로 이동하도록 히스토리 교체

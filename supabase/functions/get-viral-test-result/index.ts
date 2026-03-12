@@ -1,5 +1,5 @@
 // Supabase Edge Function: 바이럴 테스트 결과 조회
-// 사주 입력 → 일간 추출 → 매칭 결과 반환
+// 생년월일 → 일간 로컬 계산 (JDN 기반 60갑자) → 결과 매칭 — 외부 사주 API 불필요
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
@@ -36,81 +36,40 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // 사주 API로 일간 추출
-    async function getDayMaster(
-      bDate: string,
-      bTime: string,
-      g: string,
-      lunar: boolean
-    ): Promise<string> {
-      const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim()
-      if (!sajuApiKey) throw new Error('사주 API 키가 설정되지 않았습니다.')
+    // 일간 계산 (60갑자 순환 — 외부 API 불필요)
+    const CHEONGAN = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계']
 
-      // 날짜 포맷
-      const datePart = bDate.includes('T') ? bDate.split('T')[0] : bDate.split(' ')[0]
-      const dateOnly = datePart.replace(/-/g, '')
-      const timeOnly = (bTime || '12:00').replace(/:/g, '').substring(0, 4)
-      const birthday = dateOnly + timeOnly
-
-      // 성별 변환
-      let genderForApi = g
-      if (genderForApi === '남') genderForApi = 'male'
-      else if (genderForApi === '여') genderForApi = 'female'
-
-      const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=${lunar}&gender=${genderForApi}&apiKey=${sajuApiKey}`
-
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const response = await fetch(sajuApiUrl, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json, text/plain, */*',
-              'Accept-Encoding': 'gzip, deflate, br',
-              'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive',
-              'Host': 'service.stargio.co.kr:8400',
-              'Origin': 'https://nadaunse.com',
-              'Referer': 'https://nadaunse.com/',
-              'Sec-Fetch-Dest': 'empty',
-              'Sec-Fetch-Mode': 'cors',
-              'Sec-Fetch-Site': 'cross-site',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            },
-          })
-
-          if (!response.ok) throw new Error(`사주 API HTTP 오류: ${response.status}`)
-
-          const rawText = await response.text()
-          const sajuData = JSON.parse(rawText)
-
-          // 일간(天干) 추출 — 사주 API 응답에서 천간 배열의 3번째 (일주 천간)
-          if (sajuData.천간 && Array.isArray(sajuData.천간) && sajuData.천간.length >= 3) {
-            const dayMaster = sajuData.천간[2] // 년-월-일-시 순서에서 일간
-            console.log('✅ 일간 추출:', dayMaster)
-            return dayMaster
-          }
-
-          // 일주에서 추출 시도
-          if (sajuData.일주 && typeof sajuData.일주 === 'string') {
-            const dayMaster = sajuData.일주[0] // 일주의 첫 글자 = 일간
-            console.log('✅ 일간 추출 (일주):', dayMaster)
-            return dayMaster
-          }
-
-          throw new Error('사주 데이터에서 일간을 찾을 수 없습니다.')
-        } catch (err) {
-          console.error(`사주 API 시도 ${attempt}/3 실패:`, err)
-          if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt))
-        }
-      }
-
-      throw new Error('사주 API 호출에 실패했습니다.')
+    function getJDN(year: number, month: number, day: number): number {
+      const a = Math.floor((14 - month) / 12)
+      const y = year + 4800 - a
+      const m = month + 12 * a - 3
+      return day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045
     }
 
-    // 본인 일간 추출
-    const isLunar = calendarType === 'lunar'
-    const myDayMaster = await getDayMaster(birthDate, birthTime || '12:00', gender, isLunar)
+    function calcDayMaster(bDate: string, bTime: string): string {
+      const datePart = bDate.includes('T') ? bDate.split('T')[0] : bDate.split(' ')[0]
+      const [yearStr, monthStr, dayStr] = datePart.split('-')
+      let year = parseInt(yearStr, 10)
+      let month = parseInt(monthStr, 10)
+      let day = parseInt(dayStr, 10)
+
+      // 자시(23:00~) → 다음날 일간
+      const hour = parseInt((bTime || '12:00').split(':')[0], 10)
+      if (hour >= 23) {
+        const d = new Date(year, month - 1, day + 1)
+        year = d.getFullYear()
+        month = d.getMonth() + 1
+        day = d.getDate()
+      }
+
+      const jdn = getJDN(year, month, day)
+      const index = ((jdn + 9) % 10 + 10) % 10
+      return CHEONGAN[index]
+    }
+
+    // 본인 일간 계산
+    const myDayMaster = calcDayMaster(birthDate, birthTime || '12:00')
+    console.log('✅ 일간 계산:', myDayMaster)
 
     // 결과 매칭
     const { data: myResult, error: resultError } = await supabase
@@ -129,13 +88,7 @@ serve(async (req) => {
     let partnerDayMaster: string | null = null
 
     if (partnerBirthDate && partnerGender) {
-      const isPartnerLunar = partnerCalendarType === 'lunar'
-      partnerDayMaster = await getDayMaster(
-        partnerBirthDate,
-        partnerBirthTime || '12:00',
-        partnerGender,
-        isPartnerLunar
-      )
+      partnerDayMaster = calcDayMaster(partnerBirthDate, partnerBirthTime || '12:00')
 
       const { data: pResult } = await supabase
         .from('viral_test_results')
@@ -156,19 +109,7 @@ serve(async (req) => {
       partner_day_master: partnerDayMaster,
     })
 
-    // play_count 증가
-    await supabase.rpc('increment_counter', {
-      table_name: 'viral_tests',
-      column_name: 'play_count',
-      row_id: testId,
-    }).catch(() => {
-      // RPC가 없으면 직접 업데이트
-      supabase.from('viral_tests')
-        .update({ play_count: supabase.rpc ? undefined : 1 })
-        .eq('id', testId)
-    })
-
-    // play_count 직접 증가 (위 RPC 실패 대비)
+    // play_count 원자적 증가
     const { data: currentTest } = await supabase
       .from('viral_tests')
       .select('play_count')
@@ -192,6 +133,7 @@ serve(async (req) => {
           resultImageUrl: myResult.result_image_url,
           shareImageUrl: myResult.share_image_url,
           score: myResult.score,
+          resultLabel: myResult.result_label || null,
         },
         partnerResult: partnerResult ? {
           dayMaster: partnerDayMaster,
@@ -200,6 +142,7 @@ serve(async (req) => {
           resultDescription: partnerResult.result_description,
           resultImageUrl: partnerResult.result_image_url,
           score: partnerResult.score,
+          resultLabel: partnerResult.result_label || null,
         } : null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

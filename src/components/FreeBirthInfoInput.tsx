@@ -24,6 +24,7 @@ interface FreeBirthInfoInputProps {
   onBack: () => void;
   mode?: 'free' | 'consult';
   onConsultComplete?: (birthInfo: BirthInfoData) => void;
+  skipAutoComplete?: boolean; // true면 consult 모드에서도 자동 완료 스킵 (사주 선택 페이지에서 "직접 입력" 시)
 }
 
 // 에러 상태 타입
@@ -33,7 +34,7 @@ interface ValidationErrors {
   birthTime?: string;
 }
 
-export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', onConsultComplete }: FreeBirthInfoInputProps) {
+export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', onConsultComplete, skipAutoComplete }: FreeBirthInfoInputProps) {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'female' | 'male'>('female');
@@ -86,8 +87,8 @@ export default function FreeBirthInfoInput({ productId, onBack, mode = 'free', o
         if (!error && primarySaju) {
           console.log('✅ [FreeBirthInfoInput] DB에서 대표 사주 발견:', primarySaju);
 
-          // consult 모드: 대표 사주가 있으면 폼 스킵 → 바로 완료 처리
-          if (mode === 'consult' && onConsultComplete) {
+          // consult 모드: 대표 사주가 있으면 폼 스킵 → 바로 완료 처리 (skipAutoComplete이면 폼 표시)
+          if (mode === 'consult' && onConsultComplete && !skipAutoComplete) {
             const birthDateObj = new Date(primarySaju.birth_date);
             const yyyy = birthDateObj.getFullYear();
             const mm = String(birthDateObj.getMonth() + 1).padStart(2, '0');

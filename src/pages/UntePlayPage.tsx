@@ -1,17 +1,33 @@
 /**
  * 운테 플레이 페이지
- * ★DESIGN_SYSTEM★ 기반 — 사주 입력 → 애니메이션 → 결과 전환
+ * ★DESIGN_SYSTEM★ 기반
+ * 1. checking → 로그인+사주 확인
+ * 2. selectSaju → FreeSajuSelectPage 재활용 (사주 있을 때)
+ * 3. myInput → FreeBirthInfoInput (사주 없을 때 / 직접 입력)
+ * 4. partnerInput → 궁합 상대 입력
+ * 5. loading → API 호출
+ * 6. animation → 슬롯/궁합 애니메이션
+ * 7. done → 결과 전환
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabaseUrl } from '../lib/supabase';
-import UnteSajuInput, { type UnteBirthData } from '../components/UnteSajuInput';
+import { supabase, supabaseUrl } from '../lib/supabase';
+import FreeBirthInfoInput from '../components/FreeBirthInfoInput';
+import FreeSajuSelectPage from '../components/FreeSajuSelectPage';
 import SlotMachineAnimation from '../components/SlotMachineAnimation';
 import CompatibilityMeter from '../components/CompatibilityMeter';
+import { PageLoader } from '../components/ui/PageLoader';
 
 const font = "'Pretendard Variable', sans-serif";
+
+interface BirthInfoData {
+  name: string;
+  gender: 'female' | 'male';
+  birthDate: string;
+  birthTime: string;
+}
 
 interface TestState {
   testId: string;
@@ -43,7 +59,7 @@ interface ResultData {
   } | null;
 }
 
-type Phase = 'myInput' | 'partnerInput' | 'loading' | 'animation' | 'done';
+type Phase = 'checking' | 'selectSaju' | 'myInput' | 'partnerInput' | 'loading' | 'animation' | 'done';
 
 export function UntePlayPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -55,11 +71,36 @@ export function UntePlayPage() {
   const test = state?.test;
   const isCompatibility = test?.template_type === 'compatibility';
 
-  const [phase, setPhase] = useState<Phase>('myInput');
-  const [myData, setMyData] = useState<UnteBirthData | null>(null);
+  const [phase, setPhase] = useState<Phase>('checking');
+  const [hasSajuRecords, setHasSajuRecords] = useState(false);
+  const [myData, setMyData] = useState<BirthInfoData | null>(null);
   const [result, setResult] = useState<ResultData | null>(null);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+
+  // 1단계: 로그인 + 사주 확인
+  useEffect(() => {
+    if (!testId) return;
+    const checkSaju = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setPhase('myInput');
+        return;
+      }
+
+      const { data: records } = await supabase
+        .from('saju_records')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .limit(1);
+
+      if (records && records.length > 0) {
+        setHasSajuRecords(true);
+        setPhase('selectSaju');
+      } else {
+        setPhase('myInput');
+      }
+    };
+    checkSaju();
+  }, [testId]);
 
   const getFingerprint = (): string => {
     const nav = navigator;
@@ -73,12 +114,10 @@ export function UntePlayPage() {
   };
 
   const fetchResult = async (
-    birthData: UnteBirthData,
-    partnerData?: UnteBirthData
+    birthData: BirthInfoData,
+    partnerData?: BirthInfoData
   ) => {
-    setIsLoading(true);
     setPhase('loading');
-    setError('');
 
     try {
       const body: Record<string, unknown> = {
@@ -86,7 +125,7 @@ export function UntePlayPage() {
         birthDate: birthData.birthDate,
         birthTime: birthData.birthTime,
         gender: birthData.gender === 'female' ? '여' : '남',
-        calendarType: birthData.calendarType,
+        calendarType: 'solar',
         fingerprint: getFingerprint(),
       };
 
@@ -94,7 +133,7 @@ export function UntePlayPage() {
         body.partnerBirthDate = partnerData.birthDate;
         body.partnerBirthTime = partnerData.birthTime;
         body.partnerGender = partnerData.gender === 'female' ? '여' : '남';
-        body.partnerCalendarType = partnerData.calendarType;
+        body.partnerCalendarType = 'solar';
       }
 
       const response = await fetch(`${supabaseUrl}/functions/v1/get-viral-test-result`, {
@@ -113,14 +152,12 @@ export function UntePlayPage() {
       setPhase('animation');
     } catch (err) {
       console.error('결과 조회 실패:', err);
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
-      setPhase('myInput');
-    } finally {
-      setIsLoading(false);
+      setPhase(hasSajuRecords ? 'selectSaju' : 'myInput');
     }
   };
 
-  const handleMySubmit = (data: UnteBirthData) => {
+  // 사주 선택/입력 완료 → 결과 조회
+  const handleBirthComplete = (data: BirthInfoData) => {
     setMyData(data);
     if (isCompatibility) {
       setPhase('partnerInput');
@@ -129,7 +166,7 @@ export function UntePlayPage() {
     }
   };
 
-  const handlePartnerSubmit = (partnerData: UnteBirthData) => {
+  const handlePartnerBirthComplete = (partnerData: BirthInfoData) => {
     if (myData) {
       fetchResult(myData, partnerData);
     }
@@ -187,6 +224,55 @@ export function UntePlayPage() {
     );
   }
 
+  // Phase: 초기 확인 중 (깜빡임 방지)
+  if (phase === 'checking') {
+    return <PageLoader showMessage={false} />;
+  }
+
+  // Phase: 사주 선택 (FreeSajuSelectPage 재활용)
+  if (phase === 'selectSaju') {
+    return (
+      <FreeSajuSelectPage
+        productId=""
+        onBack={() => navigate(-1)}
+        mode="consult"
+        onConsultComplete={handleBirthComplete}
+      />
+    );
+  }
+
+  // Phase: 사주 입력 (사주 없는 경우 / 직접 입력)
+  if (phase === 'myInput') {
+    return (
+      <FreeBirthInfoInput
+        productId=""
+        onBack={() => {
+          if (hasSajuRecords) {
+            setPhase('selectSaju');
+          } else {
+            navigate(-1);
+          }
+        }}
+        mode="consult"
+        onConsultComplete={handleBirthComplete}
+        skipAutoComplete={hasSajuRecords}
+      />
+    );
+  }
+
+  // Phase: 궁합 상대방 입력
+  if (phase === 'partnerInput') {
+    return (
+      <FreeBirthInfoInput
+        productId=""
+        onBack={() => setPhase(hasSajuRecords ? 'selectSaju' : 'myInput')}
+        mode="consult"
+        onConsultComplete={handlePartnerBirthComplete}
+      />
+    );
+  }
+
+  // Phase: 로딩 / 애니메이션 / 전환
   return (
     <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
       <div className="w-full max-w-[440px] relative">
@@ -200,17 +286,6 @@ export function UntePlayPage() {
             className="flex items-center"
             style={{ height: '52px', padding: '0 20px', gap: '12px' }}
           >
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center justify-center cursor-pointer"
-              style={{
-                width: '32px', height: '32px',
-                background: 'none', border: 'none',
-                fontFamily: font, fontSize: '18px', color: '#151515',
-              }}
-            >
-              ←
-            </button>
             <span
               className="flex-1 truncate"
               style={{
@@ -225,45 +300,6 @@ export function UntePlayPage() {
 
         <div style={{ padding: '24px 20px' }}>
           <AnimatePresence mode="wait">
-            {/* 내 사주 입력 */}
-            {phase === 'myInput' && (
-              <motion.div
-                key="myInput"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <UnteSajuInput
-                  onSubmit={handleMySubmit}
-                  isLoading={isLoading}
-                  label={isCompatibility ? '내 정보 입력' : '정보를 입력해주세요'}
-                />
-                {error && (
-                  <p style={{
-                    fontFamily: font, fontSize: '12px', color: '#d4183d', marginTop: '12px',
-                  }}>
-                    {error}
-                  </p>
-                )}
-              </motion.div>
-            )}
-
-            {/* 상대방 사주 입력 (궁합) */}
-            {phase === 'partnerInput' && (
-              <motion.div
-                key="partnerInput"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <UnteSajuInput
-                  onSubmit={handlePartnerSubmit}
-                  isLoading={isLoading}
-                  label="상대방 정보 입력"
-                />
-              </motion.div>
-            )}
-
             {/* 로딩 */}
             {phase === 'loading' && (
               <motion.div
@@ -271,27 +307,10 @@ export function UntePlayPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center"
-                style={{ paddingTop: '100px', gap: '24px' }}
+                className="flex items-center justify-center"
+                style={{ paddingTop: '100px' }}
               >
-                <div
-                  className="flex items-center justify-center"
-                  style={{ width: '76px', height: '76px', borderRadius: '24px', backgroundColor: '#E4F7F7' }}
-                >
-                  <motion.span
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    style={{ fontSize: '32px' }}
-                  >
-                    🔮
-                  </motion.span>
-                </div>
-                <p style={{
-                  fontFamily: font, fontSize: '15px', fontWeight: 400,
-                  lineHeight: '26px', letterSpacing: '-0.3px', color: '#848484',
-                }}>
-                  운명을 읽고 있어요...
-                </p>
+                <PageLoader message="운명을 읽고 있어요..." />
               </motion.div>
             )}
 

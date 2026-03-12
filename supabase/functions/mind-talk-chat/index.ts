@@ -221,21 +221,21 @@ serve(async (req) => {
                 const sajuData = JSON.parse(rawText);
 
                 if (sajuData && Object.keys(sajuData).length > 0) {
-                  // 핵심 사주 필드만 추출 (전체 JSON은 너무 커서 토큰 낭비)
-                  const pick = (keys: string[]) => {
-                    const obj: Record<string, unknown> = {};
-                    for (const k of keys) { if (sajuData[k] !== undefined) obj[k] = sajuData[k]; }
-                    return obj;
-                  };
-                  const essentialData = pick([
-                    '격국', '격국설명', '일주', '일주설명',
-                    '천간', '지지', '십성', '십이운성',
-                    '대운', '대운수', '세운',
-                    '발달오행', '오행비율',
-                    '용신', '용신설명', '희신',
-                    '성격', '적성', '건강',
-                    '올해운세', '이달운세', '오늘운세',
+                  // 토큰 절감: 월운/본사주/대운상세 제외, 나머지 핵심 데이터 포함
+                  const excludeKeys = new Set([
+                    '월운보기',             // 월별 운세 (매우 큼, 토큰 낭비)
+                    '본사주',               // 합/충/형 상세 (큼)
+                    '대운',                 // 현재/다음 대운 상세 텍스트 (큼)
+                    '대운순서',             // 대운 타임라인
+                    '대운시작나이',         // 대운 시작 나이
+                    '대운순서십이운성',     // 대운 십이운성 목록
+                    '대운순서십성',         // 대운 십성 목록
+                    '용신설명',             // 용신 상세 텍스트 (큼)
                   ]);
+                  const essentialData: Record<string, unknown> = {};
+                  for (const k of Object.keys(sajuData)) {
+                    if (!excludeKeys.has(k)) essentialData[k] = sajuData[k];
+                  }
                   detailedSajuInfo = `\n\n[상세 사주 데이터]\n${JSON.stringify(essentialData, null, 2)}`;
                   console.log('✅ 사주 API 호출 성공 (전체:', Object.keys(sajuData).length, '키, 추출:', Object.keys(essentialData).length, '키)');
                   break;
@@ -311,7 +311,7 @@ ${contextBlock}
 
 [대화 규칙]
 - 답변은 2~3문장으로 짧고 자연스럽게, 친구처럼 가볍게
-- 사용자가 힘들거나 감정적일 때만 공감해주고, 일반 질문에는 바로 답변해. "~묻는구나", "~궁금하구나" 식으로 사용자 말을 앵무새처럼 반복하지 마.
+
 - 경청 중심, 사용자 스스로 인사이트를 얻도록 질문으로 유도
 - 첫 인사 시 사용자의 심리 상태와 성향을 바탕으로 따뜻하게 말을 걸어줘
 - "~해야 한다" 식의 단정적 조언 자제
@@ -333,7 +333,7 @@ ${contextBlock}
 
 [대화 규칙]
 - 답변은 3~6문장으로, 사주 기반 인사이트를 제공해
-- 사용자가 힘들거나 감정적일 때만 공감해주고, 일반 질문에는 바로 본론으로 들어가. "~묻는구나", "~궁금하구나" 식으로 사용자 말을 반복하지 마.
+
 - 사주 데이터가 있으면 반드시 활용하여 맞춤 상담 제공
 - 사주 전문 용어(종살격, 상관, 편관, 대운, 오행 등)는 직접 언급하지 않고 쉬운 일상 언어로 풀어서 설명
 - 사용자의 현재 고민이나 상황에 맞는 운세 해석을 제공
@@ -358,7 +358,7 @@ ${contextBlock}
 
 [대화 규칙]
 - 답변은 3~6문장으로, 타로 기반 인사이트를 제공해
-- 사용자가 힘들거나 감정적일 때만 공감해주고, 일반 질문에는 바로 본론으로 들어가. "~묻는구나", "~궁금하구나" 식으로 사용자 말을 반복하지 마.
+
 - 타로 카드 이름은 반드시 영어 원문 그대로 사용해 (예: "Six of Pentacles", "The Tower"). 절대 한국어로 번역하지 마.
 - 카드 해석: 카드 이름 + 핵심 의미 1~2문장 → 사용자 상황에 맞춘 해석 2~3문장. 길게 늘리지 마.
 - 긍정적인 방향으로 안내하되 현실적으로

@@ -13,6 +13,7 @@ interface GeneratedResult {
   result_title: string;
   result_description: string;
   score: number;
+  result_label?: string;
 }
 
 interface GeneratedTest {
@@ -22,7 +23,9 @@ interface GeneratedTest {
   description: string;
   templateType: string;
   isAdult: boolean;
+  resultFormat?: string;
   results: GeneratedResult[];
+  imageStyleGuide?: string;
 }
 
 type Step = 'input' | 'generating' | 'review' | 'publishing';
@@ -61,7 +64,14 @@ export function UnteCreatePage() {
         body: JSON.stringify({ idea: idea.trim(), creatorId: userId }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('응답 파싱 실패:', text.slice(0, 300));
+        throw new Error('서버 응답을 처리할 수 없습니다. 다시 시도해주세요.');
+      }
 
       if (!data.success) {
         throw new Error(data.error || 'AI 생성에 실패했습니다.');
@@ -190,7 +200,7 @@ export function UnteCreatePage() {
           </div>
         </div>
 
-        <div style={{ padding: '24px 20px 100px' }}>
+        <div style={{ padding: '24px 20px 100px', overflow: 'hidden' }}>
           <AnimatePresence mode="wait">
             {/* Step 1: 아이디어 입력 */}
             {step === 'input' && (
@@ -224,7 +234,7 @@ export function UnteCreatePage() {
                     value={idea}
                     onChange={(e) => { setIdea(e.target.value); setError(''); }}
                     placeholder="예: 미래 남편 얼굴은?, 바람끼 테스트"
-                    rows={4}
+                    rows={3}
                     style={{
                       width: '100%',
                       padding: '16px',
@@ -255,7 +265,7 @@ export function UnteCreatePage() {
                   }}>
                     아이디어 예시
                   </p>
-                  <div className="flex flex-wrap" style={{ gap: '6px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {['미래 남편 얼굴은?', '바람끼 테스트', '난 테무인간인걸까', '최애와 나의 궁합', '전생에 나는 뭐였을까'].map((ex) => (
                       <button
                         key={ex}
@@ -271,6 +281,7 @@ export function UnteCreatePage() {
                           fontSize: '12px',
                           fontWeight: 400,
                           color: '#6d6d6d',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {ex}
@@ -495,7 +506,7 @@ export function UnteCreatePage() {
                             padding: '2px 8px',
                             borderRadius: '9999px',
                           }}>
-                            {r.score}점
+                            {r.result_label || `${r.score}점`}
                           </span>
                         </div>
                         <p style={{

@@ -242,20 +242,21 @@ serve(async (req) => {
           }
         }
 
-        // 사주 API 데이터를 문자열로 변환하여 프롬프트에 포함 (핵심 필드만 추출)
+        // 사주 API 데이터를 문자열로 변환하여 프롬프트에 포함 (토큰 절감: 월운/본사주/대운상세 제외)
         if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
-          const essentialKeys = [
-            '격국', '격국설명', '일주', '일주설명',
-            '천간', '지지', '십성', '십이운성',
-            '대운', '대운수', '세운',
-            '발달오행', '오행비율',
-            '용신', '용신설명', '희신',
-            '성격', '적성', '건강',
-            '올해운세', '이달운세', '오늘운세',
-          ]
+          const excludeKeys = new Set([
+            '월운보기',             // 월별 운세 (매우 큼, 토큰 낭비)
+            '본사주',               // 합/충/형 상세 (큼)
+            '대운',                 // 현재/다음 대운 상세 텍스트 (큼)
+            '대운순서',             // 대운 타임라인
+            '대운시작나이',         // 대운 시작 나이
+            '대운순서십이운성',     // 대운 십이운성 목록
+            '대운순서십성',         // 대운 십성 목록
+            '용신설명',             // 용신 상세 텍스트 (큼)
+          ])
           const essentialData: Record<string, unknown> = {}
-          for (const k of essentialKeys) {
-            if (cachedSajuData[k] !== undefined) essentialData[k] = cachedSajuData[k]
+          for (const k of Object.keys(cachedSajuData)) {
+            if (!excludeKeys.has(k)) essentialData[k] = cachedSajuData[k]
           }
           const sajuDataStr = JSON.stringify(essentialData, null, 2)
           detailedSajuInfo = `\n\n### 상세 사주 데이터 (명리학 분석용)\n${sajuDataStr}`
