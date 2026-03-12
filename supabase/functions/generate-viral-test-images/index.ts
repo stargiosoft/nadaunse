@@ -1,24 +1,10 @@
 // Supabase Edge Function: 바이럴 테스트 이미지 생성
 // --no-verify-jwt 배포 필수
-// 썸네일 1장 + 결과 이미지 10장 + 공유 카드 10장 생성
+// 썸네일 1장 + 결과 이미지 10장 생성 (공유 이미지 = 결과 이미지 동일 사용)
+// PNG 직접 업로드 (ImageMagick WASM 제거 — Edge Function 메모리 한도 초과 방지)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
-import {
-  ImageMagick,
-  initializeImageMagick,
-  MagickFormat,
-} from 'npm:@imagemagick/magick-wasm@0.0.30'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
-
-// ImageMagick WASM 초기화 (서버 시작 시 1회)
-const wasmBytes = await Deno.readFile(
-  new URL(
-    'magick.wasm',
-    import.meta.resolve('npm:@imagemagick/magick-wasm@0.0.30'),
-  ),
-)
-await initializeImageMagick(wasmBytes)
-console.log('✅ ImageMagick WASM 초기화 완료')
 
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')!
 
@@ -55,25 +41,27 @@ serve(async (req) => {
 
     console.log(`🎨 이미지 생성 시작: "${test.title}" (결과 ${results.length}개)`)
 
-    // 2. 이미지 생성 헬퍼
+    // 2. 이미지 생성 헬퍼 (PNG 직접 업로드)
     async function generateAndUploadImage(
       prompt: string,
       storagePath: string
     ): Promise<string | null> {
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseModalities: ['image', 'text'] },
             }),
           }
         )
 
         if (!response.ok) {
-          console.error(`❌ Gemini 이미지 API 오류 (${storagePath}):`, response.status)
+          const errText = await response.text()
+          console.error(`❌ Gemini 이미지 API 오류 (${storagePath}):`, response.status, errText)
           return null
         }
 
@@ -87,31 +75,19 @@ serve(async (req) => {
           return null
         }
 
-        // Base64 → Uint8Array
-        const pngBytes = Uint8Array.from(
+        // Base64 → Uint8Array (PNG 직접 업로드)
+        const imageBytes = Uint8Array.from(
           atob(imagePart.inlineData.data),
           c => c.charCodeAt(0)
         )
 
-        // PNG → WebP 변환
-        let finalBytes: Uint8Array
-        let contentType = 'image/webp'
-
-        try {
-          finalBytes = ImageMagick.read(pngBytes, (img): Uint8Array => {
-            img.quality = 85
-            return img.write(MagickFormat.WebP, (data) => new Uint8Array(data))
-          })
-          console.log(`✅ WebP 변환: ${pngBytes.length} → ${finalBytes.length} bytes`)
-        } catch {
-          finalBytes = pngBytes
-          contentType = 'image/png'
-        }
+        const mimeType = imagePart.inlineData.mimeType || 'image/png'
+        console.log(`✅ 이미지 수신: ${imageBytes.length} bytes (${mimeType})`)
 
         // Storage 업로드
         const { error: uploadError } = await supabase.storage
           .from('assets')
-          .upload(storagePath, finalBytes, { contentType, upsert: true })
+          .upload(storagePath, imageBytes, { contentType: mimeType, upsert: true })
 
         if (uploadError) {
           console.error(`❌ 업로드 실패 (${storagePath}):`, uploadError)
@@ -138,7 +114,7 @@ Aspect ratio: square (1:1).`
 
     const thumbnailUrl = await generateAndUploadImage(
       thumbnailPrompt,
-      `viral-tests/${testId}/thumbnail.webp`
+      `viral-tests/${testId}/thumbnail.png`
     )
 
     if (thumbnailUrl) {
@@ -163,29 +139,16 @@ Aspect ratio: 3:4 (portrait).`
 
       const resultImageUrl = await generateAndUploadImage(
         resultPrompt,
-        `viral-tests/${testId}/result-${result.day_master}.webp`
+        `viral-tests/${testId}/result-${result.day_master}.png`
       )
 
-      const sharePrompt = result.image_prompt
-        ? `${result.image_prompt}\n\nAdapt for shareable social media card. Instagram Story format (9:16). No text. Bold and eye-catching.`
-        : `Create a shareable social media card illustration for: "${result.result_title}" - ${test.title}.
-Style: Bold, colorful, Instagram Story format (9:16).
-The image should make people want to share it.
-No text in the image. Full-bleed.`
-
-      const shareImageUrl = await generateAndUploadImage(
-        sharePrompt,
-        `viral-tests/${testId}/share-${result.day_master}.webp`
-      )
-
-      // DB 업데이트
-      if (resultImageUrl || shareImageUrl) {
-        const updateData: Record<string, string> = {}
-        if (resultImageUrl) updateData.result_image_url = resultImageUrl
-        if (shareImageUrl) updateData.share_image_url = shareImageUrl
-
+      // DB 업데이트 (결과 이미지 = 공유 이미지로 동일 사용)
+      if (resultImageUrl) {
         await supabase.from('viral_test_results')
-          .update(updateData)
+          .update({
+            result_image_url: resultImageUrl,
+            share_image_url: resultImageUrl,
+          })
           .eq('id', result.id)
       }
 
