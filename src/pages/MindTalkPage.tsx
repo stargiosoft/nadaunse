@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { projectId } from '../utils/supabase/info';
@@ -91,10 +91,10 @@ function renderBoldText(text: string) {
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
+const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === 'user';
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`} style={{ marginBottom: 12 }}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`} style={{ marginBottom: 8 }}>
       {!isUser && (
         <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
           <AiAvatar />
@@ -121,11 +121,11 @@ function MessageBubble({ msg }: { msg: Message }) {
       </div>
     </div>
   );
-}
+});
 
 function TypingIndicator() {
   return (
-    <div className="flex justify-start" style={{ marginBottom: 12 }}>
+    <div className="flex justify-start" style={{ marginBottom: 8 }}>
       <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
         <AiAvatar />
       </div>
@@ -155,7 +155,7 @@ function TypingIndicator() {
 /** 타로 카드 뽑기 인라인 CTA (채팅 내) */
 function TarotDrawCTA({ onClick }: { onClick: () => void }) {
   return (
-    <div className="flex justify-start" style={{ marginBottom: 12 }}>
+    <div className="flex justify-start" style={{ marginBottom: 8 }}>
       <div className="shrink-0" style={{ width: 36, marginRight: 8 }} />
       <button
         onClick={onClick}
@@ -370,6 +370,7 @@ export default function MindTalkPage() {
   // Tarot
   const [showTarotDraw, setShowTarotDraw] = useState(false);
   const [lastTarotQuestion, setLastTarotQuestion] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   // 일일 무료 사용량 캐시 (모드별, 탭 전환 시 깜빡임 방지)
   const dailyFreeCacheRef = useRef<{ date: string; saju: number; tarot: number }>({
@@ -429,6 +430,7 @@ export default function MindTalkPage() {
     setLoadingConv(true);
     setConversationId(null);
     setStreaming('');
+    setAiSuggestions([]);
 
     const today = new Date().toISOString().slice(0, 10);
     const cache = dailyFreeCacheRef.current;
@@ -447,14 +449,25 @@ export default function MindTalkPage() {
     }
 
     try {
-      // 오늘 해당 모드 일일 무료 사용량 집계 (서버 기반, 라운드 무관)
-      const { data: todayConvs } = await supabase
-        .from('mind_talk_conversations')
-        .select('free_messages_used')
-        .eq('user_id', userId)
-        .eq('session_date', today)
-        .eq('mode', chatMode);
-      const dailyFreeUsed = todayConvs?.reduce((sum, c) => sum + (c.free_messages_used ?? 0), 0) ?? 0;
+      // 일일 무료 사용량 집계 + 현재 라운드 conversation을 병렬 조회
+      const [todayConvsResult, convResult] = await Promise.all([
+        supabase
+          .from('mind_talk_conversations')
+          .select('free_messages_used')
+          .eq('user_id', userId)
+          .eq('session_date', today)
+          .eq('mode', chatMode),
+        supabase
+          .from('mind_talk_conversations')
+          .select('id, free_messages_used')
+          .eq('user_id', userId)
+          .eq('session_date', today)
+          .eq('mode', chatMode)
+          .eq('round', currentRound)
+          .maybeSingle(),
+      ]);
+
+      const dailyFreeUsed = todayConvsResult.data?.reduce((sum, c) => sum + (c.free_messages_used ?? 0), 0) ?? 0;
       setFreeUsed(dailyFreeUsed);
 
       // 캐시 업데이트
@@ -462,16 +475,7 @@ export default function MindTalkPage() {
         cache[chatMode] = dailyFreeUsed;
       }
 
-      // 현재 라운드 conversation 로드
-      const { data: conv } = await supabase
-        .from('mind_talk_conversations')
-        .select('id, free_messages_used')
-        .eq('user_id', userId)
-        .eq('session_date', today)
-        .eq('mode', chatMode)
-        .eq('round', currentRound)
-        .maybeSingle();
-
+      const conv = convResult.data;
       if (conv) {
         setConversationId(conv.id);
 
@@ -539,6 +543,7 @@ export default function MindTalkPage() {
 
     setSending(true);
     setStreaming('');
+    setAiSuggestions([]);
 
     if (userMessage) {
       setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content: userMessage }]);
@@ -583,7 +588,7 @@ export default function MindTalkPage() {
         throw new Error(errData.error || 'Chat request failed');
       }
 
-      // SSE streaming
+      // SSE streaming (RAF throttle로 리렌더링 최적화)
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
@@ -797,7 +802,8 @@ export default function MindTalkPage() {
   }
 
   const currentModeConfig = MODES.find(m => m.key === mode)!;
-  const showSuggestions = messages.length === 0 && !sending && !loadingConv;
+  const showStaticSuggestions = messages.length === 0 && !sending && !loadingConv;
+  const showAiSuggestions = aiSuggestions.length > 0 && !sending && !streaming;
   // 캐시가 아직 로드되지 않은 상태(-1)에서는 배지 숨김 (깜빡임 방지)
   const cacheKey = mode as 'saju' | 'tarot';
   const freeBadgeReady = isPaidMode && dailyFreeCacheRef.current[cacheKey] >= 0;
@@ -895,7 +901,7 @@ export default function MindTalkPage() {
         {/* ── Scrollable Chat Area ── */}
         <div
           className="flex-1 w-full"
-          style={{ padding: '16px 20px 16px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}
+          style={{ padding: '16px 20px 4px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', minHeight: 0 }}
         >
           {/* 로딩 */}
           {loadingConv && (
@@ -905,7 +911,7 @@ export default function MindTalkPage() {
           )}
 
           {/* 오프닝: 마음이 인사 메시지 */}
-          {showSuggestions && (
+          {messages.length === 0 && !sending && !loadingConv && (
             <div className="flex justify-start" style={{ marginBottom: 16 }}>
               <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
                 <AiAvatar />
@@ -942,7 +948,7 @@ export default function MindTalkPage() {
 
           {/* 스트리밍 중인 AI 메시지 */}
           {streaming && (
-            <div className="flex justify-start" style={{ marginBottom: 12 }}>
+            <div className="flex justify-start" style={{ marginBottom: 8 }}>
               <div className="shrink-0 flex items-end" style={{ marginRight: 8 }}>
                 <AiAvatar />
               </div>
@@ -968,62 +974,65 @@ export default function MindTalkPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* ── 고민지 슬라이드 (입력창 바로 위) ── */}
-        {showSuggestions && (
-          <div
-            ref={suggestionsRef}
-            className="shrink-0 flex overflow-x-auto scrollbar-hide"
-            style={{
-              gap: 10, paddingTop: 10, paddingBottom: 10,
-              scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x', cursor: 'grab',
-              backgroundColor: C.white, borderTop: `1px solid ${C.gray100}`,
-              scrollPaddingLeft: 16, scrollPaddingRight: 16,
-            }}
-            onMouseDown={e => {
-              const el = suggestionsRef.current;
-              if (!el) return;
-              dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
-              el.style.cursor = 'grabbing';
-            }}
-            onMouseMove={e => {
-              if (!dragState.current.isDown) return;
-              e.preventDefault();
-              const el = suggestionsRef.current!;
-              const x = e.pageX - el.offsetLeft;
-              el.scrollLeft = dragState.current.scrollLeft - (x - dragState.current.startX);
-            }}
-            onMouseUp={() => { dragState.current.isDown = false; if (suggestionsRef.current) suggestionsRef.current.style.cursor = 'grab'; }}
-            onMouseLeave={() => { dragState.current.isDown = false; if (suggestionsRef.current) suggestionsRef.current.style.cursor = 'grab'; }}
-          >
-            {SUGGESTIONS[mode].map((s, i) => (
-              <button
-                key={i}
-                onClick={() => { trackMindTalkMessageSend(mode, round, true, needsSprout); sendMessage(s); }}
-                className="shrink-0 flex items-center transform-gpu"
-                style={{
-                  padding: '10px 18px', borderRadius: 20,
-                  backgroundColor: C.white, border: `1px solid ${C.gray100}`,
-                  cursor: 'pointer', transition: 'transform 0.1s ease',
-                  scrollSnapAlign: 'start',
-                  WebkitTapHighlightColor: 'transparent',
-                  marginLeft: i === 0 ? 16 : undefined,
-                  marginRight: i === SUGGESTIONS[mode].length - 1 ? 16 : undefined,
-                }}
-                onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
-                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-              >
-                <span style={{
-                  fontFamily: F, fontSize: '14px', fontWeight: 500, lineHeight: '20px',
-                  letterSpacing: '-0.28px', color: C.black, whiteSpace: 'nowrap',
-                }}>
-                  {s}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* ── 질문 슬라이드 (입력창 바로 위): 정적(초기) + 동적(AI 추천) ── */}
+        {(showStaticSuggestions || showAiSuggestions) && (() => {
+          const items = showAiSuggestions ? aiSuggestions : SUGGESTIONS[mode];
+          return (
+            <div
+              ref={suggestionsRef}
+              className="shrink-0 flex overflow-x-auto scrollbar-hide"
+              style={{
+                gap: 10, paddingTop: 10, paddingBottom: 10,
+                scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x', cursor: 'grab',
+                backgroundColor: C.white, borderTop: `1px solid ${C.gray100}`,
+                scrollPaddingLeft: 16, scrollPaddingRight: 16,
+              }}
+              onMouseDown={e => {
+                const el = suggestionsRef.current;
+                if (!el) return;
+                dragState.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+                el.style.cursor = 'grabbing';
+              }}
+              onMouseMove={e => {
+                if (!dragState.current.isDown) return;
+                e.preventDefault();
+                const el = suggestionsRef.current!;
+                const x = e.pageX - el.offsetLeft;
+                el.scrollLeft = dragState.current.scrollLeft - (x - dragState.current.startX);
+              }}
+              onMouseUp={() => { dragState.current.isDown = false; if (suggestionsRef.current) suggestionsRef.current.style.cursor = 'grab'; }}
+              onMouseLeave={() => { dragState.current.isDown = false; if (suggestionsRef.current) suggestionsRef.current.style.cursor = 'grab'; }}
+            >
+              {items.map((s, i) => (
+                <button
+                  key={`${showAiSuggestions ? 'ai' : 'static'}-${i}`}
+                  onClick={() => { trackMindTalkMessageSend(mode, round, true, needsSprout); sendMessage(s); }}
+                  className="shrink-0 flex items-center transform-gpu"
+                  style={{
+                    padding: '10px 18px', borderRadius: 20,
+                    backgroundColor: C.white, border: `1px solid ${C.gray100}`,
+                    cursor: 'pointer', transition: 'transform 0.1s ease',
+                    scrollSnapAlign: 'start',
+                    WebkitTapHighlightColor: 'transparent',
+                    marginLeft: i === 0 ? 16 : undefined,
+                    marginRight: i === items.length - 1 ? 16 : undefined,
+                  }}
+                  onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+                  onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                  onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                >
+                  <span style={{
+                    fontFamily: F, fontSize: '14px', fontWeight: 500, lineHeight: '20px',
+                    letterSpacing: '-0.28px', color: C.black, whiteSpace: 'nowrap',
+                  }}>
+                    {s}
+                  </span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* ── Input Area ── */}
         <div className="shrink-0 w-full" style={{ padding: '10px 16px', borderTop: `1px solid ${C.gray100}`, backgroundColor: C.white }}>
