@@ -593,8 +593,9 @@ export default function MindTalkPage() {
       const decoder = new TextDecoder();
       let fullText = '';
       let buffer = '';
-      let rafPending = false;
+      let rafHandle = 0;
       let latestFullText = '';
+      let streamingStopped = false;
 
       const stripSuggestions = (t: string) => {
         const idx = t.indexOf('---SUGGESTIONS---');
@@ -602,14 +603,13 @@ export default function MindTalkPage() {
       };
 
       const flushStreaming = () => {
-        setStreaming(stripSuggestions(latestFullText));
-        rafPending = false;
+        if (!streamingStopped) setStreaming(stripSuggestions(latestFullText));
+        rafHandle = 0;
       };
 
       const scheduleStreamingUpdate = () => {
-        if (!rafPending) {
-          rafPending = true;
-          requestAnimationFrame(flushStreaming);
+        if (!rafHandle) {
+          rafHandle = requestAnimationFrame(flushStreaming);
         }
       };
 
@@ -660,10 +660,11 @@ export default function MindTalkPage() {
         for (const line of buffer.split('\n')) processLine(line);
       }
 
-      // 마지막 RAF 강제 flush
-      if (rafPending) {
-        cancelAnimationFrame(0);
-        setStreaming(latestFullText);
+      // RAF 취소 + 스트리밍 정리
+      streamingStopped = true;
+      if (rafHandle) {
+        cancelAnimationFrame(rafHandle);
+        rafHandle = 0;
       }
 
       if (fullText) {
