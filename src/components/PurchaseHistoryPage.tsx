@@ -813,7 +813,10 @@ export default function PurchaseHistoryPage() {
                           style={{ gap: '10px', paddingBottom: '11px' }}
                         >
                           {/* Thumbnail */}
-                          <div className="shrink-0 w-[73px] pt-[3px]">
+                          <div
+                            className="shrink-0 w-[73px] pt-[3px] cursor-pointer"
+                            onClick={() => item.content_id && navigate(`/product/${item.content_id}`)}
+                          >
                             <div className="relative rounded-[12px] border border-[#f9f9f9] overflow-hidden" style={{ aspectRatio: '80/54' }}>
                               {item.master_contents?.thumbnail_url ? (
                                 <img
@@ -997,7 +1000,10 @@ export default function PurchaseHistoryPage() {
                           style={{ gap: '10px', paddingBottom: '11px' }}
                         >
                           {/* Thumbnail */}
-                          <div className="shrink-0 w-[73px] pt-[3px]">
+                          <div
+                            className="shrink-0 w-[73px] pt-[3px] cursor-pointer"
+                            onClick={() => record.content_id && navigate(`/product/${record.content_id}`)}
+                          >
                             <div className="relative rounded-[12px] border border-[#f9f9f9] overflow-hidden" style={{ aspectRatio: '80/54' }}>
                               {record.master_contents?.thumbnail_url ? (
                                 <img
