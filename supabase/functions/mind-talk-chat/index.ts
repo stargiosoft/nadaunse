@@ -75,6 +75,7 @@ serve(async (req) => {
 
     // ── 4. Limit & sprout check (paid modes only, 하루 기준 서버 검증) ──
     let sproutDeducted = false;
+    let newSproutBalance = -1; // 차감 후 잔액 (차감 시에만 사용)
     let dailyFreeUsed = 0; // 오늘 해당 모드의 일일 무료 사용 합계 (클라이언트 전달용)
     if (isPaidMode && !isGreeting) {
       // 오늘 해당 모드의 전체 무료 사용량 집계 (라운드 무관, 서버 기반)
@@ -120,8 +121,8 @@ serve(async (req) => {
           });
         }
 
-        // Record transaction
-        await supabase.from('sprout_transactions').insert({
+        // Record transaction (fire-and-forget, 응답 흐름 블로킹 불필요)
+        supabase.from('sprout_transactions').insert({
           user_id: userId,
           transaction_type: 'deduct',
           amount: SPROUT_COST,
@@ -131,6 +132,7 @@ serve(async (req) => {
         });
 
         sproutDeducted = true;
+        newSproutBalance = deductResult.sprout_balance;
       }
     }
 
@@ -150,40 +152,32 @@ serve(async (req) => {
       });
     }
 
-    // ── 6. Load context ──
-    // 사용자 닉네임 (대표 사주의 full_name)
-    const { data: primarySaju } = await supabase
-      .from('saju_records')
-      .select('full_name')
-      .eq('user_id', userId)
-      .eq('is_primary', true)
-      .maybeSingle();
-    const userName = primarySaju?.full_name || '';
-
-    const { data: tags } = await supabase
-      .from('user_trait_tags')
-      .select('tag_name, sentiment, count')
-      .eq('user_id', userId)
-      .order('count', { ascending: false })
-      .limit(15);
-
-    // 최근 4주 심리 흐름 (주차별 최신 1건만)
+    // ── 6. Load context (병렬화) ──
     const fourWeeksAgo = new Date();
     fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-    const { data: recentSummaries } = await supabase
-      .from('user_situation_summaries')
-      .select('situation_summary, created_at')
-      .eq('user_id', userId)
-      .gte('created_at', fourWeeksAgo.toISOString())
-      .order('created_at', { ascending: true });
 
-    // 대화 히스토리 (최근 10개만)
-    const { data: history } = await supabase
-      .from('mind_talk_messages')
-      .select('role, content')
-      .eq('conversation_id', convId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    // 모드별 추가 병렬 조회
+    const sajuRecordPromise = mode === 'saju'
+      ? supabase.from('saju_records').select('full_name, gender, birth_date, birth_time').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      : null;
+    // 일반 모드: 나다움 분석 요약 (개인화 강화)
+    const nadaumPromise = mode === 'general'
+      ? supabase.from('nadaum_analyses').select('category, analysis_text').eq('user_id', userId)
+      : null;
+
+    const [primarySajuResult, tagsResult, summariesResult, historyResult, sajuRecordResult, nadaumResult] = await Promise.all([
+      supabase.from('saju_records').select('full_name').eq('user_id', userId).eq('is_primary', true).maybeSingle(),
+      supabase.from('user_trait_tags').select('tag_name, sentiment, count').eq('user_id', userId).order('count', { ascending: false }).limit(15),
+      supabase.from('user_situation_summaries').select('situation_summary, created_at').eq('user_id', userId).gte('created_at', fourWeeksAgo.toISOString()).order('created_at', { ascending: true }),
+      supabase.from('mind_talk_messages').select('role, content').eq('conversation_id', convId).order('created_at', { ascending: false }).limit(10),
+      sajuRecordPromise ?? Promise.resolve(null),
+      nadaumPromise ?? Promise.resolve(null),
+    ]);
+
+    const userName = primarySajuResult.data?.full_name || '';
+    const tags = tagsResult.data;
+    const recentSummaries = summariesResult.data;
+    const history = historyResult.data;
     // DESC로 가져왔으므로 시간순 정렬
     if (history) history.reverse();
 
@@ -191,14 +185,7 @@ serve(async (req) => {
     let detailedSajuInfo = '';
     if (mode === 'saju') {
       try {
-        // 사용자의 최근 사주 정보 가져오기
-        const { data: sajuRecord } = await supabase
-          .from('saju_records')
-          .select('full_name, gender, birth_date, birth_time')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const sajuRecord = sajuRecordResult?.data;
 
         if (sajuRecord?.birth_date) {
           const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim();
@@ -296,12 +283,21 @@ serve(async (req) => {
       if (lines.length) situationText = lines.join('\n');
     }
 
+    // ── 7-1. 나다움 분석 요약 (일반 모드) ──
+    let nadaumText = '';
+    if (mode === 'general' && nadaumResult?.data?.length) {
+      const categoryLabel: Record<string, string> = { love: '연애', nature: '성격', money: '금전', career: '직업', health: '건강' };
+      nadaumText = nadaumResult.data
+        .map(a => `[${categoryLabel[a.category] || a.category}] ${a.analysis_text.slice(0, 200)}`)
+        .join('\n');
+    }
+
     // ── 8. System prompt per mode ──
     const contextBlock = `[사용자 성향 태그]
 ${tagText}
 
 [사용자 심리 상황 요약]
-${situationText}${detailedSajuInfo}`;
+${situationText}${nadaumText ? `\n\n[나다움 분석 요약]\n${nadaumText}` : ''}${detailedSajuInfo}`;
 
     const safetyRules = `- 의학적 진단, 약물 추천, 치료 조언 절대 금지
 - 사용자가 자해/자살을 언급하면 즉시 안내:
@@ -313,7 +309,8 @@ ${situationText}${detailedSajuInfo}`;
     if (mode === 'general') {
       systemPrompt = `너는 나다운세 앱의 마음 친구 '마음이'야.
 사용자의 오랜 친구처럼 편안하고 따뜻한 반말 톤으로 대화해.
-사용자의 성향 데이터를 자연스럽게 활용하되, 데이터를 직접 언급하지 마.
+평소에는 사용자의 성향 데이터를 자연스럽게 활용하되 데이터 출처를 드러내지 마.
+단, 사용자가 "나에 대해 알려줘", "내 성격이 어때?" 등 자신에 대해 직접 물어보면, 아래 성향 태그와 나다움 분석 데이터를 바탕으로 친근하게 설명해줘.
 ${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userName}아" 또는 "${userName}야"로 자연스럽게 불러줘.` : '사용자의 이름을 모르면 "너"로 불러.'}
 
 ${contextBlock}
@@ -340,7 +337,13 @@ ${contextBlock}
 - 긍정적인 방향으로 안내하되 현실적으로
 - 첫 인사 시 사용자의 상황을 바탕으로 오늘의 흐름이나 기운에 대해 이야기를 시작해
 - "~해야 한다" 식의 단정적 조언 자제
-${safetyRules}`;
+${safetyRules}
+
+[후속 질문 생성]
+답변 끝에 반드시 아래 형식으로 사용자가 이어서 물어볼 만한 질문 2~3개를 추가해.
+사용자의 현재 대화 맥락과 사주 데이터를 기반으로 개인화된 질문을 만들어.
+---SUGGESTIONS---
+질문1|질문2|질문3`;
     } else if (mode === 'tarot') {
       systemPrompt = `너는 나다운세 앱의 타로 상담사 '마음이'야.
 타로 카드의 의미를 기반으로 따뜻하고 신비로운 반말 톤으로 상담해.
@@ -350,14 +353,22 @@ ${userName ? `사용자의 이름은 "${userName}"이야. 대화할 때 "${userN
 ${contextBlock}
 
 [대화 규칙]
-- 답변은 2~4문장으로
+- 답변은 4~6문장으로 충분히 풍부하게 해석해줘
 - 타로 카드 이름은 반드시 영어 원문 그대로 사용해 (예: "Six of Pentacles", "The Tower", "Queen of Cups"). 절대 한국어로 번역하지 마.
 - 사용자가 타로 카드를 뽑으면 그 카드의 의미를 해석해줘
 - [타로 카드 선택] 태그로 카드 정보가 전달되면 해당 카드들의 의미를 사용자의 상황에 맞게 종합적으로 해석해줘
 - 카드 해석 시 각 카드의 영어 이름과 의미를 하나씩 설명한 후 종합 해석을 제공해
+- 카드의 상징과 이미지를 활용해 감성적이고 몰입감 있는 해석을 제공해
+- 해석 후 사용자가 실생활에서 적용할 수 있는 구체적인 조언도 함께 해줘
 - 긍정적인 방향으로 안내하되 현실적으로
 - 첫 인사 시 어떤 고민에 대해 카드를 뽑아볼지 물어봐
-${safetyRules}`;
+${safetyRules}
+
+[후속 질문 생성]
+답변 끝에 반드시 아래 형식으로 사용자가 이어서 물어볼 만한 질문 2~3개를 추가해.
+현재 대화 맥락에 맞는 개인화된 질문을 만들어.
+---SUGGESTIONS---
+질문1|질문2|질문3`;
     }
 
     // ── 9. Build Gemini messages ──
@@ -421,12 +432,7 @@ ${safetyRules}`;
           mode,
         };
         if (sproutDeducted) {
-          const { data: updatedUser } = await supabase
-            .from('users')
-            .select('sprout_balance')
-            .eq('id', userId)
-            .single();
-          metaPayload.new_sprout_balance = updatedUser?.sprout_balance ?? 0;
+          metaPayload.new_sprout_balance = newSproutBalance;
         }
         await writer.write(encoder.encode(`data: ${JSON.stringify(metaPayload)}\n\n`));
 
@@ -475,25 +481,41 @@ ${safetyRules}`;
           } catch { /* ignore */ }
         }
 
-        // AI 응답 저장
-        if (fullResponse) {
-          await supabase.from('mind_talk_messages').insert({
-            conversation_id: convId, user_id: userId, role: 'assistant', content: fullResponse,
-            is_paid: sproutDeducted,
-          });
-
-          await supabase
-            .from('mind_talk_conversations')
-            .update({
-              free_messages_used: newConvFreeUsed,
-              message_count: (history?.length || 0) + (message ? 2 : 1),
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', convId);
+        // 사주/타로: 후속 질문 파싱 및 전송
+        let cleanResponse = fullResponse;
+        if ((mode === 'saju' || mode === 'tarot') && fullResponse.includes('---SUGGESTIONS---')) {
+          const parts = fullResponse.split('---SUGGESTIONS---');
+          cleanResponse = parts[0].trim();
+          const suggestionsRaw = parts[1]?.trim();
+          if (suggestionsRaw) {
+            const suggestions = suggestionsRaw.split('|').map(s => s.trim()).filter(Boolean).slice(0, 3);
+            if (suggestions.length > 0) {
+              await writer.write(encoder.encode(`data: ${JSON.stringify({ suggestions })}\n\n`));
+            }
+          }
         }
 
+        // [DONE]을 먼저 전송하여 클라이언트 응답성 확보
         await writer.write(encoder.encode('data: [DONE]\n\n'));
         await writer.close();
+
+        // AI 응답 저장 (suggestions 제외한 본문만 저장)
+        if (cleanResponse) {
+          await Promise.all([
+            supabase.from('mind_talk_messages').insert({
+              conversation_id: convId, user_id: userId, role: 'assistant', content: cleanResponse,
+              is_paid: sproutDeducted,
+            }),
+            supabase
+              .from('mind_talk_conversations')
+              .update({
+                free_messages_used: newConvFreeUsed,
+                message_count: (history?.length || 0) + (message ? 2 : 1),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', convId),
+          ]);
+        }
       } catch (err) {
         console.error('Streaming error:', err);
         try {
