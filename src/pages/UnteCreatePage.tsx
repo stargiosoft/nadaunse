@@ -586,6 +586,39 @@ export function UnteCreatePage() {
                       backgroundColor: '#ffffff',
                     }}
                   />
+
+                  {/* 예시 아이디어 */}
+                  <div className="flex flex-col" style={{ gap: '8px', marginTop: '8px' }}>
+                    <p style={{
+                      fontFamily: font, fontSize: '12px', fontWeight: 400,
+                      lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
+                    }}>
+                      아이디어 예시
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {['미래 남편 얼굴은?', '바람끼 테스트', '난 테무인간인걸까', '최애와 나의 궁합', '전생에 나는 뭐였을까'].map((ex) => (
+                        <button
+                          key={ex}
+                          onClick={() => setIdea(ex)}
+                          className="flex items-center justify-center cursor-pointer"
+                          style={{
+                            height: '28px',
+                            padding: '0 12px',
+                            borderRadius: '9999px',
+                            backgroundColor: '#f9f9f9',
+                            border: '1px solid #e7e7e7',
+                            fontFamily: font,
+                            fontSize: '12px',
+                            fontWeight: 400,
+                            color: '#6d6d6d',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {ex}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* 썸네일 레퍼런스 이미지 (마스터 전용) */}
@@ -704,7 +737,7 @@ export function UnteCreatePage() {
 
                 {/* 레퍼런스 이미지 첨부 */}
                 <div>
-                  <label style={labelStyle}>레퍼런스 이미지 (선택)</label>
+                  <label style={labelStyle}>결과 레퍼런스 이미지 (선택)</label>
                   <p style={{
                     fontFamily: font, fontSize: '12px', fontWeight: 400,
                     lineHeight: '18px', letterSpacing: '-0.24px', color: '#b7b7b7',
@@ -819,39 +852,6 @@ export function UnteCreatePage() {
                 {error && (
                   <p style={{ fontFamily: font, fontSize: '12px', color: '#d4183d' }}>{error}</p>
                 )}
-
-                {/* 예시 아이디어 */}
-                <div className="flex flex-col" style={{ gap: '8px' }}>
-                  <p style={{
-                    fontFamily: font, fontSize: '12px', fontWeight: 400,
-                    lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
-                  }}>
-                    아이디어 예시
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {['미래 남편 얼굴은?', '바람끼 테스트', '난 테무인간인걸까', '최애와 나의 궁합', '전생에 나는 뭐였을까'].map((ex) => (
-                      <button
-                        key={ex}
-                        onClick={() => setIdea(ex)}
-                        className="flex items-center justify-center cursor-pointer"
-                        style={{
-                          height: '28px',
-                          padding: '0 12px',
-                          borderRadius: '9999px',
-                          backgroundColor: '#f9f9f9',
-                          border: '1px solid #e7e7e7',
-                          fontFamily: font,
-                          fontSize: '12px',
-                          fontWeight: 400,
-                          color: '#6d6d6d',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {ex}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 {/* CTA 56px */}
                 <button
