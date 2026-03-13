@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import UnteTestCard from '../components/UnteTestCard';
-import BottomTabBar from '../components/BottomTabBar';
+import { NavigationHeader } from '../components/NavigationHeader';
 import { Skeleton } from '../components/ui/skeleton';
 
 const font = "'Pretendard Variable', sans-serif";
@@ -80,51 +80,22 @@ export function UnteHomePage() {
 
   return (
     <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
-      <div className="w-full max-w-[440px] relative pb-[80px]">
+      <div className="w-full max-w-[440px] relative pb-[100px]">
 
-        {/* 헤더 — 52px 고정 높이 */}
+        {/* 공통 헤더 */}
+        <NavigationHeader title="운세 테스트" onBack={() => navigate(-1)} />
+
+        {/* 헤더 높이 보정 (52px + 8px spacer) */}
+        <div style={{ height: '60px' }} />
+
+        {/* 필터 + 정렬 */}
         <div
-          className="sticky top-0 z-10"
+          className="sticky top-[60px] z-10"
           style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #f3f3f3' }}
         >
           <div
             className="flex items-center justify-between"
-            style={{ height: '52px', padding: '0 20px' }}
-          >
-            <span style={{
-              fontFamily: font, fontSize: '18px', fontWeight: 600,
-              lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
-            }}>
-              운테
-            </span>
-            <button
-              onClick={() => navigate('/unte/create')}
-              className="flex items-center justify-center cursor-pointer"
-              style={{
-                height: '32px',
-                padding: '0 14px',
-                borderRadius: '16px',
-                backgroundColor: '#48b2af',
-                border: 'none',
-                transition: 'transform 0.1s ease',
-              }}
-              onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-              onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-              onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
-            >
-              <span style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 500,
-                color: '#ffffff', letterSpacing: '-0.26px',
-              }}>
-                + 만들기
-              </span>
-            </button>
-          </div>
-
-          {/* 필터 + 정렬 */}
-          <div
-            className="flex items-center justify-between"
-            style={{ padding: '0 20px 12px' }}
+            style={{ padding: '8px 20px 12px' }}
           >
             <div className="flex" style={{ gap: '6px' }}>
               {filterButtons.map((f) => (
@@ -260,7 +231,33 @@ export function UnteHomePage() {
           )}
         </div>
 
-        <BottomTabBar />
+        {/* 하단 고정 CTA */}
+        <div
+          className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] z-10"
+          style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderTop: '1px solid #f3f3f3' }}
+        >
+          <button
+            onClick={() => navigate('/unte/create')}
+            className="w-full flex items-center justify-center cursor-pointer"
+            style={{
+              height: '56px',
+              borderRadius: '16px',
+              backgroundColor: '#48b2af',
+              border: 'none',
+              transition: 'transform 0.1s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+          >
+            <span style={{
+              fontFamily: font, fontSize: '16px', fontWeight: 500,
+              lineHeight: '25px', letterSpacing: '-0.32px', color: '#ffffff',
+            }}>
+              운세 테스트 만들기
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

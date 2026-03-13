@@ -94,6 +94,38 @@ serve(async (req) => {
         newStatus = 'archived'
         break
 
+      case 'discard': {
+        // 미게시 테스트 삭제 (DB + Storage)
+        if (test.status === 'live') {
+          return new Response(
+            JSON.stringify({ success: false, error: '이미 게시된 테스트는 삭제할 수 없습니다.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // 1. Storage 이미지 삭제 (viral-tests/{testId}/ 폴더 전체)
+        const { data: files } = await supabase.storage
+          .from('assets')
+          .list(`viral-tests/${testId}`)
+
+        if (files && files.length > 0) {
+          const filePaths = files.map(f => `viral-tests/${testId}/${f.name}`)
+          await supabase.storage.from('assets').remove(filePaths)
+          console.log(`🗑️ Storage 삭제: ${filePaths.length}개 파일`)
+        }
+
+        // 2. DB 삭제 (results → test 순서, FK 제약)
+        await supabase.from('viral_test_results').delete().eq('test_id', testId)
+        await supabase.from('viral_tests').delete().eq('id', testId)
+
+        console.log(`🗑️ 테스트 discard 완료: ${testId}`)
+
+        return new Response(
+          JSON.stringify({ success: true, testId, status: 'deleted' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       default:
         return new Response(
           JSON.stringify({ success: false, error: `알 수 없는 action: ${action}` }),

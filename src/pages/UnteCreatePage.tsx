@@ -3,10 +3,11 @@
  * ★DESIGN_SYSTEM★ 기반 — 아이디어 입력 → AI 생성 → 검토/승인
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, supabaseUrl } from '../lib/supabase';
+import { NavigationHeader } from '../components/NavigationHeader';
 
 interface GeneratedResult {
   day_master: string;
@@ -14,6 +15,7 @@ interface GeneratedResult {
   result_description: string;
   score: number;
   result_label?: string;
+  result_image_url?: string | null;
 }
 
 interface GeneratedTest {
@@ -41,12 +43,152 @@ export function UnteCreatePage() {
   const [editDescription, setEditDescription] = useState('');
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [imagesLoading, setImagesLoading] = useState(false);
+  const [published, setPublished] = useState(false);
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referencePreview, setReferencePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const generatedRef = useRef<GeneratedTest | null>(null);
+  const [pollTrigger, setPollTrigger] = useState(0);
+  const [regeneratingDayMasters, setRegeneratingDayMasters] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUserId(session?.user?.id || null);
     });
   }, []);
+
+  // generated 상태를 ref에도 동기화 (cleanup에서 최신값 참조용)
+  useEffect(() => {
+    generatedRef.current = generated;
+  }, [generated]);
+
+  // 미게시 테스트 정리 (discard)
+  const discardTest = useCallback(async (testId: string) => {
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) return;
+
+      await fetch(`${supabaseUrl}/functions/v1/viral-test-admin`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'discard', testId }),
+      });
+    } catch (err) {
+      console.error('테스트 정리 실패:', err);
+    }
+  }, []);
+
+  // 이탈 시 미게시 테스트 정리
+  useEffect(() => {
+    return () => {
+      const gen = generatedRef.current;
+      if (gen?.testId && !published) {
+        // 컴포넌트 언마운트 시 discard (sendBeacon 폴백)
+        const token = document.cookie; // sendBeacon용으로는 사용 불가, fire-and-forget fetch
+        discardTest(gen.testId);
+      }
+    };
+  }, [published, discardTest]);
+
+  // 레퍼런스 이미지 preview URL 정리
+  useEffect(() => {
+    return () => {
+      if (referencePreview) URL.revokeObjectURL(referencePreview);
+    };
+  }, [referencePreview]);
+
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 10MB 제한
+    if (file.size > 10 * 1024 * 1024) {
+      setError('이미지는 10MB 이하만 가능해요');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('이미지 파일만 첨부할 수 있어요');
+      return;
+    }
+
+    if (referencePreview) URL.revokeObjectURL(referencePreview);
+    setReferenceImage(file);
+    setReferencePreview(URL.createObjectURL(file));
+    setError('');
+  }, [referencePreview]);
+
+  const handleRemoveImage = useCallback(() => {
+    if (referencePreview) URL.revokeObjectURL(referencePreview);
+    setReferenceImage(null);
+    setReferencePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [referencePreview]);
+
+  // 검토 단계에서 결과 이미지 폴링 (pollTrigger로 재시작 가능)
+  useEffect(() => {
+    if (step !== 'review' || !generated) return;
+
+    const hasAllImages = generated.results.every(r => r.result_image_url);
+    if (hasAllImages) return;
+
+    setImagesLoading(true);
+    pollRef.current = setInterval(async () => {
+      const { data } = await supabase
+        .from('viral_test_results')
+        .select('day_master, result_image_url')
+        .eq('test_id', generated.testId);
+
+      if (!data) return;
+
+      const imageMap = new Map(data.map(d => [d.day_master, d.result_image_url]));
+      const allDone = data.every(d => d.result_image_url);
+
+      setGenerated(prev => prev ? {
+        ...prev,
+        results: prev.results.map(r => ({
+          ...r,
+          result_image_url: imageMap.get(r.day_master) || r.result_image_url,
+        })),
+      } : prev);
+
+      // 재생성 완료된 일간 제거
+      setRegeneratingDayMasters(prev => {
+        const next = new Set(prev);
+        for (const d of data) {
+          if (d.result_image_url && next.has(d.day_master)) {
+            next.delete(d.day_master);
+          }
+        }
+        return next.size === prev.size ? prev : next;
+      });
+
+      if (allDone) {
+        setImagesLoading(false);
+        if (pollRef.current) clearInterval(pollRef.current);
+      }
+    }, 5000);
+
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [step, generated?.testId, pollTrigger]);
+
+  // 레퍼런스 이미지 base64 변환 헬퍼
+  const getBase64 = useCallback(async (): Promise<string | undefined> => {
+    if (!referenceImage) return undefined;
+    const buffer = await referenceImage.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return `data:${referenceImage.type};base64,${btoa(binary)}`;
+  }, [referenceImage]);
 
   const handleGenerate = async () => {
     if (!idea.trim() || idea.trim().length < 2) {
@@ -58,13 +200,23 @@ export function UnteCreatePage() {
     setError('');
 
     try {
+      const referenceImageBase64 = await getBase64();
+
       const response = await fetch(`${supabaseUrl}/functions/v1/generate-viral-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea: idea.trim(), creatorId: userId }),
+        body: JSON.stringify({
+          idea: idea.trim(),
+          creatorId: userId,
+          ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+        }),
       });
 
-      const text = await response.text();
+      if (!response.ok && response.status === 413) {
+        throw new Error('이미지가 너무 커요. 더 작은 이미지를 사용해주세요.');
+      }
+
+      const text = await response.text().catch(() => '') || '';
       let data;
       try {
         data = JSON.parse(text);
@@ -125,12 +277,122 @@ export function UnteCreatePage() {
         if (!adminData.success) throw new Error(adminData.error);
       }
 
+      setPublished(true);
       navigate(`/unte/${generated.slug}`);
     } catch (err) {
       console.error('게시 실패:', err);
       setError(err instanceof Error ? err.message : '게시에 실패했습니다.');
       setStep('review');
     }
+  };
+
+  // 기획 다시하기 (Step 1+2 재실행, 기존 testId 재활용)
+  const handleRegenerate = async () => {
+    if (!generated) return;
+    setStep('generating');
+    setError('');
+
+    try {
+      const referenceImageBase64 = await getBase64();
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/generate-viral-test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idea: idea.trim(),
+          creatorId: userId,
+          testId: generated.testId,
+          ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+        }),
+      });
+
+      const text = await response.text().catch(() => '') || '';
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('서버 응답을 처리할 수 없습니다.');
+      }
+      if (!data.success) throw new Error(data.error || 'AI 생성에 실패했습니다.');
+
+      setGenerated(data);
+      setEditTitle(data.title);
+      setEditDescription(data.description || '');
+      setRegeneratingDayMasters(new Set());
+      setStep('review');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '기획 다시하기에 실패했습니다.');
+      setStep('review');
+    }
+  };
+
+  // 이미지 전체 다시 만들기
+  const handleRegenerateImages = async () => {
+    if (!generated) return;
+
+    // 로컬 이미지 초기화
+    setGenerated(prev => prev ? {
+      ...prev,
+      results: prev.results.map(r => ({ ...r, result_image_url: null })),
+    } : prev);
+    setImagesLoading(true);
+    setRegeneratingDayMasters(new Set(generated.results.map(r => r.day_master)));
+
+    // DB 이미지 URL 초기화 (폴링이 새 이미지만 감지하도록)
+    await supabase.from('viral_test_results')
+      .update({ result_image_url: null, share_image_url: null })
+      .eq('test_id', generated.testId);
+    await supabase.from('viral_tests')
+      .update({ thumbnail_url: null })
+      .eq('id', generated.testId);
+
+    // 이미지 생성 API 호출 (fire-and-forget)
+    const referenceImageBase64 = await getBase64();
+    fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        testId: generated.testId,
+        ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+      }),
+    }).catch(console.error);
+
+    setPollTrigger(c => c + 1);
+  };
+
+  // 개별 이미지 다시 만들기
+  const handleRegenerateSingleImage = async (dayMaster: string) => {
+    if (!generated) return;
+
+    // 해당 이미지만 초기화
+    setGenerated(prev => prev ? {
+      ...prev,
+      results: prev.results.map(r =>
+        r.day_master === dayMaster ? { ...r, result_image_url: null } : r
+      ),
+    } : prev);
+    setRegeneratingDayMasters(prev => new Set([...prev, dayMaster]));
+    setImagesLoading(true);
+
+    // DB 이미지 URL 초기화
+    await supabase.from('viral_test_results')
+      .update({ result_image_url: null, share_image_url: null })
+      .eq('test_id', generated.testId)
+      .eq('day_master', dayMaster);
+
+    // 이미지 생성 API 호출 (해당 일간만)
+    const referenceImageBase64 = await getBase64();
+    fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        testId: generated.testId,
+        dayMasters: [dayMaster],
+        ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+      }),
+    }).catch(console.error);
+
+    setPollTrigger(c => c + 1);
   };
 
   const elementEmoji: Record<string, string> = {
@@ -171,36 +433,15 @@ export function UnteCreatePage() {
     <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
       <div className="w-full max-w-[440px] relative">
 
-        {/* 헤더 — 52px */}
-        <div
-          className="sticky top-0 z-10"
-          style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #f3f3f3' }}
-        >
-          <div
-            className="flex items-center"
-            style={{ height: '52px', padding: '0 20px', gap: '12px' }}
-          >
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center justify-center cursor-pointer"
-              style={{
-                width: '32px', height: '32px',
-                background: 'none', border: 'none',
-                fontFamily: font, fontSize: '18px', color: '#151515',
-              }}
-            >
-              ←
-            </button>
-            <span style={{
-              fontFamily: font, fontSize: '18px', fontWeight: 600,
-              lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
-            }}>
-              테스트 만들기
-            </span>
-          </div>
-        </div>
+        {/* 헤더 — NavigationHeader 공통 컴포넌트 */}
+        <NavigationHeader title="테스트 만들기" onBack={() => {
+          if (generated?.testId && !published) {
+            discardTest(generated.testId);
+          }
+          navigate(-1);
+        }} />
 
-        <div style={{ padding: '24px 20px 100px', overflow: 'hidden' }}>
+        <div style={{ padding: '24px 20px 100px', paddingTop: '84px', overflow: 'hidden' }}>
           <AnimatePresence mode="wait">
             {/* Step 1: 아이디어 입력 */}
             {step === 'input' && (
@@ -251,6 +492,117 @@ export function UnteCreatePage() {
                       backgroundColor: '#ffffff',
                     }}
                   />
+                </div>
+
+                {/* 레퍼런스 이미지 첨부 */}
+                <div>
+                  <label style={labelStyle}>레퍼런스 이미지 (선택)</label>
+                  <p style={{
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '18px', letterSpacing: '-0.24px', color: '#b7b7b7',
+                    marginBottom: '8px',
+                  }}>
+                    첨부하면 이 이미지 스타일을 참고해서 결과 이미지를 생성해요
+                  </p>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+
+                  {referencePreview ? (
+                    <div
+                      style={{
+                        position: 'relative',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        border: '1px solid #e7e7e7',
+                      }}
+                    >
+                      <img
+                        src={referencePreview}
+                        alt="레퍼런스 이미지"
+                        style={{
+                          width: '100%',
+                          maxHeight: '240px',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                      {/* 삭제 버튼 */}
+                      <button
+                        onClick={handleRemoveImage}
+                        className="flex items-center justify-center cursor-pointer"
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(0,0,0,0.5)',
+                          border: 'none',
+                          color: '#ffffff',
+                          fontFamily: font,
+                          fontSize: '14px',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ✕
+                      </button>
+                      {/* 파일명 */}
+                      <div
+                        className="flex items-center"
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#f9f9f9',
+                          gap: '6px',
+                        }}
+                      >
+                        <span style={{
+                          fontFamily: font, fontSize: '12px', fontWeight: 400,
+                          color: '#6d6d6d',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {referenceImage?.name}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex flex-col items-center justify-center cursor-pointer"
+                      style={{
+                        height: '120px',
+                        borderRadius: '16px',
+                        border: '1.5px dashed #d5d5d5',
+                        backgroundColor: '#fafafa',
+                        gap: '8px',
+                        transition: 'border-color 0.15s ease',
+                      }}
+                      onPointerEnter={e => { e.currentTarget.style.borderColor = '#48b2af'; }}
+                      onPointerLeave={e => { e.currentTarget.style.borderColor = '#d5d5d5'; }}
+                    >
+                      <span style={{ fontSize: '28px', lineHeight: 1 }}>🖼️</span>
+                      <span style={{
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        lineHeight: '18px', letterSpacing: '-0.26px', color: '#848484',
+                      }}>
+                        이미지를 첨부해주세요
+                      </span>
+                      <span style={{
+                        fontFamily: font, fontSize: '11px', fontWeight: 400,
+                        color: '#b7b7b7',
+                      }}>
+                        JPG, PNG, WEBP · 최대 10MB
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 {error && (
@@ -467,15 +819,69 @@ export function UnteCreatePage() {
                   )}
                 </div>
 
+                {/* 다시 만들기 버튼들 */}
+                <div className="flex" style={{ gap: '8px' }}>
+                  <button
+                    onClick={handleRegenerate}
+                    className="flex-1 flex items-center justify-center cursor-pointer"
+                    style={{
+                      height: '40px',
+                      borderRadius: '12px',
+                      border: '1px solid #e7e7e7',
+                      backgroundColor: '#ffffff',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onPointerEnter={e => { e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
+                    onPointerLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                  >
+                    <span style={{
+                      fontFamily: font, fontSize: '13px', fontWeight: 500,
+                      lineHeight: '18px', letterSpacing: '-0.26px', color: '#6d6d6d',
+                    }}>
+                      기획 다시하기
+                    </span>
+                  </button>
+                  <button
+                    onClick={handleRegenerateImages}
+                    disabled={imagesLoading}
+                    className="flex-1 flex items-center justify-center cursor-pointer"
+                    style={{
+                      height: '40px',
+                      borderRadius: '12px',
+                      border: '1px solid #e7e7e7',
+                      backgroundColor: '#ffffff',
+                      opacity: imagesLoading ? 0.5 : 1,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onPointerEnter={e => { if (!imagesLoading) e.currentTarget.style.backgroundColor = '#f9f9f9'; }}
+                    onPointerLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                  >
+                    <span style={{
+                      fontFamily: font, fontSize: '13px', fontWeight: 500,
+                      lineHeight: '18px', letterSpacing: '-0.26px', color: '#6d6d6d',
+                    }}>
+                      이미지 다시 만들기
+                    </span>
+                  </button>
+                </div>
+
                 {/* 10개 결과 미리보기 */}
                 <div>
-                  <p style={{
-                    fontFamily: font, fontSize: '16px', fontWeight: 600,
-                    lineHeight: '22px', letterSpacing: '-0.32px', color: '#151515',
-                    marginBottom: '12px',
-                  }}>
-                    10가지 유형 결과
-                  </p>
+                  <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+                    <p style={{
+                      fontFamily: font, fontSize: '16px', fontWeight: 600,
+                      lineHeight: '22px', letterSpacing: '-0.32px', color: '#151515',
+                    }}>
+                      10가지 유형 결과
+                    </p>
+                    {imagesLoading && (
+                      <span style={{
+                        fontFamily: font, fontSize: '12px', fontWeight: 400, color: '#848484',
+                      }}>
+                        이미지 생성 중...
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-col" style={{ gap: '8px' }}>
                     {generated.results.map((r) => (
                       <div
@@ -487,6 +893,61 @@ export function UnteCreatePage() {
                           border: '1px solid #e7e7e7',
                         }}
                       >
+                        {/* 결과 이미지 */}
+                        {regeneratingDayMasters.has(r.day_master) ? (
+                          <div
+                            className="flex flex-col items-center justify-center"
+                            style={{
+                              marginBottom: '12px',
+                              borderRadius: '12px',
+                              aspectRatio: '3/4',
+                              backgroundColor: '#f9f9f9',
+                              gap: '8px',
+                            }}
+                          >
+                            <motion.span
+                              animate={{ rotate: 360 }}
+                              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                              style={{ fontSize: '24px' }}
+                            >
+                              🎨
+                            </motion.span>
+                            <span style={{
+                              fontFamily: font, fontSize: '12px', fontWeight: 400, color: '#848484',
+                            }}>
+                              이미지 생성 중...
+                            </span>
+                          </div>
+                        ) : r.result_image_url ? (
+                          <div style={{ position: 'relative', marginBottom: '12px', borderRadius: '12px', overflow: 'hidden' }}>
+                            <img
+                              src={r.result_image_url}
+                              alt={r.result_title}
+                              style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }}
+                            />
+                            <button
+                              onClick={() => handleRegenerateSingleImage(r.day_master)}
+                              className="flex items-center justify-center cursor-pointer"
+                              style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(0,0,0,0.45)',
+                                border: 'none',
+                                color: '#ffffff',
+                                fontFamily: font,
+                                fontSize: '16px',
+                                lineHeight: 1,
+                              }}
+                              title="이미지 다시 만들기"
+                            >
+                              ↻
+                            </button>
+                          </div>
+                        ) : null}
                         <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
                           <div className="flex items-center" style={{ gap: '8px' }}>
                             <span style={{ fontSize: '20px' }}>{elementEmoji[r.day_master] || '✨'}</span>

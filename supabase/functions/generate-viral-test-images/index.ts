@@ -2,18 +2,25 @@
 // --no-verify-jwt 배포 필수
 // 썸네일 1장 + 결과 이미지 10장 생성 (공유 이미지 = 결과 이미지 동일 사용)
 // PNG 직접 업로드 (ImageMagick WASM 제거 — Edge Function 메모리 한도 초과 방지)
+// 이미지 생성 모델: Gemini 3.1 Flash Image Preview (레퍼런스 이미지 기반 생성 지원)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')!
 
+// 한글 일간 → 로마자 매핑 (Supabase Storage 키에 한글 사용 불가)
+const DAY_MASTER_ROMAN: Record<string, string> = {
+  '갑': 'gap', '을': 'eul', '병': 'byeong', '정': 'jeong', '무': 'mu',
+  '기': 'gi', '경': 'gyeong', '신': 'sin', '임': 'im', '계': 'gye',
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCorsPreflightRequest(req)
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { testId } = await req.json()
+    const { testId, referenceImage, dayMasters } = await req.json()
 
     if (!testId) {
       return new Response(
@@ -41,20 +48,44 @@ serve(async (req) => {
 
     console.log(`🎨 이미지 생성 시작: "${test.title}" (결과 ${results.length}개)`)
 
+    // 레퍼런스 이미지 파싱 (data:image/png;base64,... → { mimeType, data })
+    let refImagePart: { inline_data: { mime_type: string; data: string } } | null = null
+    if (referenceImage && typeof referenceImage === 'string') {
+      const match = referenceImage.match(/^data:(image\/[a-z+]+);base64,(.+)$/i)
+      if (match) {
+        refImagePart = { inline_data: { mime_type: match[1], data: match[2] } }
+        console.log(`📎 레퍼런스 이미지 감지: ${match[1]}`)
+      }
+    }
+
     // 2. 이미지 생성 헬퍼 (PNG 직접 업로드)
     async function generateAndUploadImage(
       prompt: string,
       storagePath: string
     ): Promise<string | null> {
       try {
+        // 프롬프트 parts 구성: 텍스트 + (옵션) 레퍼런스 이미지
+        const parts: Array<Record<string, unknown>> = [{ text: prompt }]
+        if (refImagePart) {
+          // 레퍼런스 이미지를 텍스트보다 먼저 배치 (스타일 인식 우선)
+          parts.unshift(refImagePart)
+          // 스타일만 참고, 원본 복제 금지 (저작권/초상권 보호)
+          parts.push({ text: `CRITICAL INSTRUCTIONS:
+1. STYLE ONLY: Use the reference image ONLY as a style guide — match the artistic style, color palette, lighting, composition, and overall mood.
+2. DO NOT COPY: Never reproduce, copy, or closely resemble any real person's face, likeness, or identity from the reference. Generate completely new, fictional characters with different facial features, hair, body proportions, and clothing.
+3. NO REAL CELEBRITIES: If the reference contains a real person (celebrity, idol, public figure), you MUST create an entirely original fictional character. The generated person must NOT be recognizable as any real individual.
+4. STYLE MATCHING: If the reference is photorealistic, generate photorealistic images. If it's an illustration, match that illustration style. Do NOT default to anime/cartoon unless the reference is that style.
+5. ORIGINALITY: Every generated image must be a unique, original creation that could not be mistaken for a photo or depiction of any existing real person.` })
+        }
+
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseModalities: ['image', 'text'] },
+              contents: [{ parts }],
+              generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
             }),
           }
         )
@@ -106,54 +137,113 @@ serve(async (req) => {
     }
 
     // 3. 썸네일 생성 (DB에 저장된 프롬프트 우선 사용)
-    const thumbnailPrompt = test.thumbnail_prompt || `Create a vibrant, eye-catching thumbnail for a viral quiz/test titled "${test.title}".
-Style: Flat 2D illustration, bold colors, fun and playful mood.
-The image should be instantly readable as a quiz thumbnail at small sizes.
-No text in the image. Full-bleed, no borders or margins.
-Aspect ratio: square (1:1).`
+    const hasRef = !!refImagePart
 
-    const thumbnailUrl = await generateAndUploadImage(
-      thumbnailPrompt,
-      `viral-tests/${testId}/thumbnail.png`
-    )
+    // 레퍼런스 없을 때 기본 스타일: B급 병맛 캐릭터 (잘파세대 바이럴 스타일)
+    const DEFAULT_STYLE = `Style: Korean internet meme / B-grade humor illustration style. Simple white blob-like or stick-figure characters with thick black outlines, minimal detail, exaggerated funny expressions. Pastel or solid color backgrounds (pink, light blue, white). Intentionally crude and goofy drawing style like Korean community test memes (에브리타임/인스타 테스트). Cute but absurd, comedic mood. Think: simple round white characters with dot eyes, like Korean emoticon mascots.`
 
-    if (thumbnailUrl) {
-      await supabase.from('viral_tests')
-        .update({ thumbnail_url: thumbnailUrl })
-        .eq('id', testId)
+    // 레퍼런스 있을 때 프롬프트에서 스타일 키워드 제거 (일러스트/애니 지시가 실사 레퍼런스를 덮어쓰는 문제 방지)
+    function stripStyleKeywords(prompt: string): string {
+      const stylePatterns = [
+        /\b(anime|manga|cartoon|2d|flat|illustration|illustrated|digital art|digital painting|comic|webtoon|cel[- ]shad(ed|ing))\b/gi,
+        /\b(watercolor|oil painting|sketch|line art|lineart|hand[- ]drawn|pixel art)\b/gi,
+        /\b(vibrant|bold|pastel|neon)\s+(color|colour|palette|tone)s?\b/gi,
+        /style:\s*[^.;,\n]+/gi,
+        /\bin the style of\s+[^.;,\n]+/gi,
+        /\b(flat|bold|thick)\s+(outlines?|lines?|strokes?)\b/gi,
+      ]
+      let cleaned = prompt
+      for (const pattern of stylePatterns) {
+        cleaned = cleaned.replace(pattern, '')
+      }
+      return cleaned.replace(/\s{2,}/g, ' ').trim()
     }
 
-    // 4. 결과 이미지 10장 (순차 생성 — API rate limit 고려)
+    const thumbnailPrompt = hasRef
+      ? `${test.thumbnail_prompt ? stripStyleKeywords(test.thumbnail_prompt) : `Create an eye-catching thumbnail for a viral quiz titled "${test.title}".`}\nNo text in the image. Aspect ratio: square (1:1).`
+      : (test.thumbnail_prompt
+          ? `${test.thumbnail_prompt}\n${DEFAULT_STYLE}\nNo text in the image. Aspect ratio: square (1:1).`
+          : `Create a thumbnail for a viral quiz/test titled "${test.title}".\n${DEFAULT_STYLE}\nNo text in the image. Full-bleed, no borders or margins. Aspect ratio: square (1:1).`)
+
+    // 4. 썸네일 + 결과 이미지 병렬 생성 (3장씩 배치)
     const styleGuide = test.image_style_guide || ''
+    const BATCH_SIZE = 3
 
-    for (const result of results) {
-      // DB에 저장된 이미지 가이드 에이전트의 프롬프트 우선 사용
-      const resultPrompt = result.image_prompt
-        ? `${result.image_prompt}\n\nStyle consistency: ${styleGuide}\nAspect ratio: 3:4 (portrait). No text in the image.`
-        : `Create a result card illustration for a quiz result: "${result.result_title}".
-Score: ${result.score}/100. Element: ${result.element}.
-Style: Flat 2D illustration, vibrant colors, expressive character.
-The image should visually represent the personality type described.
-No text in the image. Full-bleed, no borders.
-Aspect ratio: 3:4 (portrait).`
+    // 모든 생성 작업을 태스크 배열로 준비
+    interface ImageTask {
+      type: 'thumbnail' | 'result'
+      prompt: string
+      storagePath: string
+      resultId?: string
+    }
 
-      const resultImageUrl = await generateAndUploadImage(
-        resultPrompt,
-        `viral-tests/${testId}/result-${result.day_master}.png`
-      )
+    const tasks: ImageTask[] = []
 
-      // DB 업데이트 (결과 이미지 = 공유 이미지로 동일 사용)
-      if (resultImageUrl) {
-        await supabase.from('viral_test_results')
-          .update({
-            result_image_url: resultImageUrl,
-            share_image_url: resultImageUrl,
-          })
-          .eq('id', result.id)
+    // 썸네일은 개별 이미지 재생성이 아닐 때만
+    if (!dayMasters || dayMasters.length === 0) {
+      tasks.push({ type: 'thumbnail', prompt: thumbnailPrompt, storagePath: `viral-tests/${testId}/thumbnail.png` })
+    }
+
+    // dayMasters 지정 시 해당 결과만 필터링
+    const targetResults = (dayMasters && dayMasters.length > 0)
+      ? results.filter((r: { day_master: string }) => dayMasters.includes(r.day_master))
+      : results
+
+    for (const result of targetResults) {
+      const rawPrompt = result.image_prompt || ''
+
+      let basePrompt: string
+      if (hasRef) {
+        // 레퍼런스 있을 때: 스타일 키워드 제거 → 주제/포즈/상황만 남김
+        const contentOnly = rawPrompt
+          ? stripStyleKeywords(rawPrompt)
+          : `A person representing: "${result.result_title}". Score: ${result.score}/100.`
+        basePrompt = `${contentOnly}\nAspect ratio: 3:4 (portrait). No text in the image.`
+      } else {
+        basePrompt = rawPrompt
+          ? `${rawPrompt}\n\nStyle consistency: ${styleGuide}\nAspect ratio: 3:4 (portrait). No text in the image.`
+          : `Create a result image for: "${result.result_title}". Score: ${result.score}/100. The image should visually represent this personality type.\nAspect ratio: 3:4 (portrait). No text in the image.`
       }
 
-      // Rate limit 대기 (500ms)
-      await new Promise(r => setTimeout(r, 500))
+      const resultPrompt = hasRef
+        ? basePrompt
+        : `${basePrompt}\n${DEFAULT_STYLE}\nFull-bleed, no borders.`
+
+      const romanKey = DAY_MASTER_ROMAN[result.day_master] || result.day_master
+      tasks.push({
+        type: 'result',
+        prompt: resultPrompt,
+        storagePath: `viral-tests/${testId}/result-${romanKey}.png`,
+        resultId: result.id,
+      })
+    }
+
+    // 배치 병렬 실행 (BATCH_SIZE장씩)
+    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+      const batch = tasks.slice(i, i + BATCH_SIZE)
+      console.log(`🎨 배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(tasks.length / BATCH_SIZE)} (${batch.length}장)`)
+
+      const batchResults = await Promise.all(
+        batch.map(async (task) => {
+          const url = await generateAndUploadImage(task.prompt, task.storagePath)
+          return { ...task, url }
+        })
+      )
+
+      // DB 업데이트 (배치 완료 후)
+      for (const result of batchResults) {
+        if (!result.url) continue
+
+        if (result.type === 'thumbnail') {
+          await supabase.from('viral_tests')
+            .update({ thumbnail_url: result.url })
+            .eq('id', testId)
+        } else if (result.resultId) {
+          await supabase.from('viral_test_results')
+            .update({ result_image_url: result.url, share_image_url: result.url })
+            .eq('id', result.resultId)
+        }
+      }
     }
 
     // 5. 상태 업데이트: generating → review (이미 review이면 유지)

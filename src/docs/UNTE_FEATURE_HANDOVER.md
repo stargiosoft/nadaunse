@@ -1,7 +1,7 @@
 # 운테 (바이럴 사주 테스트) 기능 개발 인계 문서
 
 > **작성일**: 2026-03-12
-> **최종 업데이트**: 2026-03-12
+> **최종 업데이트**: 2026-03-13
 > **브랜치**: staging (커밋 ec25ac38 ~ 현재)
 > **상태**: 스테이징 배포 완료, 프로덕션 미배포
 
@@ -41,7 +41,7 @@
 | 파일 | 라우트 | 역할 |
 |------|--------|------|
 | `src/pages/UnteHomePage.tsx` | `/unte` | 테스트 목록 (인기순/최신순, 카테고리 필터) |
-| `src/pages/UnteCreatePage.tsx` | `/unte/create` | 아이디어 입력 → AI 3단계 생성 → 검토/승인 → 게시 |
+| `src/pages/UnteCreatePage.tsx` | `/unte/create` | 아이디어 입력 + 레퍼런스 이미지 첨부 → AI 3단계 생성 → 검토/승인 → 게시 |
 | `src/pages/UnteLandingPage.tsx` | `/unte/:slug` | 테스트 랜딩 (썸네일 + 제목 + CTA) |
 | `src/pages/UntePlayPage.tsx` | `/unte/:slug/play` | 사주 선택/입력 → 결과 로딩 → 애니메이션 → 결과 |
 | `src/pages/UnteResultPage.tsx` | `/unte/:slug/result` | 결과 카드 + ResultLabelCard + 공유 (카카오/링크/이미지) |
@@ -70,6 +70,7 @@
 
 | 컴포넌트 | 용도 |
 |---------|------|
+| `src/components/NavigationHeader.tsx` | 공통 헤더 (UnteCreatePage에서 사용) |
 | `src/components/FreeSajuSelectPage.tsx` | 기존 사주 선택 (`mode="consult"` + `onConsultComplete` 콜백) |
 | `src/components/FreeBirthInfoInput.tsx` | 사주 정보 입력 (`mode="consult"` + `onConsultComplete` + `skipAutoComplete`) |
 | `src/components/ui/PageLoader.tsx` | 공통 로딩 UI (checking/loading 단계) |
@@ -82,9 +83,9 @@
 | 함수 | 경로 | JWT | 역할 |
 |------|------|-----|------|
 | `generate-viral-test` | `supabase/functions/generate-viral-test/index.ts` | `--no-verify-jwt` | 3단계 AI 파이프라인 (기획 → 이미지 가이드 → 비동기 이미지 생성) |
-| `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini Image + ImageMagick WASM) |
+| `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini 2.5 Flash Image, 3장씩 배치 병렬) |
 | `get-viral-test-result` | `supabase/functions/get-viral-test-result/index.ts` | `--no-verify-jwt` | JDN 로컬 일간 계산 → 결과 매칭 + play 기록 |
-| `viral-test-admin` | `supabase/functions/viral-test-admin/index.ts` | JWT 필요 | publish/archive (creator_id 확인) |
+| `viral-test-admin` | `supabase/functions/viral-test-admin/index.ts` | JWT 필요 | publish/archive/discard (creator_id 확인) |
 
 ### DB 마이그레이션
 
@@ -166,14 +167,15 @@
 ### 크리에이터 플로우 (테스트 생성 — 3단계 AI 파이프라인)
 ```
 UnteHomePage [+ 만들기 버튼]
-  → UnteCreatePage
-    → Step 1: 아이디어 텍스트 입력
+  → UnteCreatePage (NavigationHeader 공통 컴포넌트 사용)
+    → Step 1: 아이디어 텍스트 입력 + 레퍼런스 이미지 첨부 (선택)
     → Step 2: AI 생성 로딩 (generate-viral-test Edge Function)
-      ├─ Stage 1: Planning Agent (기획 — 제목, 설명, result_format, 10개 결과+라벨)
-      ├─ Stage 2: Image Guide Agent (이미지 가이드 — 스타일, 썸네일/결과 프롬프트)
-      └─ Stage 3: 비동기 이미지 생성 (generate-viral-test-images 호출)
-    → Step 3: 검토 (제목/설명 편집, 10개 결과+라벨 미리보기)
+      ├─ Stage 1: Planning Agent (기획 — MZ 바이럴 톤, 결과 밈/유행어 기반)
+      ├─ Stage 2: Image Guide Agent (이미지 가이드 — B급 병맛 or 레퍼런스 스타일)
+      └─ Stage 3: 비동기 이미지 생성 (generate-viral-test-images, 3장씩 배치 병렬)
+    → Step 3: 검토 (제목/설명 편집, 10개 결과+라벨 미리보기, 이미지 폴링)
     → Step 4: 게시 (viral-test-admin → status='live')
+    → [이탈 시] discard (viral-test-admin → DB+Storage 정리)
   → UnteLandingPage (생성된 테스트)
 ```
 
@@ -209,26 +211,37 @@ UnteHomePage [카드 클릭] or 공유 링크
 
 ### generate-viral-test (3단계 AI 파이프라인)
 - **모델**: Gemini 2.5 Flash (`gemini-2.5-flash`)
-- **입력**: `{ idea: string, creatorId: string }`
+- **입력**: `{ idea: string, creatorId: string, referenceImage?: string }`
+  - `referenceImage`: base64 data URI (프론트에서 변환, 선택사항)
 - **Stage 1 — Planning Agent**:
-  - 후킹 제목 기법 (질문형, 금지어 활용, 숫자, 논란형 등)
+  - **톤앤매너**: MZ/알파세대 타겟, 밈·커뮤니티 용어 필수 사용
+  - 올드한 운세 말투 금지 ("듬직한 리더형" ❌ → "안심 ZONE 지박령" ✅)
+  - result_title: 단톡방 캡쳐 각 나올 정도의 밈/유행어 기반
+  - result_description: 1~2줄 짧고 임팩트, 친구 말투
   - result_format 자동 결정 (아이디어 특성에 맞게)
-  - result_label 규칙: percentage → "N%", score → "N점", ranking → 등급, image_focus → 감성 라벨
   - 출력: JSON (title, description, template_type, is_adult, result_format, results[10])
 - **Stage 2 — Image Guide Agent**:
-  - Planning Agent 결과를 기반으로 영문 이미지 프롬프트 생성
+  - 레퍼런스 이미지 유무에 따라 스타일 분기:
+    - **레퍼런스 있음**: 레퍼런스 스타일 따르는 프롬프트 생성
+    - **레퍼런스 없음**: B급 병맛 한국 밈 캐릭터 스타일 (졸라맨/흰 동글이/만두 캐릭터)
   - 출력: style_guide, thumbnail_prompt, results[].image_prompt
   - DB 저장: `viral_tests.thumbnail_prompt`, `viral_tests.image_style_guide`, `viral_test_results.image_prompt`
-- **Stage 3**: 비동기로 `generate-viral-test-images` Edge Function 호출
+- **Stage 3**: 비동기로 `generate-viral-test-images` 호출 (referenceImage 전달)
 - **상태 변화**: `generating` (생성 중) → `review` (이미지 완료 후)
 
 ### generate-viral-test-images
 - **모델**: Gemini 2.5 Flash Image (`gemini-2.5-flash-image`)
-- **입력**: `{ testId: string }`
-- **동작**: DB에 저장된 프롬프트(`thumbnail_prompt`, `image_prompt`) 우선 사용 → fallback으로 제네릭 프롬프트
-- **처리**: 썸네일 1장 + 결과 이미지 10장 + 공유 카드 10장 → ImageMagick WASM WebP 변환 → Supabase Storage 업로드
-- **스토리지**: `assets/viral-tests/{testId}/thumbnail.webp`, `result-{dayMaster}.webp`, `share-{dayMaster}.webp`
-- **Rate limit**: 순차 생성, 500ms 간격
+- **입력**: `{ testId: string, referenceImage?: string }`
+- **레퍼런스 이미지 처리**:
+  - base64 data URI 파싱 → Gemini API `inline_data`로 전달
+  - **스타일만 참고, 원본 복제 금지** (저작권/초상권 보호 프롬프트)
+  - 실제 인물 얼굴/외모 복제 금지, 완전히 새로운 가상 인물 생성
+  - `stripStyleKeywords()`: 프롬프트에서 일러스트/애니 스타일 키워드 자동 제거 (레퍼런스 스타일 우선)
+- **기본 스타일** (레퍼런스 없을 때): B급 병맛 한국 커뮤니티 밈 스타일
+  - 흰색 blob/졸라맨 캐릭터, 두꺼운 검정 아웃라인, 과장된 표정, 파스텔 배경
+- **처리**: 썸네일 1장 + 결과 이미지 10장 → **3장씩 배치 병렬** (`Promise.all`) → PNG 직접 Supabase Storage 업로드
+- **스토리지**: `assets/viral-tests/{testId}/thumbnail.png`, `result-{romanKey}.png`
+  - 로마자 매핑: 갑→gap, 을→eul, 병→byeong, 정→jeong, 무→mu, 기→gi, 경→gyeong, 신→sin, 임→im, 계→gye
 
 ### get-viral-test-result
 - **입력**: `{ testId, birthDate, birthTime, gender, calendarType?, fingerprint?, userId? }`
@@ -245,8 +258,14 @@ UnteHomePage [카드 클릭] or 공유 링크
 - **기록**: `viral_test_plays` INSERT + `play_count` 증가
 
 ### viral-test-admin
-- **입력**: `{ action: 'publish'|'archive', testId }`
+- **입력**: `{ action: 'publish'|'archive'|'discard', testId }`
 - **인증**: JWT 필수, creator_id 확인 또는 master role
+- **액션**:
+  - `publish`: `review` → `live` (published_at 기록)
+  - `archive`: 아무 상태 → `archived`
+  - `discard`: 미게시 테스트 완전 삭제 (live 상태 거부)
+    - Storage `viral-tests/{testId}/` 폴더 전체 삭제
+    - DB `viral_test_results` → `viral_tests` 순서 삭제 (FK 제약)
 
 ---
 
@@ -272,6 +291,21 @@ const dayMaster = CHEONGAN[index];
 ```
 
 검증: `saju-calculator.html`의 `(jd + 49) % 60`에서 천간 부분 `% 10`과 일치 확인됨.
+
+### 레퍼런스 이미지 기반 생성
+`UnteCreatePage`에서 이미지 첨부 → base64 변환 → Edge Function 전달 → Gemini `inline_data`로 스타일 참고.
+
+- **프론트**: `<input type="file" accept="image/*">` → `FileReader` → base64 data URI
+- **Edge Function**: data URI 파싱 → `{ inline_data: { mime_type, data } }`
+- **저작권 보호**: 실제 인물 복제 금지 프롬프트 (얼굴/외모 원본 사용 불가)
+- **스타일 키워드 제거**: `stripStyleKeywords()` — 레퍼런스 있을 때 프롬프트 내 `anime`, `illustration`, `digital art` 등 자동 제거
+
+### 미게시 테스트 자동 정리 (Discard)
+검토 단계에서 게시하지 않고 이탈 시 DB + Storage 자동 정리.
+
+- **헤더 뒤로가기**: `discardTest()` 호출 후 `navigate(-1)`
+- **컴포넌트 언마운트**: cleanup effect에서 `discardTest()` 호출 (published 아닌 경우만)
+- **서버**: `viral-test-admin` → `discard` 액션 → Storage 파일 삭제 + DB 행 삭제
 
 ### ResultLabelCard (이미지 없을 때 비주얼)
 `UnteResultPage.tsx` 내 인라인 컴포넌트. AI 이미지가 아직 없을 때 표시:
@@ -323,13 +357,14 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 ```
 
 ### Edge Function 환경변수 (프로덕션 확인 필요)
-- `GOOGLE_API_KEY` — Gemini 2.5 Flash / Gemini Image 사용
+- `GOOGLE_API_KEY` — Gemini 2.5 Flash / Gemini 2.5 Flash Image 사용
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — 자동 설정
 - ~~`SAJU_API_KEY`~~ — **불필요** (JDN 로컬 계산으로 대체)
 
 ### Supabase Storage
 - 버킷 `assets` 내 `viral-tests/` 경로 사용 (기존 assets 버킷)
-- 이미지 경로: `viral-tests/{testId}/thumbnail.webp`, `result-{dayMaster}.webp`, `share-{dayMaster}.webp`, `share-card-{dayMaster}.png`
+- 이미지 경로: `viral-tests/{testId}/thumbnail.png`, `result-{romanKey}.png`
+- 공유 카드: `viral-tests/{testId}/share-card-{dayMaster}.png`
 
 ### 프론트엔드
 - staging → production cherry-pick (MEMORY.md 규칙 준수)
@@ -344,7 +379,7 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 | 항목 | 스펙 |
 |------|------|
 | 레이아웃 | `bg-white min-h-screen w-full flex justify-center` → `max-w-[440px]` |
-| 헤더 | 52px 고정, `#f3f3f3` 하단 보더 |
+| 헤더 | NavigationHeader 공통 컴포넌트 (fixed 52px, 뒤로가기 SVG + 중앙 타이틀) |
 | CTA 버튼 | 56px 높이, 16px radius, `#48b2af`, pressed `scale(0.99)` |
 | 입력 필드 | 56px 높이, 16px radius, `#e7e7e7` 보더 |
 | 폰트 | `'Pretendard Variable', sans-serif` 인라인 스타일 |
@@ -363,6 +398,11 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 | 사주 입력 | `FreeBirthInfoInput` 재활용 | DB 저장/캐시 로직 통일, skipAutoComplete로 자동완성 제어 |
 | 로딩 UI | `PageLoader` 공통 사용 | 커스텀 로딩 아이콘 대신 서비스 공통 로딩으로 통일 |
 | AI 생성 | 3단계 파이프라인 | 기획(맥락 이해) → 이미지 가이드(일관된 스타일) → 이미지 생성(품질) |
+| 기획 톤앤매너 | MZ/알파세대 밈 말투 | 10대~20대 바이럴 타겟, 올드 운세 톤 금지 |
+| 기본 이미지 스타일 | B급 병맛 밈 캐릭터 | 잘파세대가 선호하는 한국 커뮤니티 테스트 이미지 스타일 |
+| 레퍼런스 이미지 | 스타일만 참고, 원본 복제 금지 | 저작권/초상권 보호 |
+| 이미지 생성 병렬화 | 3장씩 배치 `Promise.all` | 순차 ~2분 → 배치 ~40초, API rate limit 안전 범위 |
+| 미게시 정리 | discard 액션 (DB+Storage 삭제) | 이탈 시 고아 데이터 방지 |
 | 결과 형식 | AI 자동 선택 (4종) | "바람기 테스트" → percentage, "미래 남편" → image_focus 등 맥락 적합 |
 | 양/음력 | 양력 고정 (선택 UI 없음) | FreeBirthInfoInput이 양력 기준, Edge Function calendarType 기본값 `solar` |
 | 결과 생성 | 사전 생성 (10개 고정) | 즉시 결과, 낮은 비용, 일관된 품질 |
@@ -370,12 +410,13 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 | URL 형태 | slug 기반 (`/unte/{slug}`) | SEO + 공유 친화적 |
 | 이미지 생성 | 비동기 (텍스트 먼저 → 이미지 후행) | 크리에이터가 텍스트 즉시 검토 가능 |
 | 이미지 없을 때 | ResultLabelCard 비주얼 | 라벨 강조 카드로 빈 화면 방지, Canvas로 공유 이미지 자동 생성 |
+| 이미지 포맷 | PNG 직접 업로드 | Edge Function 메모리 한도 내 안전 (ImageMagick WASM 제거) |
 
 ---
 
 ## 10. 알려진 이슈 / TODO
 
-- [ ] **이미지 생성 미검증**: `generate-viral-test-images` 실제 동작 테스트 필요 (Gemini Image 모델 + ImageMagick WASM)
+- [ ] **레퍼런스 실사→일러스트 문제**: 레퍼런스가 실사인데 일러스트로 나오는 경우 있음 (Step 2가 일러스트 프롬프트 생성 + stripStyleKeywords 한계)
 - [ ] **Storage 버킷**: 프로덕션에 `assets` 버킷 내 `viral-tests/` 경로 접근 가능 확인
 - [ ] **OG 메타 태그**: 소셜 미리보기용 메타 태그 미구현 (SPA이므로 SSR/prerender 필요)
 - [ ] **조회수/참여수**: view_count 증가 로직이 부정확 (UnteLandingPage에서 play_count만 증가)
@@ -383,8 +424,11 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 - [ ] **슬롯머신 애니메이션**: 실제 디바이스에서 성능 테스트 필요
 - [ ] **카카오 공유**: Kakao SDK 키 하드코딩 (`da0e07cca0c104a3b59f79a24911587c`) — 환경변수화 검토
 - [ ] **Canvas 공유 카드**: 모바일 브라우저에서 Canvas → Storage 업로드 테스트 필요
+- [x] ~~이미지 생성 미검증~~ → PNG 직접 업로드 + 3장 배치 병렬로 동작 확인
 - [x] ~~사주 API 의존성~~ → JDN 로컬 계산으로 해결
 - [x] ~~사주 입력 페이지 플래시~~ → checking phase + skipAutoComplete로 해결
 - [x] ~~커스텀 로딩 아이콘~~ → PageLoader 공통 사용으로 해결
 - [x] ~~이미지 없을 때 빈 화면~~ → ResultLabelCard로 해결
 - [x] ~~카카오 공유 썸네일 없음~~ → Canvas 공유 카드 자동 생성으로 해결
+- [x] ~~순차 이미지 생성 느림~~ → 3장씩 배치 병렬 처리로 해결
+- [x] ~~미게시 테스트 고아 데이터~~ → discard 액션으로 자동 정리
