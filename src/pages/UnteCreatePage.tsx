@@ -45,18 +45,32 @@ export function UnteCreatePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [published, setPublished] = useState(false);
-  const [referenceImage, setReferenceImage] = useState<File | null>(null);
-  const [referencePreview, setReferencePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generatedRef = useRef<GeneratedTest | null>(null);
   const [pollTrigger, setPollTrigger] = useState(0);
   const [regeneratingDayMasters, setRegeneratingDayMasters] = useState<Set<string>>(new Set());
   const [isMaster, setIsMaster] = useState(false);
-  const [thumbnailRefImage, setThumbnailRefImage] = useState<File | null>(null);
-  const [thumbnailRefPreview, setThumbnailRefPreview] = useState<string | null>(null);
   const thumbnailFileInputRef = useRef<HTMLInputElement>(null);
   const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
+
+  // 레퍼런스 이미지 — Storage 경유 (base64 body 제거)
+  interface RefImage {
+    preview: string | null;    // 로컬 blob URL (미리보기)
+    storageUrl: string | null; // Storage public URL (Edge Function 전달용)
+    storagePath: string | null;// Storage 경로 (삭제용)
+    uploading: boolean;
+    fileName: string | null;
+  }
+  const emptyRef: RefImage = { preview: null, storageUrl: null, storagePath: null, uploading: false, fileName: null };
+  const [refImage, setRefImage] = useState<RefImage>(emptyRef);
+  const [thumbRef, setThumbRef] = useState<RefImage>(emptyRef);
+  const refImageRef = useRef<RefImage>(emptyRef);
+  const thumbRefRef = useRef<RefImage>(emptyRef);
+
+  // ref 동기화 (cleanup에서 최신값 참조용)
+  useEffect(() => { refImageRef.current = refImage; }, [refImage]);
+  useEffect(() => { thumbRefRef.current = thumbRef; }, [thumbRef]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -94,112 +108,136 @@ export function UnteCreatePage() {
     }
   }, []);
 
-  // 이탈 시 미게시 테스트 정리
+  // Storage에서 레퍼런스 이미지 삭제 헬퍼
+  const deleteRefFromStorage = useCallback(async (path: string | null) => {
+    if (!path) return;
+    try {
+      await supabase.storage.from('assets').remove([path]);
+    } catch (err) {
+      console.error('ref 이미지 삭제 실패:', err);
+    }
+  }, []);
+
+  // 이탈 시 미게시 테스트 + 레퍼런스 이미지 정리
   useEffect(() => {
     return () => {
       const gen = generatedRef.current;
       if (gen?.testId && !published) {
-        // 컴포넌트 언마운트 시 discard (sendBeacon 폴백)
-        const token = document.cookie; // sendBeacon용으로는 사용 불가, fire-and-forget fetch
         discardTest(gen.testId);
       }
+      // Storage ref 이미지 정리
+      const ref = refImageRef.current;
+      const thumb = thumbRefRef.current;
+      if (ref.storagePath) deleteRefFromStorage(ref.storagePath);
+      if (thumb.storagePath) deleteRefFromStorage(thumb.storagePath);
     };
-  }, [published, discardTest]);
-
-  // 레퍼런스 이미지 preview URL 정리
-  useEffect(() => {
-    return () => {
-      if (referencePreview) URL.revokeObjectURL(referencePreview);
-    };
-  }, [referencePreview]);
-
-  // 썸네일 레퍼런스 이미지 preview URL 정리
-  useEffect(() => {
-    return () => {
-      if (thumbnailRefPreview) URL.revokeObjectURL(thumbnailRefPreview);
-    };
-  }, [thumbnailRefPreview]);
+  }, [published, discardTest, deleteRefFromStorage]);
 
   const [isDragging, setIsDragging] = useState(false);
 
-  const processImageFile = useCallback((file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      setError('이미지는 10MB 이하만 가능해요');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setError('이미지 파일만 첨부할 수 있어요');
-      return;
-    }
-    if (referencePreview) URL.revokeObjectURL(referencePreview);
-    setReferenceImage(file);
-    setReferencePreview(URL.createObjectURL(file));
+  // 이미지 리사이즈 + WebP 변환 + Storage 업로드 공통 헬퍼
+  const resizeAndUpload = useCallback(async (file: File, maxPx: number): Promise<{ storageUrl: string; storagePath: string }> => {
+    const blob: Blob = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxPx || h > maxPx) {
+          const ratio = Math.min(maxPx / w, maxPx / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (b) => b ? resolve(b) : reject(new Error('Canvas 변환 실패')),
+          'image/webp', 0.8
+        );
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('이미지 로드 실패')); };
+      img.src = URL.createObjectURL(file);
+    });
+    const path = `viral-tests/refs/${crypto.randomUUID()}.webp`;
+    const { error: uploadError } = await supabase.storage
+      .from('assets')
+      .upload(path, blob, { contentType: 'image/webp', upsert: true });
+    if (uploadError) throw uploadError;
+    const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(path);
+    return { storageUrl: publicUrl, storagePath: path };
+  }, []);
+
+  // 레퍼런스 이미지 처리 (선택 → 미리보기 + Storage 업로드)
+  const processRefFile = useCallback(async (file: File, type: 'main' | 'thumb') => {
+    if (file.size > 10 * 1024 * 1024) { setError('이미지는 10MB 이하만 가능해요'); return; }
+    if (!file.type.startsWith('image/')) { setError('이미지 파일만 첨부할 수 있어요'); return; }
     setError('');
-  }, [referencePreview]);
+
+    const setter = type === 'main' ? setRefImage : setThumbRef;
+    const oldState = type === 'main' ? refImageRef.current : thumbRefRef.current;
+
+    // 이전 이미지 정리
+    if (oldState.preview) URL.revokeObjectURL(oldState.preview);
+    if (oldState.storagePath) deleteRefFromStorage(oldState.storagePath);
+
+    const preview = URL.createObjectURL(file);
+    setter({ preview, storageUrl: null, storagePath: null, uploading: true, fileName: file.name });
+
+    try {
+      const maxPx = type === 'thumb' ? 512 : 768;
+      const { storageUrl, storagePath } = await resizeAndUpload(file, maxPx);
+      setter({ preview, storageUrl, storagePath, uploading: false, fileName: file.name });
+    } catch (err) {
+      console.error('ref 업로드 실패:', err);
+      setError('이미지 업로드에 실패했어요. 다시 시도해주세요.');
+      URL.revokeObjectURL(preview);
+      setter(emptyRef);
+    }
+  }, [resizeAndUpload, deleteRefFromStorage]);
 
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processImageFile(file);
-  }, [processImageFile]);
+    if (file) processRefFile(file, 'main');
+  }, [processRefFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) processImageFile(file);
-  }, [processImageFile]);
+    if (file) processRefFile(file, 'main');
+  }, [processRefFile]);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); }, []);
 
   const handleRemoveImage = useCallback(() => {
-    if (referencePreview) URL.revokeObjectURL(referencePreview);
-    setReferenceImage(null);
-    setReferencePreview(null);
+    if (refImage.preview) URL.revokeObjectURL(refImage.preview);
+    deleteRefFromStorage(refImage.storagePath);
+    setRefImage(emptyRef);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [referencePreview]);
+  }, [refImage, deleteRefFromStorage]);
 
-  // 썸네일 레퍼런스 이미지 핸들러
-  const processThumbnailFile = useCallback((file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      setError('이미지는 10MB 이하만 가능해요');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setError('이미지 파일만 첨부할 수 있어요');
-      return;
-    }
-    if (thumbnailRefPreview) URL.revokeObjectURL(thumbnailRefPreview);
-    setThumbnailRefImage(file);
-    setThumbnailRefPreview(URL.createObjectURL(file));
-    setError('');
-  }, [thumbnailRefPreview]);
-
+  // 썸네일 레퍼런스 핸들러
   const handleThumbnailSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processThumbnailFile(file);
-  }, [processThumbnailFile]);
+    if (file) processRefFile(file, 'thumb');
+  }, [processRefFile]);
 
   const handleThumbnailDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsThumbnailDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) processThumbnailFile(file);
-  }, [processThumbnailFile]);
+    if (file) processRefFile(file, 'thumb');
+  }, [processRefFile]);
 
   const handleRemoveThumbnailRef = useCallback(() => {
-    if (thumbnailRefPreview) URL.revokeObjectURL(thumbnailRefPreview);
-    setThumbnailRefImage(null);
-    setThumbnailRefPreview(null);
+    if (thumbRef.preview) URL.revokeObjectURL(thumbRef.preview);
+    deleteRefFromStorage(thumbRef.storagePath);
+    setThumbRef(emptyRef);
     if (thumbnailFileInputRef.current) thumbnailFileInputRef.current.value = '';
-  }, [thumbnailRefPreview]);
+  }, [thumbRef, deleteRefFromStorage]);
 
   // 검토 단계에서 결과 이미지 폴링 (pollTrigger로 명시적 시작만)
   useEffect(() => {
@@ -251,43 +289,6 @@ export function UnteCreatePage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [step, generated?.testId, pollTrigger]);
 
-  // 레퍼런스 이미지 base64 변환 헬퍼
-  const getBase64 = useCallback(async (): Promise<string | undefined> => {
-    if (!referenceImage) return undefined;
-    const buffer = await referenceImage.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return `data:${referenceImage.type};base64,${btoa(binary)}`;
-  }, [referenceImage]);
-
-  const getThumbnailBase64 = useCallback(async (): Promise<string | undefined> => {
-    if (!thumbnailRefImage) return undefined;
-    // Canvas로 최대 768px 리사이즈 (Edge Function 메모리 절약)
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 768;
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          const ratio = Math.min(MAX / w, MAX / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.onerror = () => resolve(undefined);
-      img.src = URL.createObjectURL(thumbnailRefImage);
-    });
-  }, [thumbnailRefImage]);
-
   const handleGenerate = async () => {
     if (!idea.trim() || idea.trim().length < 2) {
       setError('아이디어를 2글자 이상 입력해주세요');
@@ -298,21 +299,15 @@ export function UnteCreatePage() {
     setError('');
 
     try {
-      const referenceImageBase64 = await getBase64();
-
       const response = await fetch(`${supabaseUrl}/functions/v1/generate-viral-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           idea: idea.trim(),
           creatorId: userId,
-          ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+          ...(refImage.storageUrl && { hasReferenceImage: true }),
         }),
       });
-
-      if (!response.ok && response.status === 413) {
-        throw new Error('이미지가 너무 커요. 더 작은 이미지를 사용해주세요.');
-      }
 
       const text = await response.text().catch(() => '') || '';
       let data;
@@ -375,6 +370,9 @@ export function UnteCreatePage() {
         if (!adminData.success) throw new Error(adminData.error);
       }
 
+      // 게시 완료 → 레퍼런스 이미지 Storage 정리 (더 이상 불필요)
+      deleteRefFromStorage(refImage.storagePath);
+      deleteRefFromStorage(thumbRef.storagePath);
       setPublished(true);
       navigate(`/unte/${generated.slug}`);
     } catch (err) {
@@ -391,8 +389,6 @@ export function UnteCreatePage() {
     setError('');
 
     try {
-      const referenceImageBase64 = await getBase64();
-
       const response = await fetch(`${supabaseUrl}/functions/v1/generate-viral-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -400,7 +396,7 @@ export function UnteCreatePage() {
           idea: idea.trim(),
           creatorId: userId,
           testId: generated.testId,
-          ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+          ...(refImage.storageUrl && { hasReferenceImage: true }),
         }),
       });
 
@@ -444,16 +440,14 @@ export function UnteCreatePage() {
       .update({ thumbnail_url: null })
       .eq('id', generated.testId);
 
-    // 이미지 생성 API 호출 (fire-and-forget)
-    const referenceImageBase64 = await getBase64();
-    const thumbnailRefBase64 = await getThumbnailBase64();
+    // 이미지 생성 API 호출 (fire-and-forget) — URL만 전달
     fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         testId: generated.testId,
-        ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
-        ...(thumbnailRefBase64 && { thumbnailReferenceImage: thumbnailRefBase64 }),
+        ...(refImage.storageUrl && { referenceImageUrl: refImage.storageUrl }),
+        ...(thumbRef.storageUrl && { thumbnailReferenceImageUrl: thumbRef.storageUrl }),
       }),
     }).catch(console.error);
 
@@ -480,15 +474,14 @@ export function UnteCreatePage() {
       .eq('test_id', generated.testId)
       .eq('day_master', dayMaster);
 
-    // 이미지 생성 API 호출 (해당 일간만)
-    const referenceImageBase64 = await getBase64();
+    // 이미지 생성 API 호출 (해당 일간만) — URL만 전달
     fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         testId: generated.testId,
         dayMasters: [dayMaster],
-        ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+        ...(refImage.storageUrl && { referenceImageUrl: refImage.storageUrl }),
       }),
     }).catch(console.error);
 
@@ -527,7 +520,7 @@ export function UnteCreatePage() {
     marginBottom: '6px',
   };
 
-  const isValid = idea.trim().length >= 2;
+  const isValid = idea.trim().length >= 2 && !refImage.uploading && !thumbRef.uploading;
   const hasAnyImage = generated?.results.some(r => r.result_image_url) ?? false;
 
   return (
@@ -615,7 +608,7 @@ export function UnteCreatePage() {
                       className="hidden"
                     />
 
-                    {thumbnailRefPreview ? (
+                    {thumbRef.preview ? (
                       <div
                         style={{
                           position: 'relative',
@@ -625,7 +618,7 @@ export function UnteCreatePage() {
                         }}
                       >
                         <img
-                          src={thumbnailRefPreview}
+                          src={thumbRef.preview}
                           alt="썸네일 레퍼런스"
                           style={{
                             width: '100%',
@@ -669,7 +662,7 @@ export function UnteCreatePage() {
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                           }}>
-                            {thumbnailRefImage?.name}
+                            {thumbRef.fileName}
                           </span>
                         </div>
                       </div>
@@ -728,7 +721,7 @@ export function UnteCreatePage() {
                     className="hidden"
                   />
 
-                  {referencePreview ? (
+                  {refImage.preview ? (
                     <div
                       style={{
                         position: 'relative',
@@ -738,7 +731,7 @@ export function UnteCreatePage() {
                       }}
                     >
                       <img
-                        src={referencePreview}
+                        src={refImage.preview}
                         alt="레퍼런스 이미지"
                         style={{
                           width: '100%',
@@ -784,7 +777,7 @@ export function UnteCreatePage() {
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}>
-                          {referenceImage?.name}
+                          {refImage.fileName}
                         </span>
                       </div>
                     </div>

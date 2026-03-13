@@ -20,7 +20,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { testId, referenceImage, dayMasters, thumbnailReferenceImage } = await req.json()
+    const { testId, dayMasters, referenceImageUrl, thumbnailReferenceImageUrl } = await req.json()
 
     if (!testId) {
       return new Response(
@@ -33,10 +33,29 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // 1. 테스트 정보 + 결과 조회
-    const [testResult, resultsResult] = await Promise.all([
+    // URL → Gemini inline_data 변환 헬퍼
+    async function fetchAsInlineData(url: string): Promise<{ inline_data: { mime_type: string; data: string } } | null> {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return null
+        const buffer = await res.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+        let binary = ''
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+        const mimeType = res.headers.get('content-type') || 'image/webp'
+        return { inline_data: { mime_type: mimeType, data: btoa(binary) } }
+      } catch (err) {
+        console.error('❌ 레퍼런스 fetch 실패:', err)
+        return null
+      }
+    }
+
+    // 1. 테스트 정보 + 결과 + 레퍼런스 이미지 병렬 로드
+    const [testResult, resultsResult, refImagePart, thumbnailRefPart] = await Promise.all([
       supabase.from('viral_tests').select('*').eq('id', testId).single(),
       supabase.from('viral_test_results').select('*').eq('test_id', testId).order('day_master'),
+      referenceImageUrl ? fetchAsInlineData(referenceImageUrl) : Promise.resolve(null),
+      thumbnailReferenceImageUrl ? fetchAsInlineData(thumbnailReferenceImageUrl) : Promise.resolve(null),
     ])
 
     if (testResult.error || !testResult.data) {
@@ -47,26 +66,8 @@ serve(async (req) => {
     const results = resultsResult.data || []
 
     console.log(`🎨 이미지 생성 시작: "${test.title}" (결과 ${results.length}개)`)
-
-    // 레퍼런스 이미지 파싱 (data:image/png;base64,... → { mimeType, data })
-    let refImagePart: { inline_data: { mime_type: string; data: string } } | null = null
-    if (referenceImage && typeof referenceImage === 'string') {
-      const match = referenceImage.match(/^data:(image\/[a-z+]+);base64,(.+)$/i)
-      if (match) {
-        refImagePart = { inline_data: { mime_type: match[1], data: match[2] } }
-        console.log(`📎 레퍼런스 이미지 감지: ${match[1]}`)
-      }
-    }
-
-    // 썸네일 전용 레퍼런스 이미지 파싱
-    let thumbnailRefPart: { inline_data: { mime_type: string; data: string } } | null = null
-    if (thumbnailReferenceImage && typeof thumbnailReferenceImage === 'string') {
-      const match = thumbnailReferenceImage.match(/^data:(image\/[a-z+]+);base64,(.+)$/i)
-      if (match) {
-        thumbnailRefPart = { inline_data: { mime_type: match[1], data: match[2] } }
-        console.log(`📎 썸네일 레퍼런스 이미지 감지: ${match[1]}`)
-      }
-    }
+    if (refImagePart) console.log('📎 레퍼런스 이미지 로드 완료')
+    if (thumbnailRefPart) console.log('📎 썸네일 레퍼런스 이미지 로드 완료')
 
     // 2. 이미지 생성 헬퍼 (PNG 직접 업로드)
     async function generateAndUploadImage(

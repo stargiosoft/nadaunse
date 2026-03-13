@@ -57,7 +57,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { idea, creatorId, referenceImage, testId: existingTestId } = await req.json()
+    const { idea, creatorId, hasReferenceImage, testId: existingTestId } = await req.json()
     if (!idea || typeof idea !== 'string' || idea.trim().length < 2) {
       return new Response(
         JSON.stringify({ success: false, error: '아이디어를 입력해주세요.' }),
@@ -238,9 +238,9 @@ results는 반드시 10개 (갑,을,병,정,무,기,경,신,임,계). score는 1
     // ═══════════════════════════════════════════════════════════════
     console.log('🎨 [Step 2] 이미지 가이드 에이전트 시작')
 
-    const hasReferenceImage = !!referenceImage
+    const hasRef = !!hasReferenceImage
 
-    const imageGuideSystemPrompt = hasReferenceImage
+    const imageGuideSystemPrompt = hasRef
     ? `너는 바이럴 테스트 이미지 프롬프트 작성자야.
 사용자가 레퍼런스 이미지를 첨부했으므로, 스타일은 이미지 생성 모델이 레퍼런스에서 직접 파악한다.
 너는 스타일/화풍/톤에 대한 지시를 프롬프트에 절대 포함하지 마.
