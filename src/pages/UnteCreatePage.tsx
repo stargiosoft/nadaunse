@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { NavigationHeader } from '../components/NavigationHeader';
@@ -43,6 +43,9 @@ const font = "'Pretendard Variable', sans-serif";
 
 export function UnteCreatePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialCategory = searchParams.get('category') as 'slot_machine' | 'compatibility' | 'adult' | null;
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'slot_machine' | 'compatibility' | 'adult'>(initialCategory || 'all');
   const [step, setStep] = useState<Step>('input');
   const [idea, setIdea] = useState('');
   const [generated, setGenerated] = useState<GeneratedTest | null>(null);
@@ -96,13 +99,14 @@ export function UnteCreatePage() {
   }, []);
 
   // AI 아이디어 추천 로드
-  const fetchAiIdeas = useCallback(async () => {
+  const fetchAiIdeas = useCallback(async (cat?: string) => {
     setAiIdeasLoading(true);
     try {
+      const categoryToSend = cat ?? selectedCategory;
       const res = await fetch(`${supabaseUrl}/functions/v1/suggest-viral-ideas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(categoryToSend !== 'all' ? { category: categoryToSend } : {}),
       });
       if (!res.ok) throw new Error('추천 실패');
       const data = await res.json();
@@ -112,9 +116,16 @@ export function UnteCreatePage() {
     } finally {
       setAiIdeasLoading(false);
     }
-  }, []);
+  }, [selectedCategory]);
 
-  useEffect(() => { fetchAiIdeas(); }, [fetchAiIdeas]);
+  useEffect(() => { fetchAiIdeas(); }, []);
+
+  // 카테고리 변경 핸들러
+  const handleCategoryChange = useCallback((cat: 'all' | 'slot_machine' | 'compatibility' | 'adult') => {
+    setSelectedCategory(cat);
+    setAiIdeas([]);
+    fetchAiIdeas(cat);
+  }, [fetchAiIdeas]);
 
   // generated 상태를 ref에도 동기화 (cleanup에서 최신값 참조용)
   useEffect(() => {
@@ -374,6 +385,7 @@ export function UnteCreatePage() {
           idea: idea.trim(),
           creatorId: userId,
           ...(refImage.storageUrl && { hasReferenceImage: true }),
+          ...(selectedCategory !== 'all' && { category: selectedCategory }),
         }),
       });
 
@@ -465,6 +477,7 @@ export function UnteCreatePage() {
           creatorId: userId,
           testId: generated.testId,
           ...(refImage.storageUrl && { hasReferenceImage: true }),
+          ...(selectedCategory !== 'all' && { category: selectedCategory }),
         }),
       });
 
@@ -697,6 +710,36 @@ export function UnteCreatePage() {
                   }}>
                     아이디어만 입력하면 AI가 자동으로 만들어줘요
                   </p>
+                </div>
+
+                {/* 카테고리 필터 */}
+                <div className="flex" style={{ gap: '6px' }}>
+                  {([
+                    { key: 'all' as const, label: '전체' },
+                    { key: 'slot_machine' as const, label: '운테' },
+                    { key: 'compatibility' as const, label: '궁합' },
+                    { key: 'adult' as const, label: '19금' },
+                  ]).map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => handleCategoryChange(f.key)}
+                      className="flex items-center justify-center cursor-pointer"
+                      style={{
+                        height: '28px',
+                        padding: '0 12px',
+                        borderRadius: '9999px',
+                        backgroundColor: selectedCategory === f.key ? '#48b2af' : '#f9f9f9',
+                        border: selectedCategory === f.key ? 'none' : '1px solid #e7e7e7',
+                        fontFamily: font,
+                        fontSize: '12px',
+                        fontWeight: selectedCategory === f.key ? 600 : 400,
+                        color: selectedCategory === f.key ? '#ffffff' : '#6d6d6d',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
                 </div>
 
                 <div>

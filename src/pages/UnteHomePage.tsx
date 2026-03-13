@@ -25,7 +25,7 @@ interface ViralTest {
 }
 
 type SortType = 'popular' | 'latest';
-type FilterType = 'all' | 'slot_machine' | 'compatibility';
+type FilterType = 'all' | 'slot_machine' | 'compatibility' | 'adult';
 
 export function UnteHomePage() {
   const navigate = useNavigate();
@@ -59,7 +59,9 @@ export function UnteHomePage() {
         .select('id, slug, title, description, thumbnail_url, play_count, template_type, is_adult, published_at')
         .eq('status', 'live');
 
-      if (filter !== 'all') {
+      if (filter === 'adult') {
+        query = query.eq('is_adult', true);
+      } else if (filter !== 'all') {
         query = query.eq('template_type', filter);
       }
 
@@ -111,8 +113,9 @@ export function UnteHomePage() {
 
   const filterButtons: { key: FilterType; label: string }[] = [
     { key: 'all', label: '전체' },
-    { key: 'slot_machine', label: '테스트' },
+    { key: 'slot_machine', label: '운테' },
     { key: 'compatibility', label: '궁합' },
+    { key: 'adult', label: '19금' },
   ];
 
   const sortButtons: { key: SortType; label: string }[] = [
@@ -232,7 +235,7 @@ export function UnteHomePage() {
 
               {/* CTA 버튼 */}
               <button
-                onClick={() => navigate('/unte/create')}
+                onClick={() => navigate(filter === 'all' ? '/unte/create' : `/unte/create?category=${filter}`)}
                 className="flex items-center justify-center cursor-pointer"
                 style={{
                   height: '48px',
@@ -281,7 +284,7 @@ export function UnteHomePage() {
           style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderTop: '1px solid #f3f3f3' }}
         >
           <button
-            onClick={() => navigate('/unte/create')}
+            onClick={() => navigate(filter === 'all' ? '/unte/create' : `/unte/create?category=${filter}`)}
             className="w-full flex items-center justify-center cursor-pointer"
             style={{
               height: '56px',

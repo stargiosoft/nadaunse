@@ -60,7 +60,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { idea, creatorId, hasReferenceImage, testId: existingTestId } = await req.json()
+    const { idea, creatorId, hasReferenceImage, testId: existingTestId, category } = await req.json()
     if (!idea || typeof idea !== 'string' || idea.trim().length < 2) {
       return new Response(
         JSON.stringify({ success: false, error: '아이디어를 입력해주세요.' }),
@@ -256,28 +256,61 @@ ${COMMON_TONE}
 
 results는 반드시 10개 (비견,겁재,식신,상관,편재,정재,편관,정관,편인,정인). score는 15~95 골고루. 같은 점수 없이.`
 
-    // ─── 1차 기획: 먼저 아이디어 분석하여 template_type 결정 ─────
-    // AI가 아이디어를 보고 compatibility인지 판단 → 해당 프롬프트 사용
-    // 빠른 판단을 위해 먼저 normalPrompt로 실행 (template_type 자동 판별)
-    const firstPassRaw = await callGemini(
-      normalPlanningPrompt,
-      `다음 아이디어로 바이럴 테스트를 기획해:\n\n"${idea}"`
-    )
-    const firstPass = parseJSON<PlanResult>(firstPassRaw)
-    const isCompatibility = firstPass.template_type === 'compatibility'
-
-    // 궁합이면 전용 프롬프트로 재기획
+    // ─── 1차 기획: 카테고리가 지정되면 바로 해당 프롬프트 사용 ─────
     let plan: PlanResult
-    if (isCompatibility) {
-      console.log('💑 [Step 1] 궁합 테스트 감지 → 십성 기반 재기획')
+    let isCompatibility: boolean
+
+    if (category === 'compatibility') {
+      // 궁합 카테고리 지정 → 바로 궁합 프롬프트 사용 (1회 호출)
+      console.log('💑 [Step 1] 궁합 카테고리 지정 → 십성 기반 기획')
       const compatRaw = await callGemini(
         compatibilityPlanningPrompt,
         `다음 아이디어로 바이럴 궁합 테스트를 기획해:\n\n"${idea}"`
       )
       plan = parseJSON<PlanResult>(compatRaw)
-      plan.template_type = 'compatibility' // 보장
+      plan.template_type = 'compatibility'
+      isCompatibility = true
+    } else if (category === 'adult') {
+      // 19금 카테고리 지정 → 일반 프롬프트 + is_adult 강제
+      console.log('🔞 [Step 1] 19금 카테고리 지정')
+      const adultRaw = await callGemini(
+        normalPlanningPrompt,
+        `다음 아이디어로 바이럴 19금 성인 테스트를 기획해. 반드시 is_adult: true로 설정하고, 성인 대상의 자극적이면서도 유머러스한 소재로:\n\n"${idea}"`
+      )
+      plan = parseJSON<PlanResult>(adultRaw)
+      plan.is_adult = true
+      plan.template_type = 'adult'
+      isCompatibility = false
+    } else if (category === 'slot_machine') {
+      // 운테 카테고리 지정 → 일반 프롬프트, 궁합 제외
+      console.log('🎰 [Step 1] 운테 카테고리 지정')
+      const slotRaw = await callGemini(
+        normalPlanningPrompt,
+        `다음 아이디어로 바이럴 테스트를 기획해. 반드시 template_type은 "slot_machine"으로 (궁합 아님, 본인 사주만 입력):\n\n"${idea}"`
+      )
+      plan = parseJSON<PlanResult>(slotRaw)
+      plan.template_type = 'slot_machine'
+      isCompatibility = false
     } else {
-      plan = firstPass
+      // 카테고리 미지정 (전체) → 기존 로직: AI가 자동 판별
+      const firstPassRaw = await callGemini(
+        normalPlanningPrompt,
+        `다음 아이디어로 바이럴 테스트를 기획해:\n\n"${idea}"`
+      )
+      const firstPass = parseJSON<PlanResult>(firstPassRaw)
+      isCompatibility = firstPass.template_type === 'compatibility'
+
+      if (isCompatibility) {
+        console.log('💑 [Step 1] 궁합 테스트 감지 → 십성 기반 재기획')
+        const compatRaw = await callGemini(
+          compatibilityPlanningPrompt,
+          `다음 아이디어로 바이럴 궁합 테스트를 기획해:\n\n"${idea}"`
+        )
+        plan = parseJSON<PlanResult>(compatRaw)
+        plan.template_type = 'compatibility'
+      } else {
+        plan = firstPass
+      }
     }
     console.log('📦 [Step 1] 기획 결과:', JSON.stringify(plan).slice(0, 300))
 
