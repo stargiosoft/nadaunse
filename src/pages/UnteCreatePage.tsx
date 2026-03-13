@@ -265,13 +265,27 @@ export function UnteCreatePage() {
 
   const getThumbnailBase64 = useCallback(async (): Promise<string | undefined> => {
     if (!thumbnailRefImage) return undefined;
-    const buffer = await thumbnailRefImage.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return `data:${thumbnailRefImage.type};base64,${btoa(binary)}`;
+    // Canvas로 최대 768px 리사이즈 (Edge Function 메모리 절약)
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 768;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          const ratio = Math.min(MAX / w, MAX / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => resolve(undefined);
+      img.src = URL.createObjectURL(thumbnailRefImage);
+    });
   }, [thumbnailRefImage]);
 
   const handleGenerate = async () => {
