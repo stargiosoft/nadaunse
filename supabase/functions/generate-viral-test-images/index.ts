@@ -69,13 +69,12 @@ serve(async (req) => {
         if (refImagePart) {
           // 레퍼런스 이미지를 텍스트보다 먼저 배치 (스타일 인식 우선)
           parts.unshift(refImagePart)
-          // 스타일만 참고, 원본 복제 금지 (저작권/초상권 보호)
-          parts.push({ text: `CRITICAL INSTRUCTIONS:
-1. STYLE ONLY: Use the reference image ONLY as a style guide — match the artistic style, color palette, lighting, composition, and overall mood.
-2. DO NOT COPY: Never reproduce, copy, or closely resemble any real person's face, likeness, or identity from the reference. Generate completely new, fictional characters with different facial features, hair, body proportions, and clothing.
-3. NO REAL CELEBRITIES: If the reference contains a real person (celebrity, idol, public figure), you MUST create an entirely original fictional character. The generated person must NOT be recognizable as any real individual.
-4. STYLE MATCHING: If the reference is photorealistic, generate photorealistic images. If it's an illustration, match that illustration style. Do NOT default to anime/cartoon unless the reference is that style.
-5. ORIGINALITY: Every generated image must be a unique, original creation that could not be mistaken for a photo or depiction of any existing real person.` })
+          // 레퍼런스 활용 지시 (일러스트/캐릭터는 적극 참고, 실사 인물만 제한)
+          parts.push({ text: `REFERENCE IMAGE INSTRUCTIONS:
+Generate images that closely match the reference image's style, character design, color palette, line weight, and overall mood.
+- If the reference is an illustration, cartoon, or character drawing: closely replicate the art style, character proportions, line style, and coloring. Use the same type of character (e.g. if reference shows a cute duck character, generate similar cute duck characters).
+- If the reference is a real photograph of a celebrity or public figure: match the photographic style and mood, but create entirely new fictional characters. Do NOT reproduce any real person's face or likeness.
+- Keep the visual style consistent across all generated images.` })
         }
 
         const response = await fetch(
