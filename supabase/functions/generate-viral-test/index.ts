@@ -358,20 +358,7 @@ ${hasReferenceImage ? '⚠️ 사용자가 레퍼런스 이미지를 첨부했�
 
     console.log('✅ [Step 1+2] 기획+가이드 완료:', testId, plan.title)
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 3: 이미지 생성 비동기 호출 (fire-and-forget)
-    // ═══════════════════════════════════════════════════════════════
-    fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        testId,
-        ...(referenceImage && { referenceImage }),
-      }),
-    }).catch(err => console.error('⚠️ 이미지 생성 호출 실패 (무시):', err))
+    // 이미지 생성은 프론트에서 명시적으로 호출 (자동 생성 제거)
 
     return new Response(
       JSON.stringify({

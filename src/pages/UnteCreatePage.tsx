@@ -428,6 +428,7 @@ export function UnteCreatePage() {
   };
 
   const isValid = idea.trim().length >= 2;
+  const hasAnyImage = generated?.results.some(r => r.result_image_url) ?? false;
 
   return (
     <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
@@ -860,7 +861,7 @@ export function UnteCreatePage() {
                       fontFamily: font, fontSize: '13px', fontWeight: 500,
                       lineHeight: '18px', letterSpacing: '-0.26px', color: '#6d6d6d',
                     }}>
-                      이미지 다시 만들기
+                      {hasAnyImage ? '이미지 다시 만들기' : '이미지 만들기'}
                     </span>
                   </button>
                 </div>
