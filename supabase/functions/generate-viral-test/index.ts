@@ -26,7 +26,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     body: JSON.stringify({
       contents: [{ parts: [{ text: userPrompt }] }],
       systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature: 0.9, maxOutputTokens: 12000, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.9, maxOutputTokens: 12000, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 2048 } },
     }),
   })
   if (!res.ok) {
@@ -34,7 +34,9 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     throw new Error(`Gemini API 오류 ${res.status}: ${errText.slice(0, 200)}`)
   }
   const data = await res.json()
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text
+  // Gemini 2.5 Flash thinking 모델: thought part 제외, 실제 응답 part만 추출
+  const parts = data.candidates?.[0]?.content?.parts || []
+  const raw = parts.filter((p: { text?: string; thought?: boolean }) => p.text && !p.thought).pop()?.text
   if (!raw) throw new Error('Gemini 응답이 비어있습니다.')
   return raw
 }
@@ -278,12 +280,6 @@ results는 반드시 10개 (비견,겁재,식신,상관,편재,정재,편관,정
       plan = firstPass
     }
     console.log('📦 [Step 1] 기획 결과:', JSON.stringify(plan).slice(0, 300))
-
-    const planRaw = await callGemini(
-      planningSystemPrompt,
-      `다음 아이디어로 바이럴 테스트를 기획해:\n\n"${idea}"`
-    )
-    console.log('📦 [Step 1] 기획 결과:', planRaw.slice(0, 300))
 
     interface PlanResult {
       template_type: string

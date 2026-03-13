@@ -1,7 +1,7 @@
 # 운테 (바이럴 사주 테스트) 기능 개발 인계 문서
 
 > **작성일**: 2026-03-12
-> **최종 업데이트**: 2026-03-13 (v4)
+> **최종 업데이트**: 2026-03-13 (v5 — 궁합 십성 시스템 추가)
 > **브랜치**: staging (커밋 ec25ac38 ~ 현재)
 > **상태**: 스테이징 배포 완료, 프로덕션 미배포
 
@@ -11,17 +11,17 @@
 
 누구나 사주 기반 바이럴 테스트를 만들 수 있는 플랫폼.
 아이디어만 입력하면 **3단계 AI 에이전트 파이프라인**(기획 → 이미지 가이드 → 이미지 생성)이
-테스트 전체를 자동 생성하고, 사용자는 생년월일 입력 → 10개 일간(갑을병정무기경신임계) 기반 결과를 즉시 확인.
+테스트 전체를 자동 생성하고, 사용자는 생년월일 입력 → 결과를 즉시 확인.
 
 **일간 계산**: 외부 사주 API 없이 **JDN(율리우스 일수) 로컬 계산** → `(JDN + 9) % 10`으로 천간 매핑.
 
 ### 템플릿 유형 (3종)
 
-| 유형 | key | 입력 | 설명 |
-|------|-----|------|------|
-| 슬롯머신 | `slot_machine` | 본인 사주 | 점수/이미지 + 풀이 |
-| 궁합 | `compatibility` | 본인 + 상대 사주 | 궁합 점수 + 분석 |
-| 19금 | `adult` | 본인 사주 | 슬롯머신 + 성인 인증 |
+| 유형 | key | 입력 | 결과 매칭 방식 |
+|------|-----|------|---------------|
+| 슬롯머신 | `slot_machine` | 본인 사주 | **일간(day_master)** 10개 |
+| 궁합 | `compatibility` | 본인 + 상대 사주 | **십성(relation_type)** 10개 |
+| 19금 | `adult` | 본인 사주 | **일간(day_master)** 10개 |
 
 ### 결과 표시 형식 (4종, AI가 아이디어에 맞게 자동 선택)
 
@@ -48,11 +48,12 @@
 
 라우트 등록: `src/App.tsx` 67~71행 (import), 3867~3871행 (Route)
 
-### 프론트엔드 — 유틸리티 (2개 신규)
+### 프론트엔드 — 유틸리티 (3개)
 
 | 파일 | 역할 |
 |------|------|
 | `src/utils/dayMaster.ts` | JDN 기반 일간 계산 (`getDayMaster(birthDate, birthTime?)` → `{ dayMaster, element }`) |
+| `src/utils/sipsung.ts` | **십성 계산** (`getSipsung(myDayMaster, partnerDayMaster)` → 십성 문자열). 궁합 결과 매칭 핵심 |
 | `src/utils/generateShareCard.ts` | Canvas API로 공유 카드 이미지 생성 (ResultLabelCard 디자인 → PNG Blob) |
 
 ### 프론트엔드 — 컴포넌트 (4개)
@@ -82,17 +83,18 @@
 
 | 함수 | 경로 | JWT | 역할 |
 |------|------|-----|------|
-| `generate-viral-test` | `supabase/functions/generate-viral-test/index.ts` | `--no-verify-jwt` | 2단계 AI 파이프라인 (기획 → 이미지 가이드). 이미지 생성은 수동 트리거 |
-| `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini 2.5 Flash Image, 4장씩 배치 병렬). `dayMasters` 파라미터로 개별 이미지 재생성 지원 |
-| `get-viral-test-result` | `supabase/functions/get-viral-test-result/index.ts` | `--no-verify-jwt` | JDN 로컬 일간 계산 → 결과 매칭 + play 기록 |
-| `viral-test-admin` | `supabase/functions/viral-test-admin/index.ts` | JWT 필요 | publish/archive/discard (creator_id 확인) |
+| `generate-viral-test` | `supabase/functions/generate-viral-test/index.ts` | `--no-verify-jwt` | 2단계 AI 파이프라인 (기획 → 이미지 가이드). 궁합 감지 시 십성 전용 프롬프트로 재기획 |
+| `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini 2.5 Flash Image, 4장씩 배치 병렬). `dayMasters`/`relationTypes` 파라미터로 개별 이미지 재생성 지원 |
+| `get-viral-test-result` | `supabase/functions/get-viral-test-result/index.ts` | `--no-verify-jwt` | JDN 로컬 일간 계산 → 일반: day_master 매칭, 궁합: 두 일간 → 십성 → relation_type 매칭 |
+| `viral-test-admin` | `supabase/functions/viral-test-admin/index.ts` | JWT 필요 | publish/archive/discard/delete (creator_id 확인) |
 | `suggest-viral-ideas` | `supabase/functions/suggest-viral-ideas/index.ts` | `--no-verify-jwt` | 기존 viral_tests 제목 참고 → 중복 없는 Z세대 바이럴 아이디어 3개 AI 추천 |
 
 ### DB 마이그레이션
 
-파일: `supabase/migrations/20260312_viral_tests.sql`
-
-**스테이징 적용 완료** (Supabase MCP로 직접 실행)
+| 파일 | 내용 | 스테이징 |
+|------|------|----------|
+| `supabase/migrations/20260312_viral_tests.sql` | 기본 테이블 + RLS | 적용 완료 |
+| `supabase/migrations/20260313_viral_test_sipsung.sql` | relation_type 컬럼 + 인덱스 | 적용 완료 |
 
 ---
 
@@ -109,9 +111,9 @@
 | description | text | 설명 |
 | idea_input | text | AI 입력 원문 |
 | thumbnail_url | text | 썸네일 이미지 URL |
-| **result_format** | text | `image_focus` / `percentage` / `score` / `ranking` |
-| **thumbnail_prompt** | text | Image Guide Agent가 생성한 썸네일 프롬프트 (영문) |
-| **image_style_guide** | text | Image Guide Agent가 생성한 스타일 가이드 (영문) |
+| result_format | text | `image_focus` / `percentage` / `score` / `ranking` |
+| thumbnail_prompt | text | Image Guide Agent가 생성한 썸네일 프롬프트 (영문) |
+| image_style_guide | text | Image Guide Agent가 생성한 스타일 가이드 (영문) |
 | status | text | `generating` → `review` → `live` → `archived` / `failed` |
 | is_adult | boolean | 성인 콘텐츠 여부 |
 | view_count | integer | 조회수 |
@@ -126,16 +128,18 @@
 |------|------|------|
 | id | uuid PK | |
 | test_id | uuid FK→viral_tests | |
-| day_master | text | 갑/을/병/정/무/기/경/신/임/계 |
-| element | text | 목/화/토/금/수 |
+| day_master | text (nullable) | 갑/을/병/정/무/기/경/신/임/계 (일반 테스트용) |
+| **relation_type** | text (nullable) | 비견/겁재/식신/상관/편재/정재/편관/정관/편인/정인 **(궁합 테스트용)** |
+| element | text | 목/화/토/금/수 (일반 테스트용, 궁합은 null) |
 | result_title | text | 결과 제목 |
 | result_description | text | 결과 설명 |
 | result_image_url | text | 결과 이미지 |
 | score | integer | 점수 (15~95) |
 | share_image_url | text | 공유용 이미지 |
-| **image_prompt** | text | Image Guide Agent가 생성한 결과 이미지 프롬프트 (영문) |
-| **result_label** | text | 결과 라벨 ("87%", "S급", "95점" 등) |
-| UNIQUE(test_id, day_master) | | 테스트당 일간 1개 |
+| image_prompt | text | Image Guide Agent가 생성한 결과 이미지 프롬프트 (영문) |
+| result_label | text | 결과 라벨 ("87%", "S급", "95점" 등) |
+| UNIQUE(test_id, day_master) | | 일반 테스트: 테스트당 일간 1개 |
+| UNIQUE(test_id, relation_type) WHERE relation_type IS NOT NULL | | 궁합 테스트: 테스트당 십성 1개 |
 
 ### `viral_test_plays`
 
@@ -159,6 +163,7 @@
 
 - `idx_viral_tests_status_published`: (status, published_at DESC)
 - `idx_viral_test_results_test_day`: (test_id, day_master)
+- `idx_viral_test_results_test_relation`: (test_id, relation_type) WHERE relation_type IS NOT NULL
 - `idx_viral_test_plays_fingerprint`: (fingerprint, test_id)
 
 ---
@@ -173,19 +178,24 @@ UnteHomePage [+ 만들기 버튼]
                + 썸네일 레퍼런스 이미지 첨부 (마스터 전용, 선택)
                → 이미지 선택 시 Canvas 리사이즈(결과 768px, 썸네일 512px) + WebP 0.8 → Storage 업로드
                → Edge Function에 Storage URL만 전달 (base64 전송 제거, 546 에러 해결)
-    → Step 2: AI 기획 생성 (generate-viral-test → Planning + Image Guide만)
+    → Step 2: AI 기획 생성 (generate-viral-test → Planning + Image Guide)
+       - AI가 아이디어 분석 → template_type 자동 결정
+       - 궁합 감지 시: 십성 전용 프롬프트로 재기획 (10개 십성별 결과)
+       - 일반: 10개 일간별 결과
     → Step 3: 검토 (제목/설명 편집, 10개 결과+라벨 미리보기)
+       - 궁합: 십성 이모지 표시 (🤝비견, ⚡겁재, 🍽️식신 등)
+       - 일반: 오행 이모지 표시 (🌳갑, ☀️병 등)
     → Step 4: "이미지 만들기" 버튼 클릭 → generate-viral-test-images 호출
       ├─ 이미지 폴링으로 진행 상황 표시
       ├─ "이미지 다시 만들기" — 전체 이미지 재생성
-      └─ 개별 결과 이미지 ↻ — 해당 일간만 재생성
+      └─ 개별 결과 이미지 ↻ — 해당 결과만 재생성 (일반: dayMasters, 궁합: relationTypes)
     → Step 5: "기획 다시하기" — 동일 testId로 기획 재실행 (기존 결과+이미지 삭제)
     → Step 6: 게시 (viral-test-admin → status='live')
     → [이탈 시] discard (viral-test-admin → DB+Storage 정리)
   → UnteLandingPage (생성된 테스트)
 ```
 
-### 유저 플로우 (테스트 플레이)
+### 유저 플로우 — 일반 테스트 (slot_machine / adult)
 ```
 UnteHomePage [카드 클릭] or 공유 링크
   → UnteLandingPage (썸네일 + 제목 + 참여수 + 시작 CTA)
@@ -193,22 +203,22 @@ UnteHomePage [카드 클릭] or 공유 링크
   → UntePlayPage
     → Phase: checking (PageLoader — 사주 기록 확인)
     → Phase: selectSaju (FreeSajuSelectPage mode="consult")
-       - 기존 사주 있으면 선택 화면
-       - "직접 입력" 클릭 → myInput phase
     → Phase: myInput (FreeBirthInfoInput mode="consult" skipAutoComplete)
-       - 비로그인/사주 없음 → 직접 입력
-    → Phase: loading (PageLoader — get-viral-test-result 호출)
-       - JDN 로컬 일간 계산 → viral_test_results 매칭
-    → Phase: animation (SlotMachineAnimation / CompatibilityMeter)
+    → Phase: loading (get-viral-test-result → day_master 매칭)
+    → Phase: animation (SlotMachineAnimation)
     → Phase: done → navigate to result
-  → UnteResultPage
-    → 결과 비주얼:
-       - AI 이미지 있음 → 이미지 + 작은 라벨 뱃지
-       - AI 이미지 없음 → ResultLabelCard (오행 그라디언트 + 큰 라벨 + 게이지)
-    → 결과 텍스트 (제목 + 설명)
-    → 공유: 카카오톡 / 링크 복사 / 이미지 저장
-       - 카카오 공유 시 이미지 없으면 Canvas로 공유 카드 자동 생성 → Storage 업로드
-    → "다른 테스트 해보기" → UnteHomePage
+  → UnteResultPage (결과 카드 + 공유)
+```
+
+### 유저 플로우 — 궁합 테스트 (compatibility)
+```
+  → UntePlayPage
+    → Phase: checking → selectSaju → myInput (내 사주)
+    → Phase: partnerInput (상대 사주 — FreeBirthInfoInput)
+    → Phase: loading (get-viral-test-result → 두 일간 → 십성 계산 → relation_type 매칭)
+    → Phase: animation (CompatibilityMeter — 십성 결과의 score 표시)
+    → Phase: done → navigate to result
+  → UnteResultPage (관계 결과 카드 + 궁합 유형 뱃지 + 공유)
 ```
 
 ---
@@ -218,84 +228,68 @@ UnteHomePage [카드 클릭] or 공유 링크
 ### generate-viral-test (2단계 AI 파이프라인)
 - **모델**: Gemini 2.5 Flash (`gemini-2.5-flash`)
 - **입력**: `{ idea: string, creatorId: string, hasReferenceImage?: boolean, existingTestId?: string }`
-  - `hasReferenceImage`: 레퍼런스 이미지 존재 여부 (프롬프트 분기용, 이미지 데이터 전송 없음)
-  - `existingTestId`: 기획 다시하기 시 기존 testId 재사용 (기존 결과+이미지 삭제 후 재생성)
+- **궁합 감지 플로우**:
+  1. 먼저 일반 프롬프트로 기획 → AI가 `template_type` 결정
+  2. `compatibility` 감지 시 → **십성 전용 프롬프트로 재기획** (추가 1회 API 호출)
+  3. 십성 프롬프트: 10가지 관계 유형별 결과 생성 (비견~정인)
+  4. 점수 분포 지시: 좋은 관계 3~4개(80~95), 보통 3~4개(50~70), 안 좋은 관계 2~3개(15~45)
 - **Stage 1 — Planning Agent**:
   - **톤앤매너**: MZ/알파세대 타겟, 밈·커뮤니티 용어 필수 사용
   - 올드한 운세 말투 금지 ("듬직한 리더형" ❌ → "안심 ZONE 지박령" ✅)
-  - "너/니" 2인칭 직접 지칭 금지 (어색함 방지)
-  - result_title: 단톡방 캡쳐 각 나올 정도의 밈/유행어 기반
-  - result_description: 1~2줄 짧고 임팩트, 친구 말투
-  - result_format 자동 결정 (아이디어 특성에 맞게)
-  - 출력: JSON (title, description, template_type, is_adult, result_format, results[10])
+  - 사주 용어 노출 금지 (운세/사주/천간/일간/십성/비견 등)
+  - 일반: results[10] keyed by `day_master` (갑~계)
+  - 궁합: results[10] keyed by `relation_type` (비견~정인)
 - **Stage 2 — Image Guide Agent**:
-  - 레퍼런스 이미지 유무에 따라 **완전 분리된 시스템 프롬프트**:
-    - **레퍼런스 있음**: 스타일/화풍/톤 지시어 절대 금지, 주제/상황/감정만 영어로 작성
-    - **레퍼런스 없음**: B급 병맛 한국 밈 캐릭터 스타일 (졸라맨/흰 동글이/만두 캐릭터)
-  - 출력: style_guide, thumbnail_prompt, results[].image_prompt
-  - DB 저장: `viral_tests.thumbnail_prompt`, `viral_tests.image_style_guide`, `viral_test_results.image_prompt`
-- **이미지 생성은 별도**: 프론트에서 수동으로 `generate-viral-test-images` 호출
+  - 레퍼런스 이미지 유무에 따라 완전 분리된 시스템 프롬프트
+  - 궁합: "두 캐릭터의 관계/상호작용" 표현 지시 추가
+  - result_prompts 키: 일반=일간(갑~계), 궁합=십성(비견~정인)
+- **DB 저장 분기**:
+  - 일반: `day_master` 컬럼, `element` 컬럼
+  - 궁합: `relation_type` 컬럼, `day_master`=null, `element`=null
 - **상태 변화**: `generating` (기획 중) → `review` (기획 완료)
 
 ### generate-viral-test-images
 - **모델**: Gemini 2.5 Flash Image (`gemini-2.5-flash-image`)
-- **입력**: `{ testId: string, dayMasters?: string[], referenceImageUrl?: string, thumbnailReferenceImageUrl?: string }`
-  - `dayMasters`: 지정 시 해당 일간의 결과 이미지만 재생성 (썸네일 스킵)
-  - `referenceImageUrl`: 결과 이미지용 레퍼런스 Storage URL (선택)
-  - `thumbnailReferenceImageUrl`: 썸네일 전용 레퍼런스 Storage URL (선택, 마스터 전용)
-- **레퍼런스 이미지 처리 (Storage URL 방식)**:
-  - `fetchAsInlineData(url)`: Storage URL에서 WebP 다운로드 → Gemini `inline_data` 변환
-  - DB 쿼리 + 레퍼런스 이미지 fetch 병렬 로드 (`Promise.all`)
-  - 일러스트/캐릭터 레퍼런스: 스타일, 캐릭터 디자인, 색감, 선 굵기 적극 참고
-  - 실사 연예인/공인: 포토 스타일만 참고, 얼굴 복제 금지
-- **썸네일/결과 레퍼런스 독립 채널**:
-  - 썸네일: `thumbnailReferenceImageUrl`만 사용 (미첨부 시 레퍼런스 없이 생성, 결과 레퍼런스로 폴백 안 함)
-  - 결과 이미지: `referenceImageUrl`만 사용
-  - `overrideRef = task.type === 'thumbnail' ? (thumbnailRefPart ?? null) : undefined`
-- **기본 스타일** (레퍼런스 없을 때): B급 병맛 한국 커뮤니티 밈 스타일
-  - 흰색 blob/졸라맨 캐릭터, 두꺼운 검정 아웃라인, 과장된 표정, 파스텔 배경
-- **처리**: 썸네일 1장 + 결과 이미지 10장 → **4장씩 배치 병렬** (`Promise.all`) → PNG 직접 Supabase Storage 업로드
-- **스토리지**: `assets/viral-tests/{testId}/thumbnail.png`, `result-{romanKey}.png`
-  - 로마자 매핑: 갑→gap, 을→eul, 병→byeong, 정→jeong, 무→mu, 기→gi, 경→gyeong, 신→sin, 임→im, 계→gye
+- **입력**: `{ testId, dayMasters?, relationTypes?, thumbnailOnly?, referenceImageUrl?, thumbnailReferenceImageUrl? }`
+  - `dayMasters`: 일반 테스트 — 해당 일간의 결과 이미지만 재생성
+  - `relationTypes`: 궁합 테스트 — 해당 십성의 결과 이미지만 재생성
+- **Storage 키 분기**:
+  - 일반: `result-{DAY_MASTER_ROMAN[day_master]}.png` (gap, eul, byeong...)
+  - 궁합: `result-{SIPSUNG_ROMAN[relation_type]}.png` (bigyeon, geopjae, siksin...)
+- **궁합 이미지 특화**: 두 캐릭터의 관계/상호작용 표현
+- **처리**: 썸네일 1장 + 결과 이미지 10장 → 배치 병렬 → PNG Supabase Storage 업로드
 
 ### get-viral-test-result
-- **입력**: `{ testId, birthDate, birthTime, gender, calendarType?, fingerprint?, userId? }`
+- **입력**: `{ testId, birthDate, birthTime, gender, calendarType?, partnerBirthDate?, partnerBirthTime?, partnerGender?, fingerprint?, userId? }`
 - **일간 계산**: JDN 로컬 계산 (외부 사주 API 불필요)
+- **매칭 분기**:
+  - `viral_tests.template_type` 조회하여 궁합 여부 판별
+  - **일반**: `day_master`로 매칭
+  - **궁합**: 두 일간 → `calcSipsung(myDayMaster, partnerDayMaster)` → `relation_type`으로 매칭
+- **십성 계산 로직** (인라인):
   ```
-  JDN = getJDN(year, month, day)
-  index = ((JDN + 9) % 10 + 10) % 10
-  dayMaster = CHEONGAN[index]  // 갑을병정무기경신임계
+  오행: 갑을=목, 병정=화, 무기=토, 경신=금, 임계=수
+  음양: 갑병무경임=양, 을정기신계=음
+  관계: 같은오행→비겁, 내가생→식상, 내가극→재성, 나를극→관성, 나를생→인성
+  편/정: 같은음양→편, 다른음양→정
   ```
-  - 자시(23:00~) → 다음날로 보정
-- **매칭**: `viral_test_results WHERE test_id = ? AND day_master = ?`
-- **궁합**: partnerBirthDate 등 추가 파라미터로 상대 일간도 계산
-- **응답**: `myResult.resultLabel`, `partnerResult.resultLabel` 포함
+- **응답**: `{ myResult: {..., relationType}, partnerDayMaster, relationType, isCompatibility }`
 - **기록**: `viral_test_plays` INSERT + `play_count` 증가
 
 ### suggest-viral-ideas (AI 아이디어 추천)
 - **모델**: Gemini 2.5 Flash (`gemini-2.5-flash`)
 - **입력**: `{}` (파라미터 없음)
-- **로직**:
-  1. `viral_tests` 테이블에서 `status != 'failed'`인 기존 테스트의 title + idea_input 최대 50개 조회
-  2. 기존 목록을 시스템 프롬프트에 포함하여 **중복 방지**
-  3. Z세대(10대 후반~20대 초반) 타겟 바이럴 최적화 프롬프트 (밈/유행어, 자기탐색 프레임, 공유 욕구)
-  4. `temperature: 1.2`로 창의성 높임
+- **로직**: 기존 테스트 제목 참고 → 중복 없는 Z세대 바이럴 아이디어 3개 생성
 - **응답**: `{ ideas: [{ title, type, resultFormat }] }` (3개)
-- **프론트엔드 연동**: `UnteCreatePage.tsx` 진입 시 자동 호출 → "아이디어 예시" 칩을 AI 추천으로 교체
-  - 새로고침 버튼(↻)으로 재생성
-  - 로딩 중 스켈레톤 표시
-  - 실패 시 정적 예시 3개 폴백 (`미래 남편 얼굴은?`, `바람끼 테스트`, `전생에 나는 뭐였을까`)
-  - AI 추천 칩은 파란 톤(`#f0f7ff` / `#4a7fd4`)으로 시각적 차별화
 
 ### viral-test-admin
-- **입력**: `{ action: 'publish'|'archive'|'discard', testId }`
+- **입력**: `{ action: 'publish'|'archive'|'discard'|'delete', testId }`
 - **인증**: JWT 필수, creator_id 확인 또는 master role
 - **액션**:
   - `publish`: `review` → `live` (published_at 기록)
   - `archive`: 아무 상태 → `archived`
   - `discard`: 미게시 테스트 완전 삭제 (live 상태 거부)
-    - Storage `viral-tests/{testId}/` 폴더 전체 삭제
-    - DB `viral_test_results` → `viral_tests` 순서 삭제 (FK 제약)
+  - `delete`: 모든 상태 테스트 완전 삭제 (마스터/본인)
 
 ---
 
@@ -305,7 +299,6 @@ UnteHomePage [카드 클릭] or 공유 링크
 외부 사주 API 의존성 제거. 프론트엔드(`src/utils/dayMaster.ts`)와 Edge Function 모두 동일한 JDN 공식 사용.
 
 ```typescript
-// Julian Day Number 계산
 function getJDN(year: number, month: number, day: number): number {
   const a = Math.floor((14 - month) / 12);
   const y = year + 4800 - a;
@@ -313,73 +306,49 @@ function getJDN(year: number, month: number, day: number): number {
   return day + Math.floor((153 * m + 2) / 5) + 365 * y
     + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
 }
-
-// 천간 매핑: (JDN + 9) % 10
 const CHEONGAN = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
 const index = ((jdn + 9) % 10 + 10) % 10;
 const dayMaster = CHEONGAN[index];
 ```
 
-검증: `saju-calculator.html`의 `(jd + 49) % 60`에서 천간 부분 `% 10`과 일치 확인됨.
+### 십성(十星) 궁합 계산
+두 사람의 일간을 비교하여 명리학 기반 십성 관계를 판별. `src/utils/sipsung.ts` + Edge Function 인라인.
+
+```typescript
+// 오행 관계 + 음양 비교 → 10가지 십성
+function getSipsung(my: DayMaster, partner: DayMaster): SipsungType {
+  const myEl = ELEMENT[my], partnerEl = ELEMENT[partner];
+  const sameYinYang = IS_YANG[my] === IS_YANG[partner];
+  if (myEl === partnerEl) return sameYinYang ? '비견' : '겁재';        // 비화
+  if (GENERATES[myEl] === partnerEl) return sameYinYang ? '식신' : '상관';  // 식상
+  if (CONTROLS[myEl] === partnerEl) return sameYinYang ? '편재' : '정재';  // 재성
+  if (CONTROLS[partnerEl] === myEl) return sameYinYang ? '편관' : '정관';  // 관성
+  return sameYinYang ? '편인' : '정인';                                    // 인성
+}
+```
+
+**특징**:
+- 10×10 = 100개 조합 전부 검증 통과
+- **비대칭**: A→B와 B→A 결과가 다름 → "나한텐 네가 ○○인데, 너한텐 내가 △△래ㅋㅋ" = 바이럴 포인트
+- 천간합(갑기, 을경, 병신, 정임, 무계) → 항상 정재/정관 (최상 궁합)
+- 천간충(갑경, 을신, 병임, 정계) → 항상 편관/편재 (긴장+자극)
+- 명리 이론 참고: `src/docs/develop/COMPATIBILITY_THEORY.md`
 
 ### 레퍼런스 이미지 기반 생성 (Storage URL 방식)
 `UnteCreatePage`에서 이미지 첨부 → Canvas 리사이즈 + WebP 압축 → Supabase Storage 업로드 → Edge Function에 URL만 전달.
 
-- **프론트 (Storage URL 방식)**:
-  - `<input type="file">` + 드래그앤드롭 → `resizeAndUpload()` 헬퍼
-  - Canvas 리사이즈 (결과: 768px max, 썸네일: 512px max) + WebP 0.8 quality (~50KB)
-  - Storage 경로: `viral-tests/refs/{uuid}.webp` (임시, 게시/이탈 시 자동 삭제)
-  - Edge Function 호출 시 Storage public URL만 전달 (~1KB vs 기존 base64 ~13MB)
-- **RefImage 상태 관리**:
-  ```typescript
-  interface RefImage {
-    preview: string | null;      // 로컬 미리보기 URL
-    storageUrl: string | null;   // Storage public URL (Edge Function 전달용)
-    storagePath: string | null;  // Storage 경로 (삭제용)
-    uploading: boolean;          // 업로드 중 여부
-    fileName: string | null;     // 파일명 표시용
-  }
-  ```
-- **2채널 레퍼런스 (독립)**:
-  - 결과 레퍼런스 (`refImage`): 모든 사용자, 결과 이미지 스타일 참고
-  - 썸네일 레퍼런스 (`thumbRef`): 마스터 전용, 썸네일 이미지 전용 (결과 레퍼런스로 폴백 안 함)
-- **Edge Function**: `fetchAsInlineData(url)` — Storage URL에서 WebP 다운로드 → Gemini `inline_data` 변환
-- **자동 정리 (Storage 용량 관리)**:
-  - 게시(publish) 시: 두 레퍼런스 이미지 Storage에서 삭제
-  - 폐기(discard) 시: 두 레퍼런스 이미지 Storage에서 삭제
-  - 컴포넌트 언마운트 시: 미게시 상태면 Storage에서 삭제
-- **프롬프트 분리**: Image Guide Agent가 레퍼런스 유무에 따라 완전 다른 시스템 프롬프트 사용 (스타일 지시어 포함/제외)
-
-### 미게시 테스트 자동 정리 (Discard)
-검토 단계에서 게시하지 않고 이탈 시 DB + Storage 자동 정리.
-
-- **헤더 뒤로가기**: `discardTest()` 호출 후 `navigate(-1)`
-- **컴포넌트 언마운트**: cleanup effect에서 `discardTest()` 호출 (published 아닌 경우만)
-- **서버**: `viral-test-admin` → `discard` 액션 → Storage 파일 삭제 + DB 행 삭제
-
-### ResultLabelCard (이미지 없을 때 비주얼)
-`UnteResultPage.tsx` 내 인라인 컴포넌트. AI 이미지가 아직 없을 때 표시:
-- 오행별 그라디언트 배경 (목/화/토/금/수)
-- 이모지 + 큰 라벨 (80px for %, 64px for 점수)
-- 게이지 바 + 결과 제목
-- Framer Motion spring 애니메이션
-
-### Canvas 공유 카드 생성
-`src/utils/generateShareCard.ts` — 카카오 공유 시 AI 이미지가 없으면:
-1. Canvas API로 ResultLabelCard와 동일한 비주얼을 600x600 PNG로 렌더링
-2. Supabase Storage `assets/viral-tests/{testId}/share-card-{dayMaster}.png`에 업로드
-3. 공개 URL을 카카오 공유 imageUrl로 사용
+- **2채널 레퍼런스 (독립)**: 결과 레퍼런스 + 썸네일 레퍼런스 (폴백 없음)
+- **자동 정리**: 게시/폐기/언마운트 시 Storage에서 삭제
 
 ### UntePlayPage 단계(Phase) 관리
 ```
-checking → selectSaju → myInput → partnerInput → loading → animation → done
+checking → selectSaju → myInput → [궁합: partnerInput] → loading → animation → done
 ```
-- `checking`: PageLoader 표시, 사주 기록 확인
-- `selectSaju`: FreeSajuSelectPage(mode="consult") — 기존 사주 선택
-- `myInput`: FreeBirthInfoInput(skipAutoComplete=true) — 직접 입력
-- `loading`: PageLoader, get-viral-test-result API 호출
-- `animation`: SlotMachine / CompatibilityMeter
-- `done`: navigate to result page
+
+### UnteCreatePage 범용 키 시스템
+`resultKey(r)` 헬퍼로 일반(day_master)과 궁합(relation_type)을 통합 처리:
+- 폴링, 재생성, 렌더링에서 `resultKey(r)` 사용
+- 이모지 분기: 일반=오행 이모지, 궁합=십성 이모지
 
 ---
 
@@ -388,18 +357,28 @@ checking → selectSaju → myInput → partnerInput → loading → animation �
 ### DB 마이그레이션
 ```sql
 -- 프로덕션 Supabase SQL Editor에서 실행
--- 파일: supabase/migrations/20260312_viral_tests.sql
--- 추가 컬럼 (staging에서 별도 실행됨):
+
+-- 1. 기본 마이그레이션 (20260312_viral_tests.sql)
+-- (이미 정리된 SQL 파일 참조)
+
+-- 2. 추가 컬럼
 ALTER TABLE viral_tests ADD COLUMN IF NOT EXISTS result_format text;
 ALTER TABLE viral_tests ADD COLUMN IF NOT EXISTS thumbnail_prompt text;
 ALTER TABLE viral_tests ADD COLUMN IF NOT EXISTS image_style_guide text;
 ALTER TABLE viral_test_results ADD COLUMN IF NOT EXISTS image_prompt text;
 ALTER TABLE viral_test_results ADD COLUMN IF NOT EXISTS result_label text;
+
+-- 3. 십성 궁합 지원 (20260313_viral_test_sipsung.sql)
+ALTER TABLE viral_test_results ADD COLUMN IF NOT EXISTS relation_type text;
+ALTER TABLE viral_test_results ALTER COLUMN day_master DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_viral_test_results_test_relation
+  ON viral_test_results (test_id, relation_type)
+  WHERE relation_type IS NOT NULL;
 ```
 
 ### Edge Functions 배포
 ```bash
-# 5개 함수 — 4개는 --no-verify-jwt (내부 호출 / 비로그인 허용)
+# 5개 함수 — 4개는 --no-verify-jwt
 npx supabase functions deploy generate-viral-test --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy generate-viral-test-images --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy get-viral-test-result --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
@@ -410,90 +389,67 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 ### Edge Function 환경변수 (프로덕션 확인 필요)
 - `GOOGLE_API_KEY` — Gemini 2.5 Flash / Gemini 2.5 Flash Image 사용
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — 자동 설정
-- ~~`SAJU_API_KEY`~~ — **불필요** (JDN 로컬 계산으로 대체)
 
 ### Supabase Storage
 - 버킷 `assets` 내 `viral-tests/` 경로 사용 (기존 assets 버킷)
 - 이미지 경로: `viral-tests/{testId}/thumbnail.png`, `result-{romanKey}.png`
+  - 일반 romanKey: gap, eul, byeong, jeong, mu, gi, gyeong, sin, im, gye
+  - 궁합 romanKey: bigyeon, geopjae, siksin, sanggwan, pyeonjae, jeongjae, pyeongwan, jeonggwan, pyeonin, jeongin
 - 공유 카드: `viral-tests/{testId}/share-card-{dayMaster}.png`
 - 레퍼런스 이미지 (임시): `viral-tests/refs/{uuid}.webp` (게시/이탈 시 자동 삭제)
 
 ### Storage RLS 정책 (프로덕션 적용 필요)
-레퍼런스 이미지 업로드/삭제를 위한 `viral-tests/refs/` 경로 정책:
 ```sql
--- INSERT: 로그인 사용자 업로드 허용
+-- viral-tests/refs/ 경로 INSERT/SELECT/UPDATE/DELETE 정책
 CREATE POLICY "Allow authenticated upload viral-tests refs" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
 
--- SELECT: 로그인 사용자 읽기 허용 (upsert에 필요)
 CREATE POLICY "Allow authenticated select viral-tests refs" ON storage.objects
   FOR SELECT TO authenticated
   USING (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
 
--- UPDATE: 로그인 사용자 업데이트 허용 (upsert에 필요)
 CREATE POLICY "Allow authenticated update viral-tests refs" ON storage.objects
   FOR UPDATE TO authenticated
   USING (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
 
--- DELETE: 로그인 사용자 삭제 허용 (자동 정리용)
 CREATE POLICY "Allow authenticated delete viral-tests refs" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
 ```
 
 ### DB RLS DELETE 정책 (프로덕션 적용 필요)
-테스트 삭제(마스터/본인)를 위한 DELETE 정책 — 스테이징 적용 완료:
 ```sql
--- viral_tests: 본인 또는 마스터 삭제
 CREATE POLICY "본인 또는 마스터 테스트 삭제" ON viral_tests
   FOR DELETE USING (
     auth.uid() = creator_id
-    OR EXISTS (
-      SELECT 1 FROM public.users
-      WHERE users.id = auth.uid()
-      AND users.role = 'master'
-    )
+    OR EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'master')
   );
 
--- viral_test_results: 본인 테스트 또는 마스터 삭제
 CREATE POLICY "본인 또는 마스터 결과 삭제" ON viral_test_results
   FOR DELETE USING (
     EXISTS (
       SELECT 1 FROM viral_tests
       WHERE viral_tests.id = viral_test_results.test_id
-      AND (
-        viral_tests.creator_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM public.users
-          WHERE users.id = auth.uid()
-          AND users.role = 'master'
-        )
-      )
+      AND (viral_tests.creator_id = auth.uid()
+        OR EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'master'))
     )
   );
 
--- viral_test_plays: 본인 테스트 또는 마스터 삭제
 CREATE POLICY "본인 또는 마스터 플레이 삭제" ON viral_test_plays
   FOR DELETE USING (
     EXISTS (
       SELECT 1 FROM viral_tests
       WHERE viral_tests.id = viral_test_plays.test_id
-      AND (
-        viral_tests.creator_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM public.users
-          WHERE users.id = auth.uid()
-          AND users.role = 'master'
-        )
-      )
+      AND (viral_tests.creator_id = auth.uid()
+        OR EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'master'))
     )
   );
 ```
 
 ### 프론트엔드
 - staging → production cherry-pick (MEMORY.md 규칙 준수)
-- 관련 커밋: `ec25ac38` (최초 구현) + 이후 모든 운테 관련 커밋
+- 관련 커밋: `ec25ac38` (최초 구현) ~ `fe306eea` (십성 궁합) + 이후 운테 커밋
 
 ---
 
@@ -519,57 +475,41 @@ CREATE POLICY "본인 또는 마스터 플레이 삭제" ON viral_test_plays
 | 결정 | 선택 | 이유 |
 |------|------|------|
 | 일간 계산 | JDN 로컬 계산 | 외부 API 비용/장애 제거, 운테는 일간(천간 10개)만 필요 |
+| **궁합 매칭** | **십성(十星) 기반** | 명리학 이론 근거, 10×10 조합 → 10유형 자연 축소, 비대칭=바이럴 |
+| **궁합 감지** | **AI 자동 판별 + 재기획** | 1차 기획에서 template_type 판별 → compatibility면 전용 프롬프트로 재호출 |
+| **궁합 점수 분포** | **좋은/보통/나쁜 혼합** | 전부 좋으면 재미없음. 겁재/편관/편인은 낮은 점수로 긴장감 |
+| **궁합 이미지** | **두 캐릭터 상호작용** | 한 명만 나오면 궁합 느낌 없음. 관계별 포즈/거리감 차별화 |
 | 사주 선택 | `FreeSajuSelectPage` 재활용 | 코드 중복 방지, mode="consult" + onConsultComplete 패턴 |
 | 사주 입력 | `FreeBirthInfoInput` 재활용 | DB 저장/캐시 로직 통일, skipAutoComplete로 자동완성 제어 |
-| 로딩 UI | `PageLoader` 공통 사용 | 커스텀 로딩 아이콘 대신 서비스 공통 로딩으로 통일 |
 | AI 생성 | 3단계 파이프라인 | 기획(맥락 이해) → 이미지 가이드(일관된 스타일) → 이미지 생성(품질) |
 | 기획 톤앤매너 | MZ/알파세대 밈 말투 | 10대~20대 바이럴 타겟, 올드 운세 톤 금지 |
 | 기본 이미지 스타일 | B급 병맛 밈 캐릭터 | 잘파세대가 선호하는 한국 커뮤니티 테스트 이미지 스타일 |
-| 레퍼런스 이미지 | 일러스트→적극 참고, 실사 인물→스타일만 | 캐릭터/일러스트는 충실히, 초상권은 보호 |
-| 레퍼런스 전달 방식 | Storage URL (base64 제거) | JSON body 13MB→1KB, 546 에러 해결, Edge Function 안정성 |
-| 레퍼런스 이미지 리사이즈 | Canvas WebP 0.8 (결과 768px, 썸네일 512px) | ~50KB로 Storage 비용 절감, Gemini 입력 최적화 |
-| 썸네일/결과 레퍼런스 | 독립 채널 (폴백 없음) | 썸네일은 별도 스타일 필요, 결과 레퍼런스와 혼합 방지 |
-| 레퍼런스 Storage 정리 | 게시/폐기/언마운트 시 자동 삭제 | 임시 파일 누적 방지, Storage 용량 관리 |
-| 이미지 생성 병렬화 | 4장씩 배치 `Promise.all` | 순차 ~2분 → 배치 ~40초, Edge Function 50초 타임아웃 대응 |
-| 이미지 생성 분리 | 기획과 이미지 생성 단계 분리 (수동 트리거) | 기획 결과 먼저 검토 후 이미지 생성 |
-| 미게시 정리 | discard 액션 (DB+Storage 삭제) | 이탈 시 고아 데이터 방지 |
-| 결과 형식 | AI 자동 선택 (4종) | "바람기 테스트" → percentage, "미래 남편" → image_focus 등 맥락 적합 |
-| 양/음력 | 양력 고정 (선택 UI 없음) | FreeBirthInfoInput이 양력 기준, Edge Function calendarType 기본값 `solar` |
+| 레퍼런스 전달 방식 | Storage URL (base64 제거) | JSON body 13MB→1KB, 546 에러 해결 |
+| 이미지 생성 병렬화 | 4장씩 배치 `Promise.all` | 순차 ~2분 → 배치 ~40초 |
 | 결과 생성 | 사전 생성 (10개 고정) | 즉시 결과, 낮은 비용, 일관된 품질 |
 | 비로그인 플레이 | 허용 (fingerprint 추적) | 바이럴엔 로그인 벽 = 이탈 |
 | URL 형태 | slug 기반 (`/unte/{slug}`) | SEO + 공유 친화적 |
-| 이미지 생성 | 비동기 (텍스트 먼저 → 이미지 후행) | 크리에이터가 텍스트 즉시 검토 가능 |
-| 이미지 없을 때 | ResultLabelCard 비주얼 | 라벨 강조 카드로 빈 화면 방지, Canvas로 공유 이미지 자동 생성 |
-| 이미지 포맷 | PNG 직접 업로드 | Edge Function 메모리 한도 내 안전 (ImageMagick WASM 제거) |
 
 ---
 
 ## 10. 알려진 이슈 / TODO
 
-- [x] ~~레퍼런스 실사→일러스트 문제~~ → 레퍼런스 모드 프롬프트 완전 분리 + stripStyleKeywords 제거로 해결
-- [x] ~~레퍼런스 base64 546 에러~~ → Storage URL 방식으로 전환 (JSON body 13MB→1KB)
-- [x] ~~Storage RLS refs 경로~~ → INSERT/SELECT/UPDATE/DELETE 정책 스테이징 적용 완료
-- [x] ~~썸네일/결과 레퍼런스 폴백 문제~~ → 독립 채널로 분리 (썸네일 미첨부 시 레퍼런스 없이 생성)
+### 완료
+- [x] ~~레퍼런스 실사→일러스트 문제~~ → 레퍼런스 모드 프롬프트 완전 분리
+- [x] ~~레퍼런스 base64 546 에러~~ → Storage URL 방식으로 전환
+- [x] ~~Storage RLS refs 경로~~ → INSERT/SELECT/UPDATE/DELETE 정책 스테이징 적용
+- [x] ~~썸네일/결과 레퍼런스 폴백 문제~~ → 독립 채널로 분리
 - [x] ~~레퍼런스 이미지 Storage 누적~~ → 게시/폐기/언마운트 시 자동 삭제
-- [x] ~~DB RLS DELETE 정책 누락~~ → viral_tests/viral_test_results/viral_test_plays 3개 테이블 DELETE 정책 추가 (본인 또는 마스터), 스테이징 적용 완료
-- [ ] **DB RLS DELETE 정책 (프로덕션)**: 3개 테이블 DELETE 정책 적용 필요 (배포 체크리스트 SQL 참조)
-- [ ] **Storage RLS (프로덕션)**: `viral-tests/refs/%` 경로 INSERT/SELECT/UPDATE/DELETE 정책 적용 필요
-- [ ] **Storage RLS (프로덕션)**: `viral-tests/%` DELETE 정책 추가 필요
-- [ ] **Storage 버킷**: 프로덕션에 `assets` 버킷 내 `viral-tests/` 경로 접근 가능 확인
+- [x] ~~DB RLS DELETE 정책 누락~~ → 3개 테이블 DELETE 정책 스테이징 적용
+- [x] ~~이미지 생성 미검증~~ → PNG 직접 업로드 + 배치 병렬 동작 확인
+- [x] ~~사주 API 의존성~~ → JDN 로컬 계산
+- [x] ~~궁합 결과 매칭~~ → 십성(十星) 기반 시스템 구현 (v5)
+
+### 미완료
+- [ ] **프로덕션 배포**: DB 마이그레이션 + Edge Functions + RLS 정책 + Storage RLS
 - [ ] **OG 메타 태그**: 소셜 미리보기용 메타 태그 미구현 (SPA이므로 SSR/prerender 필요)
-- [ ] **조회수/참여수**: view_count 증가 로직이 부정확 (UnteLandingPage에서 play_count만 증가)
-- [ ] **비로그인 테스트 생성**: 현재 `generate-viral-test`가 creatorId null 허용, 비로그인 생성 시 수정 불가
-- [ ] **슬롯머신 애니메이션**: 실제 디바이스에서 성능 테스트 필요
-- [ ] **카카오 공유**: Kakao SDK 키 하드코딩 (`da0e07cca0c104a3b59f79a24911587c`) — 환경변수화 검토
-- [ ] **Canvas 공유 카드**: 모바일 브라우저에서 Canvas → Storage 업로드 테스트 필요
-- [x] ~~이미지 생성 미검증~~ → PNG 직접 업로드 + 3장 배치 병렬로 동작 확인
-- [x] ~~사주 API 의존성~~ → JDN 로컬 계산으로 해결
-- [x] ~~사주 입력 페이지 플래시~~ → checking phase + skipAutoComplete로 해결
-- [x] ~~커스텀 로딩 아이콘~~ → PageLoader 공통 사용으로 해결
-- [x] ~~이미지 없을 때 빈 화면~~ → ResultLabelCard로 해결
-- [x] ~~카카오 공유 썸네일 없음~~ → Canvas 공유 카드 자동 생성으로 해결
-- [x] ~~순차 이미지 생성 느림~~ → 4장씩 배치 병렬 처리로 해결 (3장→4장, 타임아웃 대응)
-- [x] ~~미게시 테스트 고아 데이터~~ → discard 액션으로 자동 정리
-- [x] ~~마스터 테스트 삭제~~ → UnteHomePage 카드 호버 시 삭제 버튼 (DB+Storage 일괄 삭제)
-- [x] ~~이미지 드래그앤드롭~~ → PC에서 레퍼런스 이미지 드래그앤드롭 지원
-- [x] ~~기획/이미지 재생성~~ → 기획 다시하기, 이미지 전체/개별 다시 만들기 지원
+- [ ] **조회수/참여수**: view_count 증가 로직 부정확
+- [ ] **비로그인 테스트 생성**: creatorId null 허용, 비로그인 생성 시 수정 불가
+- [ ] **카카오 공유**: Kakao SDK 키 하드코딩 — 환경변수화 검토
+- [ ] **Canvas 공유 카드**: 모바일 브라우저에서 테스트 필요
+- [ ] **궁합 테스트 스테이징 검증**: 실제 궁합 테스트 생성 + 플레이 E2E 검증 필요
