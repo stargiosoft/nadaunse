@@ -52,10 +52,20 @@ export function UnteCreatePage() {
   const generatedRef = useRef<GeneratedTest | null>(null);
   const [pollTrigger, setPollTrigger] = useState(0);
   const [regeneratingDayMasters, setRegeneratingDayMasters] = useState<Set<string>>(new Set());
+  const [isMaster, setIsMaster] = useState(false);
+  const [thumbnailRefImage, setThumbnailRefImage] = useState<File | null>(null);
+  const [thumbnailRefPreview, setThumbnailRefPreview] = useState<string | null>(null);
+  const thumbnailFileInputRef = useRef<HTMLInputElement>(null);
+  const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id || null);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const uid = session?.user?.id || null;
+      setUserId(uid);
+      if (uid) {
+        const { data } = await supabase.from('users').select('role').eq('id', uid).single();
+        setIsMaster(data?.role === 'master');
+      }
     });
   }, []);
 
@@ -103,6 +113,13 @@ export function UnteCreatePage() {
     };
   }, [referencePreview]);
 
+  // 썸네일 레퍼런스 이미지 preview URL 정리
+  useEffect(() => {
+    return () => {
+      if (thumbnailRefPreview) URL.revokeObjectURL(thumbnailRefPreview);
+    };
+  }, [thumbnailRefPreview]);
+
   const [isDragging, setIsDragging] = useState(false);
 
   const processImageFile = useCallback((file: File) => {
@@ -148,6 +165,41 @@ export function UnteCreatePage() {
     setReferencePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [referencePreview]);
+
+  // 썸네일 레퍼런스 이미지 핸들러
+  const processThumbnailFile = useCallback((file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      setError('이미지는 10MB 이하만 가능해요');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setError('이미지 파일만 첨부할 수 있어요');
+      return;
+    }
+    if (thumbnailRefPreview) URL.revokeObjectURL(thumbnailRefPreview);
+    setThumbnailRefImage(file);
+    setThumbnailRefPreview(URL.createObjectURL(file));
+    setError('');
+  }, [thumbnailRefPreview]);
+
+  const handleThumbnailSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processThumbnailFile(file);
+  }, [processThumbnailFile]);
+
+  const handleThumbnailDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsThumbnailDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processThumbnailFile(file);
+  }, [processThumbnailFile]);
+
+  const handleRemoveThumbnailRef = useCallback(() => {
+    if (thumbnailRefPreview) URL.revokeObjectURL(thumbnailRefPreview);
+    setThumbnailRefImage(null);
+    setThumbnailRefPreview(null);
+    if (thumbnailFileInputRef.current) thumbnailFileInputRef.current.value = '';
+  }, [thumbnailRefPreview]);
 
   // 검토 단계에서 결과 이미지 폴링 (pollTrigger로 명시적 시작만)
   useEffect(() => {
@@ -210,6 +262,17 @@ export function UnteCreatePage() {
     }
     return `data:${referenceImage.type};base64,${btoa(binary)}`;
   }, [referenceImage]);
+
+  const getThumbnailBase64 = useCallback(async (): Promise<string | undefined> => {
+    if (!thumbnailRefImage) return undefined;
+    const buffer = await thumbnailRefImage.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return `data:${thumbnailRefImage.type};base64,${btoa(binary)}`;
+  }, [thumbnailRefImage]);
 
   const handleGenerate = async () => {
     if (!idea.trim() || idea.trim().length < 2) {
@@ -369,12 +432,14 @@ export function UnteCreatePage() {
 
     // 이미지 생성 API 호출 (fire-and-forget)
     const referenceImageBase64 = await getBase64();
+    const thumbnailRefBase64 = await getThumbnailBase64();
     fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         testId: generated.testId,
         ...(referenceImageBase64 && { referenceImage: referenceImageBase64 }),
+        ...(thumbnailRefBase64 && { thumbnailReferenceImage: thumbnailRefBase64 }),
       }),
     }).catch(console.error);
 
@@ -515,6 +580,120 @@ export function UnteCreatePage() {
                     }}
                   />
                 </div>
+
+                {/* 썸네일 레퍼런스 이미지 (마스터 전용) */}
+                {isMaster && (
+                  <div>
+                    <label style={labelStyle}>썸네일 레퍼런스 이미지 (선택)</label>
+                    <p style={{
+                      fontFamily: font, fontSize: '12px', fontWeight: 400,
+                      lineHeight: '18px', letterSpacing: '-0.24px', color: '#b7b7b7',
+                      marginBottom: '8px',
+                    }}>
+                      첨부하면 이 이미지를 참고해서 썸네일을 생성해요
+                    </p>
+
+                    <input
+                      ref={thumbnailFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleThumbnailSelect}
+                      className="hidden"
+                    />
+
+                    {thumbnailRefPreview ? (
+                      <div
+                        style={{
+                          position: 'relative',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          border: '1px solid #e7e7e7',
+                        }}
+                      >
+                        <img
+                          src={thumbnailRefPreview}
+                          alt="썸네일 레퍼런스"
+                          style={{
+                            width: '100%',
+                            maxHeight: '240px',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                        <button
+                          onClick={handleRemoveThumbnailRef}
+                          className="flex items-center justify-center cursor-pointer"
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            border: 'none',
+                            color: '#ffffff',
+                            fontFamily: font,
+                            fontSize: '14px',
+                            lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                        <div
+                          className="flex items-center"
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#f9f9f9',
+                            gap: '6px',
+                          }}
+                        >
+                          <span style={{
+                            fontFamily: font, fontSize: '12px', fontWeight: 400,
+                            color: '#6d6d6d',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {thumbnailRefImage?.name}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => thumbnailFileInputRef.current?.click()}
+                        onDrop={handleThumbnailDrop}
+                        onDragOver={(e) => { e.preventDefault(); setIsThumbnailDragging(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); setIsThumbnailDragging(false); }}
+                        className="w-full flex flex-col items-center justify-center cursor-pointer"
+                        style={{
+                          height: '120px',
+                          borderRadius: '16px',
+                          border: `1.5px dashed ${isThumbnailDragging ? '#48b2af' : '#d5d5d5'}`,
+                          backgroundColor: isThumbnailDragging ? '#f0faf9' : '#fafafa',
+                          gap: '8px',
+                          transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                        }}
+                        onPointerEnter={e => { if (!isThumbnailDragging) e.currentTarget.style.borderColor = '#48b2af'; }}
+                        onPointerLeave={e => { if (!isThumbnailDragging) e.currentTarget.style.borderColor = '#d5d5d5'; }}
+                      >
+                        <span style={{ fontSize: '28px', lineHeight: 1 }}>🖼️</span>
+                        <span style={{
+                          fontFamily: font, fontSize: '13px', fontWeight: 400,
+                          lineHeight: '18px', letterSpacing: '-0.26px', color: isThumbnailDragging ? '#48b2af' : '#848484',
+                        }}>
+                          {isThumbnailDragging ? '여기에 놓으세요' : '썸네일 레퍼런스 첨부'}
+                        </span>
+                        <span style={{
+                          fontFamily: font, fontSize: '11px', fontWeight: 400,
+                          color: '#b7b7b7',
+                        }}>
+                          JPG, PNG, WEBP · 최대 10MB
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* 레퍼런스 이미지 첨부 */}
                 <div>

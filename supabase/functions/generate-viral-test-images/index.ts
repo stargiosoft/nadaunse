@@ -20,7 +20,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { testId, referenceImage, dayMasters } = await req.json()
+    const { testId, referenceImage, dayMasters, thumbnailReferenceImage } = await req.json()
 
     if (!testId) {
       return new Response(
@@ -58,17 +58,29 @@ serve(async (req) => {
       }
     }
 
+    // 썸네일 전용 레퍼런스 이미지 파싱
+    let thumbnailRefPart: { inline_data: { mime_type: string; data: string } } | null = null
+    if (thumbnailReferenceImage && typeof thumbnailReferenceImage === 'string') {
+      const match = thumbnailReferenceImage.match(/^data:(image\/[a-z+]+);base64,(.+)$/i)
+      if (match) {
+        thumbnailRefPart = { inline_data: { mime_type: match[1], data: match[2] } }
+        console.log(`📎 썸네일 레퍼런스 이미지 감지: ${match[1]}`)
+      }
+    }
+
     // 2. 이미지 생성 헬퍼 (PNG 직접 업로드)
     async function generateAndUploadImage(
       prompt: string,
-      storagePath: string
+      storagePath: string,
+      overrideRefPart?: { inline_data: { mime_type: string; data: string } } | null
     ): Promise<string | null> {
       try {
         // 프롬프트 parts 구성: 텍스트 + (옵션) 레퍼런스 이미지
         const parts: Array<Record<string, unknown>> = [{ text: prompt }]
-        if (refImagePart) {
+        const activeRef = overrideRefPart !== undefined ? overrideRefPart : refImagePart
+        if (activeRef) {
           // 레퍼런스 이미지를 텍스트보다 먼저 배치 (스타일 인식 우선)
-          parts.unshift(refImagePart)
+          parts.unshift(activeRef)
           // 레퍼런스 활용 지시 (일러스트/캐릭터는 적극 참고, 실사 인물만 제한)
           parts.push({ text: `REFERENCE IMAGE INSTRUCTIONS:
 Generate images that closely match the reference image's style, character design, color palette, line weight, and overall mood.
@@ -137,11 +149,14 @@ Generate images that closely match the reference image's style, character design
 
     // 3. 썸네일 생성 (DB에 저장된 프롬프트 우선 사용)
     const hasRef = !!refImagePart
+    // 썸네일 레퍼런스가 있으면 썸네일은 레퍼런스 참고, 없으면 기존 결과 레퍼런스 사용
+    const hasThumbnailRef = !!thumbnailRefPart
+    const hasAnyThumbnailRef = hasThumbnailRef || hasRef
 
     // 레퍼런스 없을 때 기본 스타일: B급 병맛 캐릭터 (잘파세대 바이럴 스타일)
     const DEFAULT_STYLE = `Style: Korean internet meme / B-grade humor illustration style. Simple white blob-like or stick-figure characters with thick black outlines, minimal detail, exaggerated funny expressions. Pastel or solid color backgrounds (pink, light blue, white). Intentionally crude and goofy drawing style like Korean community test memes (에브리타임/인스타 테스트). Cute but absurd, comedic mood. Think: simple round white characters with dot eyes, like Korean emoticon mascots.`
 
-    const thumbnailPrompt = hasRef
+    const thumbnailPrompt = hasAnyThumbnailRef
       ? `${test.thumbnail_prompt || `Create an eye-catching thumbnail for a viral quiz titled "${test.title}".`}\nNo text in the image. Aspect ratio: square (1:1).`
       : (test.thumbnail_prompt
           ? `${test.thumbnail_prompt}\n${DEFAULT_STYLE}\nNo text in the image. Aspect ratio: square (1:1).`
@@ -206,7 +221,9 @@ Generate images that closely match the reference image's style, character design
 
       const batchResults = await Promise.all(
         batch.map(async (task) => {
-          const url = await generateAndUploadImage(task.prompt, task.storagePath)
+          // 썸네일은 thumbnailRefPart 우선, 없으면 refImagePart 사용
+          const overrideRef = task.type === 'thumbnail' && thumbnailRefPart ? thumbnailRefPart : undefined
+          const url = await generateAndUploadImage(task.prompt, task.storagePath, overrideRef)
           return { ...task, url }
         })
       )
