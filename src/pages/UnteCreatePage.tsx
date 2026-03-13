@@ -131,14 +131,17 @@ export function UnteCreatePage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [referencePreview]);
 
-  // 검토 단계에서 결과 이미지 폴링 (pollTrigger로 재시작 가능)
+  // 검토 단계에서 결과 이미지 폴링 (pollTrigger로 명시적 시작만)
   useEffect(() => {
-    if (step !== 'review' || !generated) return;
+    if (step !== 'review' || !generated || pollTrigger === 0) return;
 
     const hasAllImages = generated.results.every(r => r.result_image_url);
-    if (hasAllImages) return;
+    if (hasAllImages) {
+      setImagesLoading(false);
+      setRegeneratingDayMasters(new Set());
+      return;
+    }
 
-    setImagesLoading(true);
     pollRef.current = setInterval(async () => {
       const { data } = await supabase
         .from('viral_test_results')
