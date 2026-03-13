@@ -12,13 +12,6 @@ import { Skeleton } from '../components/ui/skeleton';
 
 const font = "'Pretendard Variable', sans-serif";
 
-// 한글 일간 → 로마자 매핑 (Storage 키)
-const DAY_MASTER_ROMAN: Record<string, string> = {
-  '갑': 'gap', '을': 'eul', '병': 'byeong', '정': 'jeong', '무': 'mu',
-  '기': 'gi', '경': 'gyeong', '신': 'sin', '임': 'im', '계': 'gye',
-};
-const ALL_DAY_MASTERS = Object.keys(DAY_MASTER_ROMAN);
-
 interface ViralTest {
   id: string;
   slug: string;
@@ -87,23 +80,28 @@ export function UnteHomePage() {
     }
   };
 
-  // 테스트 삭제 (DB + Storage)
+  // 테스트 삭제 (Edge Function에서 DB + Storage 일괄 처리)
   const handleDeleteTest = useCallback(async (testId: string) => {
     if (!confirm('이 테스트를 삭제할까요?\n관련 결과, 이미지가 모두 삭제됩니다.')) return;
 
     try {
-      // 1. Storage 이미지 삭제 (썸네일 + 결과 이미지)
-      const storagePaths = [
-        `viral-tests/${testId}/thumbnail.png`,
-        ...ALL_DAY_MASTERS.map(dm => `viral-tests/${testId}/result-${DAY_MASTER_ROMAN[dm]}.png`),
-      ];
-      await supabase.storage.from('assets').remove(storagePaths);
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error('로그인이 필요합니다.');
 
-      // 2. DB 삭제 (결과 → 테스트 순서 — FK 제약)
-      await supabase.from('viral_test_results').delete().eq('test_id', testId);
-      await supabase.from('viral_tests').delete().eq('id', testId);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/viral-test-admin`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'delete', testId }),
+      });
 
-      // 3. UI에서 제거
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
       setTests(prev => prev.filter(t => t.id !== testId));
     } catch (err) {
       console.error('테스트 삭제 실패:', err);
@@ -127,7 +125,7 @@ export function UnteHomePage() {
       <div className="w-full max-w-[440px] relative pb-[100px]">
 
         {/* 공통 헤더 */}
-        <NavigationHeader title="운세 테스트" onBack={() => navigate(-1)} />
+        <NavigationHeader title="운세 테스트" onBack={() => navigate('/')} />
 
         {/* 헤더 높이 보정 (52px + 8px spacer) */}
         <div style={{ height: '60px' }} />

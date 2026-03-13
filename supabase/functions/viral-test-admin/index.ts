@@ -94,11 +94,12 @@ serve(async (req) => {
         newStatus = 'archived'
         break
 
+      case 'delete':
       case 'discard': {
-        // 미게시 테스트 삭제 (DB + Storage)
-        if (test.status === 'live') {
+        // 테스트 완전 삭제 (DB + Storage) — discard: 미게시만, delete: 모든 상태
+        if (action === 'discard' && test.status === 'live') {
           return new Response(
-            JSON.stringify({ success: false, error: '이미 게시된 테스트는 삭제할 수 없습니다.' }),
+            JSON.stringify({ success: false, error: '이미 게시된 테스트는 삭제할 수 없습니다. delete를 사용하세요.' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
@@ -110,15 +111,17 @@ serve(async (req) => {
 
         if (files && files.length > 0) {
           const filePaths = files.map(f => `viral-tests/${testId}/${f.name}`)
-          await supabase.storage.from('assets').remove(filePaths)
-          console.log(`🗑️ Storage 삭제: ${filePaths.length}개 파일`)
+          const { error: storageErr } = await supabase.storage.from('assets').remove(filePaths)
+          if (storageErr) console.error('⚠️ Storage 삭제 일부 실패:', storageErr)
+          else console.log(`🗑️ Storage 삭제: ${filePaths.length}개 파일`)
         }
 
-        // 2. DB 삭제 (results → test 순서, FK 제약)
+        // 2. DB 삭제 (plays → results → test 순서, FK 제약)
+        await supabase.from('viral_test_plays').delete().eq('test_id', testId)
         await supabase.from('viral_test_results').delete().eq('test_id', testId)
         await supabase.from('viral_tests').delete().eq('id', testId)
 
-        console.log(`🗑️ 테스트 discard 완료: ${testId}`)
+        console.log(`🗑️ 테스트 ${action} 완료: ${testId}`)
 
         return new Response(
           JSON.stringify({ success: true, testId, status: 'deleted' }),

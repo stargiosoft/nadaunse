@@ -1,7 +1,7 @@
 # 운테 (바이럴 사주 테스트) 기능 개발 인계 문서
 
 > **작성일**: 2026-03-12
-> **최종 업데이트**: 2026-03-13 (v2)
+> **최종 업데이트**: 2026-03-13 (v4)
 > **브랜치**: staging (커밋 ec25ac38 ~ 현재)
 > **상태**: 스테이징 배포 완료, 프로덕션 미배포
 
@@ -41,7 +41,7 @@
 | 파일 | 라우트 | 역할 |
 |------|--------|------|
 | `src/pages/UnteHomePage.tsx` | `/unte` | 테스트 목록 (인기순/최신순, 카테고리 필터) |
-| `src/pages/UnteCreatePage.tsx` | `/unte/create` | 아이디어 입력 + 레퍼런스 이미지 첨부 → AI 3단계 생성 → 검토/승인 → 게시 |
+| `src/pages/UnteCreatePage.tsx` | `/unte/create` | 아이디어 입력 + 결과/썸네일 레퍼런스 이미지 첨부(Storage URL 방식) → AI 3단계 생성 → 검토/승인 → 게시 |
 | `src/pages/UnteLandingPage.tsx` | `/unte/:slug` | 테스트 랜딩 (썸네일 + 제목 + CTA) |
 | `src/pages/UntePlayPage.tsx` | `/unte/:slug/play` | 사주 선택/입력 → 결과 로딩 → 애니메이션 → 결과 |
 | `src/pages/UnteResultPage.tsx` | `/unte/:slug/result` | 결과 카드 + ResultLabelCard + 공유 (카카오/링크/이미지) |
@@ -78,7 +78,7 @@
 | `src/components/ImageWithFallback.tsx` | 이미지 로딩 (썸네일, 결과 이미지) |
 | `src/components/ui/skeleton.tsx` | 로딩 스켈레톤 |
 
-### Edge Functions (4개 신규)
+### Edge Functions (5개 신규)
 
 | 함수 | 경로 | JWT | 역할 |
 |------|------|-----|------|
@@ -86,6 +86,7 @@
 | `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini 2.5 Flash Image, 4장씩 배치 병렬). `dayMasters` 파라미터로 개별 이미지 재생성 지원 |
 | `get-viral-test-result` | `supabase/functions/get-viral-test-result/index.ts` | `--no-verify-jwt` | JDN 로컬 일간 계산 → 결과 매칭 + play 기록 |
 | `viral-test-admin` | `supabase/functions/viral-test-admin/index.ts` | JWT 필요 | publish/archive/discard (creator_id 확인) |
+| `suggest-viral-ideas` | `supabase/functions/suggest-viral-ideas/index.ts` | `--no-verify-jwt` | 기존 viral_tests 제목 참고 → 중복 없는 Z세대 바이럴 아이디어 3개 AI 추천 |
 
 ### DB 마이그레이션
 
@@ -168,7 +169,10 @@
 ```
 UnteHomePage [+ 만들기 버튼]
   → UnteCreatePage (NavigationHeader 공통 컴포넌트 사용)
-    → Step 1: 아이디어 텍스트 입력 + 레퍼런스 이미지 첨부 (선택, 드래그앤드롭/클릭)
+    → Step 1: 아이디어 텍스트 입력 + 결과 레퍼런스 이미지 첨부 (선택, 드래그앤드롭/클릭)
+               + 썸네일 레퍼런스 이미지 첨부 (마스터 전용, 선택)
+               → 이미지 선택 시 Canvas 리사이즈(결과 768px, 썸네일 512px) + WebP 0.8 → Storage 업로드
+               → Edge Function에 Storage URL만 전달 (base64 전송 제거, 546 에러 해결)
     → Step 2: AI 기획 생성 (generate-viral-test → Planning + Image Guide만)
     → Step 3: 검토 (제목/설명 편집, 10개 결과+라벨 미리보기)
     → Step 4: "이미지 만들기" 버튼 클릭 → generate-viral-test-images 호출
@@ -213,8 +217,8 @@ UnteHomePage [카드 클릭] or 공유 링크
 
 ### generate-viral-test (2단계 AI 파이프라인)
 - **모델**: Gemini 2.5 Flash (`gemini-2.5-flash`)
-- **입력**: `{ idea: string, creatorId: string, referenceImage?: string, existingTestId?: string }`
-  - `referenceImage`: base64 data URI (프론트에서 변환, 선택사항)
+- **입력**: `{ idea: string, creatorId: string, hasReferenceImage?: boolean, existingTestId?: string }`
+  - `hasReferenceImage`: 레퍼런스 이미지 존재 여부 (프롬프트 분기용, 이미지 데이터 전송 없음)
   - `existingTestId`: 기획 다시하기 시 기존 testId 재사용 (기존 결과+이미지 삭제 후 재생성)
 - **Stage 1 — Planning Agent**:
   - **톤앤매너**: MZ/알파세대 타겟, 밈·커뮤니티 용어 필수 사용
@@ -235,13 +239,19 @@ UnteHomePage [카드 클릭] or 공유 링크
 
 ### generate-viral-test-images
 - **모델**: Gemini 2.5 Flash Image (`gemini-2.5-flash-image`)
-- **입력**: `{ testId: string, referenceImage?: string, dayMasters?: string[] }`
+- **입력**: `{ testId: string, dayMasters?: string[], referenceImageUrl?: string, thumbnailReferenceImageUrl?: string }`
   - `dayMasters`: 지정 시 해당 일간의 결과 이미지만 재생성 (썸네일 스킵)
-- **레퍼런스 이미지 처리**:
-  - base64 data URI 파싱 → Gemini API `inline_data`로 전달
+  - `referenceImageUrl`: 결과 이미지용 레퍼런스 Storage URL (선택)
+  - `thumbnailReferenceImageUrl`: 썸네일 전용 레퍼런스 Storage URL (선택, 마스터 전용)
+- **레퍼런스 이미지 처리 (Storage URL 방식)**:
+  - `fetchAsInlineData(url)`: Storage URL에서 WebP 다운로드 → Gemini `inline_data` 변환
+  - DB 쿼리 + 레퍼런스 이미지 fetch 병렬 로드 (`Promise.all`)
   - 일러스트/캐릭터 레퍼런스: 스타일, 캐릭터 디자인, 색감, 선 굵기 적극 참고
   - 실사 연예인/공인: 포토 스타일만 참고, 얼굴 복제 금지
-  - Image Guide Agent 프롬프트를 그대로 전달 (스타일 키워드 제거 없음)
+- **썸네일/결과 레퍼런스 독립 채널**:
+  - 썸네일: `thumbnailReferenceImageUrl`만 사용 (미첨부 시 레퍼런스 없이 생성, 결과 레퍼런스로 폴백 안 함)
+  - 결과 이미지: `referenceImageUrl`만 사용
+  - `overrideRef = task.type === 'thumbnail' ? (thumbnailRefPart ?? null) : undefined`
 - **기본 스타일** (레퍼런스 없을 때): B급 병맛 한국 커뮤니티 밈 스타일
   - 흰색 blob/졸라맨 캐릭터, 두꺼운 검정 아웃라인, 과장된 표정, 파스텔 배경
 - **처리**: 썸네일 1장 + 결과 이미지 10장 → **4장씩 배치 병렬** (`Promise.all`) → PNG 직접 Supabase Storage 업로드
@@ -261,6 +271,21 @@ UnteHomePage [카드 클릭] or 공유 링크
 - **궁합**: partnerBirthDate 등 추가 파라미터로 상대 일간도 계산
 - **응답**: `myResult.resultLabel`, `partnerResult.resultLabel` 포함
 - **기록**: `viral_test_plays` INSERT + `play_count` 증가
+
+### suggest-viral-ideas (AI 아이디어 추천)
+- **모델**: Gemini 2.5 Flash (`gemini-2.5-flash`)
+- **입력**: `{}` (파라미터 없음)
+- **로직**:
+  1. `viral_tests` 테이블에서 `status != 'failed'`인 기존 테스트의 title + idea_input 최대 50개 조회
+  2. 기존 목록을 시스템 프롬프트에 포함하여 **중복 방지**
+  3. Z세대(10대 후반~20대 초반) 타겟 바이럴 최적화 프롬프트 (밈/유행어, 자기탐색 프레임, 공유 욕구)
+  4. `temperature: 1.2`로 창의성 높임
+- **응답**: `{ ideas: [{ title, type, resultFormat }] }` (3개)
+- **프론트엔드 연동**: `UnteCreatePage.tsx` 진입 시 자동 호출 → "아이디어 예시" 칩을 AI 추천으로 교체
+  - 새로고침 버튼(↻)으로 재생성
+  - 로딩 중 스켈레톤 표시
+  - 실패 시 정적 예시 3개 폴백 (`미래 남편 얼굴은?`, `바람끼 테스트`, `전생에 나는 뭐였을까`)
+  - AI 추천 칩은 파란 톤(`#f0f7ff` / `#4a7fd4`)으로 시각적 차별화
 
 ### viral-test-admin
 - **입력**: `{ action: 'publish'|'archive'|'discard', testId }`
@@ -297,14 +322,32 @@ const dayMaster = CHEONGAN[index];
 
 검증: `saju-calculator.html`의 `(jd + 49) % 60`에서 천간 부분 `% 10`과 일치 확인됨.
 
-### 레퍼런스 이미지 기반 생성
-`UnteCreatePage`에서 이미지 첨부 (클릭 또는 드래그앤드롭) → base64 변환 → Edge Function 전달 → Gemini `inline_data`로 스타일 참고.
+### 레퍼런스 이미지 기반 생성 (Storage URL 방식)
+`UnteCreatePage`에서 이미지 첨부 → Canvas 리사이즈 + WebP 압축 → Supabase Storage 업로드 → Edge Function에 URL만 전달.
 
-- **프론트**: `<input type="file">` + 드래그앤드롭 → `ArrayBuffer` → base64 data URI
-- **Edge Function**: data URI 파싱 → `{ inline_data: { mime_type, data } }`
-- **레퍼런스 활용 전략**:
-  - 일러스트/캐릭터: 스타일, 캐릭터 비율, 선 스타일, 채색 적극 참고
-  - 실사 연예인/공인: 포토 스타일만 참고, 얼굴 복제 금지
+- **프론트 (Storage URL 방식)**:
+  - `<input type="file">` + 드래그앤드롭 → `resizeAndUpload()` 헬퍼
+  - Canvas 리사이즈 (결과: 768px max, 썸네일: 512px max) + WebP 0.8 quality (~50KB)
+  - Storage 경로: `viral-tests/refs/{uuid}.webp` (임시, 게시/이탈 시 자동 삭제)
+  - Edge Function 호출 시 Storage public URL만 전달 (~1KB vs 기존 base64 ~13MB)
+- **RefImage 상태 관리**:
+  ```typescript
+  interface RefImage {
+    preview: string | null;      // 로컬 미리보기 URL
+    storageUrl: string | null;   // Storage public URL (Edge Function 전달용)
+    storagePath: string | null;  // Storage 경로 (삭제용)
+    uploading: boolean;          // 업로드 중 여부
+    fileName: string | null;     // 파일명 표시용
+  }
+  ```
+- **2채널 레퍼런스 (독립)**:
+  - 결과 레퍼런스 (`refImage`): 모든 사용자, 결과 이미지 스타일 참고
+  - 썸네일 레퍼런스 (`thumbRef`): 마스터 전용, 썸네일 이미지 전용 (결과 레퍼런스로 폴백 안 함)
+- **Edge Function**: `fetchAsInlineData(url)` — Storage URL에서 WebP 다운로드 → Gemini `inline_data` 변환
+- **자동 정리 (Storage 용량 관리)**:
+  - 게시(publish) 시: 두 레퍼런스 이미지 Storage에서 삭제
+  - 폐기(discard) 시: 두 레퍼런스 이미지 Storage에서 삭제
+  - 컴포넌트 언마운트 시: 미게시 상태면 Storage에서 삭제
 - **프롬프트 분리**: Image Guide Agent가 레퍼런스 유무에 따라 완전 다른 시스템 프롬프트 사용 (스타일 지시어 포함/제외)
 
 ### 미게시 테스트 자동 정리 (Discard)
@@ -356,10 +399,11 @@ ALTER TABLE viral_test_results ADD COLUMN IF NOT EXISTS result_label text;
 
 ### Edge Functions 배포
 ```bash
-# 4개 함수 — 3개는 --no-verify-jwt (내부 호출 / 비로그인 허용)
+# 5개 함수 — 4개는 --no-verify-jwt (내부 호출 / 비로그인 허용)
 npx supabase functions deploy generate-viral-test --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy generate-viral-test-images --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy get-viral-test-result --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
+npx supabase functions deploy suggest-viral-ideas --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjkub
 ```
 
@@ -372,6 +416,80 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 - 버킷 `assets` 내 `viral-tests/` 경로 사용 (기존 assets 버킷)
 - 이미지 경로: `viral-tests/{testId}/thumbnail.png`, `result-{romanKey}.png`
 - 공유 카드: `viral-tests/{testId}/share-card-{dayMaster}.png`
+- 레퍼런스 이미지 (임시): `viral-tests/refs/{uuid}.webp` (게시/이탈 시 자동 삭제)
+
+### Storage RLS 정책 (프로덕션 적용 필요)
+레퍼런스 이미지 업로드/삭제를 위한 `viral-tests/refs/` 경로 정책:
+```sql
+-- INSERT: 로그인 사용자 업로드 허용
+CREATE POLICY "Allow authenticated upload viral-tests refs" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
+
+-- SELECT: 로그인 사용자 읽기 허용 (upsert에 필요)
+CREATE POLICY "Allow authenticated select viral-tests refs" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
+
+-- UPDATE: 로그인 사용자 업데이트 허용 (upsert에 필요)
+CREATE POLICY "Allow authenticated update viral-tests refs" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
+
+-- DELETE: 로그인 사용자 삭제 허용 (자동 정리용)
+CREATE POLICY "Allow authenticated delete viral-tests refs" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'viral-tests' AND (storage.foldername(name))[2] = 'refs');
+```
+
+### DB RLS DELETE 정책 (프로덕션 적용 필요)
+테스트 삭제(마스터/본인)를 위한 DELETE 정책 — 스테이징 적용 완료:
+```sql
+-- viral_tests: 본인 또는 마스터 삭제
+CREATE POLICY "본인 또는 마스터 테스트 삭제" ON viral_tests
+  FOR DELETE USING (
+    auth.uid() = creator_id
+    OR EXISTS (
+      SELECT 1 FROM public.users
+      WHERE users.id = auth.uid()
+      AND users.role = 'master'
+    )
+  );
+
+-- viral_test_results: 본인 테스트 또는 마스터 삭제
+CREATE POLICY "본인 또는 마스터 결과 삭제" ON viral_test_results
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM viral_tests
+      WHERE viral_tests.id = viral_test_results.test_id
+      AND (
+        viral_tests.creator_id = auth.uid()
+        OR EXISTS (
+          SELECT 1 FROM public.users
+          WHERE users.id = auth.uid()
+          AND users.role = 'master'
+        )
+      )
+    )
+  );
+
+-- viral_test_plays: 본인 테스트 또는 마스터 삭제
+CREATE POLICY "본인 또는 마스터 플레이 삭제" ON viral_test_plays
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM viral_tests
+      WHERE viral_tests.id = viral_test_plays.test_id
+      AND (
+        viral_tests.creator_id = auth.uid()
+        OR EXISTS (
+          SELECT 1 FROM public.users
+          WHERE users.id = auth.uid()
+          AND users.role = 'master'
+        )
+      )
+    )
+  );
+```
 
 ### 프론트엔드
 - staging → production cherry-pick (MEMORY.md 규칙 준수)
@@ -408,6 +526,10 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 | 기획 톤앤매너 | MZ/알파세대 밈 말투 | 10대~20대 바이럴 타겟, 올드 운세 톤 금지 |
 | 기본 이미지 스타일 | B급 병맛 밈 캐릭터 | 잘파세대가 선호하는 한국 커뮤니티 테스트 이미지 스타일 |
 | 레퍼런스 이미지 | 일러스트→적극 참고, 실사 인물→스타일만 | 캐릭터/일러스트는 충실히, 초상권은 보호 |
+| 레퍼런스 전달 방식 | Storage URL (base64 제거) | JSON body 13MB→1KB, 546 에러 해결, Edge Function 안정성 |
+| 레퍼런스 이미지 리사이즈 | Canvas WebP 0.8 (결과 768px, 썸네일 512px) | ~50KB로 Storage 비용 절감, Gemini 입력 최적화 |
+| 썸네일/결과 레퍼런스 | 독립 채널 (폴백 없음) | 썸네일은 별도 스타일 필요, 결과 레퍼런스와 혼합 방지 |
+| 레퍼런스 Storage 정리 | 게시/폐기/언마운트 시 자동 삭제 | 임시 파일 누적 방지, Storage 용량 관리 |
 | 이미지 생성 병렬화 | 4장씩 배치 `Promise.all` | 순차 ~2분 → 배치 ~40초, Edge Function 50초 타임아웃 대응 |
 | 이미지 생성 분리 | 기획과 이미지 생성 단계 분리 (수동 트리거) | 기획 결과 먼저 검토 후 이미지 생성 |
 | 미게시 정리 | discard 액션 (DB+Storage 삭제) | 이탈 시 고아 데이터 방지 |
@@ -425,7 +547,14 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 ## 10. 알려진 이슈 / TODO
 
 - [x] ~~레퍼런스 실사→일러스트 문제~~ → 레퍼런스 모드 프롬프트 완전 분리 + stripStyleKeywords 제거로 해결
-- [ ] **Storage RLS**: 프로덕션에 `viral-tests/%` DELETE 정책 추가 필요 (스테이징에 적용 완료)
+- [x] ~~레퍼런스 base64 546 에러~~ → Storage URL 방식으로 전환 (JSON body 13MB→1KB)
+- [x] ~~Storage RLS refs 경로~~ → INSERT/SELECT/UPDATE/DELETE 정책 스테이징 적용 완료
+- [x] ~~썸네일/결과 레퍼런스 폴백 문제~~ → 독립 채널로 분리 (썸네일 미첨부 시 레퍼런스 없이 생성)
+- [x] ~~레퍼런스 이미지 Storage 누적~~ → 게시/폐기/언마운트 시 자동 삭제
+- [x] ~~DB RLS DELETE 정책 누락~~ → viral_tests/viral_test_results/viral_test_plays 3개 테이블 DELETE 정책 추가 (본인 또는 마스터), 스테이징 적용 완료
+- [ ] **DB RLS DELETE 정책 (프로덕션)**: 3개 테이블 DELETE 정책 적용 필요 (배포 체크리스트 SQL 참조)
+- [ ] **Storage RLS (프로덕션)**: `viral-tests/refs/%` 경로 INSERT/SELECT/UPDATE/DELETE 정책 적용 필요
+- [ ] **Storage RLS (프로덕션)**: `viral-tests/%` DELETE 정책 추가 필요
 - [ ] **Storage 버킷**: 프로덕션에 `assets` 버킷 내 `viral-tests/` 경로 접근 가능 확인
 - [ ] **OG 메타 태그**: 소셜 미리보기용 메타 태그 미구현 (SPA이므로 SSR/prerender 필요)
 - [ ] **조회수/참여수**: view_count 증가 로직이 부정확 (UnteLandingPage에서 play_count만 증가)

@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import AgeVerificationGate from '../components/AgeVerificationGate';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { Skeleton } from '../components/ui/skeleton';
+import { TopNavigation } from '../components/FreeContentDetailComponents';
 
 const font = "'Pretendard Variable', sans-serif";
 
@@ -30,6 +31,16 @@ export function UnteLandingPage() {
   const [test, setTest] = useState<TestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // 시스템 뒤로가기 / 스와이프 뒤로가기 → 운테 리스트로 이동
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => {
+      navigate('/unte', { replace: true });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [navigate]);
 
   useEffect(() => {
     if (!slug) return;
@@ -142,6 +153,13 @@ export function UnteLandingPage() {
   const content = (
     <div className="relative min-h-screen w-full flex justify-center" style={{ backgroundColor: '#ffffff' }}>
       <div className="w-full max-w-[440px] relative flex flex-col min-h-screen">
+
+        {/* 공통 헤더 */}
+        <TopNavigation
+          title="운세 테스트"
+          onBack={() => navigate('/unte')}
+          onHome={() => navigate('/')}
+        />
 
         {/* 썸네일 */}
         <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
