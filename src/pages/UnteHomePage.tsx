@@ -3,7 +3,7 @@
  * ★DESIGN_SYSTEM★ 기반 레이아웃 + 색상 + 타이포
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import UnteTestCard from '../components/UnteTestCard';
@@ -11,6 +11,13 @@ import { NavigationHeader } from '../components/NavigationHeader';
 import { Skeleton } from '../components/ui/skeleton';
 
 const font = "'Pretendard Variable', sans-serif";
+
+// 한글 일간 → 로마자 매핑 (Storage 키)
+const DAY_MASTER_ROMAN: Record<string, string> = {
+  '갑': 'gap', '을': 'eul', '병': 'byeong', '정': 'jeong', '무': 'mu',
+  '기': 'gi', '경': 'gyeong', '신': 'sin', '임': 'im', '계': 'gye',
+};
+const ALL_DAY_MASTERS = Object.keys(DAY_MASTER_ROMAN);
 
 interface ViralTest {
   id: string;
@@ -33,6 +40,19 @@ export function UnteHomePage() {
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortType>('popular');
   const [filter, setFilter] = useState<FilterType>('all');
+  const [isMaster, setIsMaster] = useState(false);
+
+  // 마스터 계정 확인
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+        setIsMaster(data?.role === 'master');
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   useEffect(() => {
     loadTests();
@@ -66,6 +86,30 @@ export function UnteHomePage() {
       setLoading(false);
     }
   };
+
+  // 테스트 삭제 (DB + Storage)
+  const handleDeleteTest = useCallback(async (testId: string) => {
+    if (!confirm('이 테스트를 삭제할까요?\n관련 결과, 이미지가 모두 삭제됩니다.')) return;
+
+    try {
+      // 1. Storage 이미지 삭제 (썸네일 + 결과 이미지)
+      const storagePaths = [
+        `viral-tests/${testId}/thumbnail.png`,
+        ...ALL_DAY_MASTERS.map(dm => `viral-tests/${testId}/result-${DAY_MASTER_ROMAN[dm]}.png`),
+      ];
+      await supabase.storage.from('assets').remove(storagePaths);
+
+      // 2. DB 삭제 (결과 → 테스트 순서 — FK 제약)
+      await supabase.from('viral_test_results').delete().eq('test_id', testId);
+      await supabase.from('viral_tests').delete().eq('id', testId);
+
+      // 3. UI에서 제거
+      setTests(prev => prev.filter(t => t.id !== testId));
+    } catch (err) {
+      console.error('테스트 삭제 실패:', err);
+      alert('삭제에 실패했습니다.');
+    }
+  }, []);
 
   const filterButtons: { key: FilterType; label: string }[] = [
     { key: 'all', label: '전체' },
@@ -225,6 +269,8 @@ export function UnteHomePage() {
                   playCount={test.play_count}
                   templateType={test.template_type}
                   isAdult={test.is_adult}
+                  isMaster={isMaster}
+                  onDelete={handleDeleteTest}
                 />
               ))}
             </div>

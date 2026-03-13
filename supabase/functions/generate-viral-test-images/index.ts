@@ -141,25 +141,8 @@ Generate images that closely match the reference image's style, character design
     // 레퍼런스 없을 때 기본 스타일: B급 병맛 캐릭터 (잘파세대 바이럴 스타일)
     const DEFAULT_STYLE = `Style: Korean internet meme / B-grade humor illustration style. Simple white blob-like or stick-figure characters with thick black outlines, minimal detail, exaggerated funny expressions. Pastel or solid color backgrounds (pink, light blue, white). Intentionally crude and goofy drawing style like Korean community test memes (에브리타임/인스타 테스트). Cute but absurd, comedic mood. Think: simple round white characters with dot eyes, like Korean emoticon mascots.`
 
-    // 레퍼런스 있을 때 프롬프트에서 스타일 키워드 제거 (일러스트/애니 지시가 실사 레퍼런스를 덮어쓰는 문제 방지)
-    function stripStyleKeywords(prompt: string): string {
-      const stylePatterns = [
-        /\b(anime|manga|cartoon|2d|flat|illustration|illustrated|digital art|digital painting|comic|webtoon|cel[- ]shad(ed|ing))\b/gi,
-        /\b(watercolor|oil painting|sketch|line art|lineart|hand[- ]drawn|pixel art)\b/gi,
-        /\b(vibrant|bold|pastel|neon)\s+(color|colour|palette|tone)s?\b/gi,
-        /style:\s*[^.;,\n]+/gi,
-        /\bin the style of\s+[^.;,\n]+/gi,
-        /\b(flat|bold|thick)\s+(outlines?|lines?|strokes?)\b/gi,
-      ]
-      let cleaned = prompt
-      for (const pattern of stylePatterns) {
-        cleaned = cleaned.replace(pattern, '')
-      }
-      return cleaned.replace(/\s{2,}/g, ' ').trim()
-    }
-
     const thumbnailPrompt = hasRef
-      ? `${test.thumbnail_prompt ? stripStyleKeywords(test.thumbnail_prompt) : `Create an eye-catching thumbnail for a viral quiz titled "${test.title}".`}\nNo text in the image. Aspect ratio: square (1:1).`
+      ? `${test.thumbnail_prompt || `Create an eye-catching thumbnail for a viral quiz titled "${test.title}".`}\nNo text in the image. Aspect ratio: square (1:1).`
       : (test.thumbnail_prompt
           ? `${test.thumbnail_prompt}\n${DEFAULT_STYLE}\nNo text in the image. Aspect ratio: square (1:1).`
           : `Create a thumbnail for a viral quiz/test titled "${test.title}".\n${DEFAULT_STYLE}\nNo text in the image. Full-bleed, no borders or margins. Aspect ratio: square (1:1).`)
@@ -193,10 +176,9 @@ Generate images that closely match the reference image's style, character design
 
       let basePrompt: string
       if (hasRef) {
-        // 레퍼런스 있을 때: 스타일 키워드 제거 → 주제/포즈/상황만 남김
+        // 레퍼런스 있을 때: 프롬프트 그대로 전달 (스타일은 레퍼런스 이미지에서 파악)
         const contentOnly = rawPrompt
-          ? stripStyleKeywords(rawPrompt)
-          : `A person representing: "${result.result_title}". Score: ${result.score}/100.`
+          || `A person representing: "${result.result_title}". Score: ${result.score}/100.`
         basePrompt = `${contentOnly}\nAspect ratio: 3:4 (portrait). No text in the image.`
       } else {
         basePrompt = rawPrompt

@@ -103,26 +103,44 @@ export function UnteCreatePage() {
     };
   }, [referencePreview]);
 
-  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [isDragging, setIsDragging] = useState(false);
 
-    // 10MB 제한
+  const processImageFile = useCallback((file: File) => {
     if (file.size > 10 * 1024 * 1024) {
       setError('이미지는 10MB 이하만 가능해요');
       return;
     }
-
     if (!file.type.startsWith('image/')) {
       setError('이미지 파일만 첨부할 수 있어요');
       return;
     }
-
     if (referencePreview) URL.revokeObjectURL(referencePreview);
     setReferenceImage(file);
     setReferencePreview(URL.createObjectURL(file));
     setError('');
   }, [referencePreview]);
+
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processImageFile(file);
+  }, [processImageFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processImageFile(file);
+  }, [processImageFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
 
   const handleRemoveImage = useCallback(() => {
     if (referencePreview) URL.revokeObjectURL(referencePreview);
@@ -580,24 +598,27 @@ export function UnteCreatePage() {
                   ) : (
                     <button
                       onClick={() => fileInputRef.current?.click()}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
                       className="w-full flex flex-col items-center justify-center cursor-pointer"
                       style={{
                         height: '120px',
                         borderRadius: '16px',
-                        border: '1.5px dashed #d5d5d5',
-                        backgroundColor: '#fafafa',
+                        border: `1.5px dashed ${isDragging ? '#48b2af' : '#d5d5d5'}`,
+                        backgroundColor: isDragging ? '#f0faf9' : '#fafafa',
                         gap: '8px',
-                        transition: 'border-color 0.15s ease',
+                        transition: 'border-color 0.15s ease, background-color 0.15s ease',
                       }}
-                      onPointerEnter={e => { e.currentTarget.style.borderColor = '#48b2af'; }}
-                      onPointerLeave={e => { e.currentTarget.style.borderColor = '#d5d5d5'; }}
+                      onPointerEnter={e => { if (!isDragging) e.currentTarget.style.borderColor = '#48b2af'; }}
+                      onPointerLeave={e => { if (!isDragging) e.currentTarget.style.borderColor = '#d5d5d5'; }}
                     >
                       <span style={{ fontSize: '28px', lineHeight: 1 }}>🖼️</span>
                       <span style={{
                         fontFamily: font, fontSize: '13px', fontWeight: 400,
-                        lineHeight: '18px', letterSpacing: '-0.26px', color: '#848484',
+                        lineHeight: '18px', letterSpacing: '-0.26px', color: isDragging ? '#48b2af' : '#848484',
                       }}>
-                        이미지를 첨부해주세요
+                        {isDragging ? '여기에 놓으세요' : '이미지를 첨부해주세요'}
                       </span>
                       <span style={{
                         fontFamily: font, fontSize: '11px', fontWeight: 400,

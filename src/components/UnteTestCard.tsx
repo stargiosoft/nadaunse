@@ -3,6 +3,7 @@
  * 홈 목록에서 테스트를 표시하는 카드
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ImageWithFallback } from './ImageWithFallback';
 
@@ -15,9 +16,12 @@ interface UnteTestCardProps {
   playCount: number;
   templateType: string;
   isAdult?: boolean;
+  isMaster?: boolean;
+  onDelete?: (id: string) => void;
 }
 
 export default function UnteTestCard({
+  id,
   slug,
   title,
   description,
@@ -25,8 +29,11 @@ export default function UnteTestCard({
   playCount,
   templateType,
   isAdult,
+  isMaster,
+  onDelete,
 }: UnteTestCardProps) {
   const navigate = useNavigate();
+  const [hovered, setHovered] = useState(false);
 
   const formatCount = (n: number): string => {
     if (n >= 10000) return `${(n / 10000).toFixed(1)}만`;
@@ -43,6 +50,7 @@ export default function UnteTestCard({
       onClick={() => navigate(`/unte/${slug}`)}
       className="flex flex-col overflow-hidden transform-gpu cursor-pointer w-full text-left"
       style={{
+        position: 'relative',
         backgroundColor: '#ffffff',
         border: '1px solid #e7e7e7',
         borderRadius: '16px',
@@ -50,8 +58,37 @@ export default function UnteTestCard({
       }}
       onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
       onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-      onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={e => { e.currentTarget.style.transform = ''; setHovered(false); }}
     >
+      {/* 마스터 삭제 버튼 */}
+      {isMaster && hovered && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (onDelete) onDelete(id);
+          }}
+          className="absolute flex items-center justify-center cursor-pointer z-10"
+          style={{
+            top: '8px',
+            right: '8px',
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            border: 'none',
+            color: '#ffffff',
+            fontSize: '14px',
+            lineHeight: 1,
+            transition: 'background-color 0.1s ease',
+          }}
+          onPointerEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(212,24,61,0.85)'; }}
+          onPointerLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.55)'; }}
+        >
+          ✕
+        </div>
+      )}
       {/* 썸네일 */}
       <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
         {thumbnailUrl ? (
