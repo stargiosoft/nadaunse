@@ -150,14 +150,13 @@ Generate images that closely match the reference image's style, character design
 
     // 3. 썸네일 생성 (DB에 저장된 프롬프트 우선 사용)
     const hasRef = !!refImagePart
-    // 썸네일 레퍼런스가 있으면 썸네일은 레퍼런스 참고, 없으면 기존 결과 레퍼런스 사용
+    // 썸네일 전용 레퍼런스 유무 (결과 레퍼런스와 독립)
     const hasThumbnailRef = !!thumbnailRefPart
-    const hasAnyThumbnailRef = hasThumbnailRef || hasRef
 
     // 레퍼런스 없을 때 기본 스타일: B급 병맛 캐릭터 (잘파세대 바이럴 스타일)
     const DEFAULT_STYLE = `Style: Korean internet meme / B-grade humor illustration style. Simple white blob-like or stick-figure characters with thick black outlines, minimal detail, exaggerated funny expressions. Pastel or solid color backgrounds (pink, light blue, white). Intentionally crude and goofy drawing style like Korean community test memes (에브리타임/인스타 테스트). Cute but absurd, comedic mood. Think: simple round white characters with dot eyes, like Korean emoticon mascots.`
 
-    const thumbnailPrompt = hasAnyThumbnailRef
+    const thumbnailPrompt = hasThumbnailRef
       ? `${test.thumbnail_prompt || `Create an eye-catching thumbnail for a viral quiz titled "${test.title}".`}\nNo text in the image. Aspect ratio: square (1:1).`
       : (test.thumbnail_prompt
           ? `${test.thumbnail_prompt}\n${DEFAULT_STYLE}\nNo text in the image. Aspect ratio: square (1:1).`
@@ -222,8 +221,8 @@ Generate images that closely match the reference image's style, character design
 
       const batchResults = await Promise.all(
         batch.map(async (task) => {
-          // 썸네일은 thumbnailRefPart 우선, 없으면 refImagePart 사용
-          const overrideRef = task.type === 'thumbnail' && thumbnailRefPart ? thumbnailRefPart : undefined
+          // 썸네일은 썸네일 전용 레퍼런스만 사용 (없으면 레퍼런스 없이 생성)
+          const overrideRef = task.type === 'thumbnail' ? (thumbnailRefPart ?? null) : undefined
           const url = await generateAndUploadImage(task.prompt, task.storagePath, overrideRef)
           return { ...task, url }
         })
