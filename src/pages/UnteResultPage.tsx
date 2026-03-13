@@ -29,16 +29,11 @@ interface ResultState {
       shareImageUrl: string | null;
       score: number;
       resultLabel?: string | null;
+      relationType?: string | null;
     };
-    partnerResult?: {
-      dayMaster: string;
-      element: string;
-      resultTitle: string;
-      resultDescription: string;
-      resultImageUrl: string | null;
-      score: number;
-      resultLabel?: string | null;
-    } | null;
+    partnerDayMaster?: string | null;
+    relationType?: string | null;
+    isCompatibility?: boolean;
   };
   test: {
     id: string;
@@ -59,11 +54,20 @@ export function UnteResultPage() {
   const result = state?.result;
   const test = state?.test;
   const myResult = result?.myResult;
-  const partnerResult = result?.partnerResult;
+  const isCompatibility = result?.isCompatibility;
+  const relationType = result?.relationType;
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+
+    // 시스템 뒤로가기 / 스와이프 뒤로가기 → 운테 리스트로 이동
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => {
+      navigate('/unte', { replace: true });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [navigate]);
 
   // AI 이미지가 없을 때 Canvas로 공유 카드 생성 → Storage 업로드
   useEffect(() => {
@@ -297,40 +301,27 @@ export function UnteResultPage() {
           </div>
         </motion.div>
 
-        {/* 궁합 상대 결과 */}
-        {partnerResult && (
+        {/* 궁합 관계 뱃지 */}
+        {isCompatibility && relationType && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="flex items-center justify-center"
             style={{
               margin: '12px 20px 0',
-              padding: '20px',
+              padding: '12px 20px',
               borderRadius: '16px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e7e7e7',
+              backgroundColor: '#f0f8f8',
+              border: '1px solid #d4eeee',
             }}
           >
-            <p style={{
-              fontFamily: font, fontSize: '12px', fontWeight: 400,
-              lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
-              marginBottom: '8px',
+            <span style={{
+              fontFamily: font, fontSize: '14px', fontWeight: 500,
+              lineHeight: '20px', letterSpacing: '-0.42px', color: '#41a09e',
             }}>
-              상대방 결과
-            </p>
-            <p style={{
-              fontFamily: font, fontSize: '18px', fontWeight: 600,
-              lineHeight: '25.5px', letterSpacing: '-0.36px', color: '#151515',
-            }}>
-              {partnerResult.resultTitle}
-            </p>
-            <p style={{
-              fontFamily: font, fontSize: '14px', fontWeight: 400,
-              lineHeight: '22px', letterSpacing: '-0.42px', color: '#6d6d6d',
-              marginTop: '8px',
-            }}>
-              {partnerResult.resultDescription}
-            </p>
+              💑 둘의 궁합 유형
+            </span>
           </motion.div>
         )}
 

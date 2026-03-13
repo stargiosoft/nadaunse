@@ -11,11 +11,17 @@ import { NavigationHeader } from '../components/NavigationHeader';
 
 interface GeneratedResult {
   day_master: string;
+  relation_type?: string;
   result_title: string;
   result_description: string;
   score: number;
   result_label?: string;
   result_image_url?: string | null;
+}
+
+/** 결과의 고유 키 (일반: day_master, 궁합: relation_type) */
+function resultKey(r: GeneratedResult): string {
+  return r.relation_type || r.day_master;
 }
 
 interface GeneratedTest {
@@ -28,6 +34,7 @@ interface GeneratedTest {
   resultFormat?: string;
   results: GeneratedResult[];
   imageStyleGuide?: string;
+  thumbnailUrl?: string | null;
 }
 
 type Step = 'input' | 'generating' | 'review' | 'publishing';
@@ -45,11 +52,16 @@ export function UnteCreatePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [imagesLoading, setImagesLoading] = useState(false);
   const [published, setPublished] = useState(false);
+  // AI 아이디어 추천
+  const [aiIdeas, setAiIdeas] = useState<Array<{ title: string; type: string; resultFormat: string }>>([]);
+  const [aiIdeasLoading, setAiIdeasLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generatedRef = useRef<GeneratedTest | null>(null);
   const [pollTrigger, setPollTrigger] = useState(0);
   const [regeneratingDayMasters, setRegeneratingDayMasters] = useState<Set<string>>(new Set());
+  // 재생성 전 URL 스냅샷 (구 URL 복원 방지용)
+  const preRegenUrlsRef = useRef<Map<string, string | null>>(new Map());
   const [isMaster, setIsMaster] = useState(false);
   const thumbnailFileInputRef = useRef<HTMLInputElement>(null);
   const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
@@ -82,6 +94,27 @@ export function UnteCreatePage() {
       }
     });
   }, []);
+
+  // AI 아이디어 추천 로드
+  const fetchAiIdeas = useCallback(async () => {
+    setAiIdeasLoading(true);
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/suggest-viral-ideas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error('추천 실패');
+      const data = await res.json();
+      if (data.ideas?.length) setAiIdeas(data.ideas);
+    } catch (err) {
+      console.error('AI 아이디어 추천 오류:', err);
+    } finally {
+      setAiIdeasLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAiIdeas(); }, [fetchAiIdeas]);
 
   // generated 상태를 ref에도 동기화 (cleanup에서 최신값 참조용)
   useEffect(() => {
@@ -251,37 +284,72 @@ export function UnteCreatePage() {
     }
 
     pollRef.current = setInterval(async () => {
-      const { data } = await supabase
-        .from('viral_test_results')
-        .select('day_master, result_image_url')
-        .eq('test_id', generated.testId);
+      const [{ data }, { data: testData }] = await Promise.all([
+        supabase
+          .from('viral_test_results')
+          .select('day_master, relation_type, result_image_url')
+          .eq('test_id', generated.testId),
+        supabase
+          .from('viral_tests')
+          .select('thumbnail_url')
+          .eq('id', generated.testId)
+          .single(),
+      ]);
 
       if (!data) return;
 
-      const imageMap = new Map(data.map(d => [d.day_master, d.result_image_url]));
-      const allDone = data.every(d => d.result_image_url);
+      // 범용 키: 궁합은 relation_type, 일반은 day_master
+      const imageMap = new Map(data.map(d => [d.relation_type || d.day_master, d.result_image_url]));
+      const preRegenUrls = preRegenUrlsRef.current;
 
       setGenerated(prev => prev ? {
         ...prev,
-        results: prev.results.map(r => ({
-          ...r,
-          result_image_url: imageMap.get(r.day_master) || r.result_image_url,
-        })),
+        thumbnailUrl: testData?.thumbnail_url || prev.thumbnailUrl,
+        results: prev.results.map(r => {
+          const key = resultKey(r);
+          const dbUrl = imageMap.get(key);
+          // 재생성 중인 이미지 (state가 null): DB URL이 변경된 경우에만 반영
+          if (!r.result_image_url && preRegenUrls.has(key)) {
+            const oldUrl = preRegenUrls.get(key);
+            if (dbUrl && dbUrl !== oldUrl) {
+              return { ...r, result_image_url: dbUrl };
+            }
+            return r; // 구 URL 복원 방지 → null 유지
+          }
+          return { ...r, result_image_url: dbUrl || r.result_image_url };
+        }),
       } : prev);
 
-      // 재생성 완료된 일간 제거
+      // 재생성 완료된 키 제거 (URL이 실제 변경된 경우만)
       setRegeneratingDayMasters(prev => {
         const next = new Set(prev);
         for (const d of data) {
-          if (d.result_image_url && next.has(d.day_master)) {
-            next.delete(d.day_master);
+          const key = d.relation_type || d.day_master;
+          if (next.has(key) && d.result_image_url) {
+            const oldUrl = preRegenUrls.get(key);
+            if (d.result_image_url !== oldUrl) {
+              next.delete(key);
+              preRegenUrls.delete(key);
+            }
           }
         }
         return next.size === prev.size ? prev : next;
       });
 
+      // 완료 체크: 재생성 중인 것은 URL 변경 확인, 나머지는 URL 존재 확인
+      const allDone = data.every(d => {
+        if (!d.result_image_url) return false;
+        const key = d.relation_type || d.day_master;
+        const oldUrl = preRegenUrls.get(key);
+        if (oldUrl !== undefined) {
+          return d.result_image_url !== oldUrl; // 재생성: URL 변경됨
+        }
+        return true; // 비재생성: URL 있으면 OK
+      });
+
       if (allDone) {
         setImagesLoading(false);
+        preRegenUrlsRef.current = new Map();
         if (pollRef.current) clearInterval(pollRef.current);
       }
     }, 5000);
@@ -424,13 +492,21 @@ export function UnteCreatePage() {
   const handleRegenerateImages = async () => {
     if (!generated) return;
 
-    // 로컬 이미지 초기화
+    // 재생성 전 URL 스냅샷 저장 (폴링에서 구 URL 복원 방지)
+    const urlMap = new Map<string, string | null>();
+    for (const r of generated.results) {
+      urlMap.set(resultKey(r), r.result_image_url);
+    }
+    preRegenUrlsRef.current = urlMap;
+
+    // 로컬 이미지 초기화 (썸네일 포함)
     setGenerated(prev => prev ? {
       ...prev,
+      thumbnailUrl: null,
       results: prev.results.map(r => ({ ...r, result_image_url: null })),
     } : prev);
     setImagesLoading(true);
-    setRegeneratingDayMasters(new Set(generated.results.map(r => r.day_master)));
+    setRegeneratingDayMasters(new Set(generated.results.map(r => resultKey(r))));
 
     // DB 이미지 URL 초기화 (폴링이 새 이미지만 감지하도록)
     await supabase.from('viral_test_results')
@@ -455,32 +531,41 @@ export function UnteCreatePage() {
   };
 
   // 개별 이미지 다시 만들기
-  const handleRegenerateSingleImage = async (dayMaster: string) => {
+  const handleRegenerateSingleImage = async (key: string) => {
     if (!generated) return;
+    const isCompat = generated.templateType === 'compatibility';
+
+    // 재생성 전 URL 스냅샷 저장 (폴링에서 구 URL 복원 방지)
+    const target = generated.results.find(r => resultKey(r) === key);
+    preRegenUrlsRef.current.set(key, target?.result_image_url || null);
 
     // 해당 이미지만 초기화
     setGenerated(prev => prev ? {
       ...prev,
       results: prev.results.map(r =>
-        r.day_master === dayMaster ? { ...r, result_image_url: null } : r
+        resultKey(r) === key ? { ...r, result_image_url: null } : r
       ),
     } : prev);
-    setRegeneratingDayMasters(prev => new Set([...prev, dayMaster]));
+    setRegeneratingDayMasters(prev => new Set([...prev, key]));
     setImagesLoading(true);
 
     // DB 이미지 URL 초기화
-    await supabase.from('viral_test_results')
+    const query = supabase.from('viral_test_results')
       .update({ result_image_url: null, share_image_url: null })
-      .eq('test_id', generated.testId)
-      .eq('day_master', dayMaster);
+      .eq('test_id', generated.testId);
+    if (isCompat) {
+      await query.eq('relation_type', key);
+    } else {
+      await query.eq('day_master', key);
+    }
 
-    // 이미지 생성 API 호출 (해당 일간만) — URL만 전달
+    // 이미지 생성 API 호출 — URL만 전달
     fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         testId: generated.testId,
-        dayMasters: [dayMaster],
+        ...(isCompat ? { relationTypes: [key] } : { dayMasters: [key] }),
         ...(refImage.storageUrl && { referenceImageUrl: refImage.storageUrl }),
       }),
     }).catch(console.error);
@@ -488,10 +573,61 @@ export function UnteCreatePage() {
     setPollTrigger(c => c + 1);
   };
 
+  // 썸네일만 다시 만들기
+  const [thumbnailRegenerating, setThumbnailRegenerating] = useState(false);
+  const handleRegenerateThumbnail = async () => {
+    if (!generated) return;
+
+    const oldUrl = generated.thumbnailUrl;
+    setThumbnailRegenerating(true);
+    setGenerated(prev => prev ? { ...prev, thumbnailUrl: null } : prev);
+
+    await supabase.from('viral_tests')
+      .update({ thumbnail_url: null })
+      .eq('id', generated.testId);
+
+    fetch(`${supabaseUrl}/functions/v1/generate-viral-test-images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        testId: generated.testId,
+        thumbnailOnly: true,
+        ...(thumbRef.storageUrl && { thumbnailReferenceImageUrl: thumbRef.storageUrl }),
+        ...(refImage.storageUrl && { referenceImageUrl: refImage.storageUrl }),
+      }),
+    }).catch(console.error);
+
+    // 썸네일 폴링
+    const thumbPoll = setInterval(async () => {
+      const { data } = await supabase
+        .from('viral_tests')
+        .select('thumbnail_url')
+        .eq('id', generated.testId)
+        .single();
+      if (data?.thumbnail_url && data.thumbnail_url !== oldUrl) {
+        setGenerated(prev => prev ? { ...prev, thumbnailUrl: data.thumbnail_url } : prev);
+        setThumbnailRegenerating(false);
+        clearInterval(thumbPoll);
+      }
+    }, 3000);
+
+    // 60초 타임아웃
+    setTimeout(() => { clearInterval(thumbPoll); setThumbnailRegenerating(false); }, 60000);
+  };
+
   const elementEmoji: Record<string, string> = {
     '갑': '🌳', '을': '🍃', '병': '☀️', '정': '🕯️', '무': '⛰️',
     '기': '🌾', '경': '⚔️', '신': '💎', '임': '🌊', '계': '💧',
   };
+
+  const sipsungEmoji: Record<string, string> = {
+    '비견': '🤝', '겁재': '⚡', '식신': '🍽️', '상관': '💥', '편재': '💰',
+    '정재': '💎', '편관': '⚔️', '정관': '👔', '편인': '🔮', '정인': '🎓',
+  };
+
+  const isCompatibilityTest = generated?.templateType === 'compatibility';
+  const getEmoji = (r: GeneratedResult) =>
+    isCompatibilityTest ? (sipsungEmoji[r.relation_type || ''] || '✨') : (elementEmoji[r.day_master] || '✨');
 
   const inputStyle: React.CSSProperties = {
     height: '56px',
@@ -587,37 +723,80 @@ export function UnteCreatePage() {
                     }}
                   />
 
-                  {/* 예시 아이디어 */}
+                  {/* AI 아이디어 추천 */}
                   <div className="flex flex-col" style={{ gap: '8px', marginTop: '8px' }}>
-                    <p style={{
-                      fontFamily: font, fontSize: '12px', fontWeight: 400,
-                      lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
-                    }}>
-                      아이디어 예시
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {['미래 남편 얼굴은?', '바람끼 테스트', '난 테무인간인걸까', '최애와 나의 궁합', '전생에 나는 뭐였을까'].map((ex) => (
-                        <button
-                          key={ex}
-                          onClick={() => setIdea(ex)}
-                          className="flex items-center justify-center cursor-pointer"
-                          style={{
-                            height: '28px',
-                            padding: '0 12px',
-                            borderRadius: '9999px',
-                            backgroundColor: '#f9f9f9',
-                            border: '1px solid #e7e7e7',
-                            fontFamily: font,
-                            fontSize: '12px',
-                            fontWeight: 400,
-                            color: '#6d6d6d',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {ex}
-                        </button>
-                      ))}
+                    <div className="flex items-center" style={{ gap: '6px' }}>
+                      <p style={{
+                        fontFamily: font, fontSize: '12px', fontWeight: 400,
+                        lineHeight: '16px', letterSpacing: '-0.24px', color: '#848484',
+                      }}>
+                        {aiIdeasLoading ? 'AI가 추천 중...' : 'AI 추천 아이디어'}
+                      </p>
+                      <button
+                        onClick={fetchAiIdeas}
+                        disabled={aiIdeasLoading}
+                        className="flex items-center justify-center cursor-pointer"
+                        style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '9999px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          color: '#848484',
+                          transition: 'transform 0.3s',
+                          transform: aiIdeasLoading ? 'rotate(360deg)' : 'none',
+                          animation: aiIdeasLoading ? 'spin 1s linear infinite' : 'none',
+                        }}
+                        aria-label="새로운 추천 받기"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                        </svg>
+                      </button>
+                      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
                     </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '28px' }}>
+                      {aiIdeasLoading && aiIdeas.length === 0 ? (
+                        // 스켈레톤 3개
+                        Array.from({ length: 3 }).map((_, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              height: '28px',
+                              width: `${80 + i * 20}px`,
+                              borderRadius: '9999px',
+                              backgroundColor: '#f3f3f3',
+                              animation: 'pulse 1.5s ease-in-out infinite',
+                            }}
+                          />
+                        ))
+                      ) : (
+                        (aiIdeas.length > 0 ? aiIdeas.map((ai) => ai.title) : ['미래 남편 얼굴은?', '바람끼 테스트', '전생에 나는 뭐였을까']).map((ex) => (
+                          <button
+                            key={ex}
+                            onClick={() => setIdea(ex)}
+                            className="flex items-center justify-center cursor-pointer"
+                            style={{
+                              height: '28px',
+                              padding: '0 12px',
+                              borderRadius: '9999px',
+                              backgroundColor: aiIdeas.length > 0 ? '#f0f7ff' : '#f9f9f9',
+                              border: `1px solid ${aiIdeas.length > 0 ? '#d0e3ff' : '#e7e7e7'}`,
+                              fontFamily: font,
+                              fontSize: '12px',
+                              fontWeight: 400,
+                              color: aiIdeas.length > 0 ? '#4a7fd4' : '#6d6d6d',
+                              whiteSpace: 'nowrap',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            {ex}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
                   </div>
                 </div>
 
@@ -1076,6 +1255,69 @@ export function UnteCreatePage() {
                   </button>
                 </div>
 
+                {/* 썸네일 미리보기 */}
+                <div style={{ marginBottom: '24px' }}>
+                  <p style={{
+                    fontFamily: font, fontSize: '16px', fontWeight: 600,
+                    lineHeight: '22px', letterSpacing: '-0.32px', color: '#151515',
+                    marginBottom: '12px',
+                  }}>
+                    썸네일
+                  </p>
+                  <div style={{ position: 'relative', width: '160px' }}>
+                    <div
+                      style={{
+                        width: '160px',
+                        aspectRatio: '1/1',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        backgroundColor: '#f5f5f5',
+                        border: '1px solid #e7e7e7',
+                      }}
+                    >
+                      {generated.thumbnailUrl ? (
+                        <img
+                          src={generated.thumbnailUrl}
+                          alt="썸네일"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center" style={{ width: '100%', height: '100%', gap: '4px' }}>
+                          <span style={{ fontSize: '24px' }}>🎨</span>
+                          <span style={{
+                            fontFamily: font, fontSize: '12px', fontWeight: 400, color: '#848484',
+                          }}>
+                            {thumbnailRegenerating || imagesLoading ? '생성 중...' : '썸네일 없음'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* 썸네일 재생성 버튼 */}
+                    {generated.thumbnailUrl && !thumbnailRegenerating && (
+                      <button
+                        onClick={handleRegenerateThumbnail}
+                        title="썸네일 다시 만들기"
+                        className="flex items-center justify-center"
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(0,0,0,0.5)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#fff',
+                          fontSize: '16px',
+                        }}
+                      >
+                        ↻
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* 10개 결과 미리보기 */}
                 <div>
                   <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
@@ -1096,7 +1338,7 @@ export function UnteCreatePage() {
                   <div className="flex flex-col" style={{ gap: '8px' }}>
                     {generated.results.map((r) => (
                       <div
-                        key={r.day_master}
+                        key={resultKey(r)}
                         style={{
                           padding: '16px',
                           borderRadius: '16px',
@@ -1105,7 +1347,7 @@ export function UnteCreatePage() {
                         }}
                       >
                         {/* 결과 이미지 */}
-                        {regeneratingDayMasters.has(r.day_master) ? (
+                        {regeneratingDayMasters.has(resultKey(r)) ? (
                           <div
                             className="flex flex-col items-center justify-center"
                             style={{
@@ -1137,7 +1379,7 @@ export function UnteCreatePage() {
                               style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }}
                             />
                             <button
-                              onClick={() => handleRegenerateSingleImage(r.day_master)}
+                              onClick={() => handleRegenerateSingleImage(resultKey(r))}
                               className="flex items-center justify-center cursor-pointer"
                               style={{
                                 position: 'absolute',
@@ -1161,7 +1403,7 @@ export function UnteCreatePage() {
                         ) : null}
                         <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
                           <div className="flex items-center" style={{ gap: '8px' }}>
-                            <span style={{ fontSize: '20px' }}>{elementEmoji[r.day_master] || '✨'}</span>
+                            <span style={{ fontSize: '20px' }}>{getEmoji(r)}</span>
                             <span style={{
                               fontFamily: font, fontSize: '14px', fontWeight: 600,
                               lineHeight: '20px', letterSpacing: '-0.42px', color: '#151515',

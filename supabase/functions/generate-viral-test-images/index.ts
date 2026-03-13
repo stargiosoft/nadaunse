@@ -4,6 +4,7 @@
 // PNG 직접 업로드 (ImageMagick WASM 제거 — Edge Function 메모리 한도 초과 방지)
 // 이미지 생성 모델: Gemini 3.1 Flash Image Preview (레퍼런스 이미지 기반 생성 지원)
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { encode as base64Encode } from 'https://deno.land/std@0.168.0/encoding/base64.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
@@ -15,12 +16,21 @@ const DAY_MASTER_ROMAN: Record<string, string> = {
   '기': 'gi', '경': 'gyeong', '신': 'sin', '임': 'im', '계': 'gye',
 }
 
+// 십성 → 로마자 매핑 (궁합 테스트용)
+const SIPSUNG_ROMAN: Record<string, string> = {
+  '비견': 'bigyeon', '겁재': 'geopjae', '식신': 'siksin', '상관': 'sanggwan',
+  '편재': 'pyeonjae', '정재': 'jeongjae', '편관': 'pyeongwan', '정관': 'jeonggwan',
+  '편인': 'pyeonin', '정인': 'jeongin',
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCorsPreflightRequest(req)
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { testId, dayMasters, referenceImageUrl, thumbnailReferenceImageUrl } = await req.json()
+    const { testId, dayMasters, relationTypes, thumbnailOnly, referenceImageUrl, thumbnailReferenceImageUrl } = await req.json()
+
+    console.log(`📥 요청 수신: testId=${testId}, referenceImageUrl=${referenceImageUrl ? '있음(' + referenceImageUrl.slice(0, 80) + '...)' : '없음'}, thumbnailRef=${thumbnailReferenceImageUrl ? '있음' : '없음'}`)
 
     if (!testId) {
       return new Response(
@@ -33,17 +43,22 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // URL → Gemini inline_data 변환 헬퍼
+    // URL → Gemini inline_data 변환 헬퍼 (메모리 효율적 base64 인코딩)
     async function fetchAsInlineData(url: string): Promise<{ inline_data: { mime_type: string; data: string } } | null> {
       try {
+        console.log(`🔗 레퍼런스 fetch 시작: ${url.slice(0, 100)}...`)
         const res = await fetch(url)
-        if (!res.ok) return null
+        if (!res.ok) {
+          console.error(`❌ 레퍼런스 fetch HTTP 오류: ${res.status} ${res.statusText}`)
+          return null
+        }
         const buffer = await res.arrayBuffer()
         const bytes = new Uint8Array(buffer)
-        let binary = ''
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
         const mimeType = res.headers.get('content-type') || 'image/webp'
-        return { inline_data: { mime_type: mimeType, data: btoa(binary) } }
+        // O(n) base64 인코딩 (std 라이브러리 사용, O(n²) 문자열 연결 제거)
+        const b64 = base64Encode(bytes)
+        console.log(`✅ 레퍼런스 fetch 성공: ${bytes.length} bytes, mime=${mimeType}, base64=${b64.length} chars`)
+        return { inline_data: { mime_type: mimeType, data: b64 } }
       } catch (err) {
         console.error('❌ 레퍼런스 fetch 실패:', err)
         return null
@@ -89,6 +104,9 @@ Generate images that closely match the reference image's style, character design
 - If the reference is a real photograph of a celebrity or public figure: match the photographic style and mood, but create entirely new fictional characters. Do NOT reproduce any real person's face or likeness.
 - Keep the visual style consistent across all generated images.` })
         }
+
+        const hasRefInParts = parts.some((p: Record<string, unknown>) => 'inline_data' in p)
+        console.log(`🎯 Gemini 요청 (${storagePath}): parts=${parts.length}개, 레퍼런스포함=${hasRefInParts}`)
 
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
@@ -141,7 +159,8 @@ Generate images that closely match the reference image's style, character design
           .from('assets')
           .getPublicUrl(storagePath)
 
-        return publicUrl
+        // 캐시 버스터 추가 (재생성 시 브라우저가 구 이미지 캐시 사용 방지)
+        return `${publicUrl}?v=${Date.now()}`
       } catch (err) {
         console.error(`❌ 이미지 생성 오류 (${storagePath}):`, err)
         return null
@@ -162,9 +181,9 @@ Generate images that closely match the reference image's style, character design
           ? `${test.thumbnail_prompt}\n${DEFAULT_STYLE}\nNo text in the image. Aspect ratio: square (1:1).`
           : `Create a thumbnail for a viral quiz/test titled "${test.title}".\n${DEFAULT_STYLE}\nNo text in the image. Full-bleed, no borders or margins. Aspect ratio: square (1:1).`)
 
-    // 4. 썸네일 + 결과 이미지 병렬 생성 (4장씩 배치)
+    // 4. 썸네일 + 결과 이미지 병렬 생성 (레퍼런스 있으면 2장, 없으면 4장씩 배치)
     const styleGuide = test.image_style_guide || ''
-    const BATCH_SIZE = 4
+    const BATCH_SIZE = (refImagePart || thumbnailRefPart) ? 2 : 4
 
     // 모든 생성 작업을 태스크 배열로 준비
     interface ImageTask {
@@ -176,25 +195,37 @@ Generate images that closely match the reference image's style, character design
 
     const tasks: ImageTask[] = []
 
-    // 썸네일은 개별 이미지 재생성이 아닐 때만
-    if (!dayMasters || dayMasters.length === 0) {
+    // 썸네일: thumbnailOnly 또는 전체 생성 시
+    if (thumbnailOnly || (!dayMasters || dayMasters.length === 0)) {
       tasks.push({ type: 'thumbnail', prompt: thumbnailPrompt, storagePath: `viral-tests/${testId}/thumbnail.png` })
     }
 
-    // dayMasters 지정 시 해당 결과만 필터링
-    const targetResults = (dayMasters && dayMasters.length > 0)
-      ? results.filter((r: { day_master: string }) => dayMasters.includes(r.day_master))
-      : results
+    // 궁합 테스트 여부 판별
+    const isCompatibility = test.template_type === 'compatibility'
+
+    // thumbnailOnly면 결과 이미지 스킵
+    let targetResults: typeof results
+    if (thumbnailOnly) {
+      targetResults = []
+    } else if (isCompatibility && relationTypes && relationTypes.length > 0) {
+      // 궁합: relation_type으로 필터
+      targetResults = results.filter((r: { relation_type: string }) => relationTypes.includes(r.relation_type))
+    } else if (!isCompatibility && dayMasters && dayMasters.length > 0) {
+      // 일반: day_master로 필터
+      targetResults = results.filter((r: { day_master: string }) => dayMasters.includes(r.day_master))
+    } else {
+      targetResults = results
+    }
 
     for (const result of targetResults) {
       const rawPrompt = result.image_prompt || ''
 
       let basePrompt: string
       if (hasRef) {
-        // 레퍼런스 있을 때: 프롬프트 그대로 전달 (스타일은 레퍼런스 이미지에서 파악)
+        // 레퍼런스 있을 때: 콘텐츠 프롬프트 + 스타일 일관성 강화
         const contentOnly = rawPrompt
           || `A person representing: "${result.result_title}". Score: ${result.score}/100.`
-        basePrompt = `${contentOnly}\nAspect ratio: 3:4 (portrait). No text in the image.`
+        basePrompt = `${contentOnly}\n\nCRITICAL STYLE RULES:\n- You MUST generate this image in the EXACT SAME art style, medium, and visual quality as the reference image.\n- If the reference is an illustration/drawing: use the same drawing technique, line weight, color palette, and character proportions.\n- If the reference is a photograph: create a similar photographic composition with realistic lighting, but with a completely new fictional person.\n- Do NOT mix styles (e.g., no cartoon overlays on photos, no photo-realistic faces in illustrations).\n- Maintain visual consistency as if all images are from the same series.\nAspect ratio: 3:4 (portrait). No text in the image.`
       } else {
         basePrompt = rawPrompt
           ? `${rawPrompt}\n\nStyle consistency: ${styleGuide}\nAspect ratio: 3:4 (portrait). No text in the image.`
@@ -205,7 +236,11 @@ Generate images that closely match the reference image's style, character design
         ? basePrompt
         : `${basePrompt}\n${DEFAULT_STYLE}\nFull-bleed, no borders.`
 
-      const romanKey = DAY_MASTER_ROMAN[result.day_master] || result.day_master
+      // 궁합: relation_type 로마자 키, 일반: day_master 로마자 키
+      const romanKey = isCompatibility
+        ? (SIPSUNG_ROMAN[result.relation_type] || result.relation_type)
+        : (DAY_MASTER_ROMAN[result.day_master] || result.day_master)
+
       tasks.push({
         type: 'result',
         prompt: resultPrompt,

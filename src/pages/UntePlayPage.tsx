@@ -48,15 +48,12 @@ interface ResultData {
     resultImageUrl: string | null;
     shareImageUrl: string | null;
     score: number;
+    resultLabel?: string | null;
+    relationType?: string | null;
   };
-  partnerResult?: {
-    dayMaster: string;
-    element: string;
-    resultTitle: string;
-    resultDescription: string;
-    resultImageUrl: string | null;
-    score: number;
-  } | null;
+  partnerDayMaster?: string | null;
+  relationType?: string | null;
+  isCompatibility?: boolean;
 }
 
 type Phase = 'checking' | 'selectSaju' | 'myInput' | 'partnerInput' | 'loading' | 'animation' | 'done';
@@ -324,9 +321,9 @@ export function UntePlayPage() {
                 className="flex items-center justify-center"
                 style={{ paddingTop: '60px' }}
               >
-                {isCompatibility && result.partnerResult ? (
+                {isCompatibility && result.relationType ? (
                   <CompatibilityMeter
-                    score={Math.round((result.myResult.score + result.partnerResult.score) / 2)}
+                    score={result.myResult.score}
                     myTitle={myData?.name || '나'}
                     partnerTitle="상대"
                     onComplete={handleAnimationComplete}
