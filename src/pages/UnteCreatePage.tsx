@@ -775,7 +775,7 @@ export function UnteCreatePage() {
                         {aiIdeasLoading ? 'AI가 추천 중...' : 'AI 추천 아이디어'}
                       </p>
                       <button
-                        onClick={fetchAiIdeas}
+                        onClick={() => fetchAiIdeas()}
                         disabled={aiIdeasLoading}
                         className="flex items-center justify-center cursor-pointer"
                         style={{
