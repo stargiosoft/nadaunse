@@ -45,7 +45,7 @@ export function UnteCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialCategory = searchParams.get('category') as 'slot_machine' | 'compatibility' | 'adult' | null;
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'slot_machine' | 'compatibility' | 'adult'>(initialCategory || 'all');
+  const [selectedCategory, setSelectedCategory] = useState<'slot_machine' | 'compatibility' | 'adult'>(initialCategory || 'slot_machine');
   const [step, setStep] = useState<Step>('input');
   const [idea, setIdea] = useState('');
   const [generated, setGenerated] = useState<GeneratedTest | null>(null);
@@ -106,7 +106,7 @@ export function UnteCreatePage() {
       const res = await fetch(`${supabaseUrl}/functions/v1/suggest-viral-ideas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(categoryToSend !== 'all' ? { category: categoryToSend } : {}),
+        body: JSON.stringify({ category: categoryToSend }),
       });
       if (!res.ok) throw new Error('추천 실패');
       const data = await res.json();
@@ -121,7 +121,7 @@ export function UnteCreatePage() {
   useEffect(() => { fetchAiIdeas(); }, []);
 
   // 카테고리 변경 핸들러
-  const handleCategoryChange = useCallback((cat: 'all' | 'slot_machine' | 'compatibility' | 'adult') => {
+  const handleCategoryChange = useCallback((cat: 'slot_machine' | 'compatibility' | 'adult') => {
     setSelectedCategory(cat);
     setAiIdeas([]);
     fetchAiIdeas(cat);
@@ -385,7 +385,7 @@ export function UnteCreatePage() {
           idea: idea.trim(),
           creatorId: userId,
           ...(refImage.storageUrl && { hasReferenceImage: true }),
-          ...(selectedCategory !== 'all' && { category: selectedCategory }),
+          category: selectedCategory,
         }),
       });
 
@@ -477,7 +477,7 @@ export function UnteCreatePage() {
           creatorId: userId,
           testId: generated.testId,
           ...(refImage.storageUrl && { hasReferenceImage: true }),
-          ...(selectedCategory !== 'all' && { category: selectedCategory }),
+          category: selectedCategory,
         }),
       });
 
@@ -715,7 +715,6 @@ export function UnteCreatePage() {
                 {/* 카테고리 필터 */}
                 <div className="flex" style={{ gap: '6px' }}>
                   {([
-                    { key: 'all' as const, label: '전체' },
                     { key: 'slot_machine' as const, label: '운테' },
                     { key: 'compatibility' as const, label: '궁합' },
                     { key: 'adult' as const, label: '19금' },
