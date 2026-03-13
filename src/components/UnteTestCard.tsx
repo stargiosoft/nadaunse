@@ -163,7 +163,7 @@ export default function UnteTestCard({
         </p>
         {description && (
           <p
-            className="line-clamp-1"
+            className="line-clamp-2"
             style={{
               fontFamily: "'Pretendard Variable', sans-serif",
               fontSize: '12px',
