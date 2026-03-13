@@ -1,7 +1,7 @@
 # 운테 (바이럴 사주 테스트) 기능 개발 인계 문서
 
 > **작성일**: 2026-03-12
-> **최종 업데이트**: 2026-03-13
+> **최종 업데이트**: 2026-03-13 (v2)
 > **브랜치**: staging (커밋 ec25ac38 ~ 현재)
 > **상태**: 스테이징 배포 완료, 프로덕션 미배포
 
@@ -59,7 +59,7 @@
 
 | 파일 | 역할 | 비고 |
 |------|------|------|
-| `src/components/UnteTestCard.tsx` | 홈 목록용 카드 | 썸네일 + 제목 + 참여수 + 유형 뱃지 |
+| `src/components/UnteTestCard.tsx` | 홈 목록용 카드 | 썸네일 + 제목 + 참여수 + 유형 뱃지 + 마스터 삭제 버튼 |
 | `src/components/SlotMachineAnimation.tsx` | 3릴 슬롯머신 애니메이션 | Framer Motion, 오행 아이콘 |
 | `src/components/CompatibilityMeter.tsx` | 궁합 원형 게이지 | SVG + 점수 카운트업 |
 | `src/components/AgeVerificationGate.tsx` | 19금 성인 인증 | sessionStorage, 출생연도 확인 |
@@ -82,8 +82,8 @@
 
 | 함수 | 경로 | JWT | 역할 |
 |------|------|-----|------|
-| `generate-viral-test` | `supabase/functions/generate-viral-test/index.ts` | `--no-verify-jwt` | 3단계 AI 파이프라인 (기획 → 이미지 가이드 → 비동기 이미지 생성) |
-| `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini 2.5 Flash Image, 3장씩 배치 병렬) |
+| `generate-viral-test` | `supabase/functions/generate-viral-test/index.ts` | `--no-verify-jwt` | 2단계 AI 파이프라인 (기획 → 이미지 가이드). 이미지 생성은 수동 트리거 |
+| `generate-viral-test-images` | `supabase/functions/generate-viral-test-images/index.ts` | `--no-verify-jwt` | DB 저장 프롬프트 기반 이미지 생성 (Gemini 2.5 Flash Image, 4장씩 배치 병렬). `dayMasters` 파라미터로 개별 이미지 재생성 지원 |
 | `get-viral-test-result` | `supabase/functions/get-viral-test-result/index.ts` | `--no-verify-jwt` | JDN 로컬 일간 계산 → 결과 매칭 + play 기록 |
 | `viral-test-admin` | `supabase/functions/viral-test-admin/index.ts` | JWT 필요 | publish/archive/discard (creator_id 확인) |
 
@@ -164,17 +164,19 @@
 
 ## 4. UX 플로우
 
-### 크리에이터 플로우 (테스트 생성 — 3단계 AI 파이프라인)
+### 크리에이터 플로우 (테스트 생성 — 기획 → 수동 이미지 생성)
 ```
 UnteHomePage [+ 만들기 버튼]
   → UnteCreatePage (NavigationHeader 공통 컴포넌트 사용)
-    → Step 1: 아이디어 텍스트 입력 + 레퍼런스 이미지 첨부 (선택)
-    → Step 2: AI 생성 로딩 (generate-viral-test Edge Function)
-      ├─ Stage 1: Planning Agent (기획 — MZ 바이럴 톤, 결과 밈/유행어 기반)
-      ├─ Stage 2: Image Guide Agent (이미지 가이드 — B급 병맛 or 레퍼런스 스타일)
-      └─ Stage 3: 비동기 이미지 생성 (generate-viral-test-images, 3장씩 배치 병렬)
-    → Step 3: 검토 (제목/설명 편집, 10개 결과+라벨 미리보기, 이미지 폴링)
-    → Step 4: 게시 (viral-test-admin → status='live')
+    → Step 1: 아이디어 텍스트 입력 + 레퍼런스 이미지 첨부 (선택, 드래그앤드롭/클릭)
+    → Step 2: AI 기획 생성 (generate-viral-test → Planning + Image Guide만)
+    → Step 3: 검토 (제목/설명 편집, 10개 결과+라벨 미리보기)
+    → Step 4: "이미지 만들기" 버튼 클릭 → generate-viral-test-images 호출
+      ├─ 이미지 폴링으로 진행 상황 표시
+      ├─ "이미지 다시 만들기" — 전체 이미지 재생성
+      └─ 개별 결과 이미지 ↻ — 해당 일간만 재생성
+    → Step 5: "기획 다시하기" — 동일 testId로 기획 재실행 (기존 결과+이미지 삭제)
+    → Step 6: 게시 (viral-test-admin → status='live')
     → [이탈 시] discard (viral-test-admin → DB+Storage 정리)
   → UnteLandingPage (생성된 테스트)
 ```
@@ -209,37 +211,40 @@ UnteHomePage [카드 클릭] or 공유 링크
 
 ## 5. Edge Function 상세
 
-### generate-viral-test (3단계 AI 파이프라인)
+### generate-viral-test (2단계 AI 파이프라인)
 - **모델**: Gemini 2.5 Flash (`gemini-2.5-flash`)
-- **입력**: `{ idea: string, creatorId: string, referenceImage?: string }`
+- **입력**: `{ idea: string, creatorId: string, referenceImage?: string, existingTestId?: string }`
   - `referenceImage`: base64 data URI (프론트에서 변환, 선택사항)
+  - `existingTestId`: 기획 다시하기 시 기존 testId 재사용 (기존 결과+이미지 삭제 후 재생성)
 - **Stage 1 — Planning Agent**:
   - **톤앤매너**: MZ/알파세대 타겟, 밈·커뮤니티 용어 필수 사용
   - 올드한 운세 말투 금지 ("듬직한 리더형" ❌ → "안심 ZONE 지박령" ✅)
+  - "너/니" 2인칭 직접 지칭 금지 (어색함 방지)
   - result_title: 단톡방 캡쳐 각 나올 정도의 밈/유행어 기반
   - result_description: 1~2줄 짧고 임팩트, 친구 말투
   - result_format 자동 결정 (아이디어 특성에 맞게)
   - 출력: JSON (title, description, template_type, is_adult, result_format, results[10])
 - **Stage 2 — Image Guide Agent**:
-  - 레퍼런스 이미지 유무에 따라 스타일 분기:
-    - **레퍼런스 있음**: 레퍼런스 스타일 따르는 프롬프트 생성
+  - 레퍼런스 이미지 유무에 따라 **완전 분리된 시스템 프롬프트**:
+    - **레퍼런스 있음**: 스타일/화풍/톤 지시어 절대 금지, 주제/상황/감정만 영어로 작성
     - **레퍼런스 없음**: B급 병맛 한국 밈 캐릭터 스타일 (졸라맨/흰 동글이/만두 캐릭터)
   - 출력: style_guide, thumbnail_prompt, results[].image_prompt
   - DB 저장: `viral_tests.thumbnail_prompt`, `viral_tests.image_style_guide`, `viral_test_results.image_prompt`
-- **Stage 3**: 비동기로 `generate-viral-test-images` 호출 (referenceImage 전달)
-- **상태 변화**: `generating` (생성 중) → `review` (이미지 완료 후)
+- **이미지 생성은 별도**: 프론트에서 수동으로 `generate-viral-test-images` 호출
+- **상태 변화**: `generating` (기획 중) → `review` (기획 완료)
 
 ### generate-viral-test-images
 - **모델**: Gemini 2.5 Flash Image (`gemini-2.5-flash-image`)
-- **입력**: `{ testId: string, referenceImage?: string }`
+- **입력**: `{ testId: string, referenceImage?: string, dayMasters?: string[] }`
+  - `dayMasters`: 지정 시 해당 일간의 결과 이미지만 재생성 (썸네일 스킵)
 - **레퍼런스 이미지 처리**:
   - base64 data URI 파싱 → Gemini API `inline_data`로 전달
-  - **스타일만 참고, 원본 복제 금지** (저작권/초상권 보호 프롬프트)
-  - 실제 인물 얼굴/외모 복제 금지, 완전히 새로운 가상 인물 생성
-  - `stripStyleKeywords()`: 프롬프트에서 일러스트/애니 스타일 키워드 자동 제거 (레퍼런스 스타일 우선)
+  - 일러스트/캐릭터 레퍼런스: 스타일, 캐릭터 디자인, 색감, 선 굵기 적극 참고
+  - 실사 연예인/공인: 포토 스타일만 참고, 얼굴 복제 금지
+  - Image Guide Agent 프롬프트를 그대로 전달 (스타일 키워드 제거 없음)
 - **기본 스타일** (레퍼런스 없을 때): B급 병맛 한국 커뮤니티 밈 스타일
   - 흰색 blob/졸라맨 캐릭터, 두꺼운 검정 아웃라인, 과장된 표정, 파스텔 배경
-- **처리**: 썸네일 1장 + 결과 이미지 10장 → **3장씩 배치 병렬** (`Promise.all`) → PNG 직접 Supabase Storage 업로드
+- **처리**: 썸네일 1장 + 결과 이미지 10장 → **4장씩 배치 병렬** (`Promise.all`) → PNG 직접 Supabase Storage 업로드
 - **스토리지**: `assets/viral-tests/{testId}/thumbnail.png`, `result-{romanKey}.png`
   - 로마자 매핑: 갑→gap, 을→eul, 병→byeong, 정→jeong, 무→mu, 기→gi, 경→gyeong, 신→sin, 임→im, 계→gye
 
@@ -293,12 +298,14 @@ const dayMaster = CHEONGAN[index];
 검증: `saju-calculator.html`의 `(jd + 49) % 60`에서 천간 부분 `% 10`과 일치 확인됨.
 
 ### 레퍼런스 이미지 기반 생성
-`UnteCreatePage`에서 이미지 첨부 → base64 변환 → Edge Function 전달 → Gemini `inline_data`로 스타일 참고.
+`UnteCreatePage`에서 이미지 첨부 (클릭 또는 드래그앤드롭) → base64 변환 → Edge Function 전달 → Gemini `inline_data`로 스타일 참고.
 
-- **프론트**: `<input type="file" accept="image/*">` → `FileReader` → base64 data URI
+- **프론트**: `<input type="file">` + 드래그앤드롭 → `ArrayBuffer` → base64 data URI
 - **Edge Function**: data URI 파싱 → `{ inline_data: { mime_type, data } }`
-- **저작권 보호**: 실제 인물 복제 금지 프롬프트 (얼굴/외모 원본 사용 불가)
-- **스타일 키워드 제거**: `stripStyleKeywords()` — 레퍼런스 있을 때 프롬프트 내 `anime`, `illustration`, `digital art` 등 자동 제거
+- **레퍼런스 활용 전략**:
+  - 일러스트/캐릭터: 스타일, 캐릭터 비율, 선 스타일, 채색 적극 참고
+  - 실사 연예인/공인: 포토 스타일만 참고, 얼굴 복제 금지
+- **프롬프트 분리**: Image Guide Agent가 레퍼런스 유무에 따라 완전 다른 시스템 프롬프트 사용 (스타일 지시어 포함/제외)
 
 ### 미게시 테스트 자동 정리 (Discard)
 검토 단계에서 게시하지 않고 이탈 시 DB + Storage 자동 정리.
@@ -400,8 +407,9 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 | AI 생성 | 3단계 파이프라인 | 기획(맥락 이해) → 이미지 가이드(일관된 스타일) → 이미지 생성(품질) |
 | 기획 톤앤매너 | MZ/알파세대 밈 말투 | 10대~20대 바이럴 타겟, 올드 운세 톤 금지 |
 | 기본 이미지 스타일 | B급 병맛 밈 캐릭터 | 잘파세대가 선호하는 한국 커뮤니티 테스트 이미지 스타일 |
-| 레퍼런스 이미지 | 스타일만 참고, 원본 복제 금지 | 저작권/초상권 보호 |
-| 이미지 생성 병렬화 | 3장씩 배치 `Promise.all` | 순차 ~2분 → 배치 ~40초, API rate limit 안전 범위 |
+| 레퍼런스 이미지 | 일러스트→적극 참고, 실사 인물→스타일만 | 캐릭터/일러스트는 충실히, 초상권은 보호 |
+| 이미지 생성 병렬화 | 4장씩 배치 `Promise.all` | 순차 ~2분 → 배치 ~40초, Edge Function 50초 타임아웃 대응 |
+| 이미지 생성 분리 | 기획과 이미지 생성 단계 분리 (수동 트리거) | 기획 결과 먼저 검토 후 이미지 생성 |
 | 미게시 정리 | discard 액션 (DB+Storage 삭제) | 이탈 시 고아 데이터 방지 |
 | 결과 형식 | AI 자동 선택 (4종) | "바람기 테스트" → percentage, "미래 남편" → image_focus 등 맥락 적합 |
 | 양/음력 | 양력 고정 (선택 UI 없음) | FreeBirthInfoInput이 양력 기준, Edge Function calendarType 기본값 `solar` |
@@ -416,7 +424,8 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 
 ## 10. 알려진 이슈 / TODO
 
-- [ ] **레퍼런스 실사→일러스트 문제**: 레퍼런스가 실사인데 일러스트로 나오는 경우 있음 (Step 2가 일러스트 프롬프트 생성 + stripStyleKeywords 한계)
+- [x] ~~레퍼런스 실사→일러스트 문제~~ → 레퍼런스 모드 프롬프트 완전 분리 + stripStyleKeywords 제거로 해결
+- [ ] **Storage RLS**: 프로덕션에 `viral-tests/%` DELETE 정책 추가 필요 (스테이징에 적용 완료)
 - [ ] **Storage 버킷**: 프로덕션에 `assets` 버킷 내 `viral-tests/` 경로 접근 가능 확인
 - [ ] **OG 메타 태그**: 소셜 미리보기용 메타 태그 미구현 (SPA이므로 SSR/prerender 필요)
 - [ ] **조회수/참여수**: view_count 증가 로직이 부정확 (UnteLandingPage에서 play_count만 증가)
@@ -430,5 +439,8 @@ npx supabase functions deploy viral-test-admin --project-ref kcthtpmxffppfbkjjku
 - [x] ~~커스텀 로딩 아이콘~~ → PageLoader 공통 사용으로 해결
 - [x] ~~이미지 없을 때 빈 화면~~ → ResultLabelCard로 해결
 - [x] ~~카카오 공유 썸네일 없음~~ → Canvas 공유 카드 자동 생성으로 해결
-- [x] ~~순차 이미지 생성 느림~~ → 3장씩 배치 병렬 처리로 해결
+- [x] ~~순차 이미지 생성 느림~~ → 4장씩 배치 병렬 처리로 해결 (3장→4장, 타임아웃 대응)
 - [x] ~~미게시 테스트 고아 데이터~~ → discard 액션으로 자동 정리
+- [x] ~~마스터 테스트 삭제~~ → UnteHomePage 카드 호버 시 삭제 버튼 (DB+Storage 일괄 삭제)
+- [x] ~~이미지 드래그앤드롭~~ → PC에서 레퍼런스 이미지 드래그앤드롭 지원
+- [x] ~~기획/이미지 재생성~~ → 기획 다시하기, 이미지 전체/개별 다시 만들기 지원

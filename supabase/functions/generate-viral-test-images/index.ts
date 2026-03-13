@@ -147,9 +147,9 @@ Generate images that closely match the reference image's style, character design
           ? `${test.thumbnail_prompt}\n${DEFAULT_STYLE}\nNo text in the image. Aspect ratio: square (1:1).`
           : `Create a thumbnail for a viral quiz/test titled "${test.title}".\n${DEFAULT_STYLE}\nNo text in the image. Full-bleed, no borders or margins. Aspect ratio: square (1:1).`)
 
-    // 4. 썸네일 + 결과 이미지 병렬 생성 (3장씩 배치)
+    // 4. 썸네일 + 결과 이미지 병렬 생성 (4장씩 배치)
     const styleGuide = test.image_style_guide || ''
-    const BATCH_SIZE = 3
+    const BATCH_SIZE = 4
 
     // 모든 생성 작업을 태스크 배열로 준비
     interface ImageTask {
