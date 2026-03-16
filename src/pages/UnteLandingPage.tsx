@@ -23,6 +23,7 @@ interface TestData {
   play_count: number;
   template_type: string;
   is_adult: boolean;
+  result_format?: string;
 }
 
 export function UnteLandingPage() {
@@ -51,7 +52,7 @@ export function UnteLandingPage() {
     try {
       const { data, error } = await supabase
         .from('viral_tests')
-        .select('id, slug, title, description, thumbnail_url, play_count, template_type, is_adult')
+        .select('id, slug, title, description, thumbnail_url, play_count, template_type, is_adult, result_format')
         .eq('slug', slug)
         .eq('status', 'live')
         .single();

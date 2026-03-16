@@ -23,14 +23,16 @@
 | 궁합 | `compatibility` | 본인 + 상대 사주 | **십성(relation_type)** 10개 |
 | 19금 | `adult` | 본인 사주 | **일간(day_master)** 10개 |
 
-### 결과 표시 형식 (4종, AI가 아이디어에 맞게 자동 선택)
+### 결과 표시 형식 (6종, AI가 아이디어에 맞게 자동 선택)
 
 | result_format | 용도 | result_label 예시 |
 |---------------|------|-------------------|
 | `image_focus` | 이미지가 핵심 (미래 남편 얼굴 등) | "S급", "최상" |
 | `percentage` | 확률/비율 강조 (바람기 테스트 등) | "87%", "15%" |
-| `score` | 점수 기반 | "95점", "42점" |
+| `score` | 점수 기반 (특수 단위 자유 기입) | "95점", "53만", "3번" |
 | `ranking` | 등급/순위 | "1등급", "A+", "SSS급" |
+| `grade` | 학점/등급 (성적표 컨셉) | "A+", "B0", "C+", "F" |
+| `type` | 유형명/포지션이 핵심 | "브레인", "메인보컬", "탕진잼러" |
 
 ---
 
@@ -111,7 +113,7 @@
 | description | text | 설명 |
 | idea_input | text | AI 입력 원문 |
 | thumbnail_url | text | 썸네일 이미지 URL |
-| result_format | text | `image_focus` / `percentage` / `score` / `ranking` |
+| result_format | text | `image_focus` / `percentage` / `score` / `ranking` / `grade` / `type` |
 | thumbnail_prompt | text | Image Guide Agent가 생성한 썸네일 프롬프트 (영문) |
 | image_style_guide | text | Image Guide Agent가 생성한 스타일 가이드 (영문) |
 | status | text | `generating` → `review` → `live` → `archived` / `failed` |

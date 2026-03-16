@@ -41,6 +41,18 @@ type Step = 'input' | 'generating' | 'review' | 'publishing';
 
 const font = "'Pretendard Variable', sans-serif";
 
+function scoreToGrade(score: number): string {
+  if (score >= 95) return 'A+';
+  if (score >= 90) return 'A0';
+  if (score >= 85) return 'B+';
+  if (score >= 80) return 'B0';
+  if (score >= 75) return 'C+';
+  if (score >= 70) return 'C0';
+  if (score >= 65) return 'D+';
+  if (score >= 60) return 'D0';
+  return 'F';
+}
+
 export function UnteCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1462,7 +1474,7 @@ export function UnteCreatePage() {
                             padding: '2px 8px',
                             borderRadius: '9999px',
                           }}>
-                            {r.result_label || `${r.score}점`}
+                            {r.result_label || (generated.resultFormat === 'grade' ? scoreToGrade(r.score) : generated.resultFormat === 'percentage' ? `${r.score}%` : generated.resultFormat === 'type' ? '???' : `${r.score}점`)}
                           </span>
                         </div>
                         <p style={{

@@ -17,6 +17,26 @@ const DAY_MASTER_ELEMENT: Record<string, string> = {
 const DAY_MASTERS = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'] as const
 const SIPSUNG_TYPES = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'] as const
 
+// ─── score → 학점 변환 헬퍼 ──────────────────────────────────────
+function scoreToGrade(score: number): string {
+  if (score >= 95) return 'A+'
+  if (score >= 90) return 'A0'
+  if (score >= 85) return 'B+'
+  if (score >= 80) return 'B0'
+  if (score >= 75) return 'C+'
+  if (score >= 70) return 'C0'
+  if (score >= 65) return 'D+'
+  if (score >= 60) return 'D0'
+  return 'F'
+}
+
+function fallbackLabel(format: string, score: number): string {
+  if (format === 'percentage') return `${score}%`
+  if (format === 'grade') return scoreToGrade(score)
+  if (format === 'type') return '???'
+  return `${score}점`
+}
+
 // ─── Gemini 호출 헬퍼 ────────────────────────────────────────────
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`
@@ -150,8 +170,10 @@ serve(async (req) => {
 아이디어의 본질을 파악해서 유저가 진짜 보고 싶은 결과 형식을 결정해:
 - **"image_focus"**: 외모/얼굴/동물/캐릭터 등 **시각적 결과**가 핵심 (예: 미래 남편 얼굴, 전생 모습)
 - **"percentage"**: 확률/수치 (예: 불륜 지수, 금수저 확률, 인싸력)
-- **"score"**: 점수+유형 분류 (예: 연애 유형, 성격 테스트)
+- **"score"**: 점수+유형 분류 (예: 연애 유형, 성격 테스트). 단위가 특수하면 result_label에 자유 기입 (예: "53만", "3번", "42세")
 - **"ranking"**: 순위/등급 (예: 전생 신분, 이세계 직업)
+- **"grade"**: 학점/등급 (예: 학점 환산, 성적표 컨셉) → "A+", "B+", "C0", "D+", "F" 등
+- **"type"**: 유형명/포지션이 핵심 (예: 아이돌 포지션, 팀플 역할, 생존 포지션). 점수보다 유형명 자체가 결과
 
 ## result_title 작성 규칙 (핵심!)
 - 밈/커뮤니티 용어 필수 사용. 재미없는 한자어 조합 금지.
@@ -163,8 +185,10 @@ serve(async (req) => {
 result_format에 따라:
 - image_focus: 핵심 키워드 밈으로 (예: "지박령", "플래그 만렙")
 - percentage: "87%", "12%" 등 확률값
-- score: "95점", "72점" 등 점수
+- score: "95점", "72점" 등 점수. 단위가 특수하면 자유 기입 (예: "53만", "3번", "42세")
 - ranking: "SSS급", "F급", "전설" 등 게임스러운 등급
+- grade: "A+", "A0", "B+", "B0", "C+", "C0", "D+", "D0", "F" 등 학점 (score 높을수록 좋은 학점)
+- type: 유형명 자체가 라벨 (예: "브레인", "메인보컬", "고기방패", "탕진잼러")
 
 ## result_description 작성 규칙 (중요!)
 - 1~2줄로 짧고 임팩트 있게. 장문 설명 금지.
@@ -189,7 +213,7 @@ ${COMMON_TONE}
   "title": "후킹 제목 (20자 이내)",
   "description": "테스트 한줄 설명 (40자 이내, 공유/단톡방 언급 금지, 테스트 내용 자체를 호기심 유발하게)",
   "is_adult": false,
-  "result_format": "score" | "percentage" | "image_focus" | "ranking",
+  "result_format": "score" | "percentage" | "image_focus" | "ranking" | "grade" | "type",
   "results": [
     {
       "day_master": "갑",
@@ -242,7 +266,7 @@ ${COMMON_TONE}
   "title": "후킹 제목 (20자 이내)",
   "description": "테스트 한줄 설명 (40자 이내, 공유/단톡방 언급 금지, 테스트 내용 자체를 호기심 유발하게)",
   "is_adult": false,
-  "result_format": "score" | "percentage" | "image_focus" | "ranking",
+  "result_format": "score" | "percentage" | "image_focus" | "ranking" | "grade" | "type",
   "results": [
     {
       "relation_type": "비견",
@@ -336,12 +360,13 @@ results는 반드시 10개 (비견,겁재,식신,상관,편재,정재,편관,정
       const existingRT = plan.results.map(r => r.relation_type)
       for (const st of SIPSUNG_TYPES) {
         if (!existingRT.includes(st)) {
+          const fallbackScore = Math.floor(Math.random() * 80) + 15
           plan.results.push({
             relation_type: st,
             result_title: `${st} 유형`,
             result_description: '곧 업데이트될 예정이에요!',
-            score: Math.floor(Math.random() * 80) + 15,
-            result_label: plan.result_format === 'percentage' ? `${Math.floor(Math.random() * 80) + 15}%` : `${Math.floor(Math.random() * 80) + 15}점`,
+            score: fallbackScore,
+            result_label: fallbackLabel(plan.result_format, fallbackScore),
           })
         }
       }
@@ -350,12 +375,13 @@ results는 반드시 10개 (비견,겁재,식신,상관,편재,정재,편관,정
       const existingDM = plan.results.map(r => r.day_master)
       for (const dm of DAY_MASTERS) {
         if (!existingDM.includes(dm)) {
+          const fallbackScore = Math.floor(Math.random() * 80) + 15
           plan.results.push({
             day_master: dm,
             result_title: `${dm}형 유형`,
             result_description: '곧 업데이트될 예정이에요!',
-            score: Math.floor(Math.random() * 80) + 15,
-            result_label: plan.result_format === 'percentage' ? `${Math.floor(Math.random() * 80) + 15}%` : `${Math.floor(Math.random() * 80) + 15}점`,
+            score: fallbackScore,
+            result_label: fallbackLabel(plan.result_format, fallbackScore),
           })
         }
       }

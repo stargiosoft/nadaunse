@@ -134,7 +134,7 @@
 | `cleanup-unconfirmed-tags` | `0 0 * * *` (매일 09:00 KST) | DB Function `get_stale_unconfirmed_tag_groups()` + `process_stale_tag_group()` | 24시간 이상 미확인(`is_confirmed = false`) 나다움 태그 그룹 자동 삭제 |
 | `cleanup-anonymous-free-views` | `0 0 * * *` (매일 09:00 KST) | 테이블 `anonymous_free_views` | 전날 이전 비회원 무료 콘텐츠 조회 기록 자동 삭제 |
 | `weekly-clicks-reset` | `0 15 * * 0` (월 00:00 KST) | 테이블 `master_contents` | `weekly_clicks` → `last_weekly_clicks` 보관 후 0으로 리셋 |
-| `cleanup-user-consult-daily` | `0 0 * * *` (매일 09:00 KST) | 테이블 `user_consult_daily` | 전날 이전 로그인 유저 상담 일일 제한 기록 자동 삭제 |
+| ~~`cleanup-user-consult-daily`~~ | - | - | **2026-03-16 비활성화** — 데이터 보존을 위해 cron 해제 (상담 일일 제한은 `consulted_date` 기준으로 프론트엔드에서 판단) |
 
 ### pg_cron 관련 테이블
 

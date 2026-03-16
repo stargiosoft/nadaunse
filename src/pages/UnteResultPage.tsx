@@ -18,6 +18,26 @@ declare global {
 
 const font = "'Pretendard Variable', sans-serif";
 
+function scoreToGrade(score: number): string {
+  if (score >= 95) return 'A+';
+  if (score >= 90) return 'A0';
+  if (score >= 85) return 'B+';
+  if (score >= 80) return 'B0';
+  if (score >= 75) return 'C+';
+  if (score >= 70) return 'C0';
+  if (score >= 65) return 'D+';
+  if (score >= 60) return 'D0';
+  return 'F';
+}
+
+function formatLabel(label: string | null | undefined, score: number, format?: string): string {
+  if (label) return label;
+  if (format === 'grade') return scoreToGrade(score);
+  if (format === 'percentage') return `${score}%`;
+  if (format === 'type') return '???';
+  return `${score}점`;
+}
+
 interface ResultState {
   result: {
     myResult: {
@@ -39,6 +59,7 @@ interface ResultState {
     id: string;
     title: string;
     template_type: string;
+    result_format?: string;
   };
 }
 
@@ -79,7 +100,7 @@ export function UnteResultPage() {
     (async () => {
       try {
         const blob = await generateShareCardBlob({
-          label: myResult.resultLabel || `${myResult.score}점`,
+          label: formatLabel(myResult.resultLabel, myResult.score, test.result_format),
           score: myResult.score,
           element: myResult.element,
           title: myResult.resultTitle,
@@ -253,7 +274,7 @@ export function UnteResultPage() {
           ) : (
             /* 이미지 없을 때: resultLabel 강조 비주얼 카드 */
             <ResultLabelCard
-              label={myResult.resultLabel || `${myResult.score}점`}
+              label={formatLabel(myResult.resultLabel, myResult.score, test?.result_format)}
               score={myResult.score}
               element={myResult.element}
               title={myResult.resultTitle}
@@ -280,7 +301,7 @@ export function UnteResultPage() {
                   padding: '4px 12px',
                   borderRadius: '9999px',
                 }}>
-                  {myResult.resultLabel || `${myResult.score}점`}
+                  {formatLabel(myResult.resultLabel, myResult.score, test?.result_format)}
                 </span>
               )}
             </div>

@@ -269,18 +269,16 @@ function useTimeUntilMidnight() {
   return timeStr;
 }
 
-function UserIcon() {
+function RewardIcon() {
   return (
     <div className="relative" style={{ width: 24, height: 24 }}>
-      <div
-        className="absolute"
-        style={{ width: 18, height: 19, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
-      >
-        <svg className="absolute block" style={{ width: '100%', height: '100%' }} fill="none" preserveAspectRatio="none" viewBox="0 0 18 19">
-          <path d={svgPaths.p1ceabf00} fill="#848484" />
-          <path d={svgPaths.p6324f00}  fill="#848484" />
-        </svg>
-      </div>
+      <svg viewBox="0 0 24 24" fill="none" style={{ width: '100%', height: '100%' }}>
+        <rect x="2" y="10" width="20" height="12" rx="2" stroke="#848484" strokeWidth="1.8" />
+        <path d="M12 10V22" stroke="#848484" strokeWidth="1.8" />
+        <path d="M2 14H22" stroke="#848484" strokeWidth="1.8" />
+        <path d="M12 10C12 10 12 6 9 4C6 2 4 4 5 6C6 8 12 10 12 10Z" stroke="#848484" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 10C12 10 12 6 15 4C18 2 20 4 19 6C18 8 12 10 12 10Z" stroke="#848484" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 }
@@ -337,13 +335,8 @@ function LogoLarge() {
 function AppHeader() {
   const navigate = useNavigate();
 
-  const handleUserIconClick = () => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      navigate('/profile', { state: { canGoBack: true } });
-    } else {
-      navigate('/login', { state: { canGoBack: true } });
-    }
+  const handleRewardClick = () => {
+    navigate('/rewards', { state: { canGoBack: true } });
   };
 
   return (
@@ -363,10 +356,10 @@ function AppHeader() {
           border: 'none', padding: 4,
           WebkitTapHighlightColor: 'transparent',
         }}
-        onClick={handleUserIconClick}
+        onClick={handleRewardClick}
       >
         <span className="group-active:scale-90 transition-transform duration-150 flex items-center justify-center">
-          <UserIcon />
+          <RewardIcon />
         </span>
       </button>
     </header>

@@ -70,6 +70,7 @@ import UnteLandingPage from './pages/UnteLandingPage';
 import UntePlayPage from './pages/UntePlayPage';
 import UnteResultPage from './pages/UnteResultPage';
 import NadaumAnalysisPage from './components/NadaumAnalysisPage'; // ⭐ 나다움 분석 페이지
+import RewardMissionPage from './pages/RewardMissionPage'; // ⭐ 리워드 미션 페이지
 import NadaumAnalysisDetail from './components/NadaumAnalysisDetail'; // ⭐ 나다움 분석 상세
 // ⭐ 테스트용 Figma 컴포넌트들
 import CheckRecordMe from './components/CheckRecordMe';
@@ -3860,6 +3861,7 @@ export default function App() {
         <PortOneInit />
         <Routes>
           <Route path="/" element={<HomeScreenNew />} />
+          <Route path="/rewards" element={<RewardMissionPage />} /> {/* ⭐ 리워드 미션 */}
           <Route path="/nadaum" element={<NadaumAnalysisPage />} /> {/* ⭐ 나다움 분석 */}
           <Route path="/nadaum/:category" element={<NadaumAnalysisDetail />} /> {/* ⭐ 나다움 분석 상세 */}
           <Route path="/maumtalk" element={<MindTalkPage />} /> {/* ⭐ 마음톡 AI 심리 상담 */}
