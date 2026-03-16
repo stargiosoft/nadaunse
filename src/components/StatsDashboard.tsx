@@ -4252,6 +4252,7 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
               </motion.div>
             )}
+            <div style={{ height: '40px' }} />
           </div>
         )}{/* 전환 탭 닫기 */}
 
