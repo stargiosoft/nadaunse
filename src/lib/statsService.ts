@@ -2658,11 +2658,13 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
       .eq('is_guest', false)
       .not('user_id', 'in', `(${adminFilter})`),
 
-    // 3. 완료된 주문 (새싹 충전 + 원화 결제)
+    // 3. 완료된 주문 (유료 결제만, 0원/리워드/새싹 소비 제외)
     supabase
       .from('orders')
       .select('user_id, content_id, paid_amount, created_at, pay_method')
       .eq('pstatus', 'completed')
+      .gt('paid_amount', 0)
+      .not('pay_method', 'eq', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`),
 
     // 4. 콘텐츠 제목 (top converting 표시용)
@@ -2855,10 +2857,8 @@ function buildBuyerProfile(
     ? Math.round(freeUsesBeforePurchase.reduce((a, b) => a + b, 0) / freeUsesBeforePurchase.length * 10) / 10
     : 0;
 
-  // 객단가 분포 (실제 결제 금액 기준, 새싹 소비 제외)
-  const paidAmounts = orders
-    .filter(o => o.paid_amount > 0 && o.pay_method !== 'sprout')
-    .map(o => o.paid_amount);
+  // 객단가 분포 (유료 결제만, 0원/새싹 소비는 쿼리에서 이미 제외)
+  const paidAmounts = orders.map(o => o.paid_amount);
 
   const ranges = [
     { range: '~2,900원', min: 0, max: 2900 },
@@ -2876,16 +2876,6 @@ function buildBuyerProfile(
       rate: paidAmounts.length > 0 ? Math.round(count / paidAmounts.length * 1000) / 10 : 0,
     };
   });
-
-  // 새싹 소비 건도 별도 집계
-  const sproutOrders = orders.filter(o => o.pay_method === 'sprout').length;
-  if (sproutOrders > 0) {
-    orderValueDistribution.push({
-      range: '새싹 소비',
-      count: sproutOrders,
-      rate: Math.round(sproutOrders / orders.length * 1000) / 10,
-    });
-  }
 
   // Top 전환 콘텐츠: 무료→유료 매핑(recommended_paid_content_id) 기반
   const contentMap = new Map<string, { title: string; recommendedPaidId: string | null }>();
