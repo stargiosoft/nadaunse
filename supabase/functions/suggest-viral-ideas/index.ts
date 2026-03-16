@@ -15,7 +15,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     body: JSON.stringify({
       contents: [{ parts: [{ text: userPrompt }] }],
       systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature: 1.2, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } },
+      generationConfig: { temperature: 1.3, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } },
     }),
   })
   if (!res.ok) {
@@ -23,9 +23,6 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     throw new Error(`Gemini API 오류 ${res.status}: ${errText.slice(0, 200)}`)
   }
   const data = await res.json()
-  // Gemini 2.5 Flash는 thinking 모델 — 첫 part가 thought일 수 있음
-  // text가 있는 마지막 part에서 실제 응답 추출
-  // Gemini 2.5 Flash thinking 모델: thought part 제외, 실제 응답 part만 추출
   const parts = data.candidates?.[0]?.content?.parts || []
   const raw = parts.filter((p: { text?: string; thought?: boolean }) => p.text && !p.thought).pop()?.text
   if (!raw) throw new Error('Gemini 응답이 비어있습니다.')
@@ -44,16 +41,76 @@ function parseJSON<T>(raw: string): T {
   return JSON.parse(sanitized)
 }
 
+// ─── 바이럴 레퍼런스 풀 (카테고리별) ────────────────────────────
+const VIRAL_POOL = {
+  slot_machine: {
+    identity: [
+      '내 도화살이 학점이라면?',
+      '나는 갑분싸 기질일까?',
+      '내 추구미와 도달가능미 간극은?',
+      '내 관종력 / TMI력 / 손절미 점수',
+      '내 MBTI가 사주로 보면 진짜일까?',
+      'AI가 본 내 첫인상 vs 실제 성격',
+      '내 멘탈 강도 등급',
+      '나는 고양이상? 강아지상?',
+      '내 인생 장르 / 사주로 본 나의 부캐',
+      '내 빌런력은 몇 %?',
+      '사주로 본 내 전투력 (만 단위)',
+      '내가 아이돌이라면 어떤 포지션?',
+      '좀비 사태 발발! 내 생존 포지션은?',
+      '사주로 본 내 도파민 중독 유형',
+      '나는 어떤 유형의 유령/드라마 캐릭터?',
+    ],
+    social: [
+      '반에서 내 포지션 / 내 찐친 유지력',
+      '나한테 고백하면 성공률?',
+      '읽씹 당했을 때 내 반응은?',
+      '내 밀당력 등급 (직진 vs 밀당 마스터)',
+      '사주로 본 나의 이상형 유형',
+      '내가 환승연애에 출연한다면 롤은?',
+      '팩폭기 vs 공감요정, 내 주둥이 전투력',
+      '팀플 폭파범? 버스기사? 내 팀플 운명',
+    ],
+    lifestyle: [
+      '사주로 본 내 금수저 확률',
+      '내가 부자 되는 나이는?',
+      '조선시대 내 직업 / 전생 테스트',
+      '사주로 본 내 N잡 적성',
+      '미래 남편 얼굴은?',
+      '시발비용 탕진잼 vs 짠테크 성향',
+      '사주로 본 내 시험운 등급 (S~F)',
+      '내가 유튜버라면 어떤 채널?',
+      '사주로 본 내 최악의 직장 상사 유형',
+      '나는 몇 번 결혼할 팔자?',
+    ],
+  },
+  compatibility: [
+    '최애와 나의 궁합은?',
+    '얘는 악연일까 귀인일까?',
+    '우리 찐친 궁합',
+    '우리 사이, 내가 더 좋아하는 사람은?',
+    '이 사람이 나한테 호감 있을 확률은?',
+    '이 사람과 해외여행 가면 절교할 확률?',
+    '우리가 헤어질 확률은?',
+  ],
+  adult: [
+    '미래 남편 꼬춘 쿠키 계급도',
+    '내 명기력',
+    '내 침대력 등급 (S~F)',
+    '낮져밤이 지수',
+    '숨겨진 나의 플러팅 치명타 부위',
+  ],
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCorsPreflightRequest(req)
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    // 0. 카테고리 파라미터 파싱
     const body = await req.json().catch(() => ({}))
-    const category: string | null = body.category || null  // 'slot_machine' | 'compatibility' | 'adult' | null
+    const category: string | null = body.category || null
 
-    // 1. 기존 테스트 제목 조회
+    // 1. 기존 테스트 제목 조회 (중복 방지)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -66,132 +123,103 @@ serve(async (req) => {
       .limit(50)
 
     const existingTitles = (existing || []).map((r: { title: string; idea_input: string }) =>
-      `• ${r.title} (원본: ${r.idea_input})`
+      `• ${r.title}`
     ).join('\n')
 
-    // 2. 카테고리별 프롬프트 구성
-    const categoryGuides: Record<string, { typeConstraint: string; typeLabel: string; focus: string; examples: string }> = {
-      slot_machine: {
-        typeConstraint: '모든 아이디어의 type은 반드시 "slot_machine"이어야 해.',
-        typeLabel: '슬롯머신형 (정체성·성격·현실·라이프스타일)',
-        focus: `본인의 사주만 입력받아 재미있는 결과를 보여주는 테스트야.
-크게 3가지 서브 카테고리가 있어:
-- **정체성 & 성격**: 나에 대한 과몰입 (빌런력, 전투력, MBTI+사주, 멘탈 등급, 도파민 중독 유형 등)
-- **관계 & 사회성**: 단톡방 공유 킬러 (밀당력, 팀플 운명, 주둥이 전투력, 읽씹 반응 등)
-- **현실 & 라이프스타일**: 돈·직업·미래 (금수저 확률, N잡 적성, 시험운 등급, 유튜버 채널 등)`,
-        examples: `참고할 만한 인기 테스트 아이디어:
-- 내 빌런력은 몇 %?
-- 사주로 본 내 전투력 (만 단위)
-- 내가 아이돌이라면 어떤 포지션?
-- 좀비 사태 발발! 내 생존 포지션은?
-- 내 도파민 중독 유형
-- 내 밀당력 등급 (직진 vs 밀당 마스터)
-- 팩폭기 vs 공감요정, 내 주둥이 전투력
-- 팀플 폭파범? 버스기사? 내 팀플 운명
-- 시발비용 탕진잼 vs 짠테크 성향
-- 사주로 본 내 시험운 등급 (S~F)
-- 내가 유튜버라면 어떤 채널?
-- 나는 몇 번 결혼할 팔자?`,
-      },
-      compatibility: {
-        typeConstraint: '모든 아이디어의 type은 반드시 "compatibility"이어야 해.',
-        typeLabel: '궁합형 (두 사람 정보 입력)',
-        focus: `본인 + 상대방 사주를 입력받아 두 사람의 궁합/케미/관계를 분석하는 테스트야.
-바이럴의 핵심은 상대방에게 결과를 들이밀기 위해 공유할 수밖에 없는 구조.
-- 연애 궁합, 찐친 궁합, 최애(아이돌) 궁합, 가족/동료 궁합 등 다양한 관계 커버
-- 민감하지만 못 참는 주제 (헤어질 확률, 호감 확률 등)로 호기심 자극`,
-        examples: `참고할 만한 인기 궁합 아이디어:
-- 최애와 나의 궁합은?
-- 얘는 악연일까 귀인일까?
-- 우리 찐친 궁합
-- 우리 사이, 내가 더 좋아하는 사람은?
-- 이 사람이 나한테 호감 있을 확률은?
-- 이 사람과 해외여행 가면 절교할 확률?
-- 우리가 헤어질 확률은?`,
-      },
-      adult: {
-        typeConstraint: '모든 아이디어의 type은 반드시 "adult"이어야 해.',
-        typeLabel: '19금 마라맛 (성인 전용)',
-        focus: `성인 대상의 자극적이면서도 유머러스한 19금 테스트야.
-카톡 단톡방에서 친한 친구들끼리 은밀하게 공유하는 킬러 콘텐츠.
-- 노골적이지 않으면서도 아슬아슬한 재미
-- 등급/수치화로 직관적인 결과 (침대력 S등급, 플러팅 치명타 부위 등)
-- 호기심 200% 자극하는 금기 주제`,
-        examples: `참고할 만한 인기 19금 아이디어:
-- 미래 남편 꼬춘 쿠키 계급도
-- 내 명기력
-- 내 침대력 등급 (S~F)
-- 낮져밤이 지수
-- 숨겨진 나의 '플러팅' 치명타 부위`,
-      },
+    // 2. 카테고리별 레퍼런스 구성
+    let refExamples: string
+    let categoryFocus: string
+
+    if (category === 'compatibility') {
+      refExamples = VIRAL_POOL.compatibility.map(t => `• ${t}`).join('\n')
+      categoryFocus = `**궁합형** 전용. 두 사람 사주를 입력받아 관계/케미를 분석하는 테스트.
+바이럴 핵심: 상대방에게 결과를 들이밀기 위해 공유할 수밖에 없는 구조.
+민감하지만 못 참는 주제(호감 확률, 헤어질 확률 등)로 호기심 자극.
+type은 반드시 "compatibility".`
+    } else if (category === 'adult') {
+      refExamples = VIRAL_POOL.adult.map(t => `• ${t}`).join('\n')
+      categoryFocus = `**19금 마라맛** 전용. 성인 대상 자극적이면서 유머러스한 테스트.
+카톡 친한 친구들 단톡방에서 폭탄처럼 던지는 킬러 콘텐츠.
+아슬아슬하지만 노골적이지 않은 선을 지킴. 등급/수치화로 직관적 결과.
+type은 반드시 "adult".`
+    } else {
+      // slot_machine 또는 전체
+      const pool = VIRAL_POOL.slot_machine
+      const allSlot = [...pool.identity, ...pool.social, ...pool.lifestyle]
+      // 랜덤으로 12개 선택해서 매번 다른 레퍼런스 제공
+      const shuffled = allSlot.sort(() => Math.random() - 0.5).slice(0, 12)
+      refExamples = shuffled.map(t => `• ${t}`).join('\n')
+      categoryFocus = category === 'slot_machine'
+        ? `**운테(슬롯머신)형** 전용. 본인 사주만 입력해서 결과를 보는 테스트.
+3가지 서브 카테고리를 골고루 섞어:
+① 정체성/성격 (나에 대한 과몰입: 빌런력, 전투력, 아이돌 포지션 등)
+② 관계/사회성 (단톡방 공유 킬러: 밀당력, 팀플 운명, 주둥이 전투력 등)
+③ 현실/라이프스타일 (돈·직업·미래: 금수저 확률, 시험운, 유튜버 채널 등)
+type은 반드시 "slot_machine".`
+        : `3가지 유형을 골고루 섞어 추천:
+① slot_machine (본인 사주 → 결과)
+② compatibility (두 사람 궁합)
+③ adult (19금 마라맛)`
     }
 
-    const guide = category ? categoryGuides[category] : null
+    const systemPrompt = `너는 에브리타임·인스타·틱톡에서 바이럴되는 사주 테스트 기획 전문가야.
+Z세대(10대 후반~20대)가 "이거 뭐야ㅋㅋ 해봐야겠다"하고 바로 클릭하는 아이디어만 만들어.
 
-    const systemPrompt = `너는 1020 Z세대(10대 후반~20대 초반)를 타겟으로 한 사주 기반 바이럴 테스트 기획자야.
+## 바이럴 공식 (이걸 반드시 따라!)
 
-## 역할
-사용자의 사주(생년월일시)를 입력받아 재미있는 결과를 보여주는 바이럴 테스트 아이디어를 추천해.
+### 후킹 제목 패턴
+- **호기심 갭**: "___가 ___라는 거 실화?" → 안 해볼 수 없음
+- **수치화**: "내 ○○력은 몇 %?", "○○ 등급 (S~F)", "상위 3%만"
+- **자학+공감**: 결과 나오면 "ㅋㅋㅋ 이거 나 맞네" 반응 유도
+- **상황극**: Z세대 일상 디테일 (학교, 단톡방, 팀플, 연프 등)
+- **밈 접목**: 드래곤볼 전투력, 게임 티어, 아이돌 포지션, OTT 캐릭터 등
+- **금기 호기심**: 민감하지만 못 참는 주제 (몇 번 결혼?, 헤어질 확률?)
 
-## 핵심 원칙
-1. **바이럴 필수**: 결과를 캡처해서 인스타 스토리·카톡 단톡방에 공유하고 싶을 정도로 재미있어야 함
-2. **Z세대 언어**: 10대·20대가 쓰는 밈, 유행어, 신조어를 적극 활용 (예: 느좋, 갑분싸, 손절미, 관종, 추구미, 감다살 등)
-3. **자기탐색 프레임**: 단순 운세가 아닌 "나를 알아가는 재미" 또는 '궁합 캐미 발견 기회'로 포지셔닝
-4. **짧고 임팩트**: 제목은 15자 이내, 한눈에 "이거 해봐야겠다" 느낌
-5. **공유 욕구 자극**: 점수·등급·비율·이미지 등 캡처하고 싶은 결과 형태
-${guide ? `
-## 카테고리 제한
-이번 요청은 **${guide.typeLabel}** 카테고리 전용이야.
-${guide.typeConstraint}
+### 제목 작성 규칙
+- **15자 이내**, 한눈에 직관적
+- "너/니" 2인칭 직접 호출 금지 → "내"로 시작하거나 지칭 없이
+- 올드한 운세 느낌 금지 ("사주로 보는 당신의 운명" ❌)
+- 10대도 바로 이해하는 쉬운 단어만
+- 이모지 금지 (제목에는 넣지 마)
 
-## 이 카테고리 특성
-${guide.focus}
+### 이런 건 절대 하지 마 (구린 아이디어 특징)
+- "사주로 보는 나의 ○○" 패턴 반복 ❌
+- "내 ○○ 유형은?" 식의 밋밋한 제목 ❌
+- 누가 봐도 안 눌러볼 것 같은 지루한 주제 ❌
+- 이미 수백 번 본 MBTI 테스트 카피 ❌
 
-## 레퍼런스 아이디어
-${guide.examples}
-` : `
-## 테스트 유형
-- 슬롯머신형: 본인 사주만 입력 → 점수/확률/등급/이미지 결과
-- 궁합형: 본인 + 상대방 사주 → 궁합 점수/유형
-- 성인용: 19금 소재 (자극적이지만 유머러스)
-`}
-## 결과 포맷 종류
-- image_focus: 이미지 중심 결과 (미래 남편 얼굴, 전생 모습 등)
-- percentage: % 표시 (바람끼 82%, 관종력 95%)
-- score: 점수제 (0~100점)
-- ranking: 등급/티어 (S/A/B/C/D)
+## 카테고리
+${categoryFocus}
+
+## 결과 포맷 (아이디어에 가장 맞는 걸 선택)
+- **image_focus**: 시각적 결과가 핵심 (미래 얼굴, 동물상, 캐릭터 비주얼)
+- **percentage**: 확률/수치 ("87%", "12%")
+- **score**: 점수 기반 ("95점"). 특수 단위도 가능 ("53만", "3번")
+- **ranking**: 게임식 등급/티어 ("SSS급", "F급", "전설")
+- **grade**: 학점 컨셉 ("A+", "C0", "F")
+- **type**: 유형명/포지션이 핵심 ("브레인", "메인보컬", "고기방패")
 
 ## 응답 형식
-반드시 JSON 배열로 정확히 3개의 아이디어를 추천해:
+JSON 배열 3개. title은 반드시 15자 이내!
 [
-  {
-    "title": "15자 이내 후킹 제목",
-    "type": "${guide ? (category === 'adult' ? 'adult' : category === 'compatibility' ? 'compatibility' : 'slot_machine') : 'slot_machine | compatibility | adult'}",
-    "resultFormat": "image_focus | percentage | score | ranking"
-  }
+  { "title": "후킹 제목", "type": "slot_machine|compatibility|adult", "resultFormat": "image_focus|percentage|score|ranking|grade|type" }
 ]`
 
-    const categoryLabel = guide
-      ? `\n\n** 중요: "${guide.typeLabel}" 카테고리 아이디어만 추천해. 다른 유형은 절대 포함하지 마. **`
-      : ''
+    const userPrompt = `## 레퍼런스 (이 수준의 바이럴 아이디어를 만들어!)
+${refExamples}
 
-    const userPrompt = existingTitles
-      ? `아래는 이미 만들어진 테스트 제목 목록이야. 이것들과 절대 겹치지 않는, 완전히 새로운 아이디어 3개를 추천해줘.
-트렌디하고, Z세대가 "이거 뭐야 해봐야겠다ㅋㅋ" 하면서 바로 클릭할 만한 소재로!${categoryLabel}
-
-=== 기존 테스트 ===
+${existingTitles ? `## 이미 있는 테스트 (절대 겹치지 마!)
 ${existingTitles}
 
-새로운 아이디어 3개를 JSON 배열로 추천해줘.`
-      : `사주 기반 바이럴 테스트 아이디어 3개를 추천해줘. Z세대가 "이거 뭐야ㅋㅋ 해봐야겠다" 하면서 바로 클릭할 만한 소재로!${categoryLabel} JSON 배열로 응답해.`
+` : ''}위 레퍼런스 수준으로 Z세대가 즉시 클릭할 바이럴 아이디어 3개. 레퍼런스를 그대로 베끼지 말고 같은 수준의 새로운 아이디어를 만들어!`
 
     const raw = await callGemini(systemPrompt, userPrompt)
     const ideas = parseJSON<Array<{ title: string; type: string; resultFormat: string }>>(raw)
 
-    // 카테고리 필터링: AI가 잘못된 type을 반환했을 경우 강제 보정
+    // 카테고리 강제 보정
     const result = ideas.slice(0, 3).map(idea => {
-      if (category && idea.type !== (category === 'adult' ? 'adult' : category)) {
-        return { ...idea, type: category === 'adult' ? 'adult' : category }
+      if (category && idea.type !== category) {
+        return { ...idea, type: category }
       }
       return idea
     })
