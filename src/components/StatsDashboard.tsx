@@ -746,8 +746,18 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
 
     try {
       await navigator.clipboard.writeText(text);
+      alert('클립보드에 복사되었습니다.');
     } catch {
-      // fallback 불필요 (마스터 전용)
+      // iOS Safari fallback
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      alert('클립보드에 복사되었습니다.');
     }
   };
 
