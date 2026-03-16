@@ -2899,21 +2899,34 @@ function buildBuyerProfile(
     }
   }
 
-  // 무료 콘텐츠 중 recommended_paid_content_id가 있는 것만 전환율 계산
-  const topConvertingContents: BuyerProfile['topConvertingContents'] = [];
+  // 유료 콘텐츠 기준으로 합산 (여러 무료가 같은 유료를 추천하면 무료 조회수 합산)
+  const paidAggMap = new Map<string, { title: string; freeViews: number; paidOrders: number }>();
   for (const [freeId, info] of contentMap) {
     if (!info.recommendedPaidId) continue;
     const freeViews = freeContentViews.get(freeId) || 0;
-    const paidOrders = paidContentOrders.get(info.recommendedPaidId) || 0;
-    if (freeViews === 0 && paidOrders === 0) continue;
+    if (freeViews === 0) continue;
 
-    const paidInfo = contentMap.get(info.recommendedPaidId);
+    const existing = paidAggMap.get(info.recommendedPaidId);
+    if (existing) {
+      existing.freeViews += freeViews;
+    } else {
+      const paidInfo = contentMap.get(info.recommendedPaidId);
+      paidAggMap.set(info.recommendedPaidId, {
+        title: paidInfo?.title || info.title,
+        freeViews,
+        paidOrders: paidContentOrders.get(info.recommendedPaidId) || 0,
+      });
+    }
+  }
+
+  const topConvertingContents: BuyerProfile['topConvertingContents'] = [];
+  for (const [paidId, agg] of paidAggMap) {
     topConvertingContents.push({
-      contentId: freeId,
-      title: paidInfo?.title || info.title,
-      freeViews,
-      paidOrders,
-      conversionRate: freeViews > 0 ? Math.round(paidOrders / freeViews * 1000) / 10 : 0,
+      contentId: paidId,
+      title: agg.title,
+      freeViews: agg.freeViews,
+      paidOrders: agg.paidOrders,
+      conversionRate: agg.freeViews > 0 ? Math.round(agg.paidOrders / agg.freeViews * 1000) / 10 : 0,
     });
   }
 
