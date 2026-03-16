@@ -69,6 +69,26 @@ export default function SproutChargingStation({
   const shortfall = Math.max(0, requiredAmount - currentBalance);
   const selectedPackage = packages.find(p => p.id === selectedPackageId);
 
+  // 사용자 후기 로테이션 (5초 간격)
+  const [reviewIdx, setReviewIdx] = useState(0);
+  const [reviewFadeIn, setReviewFadeIn] = useState(true);
+  const reviewsRef = useRef([
+    { quote: '"솔직히 반신반의했는데,\n읽고 나서 소름 돋았어요"', author: '— 19세 고등학생' },
+    { quote: '"내가 왜 이런 선택을 하는지\n사주로 이해하니까 신기했어요"', author: '— 23세 대학생' },
+    { quote: '"소름돋게 잘 맞아서\n시간 가는 줄 모르고 읽었어요"', author: '— 20세 재수생' },
+  ]);
+  useEffect(() => {
+    if (fromProfile) return;
+    const timer = setInterval(() => {
+      setReviewFadeIn(false);
+      setTimeout(() => {
+        setReviewIdx(prev => (prev + 1) % reviewsRef.current.length);
+        setReviewFadeIn(true);
+      }, 300);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [fromProfile]);
+
   // ⭐ 선택된 패키지 카드 gradient 테두리 회전 애니메이션
   const selectedCardGradientRef = useRef<HTMLDivElement | null>(null);
   const gradientCallbackRef = useCallback((node: HTMLDivElement | null) => {
@@ -378,21 +398,20 @@ export default function SproutChargingStation({
                   </div>
                 </div>
               ) : (
-                /* 콘텐츠 구매에서 접근: 필요 새싹 / 남은 새싹 분할 표시 */
+                /* 콘텐츠 구매에서 접근: 사용자 후기 + 필요/남은 새싹 */
                 <div className="flex flex-col gap-[10px] items-center justify-center px-[20px] py-[16px] w-full">
-                  <div className="flex flex-col items-start px-[4px] w-full">
-                    <div className="flex flex-col gap-[4px] items-start w-full">
-                      <div style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#000' }}>
-                        {shortfall > 0 ? `${shortfall}새싹이 부족해요` : '새싹을 충전해 보세요'}
-                      </div>
-                      <div className="flex items-center justify-center px-px w-full">
-                        <p
-                          className="flex-1"
-                          style={{ fontFamily: "'Pretendard Variable', sans-serif", fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px', color: '#848484' }}
-                        >
-                          지금 충전하면 즉시 풀이 확인 가능해요
-                        </p>
-                      </div>
+                  {/* 사용자 후기 (5초 로테이션) */}
+                  <div className="w-full rounded-[16px] flex flex-col items-center" style={{ backgroundColor: '#f0f8f8', padding: '24px 20px' }}>
+                    <p style={{ fontSize: '16px', lineHeight: '20px', letterSpacing: '2px', color: '#48b2af' }}>
+                      ★★★★★
+                    </p>
+                    <div style={{ opacity: reviewFadeIn ? 1 : 0, transition: 'opacity 0.3s ease', minHeight: '70px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <p className="text-center" style={{ fontSize: '14px', fontWeight: 500, lineHeight: '22px', letterSpacing: '-0.28px', color: '#151515', marginTop: '10px', fontStyle: 'italic', whiteSpace: 'pre-line' }}>
+                        {reviewsRef.current[reviewIdx].quote}
+                      </p>
+                      <p style={{ fontSize: '13px', fontWeight: 400, lineHeight: '19px', letterSpacing: '-0.26px', color: '#848484', marginTop: '8px' }}>
+                        {reviewsRef.current[reviewIdx].author}
+                      </p>
                     </div>
                   </div>
                   {/* 필요 새싹 / 남은 새싹 정보 박스 */}

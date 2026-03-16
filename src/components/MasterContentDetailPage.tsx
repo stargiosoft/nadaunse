@@ -1876,6 +1876,25 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               </div>
               </motion.div>
 
+              {/* 100% 환불 보장 배너 */}
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}
+                className="px-[20px]"
+                style={{ marginTop: '-8px', marginBottom: '32px' }}
+              >
+                <div className="w-full rounded-[16px] flex flex-col items-center justify-center" style={{ backgroundColor: '#f0f8f8', padding: '28px 20px' }}>
+                  <p className="text-center" style={{ fontSize: '18px', fontWeight: 700, lineHeight: '28px', letterSpacing: '-0.36px', color: '#1a1a1a' }}>
+                    걱정 마세요.
+                  </p>
+                  <p className="text-center" style={{ fontSize: '18px', fontWeight: 700, lineHeight: '28px', letterSpacing: '-0.36px', color: '#1a1a1a' }}>
+                    마음에 들지 않으면
+                  </p>
+                  <p className="text-center" style={{ fontSize: '18px', fontWeight: 800, lineHeight: '28px', letterSpacing: '-0.36px', color: '#48b2af' }}>
+                    100% 환불해드려요!
+                  </p>
+                </div>
+              </motion.div>
+
               {/* ⚠️ [개발 전용] 풀이 플로우 확인 버튼 - 배포 시 삭제 */}
               {IS_DEV_MODE && (
                 <motion.div 
