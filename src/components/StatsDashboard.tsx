@@ -13,7 +13,7 @@ import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportFunnelByCount, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats, PurchasePeriodFilter, PurchaseFunnelData, fetchPurchaseFunnelStats } from '../lib/statsService';
+import { fetchDashboardStats, fetchGAStats, getDateRangeFromPreset, DashboardStats, GAStats, TagStat, DateRangePreset, DateRangeFilter, TrendRangePreset, DailyTrendData, fetchDailyTrendStats, getTrendDateRange, ContentTypeFilter, ContentPeriodFilter, CategoryViewStats, ContentViewStats, fetchCategoryViewRanking, fetchTopContentsByCategory, ReportFunnelData, ReportTrendData, fetchReportFunnelStats, fetchReportFunnelByCount, fetchReportTrendStats, CustomerStatsData, fetchCustomerStats, PurchaseStatsData, fetchPurchaseStats, PurchasePeriodFilter, PurchaseFunnelData, fetchPurchaseFunnelStats, ConversionStatsData, fetchConversionStats } from '../lib/statsService';
 import SEO from './SEO';
 
 interface StatsDashboardProps {
@@ -129,8 +129,8 @@ function formatDateRange(startDate?: Date, endDate?: Date): string {
 }
 
 // 대시보드 탭 타입
-type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서' | '구매' | '고객';
-const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서', '구매', '고객'];
+type DashboardTab = '개요' | '추세' | '비교' | '콘텐츠' | '보고서' | '구매' | '고객' | '전환';
+const DASHBOARD_TABS: DashboardTab[] = ['개요', '추세', '비교', '콘텐츠', '보고서', '구매', '고객', '전환'];
 
 export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -215,6 +215,11 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
   const [customerStats, setCustomerStats] = useState<CustomerStatsData | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
+
+  // 전환 탭 상태
+  const [conversionStats, setConversionStats] = useState<ConversionStatsData | null>(null);
+  const [conversionLoading, setConversionLoading] = useState(false);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
   // 공통 타이포그래피 스타일
   const typography = {
@@ -677,6 +682,74 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
       loadCustomerData();
     }
   }, [selectedTab]);
+
+  // 전환 데이터 로드 함수
+  const loadConversionData = async () => {
+    setConversionLoading(true);
+    setConversionError(null);
+    try {
+      const data = await fetchConversionStats();
+      setConversionStats(data);
+    } catch (err) {
+      console.error('전환 데이터 로드 오류:', err);
+      setConversionError('전환 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setConversionLoading(false);
+    }
+  };
+
+  // 전환 탭 선택 시 데이터 로드
+  useEffect(() => {
+    if (selectedTab === '전환' && !conversionStats && !conversionLoading) {
+      loadConversionData();
+    }
+  }, [selectedTab]);
+
+  // 리텐션 히트맵 색상 함수
+  const getRetentionColor = (rate: number): string => {
+    if (rate >= 30) return '#0F766E';
+    if (rate >= 20) return '#14B8A6';
+    if (rate >= 10) return '#5EEAD4';
+    if (rate >= 5) return '#99F6E4';
+    if (rate > 0) return '#CCFBF1';
+    return '#F5F5F5';
+  };
+
+  const getRetentionTextColor = (rate: number): string => {
+    if (rate >= 20) return '#ffffff';
+    return '#333333';
+  };
+
+  // 클립보드 복사 함수 - 전환
+  const copyConversionData = async () => {
+    if (!conversionStats) return;
+    const { funnel, buyer, retentionCohorts } = conversionStats;
+
+    let text = `📊 전환 분석\n\n`;
+    text += `[전환 퍼널]\n`;
+    text += `가입 유저: ${funnel.totalUsers}명\n`;
+    text += `무료 이용: ${funnel.freeContentUsers}명 (${funnel.totalUsers > 0 ? Math.round(funnel.freeContentUsers / funnel.totalUsers * 1000) / 10 : 0}%)\n`;
+    text += `2회+ 무료: ${funnel.repeatFreeUsers}명 (${funnel.freeToRepeatRate}%)\n`;
+    text += `구매자: ${funnel.purchasers}명 (${funnel.repeatToPurchaseRate}%)\n\n`;
+
+    text += `[구매자 프로필]\n`;
+    text += `총 구매자: ${buyer.totalBuyers}명\n`;
+    text += `재구매율: ${buyer.repeatRate}%\n`;
+    text += `첫 구매까지: 평균 ${buyer.avgDaysToFirstPurchase}일\n`;
+    text += `구매 전 무료 이용: 평균 ${buyer.avgFreeUsesBeforePurchase}회\n\n`;
+
+    text += `[리텐션 코호트]\n`;
+    text += `코호트\t가입\t${Array.from({ length: 8 }, (_, i) => `W${i + 1}`).join('\t')}\n`;
+    for (const c of retentionCohorts) {
+      text += `${c.weekLabel}\t${c.cohortSize}명\t${c.retention.map(r => `${r}%`).join('\t')}\n`;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback 불필요 (마스터 전용)
+    }
+  };
 
   // 클립보드 복사 함수 - 콘텐츠
   const copyContentData = async () => {
@@ -3941,6 +4014,246 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
             )}
           </div>
         )}{/* 고객 탭 닫기 */}
+
+        {/* ========== 전환 탭 ========== */}
+        {selectedTab === '전환' && (
+          <div style={{ paddingTop: '16px' }}>
+            {/* 에러 상태 */}
+            {conversionError && (
+              <div className="flex flex-col items-center justify-center" style={{ padding: '48px 0' }}>
+                <p style={{ ...typography.label, marginBottom: '16px' }}>{conversionError}</p>
+                <button
+                  onClick={() => loadConversionData()}
+                  className="flex items-center gap-2 rounded-xl transition-colors active:opacity-80"
+                  style={{ ...typography.button, padding: '10px 16px', backgroundColor: '#3FB5B3', color: '#ffffff' }}
+                >
+                  <RefreshCw size={16} /> 다시 시도
+                </button>
+              </div>
+            )}
+
+            {/* 로딩 상태 */}
+            {conversionLoading && !conversionError && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
+                </div>
+                <div className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '250px' }} />
+                <div className="animate-pulse" style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px', height: '200px' }} />
+              </div>
+            )}
+
+            {/* 데이터 표시 */}
+            {!conversionLoading && !conversionError && conversionStats && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+              >
+                {/* 헤더 + 복사 버튼 */}
+                <div className="flex items-center justify-between">
+                  <h2 style={{ ...typography.sectionTitle, margin: 0 }}>전환 분석</h2>
+                  <button
+                    onClick={copyConversionData}
+                    className="flex items-center justify-center rounded-lg transition-colors active:opacity-80"
+                    style={{ width: '36px', height: '36px', backgroundColor: '#f5f5f5', border: 'none' }}
+                  >
+                    <Copy size={16} color="#666" />
+                  </button>
+                </div>
+
+                {/* ===== 전환 퍼널 ===== */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '16px' }}>🔄</span>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>무료 → 유료 전환 퍼널</h3>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>단계</th>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>유저 수</th>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>전환율</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const f = conversionStats.funnel;
+                          return [
+                            { label: '가입 유저', value: f.totalUsers, rate: 100 },
+                            { label: '무료 이용 (1회+)', value: f.freeContentUsers, rate: f.totalUsers > 0 ? Math.round(f.freeContentUsers / f.totalUsers * 1000) / 10 : 0 },
+                            { label: '무료 재이용 (2회+)', value: f.repeatFreeUsers, rate: f.totalUsers > 0 ? Math.round(f.repeatFreeUsers / f.totalUsers * 1000) / 10 : 0 },
+                            { label: '유료 구매', value: f.purchasers, rate: f.totalUsers > 0 ? Math.round(f.purchasers / f.totalUsers * 1000) / 10 : 0 },
+                          ].map((row, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 500, color: '#1a1a1a', padding: '10px 12px', borderBottom: '1px solid #f8f8f8' }}>{row.label}</td>
+                              <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 600, color: '#3FB5B3', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.value.toLocaleString()}명</td>
+                              <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 400, color: '#666', padding: '10px 12px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{row.rate}%</td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* 단계별 전환율 */}
+                  <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                    <div className="flex justify-between" style={{ marginBottom: '6px' }}>
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', color: '#666' }}>무료→재이용</span>
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 600, color: '#3FB5B3' }}>{conversionStats.funnel.freeToRepeatRate}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', color: '#666' }}>재이용→구매</span>
+                      <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 600, color: '#EC4899' }}>{conversionStats.funnel.repeatToPurchaseRate}%</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* ===== 구매자 프로필 ===== */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '16px' }}>👤</span>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>구매자 프로필</h3>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                    <StatCard icon={ShoppingCart} label="총 구매자" value={conversionStats.buyer.totalBuyers} unit="명" />
+                    <StatCard icon={TrendingUp} label="재구매율" value={conversionStats.buyer.repeatRate} unit="%" color="#EC4899" subValue={`${conversionStats.buyer.repeatBuyers}명 재구매`} />
+                    <StatCard icon={Clock} label="첫 구매까지" value={conversionStats.buyer.avgDaysToFirstPurchase} unit="일" color="#6366F1" subValue="가입 후 평균" />
+                    <StatCard icon={Eye} label="구매 전 무료" value={conversionStats.buyer.avgFreeUsesBeforePurchase} unit="회" color="#F59E0B" subValue="평균 이용 횟수" />
+                  </div>
+
+                  {/* 객단가 분포 */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <h4 style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>객단가 분포</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {conversionStats.buyer.orderValueDistribution.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', color: '#666', width: '80px', flexShrink: 0 }}>{item.range}</span>
+                          <div style={{ flex: 1, height: '20px', backgroundColor: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${Math.max(item.rate, 2)}%`,
+                                backgroundColor: idx < 5 ? CHART_COLORS[idx] : '#F59E0B',
+                                borderRadius: '4px',
+                                transition: 'width 0.5s ease',
+                              }}
+                            />
+                          </div>
+                          <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#333', width: '60px', textAlign: 'right', flexShrink: 0 }}>{item.count}건 ({item.rate}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Top 전환 콘텐츠 */}
+                  {conversionStats.buyer.topConvertingContents.length > 0 && (
+                    <div>
+                      <h4 style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '8px' }}>전환 TOP 콘텐츠 (무료→유료)</h4>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #f0f0f0' }}>콘텐츠</th>
+                              <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '6px 8px', borderBottom: '1px solid #f0f0f0' }}>무료</th>
+                              <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '6px 8px', borderBottom: '1px solid #f0f0f0' }}>구매</th>
+                              <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '6px 8px', borderBottom: '1px solid #f0f0f0' }}>전환율</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {conversionStats.buyer.topConvertingContents.map((item, idx) => (
+                              <tr key={idx}>
+                                <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 500, color: '#1a1a1a', padding: '8px', borderBottom: '1px solid #f8f8f8', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</td>
+                                <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', color: '#666', padding: '8px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{item.freeViews}</td>
+                                <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 600, color: '#3FB5B3', padding: '8px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{item.paidOrders}</td>
+                                <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '13px', fontWeight: 600, color: '#EC4899', padding: '8px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{item.conversionRate}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* ===== 리텐션 코호트 히트맵 ===== */}
+                <section style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '16px' }}>
+                  <div className="flex items-center gap-2" style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '16px' }}>📅</span>
+                    <h3 style={{ ...typography.sectionTitle, margin: 0 }}>주간 리텐션 코호트</h3>
+                  </div>
+                  <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <table style={{ borderCollapse: 'collapse', minWidth: '500px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #f0f0f0', position: 'sticky', left: 0, backgroundColor: '#ffffff', zIndex: 1 }}>코호트</th>
+                          <th style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'right', padding: '6px 8px', borderBottom: '1px solid #f0f0f0' }}>가입</th>
+                          {Array.from({ length: 8 }, (_, i) => (
+                            <th key={i} style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', fontWeight: 500, color: '#999', textAlign: 'center', padding: '6px 6px', borderBottom: '1px solid #f0f0f0', minWidth: '44px' }}>W{i + 1}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {conversionStats.retentionCohorts.map((cohort, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 500, color: '#333', padding: '6px 8px', borderBottom: '1px solid #f8f8f8', whiteSpace: 'nowrap', position: 'sticky', left: 0, backgroundColor: '#ffffff', zIndex: 1 }}>{cohort.weekLabel}</td>
+                            <td style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '12px', fontWeight: 600, color: '#3FB5B3', padding: '6px 8px', textAlign: 'right', borderBottom: '1px solid #f8f8f8' }}>{cohort.cohortSize}</td>
+                            {Array.from({ length: 8 }, (_, i) => {
+                              const rate = cohort.retention[i];
+                              const hasData = rate !== undefined;
+                              return (
+                                <td key={i} style={{
+                                  padding: '4px',
+                                  borderBottom: '1px solid #f8f8f8',
+                                  textAlign: 'center',
+                                }}>
+                                  {hasData ? (
+                                    <div style={{
+                                      backgroundColor: getRetentionColor(rate),
+                                      color: getRetentionTextColor(rate),
+                                      borderRadius: '6px',
+                                      padding: '4px 2px',
+                                      fontFamily: 'Pretendard Variable, sans-serif',
+                                      fontSize: '11px',
+                                      fontWeight: 500,
+                                      minWidth: '36px',
+                                    }}>
+                                      {rate}%
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: '#e5e5e5', fontSize: '11px' }}>-</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* 범례 */}
+                  <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: '12px' }}>
+                    <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '11px', color: '#999' }}>범례:</span>
+                    {[
+                      { label: '30%+', color: '#0F766E' },
+                      { label: '20%+', color: '#14B8A6' },
+                      { label: '10%+', color: '#5EEAD4' },
+                      { label: '5%+', color: '#99F6E4' },
+                      { label: '0%+', color: '#CCFBF1' },
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-1">
+                        <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: item.color }} />
+                        <span style={{ fontFamily: 'Pretendard Variable, sans-serif', fontSize: '10px', color: '#999' }}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+              </motion.div>
+            )}
+          </div>
+        )}{/* 전환 탭 닫기 */}
 
           </div>{/* 스크롤 영역 닫기 */}
 

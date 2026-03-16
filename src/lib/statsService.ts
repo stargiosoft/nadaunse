@@ -2592,3 +2592,351 @@ function aggregateReportTrendData(weeklyData: ReportTrendData[], granularity: 'm
     };
   });
 }
+
+// ==================== 전환 탭 ====================
+
+/** 리텐션 코호트 (주간) */
+export interface RetentionCohort {
+  weekLabel: string;       // "2/1주", "2/2주", etc.
+  weekStart: string;       // YYYY-MM-DD
+  cohortSize: number;      // 해당 주 가입자 수
+  retention: number[];     // [W1%, W2%, W3%, ...] (W0 제외, 가입 주 이후부터)
+}
+
+/** 전환 퍼널 */
+export interface ConversionFunnel {
+  totalUsers: number;
+  freeContentUsers: number;
+  repeatFreeUsers: number;   // 2회 이상 무료 이용
+  purchasers: number;
+  freeToRepeatRate: number;
+  repeatToPurchaseRate: number;
+}
+
+/** 구매자 프로필 */
+export interface BuyerProfile {
+  totalBuyers: number;
+  repeatBuyers: number;       // 2회 이상 구매
+  repeatRate: number;
+  avgDaysToFirstPurchase: number;
+  avgFreeUsesBeforePurchase: number;
+  orderValueDistribution: { range: string; count: number; rate: number }[];
+  topConvertingContents: { contentId: string; title: string; freeViews: number; paidOrders: number; conversionRate: number }[];
+}
+
+/** 전환 탭 전체 데이터 */
+export interface ConversionStatsData {
+  retentionCohorts: RetentionCohort[];
+  funnel: ConversionFunnel;
+  buyer: BuyerProfile;
+}
+
+/**
+ * 전환 탭 통계 데이터 조회
+ * users, free_content_records, orders 기반 전환 분석
+ */
+export async function fetchConversionStats(): Promise<ConversionStatsData> {
+  const adminFilter = ADMIN_IDS.join(',');
+
+  // 4개 쿼리 병렬 실행
+  const [
+    usersResult,
+    freeRecordsResult,
+    ordersResult,
+    contentsResult,
+  ] = await Promise.all([
+    // 1. 전체 유저 (가입일 + 방문일 배열)
+    supabase
+      .from('users')
+      .select('id, created_at, visit_dates')
+      .not('id', 'in', `(${adminFilter})`),
+
+    // 2. 무료 콘텐츠 기록 (유저별)
+    supabase
+      .from('free_content_records')
+      .select('user_id, content_id, created_at')
+      .eq('is_guest', false)
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 3. 완료된 주문 (새싹 충전 + 원화 결제)
+    supabase
+      .from('orders')
+      .select('user_id, content_id, paid_amount, created_at, pay_method')
+      .eq('pstatus', 'completed')
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 4. 콘텐츠 제목 (top converting 표시용)
+    supabase
+      .from('master_contents')
+      .select('id, title, recommended_paid_content_id'),
+  ]);
+
+  if (usersResult.error) throw new Error('유저 데이터 조회 실패');
+  if (freeRecordsResult.error) throw new Error('무료 기록 조회 실패');
+  if (ordersResult.error) throw new Error('주문 데이터 조회 실패');
+  if (contentsResult.error) throw new Error('콘텐츠 데이터 조회 실패');
+
+  const users = usersResult.data || [];
+  const freeRecords = freeRecordsResult.data || [];
+  const orders = ordersResult.data || [];
+  const contents = contentsResult.data || [];
+
+  // ========== 1. 리텐션 코호트 ==========
+  const retentionCohorts = buildRetentionCohorts(users);
+
+  // ========== 2. 전환 퍼널 ==========
+  const funnel = buildConversionFunnel(users, freeRecords, orders);
+
+  // ========== 3. 구매자 프로필 ==========
+  const buyer = buildBuyerProfile(users, freeRecords, orders, contents);
+
+  return { retentionCohorts, funnel, buyer };
+}
+
+/** 주의 시작일(일요일) 계산 - 리텐션 코호트용 */
+function getCohortWeekStart(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 리텐션 코호트 빌드 */
+function buildRetentionCohorts(
+  users: { id: string; created_at: string; visit_dates: string[] }[]
+): RetentionCohort[] {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  // 유저를 가입 주차별로 그룹화
+  const cohortMap = new Map<string, { id: string; visitWeeks: Set<string> }[]>();
+
+  for (const user of users) {
+    if (!user.created_at) continue;
+    const signupDate = user.created_at.slice(0, 10);
+    const signupWeek = getCohortWeekStart(signupDate);
+
+    if (!cohortMap.has(signupWeek)) {
+      cohortMap.set(signupWeek, []);
+    }
+
+    // 방문일을 주차 Set으로 변환
+    const visitWeeks = new Set<string>();
+    if (user.visit_dates && Array.isArray(user.visit_dates)) {
+      for (const vd of user.visit_dates) {
+        visitWeeks.add(getCohortWeekStart(vd));
+      }
+    }
+
+    cohortMap.get(signupWeek)!.push({ id: user.id, visitWeeks });
+  }
+
+  // 주차별 정렬
+  const sortedWeeks = Array.from(cohortMap.keys()).sort();
+
+  // 최근 12주만
+  const recentWeeks = sortedWeeks.slice(-12);
+
+  return recentWeeks.map(weekStart => {
+    const cohortUsers = cohortMap.get(weekStart)!;
+    const cohortSize = cohortUsers.length;
+    if (cohortSize === 0) return { weekLabel: '', weekStart, cohortSize: 0, retention: [] };
+
+    // 주차 라벨 생성
+    const ws = new Date(weekStart + 'T00:00:00');
+    const month = ws.getMonth() + 1;
+    const weekOfMonth = Math.ceil(ws.getDate() / 7);
+    const weekLabel = `${month}/${weekOfMonth}주`;
+
+    // W1 ~ Wn 리텐션 계산 (가입 주 W0 제외)
+    const todayWeek = getCohortWeekStart(today);
+    const maxWeeks = Math.floor(
+      (new Date(todayWeek + 'T00:00:00').getTime() - ws.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    );
+
+    const retention: number[] = [];
+    for (let w = 1; w <= Math.min(maxWeeks, 8); w++) {
+      const targetWeek = new Date(ws.getTime() + w * 7 * 24 * 60 * 60 * 1000);
+      const targetWeekStr = `${targetWeek.getFullYear()}-${String(targetWeek.getMonth() + 1).padStart(2, '0')}-${String(targetWeek.getDate()).padStart(2, '0')}`;
+
+      const retained = cohortUsers.filter(u => u.visitWeeks.has(targetWeekStr)).length;
+      retention.push(Math.round(retained / cohortSize * 1000) / 10);
+    }
+
+    return { weekLabel, weekStart, cohortSize, retention };
+  }).filter(c => c.cohortSize > 0);
+}
+
+/** 전환 퍼널 빌드 */
+function buildConversionFunnel(
+  users: { id: string }[],
+  freeRecords: { user_id: string }[],
+  orders: { user_id: string }[]
+): ConversionFunnel {
+  const totalUsers = users.length;
+
+  // 무료 이용 유저 (1회 이상)
+  const freeCountMap = new Map<string, number>();
+  for (const r of freeRecords) {
+    freeCountMap.set(r.user_id, (freeCountMap.get(r.user_id) || 0) + 1);
+  }
+  const freeContentUsers = freeCountMap.size;
+
+  // 2회 이상 무료 이용
+  const repeatFreeUsers = Array.from(freeCountMap.values()).filter(c => c >= 2).length;
+
+  // 구매자
+  const purchaserSet = new Set(orders.map(o => o.user_id));
+  const purchasers = purchaserSet.size;
+
+  return {
+    totalUsers,
+    freeContentUsers,
+    repeatFreeUsers,
+    purchasers,
+    freeToRepeatRate: freeContentUsers > 0 ? Math.round(repeatFreeUsers / freeContentUsers * 1000) / 10 : 0,
+    repeatToPurchaseRate: repeatFreeUsers > 0 ? Math.round(purchasers / repeatFreeUsers * 1000) / 10 : 0,
+  };
+}
+
+/** 구매자 프로필 빌드 */
+function buildBuyerProfile(
+  users: { id: string; created_at: string }[],
+  freeRecords: { user_id: string; created_at: string }[],
+  orders: { user_id: string; content_id: string; paid_amount: number; created_at: string; pay_method: string }[],
+  contents: { id: string; title: string; recommended_paid_content_id: string | null }[]
+): BuyerProfile {
+  // 구매자별 주문 그룹화
+  const buyerOrders = new Map<string, typeof orders>();
+  for (const o of orders) {
+    if (!buyerOrders.has(o.user_id)) buyerOrders.set(o.user_id, []);
+    buyerOrders.get(o.user_id)!.push(o);
+  }
+
+  const totalBuyers = buyerOrders.size;
+  const repeatBuyers = Array.from(buyerOrders.values()).filter(ords => ords.length >= 2).length;
+  const repeatRate = totalBuyers > 0 ? Math.round(repeatBuyers / totalBuyers * 1000) / 10 : 0;
+
+  // 유저 가입일 맵
+  const userCreatedMap = new Map<string, string>();
+  for (const u of users) {
+    userCreatedMap.set(u.id, u.created_at);
+  }
+
+  // 첫 구매까지 평균 일수
+  const daysToFirst: number[] = [];
+  for (const [userId, ords] of buyerOrders) {
+    const createdAt = userCreatedMap.get(userId);
+    if (!createdAt) continue;
+    const signup = new Date(createdAt).getTime();
+    const firstOrder = Math.min(...ords.map(o => new Date(o.created_at).getTime()));
+    const days = Math.max(0, Math.floor((firstOrder - signup) / (24 * 60 * 60 * 1000)));
+    daysToFirst.push(days);
+  }
+  const avgDaysToFirstPurchase = daysToFirst.length > 0
+    ? Math.round(daysToFirst.reduce((a, b) => a + b, 0) / daysToFirst.length * 10) / 10
+    : 0;
+
+  // 구매 전 무료 이용 횟수
+  const freeRecordsByUser = new Map<string, string[]>();
+  for (const r of freeRecords) {
+    if (!freeRecordsByUser.has(r.user_id)) freeRecordsByUser.set(r.user_id, []);
+    freeRecordsByUser.get(r.user_id)!.push(r.created_at);
+  }
+
+  const freeUsesBeforePurchase: number[] = [];
+  for (const [userId, ords] of buyerOrders) {
+    const firstOrderTime = Math.min(...ords.map(o => new Date(o.created_at).getTime()));
+    const userFreeRecords = freeRecordsByUser.get(userId) || [];
+    const countBefore = userFreeRecords.filter(d => new Date(d).getTime() < firstOrderTime).length;
+    freeUsesBeforePurchase.push(countBefore);
+  }
+  const avgFreeUsesBeforePurchase = freeUsesBeforePurchase.length > 0
+    ? Math.round(freeUsesBeforePurchase.reduce((a, b) => a + b, 0) / freeUsesBeforePurchase.length * 10) / 10
+    : 0;
+
+  // 객단가 분포 (실제 결제 금액 기준, 새싹 소비 제외)
+  const paidAmounts = orders
+    .filter(o => o.paid_amount > 0 && o.pay_method !== 'sprout')
+    .map(o => o.paid_amount);
+
+  const ranges = [
+    { range: '~2,900원', min: 0, max: 2900 },
+    { range: '3,900원', min: 2901, max: 3900 },
+    { range: '4,900원', min: 3901, max: 4900 },
+    { range: '9,900원', min: 4901, max: 9900 },
+    { range: '10,000원~', min: 9901, max: Infinity },
+  ];
+
+  const orderValueDistribution = ranges.map(r => {
+    const count = paidAmounts.filter(a => a >= r.min && a <= r.max).length;
+    return {
+      range: r.range,
+      count,
+      rate: paidAmounts.length > 0 ? Math.round(count / paidAmounts.length * 1000) / 10 : 0,
+    };
+  });
+
+  // 새싹 소비 건도 별도 집계
+  const sproutOrders = orders.filter(o => o.pay_method === 'sprout').length;
+  if (sproutOrders > 0) {
+    orderValueDistribution.push({
+      range: '새싹 소비',
+      count: sproutOrders,
+      rate: Math.round(sproutOrders / orders.length * 1000) / 10,
+    });
+  }
+
+  // Top 전환 콘텐츠: 무료→유료 매핑(recommended_paid_content_id) 기반
+  const contentMap = new Map<string, { title: string; recommendedPaidId: string | null }>();
+  for (const c of contents) {
+    contentMap.set(c.id, { title: c.title, recommendedPaidId: c.recommended_paid_content_id });
+  }
+
+  // 유료 콘텐츠별 주문 수
+  const paidContentOrders = new Map<string, number>();
+  for (const o of orders) {
+    if (o.content_id) {
+      paidContentOrders.set(o.content_id, (paidContentOrders.get(o.content_id) || 0) + 1);
+    }
+  }
+
+  // 무료 콘텐츠별 조회 수
+  const freeContentViews = new Map<string, number>();
+  for (const r of freeRecords) {
+    if (r.content_id) {
+      freeContentViews.set(r.content_id, (freeContentViews.get(r.content_id) || 0) + 1);
+    }
+  }
+
+  // 무료 콘텐츠 중 recommended_paid_content_id가 있는 것만 전환율 계산
+  const topConvertingContents: BuyerProfile['topConvertingContents'] = [];
+  for (const [freeId, info] of contentMap) {
+    if (!info.recommendedPaidId) continue;
+    const freeViews = freeContentViews.get(freeId) || 0;
+    const paidOrders = paidContentOrders.get(info.recommendedPaidId) || 0;
+    if (freeViews === 0 && paidOrders === 0) continue;
+
+    const paidInfo = contentMap.get(info.recommendedPaidId);
+    topConvertingContents.push({
+      contentId: freeId,
+      title: paidInfo?.title || info.title,
+      freeViews,
+      paidOrders,
+      conversionRate: freeViews > 0 ? Math.round(paidOrders / freeViews * 1000) / 10 : 0,
+    });
+  }
+
+  // 전환 건수 기준 Top 5
+  topConvertingContents.sort((a, b) => b.paidOrders - a.paidOrders);
+
+  return {
+    totalBuyers,
+    repeatBuyers,
+    repeatRate,
+    avgDaysToFirstPurchase,
+    avgFreeUsesBeforePurchase,
+    orderValueDistribution,
+    topConvertingContents: topConvertingContents.slice(0, 5),
+  };
+}
