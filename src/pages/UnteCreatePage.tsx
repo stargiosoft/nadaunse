@@ -968,8 +968,8 @@ export function UnteCreatePage() {
                   </div>
                 )}
 
-                {/* 레퍼런스 이미지 첨부 */}
-                <div>
+                {/* 레퍼런스 이미지 첨부 (마스터 전용) */}
+                {isMaster && <div>
                   <label style={labelStyle}>결과 레퍼런스 이미지 (선택)</label>
                   <p style={{
                     fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -1080,7 +1080,7 @@ export function UnteCreatePage() {
                       </span>
                     </button>
                   )}
-                </div>
+                </div>}
 
                 {error && (
                   <p style={{ fontFamily: font, fontSize: '12px', color: '#d4183d' }}>{error}</p>
