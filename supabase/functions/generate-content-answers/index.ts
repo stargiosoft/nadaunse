@@ -732,7 +732,20 @@ ${freeList}
       console.warn(`⚠️ 일부 질문 처리 실패: ${failedCount}/${questions.length}개`)
     }
 
-    // 5. orders 테이블 업데이트 (⭐ 모든 질문이 성공한 경우에만 완료 표시)
+    // 5. orders 테이블 업데이트
+    // ⭐ results 기반 판정이 실패해도 DB에서 실제 완료 상태를 한번 더 확인 (안전장치)
+    if (!allSucceeded) {
+      console.warn(`⚠️ results 기반 판정: ${failedCount}개 실패 - DB에서 실제 완료 상태 재확인`)
+      const { data: dbCheck } = await supabase
+        .from('order_results')
+        .select('question_id')
+        .eq('order_id', orderId)
+      if ((dbCheck?.length || 0) >= questions.length) {
+        console.log('✅ DB 확인 결과 모든 답변 존재 → allSucceeded 보정')
+        allSucceeded = true
+      }
+    }
+
     if (allSucceeded) {
       const { error: orderUpdateError } = await supabase
         .from('orders')
@@ -748,7 +761,7 @@ ${freeList}
         console.log('✅ orders 테이블 업데이트 완료 (ai_generation_completed = true)')
       }
     } else {
-      console.warn(`⚠️ AI 생성 미완료 (${failedQuestions.length}개 실패) - ai_generation_completed 유지 (false)`)
+      console.warn(`⚠️ AI 생성 미완료 (${failedCount}개 실패) - ai_generation_completed 유지 (false)`)
     }
 
     // 7. 알림톡 발송 (실패해도 전체 프로세스 계속 진행)
