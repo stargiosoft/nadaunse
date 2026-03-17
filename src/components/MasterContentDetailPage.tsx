@@ -21,6 +21,7 @@ import SEO from './SEO';
 import { ContentTags, isContentNew } from './ContentTags';
 import { writeSproutBalanceCache } from '../hooks/useSproutBalance';
 import ShareRewardModal from './ShareRewardModal';
+import { ConfirmDialog } from './ConfirmDialog';
 
 // Animation Variants
 const staggerContainer = {
@@ -157,6 +158,8 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
   const [purchaseGuide, setPurchaseGuide] = useState<string | null>(null);
   const [isPurchaseGuideLoading, setIsPurchaseGuideLoading] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false); // ⭐ 구매 버튼 중복 클릭 방지
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false); // ⭐ 동일 콘텐츠 중복 구매 확인
+  const skipDuplicateCheck = useRef(false); // ⭐ 중복 확인 후 구매 진행 시 체크 건너뛰기
   const [primarySajuName, setPrimarySajuName] = useState<string | null>(null);
   // 태그 유무를 동기적으로 확인 (스켈레톤 표시 판단용)
   const [hasTraitTags] = useState(() => {
@@ -960,6 +963,24 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
       navigate('/login/new', { state: { canGoBack: true, fromPath: `/master/content/detail/${contentId}` } });
       return;
     }
+
+    // ⭐ 동일 콘텐츠 중복 구매 확인 (다이얼로그에서 '네' 선택 시 건너뛰기)
+    if (!skipDuplicateCheck.current) {
+      const { data: existingOrders, error: dupCheckError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('content_id', contentId)
+        .eq('success', true)
+        .limit(1);
+
+      if (!dupCheckError && existingOrders && existingOrders.length > 0) {
+        console.log('⚠️ [MasterContentDetailPage] 동일 콘텐츠 구매 이력 발견:', existingOrders[0].id);
+        setShowDuplicateDialog(true);
+        return;
+      }
+    }
+    skipDuplicateCheck.current = false;
 
     // ⭐ 새싹 잔액 확인 (캐시 우선, 없으면 DB 조회)
     const requiredAmount = 30;
@@ -2361,6 +2382,41 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         contentId={contentId}
+      />
+
+      {/* ⭐ 동일 콘텐츠 중복 구매 확인 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={showDuplicateDialog}
+        title="이미 구매한 콘텐츠예요."
+        message={
+          <>
+            다시 구매하시겠어요?
+            <br />
+            <span
+              onClick={() => {
+                setShowDuplicateDialog(false);
+                navigate('/purchase-history');
+              }}
+              style={{
+                color: '#48b2af',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                marginTop: '4px',
+                display: 'inline-block',
+              }}
+            >
+              이용 기록 바로가기
+            </span>
+          </>
+        }
+        confirmText="네"
+        cancelText="아니요"
+        onConfirm={() => {
+          setShowDuplicateDialog(false);
+          skipDuplicateCheck.current = true;
+          onPurchase();
+        }}
+        onCancel={() => setShowDuplicateDialog(false)}
       />
     </>
   );
