@@ -2638,11 +2638,12 @@ export interface ConversionStatsData {
 export async function fetchConversionStats(): Promise<ConversionStatsData> {
   const adminFilter = ADMIN_IDS.join(',');
 
-  // 4개 쿼리 병렬 실행
+  // 5개 쿼리 병렬 실행
   const [
     usersResult,
     freeRecordsResult,
-    ordersResult,
+    allOrdersResult,
+    cashOrdersResult,
     contentsResult,
   ] = await Promise.all([
     // 1. 전체 유저 (가입일 + 방문일 배열)
@@ -2658,16 +2659,23 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
       .eq('is_guest', false)
       .not('user_id', 'in', `(${adminFilter})`),
 
-    // 3. 완료된 주문 (유료 결제만, 0원/리워드/새싹 소비 제외)
+    // 3. 전체 완료 주문 (새싹 포함) — 퍼널/구매자 수 계산용
     supabase
       .from('orders')
       .select('user_id, content_id, paid_amount, created_at, pay_method')
-      .eq('pstatus', 'completed')
+      .eq('success', true)
+      .not('user_id', 'in', `(${adminFilter})`),
+
+    // 4. 현금 결제 주문만 (새싹 제외) — 객단가 분포 계산용
+    supabase
+      .from('orders')
+      .select('user_id, content_id, paid_amount, created_at, pay_method')
+      .eq('success', true)
       .gt('paid_amount', 0)
       .not('pay_method', 'eq', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`),
 
-    // 4. 콘텐츠 제목 (top converting 표시용)
+    // 5. 콘텐츠 제목 (top converting 표시용)
     supabase
       .from('master_contents')
       .select('id, title, recommended_paid_content_id'),
@@ -2675,12 +2683,14 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
 
   if (usersResult.error) throw new Error('유저 데이터 조회 실패');
   if (freeRecordsResult.error) throw new Error('무료 기록 조회 실패');
-  if (ordersResult.error) throw new Error('주문 데이터 조회 실패');
+  if (allOrdersResult.error) throw new Error('주문 데이터 조회 실패');
+  if (cashOrdersResult.error) throw new Error('현금 주문 데이터 조회 실패');
   if (contentsResult.error) throw new Error('콘텐츠 데이터 조회 실패');
 
   const users = usersResult.data || [];
   const freeRecords = freeRecordsResult.data || [];
-  const orders = ordersResult.data || [];
+  const orders = allOrdersResult.data || [];
+  const cashOrders = cashOrdersResult.data || [];
   const contents = contentsResult.data || [];
 
   // ========== 1. 리텐션 코호트 ==========
@@ -2690,7 +2700,7 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
   const funnel = buildConversionFunnel(users, freeRecords, orders);
 
   // ========== 3. 구매자 프로필 ==========
-  const buyer = buildBuyerProfile(users, freeRecords, orders, contents);
+  const buyer = buildBuyerProfile(users, freeRecords, orders, cashOrders, contents);
 
   return { retentionCohorts, funnel, buyer };
 }
@@ -2806,6 +2816,7 @@ function buildBuyerProfile(
   users: { id: string; created_at: string }[],
   freeRecords: { user_id: string; created_at: string }[],
   orders: { user_id: string; content_id: string; paid_amount: number; created_at: string; pay_method: string }[],
+  cashOrders: { user_id: string; content_id: string; paid_amount: number; created_at: string; pay_method: string }[],
   contents: { id: string; title: string; recommended_paid_content_id: string | null }[]
 ): BuyerProfile {
   // 구매자별 주문 그룹화
@@ -2857,8 +2868,8 @@ function buildBuyerProfile(
     ? Math.round(freeUsesBeforePurchase.reduce((a, b) => a + b, 0) / freeUsesBeforePurchase.length * 10) / 10
     : 0;
 
-  // 객단가 분포 (유료 결제만, 0원/새싹 소비는 쿼리에서 이미 제외)
-  const paidAmounts = orders.map(o => o.paid_amount);
+  // 객단가 분포 (현금 결제만, 새싹 결제 제외)
+  const paidAmounts = cashOrders.map(o => o.paid_amount);
 
   const ranges = [
     { range: '~2,900원', min: 0, max: 2900 },
