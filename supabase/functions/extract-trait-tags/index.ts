@@ -212,35 +212,77 @@ ${rejectedTagsStr}
       throw new Error('JSON 파싱 실패')
     }
 
-    // 태그 변환 + 사전 검증
-    const tags: Array<{ name: string; type: 'positive' | 'negative' | 'neutral' }> = []
+    // AI 태그 검증: 사전에 있는 것만 수용, 미등록은 거부
+    const validAiPositive: string[] = []
+    const validAiNegative: string[] = []
 
     for (const item of parsedTags) {
       for (const keyword of item.keywords) {
         const trimmed = keyword.trim()
         if (CANONICAL_TAG_SET.has(trimmed)) {
           const polarity = getTagPolarity(trimmed)
-          tags.push({
-            name: trimmed,
-            type: polarity ?? (item.type === '장점' ? 'positive' : 'negative'),
-          })
+          if (polarity === 'positive') validAiPositive.push(trimmed)
+          else validAiNegative.push(trimmed)
         } else {
-          console.warn(`⚠️ [extract-trait-tags] AI 사전 미등록 태그: "${trimmed}"`)
-          tags.push({
-            name: trimmed,
-            type: item.type === '장점' ? 'positive' : 'negative',
-          })
+          console.warn(`⚠️ [extract-trait-tags] AI 사전 미등록 태그 거부: "${trimmed}"`)
         }
       }
     }
 
-    console.log('✅ [extract-trait-tags] AI 폴백 완료:', tags.map(t => `${t.name}(${t.type})`).join(', '))
+    console.log(`📌 [extract-trait-tags] AI 유효 태그: positive ${validAiPositive.length}개, negative ${validAiNegative.length}개`)
+
+    // AI 유효 태그 + 룰베이스 보충으로 최종 조합
+    const exclude = new Set([...existingTags, ...rejectedTags])
+    const finalPositive: string[] = [...validAiPositive]
+    const finalNegative: string[] = [...validAiNegative]
+
+    // 부족한 positive를 룰베이스에서 보충
+    for (const match of positive) {
+      if (finalPositive.length >= 2) break
+      if (!finalPositive.includes(match.canonical) && !exclude.has(match.canonical)) {
+        finalPositive.push(match.canonical)
+      }
+    }
+
+    // 부족한 negative를 룰베이스에서 보충
+    for (const match of negative) {
+      if (finalNegative.length >= 1) break
+      if (!finalNegative.includes(match.canonical) && !exclude.has(match.canonical)) {
+        finalNegative.push(match.canonical)
+      }
+    }
+
+    // 최종 조합: 2 positive + 1 negative, negative 없으면 positive 3개
+    const tags: Array<{ name: string; type: 'positive' | 'negative' | 'neutral' }> = []
+
+    if (finalNegative.length >= 1) {
+      // 정상: 2 positive + 1 negative
+      for (const name of finalPositive.slice(0, 2)) {
+        tags.push({ name, type: 'positive' })
+      }
+      for (const name of finalNegative.slice(0, 1)) {
+        tags.push({ name, type: 'negative' })
+      }
+    } else {
+      // negative 없음: positive top 3
+      console.warn('⚠️ [extract-trait-tags] negative 태그 없음 → positive 3개로 대체')
+      for (const name of finalPositive.slice(0, 3)) {
+        tags.push({ name, type: 'positive' })
+      }
+    }
+
+    const rawResponse: TraitTag[] = [
+      { type: '장점', keywords: tags.filter(t => t.type === 'positive').map(t => t.name) },
+      { type: '단점', keywords: tags.filter(t => t.type === 'negative').map(t => t.name) },
+    ]
+
+    console.log('✅ [extract-trait-tags] AI+룰베이스 병합 완료:', tags.map(t => `${t.name}(${t.type})`).join(', '))
 
     return new Response(
       JSON.stringify({
         success: true,
         tags,
-        rawResponse: parsedTags,
+        rawResponse,
         method: 'ai-fallback',
       } as ExtractTraitTagsResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
