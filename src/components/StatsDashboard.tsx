@@ -315,9 +315,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
+  // 개요 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    loadStats();
-  }, []);
+    if (selectedTab === '개요') {
+      loadStats();
+    }
+  }, [selectedTab]);
 
   // 추세 데이터 로드 함수
   const loadTrendStats = async (preset: TrendRangePreset = trendPreset, customRange?: DateRangeFilter) => {
@@ -347,9 +350,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 추세 탭 선택 시 데이터 로드
+  // 추세 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '추세' && trendData.length === 0 && !trendLoading) {
+    if (selectedTab === '추세' && !trendLoading) {
       loadTrendStats();
     }
   }, [selectedTab]);
@@ -469,16 +472,16 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 비교 탭 선택 시 데이터 로드
+  // 비교 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '비교' && !currentPeriodStats && !compareLoading) {
+    if (selectedTab === '비교' && !compareLoading) {
       loadCompareStats();
     }
   }, [selectedTab]);
 
-  // 콘텐츠 탭 선택 시 데이터 로드
+  // 콘텐츠 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '콘텐츠' && categoryRanking.length === 0 && !contentLoading) {
+    if (selectedTab === '콘텐츠' && !contentLoading) {
       loadContentRanking();
     }
   }, [selectedTab]);
@@ -580,13 +583,13 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 보고서 탭 선택 시 데이터 로드
+  // 보고서 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '보고서' && !reportFunnel && !reportLoading) {
+    if (selectedTab === '보고서' && !reportLoading) {
       loadReportData();
     }
-    if (selectedTab === '보고서' && !reportCountFunnel && !reportCountFunnelLoading) {
-      loadReportCountFunnel(1);
+    if (selectedTab === '보고서' && !reportCountFunnelLoading) {
+      loadReportCountFunnel(reportCountFilter === 'custom' ? 1 : reportCountFilter);
     }
   }, [selectedTab]);
 
@@ -651,12 +654,12 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     loadPurchaseFunnel(period);
   };
 
-  // 구매 탭 선택 시 데이터 로드 (전체 기간)
+  // 구매 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '구매' && !purchaseStats && !purchaseLoading) {
+    if (selectedTab === '구매' && !purchaseLoading) {
       loadPurchaseData();
     }
-    if (selectedTab === '구매' && !purchaseFunnel && !purchaseFunnelLoading) {
+    if (selectedTab === '구매' && !purchaseFunnelLoading) {
       loadPurchaseFunnel();
     }
   }, [selectedTab]);
@@ -676,9 +679,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 고객 탭 선택 시 데이터 로드
+  // 고객 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '고객' && !customerStats && !customerLoading) {
+    if (selectedTab === '고객' && !customerLoading) {
       loadCustomerData();
     }
   }, [selectedTab]);
@@ -698,9 +701,9 @@ export default function StatsDashboard({ onBack, onHome }: StatsDashboardProps) 
     }
   };
 
-  // 전환 탭 선택 시 데이터 로드
+  // 전환 탭 선택 시 데이터 로드 (탭 전환마다 갱신)
   useEffect(() => {
-    if (selectedTab === '전환' && !conversionStats && !conversionLoading) {
+    if (selectedTab === '전환' && !conversionLoading) {
       loadConversionData();
     }
   }, [selectedTab]);
