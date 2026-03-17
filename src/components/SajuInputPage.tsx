@@ -507,27 +507,54 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
         console.log('➕ [신규등록] 사주 정보 저장:', sajuPayload);
 
         // ⭐ 기존 본인 사주 존재 여부 확인 (중복 방지)
-        const { data: existingMySaju } = await supabase
-          .from('saju_records')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('notes', '본인')
-          .maybeSingle();
+        const isMySajuNew = !relationship || relationship === '본인';
 
-        const hasMySaju = !!existingMySaju;
-        const shouldBePrimary = !hasMySaju;
-        console.log(`📌 [SajuInputPage] 기존 본인 사주: ${hasMySaju ? '있음' : '없음'}, is_primary: ${shouldBePrimary}`);
+        if (isMySajuNew) {
+          // 본인 사주: 기존 레코드가 있으면 UPDATE, 없으면 INSERT
+          const { data: existingMySaju } = await supabase
+            .from('saju_records')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('notes', '본인')
+            .maybeSingle();
 
-        const { error } = await supabase
-          .from('saju_records')
-          .insert({
-            user_id: user.id,
-            ...sajuPayload,
-            notes: relationship || '본인',
-            is_primary: shouldBePrimary
-          });
+          if (existingMySaju) {
+            // ⭐ 기존 본인 사주가 있으면 UPDATE (중복 방지)
+            console.log('📌 [SajuInputPage] 기존 본인 사주 발견 → UPDATE:', existingMySaju.id);
+            const { error } = await supabase
+              .from('saju_records')
+              .update({ ...sajuPayload, notes: '본인' })
+              .eq('id', existingMySaju.id);
 
-        if (error) throw error;
+            if (error) throw error;
+          } else {
+            // ⭐ 본인 사주 없으면 INSERT (is_primary: true)
+            console.log('📌 [SajuInputPage] 본인 사주 없음 → INSERT');
+            const { error } = await supabase
+              .from('saju_records')
+              .insert({
+                user_id: user.id,
+                ...sajuPayload,
+                notes: '본인',
+                is_primary: true
+              });
+
+            if (error) throw error;
+          }
+        } else {
+          // 관계 사주: 그대로 INSERT
+          console.log('📌 [SajuInputPage] 관계 사주 INSERT:', relationship);
+          const { error } = await supabase
+            .from('saju_records')
+            .insert({
+              user_id: user.id,
+              ...sajuPayload,
+              notes: relationship,
+              is_primary: false
+            });
+
+          if (error) throw error;
+        }
 
         toast.success('저장되었습니다.', {
           duration: 2200
