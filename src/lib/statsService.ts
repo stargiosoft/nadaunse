@@ -133,7 +133,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('id, visit_dates, created_at')
-      .not('id', 'in', `(${adminFilter})`);
+      .not('id', 'in', `(${adminFilter})`)
+      .range(0, 9999);
 
     if (usersError) {
       console.error('고객 데이터 조회 오류:', usersError);
@@ -160,7 +161,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       newCustomersQuery = newCustomersQuery.lt('created_at', dateRange.endDate);
     }
 
-    const { data: newCustomersData, error: newError } = await newCustomersQuery;
+    const { data: newCustomersData, error: newError } = await newCustomersQuery.range(0, 9999);
     if (newError) {
       console.error('신규 고객수 조회 오류:', newError);
       throw new Error('신규 고객수 조회에 실패했습니다.');
@@ -172,7 +173,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       .from('users')
       .select('id, visit_dates, created_at')
       .not('id', 'in', `(${adminFilter})`)
-      .lt('created_at', dateRange.startDate!);  // 기간 전 가입자만
+      .lt('created_at', dateRange.startDate!)  // 기간 전 가입자만
+      .range(0, 9999);
 
     if (returnError) {
       console.error('재방문 고객수 조회 오류:', returnError);
@@ -201,7 +203,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     const { data: allUsersForVisits, error: visitError } = await supabase
       .from('users')
       .select('id, visit_dates')
-      .not('id', 'in', `(${adminFilter})`);
+      .not('id', 'in', `(${adminFilter})`)
+      .range(0, 9999);
 
     if (visitError) {
       console.error('방문횟수 조회 오류:', visitError);
@@ -288,8 +291,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
   }
 
   const [chargeRevenueResult, orderRevenueResult] = await Promise.all([
-    chargeRevenueQuery,
-    orderRevenueQuery,
+    chargeRevenueQuery.range(0, 9999),
+    orderRevenueQuery.range(0, 9999),
   ]);
 
   if (chargeRevenueResult.error) {
@@ -336,7 +339,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       .neq('tag_type', 'neutral')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate);
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999);
     tagData = result.data;
     tagError = result.error;
   }
@@ -421,7 +425,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     freeContentUserQuery = freeContentUserQuery.lt('created_at', dateRange.endDate);
   }
 
-  const { data: freeContentUsers, error: freeContentUserError } = await freeContentUserQuery;
+  const { data: freeContentUsers, error: freeContentUserError } = await freeContentUserQuery.range(0, 9999);
   if (freeContentUserError) {
     console.error('무료 콘텐츠 유저 조회 오류:', freeContentUserError);
   }
@@ -451,7 +455,7 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
     paidContentUserQuery = paidContentUserQuery.lt('created_at', dateRange.endDate);
   }
 
-  const { data: paidContentUsers, error: paidContentUserError } = await paidContentUserQuery;
+  const { data: paidContentUsers, error: paidContentUserError } = await paidContentUserQuery.range(0, 9999);
   if (paidContentUserError) {
     console.error('유료 콘텐츠 유저 조회 오류:', paidContentUserError);
   }
@@ -492,7 +496,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       .select('user_id')
       .eq('is_confirmed', true)
       .neq('tag_type', 'neutral')
-      .not('user_id', 'in', `(${adminFilter})`);
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999);
 
     if (tagUserError) {
       console.error('태그 유저 조회 오류:', tagUserError);
@@ -516,7 +521,8 @@ export async function fetchDashboardStats(dateRange?: DateRangeFilter): Promise<
       .neq('tag_type', 'neutral')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate);
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999);
 
     if (tagUserError) {
       console.error('태그 유저 조회 오류:', tagUserError);
@@ -720,14 +726,16 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .select('id, created_at')
       .not('id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate),
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999),
 
     // 2. 재방문 고객 데이터 (visit_dates 기준, 기간 내 가입자 포함 - 일별 필터링에서 created_at < 해당일 체크)
     supabase
       .from('users')
       .select('id, visit_dates, created_at')
       .not('id', 'in', `(${adminFilter})`)
-      .lt('created_at', dateRange.endDate),
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999),
 
     // 3. 무료 콘텐츠 이용 데이터
     supabase
@@ -735,7 +743,8 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .select('user_id, created_at')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate),
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999),
 
     // 4. 유료 콘텐츠 이용 데이터 (paid만, 0원 제외, 관리자 제외 - 콘텐츠 이용율 + 매출 계산용)
     supabase
@@ -745,7 +754,8 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .gt('paid_amount', 0)
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate),
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999),
 
     // 5. 새싹 결제 주문 데이터 (pay_method = 'sprout', 무료 새싹 주문 집계용)
     supabase
@@ -755,14 +765,16 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .eq('pay_method', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate),
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999),
 
     // 5-1. 리워드 새싹 수령 유저 (무료 새싹 주문 판별용)
     supabase
       .from('sprout_transactions')
       .select('user_id')
       .eq('transaction_type', 'reward')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 5-2. 새싹 충전 데이터 (매출/구매자 추세용)
     supabase
@@ -771,7 +783,8 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
       .eq('transaction_type', 'charge')
       .not('user_id', 'in', `(${adminFilter})`)
       .gte('created_at', dateRange.startDate)
-      .lt('created_at', dateRange.endDate),
+      .lt('created_at', dateRange.endDate)
+      .range(0, 9999),
 
     // 6. 태그 데이터 (Supabase 기본 limit 1000개 제한 우회: range 사용)
     // source_type 추가: 콘텐츠 건 기준 그룹핑에 필요
@@ -1473,8 +1486,8 @@ export async function fetchPurchaseFunnelStats(
       }),
       chargeQuery,
       paidOrderQuery,
-      sproutOrderQuery,
-      rewardUserQuery,
+      sproutOrderQuery.range(0, 9999),
+      rewardUserQuery.range(0, 9999),
     ]);
 
     // GA 결과 파싱
@@ -1694,7 +1707,8 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
     .from('weekly_reports')
     .select('id, user_id, self_encouragement')
     .eq('status', 'completed')
-    .not('user_id', 'in', `(${adminFilter})`);
+    .not('user_id', 'in', `(${adminFilter})`)
+    .range(0, 9999);
 
   if (reportsError) {
     console.error('보고서 퍼널 조회 오류:', reportsError);
@@ -1717,7 +1731,8 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
     supabase
       .from('report_tarot_selections')
       .select('report_id, user_viewed')
-      .in('report_id', reportIds),
+      .in('report_id', reportIds)
+      .range(0, 9999),
     supabase
       .from('user_coupons')
       .select('source_order_id')
@@ -1779,7 +1794,8 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
     .select('id, user_id, week_start_date, self_encouragement')
     .eq('status', 'completed')
     .not('user_id', 'in', `(${adminFilter})`)
-    .order('week_start_date', { ascending: true });
+    .order('week_start_date', { ascending: true })
+    .range(0, 9999);
 
   if (reportsError) {
     console.error('보고서 퍼널(횟수별) 조회 오류:', reportsError);
@@ -1817,7 +1833,8 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
     supabase
       .from('report_tarot_selections')
       .select('report_id, user_viewed')
-      .in('report_id', reportIds),
+      .in('report_id', reportIds)
+      .range(0, 9999),
     supabase
       .from('user_coupons')
       .select('source_order_id')
@@ -1875,7 +1892,8 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
     .eq('status', 'completed')
     .not('user_id', 'in', `(${adminFilter})`)
     .gte('week_start_date', startDateStr)
-    .lt('week_start_date', endDateStr);
+    .lt('week_start_date', endDateStr)
+    .range(0, 9999);
 
   if (reportsError) {
     console.error('보고서 추세 조회 오류:', reportsError);
@@ -1895,7 +1913,8 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
       supabase
         .from('report_tarot_selections')
         .select('report_id, user_viewed')
-        .in('report_id', reportIds),
+        .in('report_id', reportIds)
+        .range(0, 9999),
       supabase
         .from('user_coupons')
         .select('source_order_id')
@@ -2092,26 +2111,28 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
       .limit(50),
 
     // 2. 전체 새싹 충전 건 (고객별 구매 통계)
-    buildChargeQuery('user_id, payment_amount'),
+    buildChargeQuery('user_id, payment_amount').range(0, 9999),
 
     // 2-1. 전체 유료 주문 건 (매출 집계용)
-    buildPaidOrderQuery('user_id, paid_amount'),
+    buildPaidOrderQuery('user_id, paid_amount').range(0, 9999),
 
     // 3. 새싹 결제 주문 (무료 새싹 주문 집계용)
-    buildSproutOrderQuery(),
+    buildSproutOrderQuery().range(0, 9999),
 
     // 3-1. 리워드 새싹 수령 유저 (무료 새싹 주문 판별용)
     supabase
       .from('sprout_transactions')
       .select('user_id')
       .eq('transaction_type', 'reward')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 4. 유저 데이터
     supabase
       .from('users')
       .select('id, email, nickname, visit_count, created_at, last_login_at')
-      .not('id', 'in', `(${adminFilter})`),
+      .not('id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 5. 태그 통계 (확인된 태그만, neutral 제외)
     supabase
@@ -2119,7 +2140,8 @@ export async function fetchPurchaseStats(dateRange?: DateRangeFilter): Promise<P
       .select('user_id, created_at')
       .eq('is_confirmed', true)
       .neq('tag_type', 'neutral')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 6. 콘텐츠 정보 (최근 주문의 콘텐츠명/카테고리)
     supabase
@@ -2320,26 +2342,30 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .from('saju_records')
       .select('user_id, gender, birth_date, zodiac, notes')
       .not('user_id', 'in', `(${adminFilter})`)
-      .or('notes.eq.본인,notes.is.null'),
+      .or('notes.eq.본인,notes.is.null')
+      .range(0, 9999),
 
     // 2. 전체 사주 레코드
     supabase
       .from('saju_records')
       .select('user_id, notes')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 3. 유저 데이터 (provider 정보)
     supabase
       .from('users')
       .select('id, provider')
-      .not('id', 'in', `(${adminFilter})`),
+      .not('id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 4. 새싹 충전 유저 (구매 고객)
     supabase
       .from('sprout_transactions')
       .select('user_id')
       .eq('transaction_type', 'charge')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 5. 기존 원화 직접 결제 유저 (구매 고객, sprout 소비 제외)
     supabase
@@ -2348,13 +2374,15 @@ export async function fetchCustomerStats(): Promise<CustomerStatsData> {
       .eq('pstatus', 'completed')
       .gt('paid_amount', 0)
       .in('pay_method', ['kakaopay', 'card'])
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 6. 나다움 태그 (유저별 태그 수 집계용)
     supabase
       .from('user_trait_tags')
       .select('user_id')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
   ]);
 
   if (sajuOwnResult.error) throw new Error('본인 사주 데이터 조회에 실패했습니다.');
@@ -2650,21 +2678,24 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
     supabase
       .from('users')
       .select('id, created_at, visit_dates')
-      .not('id', 'in', `(${adminFilter})`),
+      .not('id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 2. 무료 콘텐츠 기록 (유저별)
     supabase
       .from('free_content_records')
       .select('user_id, content_id, created_at')
       .eq('is_guest', false)
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 3. 전체 완료 주문 (새싹 포함) — 퍼널/구매자 수 계산용
     supabase
       .from('orders')
       .select('user_id, content_id, paid_amount, created_at, pay_method')
       .eq('success', true)
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 4. 현금 결제 주문만 (새싹 제외) — 객단가 분포 계산용
     supabase
@@ -2673,7 +2704,8 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
       .eq('success', true)
       .gt('paid_amount', 0)
       .not('pay_method', 'eq', 'sprout')
-      .not('user_id', 'in', `(${adminFilter})`),
+      .not('user_id', 'in', `(${adminFilter})`)
+      .range(0, 9999),
 
     // 5. 콘텐츠 제목 (top converting 표시용)
     supabase
