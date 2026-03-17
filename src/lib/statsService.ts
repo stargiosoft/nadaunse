@@ -2689,11 +2689,13 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
       .not('user_id', 'in', `(${adminFilter})`)
       .range(0, 9999),
 
-    // 3. 전체 완료 주문 (새싹 포함) — 퍼널/구매자 수 계산용
+    // 3. 전체 완료 주문 (새싹+카카오페이+카드 포함) — 퍼널/구매자 수 계산용
+    // 카카오페이/카드: pstatus='completed' but success=false (레거시)
     supabase
       .from('orders')
       .select('user_id, content_id, paid_amount, created_at, pay_method')
-      .eq('success', true)
+      .in('pstatus', ['completed', 'paid'])
+      .gt('paid_amount', 0)
       .not('user_id', 'in', `(${adminFilter})`)
       .range(0, 9999),
 
@@ -2701,7 +2703,7 @@ export async function fetchConversionStats(): Promise<ConversionStatsData> {
     supabase
       .from('orders')
       .select('user_id, content_id, paid_amount, created_at, pay_method')
-      .eq('success', true)
+      .in('pstatus', ['completed', 'paid'])
       .gt('paid_amount', 0)
       .not('pay_method', 'eq', 'sprout')
       .not('user_id', 'in', `(${adminFilter})`)
