@@ -1,8 +1,15 @@
-// Supabase Edge Function: 나의 성향 태그 추출 (GPT-4.1-mini)
-// 운세 콘텐츠 답변에서 장점 2개, 단점 1개의 성향 키워드를 추출합니다.
+// Supabase Edge Function: 나의 성향 태그 추출
+// 1차: 룰베이스 (태그 사전 어간 매칭) → 2차: AI 폴백 (GPT-4.1-mini)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
+import {
+  POSITIVE_TAGS,
+  NEGATIVE_TAGS,
+  CANONICAL_TAG_SET,
+  getTagPolarity,
+  matchTagsFromText,
+} from '../server/traitTagData.ts'
 
 interface TraitTag {
   type: '장점' | '단점'
@@ -10,14 +17,11 @@ interface TraitTag {
 }
 
 interface ExtractTraitTagsRequest {
-  // 운세 콘텐츠 질문 및 답변 전문
   contentAnswers: Array<{
     questionText: string
     answerText: string
   }>
-  // 사용자가 기존에 저장한 태그 (중복 방지용)
   existingTags?: string[]
-  // 사용자가 선택하지 않은 태그 (추출 제외)
   rejectedTags?: string[]
 }
 
@@ -28,11 +32,19 @@ interface ExtractTraitTagsResponse {
     type: 'positive' | 'negative' | 'neutral'
   }>
   rawResponse?: TraitTag[]
+  method?: 'rule-based' | 'ai-fallback'
   error?: string
 }
 
+// AI 폴백용 프롬프트 태그 목록 (한 번만 생성)
+const POSITIVE_TAGS_STR = POSITIVE_TAGS.join(', ')
+const NEGATIVE_TAGS_STR = NEGATIVE_TAGS.join(', ')
+
+// 룰베이스 최소 요구: positive 2개 + negative 1개
+const MIN_POSITIVE = 2
+const MIN_NEGATIVE = 1
+
 serve(async (req) => {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req)
   }
@@ -42,7 +54,6 @@ serve(async (req) => {
   try {
     const { contentAnswers, existingTags = [], rejectedTags = [] }: ExtractTraitTagsRequest = await req.json()
 
-    // 유효성 검증
     if (!contentAnswers || !Array.isArray(contentAnswers) || contentAnswers.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: '운세 콘텐츠 답변이 필요합니다.' }),
@@ -50,7 +61,52 @@ serve(async (req) => {
       )
     }
 
-    // OpenAI API 키 확인
+    // 운세 콘텐츠 전문 구성
+    const contentText = contentAnswers.map((qa, index) =>
+      `# 질문${index + 1}: ${qa.questionText}\n\n${qa.answerText}`
+    ).join('\n\n---\n\n')
+
+    // ────────────────────────────────────────
+    // 1차: 룰베이스 매칭
+    // ────────────────────────────────────────
+    const { positive, negative } = matchTagsFromText(contentText, existingTags, rejectedTags)
+
+    console.log(`🏷️ [extract-trait-tags] 룰베이스 매칭: positive ${positive.length}개, negative ${negative.length}개`)
+    if (positive.length > 0) {
+      console.log('  📌 positive top5:', positive.slice(0, 5).map(m => `${m.canonical}(${m.score})`).join(', '))
+    }
+    if (negative.length > 0) {
+      console.log('  📌 negative top3:', negative.slice(0, 3).map(m => `${m.canonical}(${m.score})`).join(', '))
+    }
+
+    if (positive.length >= MIN_POSITIVE && negative.length >= MIN_NEGATIVE) {
+      // 룰베이스 성공 → AI 호출 없이 반환
+      const selectedPositive = positive.slice(0, MIN_POSITIVE)
+      const selectedNegative = negative.slice(0, MIN_NEGATIVE)
+
+      const tags = [
+        ...selectedPositive.map(m => ({ name: m.canonical, type: 'positive' as const })),
+        ...selectedNegative.map(m => ({ name: m.canonical, type: 'negative' as const })),
+      ]
+
+      const rawResponse: TraitTag[] = [
+        { type: '장점', keywords: selectedPositive.map(m => m.canonical) },
+        { type: '단점', keywords: selectedNegative.map(m => m.canonical) },
+      ]
+
+      console.log('✅ [extract-trait-tags] 룰베이스 완료:', tags.map(t => `${t.name}(${t.type})`).join(', '))
+
+      return new Response(
+        JSON.stringify({ success: true, tags, rawResponse, method: 'rule-based' } as ExtractTraitTagsResponse),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ────────────────────────────────────────
+    // 2차: AI 폴백 (룰베이스 부족 시)
+    // ────────────────────────────────────────
+    console.log('⚠️ [extract-trait-tags] 룰베이스 부족 → AI 폴백 시작')
+
     const apiKey = Deno.env.get('OPENAI_API_KEY')
     if (!apiKey) {
       return new Response(
@@ -59,50 +115,32 @@ serve(async (req) => {
       )
     }
 
-    // 운세 콘텐츠 답변 전문 구성
-    const contentText = contentAnswers.map((qa, index) =>
-      `# 질문${index + 1}: ${qa.questionText}\n\n${qa.answerText}`
-    ).join('\n\n---\n\n')
+    const existingTagsStr = existingTags.length > 0 ? JSON.stringify(existingTags) : '[]'
+    const rejectedTagsStr = rejectedTags.length > 0 ? JSON.stringify(rejectedTags) : '[]'
 
-    // 기존 태그 문자열 구성
-    const existingTagsStr = existingTags.length > 0
-      ? JSON.stringify(existingTags)
-      : '[]'
-
-    // 거부된 태그 문자열 구성
-    const rejectedTagsStr = rejectedTags.length > 0
-      ? JSON.stringify(rejectedTags)
-      : '[]'
-
-    // 프롬프트 구성
     const prompt = `## **역할**
 사람의 장단점을 알려주는 심리 상담자
 
 ## **지시 사항**
-장점 2개, 단점 1개의 성향 태그를 추출해.
-태그는 반드시 "~한", "~적인", "~있는", "~하는" 등의 짧은 형용사로 출력해.
-글자수는 7자 이내로 제한하고 형용사는 짧고 간결하게 작성해.
-누구에게나 적용될 수 있는 모호한 태그 보단 '나다움'을 느낄 수 있는 구체적이고 개인화된 태그로 추출해.
+아래 **태그 사전**에서 장점 2개, 단점 1개를 선택해.
+반드시 사전에 있는 태그만 그대로 출력해. 사전에 없는 태그를 만들지 마.
+누구에게나 적용될 수 있는 모호한 태그보단 '나다움'을 느낄 수 있는 구체적이고 개인화된 태그를 선택해.
 반드시 '사주 답변'에 명시된 내용을 기반으로 해야 해.
-태그는 기질/성질의 의미가 서로 중복되지 않아야 해.
+선택한 태그는 기질/성질의 의미가 서로 중복되지 않아야 해.
 
-## **좋은 예시**
-✅ 성급한, 꼼꼼한, 도전적인, 신중한, 감성적인, 논리적인, 솔직한, 창의적인, 융통성이 있는, 자만하는, 
+## **장점 태그 사전** (여기서 2개 선택)
+${POSITIVE_TAGS_STR}
 
-## **나쁜 예시 (절대 금지)**
-❌ 재치 있게 임기응변하는
-❌ 실리 중심으로 판단하는
-❌ 감정을 직설적으로 표현하는
+## **단점 태그 사전** (여기서 1개 선택)
+${NEGATIVE_TAGS_STR}
 
 ## **사주 답변**
 ${contentText}
 
-## **권고 사항**
-아래 사용자가 저장한 기존 태그와 의미가 중복되지 않는 태그를 우선해 추출해.
+## **기존 태그** (의미 중복 피하기)
 ${existingTagsStr}
 
-## **금지 태그**
-아래 태그는 사용자가 선택하지 않은 태그야. 이 태그와 동일하거나 의미가 매우 유사한 태그는 절대 추출하지 마.
+## **금지 태그** (선택 불가)
 ${rejectedTagsStr}
 
 ## **출력 형식**
@@ -110,32 +148,16 @@ ${rejectedTagsStr}
 [
   {
     "type": "장점",
-    "keywords": ["장점 태그1", "장점 태그2"]
+    "keywords": ["장점태그1", "장점태그2"]
   },
   {
     "type": "단점",
-    "keywords": ["단점 태그1"]
-  }
-]
-
-## **출력 예시**
-[
-  {
-    "type": "장점",
-    "keywords": ["창의적인", "꼼꼼한"]
-  },
-  {
-    "type": "단점",
-    "keywords": ["성급한"]
+    "keywords": ["단점태그1"]
   }
 ]`
 
-    console.log('🏷️ [extract-trait-tags] OpenAI API 호출 시작 (GPT-4.1-mini)...')
-    console.log('📌 [extract-trait-tags] 콘텐츠 답변 수:', contentAnswers.length)
-    console.log('📌 [extract-trait-tags] 기존 태그 수:', existingTags.length)
-    console.log('📌 [extract-trait-tags] 거부 태그 수:', rejectedTags.length)
+    console.log('🏷️ [extract-trait-tags] OpenAI API 호출 (GPT-4.1-mini, 사전 기반 폴백)...')
 
-    // OpenAI Chat Completions API 호출 (GPT-4.1-mini)
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -145,7 +167,7 @@ ${rejectedTagsStr}
       body: JSON.stringify({
         model: 'gpt-4.1-mini',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        temperature: 0.5,
         max_tokens: 500
       })
     })
@@ -154,24 +176,17 @@ ${rejectedTagsStr}
       const errorText = await response.text()
       console.error('❌ [extract-trait-tags] OpenAI API 오류:', response.status, errorText)
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: `OpenAI API 오류: ${response.status}`
-        }),
+        JSON.stringify({ success: false, error: `OpenAI API 오류: ${response.status}` }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const data = await response.json()
-    console.log('📦 [extract-trait-tags] OpenAI 응답 구조:', JSON.stringify(data, null, 2))
 
-    // Chat Completions API 응답 파싱
     let responseText = ''
-
     if (data.choices && data.choices[0]?.message?.content) {
       responseText = data.choices[0].message.content.trim()
     } else {
-      console.error('❌ [extract-trait-tags] 알 수 없는 응답 구조:', data)
       throw new Error('예상하지 못한 API 응답 형식입니다.')
     }
 
@@ -179,62 +194,54 @@ ${rejectedTagsStr}
       throw new Error('생성된 텍스트가 비어있습니다.')
     }
 
-    console.log('✅ [extract-trait-tags] 응답 텍스트:', responseText)
+    console.log('✅ [extract-trait-tags] AI 응답:', responseText)
 
-    // JSON 파싱 (응답 형태: [...] 배열)
+    // JSON 파싱
     let parsedTags: TraitTag[]
     try {
-      // JSON 배열 부분만 추출 (마크다운 코드블록 등 제거)
       let jsonText = responseText
-
-      // ```json ... ``` 형식 제거
       const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/)
-      if (codeBlockMatch) {
-        jsonText = codeBlockMatch[1].trim()
-      }
-
-      // 배열 부분 추출
+      if (codeBlockMatch) jsonText = codeBlockMatch[1].trim()
       const arrayMatch = jsonText.match(/\[[\s\S]*\]/)
-      if (arrayMatch) {
-        jsonText = arrayMatch[0]
-      }
+      if (arrayMatch) jsonText = arrayMatch[0]
 
       const parsed = JSON.parse(jsonText)
-
-      if (Array.isArray(parsed)) {
-        parsedTags = parsed
-      } else if (parsed.tags && Array.isArray(parsed.tags)) {
-        // { tags: [...] } 형식도 지원 (fallback)
-        parsedTags = parsed.tags
-      } else {
-        throw new Error('예상하지 못한 응답 형식')
-      }
-    } catch (parseError) {
-      console.error('❌ [extract-trait-tags] JSON 파싱 실패:', parseError)
-      console.error('❌ [extract-trait-tags] 원본 텍스트:', responseText)
+      parsedTags = Array.isArray(parsed) ? parsed : parsed.tags ?? []
+    } catch {
+      console.error('❌ [extract-trait-tags] JSON 파싱 실패, 원본:', responseText)
       throw new Error('JSON 파싱 실패')
     }
 
-    // 태그 변환 (장점 → positive, 단점 → negative)
+    // 태그 변환 + 사전 검증
     const tags: Array<{ name: string; type: 'positive' | 'negative' | 'neutral' }> = []
 
     for (const item of parsedTags) {
-      const tagType = item.type === '장점' ? 'positive' : 'negative'
       for (const keyword of item.keywords) {
-        tags.push({
-          name: keyword,
-          type: tagType
-        })
+        const trimmed = keyword.trim()
+        if (CANONICAL_TAG_SET.has(trimmed)) {
+          const polarity = getTagPolarity(trimmed)
+          tags.push({
+            name: trimmed,
+            type: polarity ?? (item.type === '장점' ? 'positive' : 'negative'),
+          })
+        } else {
+          console.warn(`⚠️ [extract-trait-tags] AI 사전 미등록 태그: "${trimmed}"`)
+          tags.push({
+            name: trimmed,
+            type: item.type === '장점' ? 'positive' : 'negative',
+          })
+        }
       }
     }
 
-    console.log('✅ [extract-trait-tags] 태그 추출 완료:', tags)
+    console.log('✅ [extract-trait-tags] AI 폴백 완료:', tags.map(t => `${t.name}(${t.type})`).join(', '))
 
     return new Response(
       JSON.stringify({
         success: true,
         tags,
-        rawResponse: parsedTags
+        rawResponse: parsedTags,
+        method: 'ai-fallback',
       } as ExtractTraitTagsResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
