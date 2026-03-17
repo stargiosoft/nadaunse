@@ -3,8 +3,8 @@
 > **아키텍처 결정 기록 (Architecture Decision Records)**
 > "왜 이렇게 만들었어?"에 대한 대답
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-11
-> **주요 결정**: 마음톡 모드 시스템 + SSE 아키텍처, 나다움 분석 시각화, Vite outputDirectory dist 통일, 업셀링 후킹 멘트 아키텍처, 상세 페이지 History Guard 제거, IndexNow, iOS 스와이프 뒤로가기, visit_dates 기반 재방문 통계
+> **최종 업데이트**: 2026-03-17
+> **주요 결정**: 사주 프롬프트 카테고리별 최적화, 마음톡 모드 시스템 + SSE 아키텍처, 나다움 분석 시각화, Vite outputDirectory dist 통일, 업셀링 후킹 멘트 아키텍처, 상세 페이지 History Guard 제거, IndexNow, iOS 스와이프 뒤로가기, visit_dates 기반 재방문 통계
 
 ---
 
@@ -13,6 +13,25 @@
 ```
 [날짜] [결정 내용] | [이유/배경] | [영향 범위]
 ```
+
+---
+
+## 2026-03-17
+
+### 사주 프롬프트 최적화 — 카테고리별 선별 필드 추출 + 오행/십성 맥락 주입
+
+**결정**: `generate-saju-answer`에서 전체 사주 JSON dump 대신, 질문 카테고리별 핵심 필드만 추출하고 오행 상생/상극 + 십성 상호작용 맥락을 자동 주입
+
+**설계**:
+- **공유 모듈**: `server/sajuKnowledgeMap.ts` — `classifyQuestionType()`, `buildOptimizedSajuPrompt()`
+- **12 카테고리**: 개인운세, 연애, 이별, 궁합, 재물, 직업, 시험/학업, 건강, 인간관계, 자녀, 이사/매매, 기타
+- **필드 관련성 매트릭스**: ●(필수)/○(선택)/-(제외) — ~42키 → 10-15키/질문
+- **자동 분류**: `generate-content-answers`에서 `categoryMain` 전달, 미지정 시 키워드 기반 자동 분류
+- **월별 데이터**: "3월", "이번 달" 등 감지 시 월간 간지/십성 포함
+
+**이유**: 토큰 ~83% 절감 (7,000자→1,200자), AI가 관련 데이터에 집중하여 답변 품질 향상
+
+**영향**: `server/sajuKnowledgeMap.ts`(신규), `generate-saju-answer/index.ts`, `generate-content-answers/index.ts`
 
 ---
 

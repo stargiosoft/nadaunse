@@ -498,7 +498,8 @@ ${freeList}
                 gender: sajuRecord.gender,
                 sajuData: cachedSajuData,
                 personalizationData,
-                previousAnswers
+                previousAnswers,
+                categoryMain: content.category_main  // ⭐ 질문 유형별 사주 데이터 최적화용
               })
             })
             data = await response.json()

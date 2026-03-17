@@ -2,6 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
+import { buildOptimizedSajuPrompt } from '../server/sajuKnowledgeMap.ts'
 
 serve(async (req) => {
   // CORS preflight
@@ -24,7 +25,8 @@ serve(async (req) => {
       sajuData: prefetchedSajuData,  // ⭐ 미리 가져온 사주 데이터 (선택적)
       // ⭐ 초개인화 데이터 (선택적)
       personalizationData,
-      previousAnswers  // ⭐ 이전 답변들 (중복 방지용)
+      previousAnswers,  // ⭐ 이전 답변들 (중복 방지용)
+      categoryMain     // ⭐ 질문 카테고리 (개인운세, 연애, 재물 등 12개)
     } = await req.json()
 
     // 초개인화 데이터 타입 정의
@@ -202,7 +204,15 @@ ${answersContext}
 `
     }
 
-    // 프롬프트 구성 (사용자가 제공한 구조 그대로)
+    // ⭐ 사주 데이터 최적화 프롬프트 생성
+    const optimizedSajuPrompt = buildOptimizedSajuPrompt(sajuData as Record<string, unknown>, categoryMain || null, questionText)
+    const fullDumpSize = JSON.stringify(sajuData).length
+    const optimizedSize = optimizedSajuPrompt.length
+    const savings = Math.round((1 - optimizedSize / fullDumpSize) * 100)
+    console.log(`📊 [사주 최적화] 카테고리: ${categoryMain || '(미지정→자동분류)'} | 원본: ${fullDumpSize}자 → 최적화: ${optimizedSize}자 (${savings}% 절감)`)
+    console.log(`📋 [사주 최적화] 프롬프트 첫 300자:`, optimizedSajuPrompt.substring(0, 300))
+
+    // 프롬프트 구성
     const prompt = `## 역할
 고객의 사주 데이터와 현재 상황을 분석하여 통찰력 있는 맞춤 풀이를 완결된 보고서 형태로 제공하는 전문 사주 명리학자
 
@@ -212,25 +222,7 @@ ${previousAnswersSection}
 ${questionText}
 
 ## 사주 정보
-${JSON.stringify(sajuData, null, 2)}
-
-## 사주 가이드 라인
-
-[십성(十星) 참조표]
-* 천간 십성: 갑목(정관), 을목(편관), 병화(정인), 정화(편인), 무토(겁재), 기토(비견), 경금(상관), 신금(식신), 임수(정재), 계수(편재)
-* 지지 십성: 자수(편재), 축토(비견), 인목(정관), 묘목(편관), 진토(겁재), 사화(정인), 오화(편인), 미토(비견), 신금(상관), 유금(식신), 술토(겁재), 해수(정재)
-
-[십성의 10가지 종류]
-비견(比肩) – 나와 같은 성질, 형제·동료, 경쟁심, 자존심
-겁재(劫財) – 나와 같은 성질이지만 빼앗는 존재, 경쟁자, 형제 갈등
-식신(食神) – 내가 낳은 기운, 재능·표현력·건강·여유
-상관(傷官) – 내가 낳은 기운이지만 관을 극함, 창의성·도전·말재주·반항심
-정재(正財) – 내가 극하는 기운, 정직한 재물·생활비·아내(남자 사주 기준)
-편재(偏財) – 내가 극하는 기운이지만 변동적, 투자·사업재물·연애운
-정관(正官) – 나를 극하는 기운, 바른 권위·명예·직장·남편(여자 사주 기준)
-편관(偏官, 칠살) – 나를 극하는 기운이지만 강렬함, 도전·위험·경쟁·압박
-정인(正印) – 나를 생해주는 기운, 학문·문서·보호·어머니·안정
-편인(偏印) – 나를 생해주지만 삐딱한 기운, 아이디어·변덕·고독·예술
+${optimizedSajuPrompt}
 
 ## 답변 작성 지침
 

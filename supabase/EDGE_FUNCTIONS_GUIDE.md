@@ -2,7 +2,7 @@
 
 > **프로젝트**: 나다운세 (운세 서비스)
 > **총 함수 수**: 38개
-> **최종 업데이트**: 2026-03-11
+> **최종 업데이트**: 2026-03-17
 > **필수 문서**: [CLAUDE.md](../../CLAUDE.md) - 개발 규칙
 
 ---
@@ -559,11 +559,13 @@ response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-an
 
 ### 5. `generate-saju-answer`
 
-**역할**: 사주 개별 질문 답변 생성 (초개인화 지원)
+**역할**: 사주 개별 질문 답변 생성 (카테고리별 최적화 + 초개인화 지원)
 
 **차이점**: `generate-saju-preview`는 미리보기, 이건 실제 답변
 
 **사용처**: `generate-content-answers`에서 내부 호출 (질문별 병렬 처리)
+
+**사주 프롬프트 최적화**: `server/sajuKnowledgeMap.ts`의 `buildOptimizedSajuPrompt()`로 카테고리별 핵심 필드만 추출 (~83% 토큰 절감). 상세: `src/docs/develop/통합 사주 api/SAJU_API_PAID_OPTIMIZATION.md`
 
 **입력**:
 ```typescript
@@ -573,6 +575,7 @@ response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/generate-tarot-an
   questionerInfo?: string,        // 질문자 상황 텍스트
   questionText: string,
   questionId?: string,
+  categoryMain?: string,          // 질문 카테고리 (미지정 시 키워드 자동 분류)
   birthDate: string,              // "1992-07-15"
   birthTime: string,              // "21:30"
   gender: string,                 // "male" | "female"

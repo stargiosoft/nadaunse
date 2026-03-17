@@ -2,7 +2,7 @@
 
 > **AI 디버깅 전용 컨텍스트 파일** — 프로젝트 아키텍처, 데이터 흐름, 파일 참조
 > **GitHub**: https://github.com/stargiosoft/nadaunse
-> **최종 업데이트**: 2026-03-11
+> **최종 업데이트**: 2026-03-17
 
 ---
 
@@ -81,6 +81,17 @@
 /components/RecordMePhoneBottomSheet.tsx → 전화번호 입력 바텀시트
 /lib/freeContentService.ts              → 비즈니스 로직
 ```
+</details>
+
+<details>
+<summary><b>사주 프롬프트 최적화 (서버 공유 모듈)</b></summary>
+
+```
+/supabase/functions/server/sajuKnowledgeMap.ts → 질문 유형 분류 + 선별 필드 추출 + 오행/십성 맥락 주입
+```
+
+**사용처**: `generate-saju-answer` → `buildOptimizedSajuPrompt()` (전체 JSON ~7,000자 → 카테고리별 ~1,200자, 83% 절감)
+**12 카테고리**: 개인운세, 연애, 이별, 궁합, 재물, 직업, 시험/학업, 건강, 인간관계, 자녀, 이사/매매, 기타
 </details>
 
 <details>
@@ -370,4 +381,4 @@ App.tsx (PendingTagsCheckPage)          → 회원가입 후 사주/태그 저�
 
 ---
 
-**최종 업데이트**: 2026-03-11
+**최종 업데이트**: 2026-03-17
