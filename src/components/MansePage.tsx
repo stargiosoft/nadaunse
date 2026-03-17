@@ -464,22 +464,55 @@ export default function MansePage({ onBack }: MansePageProps) {
         const birthDateForDb = birthDate.replace(/[^\d]/g, '');
         const formattedBirthDate = `${birthDateForDb.slice(0, 4)}-${birthDateForDb.slice(4, 6)}-${birthDateForDb.slice(6, 8)}`;
 
-        const { data: inserted, error: insertError } = await supabase
+        // ⭐ 기존 본인 사주 존재 여부 확인 (중복 방지)
+        const { data: existingMySaju } = await supabase
           .from('saju_records')
-          .insert({
-            user_id: loggedInUserId,
-            full_name: '',
-            gender,
-            calendar_type: 'solar',
-            birth_date: formattedBirthDate + 'T00:00:00Z',
-            birth_time: finalTime,
-            notes: '본인',
-            is_primary: true,
-          })
-          .select('id, birth_date, birth_time, gender, calendar_type')
-          .single();
+          .select('id')
+          .eq('user_id', loggedInUserId)
+          .eq('notes', '본인')
+          .maybeSingle();
 
-        if (insertError) throw insertError;
+        let inserted;
+        if (existingMySaju) {
+          // ⭐ 기존 본인 사주가 있으면 UPDATE
+          console.log('📌 [MansePage] 기존 본인 사주 발견 → UPDATE:', existingMySaju.id);
+          const { data, error: updateError } = await supabase
+            .from('saju_records')
+            .update({
+              full_name: '',
+              gender,
+              calendar_type: 'solar',
+              birth_date: formattedBirthDate + 'T00:00:00Z',
+              birth_time: finalTime,
+              is_primary: true,
+            })
+            .eq('id', existingMySaju.id)
+            .select('id, birth_date, birth_time, gender, calendar_type')
+            .single();
+
+          if (updateError) throw updateError;
+          inserted = data;
+        } else {
+          // ⭐ 본인 사주 없으면 INSERT
+          console.log('📌 [MansePage] 본인 사주 없음 → INSERT');
+          const { data, error: insertError } = await supabase
+            .from('saju_records')
+            .insert({
+              user_id: loggedInUserId,
+              full_name: '',
+              gender,
+              calendar_type: 'solar',
+              birth_date: formattedBirthDate + 'T00:00:00Z',
+              birth_time: finalTime,
+              notes: '본인',
+              is_primary: true,
+            })
+            .select('id, birth_date, birth_time, gender, calendar_type')
+            .single();
+
+          if (insertError) throw insertError;
+          inserted = data;
+        }
 
         // 캐시 업데이트 (ProfilePage에서 즉시 표시)
         const { data: updatedSajuList } = await supabase
