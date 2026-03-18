@@ -40,7 +40,7 @@ function getAccuracyStep(count: number) {
   return ACCURACY_STEPS.find(s => count >= s.min && count <= s.max) || ACCURACY_STEPS[0];
 }
 
-// ─── 카테고리 랜덤 순환 + 긍정:부정 2:1 배치 ─────────────────────────────────
+// ─── 카테고리 랜덤 순환 + 긍정:부정 1:1 배치 ─────────────────────────────────
 const ALL_CATEGORIES: TagCategory[] = ['실행력', '사고력', '감성', '관계', '의지력', '안정감', '진실성'];
 
 /** Fisher-Yates 셔플 */
@@ -87,11 +87,10 @@ function buildTagPool(): TraitTagEntry[] {
     }
   }
 
-  // 긍정, 긍정, 부정, 긍정, 긍정, 부정... 순서로 인터리브
+  // 긍정, 부정, 긍정, 부정... 순서로 1:1 인터리브
   const pool: TraitTagEntry[] = [];
   let pi = 0, ni = 0;
   while (pi < posFlat.length || ni < negFlat.length) {
-    if (pi < posFlat.length) pool.push(posFlat[pi++]);
     if (pi < posFlat.length) pool.push(posFlat[pi++]);
     if (ni < negFlat.length) pool.push(negFlat[ni++]);
   }
