@@ -398,6 +398,8 @@ function buildPrompt(params: {
     "nodes": [
       { "id": "att_1", "label": "태도 특성", "type": "attitude", "group": "core" },
       { "id": "hex_1", "label": "HEXACO축", "type": "facet", "group": "hexaco" },
+      { "id": "tag_1", "label": "나다움 태그명", "type": "trait", "group": "trait" },
+      { "id": "tag_2", "label": "나다움 태그명", "type": "trait", "group": "trait" },
       { "id": "ins_1", "label": "도출 인사이트", "type": "insight", "group": "insight" },
       { "id": "now_1", "label": "현재 상태", "type": "scenario", "group": "now" },
       { "id": "mid_1", "label": "3~6개월 변화", "type": "scenario", "group": "near" },
@@ -406,8 +408,10 @@ function buildPrompt(params: {
     "edges": [
       { "from": "center", "to": "att_1", "relation": "HAS_TRAIT" },
       { "from": "center", "to": "hex_1", "relation": "CHARACTERIZED_BY" },
-      { "from": "att_1", "to": "ins_1", "relation": "REVEALS" },
-      { "from": "hex_1", "to": "ins_1", "relation": "INFLUENCES" },
+      { "from": "att_1", "to": "tag_1", "relation": "IDENTIFIED_AS" },
+      { "from": "hex_1", "to": "tag_2", "relation": "CHARACTERIZES" },
+      { "from": "tag_1", "to": "ins_1", "relation": "REVEALS" },
+      { "from": "tag_2", "to": "ins_1", "relation": "REVEALS" },
       { "from": "ins_1", "to": "now_1", "relation": "CAUSES" },
       { "from": "now_1", "to": "mid_1", "relation": "EVOLVES_TO" },
       { "from": "mid_1", "to": "far_1", "relation": "LEADS_TO" },
@@ -437,14 +441,19 @@ function buildPrompt(params: {
 태도 테스트에서 도출된 핵심 성격 특성. label: 2~5자
 
 ### facet (3~5개)
-HEXACO 하위축. 학술적 이름이 아니라 **한국어로 직관적**으로. label: 2~5자
+HEXACO 하위축. 한국어로 직관적으로. label: 2~5자
 예: "사교성", "꼼꼼함", "호기심", "절제력", "공감력"
 
-### insight (4~8개) ⭐ 가장 중요
-입력된 태그들을 **분석하여 도출한 인사이트**. 태그를 그대로 복사하지 말 것!
-- 여러 태그를 묶어서 "이 사람에게는 ~한 패턴이 있다"를 발견
-- 강점 인사이트, 약점 인사이트, 숨은 잠재력, 내적 갈등 등 다양하게
+### trait (입력 태그 수만큼, 최대 12개) ⭐ 사용자 입력 반영
+- 입력된 나다움 태그를 **그대로** 노드로 만들어 "내 태그가 분석에 반영됐다" 느낌을 준다
+- label: 태그 이름 그대로 (예: "신중한", "책임감 강한", "감성적인")
+- group: "trait"
+
+### insight (3~6개) ⭐ AI 분석 결과
+trait 태그들을 분석하여 도출한 **상위 인사이트**. 여러 태그를 묶어 패턴을 발견한다.
+- 강점 패턴, 약점 패턴, 숨은 잠재력, 내적 갈등 등
 - label: 2~6자 (예: "완벽주의", "감정표현력", "숨은 야망", "결정장애")
+- group: "insight"
 
 ### scenario — 시간축 3단계
 - **group "now"** (2~3개): 현재 상태/경향 (예: "소비 과다", "저축 습관화")
@@ -453,7 +462,8 @@ HEXACO 하위축. 학술적 이름이 아니라 **한국어로 직관적**으로
 
 ## 엣지 규칙 (★ 절대 고아 노드 금지)
 - **center → attitude, facet**: 반드시 연결
-- **attitude, facet → insight**: 어떤 성격 축이 어떤 인사이트를 만드는지
+- **attitude, facet → trait**: 어떤 성격 축에서 이 태그가 비롯되는지
+- **trait → insight**: 여러 태그가 모여서 어떤 인사이트를 형성하는지 (핵심!)
 - **insight → scenario(now)**: 이 인사이트가 현재 어떤 상태를 만드는지
 - **scenario(now) → scenario(near)**: 현재→가까운 미래 인과
 - **scenario(near) → scenario(far)**: 가까운 미래→먼 미래 인과
@@ -494,9 +504,17 @@ function ensureNoOrphanNodes(
     // 고아 노드 발견 → 타입에 따라 자동 연결
     if (node.type === 'attitude' || node.type === 'facet') {
       ontology.edges.push({ from: 'center', to: node.id, relation: 'HAS_TRAIT' })
-    } else if (node.type === 'insight') {
-      // 가장 가까운 attitude/facet 노드에 연결
+    } else if (node.type === 'trait') {
+      // attitude 또는 facet에 연결
       const parent = ontology.nodes.find(n => n.type === 'attitude' || n.type === 'facet')
+      if (parent) {
+        ontology.edges.push({ from: parent.id, to: node.id, relation: 'IDENTIFIED_AS' })
+      } else {
+        ontology.edges.push({ from: 'center', to: node.id, relation: 'HAS_TRAIT' })
+      }
+    } else if (node.type === 'insight') {
+      // trait 또는 attitude/facet에 연결
+      const parent = ontology.nodes.find(n => n.type === 'trait') || ontology.nodes.find(n => n.type === 'attitude' || n.type === 'facet')
       if (parent) {
         ontology.edges.push({ from: parent.id, to: node.id, relation: 'REVEALS' })
       } else {
