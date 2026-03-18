@@ -122,7 +122,7 @@ export function FuturePredictionPage() {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: C.bg,
-          overflow: 'auto',
+          overflow: 'hidden',
         }}
       >
         {/* ── 공통 헤더 ── */}

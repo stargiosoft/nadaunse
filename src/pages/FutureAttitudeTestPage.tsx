@@ -357,6 +357,7 @@ export function FutureAttitudeTestPage() {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: C.white,
+          overflow: 'auto',
         }}
       >
         {/* ── 상단 네비게이션 ── */}

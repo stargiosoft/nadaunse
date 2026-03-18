@@ -303,26 +303,32 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.15 }}
-      className="rounded-2xl overflow-hidden border relative"
+      className="rounded-2xl border relative overflow-hidden"
       style={{
         width: '100%',
         borderColor: '#e2e8f0',
         background: '#f8fafc',
       }}
     >
-      {/* Legend */}
+      {/* Legend — 2줄 */}
       <div
-        className="flex items-center flex-wrap"
-        style={{ padding: '8px 12px 4px', gap: '4px 10px' }}
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          padding: '10px 12px 6px',
+          gap: '6px 14px',
+          maxWidth: 280,
+        }}
       >
         {legendItems.map((item) => (
           <span
             key={item.key}
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-1.5 whitespace-nowrap"
             style={{ fontSize: 11, color: '#64748b', fontFamily: "'Pretendard Variable', sans-serif" }}
           >
             <span
-              className="inline-block rounded-full"
+              className="inline-block rounded-full shrink-0"
               style={{
                 width: 8,
                 height: 8,

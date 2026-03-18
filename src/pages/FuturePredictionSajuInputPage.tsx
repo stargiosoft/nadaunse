@@ -141,7 +141,7 @@ export function FuturePredictionSajuInputPage() {
     return (
       <div style={{ position: 'fixed', inset: 0, backgroundColor: C.bg, display: 'flex', justifyContent: 'center', zIndex: 100 }}>
         <SEO title="사주 정보 확인" noIndex={true} />
-        <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.bg }}>
+        <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.bg, overflow: 'hidden' }}>
           <NavigationHeader title="사주 정보" onBack={() => navigate('/future-prediction/result')} />
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 24px' }}>
@@ -201,7 +201,7 @@ export function FuturePredictionSajuInputPage() {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: C.bg, display: 'flex', justifyContent: 'center', zIndex: 100 }}>
       <SEO title="사주 정보 입력" noIndex={true} />
-      <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.bg, overflow: 'auto' }}>
+      <div style={{ width: '100%', maxWidth: 440, minWidth: 320, height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: C.bg, overflowX: 'hidden', overflowY: 'auto' }}>
         <NavigationHeader title="사주 정보" onBack={() => navigate('/future-prediction/result')} />
 
         <div style={{ padding: '80px 24px 40px' }}>
