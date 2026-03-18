@@ -159,8 +159,30 @@ export function FuturePredictionTagsPage() {
     goToLoading();
   };
 
-  const goToLoading = () => {
-    sessionStorage.setItem('fp_selected_tags', JSON.stringify([...selectedTags]));
+  const goToLoading = async () => {
+    const tagsArray = [...selectedTags];
+    sessionStorage.setItem('fp_selected_tags', JSON.stringify(tagsArray));
+
+    // 회원이면 새로 선택한 태그를 DB에 저장
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const newTags = tagsArray.filter(t => !userExistingTags.includes(t));
+      if (newTags.length > 0) {
+        const tagDict = new Map(TRAIT_TAG_DICTIONARY.map(t => [t.canonical, t]));
+        const rows = newTags.map(tagName => {
+          const entry = tagDict.get(tagName);
+          return {
+            user_id: user.id,
+            tag_name: tagName,
+            tag_type: entry?.polarity === 'negative' ? 'negative' : 'positive',
+            source_type: 'self_selected',
+            is_confirmed: true,
+          };
+        });
+        await supabase.from('user_trait_tags').insert(rows);
+      }
+    }
+
     navigate('/future-prediction/loading');
   };
 
@@ -280,11 +302,11 @@ export function FuturePredictionTagsPage() {
                 내 기존 태그
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {userExistingTags.map(tag => {
+                {userExistingTags.map((tag, idx) => {
                   const isSelected = selectedTags.has(tag);
                   return (
                     <motion.button
-                      key={tag}
+                      key={`${tag}_${idx}`}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => toggleTag(tag)}
                       style={{
@@ -316,8 +338,11 @@ export function FuturePredictionTagsPage() {
             <p style={{ fontFamily: font, fontSize: 14, fontWeight: 600, color: C.black, letterSpacing: '-0.28px', marginBottom: 4 }}>
               나를 표현하는 태그를 골라주세요
             </p>
-            <p style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: C.gray600, letterSpacing: '-0.24px', marginBottom: 12 }}>
+            <p style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: C.gray600, letterSpacing: '-0.24px', marginBottom: 4 }}>
               HEXACO 성격 모델 기반 · {Object.keys(TAG_CATEGORIES).length}개 카테고리
+            </p>
+            <p style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: C.primary, letterSpacing: '-0.24px', marginBottom: 12 }}>
+              솔직하게 고를수록 미래를 더 정확하게 예측해요
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
