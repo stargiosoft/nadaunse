@@ -120,12 +120,13 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
       });
     }
 
-    // Edges
+    // Edges — AI는 center를 "center"로 반환하므로 "__center__"로 매핑
+    const nodeIds = new Set(gNodes.map(n => n.id));
     for (const e of edges) {
-      const hasSource = e.from === '__center__' || nodes.some(n => n.id === e.from);
-      const hasTarget = e.to === '__center__' || nodes.some(n => n.id === e.to);
-      if (hasSource && hasTarget) {
-        gLinks.push({ source: e.from, target: e.to, relation: e.relation });
+      const source = e.from === 'center' ? '__center__' : e.from;
+      const target = e.to === 'center' ? '__center__' : e.to;
+      if (nodeIds.has(source) && nodeIds.has(target)) {
+        gLinks.push({ source, target, relation: e.relation });
       }
     }
 
@@ -309,8 +310,8 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
           nodeLabel={nodeLabel as never}
           nodeOpacity={1}
           linkColor={linkColor as never}
-          linkWidth={0.8}
-          linkOpacity={0.5}
+          linkWidth={1.2}
+          linkOpacity={0.6}
           linkDirectionalParticles={2}
           linkDirectionalParticleSpeed={0.004}
           linkDirectionalParticleWidth={1.5}
