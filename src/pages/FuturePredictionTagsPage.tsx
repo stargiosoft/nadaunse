@@ -120,7 +120,9 @@ export function FuturePredictionTagsPage() {
         .eq('is_confirmed', true);
 
       if (data && data.length > 0) {
-        const tagNames = data.map(t => t.tag_name);
+        const tagNames = data
+          .map(t => t.tag_name)
+          .filter(name => name && !name.startsWith('__'));
         setUserExistingTags(tagNames);
         setSelectedTags(new Set(tagNames));
       }
