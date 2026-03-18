@@ -4,28 +4,30 @@ import { motion } from 'motion/react';
 import SEO from '../components/SEO';
 import { NavigationHeader } from '../components/NavigationHeader';
 
-// ─── Design Tokens ──────────────────────────────────────────────────────────
+// ─── Design Tokens (★DESIGN_SYSTEM★.md 기준) ────────────────────────────────
 const C = {
-  primary: '#41a09e',
-  primaryDark: '#357f7d',
-  primaryLight: '#e8f5f5',
-  black: '#151515',
-  gray700: '#6d6d6d',
-  gray600: '#848484',
-  gray400: '#b7b7b7',
-  gray200: '#e7e7e7',
-  bg: '#f7f8f9',
-  white: '#ffffff',
+  primary: '#48b2af',
+  primaryDark: '#41a09e',
+  primaryPressed: '#389998',
+  primaryLight: '#f0f8f8',
+  textPrimary: '#151515',
+  textTertiary: '#6d6d6d',
+  textCaption: '#848484',
+  textDisabled: '#b7b7b7',
+  surface: '#ffffff',
+  surfaceSecondary: '#f9f9f9',
+  surfaceTertiary: '#f3f3f3',
+  border: '#e7e7e7',
 } as const;
 
 const font = "'Pretendard Variable', sans-serif";
 
 // ─── 간극 유형 ──────────────────────────────────────────────────────────────
 const GAP_TYPES = [
-  { min: 0, max: 25, label: '조화형', emoji: '🎵', color: '#22c55e', bgColor: '#f0fdf4', description: '성격과 운명이 같은 방향을 가리키고 있어요' },
-  { min: 26, max: 50, label: '보완형', emoji: '🔄', color: '#3b82f6', bgColor: '#eff6ff', description: '약간의 차이가 있지만 서로 보완할 수 있어요' },
-  { min: 51, max: 75, label: '전환형', emoji: '⚡', color: '#f59e0b', bgColor: '#fffbeb', description: '의미 있는 간극이에요. 놓치고 있는 잠재력이 있어요' },
-  { min: 76, max: 100, label: '반전형', emoji: '🌊', color: '#ef4444', bgColor: '#fef2f2', description: '큰 간극이 있어요. 방향 전환이 필요할 수 있어요' },
+  { min: 0, max: 20, label: '조화형', emoji: '🎵', color: '#22c55e', bgColor: '#f0fdf4', description: '성격과 운명이 같은 방향을 가리키고 있어요' },
+  { min: 21, max: 34, label: '보완형', emoji: '🔄', color: '#3b82f6', bgColor: '#eff6ff', description: '약간의 차이가 있지만 서로 보완할 수 있어요' },
+  { min: 35, max: 80, label: '전환형', emoji: '⚡', color: '#f59e0b', bgColor: '#fffbeb', description: '의미 있는 간극이에요. 놓치고 있는 잠재력이 있어요' },
+  { min: 81, max: 100, label: '반전형', emoji: '🌊', color: '#ef4444', bgColor: '#fef2f2', description: '큰 간극이 있어요. 방향 전환이 필요할 수 있어요' },
 ] as const;
 
 function getGapType(percentage: number) {
@@ -39,26 +41,25 @@ function CircularGauge({ percentage }: { percentage: number }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const gapType = getGapType(percentage);
+  const gaugeColor = gapType.color;
 
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        {/* 배경 원 */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={C.gray200}
+          stroke={C.border}
           strokeWidth={strokeWidth}
         />
-        {/* 게이지 arc */}
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={gapType.color}
+          stroke={gaugeColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -67,7 +68,6 @@ function CircularGauge({ percentage }: { percentage: number }) {
           transition={{ duration: 1.5, delay: 0.3, ease: 'easeOut' }}
         />
       </svg>
-      {/* 중앙 텍스트 */}
       <div
         style={{
           position: 'absolute',
@@ -82,11 +82,11 @@ function CircularGauge({ percentage }: { percentage: number }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          style={{ fontFamily: font, fontSize: 36, fontWeight: 700, color: gapType.color, letterSpacing: '-0.72px' }}
+          style={{ fontFamily: font, fontSize: 36, fontWeight: 700, color: gaugeColor, letterSpacing: '-0.72px' }}
         >
           {percentage}%
         </motion.span>
-        <span style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.gray600, letterSpacing: '-0.26px' }}>
+        <span style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textCaption, letterSpacing: '-0.26px' }}>
           간극 지수
         </span>
       </div>
@@ -127,183 +127,176 @@ export function FuturePredictionGapPage() {
   const gapType = getGapType(result.gap_percentage);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: C.bg,
-        display: 'flex',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-    >
+    <div className="bg-white fixed inset-0 flex justify-center" style={{ zIndex: 100 }}>
       <SEO title="미래 간극 분석" noIndex={true} />
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          minWidth: 320,
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: C.bg,
-          overflow: 'auto',
-        }}
-      >
+      <div className="w-full max-w-[440px] h-full flex flex-col bg-white">
         <NavigationHeader title="미래 간극 분석" onBack={() => navigate('/future-prediction/result')} />
 
-        <div style={{ padding: '76px 16px 40px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* ── 헤더 ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            style={{ textAlign: 'center', padding: '0 8px' }}
-          >
-            <p style={{ fontFamily: font, fontSize: 20, fontWeight: 700, color: C.black, letterSpacing: '-0.4px', lineHeight: '30px' }}>
-              성격 vs 사주, 당신의 미래 간극은?
-            </p>
-          </motion.div>
+        {/* 스크롤 콘텐츠 */}
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ padding: '68px 20px 40px' }} className="flex flex-col gap-4">
+            {/* ── 헤더 ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              style={{ textAlign: 'center' }}
+            >
+              <p style={{ fontFamily: font, fontSize: 22, fontWeight: 600, color: C.textPrimary, letterSpacing: '-0.22px', lineHeight: '32.5px' }}>
+                성격 vs 사주, 당신의 미래 간극은?
+              </p>
+            </motion.div>
 
-          {/* ── 원형 게이지 ── */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            style={{
-              padding: '28px 20px',
-              backgroundColor: C.white,
-              borderRadius: 16,
-              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-          >
-            <CircularGauge percentage={result.gap_percentage} />
-          </motion.div>
-
-          {/* ── 간극 유형 카드 ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-            style={{
-              padding: '20px',
-              backgroundColor: gapType.bgColor,
-              borderRadius: 16,
-              borderLeft: `4px solid ${gapType.color}`,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 20 }}>{gapType.emoji}</span>
-              <span style={{ fontFamily: font, fontSize: 16, fontWeight: 600, color: gapType.color, letterSpacing: '-0.32px' }}>
-                {gapType.label}
-              </span>
-            </div>
-            <p style={{ fontFamily: font, fontSize: 14, fontWeight: 400, color: C.gray700, letterSpacing: '-0.28px', lineHeight: '22px' }}>
-              {result.gap_interpretation}
-            </p>
-          </motion.div>
-
-          {/* ── 2열 비교 ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.5 }}
-            style={{ display: 'flex', gap: 10 }}
-          >
-            {/* 성격 기반 */}
-            <div
+            {/* ── 원형 게이지 ── */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
               style={{
-                flex: 1,
-                padding: '16px',
-                backgroundColor: C.white,
-                borderRadius: 14,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                borderTop: `3px solid ${C.primary}`,
+                padding: '28px 20px',
+                backgroundColor: C.surface,
+                borderRadius: 16,
+                border: `1px solid ${C.border}`,
+              }}
+              className="flex flex-col items-center"
+            >
+              <CircularGauge percentage={result.gap_percentage} />
+            </motion.div>
+
+            {/* ── 간극 유형 카드 ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              style={{
+                padding: '20px',
+                backgroundColor: C.surface,
+                borderRadius: 16,
+                border: `1px solid ${C.border}`,
               }}
             >
-              <p style={{ fontFamily: font, fontSize: 12, fontWeight: 600, color: C.primary, letterSpacing: '-0.24px', marginBottom: 8 }}>
-                🧠 성격 기반 미래
+              <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>{gapType.emoji}</span>
+                <span style={{ fontFamily: font, fontSize: 16, fontWeight: 600, color: gapType.color, letterSpacing: '-0.32px' }}>
+                  {gapType.label}
+                </span>
+              </div>
+              <p style={{ fontFamily: font, fontSize: 14, fontWeight: 400, color: C.textTertiary, letterSpacing: '-0.28px', lineHeight: '22px' }}>
+                {result.gap_interpretation}
               </p>
-              <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.gray700, letterSpacing: '-0.26px', lineHeight: '20px' }}>
-                {result.personality_summary}
-              </p>
-            </div>
-            {/* 사주 기반 */}
-            <div
+            </motion.div>
+
+            {/* ── 2열 비교 ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.5 }}
+              className="flex gap-[10px]"
+            >
+              {/* 성격 기반 */}
+              <div
+                className="flex-1"
+                style={{
+                  padding: 16,
+                  backgroundColor: C.surfaceSecondary,
+                  borderRadius: 16,
+                }}
+              >
+                <p style={{ fontFamily: font, fontSize: 12, fontWeight: 600, color: C.primaryDark, letterSpacing: '-0.24px', marginBottom: 8 }}>
+                  🧠 성격 기반 미래
+                </p>
+                <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textTertiary, letterSpacing: '-0.26px', lineHeight: '20px' }}>
+                  {result.personality_summary}
+                </p>
+              </div>
+              {/* 사주 기반 */}
+              <div
+                className="flex-1"
+                style={{
+                  padding: 16,
+                  backgroundColor: C.surfaceSecondary,
+                  borderRadius: 16,
+                }}
+              >
+                <p style={{ fontFamily: font, fontSize: 12, fontWeight: 600, color: '#e91e63', letterSpacing: '-0.24px', marginBottom: 8 }}>
+                  🔮 사주 기반 미래
+                </p>
+                <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textTertiary, letterSpacing: '-0.26px', lineHeight: '20px' }}>
+                  {result.saju_summary}
+                </p>
+              </div>
+            </motion.div>
+
+            {/* ── 후킹 멘트 ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.7 }}
               style={{
-                flex: 1,
-                padding: '16px',
-                backgroundColor: C.white,
-                borderRadius: 14,
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                borderTop: '3px solid #e91e63',
+                padding: '20px',
+                backgroundColor: C.surface,
+                borderRadius: 16,
+                border: `1px solid ${C.border}`,
+                textAlign: 'center',
               }}
             >
-              <p style={{ fontFamily: font, fontSize: 12, fontWeight: 600, color: '#e91e63', letterSpacing: '-0.24px', marginBottom: 8 }}>
-                🔮 사주 기반 미래
+              <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.textPrimary, letterSpacing: '-0.3px', lineHeight: '24px', marginBottom: 6 }}>
+                이 간극을 방치한 사람의 <span style={{ color: C.primaryDark, fontWeight: 700 }}>80%</span>가<br /><span style={{ color: C.primaryDark, fontWeight: 700 }}>1년</span> 안에 같은 실수를 반복했어요
               </p>
-              <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.gray700, letterSpacing: '-0.26px', lineHeight: '20px' }}>
-                {result.saju_summary}
+              <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textCaption, letterSpacing: '-0.26px', lineHeight: '20px' }}>
+                딱 3분이면 나만의 대응 전략을 받을 수 있어요
               </p>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
+        </div>
 
-          {/* ── 후킹 멘트 + CTA ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.7 }}
-            style={{
-              padding: '20px',
-              backgroundColor: C.white,
-              borderRadius: 16,
-              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-              textAlign: 'center',
+        {/* ── 하단 고정 CTA ── */}
+        <div
+          className="shrink-0"
+          style={{
+            padding: '12px 20px',
+            backgroundColor: C.surface,
+            boxShadow: '0px -8px 16px 0px rgba(255, 255, 255, 0.76)',
+          }}
+        >
+          <button
+            onClick={() => {
+              // TODO: 결제 플로우 연결
             }}
+            className="w-full flex items-center justify-center"
+            style={{
+              height: 56,
+              borderRadius: 16,
+              border: 'none',
+              backgroundColor: C.primary,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'all 0.15s ease',
+            }}
+            onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = C.primaryPressed; }}
+            onPointerUp={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.backgroundColor = C.primary; }}
+            onPointerLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.backgroundColor = C.primary; }}
           >
-            <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.black, letterSpacing: '-0.3px', lineHeight: '24px', marginBottom: 16 }}>
-              {result.hook_message}
-            </p>
-            <button
-              onClick={() => {
-                // TODO: 결제 플로우 연결
-              }}
-              style={{
-                width: '100%',
-                padding: '16px',
-                borderRadius: 14,
-                border: 'none',
-                background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryDark} 100%)`,
-                cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-                boxShadow: '0 4px 16px rgba(65,160,158,0.3)',
-              }}
-            >
-              <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.white, letterSpacing: '-0.3px' }}>
-                맞춤 대응 리포트 구매하기
-              </p>
-            </button>
-          </motion.div>
-
-          {/* ── 다시 하기 ── */}
+            <span style={{ fontFamily: font, fontSize: 16, fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: C.surface }}>
+              맞춤 대응 리포트 보러가기
+            </span>
+          </button>
           <button
             onClick={() => navigate('/future-prediction')}
+            className="w-full flex items-center justify-center"
             style={{
-              width: '100%',
-              padding: '14px',
-              borderRadius: 12,
-              border: `1.5px solid ${C.gray200}`,
-              backgroundColor: C.white,
+              height: 44,
+              marginTop: 8,
+              borderRadius: 16,
+              border: 'none',
+              backgroundColor: 'transparent',
               cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <p style={{ fontFamily: font, fontSize: 14, fontWeight: 500, color: C.gray700, letterSpacing: '-0.28px' }}>
+            <span style={{ fontFamily: font, fontSize: 14, fontWeight: 500, letterSpacing: '-0.28px', color: C.textCaption }}>
               처음부터 다시 하기
-            </p>
+            </span>
           </button>
         </div>
       </div>
