@@ -29,8 +29,8 @@ const TYPE_HEX: Record<string, string> = {
   center:     '#3b82f6',  // blue
   attitude:   '#f97316',  // orange
   facet:      '#6366f1',  // indigo
-  insight:    '#14b8a6',  // teal — AI 도출 인사이트
-  trait:      '#14b8a6',  // teal (구버전 호환)
+  insight:    '#0d9488',  // teal-600 — AI 도출 인사이트
+  trait:      '#2dd4bf',  // teal-300 — 나다움 태그
   scenario:   '#a855f7',  // purple
   saju:       '#f43f5e',  // rose (Phase 2 gap 페이지용)
   hexaco:     '#6366f1',
@@ -50,7 +50,7 @@ const TYPE_LABELS: Record<string, string> = {
   attitude:  '태도',
   facet:     'HEXACO',
   insight:   '인사이트',
-  trait:     '인사이트',
+  trait:     '나다움',
   scenario:  '미래',
   saju:      '사주',
 };
@@ -312,8 +312,8 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
     >
       {/* Legend */}
       <div
-        className="flex items-center gap-3 flex-wrap"
-        style={{ padding: '10px 14px 6px' }}
+        className="flex items-center flex-wrap"
+        style={{ padding: '8px 12px 4px', gap: '4px 10px' }}
       >
         {legendItems.map((item) => (
           <span
