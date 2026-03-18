@@ -1,0 +1,34 @@
+# 나다운세 robots.txt
+# https://nadaunse.com
+
+User-agent: *
+Allow: /
+
+# 인덱싱 제외 경로
+Disallow: /free
+Allow: /free/content/
+Disallow: /login
+Allow: /terms-of-service
+Disallow: /terms
+Disallow: /signup
+Disallow: /auth/
+Disallow: /payment/
+Disallow: /loading
+Disallow: /free-loading
+Disallow: /welcome-coupon
+Disallow: /alimtalk/
+Disallow: /master/
+Disallow: /saju/
+Disallow: /profile
+Disallow: /purchase-history
+Disallow: /error/
+Disallow: /test/
+
+# 결제/결과 페이지 제외
+Disallow: /*/payment
+Disallow: /*/birthinfo
+Disallow: /*/saju-select
+Disallow: /*/result
+
+# Sitemap 위치
+Sitemap: https://nadaunse.com/sitemap.xml
