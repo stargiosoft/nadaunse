@@ -376,7 +376,8 @@ function buildPrompt(params: {
 1. **태그를 복사하지 마라** — 입력된 태그를 그대로 노드로 만들지 않고, 여러 태그를 묶어서 "이 사람은 ~한 성향 패턴이 있다"는 **인사이트**로 재해석한다
 2. **시간축이 있는 예측** — "지금 이런 성향이니까 → 3개월 후 이런 변화가 → 6개월 후 이런 결과가" 흐름을 만든다
 3. **모든 노드가 연결되어야 한다** — 고립된 노드 절대 금지. 모든 노드는 최소 1개 이상의 엣지를 가진다
-4. **극적인 결과** — 무난하고 평범한 예측은 재미없다. 뚜렷한 방향성을 제시한다
+4. **위기 발견이 핵심 가치** — 이 서비스의 목적은 "지금 이대로면 위험합니다"를 보여주는 것이다. 좋은 말만 하면 아무 가치가 없다. 위기와 리스크를 구체적으로 짚어줘야 사용자가 대비할 수 있다
+5. **낙관 편향 금지** — 불안형인데 대성, 회피형인데 급상승은 사기다. 성향 데이터에 솔직하게 예측하라. 대부분의 사람은 보완해야 할 점이 많다. position 0.66 이상(대성/급상승)은 긍정 태그가 10개 이상이면서 부정 태그가 거의 없을 때만 허용된다
 
 ## 분석 프레임워크
 - HEXACO: ${hexacoAxes}
@@ -420,9 +421,9 @@ function buildPrompt(params: {
   },
   "spectrum": {
     "category": "${category}",
-    "position": 0.82,
-    "label": "급상승기",
-    "summary": "올해 하반기, 예상 못한 기회가 터질 수 있어요",
+    "position": 0.15,
+    "label": "위기 징후",
+    "summary": "스펙트럼 요약 (1~2문장)",
     "driver_node": "ins_1",
     "driver_reason": "이 인사이트가 스펙트럼 방향을 결정하는 핵심 요인"
   },
@@ -474,6 +475,13 @@ trait 태그들을 분석하여 도출한 **상위 인사이트**. 여러 태그
 ## 스펙트럼 규칙
 - position: 0(파극) ~ 1(대성)
 - **0.35~0.65 구간 금지!** 극적이고 뚜렷하게
+- **기본값은 부정적(0~0.34)이다.** 대부분의 사람은 위기 요소를 가지고 있다. 긍정(0.66~1)은 예외적으로 좋은 데이터가 있을 때만!
+- **태도 유형별 position 가이드**:
+  - 연애: 불안형 → 0.05~0.20 / 회피형 → 0.05~0.25 / 안정형 → 0.70~0.85
+  - 재물: 소비형 → 0.05~0.20 / 균형형 → 0.15~0.30 / 절약형 → 0.70~0.85
+  - 학업: 효율형 → 0.10~0.25 / 계획형 → 0.20~0.34 / 몰입형 → 0.70~0.85
+  - 직장: 안정추구형 → 0.10~0.25 / 인정추구형 → 0.15~0.30 / 도전추구형 → 0.70~0.85
+- label 예시: 0~0.10 "파극", 0.10~0.20 "위기", 0.20~0.34 "하락세", 0.66~0.80 "상승기", 0.80~1 "대성"
 - driver_node: 스펙트럼 방향에 가장 큰 영향을 준 insight 노드의 id
 - driver_reason: 왜 이 인사이트가 핵심인지 한 줄 설명
 
@@ -701,6 +709,34 @@ serve(async (req) => {
       // 스펙트럼 위치 클램핑
       result.spectrum.position = Math.min(1, Math.max(0, result.spectrum.position))
       result.spectrum.category = category
+
+      // ── 태도 유형별 스펙트럼 강제 보정 ──
+      // AI가 낙관 편향으로 긍정적 position을 줄 때 태도 유형에 맞게 보정
+      const negativeTypes = ['불안형', '회피형', '소비형', '효율형', '안정추구형']
+      const neutralTypes = ['균형형', '계획형', '인정추구형']
+      if (negativeTypes.includes(attitudeResult.type)) {
+        // 부정 유형인데 0.35 이상이면 강제로 0.05~0.25로 보정
+        if (result.spectrum.position >= 0.35) {
+          result.spectrum.position = 0.05 + Math.random() * 0.20
+          console.log('⚠️ 스펙트럼 보정: 부정 유형인데 긍정적 → ', result.spectrum.position.toFixed(2))
+        }
+      } else if (neutralTypes.includes(attitudeResult.type)) {
+        // 중립 유형인데 0.50 이상이면 0.15~0.34로 보정
+        if (result.spectrum.position >= 0.50) {
+          result.spectrum.position = 0.15 + Math.random() * 0.19
+          console.log('⚠️ 스펙트럼 보정: 중립 유형인데 과도 긍정 → ', result.spectrum.position.toFixed(2))
+        }
+      }
+      // 안정형/절약형/몰입형/도전추구형만 긍정 position 허용
+
+      // 스펙트럼 label 자동 보정
+      const pos = result.spectrum.position
+      if (pos <= 0.10) result.spectrum.label = '파극'
+      else if (pos <= 0.20) result.spectrum.label = '위기'
+      else if (pos <= 0.34) result.spectrum.label = '하락세'
+      else if (pos <= 0.65) result.spectrum.label = '전환기'
+      else if (pos <= 0.80) result.spectrum.label = '상승기'
+      else result.spectrum.label = '대성'
 
       // edges가 없으면 빈 배열로
       if (!result.ontology.edges) result.ontology.edges = []
