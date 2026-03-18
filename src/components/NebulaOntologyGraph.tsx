@@ -29,7 +29,8 @@ const TYPE_HEX: Record<string, string> = {
   center:     '#3b82f6',  // blue
   attitude:   '#f97316',  // orange
   facet:      '#6366f1',  // indigo
-  trait:      '#14b8a6',  // teal
+  insight:    '#14b8a6',  // teal — AI 도출 인사이트
+  trait:      '#14b8a6',  // teal (구버전 호환)
   scenario:   '#a855f7',  // purple
   saju:       '#f43f5e',  // rose (Phase 2 gap 페이지용)
   hexaco:     '#6366f1',
@@ -37,18 +38,36 @@ const TYPE_HEX: Record<string, string> = {
   prediction: '#a855f7',
 };
 
+// group별 시나리오 색상 분화
+const GROUP_HEX: Record<string, string> = {
+  now:   '#8b5cf6',   // violet — 현재
+  near:  '#d946ef',   // fuchsia — 3~6개월
+  far:   '#ec4899',   // pink — 6개월~1년
+};
+
 const TYPE_LABELS: Record<string, string> = {
   center:    '중심',
   attitude:  '태도',
   facet:     'HEXACO',
-  trait:     '나다움',
-  scenario:  '시나리오',
+  insight:   '인사이트',
+  trait:     '인사이트',
+  scenario:  '미래',
   saju:      '사주',
+};
+
+const GROUP_LABELS: Record<string, string> = {
+  now:  '현재',
+  near: '3~6개월',
+  far:  '6개월~1년',
 };
 
 const DEFAULT_HEX = '#94a3b8';
 
-function getHex(type: string): string {
+function getHex(type: string, group?: string): string {
+  // scenario 타입은 group(now/near/far)별로 색상 분화
+  if (type === 'scenario' && group && GROUP_HEX[group]) {
+    return GROUP_HEX[group];
+  }
   return TYPE_HEX[type] || DEFAULT_HEX;
 }
 
@@ -57,6 +76,7 @@ interface GraphNode {
   id: string;
   label: string;
   type: string;
+  group: string;
   isCenter: boolean;
   val: number;
   color: string;
@@ -102,6 +122,7 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
       id: '__center__',
       label: center,
       type: 'center',
+      group: 'core',
       isCenter: true,
       val: 18,
       color: getHex('center'),
@@ -110,13 +131,15 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
     // Other nodes
     for (const node of nodes) {
       const isLarge = node.type === 'attitude' || node.type === 'facet';
+      const isInsight = node.type === 'insight' || node.type === 'trait';
       gNodes.push({
         id: node.id,
         label: node.label,
         type: node.type,
+        group: node.group,
         isCenter: false,
-        val: isLarge ? 10 : (node.type === 'trait' ? 6 : 8),
-        color: getHex(node.type),
+        val: isLarge ? 10 : (isInsight ? 7 : 8),
+        color: getHex(node.type, node.group),
       });
     }
 
@@ -134,10 +157,25 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
   }, [center, nodes, edges]);
 
   // ─── Legend types ──────────────────────────────────────────
-  const legendTypes = useMemo(() => {
-    const types = new Set<string>(['center']);
-    for (const n of nodes) types.add(n.type);
-    return Array.from(types);
+  // 레전드: 타입 + scenario group 분화
+  const legendItems = useMemo(() => {
+    const items: { key: string; label: string; color: string }[] = [
+      { key: 'center', label: '중심', color: getHex('center') },
+    ];
+    const seenTypes = new Set<string>();
+    const seenGroups = new Set<string>();
+    for (const n of nodes) {
+      if (n.type === 'scenario' && (n.group === 'now' || n.group === 'near' || n.group === 'far')) {
+        if (!seenGroups.has(n.group)) {
+          seenGroups.add(n.group);
+          items.push({ key: n.group, label: GROUP_LABELS[n.group] || n.group, color: GROUP_HEX[n.group] || getHex(n.type) });
+        }
+      } else if (!seenTypes.has(n.type)) {
+        seenTypes.add(n.type);
+        items.push({ key: n.type, label: TYPE_LABELS[n.type] || n.type, color: getHex(n.type) });
+      }
+    }
+    return items;
   }, [nodes]);
 
   // ─── Auto-fit camera after layout stabilizes ──────────────
@@ -235,7 +273,10 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
 
   // ─── Node hover label (HTML tooltip) ──────────────────────
   const nodeLabel = useCallback((node: GraphNode) => {
-    const typeLabel = TYPE_LABELS[node.type] || node.type;
+    let typeLabel = TYPE_LABELS[node.type] || node.type;
+    if (node.type === 'scenario' && GROUP_LABELS[node.group]) {
+      typeLabel = GROUP_LABELS[node.group];
+    }
     return `<div style="background:white;color:#1e293b;padding:6px 12px;border-radius:10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,0.12);border:1px solid #e2e8f0;font-family:'Pretendard Variable',sans-serif">
       <div style="font-weight:700;margin-bottom:2px">${node.label}</div>
       <div style="font-size:10px;color:#64748b">${typeLabel}</div>
@@ -274,9 +315,9 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
         className="flex items-center gap-3 flex-wrap"
         style={{ padding: '10px 14px 6px' }}
       >
-        {legendTypes.map((type) => (
+        {legendItems.map((item) => (
           <span
-            key={type}
+            key={item.key}
             className="flex items-center gap-1.5"
             style={{ fontSize: 11, color: '#64748b', fontFamily: "'Pretendard Variable', sans-serif" }}
           >
@@ -285,11 +326,11 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
               style={{
                 width: 8,
                 height: 8,
-                background: getHex(type),
-                boxShadow: `0 0 4px ${getHex(type)}66`,
+                background: item.color,
+                boxShadow: `0 0 4px ${item.color}66`,
               }}
             />
-            {TYPE_LABELS[type] || type}
+            {item.label}
           </span>
         ))}
       </div>
