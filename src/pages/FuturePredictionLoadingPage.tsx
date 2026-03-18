@@ -25,6 +25,13 @@ const LOADING_MESSAGES_PREDICTION = [
   '거의 다 됐어요, 조금만 기다려주세요',
 ];
 
+const LOADING_MESSAGES_COMPATIBILITY = [
+  '두 사람의 결과를 비교하고 있어요',
+  '궁합 포인트를 분석하고 있어요',
+  '미래 시나리오를 만들고 있어요',
+  '거의 다 됐어요, 조금만 기다려주세요',
+];
+
 const LOADING_MESSAGES_GAP = [
   '사주 데이터를 분석하고 있어요',
   '성격 기반 예측과 비교 중이에요',
@@ -75,6 +82,7 @@ export function FuturePredictionLoadingPage() {
   const messageIdx = useRef(0);
   const messageRef = useRef<HTMLParagraphElement>(null);
 
+  const hasMatchCode = !!sessionStorage.getItem('fp_match_code');
   const messages = phase === 'gap' ? LOADING_MESSAGES_GAP : LOADING_MESSAGES_PREDICTION;
 
   // 로딩 메시지 순환
@@ -190,12 +198,20 @@ export function FuturePredictionLoadingPage() {
         return;
       }
 
-      // 결과 저장 + 이동
+      // 결과 저장
       localStorage.setItem('future_prediction_result', JSON.stringify(data.prediction));
       sessionStorage.removeItem('fp_category');
       sessionStorage.removeItem('future_prediction_answers');
       sessionStorage.removeItem('fp_selected_tags');
       sessionStorage.removeItem('fp_custom_question');
+
+      // match_code 감지 → 궁합 분석 모드로 전환
+      const matchCode = sessionStorage.getItem('fp_match_code');
+      if (matchCode) {
+        runCompatibilityAnalysis(matchCode, data.prediction);
+        return;
+      }
+
       navigate('/future-prediction/result', { replace: true });
     } catch (err) {
       console.error('[FuturePredictionLoading] 예외:', err);
@@ -260,6 +276,53 @@ export function FuturePredictionLoadingPage() {
     } catch (err) {
       console.error('[FuturePredictionLoading] Gap 예외:', err);
       toast.error('오류가 발생했습니다. 다시 시도해주세요.');
+      navigate('/future-prediction/result', { replace: true });
+    }
+  };
+
+  // ─── Phase 3: Compatibility Analysis ─────────────────────────
+  const runCompatibilityAnalysis = async (matchCode: string, prediction: Record<string, unknown>) => {
+    // 로딩 메시지 변경
+    if (messageRef.current) {
+      messageRef.current.textContent = LOADING_MESSAGES_COMPATIBILITY[0];
+    }
+
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-future-compatibility`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'analyze',
+            match_code: matchCode,
+            prediction_result: {
+              attitude: (prediction as { attitude?: unknown }).attitude,
+              spectrum: (prediction as { spectrum?: unknown }).spectrum,
+              debate: (prediction as { debate?: unknown }).debate,
+            },
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error('[FuturePredictionLoading] 궁합 분석 오류:', data.error);
+        toast.error(data.error || '궁합 분석에 실패했어요.');
+        sessionStorage.removeItem('fp_match_code');
+        navigate('/future-prediction/result', { replace: true });
+        return;
+      }
+
+      sessionStorage.setItem('fp_compatibility_result', JSON.stringify(data.compatibility));
+      sessionStorage.setItem('fp_compatibility_category', data.inviter_category || '');
+      sessionStorage.removeItem('fp_match_code');
+      navigate('/future-prediction/compatibility', { replace: true });
+    } catch (err) {
+      console.error('[FuturePredictionLoading] 궁합 분석 예외:', err);
+      toast.error('궁합 분석 중 오류가 발생했습니다.');
+      sessionStorage.removeItem('fp_match_code');
       navigate('/future-prediction/result', { replace: true });
     }
   };

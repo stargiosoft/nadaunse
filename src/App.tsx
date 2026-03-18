@@ -72,6 +72,7 @@ import { FuturePredictionLoadingPage } from './pages/FuturePredictionLoadingPage
 import { FuturePredictionResultPage } from './pages/FuturePredictionResultPage';
 import { FuturePredictionSajuInputPage } from './pages/FuturePredictionSajuInputPage';
 import { FuturePredictionGapPage } from './pages/FuturePredictionGapPage';
+import { FuturePredictionCompatibilityPage } from './pages/FuturePredictionCompatibilityPage';
 // ── 운테 (바이럴 테스트) ──
 import UnteHomePage from './pages/UnteHomePage';
 import UnteCreatePage from './pages/UnteCreatePage';
@@ -422,6 +423,7 @@ function GAInit() {
         '/future-prediction/result': '미래 예측 결과',
         '/future-prediction/saju-input': '사주 정보 입력',
         '/future-prediction/gap': '미래 간극 분석',
+        '/future-prediction/compatibility': '궁합 분석 결과',
         // 데일리 마음 상담
         '/consult-type-select': '상담 유형 선택',
         // 나다움 분석 & 마음톡
@@ -3910,6 +3912,7 @@ export default function App() {
           <Route path="/future-prediction/result" element={<FuturePredictionResultPage />} />
           <Route path="/future-prediction/saju-input" element={<FuturePredictionSajuInputPage />} />
           <Route path="/future-prediction/gap" element={<FuturePredictionGapPage />} />
+          <Route path="/future-prediction/compatibility" element={<FuturePredictionCompatibilityPage />} />
           <Route path="/login" element={<LoginPageNewWrapper />} />
           <Route path="/login/new" element={<LoginPageNewWrapper />} />
           <Route path="/login/existing/new" element={<ExistingAccountPageNewWrapper />} />
