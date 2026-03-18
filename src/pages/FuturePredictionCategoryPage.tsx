@@ -99,7 +99,7 @@ export function FuturePredictionCategoryPage() {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: C.bg,
-          overflow: 'auto',
+          overflow: 'hidden',
         }}
       >
         <NavigationHeader title="미래 예측기" onBack={() => navigate('/future-prediction')} />
