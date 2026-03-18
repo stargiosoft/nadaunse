@@ -10,12 +10,12 @@ import {
 /**
  * 미래 예측기 Edge Function
  *
- * 사주 + 나다움 태그 + 태도 테스트 → AI 에이전트 시뮬레이션 → 온톨로지 + 스펙트럼 + 토론
+ * 나다움 태그 + 태도 테스트 → AI 에이전트 시뮬레이션 → 온톨로지 + 스펙트럼 + 토론 (사주는 Phase 2에서)
  *
  * POST body: {
  *   category: '연애' | '재물' | '학업' | '직장',
  *   attitude_answers: { question_id: number, answer: string }[],
- *   saju_record_id?: string,
+ *   // saju_record_id는 Phase 2(generate-future-gap)에서 사용
  *   selected_tags?: string[],
  *   custom_question?: string
  * }
@@ -346,12 +346,10 @@ function calculateAttitudeScore(
 function buildPrompt(params: {
   category: string
   attitudeResult: { score: number; type: string; description: string }
-  sajuInfo: string
-  detailedSajuInfo: string
   tags: { tag_name: string; tag_type: string }[]
   situationText: string
 }): string {
-  const { category, attitudeResult, sajuInfo, detailedSajuInfo, tags, situationText } = params
+  const { category, attitudeResult, tags, situationText } = params
 
   const positiveTags = tags.filter(t => t.tag_type === 'positive').map(t => t.tag_name)
   const negativeTags = tags.filter(t => t.tag_type === 'negative').map(t => t.tag_name)
@@ -387,9 +385,6 @@ function buildPrompt(params: {
 
 ## 입력 정보
 
-### 사주 정보
-${sajuInfo}${detailedSajuInfo}
-
 ### 나다움 성향 태그 (긍정)
 ${topPositive.join(', ') || '없음'}
 
@@ -415,8 +410,7 @@ ${situationText}
       { "id": "att_1", "label": "태도 특성명", "type": "attitude", "group": "core" },
       { "id": "hex_1", "label": "HEXACO 하위축", "type": "facet", "group": "hexaco" },
       { "id": "tag_1", "label": "나다움 태그", "type": "trait", "group": "trait" },
-      { "id": "pred_1", "label": "미래 시나리오", "type": "scenario", "group": "prediction" },
-      { "id": "saju_1", "label": "사주 특성", "type": "saju", "group": "saju" }
+      { "id": "pred_1", "label": "미래 시나리오", "type": "scenario", "group": "prediction" }
     ],
     "edges": [
       { "from": "center", "to": "att_1", "relation": "TENDS_TO" },
@@ -444,14 +438,13 @@ ${situationText}
 
 ### ontology
 - nodes 배열: **${nodeMin}~${nodeMax}개** (입력된 태그/데이터에 비례하여 풍부하게 생성)
-- **id**: 각 노드의 고유 ID (예: att_1, hex_1, tag_1, pred_1, saju_1 등)
+- **id**: 각 노드의 고유 ID (예: att_1, hex_1, tag_1, pred_1 등)
 - **type 허용값**:
   - "attitude" — 태도 테스트에서 도출된 핵심 특성 (3~5개)
   - "facet" — HEXACO 하위축 (Sociability, Diligence, Inquisitiveness 등) (3~6개)
   - "trait" — 입력된 나다움 태그 자체를 노드로 (태그 수만큼, 최대 15개)
   - "scenario" — 미래 시나리오/가능성 (3~5개, 구체적 예측 키워드)
-  - "saju" — 사주 기반 특성 (사주 있으면 2~4개, 없으면 0개)
-- **group**: 같은 group끼리 클러스터로 배치됨 ("core", "hexaco", "trait", "prediction", "saju")
+- **group**: 같은 group끼리 클러스터로 배치됨 ("core", "hexaco", "trait", "prediction")
 - 각 node의 label은 구체적이고 짧게 (2~6자)
 
 ### ontology.edges
@@ -459,7 +452,6 @@ ${situationText}
 - center에서 core 그룹 노드로 연결
 - core/hexaco 노드에서 trait 노드로 연결 (이 태그가 어떤 성격 축에서 비롯되는지)
 - trait 노드에서 scenario 노드로 연결 (이 성향이 어떤 미래로 이어지는지)
-- saju 노드는 scenario 노드와 연결 (운명적 영향)
 - trait 노드끼리도 관련 있으면 연결 가능 (시너지/긴장 관계)
 - "from"/"to"는 노드의 id (center는 "center"로 표기)
 - relation 허용값: "TENDS_TO" | "HAS_TRAIT" | "CHARACTERIZES" | "IDENTIFIED_AS" | "LEADS_TO" | "INFLUENCES" | "SYNERGY" | "TENSION" | "PREDICTED"
@@ -467,7 +459,7 @@ ${situationText}
 
 ### spectrum
 - position: 0(파극/매우부정) ~ 1(대성/매우긍정), 소수점 2자리
-- 사주의 대운/세운 흐름 + 태도 점수를 종합하여 결정
+- 태도 점수 + 성향 태그를 종합하여 결정
 - label: "전환기", "상승기", "안정기" 등 직관적 라벨
 - summary: 구체적 시기 언급 권장 ("하반기에 전환점이 올 수 있어요")
 
@@ -514,7 +506,7 @@ serve(async (req) => {
     console.log('📥 user_id:', user?.id || '비회원')
 
     // ─── 요청 파싱 ──────────────────────────────────────────────
-    const { category, attitude_answers, saju_record_id, selected_tags, custom_question } = await req.json()
+    const { category, attitude_answers, selected_tags, custom_question } = await req.json()
 
     if (!category || !CATEGORIES[category]) {
       return errorResponse(req, '유효하지 않은 카테고리입니다.', 400)
@@ -533,21 +525,15 @@ serve(async (req) => {
 
     // ─── 사용자 데이터 조회 (회원만) ─────────────────────────────
     let tags: { tag_name: string; tag_type: string }[] = []
-    let saju: Record<string, unknown> | null = null
     let summaries: { situation_summary: string }[] = []
 
     if (user) {
-      const sajuQuery = saju_record_id
-        ? supabase.from('saju_records').select('*').eq('id', saju_record_id).single()
-        : supabase.from('saju_records').select('*').eq('user_id', user.id).eq('is_primary', true).single()
-
-      const [tagsResult, sajuResult, summaryResult] = await Promise.all([
+      const [tagsResult, summaryResult] = await Promise.all([
         supabase
           .from('user_trait_tags')
           .select('tag_name, tag_type')
           .eq('user_id', user.id)
           .eq('is_confirmed', true),
-        sajuQuery,
         supabase
           .from('user_situation_summaries')
           .select('situation_summary')
@@ -557,7 +543,6 @@ serve(async (req) => {
       ])
 
       tags = tagsResult.data || []
-      saju = sajuResult.data
       summaries = summaryResult.data || []
     }
 
@@ -567,81 +552,7 @@ serve(async (req) => {
       tags = [...tags, ...additionalTags]
     }
 
-    console.log('📊 태그:', tags.length, '개 | 사주:', saju ? '있음' : '없음', '| 요약:', summaries.length, '개')
-
-    // ─── 사주 정보 텍스트 (optional) ─────────────────────────────
-    let sajuInfo = '사주 정보 없음'
-    let detailedSajuInfo = ''
-
-    if (saju) {
-      const d = new Date(saju.birth_date as string)
-      const cal = saju.calendar_type === 'lunar' ? '음력' : '양력'
-      const gen = saju.gender === 'male' ? '남성' : '여성'
-      sajuInfo = `이름: ${saju.full_name}, 성별: ${gen}, 생년월일: ${cal} ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일, 태어난 시간: ${saju.birth_time || '모름'}, 띠: ${saju.zodiac || '모름'}`
-
-      // ─── 사주 API 호출 (상세 데이터) ────────────────────────────
-      try {
-        const sajuApiKey = Deno.env.get('SAJU_API_KEY')?.trim()
-
-        if (sajuApiKey && saju.birth_date) {
-          const birthDateStr = saju.birth_date as string
-          const birthTimeStr = (saju.birth_time as string) || '12:00'
-
-          const datePart = birthDateStr.includes('T') ? birthDateStr.split('T')[0] : birthDateStr.split(' ')[0]
-          const dateOnly = datePart.replace(/-/g, '')
-          const timeOnly = birthTimeStr.replace(/:/g, '').substring(0, 4)
-          const birthday = dateOnly + timeOnly
-
-          const lunar = saju.calendar_type === 'lunar' ? 'true' : 'false'
-          const sajuApiUrl = `https://service.stargio.co.kr:8400/StargioSaju?birthday=${birthday}&lunar=${lunar}&gender=${saju.gender}&apiKey=${sajuApiKey}`
-          console.log('📞 사주 API 호출:', sajuApiUrl.replace(sajuApiKey, '***'))
-
-          let cachedSajuData: Record<string, unknown> | null = null
-
-          for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-              const sajuResponse = await fetch(sajuApiUrl, {
-                method: 'GET',
-                headers: {
-                  'Accept': 'application/json, text/plain, */*',
-                  'Accept-Encoding': 'gzip, deflate, br',
-                  'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-                  'Cache-Control': 'no-cache',
-                  'Connection': 'keep-alive',
-                  'Host': 'service.stargio.co.kr:8400',
-                  'Origin': 'https://nadaunse.com',
-                  'Referer': 'https://nadaunse.com/',
-                  'Sec-Fetch-Dest': 'empty',
-                  'Sec-Fetch-Mode': 'cors',
-                  'Sec-Fetch-Site': 'cross-site',
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                },
-              })
-
-              if (!sajuResponse.ok) throw new Error(`HTTP ${sajuResponse.status}`)
-
-              const rawText = await sajuResponse.text()
-              cachedSajuData = JSON.parse(rawText)
-
-              if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
-                console.log('✅ 사주 API 성공 (키:', Object.keys(cachedSajuData).length, ')')
-                break
-              }
-              throw new Error('빈 데이터')
-            } catch (e) {
-              console.error(`❌ 사주 API 시도 ${attempt}/3 실패:`, e)
-              if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt))
-            }
-          }
-
-          if (cachedSajuData && Object.keys(cachedSajuData).length > 0) {
-            detailedSajuInfo = `\n\n### 상세 사주 데이터 (명리학 분석용)\n${JSON.stringify(cachedSajuData, null, 2)}`
-          }
-        }
-      } catch (e) {
-        console.error('❌ 사주 API 처리 오류:', e)
-      }
-    }
+    console.log('📊 태그:', tags.length, '개 | 요약:', summaries.length, '개')
 
     // ─── 상황 요약 ──────────────────────────────────────────────
     const situationText = summaries.length > 0
@@ -655,10 +566,8 @@ serve(async (req) => {
     const prompt = buildPrompt({
       category,
       attitudeResult,
-      sajuInfo: sajuInfo + customQuestionText,
-      detailedSajuInfo,
       tags,
-      situationText,
+      situationText: situationText + customQuestionText,
     })
 
     console.log('🤖 AI 호출 시작...')
@@ -735,7 +644,7 @@ serve(async (req) => {
         .from('future_predictions')
         .insert({
           user_id: user.id,
-          saju_record_id: saju?.id || null,
+          saju_record_id: null,
           category,
           attitude_answers,
           ontology: result.ontology,

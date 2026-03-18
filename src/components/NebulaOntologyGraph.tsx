@@ -31,7 +31,7 @@ const TYPE_HEX: Record<string, string> = {
   facet:      '#6366f1',  // indigo
   trait:      '#14b8a6',  // teal
   scenario:   '#a855f7',  // purple
-  saju:       '#f43f5e',  // rose
+  saju:       '#f43f5e',  // rose (Phase 2 gap 페이지용)
   hexaco:     '#6366f1',
   nadaum:     '#14b8a6',
   prediction: '#a855f7',
@@ -143,9 +143,13 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
   useEffect(() => {
     const fg = graphRef.current;
     if (!fg || graphData.nodes.length === 0) return;
+
+    // 초기 카메라를 가깝게 설정
+    fg.cameraPosition({ x: 0, y: 0, z: 120 });
+
     const timer = setTimeout(() => {
-      fg.zoomToFit(600, 60);
-    }, 1200);
+      fg.zoomToFit(600, 5);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [graphData]);
 
@@ -186,7 +190,7 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
   const nodeThreeObject = useCallback((node: GraphNode) => {
     const group = new THREE.Group();
     const color = new THREE.Color(node.color);
-    const radius = node.isCenter ? 7 : (node.val > 8 ? 5.5 : (node.val > 6 ? 4.5 : 3.8));
+    const radius = node.isCenter ? 9 : (node.val > 8 ? 7 : (node.val > 6 ? 5.5 : 4.5));
 
     // Main sphere - shiny material
     const geometry = new THREE.SphereGeometry(radius, 32, 32);
@@ -264,10 +268,10 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
         background: '#f8fafc',
       }}
     >
-      {/* Legend overlay */}
+      {/* Legend */}
       <div
-        className="absolute top-0 left-0 right-0 z-10 flex items-center gap-3 flex-wrap"
-        style={{ padding: '10px 14px' }}
+        className="flex items-center gap-3 flex-wrap"
+        style={{ padding: '10px 14px 6px' }}
       >
         {legendTypes.map((type) => (
           <span
@@ -287,14 +291,6 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
             {TYPE_LABELS[type] || type}
           </span>
         ))}
-      </div>
-
-      {/* Interaction hint */}
-      <div
-        className="absolute bottom-2 left-0 right-0 z-10 text-center pointer-events-none"
-        style={{ fontSize: 11, color: '#94a3b8', fontFamily: "'Pretendard Variable', sans-serif" }}
-      >
-        드래그로 회전 · 스크롤로 확대/축소
       </div>
 
       {/* 3D Force Graph */}
@@ -324,6 +320,14 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
           d3AlphaDecay={0.04}
           d3VelocityDecay={0.3}
         />
+      </div>
+
+      {/* Interaction hint — 그래프 아래 */}
+      <div
+        className="text-center"
+        style={{ padding: '4px 0 10px', fontSize: 11, color: '#94a3b8', fontFamily: "'Pretendard Variable', sans-serif" }}
+      >
+        드래그로 회전 · 스크롤로 확대/축소
       </div>
     </motion.div>
   );
