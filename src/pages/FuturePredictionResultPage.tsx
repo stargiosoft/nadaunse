@@ -1,8 +1,9 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import SEO from '../components/SEO';
 import { NavigationHeader } from '../components/NavigationHeader';
+import { generateFuturePredictionCardBlob } from '../utils/generateFuturePredictionCard';
 
 const NebulaOntologyGraph = lazy(() =>
   import('../components/NebulaOntologyGraph').then(m => ({ default: m.NebulaOntologyGraph }))
@@ -202,10 +203,97 @@ function ChatBubbleDebate({ debate }: { debate: PredictionResult['debate'] }) {
   );
 }
 
+// ─── SajuHookSection — 스펙트럼 결과 기반 조건부 후킹 ────────────────────────
+function SajuHookSection({ position, onNext }: { position: number; onNext: () => void }) {
+  // 스펙트럼 위치에 따라 감정적 동기가 다른 메시지
+  const hook = position <= 0.34
+    ? {
+        emoji: '😨',
+        title: '성격 기반으로는\n위험 신호가 감지됐어요',
+        description: '하지만 사주에서는 완전히 다른 이야기를\n하고 있을 수 있어요.',
+        sub: '성격과 사주의 간극이 클수록\n숨겨진 반전 가능성도 큽니다.',
+        cta: '사주로 반전 가능성 확인하기',
+        accent: '#FF5722',
+      }
+    : position <= 0.65
+    ? {
+        emoji: '🤔',
+        title: '성격 예측만으로는\n방향이 불확실해요',
+        description: '사주의 시간 흐름을 겹쳐보면\n\'언제\' 행동해야 하는지 보입니다.',
+        sub: '같은 성향이라도 타이밍에 따라\n결과가 완전히 달라질 수 있어요.',
+        cta: '나의 타이밍 확인하기',
+        accent: '#FF9800',
+      }
+    : {
+        emoji: '✨',
+        title: '성격 기반 예측은\n긍정적이에요',
+        description: '그런데 사주도 같은 방향일까요?\n두 예측이 일치하면 확신이 되고,',
+        sub: '어긋나면 미리 대비할 수 있습니다.',
+        cta: '사주와 비교해보기',
+        accent: C.primary,
+      };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 3.2 }}
+      style={{
+        padding: '24px 20px',
+        backgroundColor: C.white,
+        borderRadius: 16,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        textAlign: 'center',
+      }}
+    >
+      <span style={{ fontSize: 32, display: 'block', marginBottom: 12 }}>{hook.emoji}</span>
+      <p style={{
+        fontFamily: font, fontSize: 17, fontWeight: 700, color: C.black,
+        letterSpacing: '-0.34px', lineHeight: '26px', marginBottom: 12,
+        whiteSpace: 'pre-line',
+      }}>
+        {hook.title}
+      </p>
+      <p style={{
+        fontFamily: font, fontSize: 14, fontWeight: 400, color: C.gray700,
+        letterSpacing: '-0.28px', lineHeight: '22px', marginBottom: 6,
+        whiteSpace: 'pre-line',
+      }}>
+        {hook.description}
+      </p>
+      <p style={{
+        fontFamily: font, fontSize: 13, fontWeight: 400, color: C.gray600,
+        letterSpacing: '-0.26px', lineHeight: '20px', marginBottom: 20,
+        whiteSpace: 'pre-line',
+      }}>
+        {hook.sub}
+      </p>
+      <button
+        onClick={onNext}
+        style={{
+          width: '100%',
+          padding: '16px',
+          borderRadius: 14,
+          border: 'none',
+          background: `linear-gradient(135deg, ${hook.accent} 0%, ${C.primaryDark} 100%)`,
+          cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+          boxShadow: `0 4px 16px ${hook.accent}4D`,
+        }}
+      >
+        <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.white, letterSpacing: '-0.3px' }}>
+          {hook.cta} →
+        </p>
+      </button>
+    </motion.div>
+  );
+}
+
 // ─── FuturePredictionResultPage ─────────────────────────────────────────────
 export function FuturePredictionResultPage() {
   const navigate = useNavigate();
   const [result, setResult] = useState<PredictionResult | null>(null);
+  const [shareState, setShareState] = useState<'idle' | 'generating' | 'done'>('idle');
 
   useEffect(() => {
     const stored = localStorage.getItem('future_prediction_result');
@@ -219,6 +307,67 @@ export function FuturePredictionResultPage() {
       navigate('/future-prediction', { replace: true });
     }
   }, [navigate]);
+
+  const handleSaveImage = useCallback(async () => {
+    if (!result || shareState === 'generating') return;
+    setShareState('generating');
+    try {
+      const blob = await generateFuturePredictionCardBlob({
+        category: result.category,
+        attitudeType: result.attitude.type,
+        attitudeDescription: result.attitude.description,
+        spectrumPosition: result.spectrum.position,
+        spectrumLabel: result.spectrum.label,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `나다운세_${result.category}_미래예측.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShareState('done');
+      setTimeout(() => setShareState('idle'), 2000);
+    } catch {
+      setShareState('idle');
+    }
+  }, [result, shareState]);
+
+  const handleShareKakao = useCallback(async () => {
+    if (!result) return;
+    try {
+      if (!window.Kakao) {
+        const script = document.createElement('script');
+        script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => resolve();
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      if (window.Kakao && !window.Kakao.isInitialized()) {
+        window.Kakao.init('da0e07cca0c104a3b59f79a24911587c');
+      }
+      const shareUrl = `${window.location.origin}/future-prediction?utm_source=share&utm_medium=kakao&utm_campaign=future_prediction`;
+      window.Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: `나는 "${result.attitude.type}" — ${result.category} 미래 예측`,
+          description: result.attitude.description,
+          imageUrl: `${window.location.origin}/og-image.png`,
+          link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+        },
+        buttons: [{ title: '나도 예측해보기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+      });
+    } catch {
+      // 카카오 실패 시 Web Share API fallback
+      const shareUrl = `${window.location.origin}/future-prediction`;
+      if (navigator.share) {
+        navigator.share({ title: `나는 "${result.attitude.type}"`, text: result.attitude.description, url: shareUrl });
+      } else {
+        try { await navigator.clipboard.writeText(shareUrl); } catch { /* noop */ }
+      }
+    }
+  }, [result]);
 
   if (!result) return null;
 
@@ -345,47 +494,63 @@ export function FuturePredictionResultPage() {
             </div>
           </motion.div>
 
-          {/* 후킹 멘트 + 다음 버튼 */}
+          {/* 공유 버튼 */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 3.2 }}
+            transition={{ duration: 0.4, delay: 3.1 }}
             style={{
-              padding: '20px',
-              backgroundColor: C.white,
-              borderRadius: 16,
-              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-              textAlign: 'center',
+              display: 'flex',
+              gap: 10,
             }}
           >
-            <p style={{ fontFamily: font, fontSize: 16, fontWeight: 600, color: C.black, letterSpacing: '-0.32px', lineHeight: '26px', marginBottom: 16 }}>
-              내 사주는 어떤 미래를
-              <br />
-              그리고 있을까?
-            </p>
-            <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.gray600, letterSpacing: '-0.26px', lineHeight: '20px', marginBottom: 20 }}>
-              성격 기반 예측과 사주 기반 예측 사이의
-              <br />
-              간극을 분석해보세요
-            </p>
             <button
-              onClick={() => navigate('/future-prediction/saju-input')}
+              onClick={handleSaveImage}
+              disabled={shareState === 'generating'}
               style={{
-                width: '100%',
-                padding: '16px',
+                flex: 1,
+                padding: '14px',
                 borderRadius: 14,
-                border: 'none',
-                background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryDark} 100%)`,
-                cursor: 'pointer',
+                border: `1px solid ${C.gray200}`,
+                backgroundColor: C.white,
+                cursor: shareState === 'generating' ? 'wait' : 'pointer',
                 WebkitTapHighlightColor: 'transparent',
-                boxShadow: '0 4px 16px rgba(65,160,158,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
               }}
             >
-              <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.white, letterSpacing: '-0.3px' }}>
-                다음
-              </p>
+              <span style={{ fontSize: 16 }}>{shareState === 'done' ? '✅' : '📷'}</span>
+              <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray700, letterSpacing: '-0.26px' }}>
+                {shareState === 'generating' ? '생성중...' : shareState === 'done' ? '저장됨' : '이미지 저장'}
+              </span>
+            </button>
+            <button
+              onClick={handleShareKakao}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: 14,
+                border: '1px solid #fee500',
+                backgroundColor: '#fee500',
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>💬</span>
+              <span style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: '#3c1e1e', letterSpacing: '-0.26px' }}>
+                카카오톡 공유
+              </span>
             </button>
           </motion.div>
+
+          {/* 사주 간극 후킹 — 스펙트럼 결과에 따른 조건부 메시지 */}
+          <SajuHookSection position={result.spectrum.position} onNext={() => navigate('/future-prediction/saju-input')} />
         </div>
       </div>
     </div>

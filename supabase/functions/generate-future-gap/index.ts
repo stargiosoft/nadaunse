@@ -150,7 +150,13 @@ ${optimizedSajuPrompt ? `\n${optimizedSajuPrompt}` : ''}
   "personality_summary": "성격 기반으로 예측한 미래 요약 (2-3문장)",
   "saju_summary": "사주 기반으로 예측한 미래 요약 (2-3문장)",
   "gap_interpretation": "두 예측 사이의 간극에 대한 해석 (3-4문장, 구체적으로)",
-  "hook_message": "사용자의 관심을 끄는 문제 심화 멘트 (1문장)"
+  "hook_message": "사용자의 관심을 끄는 문제 심화 멘트 (1문장)",
+  "risk_signals": [
+    "이 사람에게 구체적으로 감지되는 위험 신호 1 (1문장, 카테고리 맞춤)",
+    "위험 신호 2 (1문장)",
+    "위험 신호 3 (1문장)"
+  ],
+  "peak_month": 8
 }
 \`\`\`
 
@@ -185,6 +191,17 @@ ${optimizedSajuPrompt ? `\n${optimizedSajuPrompt}` : ''}
 - 사용자가 리포트를 구매하고 싶게 만드는 문장
 - 예: "이 간극을 모르면, 잘못된 방향으로 노력할 수 있어요"
 
+### risk_signals
+- 정확히 3개의 개인화된 위험 신호
+- 각각 1문장, 구체적이고 카테고리에 맞는 내용
+- 성격 데이터 + 사주 흐름을 기반으로 이 사람에게 실제 발생 가능한 위험
+- 막연한 경고 금지! "감정 소모로 관계 피로 누적" 처럼 구체적으로
+- 예시: "내면의 불안이 6개월 내 관계 피로로 이어질 수 있어", "재물운은 좋지만 충동 소비 패턴이 자산 축적을 방해할 수 있어"
+
+### peak_month
+- 사주 흐름상 이 카테고리에서 가장 에너지가 강한 달 (1~12)
+- 절정기/전환점이 되는 월
+
 ### 공통
 - 친근하고 따뜻한 말투 (반말 OK)
 - JSON 외 텍스트 출력 금지`
@@ -206,7 +223,7 @@ ${optimizedSajuPrompt ? `\n${optimizedSajuPrompt}` : ''}
         model: 'gpt-4.1-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-        max_tokens: 1500,
+        max_tokens: 2000,
       }),
     })
 
@@ -234,6 +251,8 @@ ${optimizedSajuPrompt ? `\n${optimizedSajuPrompt}` : ''}
       saju_summary: string
       gap_interpretation: string
       hook_message: string
+      risk_signals: string[]
+      peak_month: number
     }
 
     try {
@@ -262,7 +281,21 @@ ${optimizedSajuPrompt ? `\n${optimizedSajuPrompt}` : ''}
       else if (gp <= 80) gapResult.gap_type = '전환형'
       else gapResult.gap_type = '반전형'
 
-      console.log('✅ JSON 파싱 성공 (gap:', gapResult.gap_percentage, '%, type:', gapResult.gap_type, ')')
+      // risk_signals 기본값 보정
+      if (!Array.isArray(gapResult.risk_signals) || gapResult.risk_signals.length < 3) {
+        gapResult.risk_signals = gapResult.risk_signals || []
+        while (gapResult.risk_signals.length < 3) {
+          gapResult.risk_signals.push('간극이 커질수록 기회를 놓칠 위험이 있어요')
+        }
+      }
+      gapResult.risk_signals = gapResult.risk_signals.slice(0, 3)
+
+      // peak_month 기본값 보정
+      if (!gapResult.peak_month || gapResult.peak_month < 1 || gapResult.peak_month > 12) {
+        gapResult.peak_month = 8
+      }
+
+      console.log('✅ JSON 파싱 성공 (gap:', gapResult.gap_percentage, '%, type:', gapResult.gap_type, ', risks:', gapResult.risk_signals.length, ')')
     } catch (parseErr) {
       console.error('❌ JSON 파싱 실패:', parseErr)
       return errorResponse(req, 'AI 응답 파싱에 실패했습니다. 다시 시도해주세요.', 500)

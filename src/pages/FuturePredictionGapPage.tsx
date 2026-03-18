@@ -102,6 +102,8 @@ interface GapResult {
   saju_summary: string;
   gap_interpretation: string;
   hook_message: string;
+  risk_signals?: string[];
+  peak_month?: number;
 }
 
 // ─── FuturePredictionGapPage ────────────────────────────────────────────────
@@ -227,25 +229,124 @@ export function FuturePredictionGapPage() {
               </div>
             </motion.div>
 
-            {/* ── 후킹 멘트 ── */}
+            {/* ── 위험 신호 ── */}
+            {result.risk_signals && result.risk_signals.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.7 }}
+                style={{
+                  padding: '20px',
+                  backgroundColor: '#fef2f2',
+                  borderRadius: 16,
+                  border: '1px solid #fecaca',
+                }}
+              >
+                <p style={{ fontFamily: font, fontSize: 14, fontWeight: 600, color: '#dc2626', letterSpacing: '-0.28px', marginBottom: 12 }}>
+                  ⚠️ 당신에게 감지된 간극 신호
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {result.risk_signals.map((signal, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <span style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: '#ef4444', flexShrink: 0 }}>{i + 1}.</span>
+                      <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: '#7f1d1d', letterSpacing: '-0.26px', lineHeight: '20px' }}>
+                        {signal}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── 타이밍 맵 미리보기 (잠금) ── */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.7 }}
+              transition={{ duration: 0.4, delay: 0.9 }}
               style={{
                 padding: '20px',
                 backgroundColor: C.surface,
                 borderRadius: 16,
                 border: `1px solid ${C.border}`,
-                textAlign: 'center',
               }}
             >
-              <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.textPrimary, letterSpacing: '-0.3px', lineHeight: '24px', marginBottom: 6 }}>
-                이 간극을 방치한 사람의 <span style={{ color: C.primaryDark, fontWeight: 700 }}>80%</span>가<br /><span style={{ color: C.primaryDark, fontWeight: 700 }}>1년</span> 안에 같은 실수를 반복했어요
+              <p style={{ fontFamily: font, fontSize: 14, fontWeight: 600, color: C.textPrimary, letterSpacing: '-0.28px', marginBottom: 14 }}>
+                📅 당신의 타이밍 맵 <span style={{ fontSize: 12, fontWeight: 400, color: C.textCaption }}>(미리보기)</span>
               </p>
-              <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textCaption, letterSpacing: '-0.26px', lineHeight: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(() => {
+                  const peak = result.peak_month || 8;
+                  const now = new Date().getMonth() + 1;
+                  const months = Array.from({ length: 6 }, (_, i) => {
+                    const m = ((now - 1 + i) % 12) + 1;
+                    const isPeak = m === peak;
+                    const dist = Math.abs(m - peak);
+                    const level = isPeak ? 6 : dist <= 1 ? 5 : dist <= 2 ? 3 : dist <= 3 ? 2 : 1;
+                    const isLocked = i > 0;
+                    return { month: m, level, isPeak, isLocked };
+                  });
+                  return months.map(({ month, level, isPeak, isLocked }) => (
+                    <div key={month} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontFamily: font, fontSize: 12, fontWeight: 500, color: C.textTertiary, width: 32, textAlign: 'right' }}>
+                        {month}월
+                      </span>
+                      <div style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: C.surfaceTertiary, overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${(level / 6) * 100}%`,
+                          height: '100%',
+                          borderRadius: 4,
+                          backgroundColor: isLocked ? C.textDisabled : isPeak ? '#f59e0b' : C.primary,
+                          transition: 'width 0.5s ease',
+                        }} />
+                      </div>
+                      <span style={{ fontFamily: font, fontSize: 11, fontWeight: 500, color: isPeak && !isLocked ? '#f59e0b' : C.textCaption, width: 64, textAlign: 'left' }}>
+                        {isLocked ? '🔒' : isPeak ? '절정기 🔥' : month === new Date().getMonth() + 1 ? '현재' : ''}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+              <p style={{ fontFamily: font, fontSize: 11, fontWeight: 400, color: C.textCaption, letterSpacing: '-0.22px', marginTop: 10, textAlign: 'center' }}>
+                리포트에서 12개월 전체 타이밍을 확인하세요
+              </p>
+            </motion.div>
+
+            {/* ── 후킹 멘트 + 리포트 목차 ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 1.1 }}
+              style={{
+                padding: '20px',
+                backgroundColor: C.surface,
+                borderRadius: 16,
+                border: `1px solid ${C.border}`,
+              }}
+            >
+              <p style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.textPrimary, letterSpacing: '-0.3px', lineHeight: '24px', marginBottom: 6, textAlign: 'center' }}>
+                이 간극을 방치한 사람의 <span style={{ color: '#ef4444', fontWeight: 700 }}>80%</span>가<br /><span style={{ color: '#ef4444', fontWeight: 700 }}>1년</span> 안에 같은 실수를 반복했어요
+              </p>
+              <p style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textCaption, letterSpacing: '-0.26px', lineHeight: '20px', marginBottom: 16, textAlign: 'center' }}>
                 딱 3분이면 나만의 대응 전략을 받을 수 있어요
               </p>
+
+              {/* 리포트 목차 */}
+              <div style={{ padding: '14px 16px', backgroundColor: C.surfaceSecondary, borderRadius: 12 }}>
+                <p style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: C.textPrimary, letterSpacing: '-0.26px', marginBottom: 10 }}>
+                  📋 맞춤 대응 리포트에 포함된 내용
+                </p>
+                {[
+                  '12개월 타이밍 가이드 (절정기는 언제?)',
+                  '나만의 행동 처방전 3가지',
+                  '위험 시그널 & 회피 전략',
+                  '100일 액션 플랜 (체크리스트)',
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: i < 3 ? 6 : 0 }}>
+                    <span style={{ color: C.primary, fontSize: 13 }}>✓</span>
+                    <span style={{ fontFamily: font, fontSize: 13, fontWeight: 400, color: C.textTertiary, letterSpacing: '-0.26px' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           </div>
         </div>
@@ -279,6 +380,9 @@ export function FuturePredictionGapPage() {
           >
             <span style={{ fontFamily: font, fontSize: 16, fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: C.surface }}>
               맞춤 대응 리포트 보러가기
+            </span>
+            <span style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.24px', marginLeft: 6 }}>
+              19,800원
             </span>
           </button>
           <button
