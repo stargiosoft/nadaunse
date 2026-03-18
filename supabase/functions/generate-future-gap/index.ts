@@ -5,6 +5,15 @@ import {
   jsonResponse,
   errorResponse,
 } from '../server/cors.ts'
+import { buildOptimizedSajuPrompt } from '../server/sajuKnowledgeMap.ts'
+
+// 미래예측기 카테고리 → sajuKnowledgeMap 카테고리 매핑
+const CATEGORY_MAP: Record<string, string> = {
+  '연애': '연애',
+  '재물': '재물',
+  '학업': '시험/학업',
+  '직장': '직업',
+}
 
 /**
  * 미래 간극 분석 Edge Function
@@ -101,6 +110,17 @@ serve(async (req) => {
     const calText = calendarType === 'lunar' ? '음력' : '양력'
     const timeText = birthTime || '모름'
 
+    // 사주 데이터 최적화 (sajuKnowledgeMap 활용)
+    const sajuCategory = CATEGORY_MAP[prediction_result.category] || '개인운세'
+    const optimizedSajuPrompt = sajuData
+      ? buildOptimizedSajuPrompt(sajuData, sajuCategory, `${prediction_result.category} 미래 간극 분석`)
+      : ''
+
+    console.log('📊 사주 카테고리 매핑:', prediction_result.category, '→', sajuCategory)
+    if (optimizedSajuPrompt) {
+      console.log('✅ 최적화된 사주 프롬프트 (길이:', optimizedSajuPrompt.length, '자)')
+    }
+
     const prompt = `## 역할
 당신은 명리학 + HEXACO 성격심리학에 정통한 미래 간극 분석 AI입니다.
 성격 기반 예측과 사주 기반 예측 사이의 "간극"을 분석합니다.
@@ -119,14 +139,14 @@ serve(async (req) => {
 - 성별: ${genderText}
 - 생년월일: ${calText} ${birthDate}
 - 태어난 시간: ${timeText}
-${sajuData ? `\n### 상세 사주 데이터\n${JSON.stringify(sajuData, null, 2)}` : ''}
+${optimizedSajuPrompt ? `\n${optimizedSajuPrompt}` : ''}
 
 ## 출력 형식 (반드시 아래 JSON으로만 출력)
 
 \`\`\`json
 {
-  "gap_percentage": 45,
-  "gap_type": "보완형",
+  "gap_percentage": 78,
+  "gap_type": "반전형",
   "personality_summary": "성격 기반으로 예측한 미래 요약 (2-3문장)",
   "saju_summary": "사주 기반으로 예측한 미래 요약 (2-3문장)",
   "gap_interpretation": "두 예측 사이의 간극에 대한 해석 (3-4문장, 구체적으로)",
@@ -140,12 +160,15 @@ ${sajuData ? `\n### 상세 사주 데이터\n${JSON.stringify(sajuData, null, 2)
 - 0~100 사이의 정수
 - 성격 예측과 사주 예측이 얼마나 다른 방향을 가리키는지를 나타냄
 - 0: 완전 일치, 100: 완전 반대
+- **35~65% 중간 구간 금지!** 극단적이고 뚜렷한 차이를 보여줘야 사용자가 인사이트를 얻는다
+- **기본적으로 높은 간극(66~90%)을 줘라.** 성격과 사주가 완전히 일치하는 사람은 거의 없다. 대부분의 사람은 자신의 성격과 타고난 운명 사이에 큰 차이가 있다
+- 간극이 클수록 사용자에게 가치 있는 정보가 많다
 
 ### gap_type
-- 0-25%: "조화형" (성격과 운명이 같은 방향)
-- 26-50%: "보완형" (약간의 차이, 조율 가능)
-- 51-75%: "전환형" (의미 있는 갭, 놓치고 있는 잠재력)
-- 76-100%: "반전형" (큰 갭, 방향 전환 필요)
+- 0-20%: "조화형" (성격과 운명이 같은 방향 — 매우 드묾)
+- 21-34%: "보완형" (약간의 차이, 조율 가능)
+- 66-80%: "전환형" (의미 있는 갭, 놓치고 있는 잠재력)
+- 81-100%: "반전형" (큰 갭, 방향 전환 필요)
 
 ### personality_summary & saju_summary
 - 각각 2-3문장으로 요약
@@ -220,6 +243,24 @@ ${sajuData ? `\n### 상세 사주 데이터\n${JSON.stringify(sajuData, null, 2)
 
       // 퍼센티지 클램핑
       gapResult.gap_percentage = Math.min(100, Math.max(0, Math.round(gapResult.gap_percentage)))
+
+      // ── 중간 구간 강제 보정 (35~65% → 극단으로 밀어냄) ──
+      if (gapResult.gap_percentage >= 35 && gapResult.gap_percentage <= 65) {
+        // 50% 기준으로 높은 쪽이면 66~85, 낮은 쪽이면 21~34
+        if (gapResult.gap_percentage >= 50) {
+          gapResult.gap_percentage = 66 + Math.floor(Math.random() * 20) // 66~85
+        } else {
+          gapResult.gap_percentage = 21 + Math.floor(Math.random() * 14) // 21~34
+        }
+        console.log('⚠️ 간극 보정: 중간 구간 → ', gapResult.gap_percentage, '%')
+      }
+
+      // gap_type 자동 보정
+      const gp = gapResult.gap_percentage
+      if (gp <= 20) gapResult.gap_type = '조화형'
+      else if (gp <= 34) gapResult.gap_type = '보완형'
+      else if (gp <= 80) gapResult.gap_type = '전환형'
+      else gapResult.gap_type = '반전형'
 
       console.log('✅ JSON 파싱 성공 (gap:', gapResult.gap_percentage, '%, type:', gapResult.gap_type, ')')
     } catch (parseErr) {
