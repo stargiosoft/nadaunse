@@ -625,9 +625,12 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4.1-mini',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: 'JSON만 출력하라. 마크다운 코드블록(```)을 쓰지 마라. 순수 JSON 객체만 반환하라.' },
+          { role: 'user', content: prompt },
+        ],
         temperature: 0.8,
-        max_tokens: 4000,
+        max_tokens: 5000,
       }),
     })
 
@@ -659,9 +662,23 @@ serve(async (req) => {
     }
 
     try {
-      const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)```/) || rawContent.match(/(\{[\s\S]*\})/)
-      if (!jsonMatch) throw new Error('JSON 블록 없음')
-      result = JSON.parse(jsonMatch[1].trim())
+      // JSON 추출: 코드블록 → 순수 JSON 객체 → 전체 텍스트
+      let jsonStr = ''
+      const codeBlockMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim()
+      } else {
+        // 첫 번째 { 부터 마지막 } 까지 추출
+        const firstBrace = rawContent.indexOf('{')
+        const lastBrace = rawContent.lastIndexOf('}')
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          jsonStr = rawContent.substring(firstBrace, lastBrace + 1)
+        } else {
+          throw new Error('JSON 블록 없음')
+        }
+      }
+      console.log('📝 JSON 추출 (길이:', jsonStr.length, ')')
+      result = JSON.parse(jsonStr)
 
       // 스펙트럼 위치 클램핑
       result.spectrum.position = Math.min(1, Math.max(0, result.spectrum.position))
