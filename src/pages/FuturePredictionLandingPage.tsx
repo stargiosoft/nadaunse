@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import SEO from '../components/SEO';
 
@@ -75,8 +76,53 @@ function TickerRow({ items, duration, reverse }: { items: string[]; duration: nu
 }
 
 // ─── FuturePredictionLandingPage ────────────────────────────────────────────
+const CATEGORY_LABELS: Record<string, string> = {
+  '연애': '연애',
+  '재물': '재물',
+  '학업': '학업',
+  '직장': '직장',
+  '커리어': '커리어',
+};
+
 export function FuturePredictionLandingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [matchCode, setMatchCode] = useState<string | null>(null);
+  const [matchCategory, setMatchCategory] = useState<string | null>(null);
+
+  // match 파라미터 감지 → sessionStorage에 저장
+  useEffect(() => {
+    const match = searchParams.get('match');
+    if (match) {
+      sessionStorage.setItem('fp_match_code', match);
+      setMatchCode(match);
+      // 카테고리 조회 (get_result 모드)
+      (async () => {
+        try {
+          const { projectId } = await import('../utils/supabase/info');
+          const res = await fetch(
+            `https://${projectId}.supabase.co/functions/v1/generate-future-compatibility`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mode: 'get_result', match_code: match }),
+            }
+          );
+          const data = await res.json();
+          if (data.success) {
+            if (data.status === 'completed') {
+              // 이미 분석 완료 → 바로 결과 페이지로
+              sessionStorage.setItem('fp_compatibility_result', JSON.stringify(data.compatibility));
+              sessionStorage.setItem('fp_compatibility_category', data.inviter_category || '');
+              navigate('/future-prediction/compatibility', { replace: true });
+              return;
+            }
+            setMatchCategory(data.category || data.inviter_category || null);
+          }
+        } catch { /* ignore */ }
+      })();
+    }
+  }, [searchParams, navigate]);
 
   return (
     <div
@@ -133,17 +179,37 @@ export function FuturePredictionLandingPage() {
             transition={{ duration: 0.6 }}
           >
             <p style={{ fontSize: 14, fontWeight: 500, color: C.primary, fontFamily: font, letterSpacing: '-0.28px', marginBottom: 12 }}>
-              AI 미래 시뮬레이션
+              {matchCode ? '궁합 분석 초대' : 'AI 미래 시뮬레이션'}
             </p>
             <p style={{ fontSize: 26, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: '-0.52px', lineHeight: '38px' }}>
-              망할지 잘될지,
-              <br />
-              미래가 궁금하세요?
+              {matchCode ? (
+                <>
+                  친구가 {matchCategory ? CATEGORY_LABELS[matchCategory] : ''} 궁합
+                  <br />
+                  분석을 초대했어요
+                </>
+              ) : (
+                <>
+                  망할지 잘될지,
+                  <br />
+                  미래가 궁금하세요?
+                </>
+              )}
             </p>
             <p style={{ fontSize: 15, fontWeight: 400, color: 'rgba(255,255,255,0.55)', fontFamily: font, letterSpacing: '-0.3px', lineHeight: '24px', marginTop: 12 }}>
-              당신의 성격 유형과 사주로
-              <br />
-              AI 에이전트가 미래를 예측합니다
+              {matchCode ? (
+                <>
+                  같은 테스트를 완료하면
+                  <br />
+                  두 사람의 궁합 결과를 볼 수 있어요
+                </>
+              ) : (
+                <>
+                  당신의 성격 유형과 사주로
+                  <br />
+                  AI 에이전트가 미래를 예측합니다
+                </>
+              )}
             </p>
           </motion.div>
 
@@ -180,7 +246,7 @@ export function FuturePredictionLandingPage() {
             }}
           >
             <p style={{ fontFamily: font, fontSize: 16, fontWeight: 600, color: C.white, letterSpacing: '-0.32px' }}>
-              미래 예측 시작하기
+              {matchCode ? '궁합 분석 시작하기' : '미래 예측 시작하기'}
             </p>
           </button>
           <p style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: 'rgba(255,255,255,0.35)', letterSpacing: '-0.24px', textAlign: 'center', marginTop: 10 }}>

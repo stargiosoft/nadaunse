@@ -1,8 +1,11 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import SEO from '../components/SEO';
 import { NavigationHeader } from '../components/NavigationHeader';
+import { generateFuturePredictionCardBlob } from '../utils/generateFuturePredictionCard';
+import { projectId } from '../utils/supabase/info';
+import { toast } from '../lib/toast';
 
 const NebulaOntologyGraph = lazy(() =>
   import('../components/NebulaOntologyGraph').then(m => ({ default: m.NebulaOntologyGraph }))
@@ -206,6 +209,8 @@ function ChatBubbleDebate({ debate }: { debate: PredictionResult['debate'] }) {
 export function FuturePredictionResultPage() {
   const navigate = useNavigate();
   const [result, setResult] = useState<PredictionResult | null>(null);
+  const [shareState, setShareState] = useState<'idle' | 'generating' | 'done'>('idle');
+  const [compatState, setCompatState] = useState<'idle' | 'loading'>('idle');
 
   useEffect(() => {
     const stored = localStorage.getItem('future_prediction_result');
@@ -219,6 +224,143 @@ export function FuturePredictionResultPage() {
       navigate('/future-prediction', { replace: true });
     }
   }, [navigate]);
+
+  const handleSaveImage = useCallback(async () => {
+    if (!result || shareState === 'generating') return;
+    setShareState('generating');
+    try {
+      const blob = await generateFuturePredictionCardBlob({
+        category: result.category,
+        attitudeType: result.attitude.type,
+        attitudeDescription: result.attitude.description,
+        spectrumPosition: result.spectrum.position,
+        spectrumLabel: result.spectrum.label,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `나다운세_${result.category}_미래예측.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShareState('done');
+      setTimeout(() => setShareState('idle'), 2000);
+    } catch {
+      setShareState('idle');
+    }
+  }, [result, shareState]);
+
+  const handleShareKakao = useCallback(async () => {
+    if (!result) return;
+    try {
+      if (!window.Kakao) {
+        const script = document.createElement('script');
+        script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => resolve();
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      if (window.Kakao && !window.Kakao.isInitialized()) {
+        window.Kakao.init('da0e07cca0c104a3b59f79a24911587c');
+      }
+      const shareUrl = `${window.location.origin}/future-prediction?utm_source=share&utm_medium=kakao&utm_campaign=future_prediction`;
+      window.Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: `나는 "${result.attitude.type}" — ${result.category} 미래 예측`,
+          description: result.attitude.description,
+          imageUrl: `${window.location.origin}/og-image.png`,
+          link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+        },
+        buttons: [{ title: '나도 예측해보기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+      });
+    } catch {
+      // 카카오 실패 시 Web Share API fallback
+      const shareUrl = `${window.location.origin}/future-prediction`;
+      if (navigator.share) {
+        navigator.share({ title: `나는 "${result.attitude.type}"`, text: result.attitude.description, url: shareUrl });
+      } else {
+        try { await navigator.clipboard.writeText(shareUrl); } catch { /* noop */ }
+      }
+    }
+  }, [result]);
+
+  const handleCompatibility = useCallback(async () => {
+    if (!result || compatState === 'loading') return;
+    setCompatState('loading');
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/generate-future-compatibility`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'create_invite',
+            category: result.category,
+            prediction_result: {
+              attitude: result.attitude,
+              spectrum: result.spectrum,
+              debate: result.debate,
+            },
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!data.success || !data.match_code) {
+        toast.error('궁합 초대 생성에 실패했어요.');
+        setCompatState('idle');
+        return;
+      }
+
+      const matchCode = data.match_code;
+      const shareUrl = `${window.location.origin}/future-prediction?match=${matchCode}`;
+
+      // 카카오톡 공유
+      try {
+        if (!window.Kakao) {
+          const script = document.createElement('script');
+          script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
+          await new Promise<void>((resolve, reject) => {
+            script.onload = () => resolve();
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+        if (window.Kakao && !window.Kakao.isInitialized()) {
+          window.Kakao.init('da0e07cca0c104a3b59f79a24911587c');
+        }
+        window.Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: `${result.category} 궁합 분석 초대`,
+            description: `나와 ${result.category} 궁합이 얼마나 될까? 테스트하고 궁합 결과를 확인해보세요!`,
+            imageUrl: `${window.location.origin}/og-image.png`,
+            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+          },
+          buttons: [{ title: '궁합 분석 참여하기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+        });
+      } catch {
+        // 카카오 실패 시 Web Share API fallback
+        if (navigator.share) {
+          await navigator.share({
+            title: `${result.category} 궁합 분석 초대`,
+            text: `나와 ${result.category} 궁합이 얼마나 될까?`,
+            url: shareUrl,
+          });
+        } else {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            toast.success('링크가 복사되었어요!');
+          } catch { /* noop */ }
+        }
+      }
+      setCompatState('idle');
+    } catch {
+      toast.error('오류가 발생했습니다.');
+      setCompatState('idle');
+    }
+  }, [result, compatState]);
 
   if (!result) return null;
 
@@ -343,6 +485,98 @@ export function FuturePredictionResultPage() {
                 학술적으로 검증된 성격심리학 프레임워크 결합
               </p>
             </div>
+          </motion.div>
+
+          {/* 공유 버튼 */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 3.1 }}
+            style={{
+              display: 'flex',
+              gap: 10,
+            }}
+          >
+            <button
+              onClick={handleSaveImage}
+              disabled={shareState === 'generating'}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: 14,
+                border: `1px solid ${C.gray200}`,
+                backgroundColor: C.white,
+                cursor: shareState === 'generating' ? 'wait' : 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{shareState === 'done' ? '✅' : '📷'}</span>
+              <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray700, letterSpacing: '-0.26px' }}>
+                {shareState === 'generating' ? '생성중...' : shareState === 'done' ? '저장됨' : '이미지 저장'}
+              </span>
+            </button>
+            <button
+              onClick={handleShareKakao}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: 14,
+                border: '1px solid #fee500',
+                backgroundColor: '#fee500',
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>💬</span>
+              <span style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: '#3c1e1e', letterSpacing: '-0.26px' }}>
+                카카오톡 공유
+              </span>
+            </button>
+          </motion.div>
+
+          {/* 궁합 분석하기 */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 3.15 }}
+          >
+            <button
+              onClick={handleCompatibility}
+              disabled={compatState === 'loading'}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: 14,
+                border: 'none',
+                background: 'linear-gradient(135deg, #ef6878 0%, #f5a0ab 100%)',
+                cursor: compatState === 'loading' ? 'wait' : 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                boxShadow: '0 4px 16px rgba(239,104,120,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>💕</span>
+              <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: C.white, letterSpacing: '-0.3px' }}>
+                {compatState === 'loading' ? '초대 링크 생성 중...' : '친구와 궁합 분석하기'}
+              </span>
+            </button>
+            <p style={{
+              fontFamily: font, fontSize: 12, fontWeight: 400, color: C.gray400,
+              letterSpacing: '-0.24px', textAlign: 'center', marginTop: 8,
+            }}>
+              카카오톡으로 친구를 초대하고 궁합 결과를 확인하세요
+            </p>
           </motion.div>
 
           {/* 후킹 멘트 + 다음 버튼 */}
