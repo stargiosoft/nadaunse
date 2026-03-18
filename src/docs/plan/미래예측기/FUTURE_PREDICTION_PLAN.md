@@ -1,20 +1,21 @@
 # 미래 예측기 (Future Prediction Engine) 계획서
 
 > **작성일**: 2026-03-16
-> **상태**: 2단계 고도화 구현 완료 (QA 진행 중)
+> **상태**: 3단계 온톨로지 개선 완료 (QA 진행 중)
 > **영감**: MiroFish-Ko (멀티에이전트 시뮬레이션 엔진), Langent Nebula (지식그래프 시각화)
-> **최종 업데이트**: 2026-03-17
+> **최종 업데이트**: 2026-03-18
 
 ---
 
 ## 컨셉 요약
 
-사주 + 심리테스트 + 나다움 태그로 유저 온톨로지를 구축하고,
-AI 에이전트가 미래 시나리오를 토론 형태로 예측해주는 서비스.
+심리테스트 + 나다움 태그로 유저 온톨로지를 구축하고,
+AI 에이전트가 **시간축을 가진** 미래 시나리오를 토론 형태로 예측해주는 서비스.
+사주 정보는 Phase 2에서 별도로 입력받아 간극 분석에 활용.
 
 **핵심 차별점**: 운세를 "읽는" 것이 아니라 "시뮬레이션하는" 경험
 
-**수익 구조** (변경됨):
+**수익 구조**:
 - 무료: 전체 플로우 체험 (비회원 가능) — 성격 기반 예측 + 사주 간극 분석
 - 유료: 맞춤 대응 리포트 (추후 구현)
 
@@ -33,12 +34,13 @@ AI 에이전트가 미래 시나리오를 토론 형태로 예측해주는 서�
 1. **태그 선택 페이지**: `traitTagDictionary`에서 카테고리 순환으로 태그 제공
 2. 사용자가 직접 선택 (최소 3개, 권장 7개+, 이상적 15개+)
 3. 회원: 기존 `user_trait_tags` 프리로드 + 추가 선택
-4. 선택된 태그 → AI 온톨로지 노드로 포함 (trait 타입)
-5. **태그 20-30개 모으면**: AI가 12~45개 노드의 풍부한 지식그래프 생성
+4. **회원 태그 DB 저장**: 새로 선택한 태그는 `user_trait_tags`에 `source_type: 'self_selected'`, `is_confirmed: true`로 저장 → 프로필에도 반영
+5. 선택된 태그 → AI 온톨로지에서 trait 노드로 반영 + insight 노드로 재해석
+6. **태그 10~20개 모으면**: 25~35개 노드의 풍부한 5계층 지식그래프 생성
 
 ---
 
-## 현재 플로우 (8단계)
+## 전체 플로우
 
 ```
 [랜딩] /future-prediction
@@ -54,10 +56,10 @@ AI 에이전트가 미래 시나리오를 토론 형태로 예측해주는 서�
   정확도 스텝퍼 + traitTagDictionary 기반 선택
   ↓
 [AI 로딩 Phase1] /future-prediction/loading
-  → generate-future-prediction Edge Function
+  → generate-future-prediction Edge Function (GPT-4.1-mini)
   ↓
-[결과] /future-prediction/result
-  네뷸러 온톨로지 그래프 + 스펙트럼 + 채팅형 토론
+[결과] /future-prediction/result ⭐
+  3D 온톨로지 그래프 + 스펙트럼 + 채팅형 토론
   ↓
 [사주 입력] /future-prediction/saju-input
   ↓
@@ -65,7 +67,15 @@ AI 에이전트가 미래 시나리오를 토론 형태로 예측해주는 서�
   → generate-future-gap Edge Function
   ↓
 [간극 시각화] /future-prediction/gap
-  원형 게이지 + 유형 카드 + 2열 비교
+  브랜드 컬러 게이지 + 유형 카드 + 2열 비교 + 고정 CTA
+  ↓
+[대책 보고서] (추후 구현)
+  ↓
+[결제] (추후 구현)
+  ↓
+[전체 보고서 발행] (추후 구현)
+  ↓
+[로그인 유도] (추후 구현)
 ```
 
 ### 데이터 플로우
@@ -87,15 +97,15 @@ ss:fp_category, fp_custom_question
 
 | 파일 | 설명 | 상태 |
 |------|------|------|
-| `src/pages/FuturePredictionLandingPage.tsx` | 후킹 랜딩 (다크 그라데이션, ticker) | ✅ 신규 |
-| `src/pages/FuturePredictionCategoryPage.tsx` | 카테고리 4개 + 질문 입력 | ✅ 신규 |
-| `src/pages/FutureAttitudeTestPage.tsx` | 5문항 테스트 (학업 추가, 커리어→직장) | ✅ 수정 |
-| `src/pages/FuturePredictionTagsPage.tsx` | 태그 선택 + 정확도 스텝퍼 | ✅ 신규 |
-| `src/pages/FuturePredictionLoadingPage.tsx` | AI 로딩 (phase 분기) | ✅ 수정 |
-| `src/pages/FuturePredictionResultPage.tsx` | 결과 (네뷸러 그래프, 채팅 토론) | ✅ 대폭 수정 |
-| `src/pages/FuturePredictionSajuInputPage.tsx` | 사주 입력/확인 | ✅ 신규 |
-| `src/pages/FuturePredictionGapPage.tsx` | 간극 시각화 | ✅ 신규 |
-| `src/components/NebulaOntologyGraph.tsx` | Canvas 네뷸러 그래프 (force layout, zoom/pan) | ✅ 신규 |
+| `src/pages/FuturePredictionLandingPage.tsx` | 후킹 랜딩 (다크 그라데이션, ticker) | ✅ |
+| `src/pages/FuturePredictionCategoryPage.tsx` | 카테고리 4개 + 질문 입력 | ✅ |
+| `src/pages/FutureAttitudeTestPage.tsx` | 5문항 테스트 (학업 추가, 커리어→직장) | ✅ |
+| `src/pages/FuturePredictionTagsPage.tsx` | 태그 선택 + 정확도 스텝퍼 | ✅ |
+| `src/pages/FuturePredictionLoadingPage.tsx` | AI 로딩 (phase 분기) | ✅ |
+| `src/pages/FuturePredictionResultPage.tsx` | 결과 (3D 그래프, 채팅 토론) | ✅ |
+| `src/pages/FuturePredictionSajuInputPage.tsx` | 사주 입력/확인 | ✅ |
+| `src/pages/FuturePredictionGapPage.tsx` | 간극 시각화 | ✅ |
+| `src/components/NebulaOntologyGraph.tsx` | Three.js 3D force-directed 그래프 (360도 회전) | ✅ 리빌드 |
 
 ### 라우팅 (App.tsx — 8개)
 
@@ -112,10 +122,10 @@ ss:fp_category, fp_custom_question
 
 ### Edge Functions
 
-| 함수명 | 역할 | 모델 | 상태 |
-|-------|------|------|------|
-| `generate-future-prediction` | 태그+테스트→온톨로지+스펙트럼+토론 | GPT-4.1-nano | ✅ 수정 |
-| `generate-future-gap` | prediction+사주→간극분석 | GPT-4.1-nano | ✅ 신규 |
+| 함수명 | 역할 | 모델 | Phase |
+|-------|------|------|-------|
+| `generate-future-prediction` | 태그+테스트→5계층 온톨로지+스펙트럼+토론 | GPT-4.1-mini | Phase 1 (사주 없음) |
+| `generate-future-gap` | prediction+사주→간극분석 | GPT-4.1-nano | Phase 2 (사주 포함) |
 
 ---
 
@@ -128,34 +138,64 @@ ss:fp_category, fp_custom_question
 | 학업📚 | 몰입/계획/효율 | Conscientiousness + Openness |
 | 직장💼 | 안정/인정/도전 | Extraversion + Openness |
 
-(건강/인간관계 삭제, 학업 신규, 커리어→직장 리네이밍)
-
 ---
 
-## 온톨로지 그래프 (고도화)
+## 온톨로지 그래프 (3단계 고도화)
 
-### 노드 타입 (5종)
-| type | 설명 | 개수 | 색상 |
-|------|------|------|------|
-| `attitude` | 태도 테스트 핵심 특성 | 3~5 | Orange |
-| `facet` | HEXACO 하위축 | 3~6 | Indigo |
-| `trait` | 선택한 나다움 태그 | 태그 수 (최대 15) | Teal |
-| `scenario` | 미래 시나리오 | 3~5 | Purple |
-| `saju` | 사주 특성 | 0~4 | Pink |
+### 5계층 노드 구조
 
-### 노드 수 스케일링
-- 태그 3개 → 12~18개 노드
-- 태그 10개 → 13~25개 노드
-- 태그 20개 → 18~35개 노드
-- 태그 30개 → 23~45개 노드
+```
+center(중심) → attitude/facet(성격축) → trait(나다움 태그) → insight(AI 인사이트) → scenario(미래)
+                                                                                    ├ now(현재)
+                                                                                    ├ near(3~6개월)
+                                                                                    └ far(6개월~1년)
+```
+
+### 노드 타입 (6종)
+
+| type | 설명 | 개수 | 색상 | group |
+|------|------|------|------|-------|
+| `attitude` | 태도 테스트 핵심 특성 | 3~4 | Orange `#f97316` | core |
+| `facet` | HEXACO 하위축 (한국어) | 3~5 | Indigo `#6366f1` | hexaco |
+| `trait` | 선택한 나다움 태그 (입력 반영) | 최대 12 | Teal-300 `#2dd4bf` | trait |
+| `insight` | AI가 태그를 분석·그루핑한 인사이트 | 3~6 | Teal-600 `#0d9488` | insight |
+| `scenario` | 현재 상태 | 2~3 | Violet `#8b5cf6` | now |
+| `scenario` | 3~6개월 전망 | 2~3 | Fuchsia `#d946ef` | near |
+| `scenario` | 6개월~1년 전망 | 2~3 | Pink `#ec4899` | far |
+
+### 엣지 규칙 (고아 노드 금지)
+
+| from | to | relation | 의미 |
+|------|----|----------|------|
+| center | attitude, facet | HAS_TRAIT, CHARACTERIZED_BY | 핵심 성격 |
+| attitude, facet | trait | IDENTIFIED_AS, CHARACTERIZES | 이 축에서 비롯된 태그 |
+| trait | insight | REVEALS | 여러 태그 → 상위 패턴 |
+| insight | scenario(now) | CAUSES | 인사이트 → 현재 상태 |
+| scenario(now) | scenario(near) | EVOLVES_TO | 현재 → 가까운 미래 |
+| scenario(near) | scenario(far) | LEADS_TO | 가까운 미래 → 먼 미래 |
+| insight ↔ insight | SYNERGY, TENSION | 인사이트 간 상호작용 |
+
+### 후처리 (코드 레벨 보장)
+- `ensureNoOrphanNodes()` — 타입별 자동 연결
+- 유효하지 않은 엣지 자동 제거 (존재하지 않는 노드 참조)
+- 엣지 수: 노드 수의 1.5~2.5배
+
+### 스펙트럼↔온톨로지 연결
+- `driver_node`: 스펙트럼 방향에 가장 큰 영향을 준 insight 노드 id
+- `driver_reason`: 해당 인사이트가 핵심인 이유
+- **0.35~0.65 안정기 구간 금지** — 극적인 결과 유도
 
 ### 시각화 (NebulaOntologyGraph)
-- Canvas 2D + requestAnimationFrame
-- Force-directed layout (200 iteration)
-- 드래그(pan) + 핀치줌(2손가락) + 스크롤줌(마우스 휠) — 0.15x~8x
-- 줌 레벨별 라벨 표시 (effectiveSize > 12px)
-- 다크 우주 배경, 별 120개, 노드 glow, 엣지 flow particle
-- offscreen culling, DPR 대응, iOS Safari 최적화
+- **Three.js + react-force-graph-3d** (WebGL)
+- 360도 orbit 회전 (마우스 드래그)
+- 스크롤 줌, 자동 zoomToFit
+- MeshPhongMaterial 구체 (shininess + specular + emissive)
+- SpriteText 노드 라벨
+- 흰색 배경 `#f8fafc`
+- 커스텀 조명 (ambient + 2 directional + point light)
+- 엣지 flow particles
+- lazy import + Suspense (Three.js 코드 스플릿 ~1.3MB → 별도 청크)
+- 의존성: `react-force-graph-3d`, `three`, `three-spritetext`
 
 ---
 
@@ -163,8 +203,9 @@ ss:fp_category, fp_custom_question
 
 | 범위 | 인증 | DB 저장 |
 |------|------|--------|
-| 전체 8단계 플로우 | 비회원 가능 | ❌ |
+| 전체 플로우 | 비회원 가능 | ❌ |
 | 회원 태그 프리로드 | 회원 | — |
+| 태그 선택 → 프로필 저장 | 회원 | ✅ (`self_selected`) |
 | 예측 결과 DB 저장 | 회원 | ✅ |
 
 ---
@@ -180,12 +221,26 @@ ss:fp_category, fp_custom_question
 - [x] 태그 선택 + 정확도 스텝퍼
 - [x] 사주 입력 + 간극 분석
 - [x] Edge Functions 2개 (prediction, gap)
+- [x] 회원 태그 선택 시 프로필 DB 저장 (`self_selected` source_type 추가)
+- [x] 간극 페이지 디자인 시스템 리디자인
+- [x] 후킹 멘트 고정 카피 (행동경제학 기반)
+- [x] 모바일 스크롤 버그 수정
+- [x] 간극 분석 사주 데이터 최적화 (sajuKnowledgeMap ~83% 토큰 절감)
+- [x] **3D 온톨로지 그래프** (Canvas 2D → Three.js 3D, 360도 회전)
+- [x] **온톨로지 5계층 구조** (trait→insight→시간축 scenario)
+- [x] **모델 업그레이드** (GPT-4.1-nano → GPT-4.1-mini)
+- [x] **Phase 1에서 사주 제거** (사주는 Phase 2 전용)
+- [x] **스펙트럼 극적 결과 유도** (0.35~0.65 안정기 금지)
+- [x] **고아 노드 자동 연결** (ensureNoOrphanNodes 후처리)
+- [x] **center 노드 ID 매핑 버그 수정** ("center" ↔ "__center__")
 
 ### 남은 작업
 - [ ] 스테이징 E2E 테스트 (비회원/회원 양쪽)
-- [ ] iOS Safari 테스트 (Canvas, 핀치줌, touch)
+- [ ] iOS Safari 테스트 (WebGL, 터치 회전)
 - [ ] 결과 공유 카드 이미지 생성
+- [ ] 대책 보고서 페이지 구현
 - [ ] 맞춤 대응 리포트 결제 연동
+- [ ] 전체 보고서 발행 → 로그인 유도 플로우
 - [ ] 프로덕션 배포 (DB + Edge Functions + 프론트)
 - [ ] 프로필 페이지 진입 배너
 
