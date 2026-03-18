@@ -63,6 +63,15 @@ import TestTarotPage from './pages/TestTarotPage'; // ⭐ 테스트용 타로 �
 import TestConfirmModals from './pages/TestConfirmModals';
 import EmailAuthPage from './pages/EmailAuthPage'; // ⭐ AI 테스트용 이메일 인증 페이지
 import MindTalkPage from './pages/MindTalkPage'; // ⭐ 마음톡 (AI 심리 상담)
+// ── 미래 예측기 ──
+import { FuturePredictionLandingPage } from './pages/FuturePredictionLandingPage';
+import { FuturePredictionCategoryPage } from './pages/FuturePredictionCategoryPage';
+import { FutureAttitudeTestPage } from './pages/FutureAttitudeTestPage';
+import { FuturePredictionTagsPage } from './pages/FuturePredictionTagsPage';
+import { FuturePredictionLoadingPage } from './pages/FuturePredictionLoadingPage';
+import { FuturePredictionResultPage } from './pages/FuturePredictionResultPage';
+import { FuturePredictionSajuInputPage } from './pages/FuturePredictionSajuInputPage';
+import { FuturePredictionGapPage } from './pages/FuturePredictionGapPage';
 // ── 운테 (바이럴 테스트) ──
 import UnteHomePage from './pages/UnteHomePage';
 import UnteCreatePage from './pages/UnteCreatePage';
@@ -404,6 +413,15 @@ function GAInit() {
         '/taro-consult': '타로 상담',
         '/taro-consult/loading': '타로 상담 생성 중',
         '/taro-consult/result': '타로 상담 결과',
+        // 미래 예측기
+        '/future-prediction': '미래 예측기',
+        '/future-prediction/category': '카테고리 선택',
+        '/future-prediction/test': '태도 테스트',
+        '/future-prediction/tags': '태그 선택',
+        '/future-prediction/loading': '미래 예측 중',
+        '/future-prediction/result': '미래 예측 결과',
+        '/future-prediction/saju-input': '사주 정보 입력',
+        '/future-prediction/gap': '미래 간극 분석',
         // 데일리 마음 상담
         '/consult-type-select': '상담 유형 선택',
         // 나다움 분석 & 마음톡
@@ -3883,6 +3901,15 @@ export default function App() {
           <Route path="/taro-consult" element={<TaroConsultPage />} />
           <Route path="/taro-consult/loading" element={<TaroConsultLoadingPage />} />
           <Route path="/taro-consult/result" element={<TaroConsultResultPage />} />
+          {/* ── 미래 예측기 ── */}
+          <Route path="/future-prediction" element={<FuturePredictionLandingPage />} />
+          <Route path="/future-prediction/category" element={<FuturePredictionCategoryPage />} />
+          <Route path="/future-prediction/test" element={<FutureAttitudeTestPage />} />
+          <Route path="/future-prediction/tags" element={<FuturePredictionTagsPage />} />
+          <Route path="/future-prediction/loading" element={<FuturePredictionLoadingPage />} />
+          <Route path="/future-prediction/result" element={<FuturePredictionResultPage />} />
+          <Route path="/future-prediction/saju-input" element={<FuturePredictionSajuInputPage />} />
+          <Route path="/future-prediction/gap" element={<FuturePredictionGapPage />} />
           <Route path="/login" element={<LoginPageNewWrapper />} />
           <Route path="/login/new" element={<LoginPageNewWrapper />} />
           <Route path="/login/existing/new" element={<ExistingAccountPageNewWrapper />} />
