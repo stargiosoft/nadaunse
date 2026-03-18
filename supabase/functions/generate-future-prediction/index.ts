@@ -354,7 +354,6 @@ function buildPrompt(params: {
   const positiveTags = tags.filter(t => t.tag_type === 'positive').map(t => t.tag_name)
   const negativeTags = tags.filter(t => t.tag_type === 'negative').map(t => t.tag_name)
 
-  // 빈도 기반 상위 태그
   const getTopTags = (tagList: string[], limit: number) => {
     const freq = new Map<string, number>()
     for (const t of tagList) freq.set(t, (freq.get(t) || 0) + 1)
@@ -369,114 +368,153 @@ function buildPrompt(params: {
 
   const hexacoAxes = CATEGORIES[category]?.hexacoAxes || ''
 
-  // 태그 수에 따라 온톨로지 깊이 조절
-  const tagCount = topPositive.length + topNegative.length
-  const nodeMin = Math.max(12, 8 + Math.floor(tagCount * 0.5))
-  const nodeMax = Math.min(30, 15 + tagCount)
-
   return `## 역할
-당신은 명리학 + HEXACO 성격심리학에 정통한 미래 예측 AI 에이전트 코디네이터입니다.
-3명의 에이전트(낙관이, 현실이, 비관이)의 관점을 종합하여 "${category}" 분야의 미래를 예측합니다.
+너는 HEXACO 성격심리학에 정통한 미래 예측 AI다.
+"${category}" 분야에서 이 사람의 성격 데이터를 **분석·재해석**하고, 시간축을 가진 미래 시나리오를 생성한다.
+
+## 핵심 원칙
+1. **태그를 복사하지 마라** — 입력된 태그를 그대로 노드로 만들지 않고, 여러 태그를 묶어서 "이 사람은 ~한 성향 패턴이 있다"는 **인사이트**로 재해석한다
+2. **시간축이 있는 예측** — "지금 이런 성향이니까 → 3개월 후 이런 변화가 → 6개월 후 이런 결과가" 흐름을 만든다
+3. **모든 노드가 연결되어야 한다** — 고립된 노드 절대 금지. 모든 노드는 최소 1개 이상의 엣지를 가진다
+4. **극적인 결과** — 무난하고 평범한 예측은 재미없다. 뚜렷한 방향성을 제시한다
 
 ## 분석 프레임워크
-- **HEXACO 성격 모델** (IPIP 기반, 학술 검증): 6축 — Honesty-Humility(진실성), Emotionality(감성), Extraversion(실행력), Agreeableness(관계), Conscientiousness(의지력), Openness(사고력)
-- 이번 카테고리(${category})는 **${hexacoAxes}** 축을 중심으로 분석
-- 태도 테스트 문항은 IPIP-HEXACO 문항 풀에서 선별 (퍼블릭 도메인)
-
-## 입력 정보
-
-### 나다움 성향 태그 (긍정)
-${topPositive.join(', ') || '없음'}
-
-### 나다움 성향 태그 (보완점)
-${topNegative.join(', ') || '없음'}
-
-### 태도 테스트 결과
+- HEXACO: ${hexacoAxes}
 - 카테고리: ${category}
-- 유형: ${attitudeResult.type}
-- 점수: ${(attitudeResult.score * 100).toFixed(0)}점
-- 설명: ${attitudeResult.description}
 
-### 최근 상황
-${situationText}
+## 입력 데이터
 
-## 출력 형식 (반드시 아래 JSON으로만 출력)
+**성향 태그 (긍정)**: ${topPositive.join(', ') || '없음'}
+**성향 태그 (보완점)**: ${topNegative.join(', ') || '없음'}
+**태도 테스트**: ${attitudeResult.type} (${(attitudeResult.score * 100).toFixed(0)}점) — ${attitudeResult.description}
+**최근 상황**: ${situationText}
+
+## 출력 JSON (이것만 출력, 다른 텍스트 금지)
 
 \`\`\`json
 {
   "ontology": {
-    "center": "유저의 나다움 핵심 유형 (한 줄, 15자 이내)",
+    "center": "이 사람의 핵심 성격 키워드 (15자 이내)",
     "nodes": [
-      { "id": "att_1", "label": "태도 특성명", "type": "attitude", "group": "core" },
-      { "id": "hex_1", "label": "HEXACO 하위축", "type": "facet", "group": "hexaco" },
-      { "id": "tag_1", "label": "나다움 태그", "type": "trait", "group": "trait" },
-      { "id": "pred_1", "label": "미래 시나리오", "type": "scenario", "group": "prediction" }
+      { "id": "att_1", "label": "태도 특성", "type": "attitude", "group": "core" },
+      { "id": "hex_1", "label": "HEXACO축", "type": "facet", "group": "hexaco" },
+      { "id": "ins_1", "label": "도출 인사이트", "type": "insight", "group": "insight" },
+      { "id": "now_1", "label": "현재 상태", "type": "scenario", "group": "now" },
+      { "id": "mid_1", "label": "3~6개월 변화", "type": "scenario", "group": "near" },
+      { "id": "far_1", "label": "6개월~1년 결과", "type": "scenario", "group": "far" }
     ],
     "edges": [
-      { "from": "center", "to": "att_1", "relation": "TENDS_TO" },
-      { "from": "att_1", "to": "tag_1", "relation": "IDENTIFIED_AS" },
-      { "from": "hex_1", "to": "tag_1", "relation": "CHARACTERIZES" },
-      { "from": "tag_1", "to": "pred_1", "relation": "LEADS_TO" }
+      { "from": "center", "to": "att_1", "relation": "HAS_TRAIT" },
+      { "from": "center", "to": "hex_1", "relation": "CHARACTERIZED_BY" },
+      { "from": "att_1", "to": "ins_1", "relation": "REVEALS" },
+      { "from": "hex_1", "to": "ins_1", "relation": "INFLUENCES" },
+      { "from": "ins_1", "to": "now_1", "relation": "CAUSES" },
+      { "from": "now_1", "to": "mid_1", "relation": "EVOLVES_TO" },
+      { "from": "mid_1", "to": "far_1", "relation": "LEADS_TO" },
+      { "from": "ins_1", "to": "ins_2", "relation": "SYNERGY" }
     ]
   },
   "spectrum": {
     "category": "${category}",
-    "position": 0.78,
+    "position": 0.82,
     "label": "급상승기",
-    "summary": "올해 하반기, 예상 못한 기회가 터질 수 있어요"
+    "summary": "올해 하반기, 예상 못한 기회가 터질 수 있어요",
+    "driver_node": "ins_1",
+    "driver_reason": "이 인사이트가 스펙트럼 방향을 결정하는 핵심 요인"
   },
   "debate": {
-    "optimist": "낙관이의 미래 예측 (2~3문장, 구체적으로)",
-    "realist": "현실이의 미래 예측 (2~3문장, 구체적으로)",
-    "pessimist": "비관이의 미래 예측 (2~3문장, 구체적으로)",
-    "conclusion": "3명의 토론을 종합한 결론 (2~3문장)"
+    "optimist": "낙관이 예측 (2~3문장, 온톨로지 노드 참조하며)",
+    "realist": "현실이 예측 (2~3문장)",
+    "pessimist": "비관이 예측 (2~3문장)",
+    "conclusion": "종합 결론 (2~3문장, 실질적 조언)"
   }
 }
 \`\`\`
 
-## 출력 규칙
+## 노드 타입 상세 규칙
 
-### ontology
-- nodes 배열: **${nodeMin}~${nodeMax}개** (입력된 태그/데이터에 비례하여 풍부하게 생성)
-- **id**: 각 노드의 고유 ID (예: att_1, hex_1, tag_1, pred_1 등)
-- **type 허용값**:
-  - "attitude" — 태도 테스트에서 도출된 핵심 특성 (3~5개)
-  - "facet" — HEXACO 하위축 (Sociability, Diligence, Inquisitiveness 등) (3~6개)
-  - "trait" — 입력된 나다움 태그 자체를 노드로 (태그 수만큼, 최대 15개)
-  - "scenario" — 미래 시나리오/가능성 (3~5개, 구체적 예측 키워드)
-- **group**: 같은 group끼리 클러스터로 배치됨 ("core", "hexaco", "trait", "prediction")
-- 각 node의 label은 구체적이고 짧게 (2~6자)
+### attitude (3~4개)
+태도 테스트에서 도출된 핵심 성격 특성. label: 2~5자
 
-### ontology.edges
-- 노드 간 **의미 있는 연결**만 생성 (모든 쌍이 아니라 분석적 관계가 있는 것만)
-- center에서 core 그룹 노드로 연결
-- core/hexaco 노드에서 trait 노드로 연결 (이 태그가 어떤 성격 축에서 비롯되는지)
-- trait 노드에서 scenario 노드로 연결 (이 성향이 어떤 미래로 이어지는지)
-- trait 노드끼리도 관련 있으면 연결 가능 (시너지/긴장 관계)
-- "from"/"to"는 노드의 id (center는 "center"로 표기)
-- relation 허용값: "TENDS_TO" | "HAS_TRAIT" | "CHARACTERIZES" | "IDENTIFIED_AS" | "LEADS_TO" | "INFLUENCES" | "SYNERGY" | "TENSION" | "PREDICTED"
-- edges 수: nodes 수의 1.2~2배 정도 (촘촘한 네트워크)
+### facet (3~5개)
+HEXACO 하위축. 학술적 이름이 아니라 **한국어로 직관적**으로. label: 2~5자
+예: "사교성", "꼼꼼함", "호기심", "절제력", "공감력"
 
-### spectrum
-- position: 0(파극/매우부정) ~ 1(대성/매우긍정), 소수점 2자리
-- **중요: 0.35~0.65 구간(안정기/보통)은 피하라!** 극적이고 뚜렷한 결과가 재미있다
-- 긍정 태그가 많으면 0.7~0.95, 부정/보완 태그가 많으면 0.05~0.3 쪽으로 과감하게
-- 태도 점수가 높으면 상승 쪽, 낮으면 하강 쪽으로 확실히 반영
-- label 예시: "급상승기", "대전환기", "폭풍전야", "도약 직전", "위기경보", "황금기", "시련기"
-- summary: 구체적 시기 + 감정을 자극하는 표현 ("올해 하반기, 인생 최대의 전환점이 올 수 있어요")
+### insight (4~8개) ⭐ 가장 중요
+입력된 태그들을 **분석하여 도출한 인사이트**. 태그를 그대로 복사하지 말 것!
+- 여러 태그를 묶어서 "이 사람에게는 ~한 패턴이 있다"를 발견
+- 강점 인사이트, 약점 인사이트, 숨은 잠재력, 내적 갈등 등 다양하게
+- label: 2~6자 (예: "완벽주의", "감정표현력", "숨은 야망", "결정장애")
 
-### debate
-- 각 에이전트는 서로 다른 관점에서 구체적으로 예측
-- 낙관이: 가장 좋은 시나리오, 긍정적 가능성
-- 현실이: 객관적 현실, 필요한 노력
-- 비관이: 리스크, 주의점, 최악의 시나리오
-- conclusion: 3명 의견 종합 + 실질적 조언
+### scenario — 시간축 3단계
+- **group "now"** (2~3개): 현재 상태/경향 (예: "소비 과다", "저축 습관화")
+- **group "near"** (2~3개): 3~6개월 내 예상 변화 (예: "재정 전환점", "습관 변화")
+- **group "far"** (2~3개): 6개월~1년 전망 (예: "자산 증가", "투자 실패 위험")
 
-### 공통
-- 친근하고 따뜻한 말투 (반말 OK, "너는" 사용)
-- 사용자 이름 언급 금지
-- JSON 외 텍스트 출력 금지
-- 구체적이고 실용적인 예측 제시`
+## 엣지 규칙 (★ 절대 고아 노드 금지)
+- **center → attitude, facet**: 반드시 연결
+- **attitude, facet → insight**: 어떤 성격 축이 어떤 인사이트를 만드는지
+- **insight → scenario(now)**: 이 인사이트가 현재 어떤 상태를 만드는지
+- **scenario(now) → scenario(near)**: 현재→가까운 미래 인과
+- **scenario(near) → scenario(far)**: 가까운 미래→먼 미래 인과
+- **insight ↔ insight**: 시너지/긴장 관계 (최소 2개)
+- **총 엣지 수**: 노드 수의 1.5~2.5배 (촘촘하게!)
+- relation 허용값: "HAS_TRAIT" | "CHARACTERIZED_BY" | "REVEALS" | "INFLUENCES" | "CAUSES" | "EVOLVES_TO" | "LEADS_TO" | "SYNERGY" | "TENSION" | "AMPLIFIES" | "BLOCKS"
+
+## 스펙트럼 규칙
+- position: 0(파극) ~ 1(대성)
+- **0.35~0.65 구간 금지!** 극적이고 뚜렷하게
+- driver_node: 스펙트럼 방향에 가장 큰 영향을 준 insight 노드의 id
+- driver_reason: 왜 이 인사이트가 핵심인지 한 줄 설명
+
+## 토론 규칙
+- 온톨로지의 insight/scenario 노드를 참조하며 예측
+- 친근한 말투 (반말 OK, "너는" 사용)
+- 사용자 이름 언급 금지`
+}
+
+// ─── 후처리: 고아 노드 자동 연결 ──────────────────────────────────────
+function ensureNoOrphanNodes(
+  ontology: {
+    nodes: { id: string; type: string; group: string }[]
+    edges: { from: string; to: string; relation: string }[]
+  }
+) {
+  const connectedIds = new Set<string>()
+  for (const e of ontology.edges) {
+    connectedIds.add(e.from)
+    connectedIds.add(e.to)
+  }
+  // center는 항상 연결된 것으로 취급
+  connectedIds.add('center')
+
+  for (const node of ontology.nodes) {
+    if (connectedIds.has(node.id)) continue
+
+    // 고아 노드 발견 → 타입에 따라 자동 연결
+    if (node.type === 'attitude' || node.type === 'facet') {
+      ontology.edges.push({ from: 'center', to: node.id, relation: 'HAS_TRAIT' })
+    } else if (node.type === 'insight') {
+      // 가장 가까운 attitude/facet 노드에 연결
+      const parent = ontology.nodes.find(n => n.type === 'attitude' || n.type === 'facet')
+      if (parent) {
+        ontology.edges.push({ from: parent.id, to: node.id, relation: 'REVEALS' })
+      } else {
+        ontology.edges.push({ from: 'center', to: node.id, relation: 'REVEALS' })
+      }
+    } else if (node.type === 'scenario') {
+      // insight 노드에 연결
+      const insight = ontology.nodes.find(n => n.type === 'insight')
+      if (insight) {
+        ontology.edges.push({ from: insight.id, to: node.id, relation: 'CAUSES' })
+      } else {
+        ontology.edges.push({ from: 'center', to: node.id, relation: 'LEADS_TO' })
+      }
+    } else {
+      ontology.edges.push({ from: 'center', to: node.id, relation: 'HAS_TRAIT' })
+    }
+    connectedIds.add(node.id)
+  }
 }
 
 // ─── 메인 핸들러 ────────────────────────────────────────────────────
@@ -586,7 +624,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-nano',
+        model: 'gpt-4.1-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.8,
         max_tokens: 4000,
@@ -616,7 +654,7 @@ serve(async (req) => {
         nodes: { id: string; label: string; type: string; group: string }[]
         edges: { from: string; to: string; relation: string }[]
       }
-      spectrum: { category: string; position: number; label: string; summary: string }
+      spectrum: { category: string; position: number; label: string; summary: string; driver_node?: string; driver_reason?: string }
       debate: { optimist: string; realist: string; pessimist: string; conclusion: string }
     }
 
@@ -631,6 +669,15 @@ serve(async (req) => {
 
       // edges가 없으면 빈 배열로
       if (!result.ontology.edges) result.ontology.edges = []
+
+      // 고아 노드 자동 연결
+      ensureNoOrphanNodes(result.ontology)
+
+      // 유효하지 않은 엣지 제거 (존재하지 않는 노드 참조)
+      const validNodeIds = new Set(['center', ...result.ontology.nodes.map((n: { id: string }) => n.id)])
+      result.ontology.edges = result.ontology.edges.filter(
+        (e: { from: string; to: string }) => validNodeIds.has(e.from) && validNodeIds.has(e.to)
+      )
 
       console.log('✅ JSON 파싱 성공 (노드:', result.ontology.nodes?.length, '엣지:', result.ontology.edges?.length, 'spectrum:', result.spectrum.position, ')')
     } catch (parseErr) {
