@@ -109,7 +109,7 @@ Generate images that closely match the reference image's style, character design
         console.log(`🎯 Gemini 요청 (${storagePath}): parts=${parts.length}개, 레퍼런스포함=${hasRefInParts}`)
 
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
