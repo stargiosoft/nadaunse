@@ -200,7 +200,7 @@ OUTPUT CANVAS RULE (STRICT)
 - No text inside the image.
 - No logo or watermark.`
 
-    console.log('🔑 Gemini API 호출 시작 (gemini-2.5-flash-image)...')
+    console.log('🔑 Gemini API 호출 시작 (gemini-3.1-flash-image-preview)...')
 
     // Gemini 2.5 Flash Image 요청 본문 구성
     const requestBody: any = {
@@ -254,7 +254,7 @@ OUTPUT CANVAS RULE (STRICT)
     })
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {

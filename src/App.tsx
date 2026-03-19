@@ -73,8 +73,12 @@ import { FuturePredictionResultPage } from './pages/FuturePredictionResultPage';
 import { FuturePredictionSajuInputPage } from './pages/FuturePredictionSajuInputPage';
 import { FuturePredictionGapPage } from './pages/FuturePredictionGapPage';
 import { FuturePredictionCompatibilityPage } from './pages/FuturePredictionCompatibilityPage';
-// ── 카드뉴스 ──
+// ── 콘텐츠 스튜디오 ──
+import ContentStudioPage from './pages/ContentStudioPage';
 import CardNewsPage from './pages/CardNewsPage';
+import ShortFormPage from './pages/ShortFormPage';
+import AdCopyPage from './pages/AdCopyPage';
+import AdCreativePage from './pages/AdCreativePage';
 // ── 운테 (바이럴 테스트) ──
 import UnteHomePage from './pages/UnteHomePage';
 import UnteCreatePage from './pages/UnteCreatePage';
@@ -3885,8 +3889,18 @@ export default function App() {
           <Route path="/nadaum" element={<NadaumAnalysisPage />} /> {/* ⭐ 나다움 분석 */}
           <Route path="/nadaum/:category" element={<NadaumAnalysisDetail />} /> {/* ⭐ 나다움 분석 상세 */}
           <Route path="/maumtalk" element={<MindTalkPage />} /> {/* ⭐ 마음톡 AI 심리 상담 */}
-          {/* ── 카드뉴스 ── */}
+          {/* ── 콘텐츠 스튜디오 ── */}
+          <Route path="/contents-maker" element={<ContentStudioPage />} />
           <Route path="/card-news" element={<CardNewsPage />} />
+          <Route path="/short-form" element={<ShortFormPage />} />
+          <Route path="/ad-copy" element={<AdCopyPage />} />
+          <Route path="/ad-creative" element={<AdCreativePage />} />
+          {/* ── 운테 (바이럴 테스트) ── */}
+          <Route path="/unte" element={<UnteHomePage />} />
+          <Route path="/unte/create" element={<UnteCreatePage />} />
+          <Route path="/unte/:slug" element={<UnteLandingPage />} />
+          <Route path="/unte/:slug/play" element={<UntePlayPage />} />
+          <Route path="/unte/:slug/result" element={<UnteResultPage />} />
           {/* ── 홈 고도화 라우트 ── */}
           <Route path="/best-fortune" element={<FortuneAllPage />} />
           <Route path="/new-free" element={<NewFreeFortuneAllPage />} />

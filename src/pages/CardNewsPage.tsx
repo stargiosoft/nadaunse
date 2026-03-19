@@ -388,7 +388,7 @@ export default function CardNewsPage() {
       if (!el) continue;
       try {
         const dataUrl = await toPng(el, {
-          pixelRatio: 6,
+          pixelRatio: 2,
           cacheBust: true,
           style: { border: 'none' },
           filter: (node: HTMLElement) => !(node instanceof HTMLElement && (node.classList.contains('slide-ui-only') || node.classList.contains('slide-regen-btn'))),
@@ -725,12 +725,12 @@ export default function CardNewsPage() {
               </div>
 
               {/* Proceed to Production & Back */}
-              <div className="flex" style={{ gap: '12px' }}>
+              <div className="flex" style={{ gap: '10px' }}>
                 <button
                   onClick={() => { setStep('input'); setResult(null); }}
-                  className="flex-1 flex items-center justify-center"
+                  className="shrink-0 flex items-center justify-center"
                   style={{
-                    height: '56px', borderRadius: '16px',
+                    height: '56px', width: '80px', borderRadius: '16px',
                     backgroundColor: C.primaryLight, border: 'none', cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
@@ -739,13 +739,13 @@ export default function CardNewsPage() {
                   onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                 >
                   <span style={{
-                    fontFamily: font, fontSize: '15px', fontWeight: 500,
+                    fontFamily: font, fontSize: '13px', fontWeight: 500,
                     color: C.primary,
                   }}>처음으로</span>
                 </button>
                 <button
                   onClick={() => { setStep('production'); setImages({}); setImageProgress(0); setCoverApproved(false); coverBase64Ref.current = null; setUnsplashCredits({}); unsplashPageRef.current = {}; setImageMode('unsplash'); }}
-                  className="flex-[2] flex items-center justify-center"
+                  className="flex-1 flex items-center justify-center"
                   style={{
                     height: '56px', borderRadius: '16px',
                     backgroundColor: C.primary, border: 'none', cursor: 'pointer',
@@ -756,7 +756,7 @@ export default function CardNewsPage() {
                   onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                 >
                   <span style={{
-                    fontFamily: font, fontSize: '15px', fontWeight: 500,
+                    fontFamily: font, fontSize: '16px', fontWeight: 500,
                     lineHeight: '25px', letterSpacing: '-0.32px', color: C.textWhite,
                   }}>이 기획안으로 제작하기</span>
                 </button>
@@ -916,16 +916,16 @@ export default function CardNewsPage() {
                           </a>
                         </div>
                       )}
-                      <div className="flex" style={{ gap: '12px' }}>
+                      <div className="flex" style={{ gap: '10px' }}>
                         <button
                           onClick={() => {
                             if (imageMode === 'unsplash') { generateCoverUnsplash(); }
                             else { coverBase64Ref.current = null; generateCoverImage(true); }
                           }}
                           disabled={imageGenerating !== null}
-                          className="flex-1 flex items-center justify-center"
+                          className="shrink-0 flex items-center justify-center"
                           style={{
-                            height: '56px', borderRadius: '16px', gap: '6px',
+                            height: '56px', width: '100px', borderRadius: '16px', gap: '4px',
                             backgroundColor: C.primaryLight, border: 'none',
                             cursor: imageGenerating !== null ? 'not-allowed' : 'pointer',
                             transition: 'all 0.15s ease',
@@ -934,13 +934,13 @@ export default function CardNewsPage() {
                           onPointerUp={e => { e.currentTarget.style.transform = ''; }}
                           onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 105.64-11.36L3 10" />
                           </svg>
                           <span style={{
-                            fontFamily: font, fontSize: '14px', fontWeight: 500, color: C.primary,
+                            fontFamily: font, fontSize: '13px', fontWeight: 500, color: C.primary,
                           }}>
-                            {imageGenerating !== null ? '생성 중...' : '다시 생성'}
+                            {imageGenerating !== null ? '생성 중' : '다시 생성'}
                           </span>
                         </button>
                         <button
@@ -949,7 +949,7 @@ export default function CardNewsPage() {
                             else generateRemainingImages();
                           }}
                           disabled={imageGenerating !== null}
-                          className="flex-[2] flex items-center justify-center"
+                          className="flex-1 flex items-center justify-center"
                           style={{
                             height: '56px', borderRadius: '16px',
                             backgroundColor: imageGenerating !== null ? C.surfaceDisabled : C.primary,
@@ -962,7 +962,7 @@ export default function CardNewsPage() {
                           onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                         >
                           <span style={{
-                            fontFamily: font, fontSize: '14px', fontWeight: 500,
+                            fontFamily: font, fontSize: '16px', fontWeight: 500,
                             lineHeight: '25px', letterSpacing: '-0.32px',
                           }}>이 스타일로 전체 제작</span>
                         </button>

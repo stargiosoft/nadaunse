@@ -87,7 +87,7 @@ Anti-AI style guide (CRITICAL):
       },
     })
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent`
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey,
