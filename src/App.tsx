@@ -3076,7 +3076,7 @@ function NadaumRecordWrapper() {
       tags={tags}
       resultKey={resultKeyFromState}
       onBack={() => navigate(`/product/${id}/result/free`)} // 무료 운세 결과 페이지로 이동
-      onHome={() => { sessionStorage.removeItem('content_entry_source'); navigate('/'); }}
+      onHome={handleReturn} // ⭐ 태그 저장 후 유입 경로로 복귀 (best-fortune, new-free 등)
       onSkip={handleReturn} // 다음에 할래요
     />
   );
@@ -3190,7 +3190,7 @@ function PaidNadaumRecordWrapper() {
       tags={tags}
       sourceType="paid_content"
       onBack={() => navigate(-1)}
-      onHome={() => { sessionStorage.removeItem('content_entry_source'); navigate('/'); }}
+      onHome={handleReturn}
       onSkip={handleReturn}
       onComplete={handleReturn}  // ⭐ 유입 경로로 복귀
     />
