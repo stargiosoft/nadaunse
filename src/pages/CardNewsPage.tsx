@@ -739,7 +739,7 @@ export default function CardNewsPage() {
                   onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                 >
                   <span style={{
-                    fontFamily: font, fontSize: '16px', fontWeight: 500,
+                    fontFamily: font, fontSize: '15px', fontWeight: 500,
                     color: C.primary,
                   }}>처음으로</span>
                 </button>
@@ -756,7 +756,7 @@ export default function CardNewsPage() {
                   onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                 >
                   <span style={{
-                    fontFamily: font, fontSize: '16px', fontWeight: 500,
+                    fontFamily: font, fontSize: '15px', fontWeight: 500,
                     lineHeight: '25px', letterSpacing: '-0.32px', color: C.textWhite,
                   }}>이 기획안으로 제작하기</span>
                 </button>
@@ -938,7 +938,7 @@ export default function CardNewsPage() {
                             <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 105.64-11.36L3 10" />
                           </svg>
                           <span style={{
-                            fontFamily: font, fontSize: '16px', fontWeight: 500, color: C.primary,
+                            fontFamily: font, fontSize: '14px', fontWeight: 500, color: C.primary,
                           }}>
                             {imageGenerating !== null ? '생성 중...' : '다시 생성'}
                           </span>
@@ -962,7 +962,7 @@ export default function CardNewsPage() {
                           onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                         >
                           <span style={{
-                            fontFamily: font, fontSize: '16px', fontWeight: 500,
+                            fontFamily: font, fontSize: '14px', fontWeight: 500,
                             lineHeight: '25px', letterSpacing: '-0.32px',
                           }}>이 스타일로 전체 제작</span>
                         </button>
