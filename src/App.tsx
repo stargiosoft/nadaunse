@@ -73,6 +73,8 @@ import { FuturePredictionResultPage } from './pages/FuturePredictionResultPage';
 import { FuturePredictionSajuInputPage } from './pages/FuturePredictionSajuInputPage';
 import { FuturePredictionGapPage } from './pages/FuturePredictionGapPage';
 import { FuturePredictionCompatibilityPage } from './pages/FuturePredictionCompatibilityPage';
+// ── 카드뉴스 ──
+import CardNewsPage from './pages/CardNewsPage';
 // ── 운테 (바이럴 테스트) ──
 import UnteHomePage from './pages/UnteHomePage';
 import UnteCreatePage from './pages/UnteCreatePage';
@@ -3885,6 +3887,8 @@ export default function App() {
           <Route path="/nadaum" element={<NadaumAnalysisPage />} /> {/* ⭐ 나다움 분석 */}
           <Route path="/nadaum/:category" element={<NadaumAnalysisDetail />} /> {/* ⭐ 나다움 분석 상세 */}
           <Route path="/maumtalk" element={<MindTalkPage />} /> {/* ⭐ 마음톡 AI 심리 상담 */}
+          {/* ── 카드뉴스 ── */}
+          <Route path="/card-news" element={<CardNewsPage />} />
           {/* ── 운테 (바이럴 테스트) ── */}
           <Route path="/unte" element={<UnteHomePage />} />
           <Route path="/unte/create" element={<UnteCreatePage />} />
