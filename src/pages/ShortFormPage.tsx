@@ -1,14 +1,48 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Player } from '@remotion/player';
-import { supabaseUrl } from '../lib/supabase';
+import { supabaseUrl, supabase } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
-import ShortFormVideo, { computeTotalFrames } from '../shortform/compositions/ShortFormVideo';
+import ShortFormVideo, { computeTotalFrames, computeTotalFramesWithTransitions } from '../shortform/compositions/ShortFormVideo';
 import { VIDEO_FPS, ASPECT_RATIOS } from '../shortform/constants';
 import { renderVideoToMp4, isWebCodecsSupported } from '../shortform/renderVideo';
-import type { Scene, ScriptResult, TtsAudio, BgmAudio, MotionTheme } from '../shortform/types';
+import type { Scene, ScriptResult, TtsAudio, BgmAudio, MotionTheme, MotionStyle } from '../shortform/types';
 import { BGM_MOODS, MOTION_THEMES } from '../shortform/types';
 import { generateCapcutZip } from '../capcut/generateCapcutProject';
+
+// ── Sanitize: 연속 중복 모션/전환 보정 ──
+
+const ALL_MOTIONS: MotionStyle[] = [
+  'keyword_pop', 'typewriter', 'slide_stack', 'counter', 'split_compare',
+  'radial_burst', 'list_reveal', 'zoom_impact', 'glitch', 'wave',
+  'spotlight', 'card_flip', 'progress_bar', 'emoji_rain', 'parallax_layers',
+  'confetti_burst', 'sparkle_trail', 'pulse_ring',
+];
+const ALL_TRANSITIONS = ['cut', 'fade', 'zoom', 'slide', 'blur_in', 'wipe_left', 'scale_rotate'];
+
+function sanitizeScriptResult(data: ScriptResult): ScriptResult {
+  if (!data?.scenes?.length) return data;
+
+  const scenes = data.scenes.map((scene, i, arr) => {
+    const s = { ...scene };
+
+    // 연속 같은 motion_style 보정
+    if (i > 0 && s.motion_style && s.motion_style === arr[i - 1].motion_style) {
+      const others = ALL_MOTIONS.filter(m => m !== s.motion_style);
+      s.motion_style = others[Math.floor(Math.random() * others.length)];
+    }
+
+    // 연속 같은 transition 보정
+    if (i > 0 && s.transition && s.transition === arr[i - 1].transition) {
+      const others = ALL_TRANSITIONS.filter(t => t !== s.transition);
+      s.transition = others[Math.floor(Math.random() * others.length)];
+    }
+
+    return s;
+  });
+
+  return { ...data, scenes };
+}
 
 // ── Types ──
 
@@ -18,6 +52,17 @@ type ChatMessage = {
 };
 
 // ── Constants ──
+
+const NARRATION_VOICES = [
+  { id: 'none', label: '나레이션 없음', desc: '' },
+  { id: 'aria', label: 'Aria', desc: '차분한 여성' },
+  { id: 'sarah', label: 'Sarah', desc: '따뜻한 여성' },
+  { id: 'laura', label: 'Laura', desc: '명랑한 여성' },
+  { id: 'roger', label: 'Roger', desc: '신뢰감 남성' },
+  { id: 'charlie', label: 'Charlie', desc: '또렷한 남성' },
+] as const;
+
+type NarrationVoice = typeof NARRATION_VOICES[number]['id'];
 
 const DURATIONS = [10, 15, 30] as const;
 
@@ -91,6 +136,7 @@ export default function ShortFormPage() {
   const [imageSource, setImageSource] = useState<ImageSource>('ai');
   const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
   const [motionTheme, setMotionTheme] = useState<MotionTheme>('colorful_pop');
+  const [narrationVoice, setNarrationVoice] = useState<NarrationVoice>('none');
   const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
@@ -115,6 +161,24 @@ export default function ShortFormPage() {
   const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
   const [bgmLoading, setBgmLoading] = useState(false);
   const ttsAbortRef = useRef(false);
+  const storagePaths = useRef<string[]>([]);
+
+  // Storage 이미지 정리
+  const cleanupStorageImages = useCallback(async () => {
+    const paths = storagePaths.current;
+    if (paths.length === 0) return;
+    try {
+      await supabase.storage.from('assets').remove([...paths]);
+    } catch (err) {
+      console.warn('[ShortForm] Storage 정리 실패:', err);
+    }
+    storagePaths.current = [];
+  }, []);
+
+  // 페이지 이탈 시 정리
+  useEffect(() => {
+    return () => { cleanupStorageImages(); };
+  }, [cleanupStorageImages]);
 
   // ── Computed dimensions from aspect ratio ──
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
@@ -155,7 +219,7 @@ export default function ShortFormPage() {
         videoType,
         motionTheme: videoType === 'motion' ? motionTheme : undefined,
       });
-      setResult(data);
+      setResult(sanitizeScriptResult(data));
       setStep('review');
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류');
@@ -180,8 +244,10 @@ export default function ShortFormPage() {
         topic: `기존 대본:\n${currentScript}\n\n수정 요청: ${userMsg}\n\n위 대본을 수정 요청에 맞게 수정해줘. 전체 길이(${result.total_duration}초)와 씬 수는 유지.`,
         duration: result.total_duration,
         style,
+        videoType,
+        motionTheme: videoType === 'motion' ? motionTheme : undefined,
       });
-      setResult(data);
+      setResult(sanitizeScriptResult(data));
       setChatMessages(prev => [...prev, { role: 'assistant', content: '대본을 수정했습니다. 확인해주세요!' }]);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : '오류';
@@ -201,6 +267,17 @@ export default function ShortFormPage() {
     setError(null);
     ttsAbortRef.current = false;
 
+    // 나레이션 없음 → TTS 건너뛰기
+    if (narrationVoice === 'none') {
+      setTtsProgress(1);
+      if (bgmMood !== 'none') {
+        setVideoPhase('bgm');
+      } else {
+        setVideoPhase(videoType === 'image' ? 'images' : 'preview');
+      }
+      return;
+    }
+
     const audios: TtsAudio[] = [];
 
     for (let i = 0; i < scenes.length; i++) {
@@ -210,7 +287,7 @@ export default function ShortFormPage() {
       try {
         const data = await callEdgeFunction('generate-tts', {
           text: scene.narration,
-          voice: 'nova',
+          voice: narrationVoice,
           speed: 1.0,
         });
 
@@ -244,7 +321,7 @@ export default function ShortFormPage() {
     } else {
       setVideoPhase(videoType === 'image' ? 'images' : 'preview');
     }
-  }, [videoType, bgmMood]);
+  }, [videoType, bgmMood, narrationVoice]);
 
   // Auto-start TTS when entering Step 3
   useEffect(() => {
@@ -307,29 +384,37 @@ export default function ShortFormPage() {
     const updatedScenes = [...scenes];
     const orientationMap: Record<string, string> = { '9:16': 'portrait', '3:4': 'portrait', '1:1': 'squarish' };
 
+    const BATCH_SIZE = 3;
+
     if (imageSource === 'stock') {
-      // 스톡 이미지 모드: Unsplash/Pexels 검색
-      for (let i = 0; i < scenes.length; i++) {
+      // 스톡 이미지 모드: 3개씩 병렬 검색
+      for (let i = 0; i < scenes.length; i += BATCH_SIZE) {
         if (ttsAbortRef.current) return;
-        const scene = scenes[i];
-        const query = scene.visual || scene.subtitle.replace(/\*\*/g, '');
-        try {
-          const res = await fetch(`${supabaseUrl}/functions/v1/search-stock-image?query=${encodeURIComponent(query)}&orientation=${orientationMap[aspectRatio] || 'portrait'}`);
-          const data = await res.json();
-          if (data.url) {
-            const idx = updatedScenes.findIndex(s => s.scene_number === scene.scene_number);
-            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: data.url };
+        const batch = scenes.slice(i, Math.min(i + BATCH_SIZE, scenes.length));
+
+        const results = await Promise.allSettled(
+          batch.map(async (scene) => {
+            const query = scene.visual || scene.subtitle.replace(/\*\*/g, '');
+            const res = await fetch(`${supabaseUrl}/functions/v1/search-stock-image?query=${encodeURIComponent(query)}&orientation=${orientationMap[aspectRatio] || 'portrait'}`);
+            const data = await res.json();
+            return { sceneNumber: scene.scene_number, url: data.url as string | undefined };
+          })
+        );
+
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value.url) {
+            const idx = updatedScenes.findIndex(s => s.scene_number === r.value.sceneNumber);
+            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: r.value.url };
           }
-        } catch (err) {
-          console.warn(`Stock image failed for scene ${scene.scene_number}`, err);
         }
-        setImageProgress((i + 1) / scenes.length);
+
+        setImageProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
       }
     } else {
-      // AI 이미지 모드: Gemini 생성 (2개씩 병렬, 429 방지)
-      for (let i = 0; i < scenes.length; i += 2) {
+      // AI 이미지 모드: Gemini 생성 (3개씩 병렬)
+      for (let i = 0; i < scenes.length; i += BATCH_SIZE) {
         if (ttsAbortRef.current) return;
-        const batch = scenes.slice(i, Math.min(i + 2, scenes.length));
+        const batch = scenes.slice(i, Math.min(i + BATCH_SIZE, scenes.length));
 
         const results = await Promise.allSettled(
           batch.map(async (scene) => {
@@ -349,9 +434,40 @@ export default function ShortFormPage() {
         for (const r of results) {
           if (r.status === 'fulfilled' && r.value.image) {
             const { sceneNumber, image, mimeType } = r.value;
-            const dataUrl = `data:${mimeType || 'image/png'};base64,${image}`;
-            const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
-            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: dataUrl };
+            // base64 → webp 변환 후 Storage 업로드 (I2V에서 공개 URL 필요)
+            try {
+              const blob = await new Promise<Blob>((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = img.width;
+                  canvas.height = img.height;
+                  const ctx = canvas.getContext('2d')!;
+                  ctx.drawImage(img, 0, 0);
+                  canvas.toBlob(
+                    (b) => b ? resolve(b) : reject(new Error('Canvas 변환 실패')),
+                    'image/webp', 0.8
+                  );
+                };
+                img.onerror = () => reject(new Error('이미지 로드 실패'));
+                img.src = `data:${mimeType || 'image/png'};base64,${image}`;
+              });
+              const path = `shortform/bg/${crypto.randomUUID()}.webp`;
+              const { error: uploadError } = await supabase.storage
+                .from('assets')
+                .upload(path, blob, { contentType: 'image/webp', upsert: true });
+              if (uploadError) throw uploadError;
+              storagePaths.current.push(path);
+              const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(path);
+              const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
+              if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: publicUrl };
+            } catch (e) {
+              console.warn(`[ShortForm] 이미지 업로드 실패 scene ${sceneNumber}:`, e);
+              // 폴백: data URL 그대로 사용 (I2V는 실패할 수 있지만 프리뷰는 가능)
+              const dataUrl = `data:${mimeType || 'image/png'};base64,${image}`;
+              const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
+              if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: dataUrl };
+            }
           }
         }
 
@@ -382,12 +498,13 @@ export default function ShortFormPage() {
       return;
     }
 
-    // 1. Submit all scenes to fal.ai queue (2개씩 배치)
+    // 1. Submit all scenes to Replicate queue (3개씩 배치)
     const submissions: { sceneNumber: number; requestId: string }[] = [];
+    let submitFailCount = 0;
 
-    for (let i = 0; i < scenesWithImages.length; i += 2) {
+    for (let i = 0; i < scenesWithImages.length; i += 3) {
       if (ttsAbortRef.current) return;
-      const batch = scenesWithImages.slice(i, Math.min(i + 2, scenesWithImages.length));
+      const batch = scenesWithImages.slice(i, Math.min(i + 3, scenesWithImages.length));
 
       const results = await Promise.allSettled(
         batch.map(async (scene) => {
@@ -395,7 +512,9 @@ export default function ShortFormPage() {
             action: 'submit',
             model: i2vModel,
             image_data_url: scene.backgroundImageUrl,
-            prompt: `Subtle cinematic motion with gentle zoom and smooth camera drift. Scene: ${scene.visual}`,
+            prompt: scene.visual ? `${scene.visual}. Cinematic motion.` : undefined,
+            scene_type: scene.type,
+            motion_style: scene.motion_style,
           });
           return { sceneNumber: scene.scene_number, requestId: data.request_id as string };
         })
@@ -404,16 +523,27 @@ export default function ShortFormPage() {
       for (const r of results) {
         if (r.status === 'fulfilled' && r.value.requestId) {
           submissions.push(r.value);
+        } else {
+          submitFailCount++;
         }
       }
 
+      // 첫 배치 전부 실패 시 API 문제로 판단, 나머지 스킵
+      if (i === 0 && submissions.length === 0 && submitFailCount > 0) {
+        console.warn('[ShortForm] I2V API 연결 실패, 이미지 배경으로 폴백');
+        setError('AI 영상 배경 생성을 건너뛰었습니다 (API 연결 오류). 이미지 배경으로 영상이 생성됩니다.');
+        setVideoPhase('preview');
+        return;
+      }
+
       // 배치 간 1초 딜레이 (rate limit 방지)
-      if (i + 2 < scenesWithImages.length) {
+      if (i + 3 < scenesWithImages.length) {
         await new Promise(r => setTimeout(r, 1000));
       }
     }
 
     if (submissions.length === 0) {
+      setError('AI 영상 배경 생성을 건너뛰었습니다. 이미지 배경으로 영상이 생성됩니다.');
       setVideoPhase('preview');
       return;
     }
@@ -421,6 +551,7 @@ export default function ShortFormPage() {
     // 2. Poll all in parallel until all complete (최대 5분)
     const completed = new Set<number>();
     const updatedScenes = [...scenes];
+    let videoSuccessCount = 0;
 
     for (let attempt = 0; attempt < 60; attempt++) {
       if (ttsAbortRef.current) return;
@@ -440,6 +571,7 @@ export default function ShortFormPage() {
 
           if (data.status === 'COMPLETED' && data.video_url) {
             completed.add(sub.sceneNumber);
+            videoSuccessCount++;
             const idx = updatedScenes.findIndex(s => s.scene_number === sub.sceneNumber);
             if (idx >= 0) {
               updatedScenes[idx] = { ...updatedScenes[idx], backgroundVideoUrl: data.video_url as string };
@@ -455,6 +587,16 @@ export default function ShortFormPage() {
           console.warn(`Poll failed for scene ${sub.sceneNumber}:`, err);
         }
       }
+    }
+
+    // 타임아웃으로 완료되지 않은 씬 처리
+    if (completed.size < submissions.length) {
+      console.warn(`[ShortForm] ${submissions.length - completed.size}개 씬 I2V 타임아웃, 이미지 폴백`);
+    }
+
+    if (videoSuccessCount < submissions.length) {
+      const failCount = submissions.length - videoSuccessCount;
+      setError(`${failCount}개 씬의 AI 영상이 생성되지 않아 이미지 배경으로 대체됩니다.`);
     }
 
     setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
@@ -563,6 +705,7 @@ export default function ShortFormPage() {
   const resetAll = () => {
     ttsAbortRef.current = true;
     if (videoUrl) URL.revokeObjectURL(videoUrl);
+    cleanupStorageImages();
     setStep('input');
     setTopic('');
     setDuration(30);
@@ -650,7 +793,7 @@ export default function ShortFormPage() {
         <div className="bg-white h-[52px] shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2 max-w-[440px]">
           <div className="flex flex-col justify-center size-full">
             <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
-              <ArrowLeft onClick={() => navigate(-1)} />
+              <ArrowLeft onClick={() => { cleanupStorageImages(); navigate(-1); }} />
               <p style={{
                 fontFamily: font, fontSize: '18px', fontWeight: 600,
                 lineHeight: '25.5px', letterSpacing: '-0.36px',
@@ -1060,6 +1203,55 @@ export default function ShortFormPage() {
                 </section>
               )}
 
+              {/* 나레이션 음성 */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  나레이션 음성
+                </label>
+                <div
+                  style={{
+                    position: 'relative',
+                    backgroundColor: C.surface,
+                    border: `1px solid ${C.borderDefault}`,
+                    borderRadius: '16px',
+                  }}
+                >
+                  <select
+                    value={narrationVoice}
+                    onChange={e => setNarrationVoice(e.target.value as NarrationVoice)}
+                    className="w-full"
+                    style={{
+                      height: '48px', padding: '0 16px',
+                      borderRadius: '16px', border: 'none', outline: 'none',
+                      backgroundColor: 'transparent',
+                      fontFamily: font, fontSize: '15px', fontWeight: 400,
+                      letterSpacing: '-0.3px', color: C.textPrimary,
+                      cursor: 'pointer',
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                    }}
+                  >
+                    {NARRATION_VOICES.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.desc ? `${v.label} — ${v.desc}` : v.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{
+                    position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)',
+                    pointerEvents: 'none', color: C.textCaption,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+              </section>
+
               {/* BGM */}
               <section style={{ marginBottom: '32px' }}>
                 <label style={{
@@ -1211,7 +1403,11 @@ export default function ShortFormPage() {
                           fontFamily: font, fontSize: '12px', fontWeight: 600,
                           lineHeight: '18px', color: C.primaryDark, marginBottom: '4px',
                         }}>
-                          자막: {scene.subtitle}
+                          자막: {scene.subtitle.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
+                            part.startsWith('**') && part.endsWith('**')
+                              ? <strong key={i}>{part.slice(2, -2)}</strong>
+                              : part
+                          )}
                         </div>
                         <div style={{
                           fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -1556,7 +1752,7 @@ export default function ShortFormPage() {
                       <Player
                         component={ShortFormVideo}
                         inputProps={{ scenes: result.scenes, ttsAudios, bgmAudio, motionTheme: videoType === 'motion' ? motionTheme : undefined }}
-                        durationInFrames={Math.max(1, computeTotalFrames(result.scenes, ttsAudios))}
+                        durationInFrames={Math.max(1, computeTotalFramesWithTransitions(result.scenes, ttsAudios))}
                         fps={VIDEO_FPS}
                         compositionWidth={videoWidth}
                         compositionHeight={videoHeight}
