@@ -84,6 +84,8 @@ export async function generateCapcutZip(
   result: ScriptResult,
   scenes: Scene[],
   ttsAudios: TtsAudio[],
+  canvasWidth: number = 1080,
+  canvasHeight: number = 1920,
 ): Promise<Blob> {
   const zip = new JSZip();
   const draftFolder = zip.folder('capcut_project')!;
@@ -261,7 +263,7 @@ export async function generateCapcutZip(
 
   // ── draft_content.json ──
   const draftContent = {
-    canvas_config: { height: 1920, ratio: 'original', width: 1080 },
+    canvas_config: { height: canvasHeight, ratio: 'original', width: canvasWidth },
     color_space: 0,
     config: {
       adjust_max_index: 1,

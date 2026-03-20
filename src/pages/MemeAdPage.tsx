@@ -43,11 +43,6 @@ const C = {
 
 const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 
-const PLATFORMS = [
-  { id: 'reels', label: '릴스' },
-  { id: 'shorts', label: '쇼츠' },
-  { id: 'tiktok', label: '틱톡' },
-] as const;
 
 const TRANSITIONS: { id: TransitionType; label: string }[] = [
   { id: 'fade', label: '페이드' },
@@ -68,7 +63,6 @@ export default function MemeAdPage() {
   const [hookDuration, setHookDuration] = useState<number>(0);
   const [brandInfo, setBrandInfo] = useState('');
   const [adDuration, setAdDuration] = useState<number>(10);
-  const [platform, setPlatform] = useState<string>('reels');
   const [transitionType, setTransitionType] = useState<TransitionType>('fade');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
@@ -178,7 +172,6 @@ export default function MemeAdPage() {
       const data = await callEdgeFunction('generate-meme-ad', {
         brandInfo: brandInfo.trim(),
         adDuration,
-        platform,
         hookDuration: Math.round(hookDuration),
       });
       setResult(data);
@@ -205,7 +198,6 @@ export default function MemeAdPage() {
       const data = await callEdgeFunction('generate-meme-ad', {
         brandInfo: `기존 대본:\n${currentScript}\n\n수정 요청: ${userMsg}\n\n위 대본을 수정 요청에 맞게 수정해줘. 전체 길이(${result.total_duration}초)와 씬 수는 유지.`,
         adDuration: result.total_duration,
-        platform,
         hookDuration: Math.round(hookDuration),
       });
       setResult(data);
@@ -397,7 +389,7 @@ export default function MemeAdPage() {
     setStep('input');
     setBrandInfo('');
     setAdDuration(15);
-    setPlatform('reels');
+
     setResult(null);
     setError(null);
     setChatMessages([]);
@@ -687,43 +679,6 @@ export default function MemeAdPage() {
                     총 영상: {formatTime(Math.round(hookDuration + adDuration))} (밈 {hookDuration.toFixed(1)}초 + 광고 {adDuration}초)
                   </p>
                 )}
-              </section>
-
-              {/* Platform */}
-              <section style={{ marginBottom: '24px' }}>
-                <label style={{
-                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
-                  lineHeight: '16px', letterSpacing: '-0.24px',
-                  color: C.textCaption, marginBottom: '10px',
-                }}>
-                  플랫폼
-                </label>
-                <div className="flex" style={{ gap: '10px' }}>
-                  {PLATFORMS.map(p => {
-                    const isSelected = platform === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => setPlatform(p.id)}
-                        className="flex-1 flex items-center justify-center"
-                        style={{
-                          height: '48px', borderRadius: '16px',
-                          fontFamily: font, fontSize: '15px', fontWeight: isSelected ? 600 : 400,
-                          letterSpacing: '-0.3px',
-                          color: isSelected ? C.textWhite : C.textTertiary,
-                          backgroundColor: isSelected ? C.primary : C.surface,
-                          border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
-                          cursor: 'pointer', transition: 'all 0.15s ease',
-                        }}
-                        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
-                        onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-                        onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
-                      >
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
               </section>
 
               {/* Transition Type */}

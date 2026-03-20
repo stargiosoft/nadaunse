@@ -44,7 +44,7 @@ export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio, motionThem
         const tts = ttsAudios.find(a => a.sceneNumber === scene.scene_number);
 
         return (
-          <Sequence key={scene.scene_number} from={from} durationInFrames={dur}>
+          <Sequence key={scene.scene_number} from={from} durationInFrames={dur} premountFor={VIDEO_FPS}>
             <SceneRenderer scene={scene} prevScene={idx > 0 ? scenes[idx - 1] : undefined} motionTheme={motionTheme} />
             <SubtitleOverlay subtitle={scene.subtitle} />
             {tts && <Audio src={tts.dataUrl} />}
