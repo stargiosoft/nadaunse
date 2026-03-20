@@ -446,6 +446,30 @@ ${freeList}
       }
     }
 
+    // ⭐ 매 결과 저장 후 즉시 완료 체크 (self-continue 경로에서 플래그 누락 방지)
+    async function checkAndSetCompletion() {
+      try {
+        const { count } = await supabase
+          .from('order_results')
+          .select('*', { count: 'exact', head: true })
+          .eq('order_id', orderId)
+
+        if (count !== null && count >= questions.length) {
+          const { error } = await supabase
+            .from('orders')
+            .update({ ai_generation_completed: true, updated_at: new Date().toISOString() })
+            .eq('id', orderId)
+            .eq('ai_generation_completed', false)
+
+          if (!error) {
+            console.log(`✅ [즉시 완료] 모든 답변(${count}/${questions.length}) DB 확인 → ai_generation_completed = true`)
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ 즉시 완료 체크 실패 (무시):', e)
+      }
+    }
+
     // ⭐ 단일 질문 처리 함수 (재시도 포함, previousAnswers 수신)
     async function processQuestion(
       question: any,
@@ -525,6 +549,7 @@ ${freeList}
                 console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
               } else {
                 console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
+                await checkAndSetCompletion()
               }
             }
 
@@ -574,6 +599,7 @@ ${freeList}
                 console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
               } else {
                 console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
+                await checkAndSetCompletion()
               }
             }
 

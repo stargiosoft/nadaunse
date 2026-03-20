@@ -10,6 +10,11 @@ import ListRevealMotion from './ListRevealMotion';
 import ZoomImpactMotion from './ZoomImpactMotion';
 import GlitchMotion from './GlitchMotion';
 import WaveMotion from './WaveMotion';
+import SpotlightMotion from './SpotlightMotion';
+import CardFlipMotion from './CardFlipMotion';
+import ProgressBarMotion from './ProgressBarMotion';
+import EmojiRainMotion from './EmojiRainMotion';
+import ParallaxLayersMotion from './ParallaxLayersMotion';
 
 export const MOTION_REGISTRY: Record<MotionStyle, React.FC<MotionComponentProps>> = {
   keyword_pop: KeywordPopMotion,
@@ -22,6 +27,11 @@ export const MOTION_REGISTRY: Record<MotionStyle, React.FC<MotionComponentProps>
   zoom_impact: ZoomImpactMotion,
   glitch: GlitchMotion,
   wave: WaveMotion,
+  spotlight: SpotlightMotion,
+  card_flip: CardFlipMotion,
+  progress_bar: ProgressBarMotion,
+  emoji_rain: EmojiRainMotion,
+  parallax_layers: ParallaxLayersMotion,
 };
 
 export type { MotionComponentProps } from './types';

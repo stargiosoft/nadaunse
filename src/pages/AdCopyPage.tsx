@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
 
@@ -66,10 +66,11 @@ const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFo
 
 export default function AdCopyPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>('input');
 
   // Input
-  const [product, setProduct] = useState('');
+  const [product, setProduct] = useState(searchParams.get('product') || '');
   const [target, setTarget] = useState('');
   const [goalAction, setGoalAction] = useState<string>('클릭');
   const [ctaLocation, setCtaLocation] = useState<string>('버튼');

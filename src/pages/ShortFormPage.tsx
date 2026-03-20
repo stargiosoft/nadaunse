@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Player } from '@remotion/player';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
@@ -32,9 +32,15 @@ const VIDEO_TYPES = [
   { id: 'motion', label: '모션 그래픽', desc: '텍스트 + 애니메이션' },
 ] as const;
 
+const I2V_MODELS = [
+  { id: 'kling', label: 'Kling 2.0', desc: '고품질 · ~$2.10/영상', cost: '$0.35/씬' },
+  { id: 'minimax', label: 'Minimax Hailuo', desc: '가성비 · ~$0.70/영상', cost: '$0.12/씬' },
+] as const;
+
 type VideoType = 'image' | 'motion';
+type I2vModel = typeof I2V_MODELS[number]['id'];
 type Step = 'input' | 'review' | 'result';
-type VideoPhase = 'tts' | 'bgm' | 'images' | 'preview' | 'rendering' | 'done';
+type VideoPhase = 'tts' | 'bgm' | 'images' | 'videos' | 'preview' | 'rendering' | 'done';
 
 // ── Design System Tokens ──
 
@@ -68,11 +74,13 @@ const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFo
 
 export default function ShortFormPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>('input');
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(searchParams.get('topic') || '');
   const [duration, setDuration] = useState<number>(30);
   const [platform, setPlatform] = useState<string>('reels');
   const [videoType, setVideoType] = useState<VideoType>('image');
+  const [i2vModel, setI2vModel] = useState<I2vModel>('kling');
   const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
@@ -93,6 +101,7 @@ export default function ShortFormPage() {
   const [copied, setCopied] = useState(false);
   const [isExportingCapcut, setIsExportingCapcut] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
+  const [videoGenProgress, setVideoGenProgress] = useState(0);
   const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
   const [bgmLoading, setBgmLoading] = useState(false);
   const ttsAbortRef = useRef(false);
@@ -314,7 +323,7 @@ export default function ShortFormPage() {
     }
 
     setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
-    setVideoPhase('preview');
+    setVideoPhase('videos');
   }, [topic]);
 
   // Auto-start image generation
@@ -323,6 +332,104 @@ export default function ShortFormPage() {
       generateSceneImages(result.scenes);
     }
   }, [step, result, videoPhase, generateSceneImages]);
+
+  // ── Step 3-A3: Generate scene background videos (fal.ai Image-to-Video) ──
+
+  const generateSceneVideos = useCallback(async (scenes: Scene[]) => {
+    setVideoGenProgress(0);
+    setError(null);
+
+    const scenesWithImages = scenes.filter(s => s.backgroundImageUrl);
+    if (scenesWithImages.length === 0) {
+      setVideoPhase('preview');
+      return;
+    }
+
+    // 1. Submit all scenes to fal.ai queue (2개씩 배치)
+    const submissions: { sceneNumber: number; requestId: string }[] = [];
+
+    for (let i = 0; i < scenesWithImages.length; i += 2) {
+      if (ttsAbortRef.current) return;
+      const batch = scenesWithImages.slice(i, Math.min(i + 2, scenesWithImages.length));
+
+      const results = await Promise.allSettled(
+        batch.map(async (scene) => {
+          const data = await callEdgeFunction('generate-scene-video', {
+            action: 'submit',
+            model: i2vModel,
+            image_data_url: scene.backgroundImageUrl,
+            prompt: `Subtle cinematic motion with gentle zoom and smooth camera drift. Scene: ${scene.visual}`,
+          });
+          return { sceneNumber: scene.scene_number, requestId: data.request_id as string };
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.requestId) {
+          submissions.push(r.value);
+        }
+      }
+
+      // 배치 간 1초 딜레이 (rate limit 방지)
+      if (i + 2 < scenesWithImages.length) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    if (submissions.length === 0) {
+      setVideoPhase('preview');
+      return;
+    }
+
+    // 2. Poll all in parallel until all complete (최대 5분)
+    const completed = new Set<number>();
+    const updatedScenes = [...scenes];
+
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (ttsAbortRef.current) return;
+      if (completed.size >= submissions.length) break;
+
+      await new Promise(r => setTimeout(r, 5000)); // 5초 간격 폴링
+
+      for (const sub of submissions) {
+        if (completed.has(sub.sceneNumber)) continue;
+
+        try {
+          const data = await callEdgeFunction('generate-scene-video', {
+            action: 'poll',
+            model: i2vModel,
+            request_id: sub.requestId,
+          });
+
+          if (data.status === 'COMPLETED' && data.video_url) {
+            completed.add(sub.sceneNumber);
+            const idx = updatedScenes.findIndex(s => s.scene_number === sub.sceneNumber);
+            if (idx >= 0) {
+              updatedScenes[idx] = { ...updatedScenes[idx], backgroundVideoUrl: data.video_url as string };
+            }
+            setVideoGenProgress(completed.size / submissions.length);
+          }
+
+          if (data.status === 'FAILED') {
+            completed.add(sub.sceneNumber); // 실패한 씬은 이미지 배경으로 폴백
+            setVideoGenProgress(completed.size / submissions.length);
+          }
+        } catch (err) {
+          console.warn(`Poll failed for scene ${sub.sceneNumber}:`, err);
+        }
+      }
+    }
+
+    setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
+    setVideoPhase('preview');
+  }, [i2vModel]);
+
+  // Auto-start video generation
+  useEffect(() => {
+    if (step === 'result' && result && videoPhase === 'videos') {
+      generateSceneVideos(result.scenes);
+    }
+  }, [step, result, videoPhase, generateSceneVideos]);
 
   // ── Step 3: Render video ──
 
@@ -434,6 +541,7 @@ export default function ShortFormPage() {
     setTtsProgress(0);
     setRenderProgress(0);
     setImageProgress(0);
+    setVideoGenProgress(0);
     setVideoUrl(null);
     setBgmAudio(null);
     setBgmLoading(false);
@@ -694,6 +802,62 @@ export default function ShortFormPage() {
                   })}
                 </div>
               </section>
+
+              {/* I2V Model (이미지 기반일 때만) */}
+              {videoType === 'image' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    영상 배경 AI 모델
+                  </label>
+                  <div className="flex" style={{ gap: '10px' }}>
+                    {I2V_MODELS.map(m => {
+                      const isSelected = i2vModel === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setI2vModel(m.id)}
+                          className="flex-1 flex flex-col items-center justify-center"
+                          style={{
+                            height: '72px', borderRadius: '16px',
+                            fontFamily: font,
+                            backgroundColor: isSelected ? C.primary : C.surface,
+                            border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            gap: '2px',
+                          }}
+                          onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                          onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                        >
+                          <span style={{
+                            fontSize: '14px', fontWeight: isSelected ? 600 : 400,
+                            letterSpacing: '-0.3px',
+                            color: isSelected ? C.textWhite : C.textPrimary,
+                          }}>
+                            {m.label}
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 400,
+                            color: isSelected ? 'rgba(255,255,255,0.7)' : C.textCaption,
+                          }}>
+                            {m.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    color: C.textCaption, marginTop: '6px', paddingLeft: '4px',
+                  }}>
+                    fal.ai Image-to-Video · 씬별 5초 AI 영상 배경 생성
+                  </p>
+                </section>
+              )}
 
               {/* BGM */}
               <section style={{ marginBottom: '32px' }}>
@@ -1132,6 +1296,50 @@ export default function ShortFormPage() {
                       <div style={{
                         height: '100%', backgroundColor: C.primary,
                         width: `${imageProgress * 100}%`, transition: 'width 0.3s ease',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Phase A-3: Video Generation (fal.ai I2V) ── */}
+              {videoPhase === 'videos' && result && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    padding: '24px 20px', backgroundColor: C.surfaceSecondary,
+                    borderRadius: '16px', textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, margin: '0 auto 16px',
+                      border: `3px solid ${C.borderDefault}`,
+                      borderTop: `3px solid ${C.primary}`,
+                      borderRadius: '50%', animation: 'spin 1s linear infinite',
+                    }} />
+                    <div style={{
+                      fontFamily: font, fontSize: '16px', fontWeight: 600,
+                      color: C.textPrimary, marginBottom: '8px',
+                    }}>
+                      AI 영상 배경 생성 중...
+                    </div>
+                    <div style={{
+                      fontFamily: font, fontSize: '14px', fontWeight: 400,
+                      color: C.textCaption, marginBottom: '8px',
+                    }}>
+                      {Math.round(videoGenProgress * result.scenes.length)} / {result.scenes.length} 씬
+                    </div>
+                    <div style={{
+                      fontFamily: font, fontSize: '12px', fontWeight: 400,
+                      color: C.textCaption, marginBottom: '16px',
+                    }}>
+                      씬당 1~2분 소요 · {I2V_MODELS.find(m => m.id === i2vModel)?.label || 'Kling'}
+                    </div>
+                    <div style={{
+                      height: '6px', backgroundColor: C.surfaceTertiary,
+                      borderRadius: '3px', overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%', backgroundColor: C.primary,
+                        width: `${videoGenProgress * 100}%`, transition: 'width 0.3s ease',
                       }} />
                     </div>
                   </div>

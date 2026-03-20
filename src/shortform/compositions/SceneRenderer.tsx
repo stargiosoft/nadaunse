@@ -1,23 +1,23 @@
-import { AbsoluteFill, interpolate, useCurrentFrame, spring, useVideoConfig, Img } from 'remotion';
+import { AbsoluteFill, interpolate, useCurrentFrame, spring, useVideoConfig, Img, Video } from 'remotion';
 import type { Scene } from '../types';
 import { MOTION_REGISTRY } from './motions';
 
-// ── Color Schemes per scene type ──
+// ── Enhanced Color Schemes (3-stop gradient + glow) ──
 
-const SCENE_THEMES: Record<string, { bg: [string, string]; accent: string; icon: string }> = {
-  hook: { bg: ['#1a1a2e', '#16213e'], accent: '#FF6B6B', icon: '🔥' },
-  problem_intro: { bg: ['#1a1a2e', '#0f3460'], accent: '#e74c3c', icon: '⚠️' },
-  problem: { bg: ['#1a1a2e', '#0f3460'], accent: '#e74c3c', icon: '❌' },
-  reason_1: { bg: ['#0d1117', '#161b22'], accent: '#FF6B6B', icon: '1️⃣' },
-  reason_2: { bg: ['#0d1117', '#161b22'], accent: '#f39c12', icon: '2️⃣' },
-  reason_3: { bg: ['#0d1117', '#161b22'], accent: '#e056fd', icon: '3️⃣' },
-  reason: { bg: ['#0d1117', '#161b22'], accent: '#FF6B6B', icon: '💡' },
-  solution: { bg: ['#0d1117', '#1b4332'], accent: '#2ecc71', icon: '✅' },
-  tip: { bg: ['#0d1117', '#1b4332'], accent: '#2ecc71', icon: '💡' },
-  cta: { bg: ['#2d1b69', '#4a1a8a'], accent: '#e056fd', icon: '👉' },
-  intro: { bg: ['#1a1a2e', '#16213e'], accent: '#4ecdc4', icon: '✨' },
-  content: { bg: ['#0d1117', '#21262d'], accent: '#58a6ff', icon: '📌' },
-  outro: { bg: ['#2d1b69', '#4a1a8a'], accent: '#e056fd', icon: '🎯' },
+const SCENE_THEMES: Record<string, { bg: [string, string, string]; accent: string; glow: string; icon: string }> = {
+  hook:          { bg: ['#1a0a2e', '#2d1b69', '#16213e'], accent: '#FF6B6B', glow: '#ff6b6b', icon: '🔥' },
+  problem_intro: { bg: ['#1a0a1e', '#2d0a3e', '#0f1a40'], accent: '#e74c3c', glow: '#ff4757', icon: '⚠️' },
+  problem:       { bg: ['#1a0a1e', '#2d0a3e', '#0f1a40'], accent: '#e74c3c', glow: '#ff4757', icon: '❌' },
+  reason_1:      { bg: ['#0d0a17', '#1a1125', '#0d1a2d'], accent: '#FF6B6B', glow: '#ff6b6b', icon: '1️⃣' },
+  reason_2:      { bg: ['#0d0a17', '#1a1525', '#1a1020'], accent: '#f39c12', glow: '#feca57', icon: '2️⃣' },
+  reason_3:      { bg: ['#0d0a17', '#1a1030', '#1a0d2d'], accent: '#e056fd', glow: '#e056fd', icon: '3️⃣' },
+  reason:        { bg: ['#0d0a17', '#1a1125', '#0d1a2d'], accent: '#FF6B6B', glow: '#ff6b6b', icon: '💡' },
+  solution:      { bg: ['#0a1a15', '#0d2820', '#0a2030'], accent: '#2ecc71', glow: '#00d2d3', icon: '✅' },
+  tip:           { bg: ['#0a1a15', '#0d2820', '#0a2030'], accent: '#2ecc71', glow: '#00d2d3', icon: '💡' },
+  cta:           { bg: ['#1a0a30', '#2d1b69', '#4a1a6a'], accent: '#e056fd', glow: '#ff6b9d', icon: '👉' },
+  intro:         { bg: ['#0a1a2e', '#162a4e', '#0d2040'], accent: '#4ecdc4', glow: '#4ecdc4', icon: '✨' },
+  content:       { bg: ['#0d0d17', '#151525', '#0d1a2d'], accent: '#58a6ff', glow: '#58a6ff', icon: '📌' },
+  outro:         { bg: ['#1a0a30', '#2d1b69', '#4a1a6a'], accent: '#e056fd', glow: '#ff6b9d', icon: '🎯' },
 };
 
 function getTheme(type: string) {
@@ -25,182 +25,153 @@ function getTheme(type: string) {
   return SCENE_THEMES[key] || SCENE_THEMES.content;
 }
 
-// ── Extract keywords from subtitle ──
+// ── Extract keywords ──
 
 function extractKeywords(subtitle: string): string[] {
   const boldRegex = /\*\*(.+?)\*\*/g;
   const bolds: string[] = [];
-  let match;
-  while ((match = boldRegex.exec(subtitle)) !== null) {
-    bolds.push(match[1]);
-  }
+  let m;
+  while ((m = boldRegex.exec(subtitle)) !== null) bolds.push(m[1]);
   if (bolds.length > 0) return bolds.slice(0, 3);
-
   const cleaned = subtitle.replace(/\*\*/g, '');
-  const particles = ['은', '는', '이', '가', '을', '를', '의', '에', '에서', '도', '만', '와', '과', '로', '으로', '하고', '라고', '때문에'];
-  const words = cleaned.split(/\s+/).filter(w => w.length >= 2 && !particles.includes(w));
-  return words.slice(0, 3);
+  const stop = ['은','는','이','가','을','를','의','에','에서','도','만','와','과','로','으로','하고','라고','때문에'];
+  return cleaned.split(/\s+/).filter(w => w.length >= 2 && !stop.includes(w)).slice(0, 3);
 }
 
-// ── Floating Shape component ──
+// ── Deterministic pseudo-random ──
 
-function FloatingShape({ x, y, size, color, delay, shape }: {
-  x: number; y: number; size: number; color: string; delay: number; shape: 'circle' | 'diamond' | 'line' | 'dot';
+function seededRandom(seed: number) {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+// ── Bokeh Orb (soft glowing circle) ──
+
+function BokehOrb({ x, y, size, color, delay, speed }: {
+  x: number; y: number; size: number; color: string; delay: number; speed: number;
 }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const entry = spring({ frame: Math.max(0, frame - delay * fps), fps, config: { damping: 30, mass: 2 } });
+  const floatY = Math.sin((frame + delay * 50) * speed * 0.02) * 25;
+  const floatX = Math.cos((frame + delay * 30) * speed * 0.015) * 15;
+  const pulse = 1 + Math.sin((frame + delay * 20) * 0.04) * 0.2;
 
-  const entrySpring = spring({ frame: Math.max(0, frame - delay * fps), fps, config: { damping: 12, mass: 0.6 } });
-  const float = Math.sin((frame + delay * 30) * 0.03) * 15;
-  const rotation = interpolate(frame, [0, 300], [0, 360]);
-  const opacity = interpolate(entrySpring, [0, 1], [0, 0.4]);
-
-  const baseStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: `${x}%`,
-    top: `${y}%`,
-    opacity,
-    transform: `translateY(${float}px) scale(${entrySpring})`,
-  };
-
-  if (shape === 'circle') {
-    return (
-      <div style={{
-        ...baseStyle,
-        width: size, height: size, borderRadius: '50%',
-        border: `3px solid ${color}`,
-      }} />
-    );
-  }
-  if (shape === 'diamond') {
-    return (
-      <div style={{
-        ...baseStyle,
-        width: size, height: size,
-        border: `3px solid ${color}`,
-        transform: `translateY(${float}px) scale(${entrySpring}) rotate(${rotation}deg)`,
-        borderRadius: 4,
-      }} />
-    );
-  }
-  if (shape === 'dot') {
-    return (
-      <div style={{
-        ...baseStyle,
-        width: size * 0.4, height: size * 0.4, borderRadius: '50%',
-        backgroundColor: color,
-      }} />
-    );
-  }
-  // line
   return (
     <div style={{
-      ...baseStyle,
-      width: size * 1.5, height: 3,
-      backgroundColor: color,
-      borderRadius: 2,
-      transform: `translateY(${float}px) scale(${entrySpring}) rotate(${15 + delay * 20}deg)`,
+      position: 'absolute', left: `${x}%`, top: `${y}%`,
+      width: size, height: size, borderRadius: '50%',
+      background: `radial-gradient(circle, ${color}30 0%, ${color}10 50%, transparent 70%)`,
+      transform: `translate(${floatX}px, ${floatY}px) scale(${entry * pulse})`,
+      filter: `blur(${Math.max(size * 0.1, 6)}px)`,
+      opacity: entry * 0.6, pointerEvents: 'none',
     }} />
   );
 }
 
-// ── Icon badge with animation ──
+// ── Sparkle (twinkling point with glow) ──
+
+function Sparkle({ x, y, color, delay, size }: {
+  x: number; y: number; color: string; delay: number; size: number;
+}) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const entry = spring({ frame: Math.max(0, frame - delay * fps), fps, config: { damping: 12, mass: 0.3 } });
+  const twinkle = 0.2 + Math.abs(Math.sin((frame + delay * 40) * 0.15)) * 0.8;
+
+  return (
+    <div style={{
+      position: 'absolute', left: `${x}%`, top: `${y}%`,
+      width: size, height: size, borderRadius: '50%',
+      backgroundColor: color,
+      transform: `scale(${entry * twinkle})`,
+      boxShadow: `0 0 ${size * 3}px ${size}px ${color}40, 0 0 ${size * 6}px ${size * 2}px ${color}15`,
+      pointerEvents: 'none',
+    }} />
+  );
+}
+
+// ── Enhanced Floating Shape ──
+
+function FloatingShape({ x, y, size, color, delay, shape }: {
+  x: number; y: number; size: number; color: string; delay: number;
+  shape: 'circle' | 'diamond' | 'ring' | 'dot' | 'line';
+}) {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const entry = spring({ frame: Math.max(0, frame - delay * fps), fps, config: { damping: 12, mass: 0.6 } });
+  const float = Math.sin((frame + delay * 30) * 0.03) * 15;
+  const rot = interpolate(frame, [0, 300], [0, 360]);
+  const opacity = interpolate(entry, [0, 1], [0, 0.3]);
+
+  const base: React.CSSProperties = {
+    position: 'absolute', left: `${x}%`, top: `${y}%`, opacity, pointerEvents: 'none',
+    transform: `translateY(${float}px) scale(${entry})`,
+  };
+
+  if (shape === 'circle') return <div style={{ ...base, width: size, height: size, borderRadius: '50%', border: `2px solid ${color}`, boxShadow: `0 0 ${size}px ${color}15` }} />;
+  if (shape === 'ring') return <div style={{ ...base, width: size * 1.3, height: size * 1.3, borderRadius: '50%', border: `3px solid ${color}40`, boxShadow: `inset 0 0 ${size * 0.5}px ${color}10, 0 0 ${size}px ${color}10` }} />;
+  if (shape === 'diamond') return <div style={{ ...base, width: size, height: size, border: `2px solid ${color}`, transform: `translateY(${float}px) scale(${entry}) rotate(${rot}deg)`, borderRadius: 4, boxShadow: `0 0 ${size * 0.5}px ${color}15` }} />;
+  if (shape === 'dot') return <div style={{ ...base, width: size * 0.3, height: size * 0.3, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 ${size * 0.5}px ${color}30` }} />;
+  // line
+  return <div style={{ ...base, width: size * 1.5, height: 2, backgroundColor: `${color}50`, borderRadius: 1, transform: `translateY(${float}px) scale(${entry}) rotate(${15 + delay * 20}deg)`, boxShadow: `0 0 ${size * 0.3}px ${color}20` }} />;
+}
+
+// ── Type icon badge ──
 
 function TypeIcon({ icon, accent }: { icon: string; accent: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-
-  const entrySpring = spring({ frame, fps, config: { damping: 10, mass: 1.2 } });
-  const scale = interpolate(entrySpring, [0, 1], [0, 1]);
+  const entry = spring({ frame, fps, config: { damping: 10, mass: 1.2 } });
   const bounce = frame > 15 ? 1 + Math.sin(frame * 0.1) * 0.05 : 1;
 
   return (
     <div style={{
-      position: 'absolute',
-      top: 80,
-      right: 80,
-      width: 100,
-      height: 100,
-      borderRadius: 28,
-      backgroundColor: `${accent}30`,
-      border: `3px solid ${accent}50`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      position: 'absolute', top: 80, right: 80,
+      width: 100, height: 100, borderRadius: 28,
+      backgroundColor: `${accent}25`,
+      border: `2px solid ${accent}40`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: 52,
-      transform: `scale(${scale * bounce})`,
+      transform: `scale(${interpolate(entry, [0, 1], [0, 1]) * bounce})`,
+      boxShadow: `0 0 30px ${accent}20`,
     }}>
       {icon}
     </div>
   );
 }
 
-// ── X-Mark overlay for problem scenes ──
+// ── X-Mark overlay ──
 
 function XMarkOverlay({ accent }: { accent: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-
-  const line1 = spring({ frame: Math.max(0, frame - 8), fps, config: { damping: 10, mass: 0.5 } });
-  const line2 = spring({ frame: Math.max(0, frame - 14), fps, config: { damping: 10, mass: 0.5 } });
+  const l1 = spring({ frame: Math.max(0, frame - 8), fps, config: { damping: 10, mass: 0.5 } });
+  const l2 = spring({ frame: Math.max(0, frame - 14), fps, config: { damping: 10, mass: 0.5 } });
 
   return (
-    <div style={{
-      position: 'absolute',
-      left: '50%',
-      top: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: 300,
-      height: 300,
-      opacity: 0.15,
-    }}>
-      <div style={{
-        position: 'absolute',
-        left: '50%',
-        top: '50%',
-        width: `${line1 * 100}%`,
-        height: 8,
-        backgroundColor: accent,
-        transform: 'translate(-50%, -50%) rotate(45deg)',
-        borderRadius: 4,
-      }} />
-      <div style={{
-        position: 'absolute',
-        left: '50%',
-        top: '50%',
-        width: `${line2 * 100}%`,
-        height: 8,
-        backgroundColor: accent,
-        transform: 'translate(-50%, -50%) rotate(-45deg)',
-        borderRadius: 4,
-      }} />
+    <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: 300, height: 300, opacity: 0.12 }}>
+      <div style={{ position: 'absolute', left: '50%', top: '50%', width: `${l1 * 100}%`, height: 8, backgroundColor: accent, transform: 'translate(-50%, -50%) rotate(45deg)', borderRadius: 4, boxShadow: `0 0 20px ${accent}40` }} />
+      <div style={{ position: 'absolute', left: '50%', top: '50%', width: `${l2 * 100}%`, height: 8, backgroundColor: accent, transform: 'translate(-50%, -50%) rotate(-45deg)', borderRadius: 4, boxShadow: `0 0 20px ${accent}40` }} />
     </div>
   );
 }
 
-// ── Check overlay for solution scenes ──
+// ── Check overlay ──
 
 function CheckOverlay({ accent }: { accent: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-
-  const progress = spring({ frame: Math.max(0, frame - 10), fps, config: { damping: 12, mass: 0.6 } });
-  const scale = interpolate(progress, [0, 1], [0, 1]);
+  const p = spring({ frame: Math.max(0, frame - 10), fps, config: { damping: 12, mass: 0.6 } });
 
   return (
     <div style={{
-      position: 'absolute',
-      left: '50%',
-      top: '50%',
-      transform: `translate(-50%, -50%) scale(${scale})`,
-      width: 250,
-      height: 250,
-      borderRadius: '50%',
-      border: `6px solid ${accent}25`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      opacity: 0.2,
+      position: 'absolute', left: '50%', top: '50%',
+      transform: `translate(-50%, -50%) scale(${interpolate(p, [0, 1], [0, 1])})`,
+      width: 250, height: 250, borderRadius: '50%',
+      border: `6px solid ${accent}20`, opacity: 0.18,
+      boxShadow: `inset 0 0 40px ${accent}10, 0 0 40px ${accent}10`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
@@ -209,7 +180,7 @@ function CheckOverlay({ accent }: { accent: string }) {
   );
 }
 
-// ── Accent line divider ──
+// ── Accent line (gradient) ──
 
 function AccentLine({ accent }: { accent: string }) {
   const frame = useCurrentFrame();
@@ -218,72 +189,79 @@ function AccentLine({ accent }: { accent: string }) {
 
   return (
     <div style={{
-      position: 'absolute',
-      left: '50%',
-      top: '75%',
-      transform: 'translateX(-50%)',
-      width: `${w * 40}%`,
-      height: 4,
-      backgroundColor: accent,
-      borderRadius: 2,
+      position: 'absolute', left: '50%', top: '75%', transform: 'translateX(-50%)',
+      width: `${w * 40}%`, height: 3, borderRadius: 2,
+      background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
       opacity: 0.5,
     }} />
   );
 }
 
-// ── Particle burst for hook/cta scenes ──
+// ── Enhanced Particle Burst ──
 
-function ParticleBurst({ accent }: { accent: string }) {
+function ParticleBurst({ accent, glow }: { accent: string; glow: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const particles = Array.from({ length: 8 }, (_, i) => {
-    const angle = (i / 8) * Math.PI * 2;
-    const delay = i * 2;
-    const progress = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 20, mass: 0.3 } });
-    const dist = interpolate(progress, [0, 1], [0, 120 + i * 15]);
-    const x = Math.cos(angle) * dist;
-    const y = Math.sin(angle) * dist;
-    const size = 6 + (i % 3) * 4;
-    const opacity = interpolate(progress, [0, 0.5, 1], [0, 0.6, 0.2]);
+  return <>
+    {Array.from({ length: 14 }, (_, i) => {
+      const angle = (i / 14) * Math.PI * 2;
+      const delay = i * 1.5;
+      const p = spring({ frame: Math.max(0, frame - delay), fps, config: { damping: 20, mass: 0.3 } });
+      const dist = interpolate(p, [0, 1], [0, 130 + (i % 4) * 35]);
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      const size = 4 + (i % 3) * 3;
+      const op = interpolate(p, [0, 0.3, 1], [0, 0.7, 0.1]);
+      const color = i % 3 === 0 ? glow : accent;
 
-    return (
-      <div key={i} style={{
-        position: 'absolute',
-        left: '50%',
-        top: '45%',
-        width: size,
-        height: size,
-        borderRadius: i % 2 === 0 ? '50%' : 2,
-        backgroundColor: accent,
-        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${i * 45}deg)`,
-        opacity,
-      }} />
-    );
-  });
-
-  return <>{particles}</>;
+      return (
+        <div key={i} style={{
+          position: 'absolute', left: '50%', top: '45%',
+          width: size, height: size,
+          borderRadius: i % 2 === 0 ? '50%' : 2,
+          backgroundColor: color,
+          transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${i * 26}deg)`,
+          opacity: op, boxShadow: `0 0 ${size * 2}px ${color}50`,
+        }} />
+      );
+    })}
+  </>;
 }
 
-// ── Shapes seed based on scene number ──
+// ── Seeded element generators ──
+
+function getBokehOrbs(sceneNumber: number, glow: string) {
+  return Array.from({ length: 8 }, (_, i) => ({
+    x: 5 + seededRandom(sceneNumber * 100 + i * 17) * 90,
+    y: 5 + seededRandom(sceneNumber * 100 + i * 31) * 90,
+    size: 60 + seededRandom(sceneNumber * 100 + i * 47) * 100,
+    color: glow,
+    delay: 0.1 + i * 0.12,
+    speed: 0.6 + seededRandom(sceneNumber * 100 + i * 61) * 0.8,
+  }));
+}
+
+function getSparkles(sceneNumber: number, accent: string) {
+  return Array.from({ length: 7 }, (_, i) => ({
+    x: 8 + seededRandom(sceneNumber * 200 + i * 23) * 84,
+    y: 8 + seededRandom(sceneNumber * 200 + i * 37) * 84,
+    color: accent,
+    delay: 0.3 + i * 0.18,
+    size: 3 + seededRandom(sceneNumber * 200 + i * 43) * 5,
+  }));
+}
 
 function getShapes(sceneNumber: number, accent: string) {
-  const shapes: Array<{ x: number; y: number; size: number; color: string; delay: number; shape: 'circle' | 'diamond' | 'line' | 'dot' }> = [];
-  const seed = sceneNumber * 7;
-  const shapeTypes: Array<'circle' | 'diamond' | 'line' | 'dot'> = ['circle', 'diamond', 'line', 'dot'];
-
-  for (let i = 0; i < 6; i++) {
-    const hash = (seed + i * 13) % 100;
-    shapes.push({
-      x: 5 + (hash * 7) % 90,
-      y: 10 + ((hash * 3 + i * 17) % 80),
-      size: 20 + (hash % 30),
-      color: accent,
-      delay: 0.2 + i * 0.15,
-      shape: shapeTypes[(hash + i) % shapeTypes.length],
-    });
-  }
-  return shapes;
+  const types: Array<'circle' | 'diamond' | 'ring' | 'dot' | 'line'> = ['circle', 'diamond', 'ring', 'dot', 'line'];
+  return Array.from({ length: 10 }, (_, i) => ({
+    x: 3 + seededRandom(sceneNumber * 300 + i * 19) * 94,
+    y: 8 + seededRandom(sceneNumber * 300 + i * 29) * 84,
+    size: 16 + seededRandom(sceneNumber * 300 + i * 41) * 28,
+    color: accent,
+    delay: 0.15 + i * 0.1,
+    shape: types[Math.floor(seededRandom(sceneNumber * 300 + i * 53) * types.length)],
+  }));
 }
 
 // ── Main SceneRenderer ──
@@ -292,142 +270,191 @@ export default function SceneRenderer({ scene }: { scene: Scene }) {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const theme = getTheme(scene.type);
-  const [c1, c2] = theme.bg;
+  const [c1, c2, c3] = theme.bg;
 
-  // Entry
   const entryProgress = spring({ frame, fps, config: { damping: 20 } });
 
-  // Transition
+  // ── Transitions (6 types) ──
   const transition = scene.transition?.toLowerCase() || 'cut';
   let transform = '';
   let opacity = 1;
+  let filter: string | undefined;
+  let clipPath: string | undefined;
 
   if (transition === 'fade') {
-    opacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: 'clamp' });
+    opacity = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' });
   } else if (transition === 'zoom') {
-    const scale = interpolate(entryProgress, [0, 1], [1.15, 1]);
-    transform = `scale(${scale})`;
+    transform = `scale(${interpolate(entryProgress, [0, 1], [1.2, 1])})`;
   } else if (transition === 'slide') {
     const tx = interpolate(entryProgress, [0, 1], [100, 0]);
     transform = `translateX(${tx}%)`;
+  } else if (transition === 'blur_in') {
+    filter = `blur(${interpolate(frame, [0, 12], [15, 0], { extrapolateRight: 'clamp' })}px)`;
+    transform = `scale(${interpolate(frame, [0, 12], [1.05, 1], { extrapolateRight: 'clamp' })})`;
+    opacity = interpolate(frame, [0, 6], [0, 1], { extrapolateRight: 'clamp' });
+  } else if (transition === 'wipe_left') {
+    const p = interpolate(frame, [0, 12], [0, 100], { extrapolateRight: 'clamp' });
+    clipPath = `inset(0 ${100 - p}% 0 0)`;
+  } else if (transition === 'scale_rotate') {
+    transform = `scale(${interpolate(entryProgress, [0, 1], [0.5, 1])}) rotate(${interpolate(entryProgress, [0, 1], [-15, 0])}deg)`;
+    opacity = interpolate(frame, [0, 6], [0, 1], { extrapolateRight: 'clamp' });
   }
 
-  // Exit fade
-  const exitStart = durationInFrames - 6;
+  // Exit fade (smoother 8-frame)
+  const exitStart = durationInFrames - 8;
   const exitOpacity = interpolate(frame, [exitStart, durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   const keywords = extractKeywords(scene.subtitle);
-  const shapes = getShapes(scene.scene_number, theme.accent);
   const sceneType = scene.type.toLowerCase().replace(/\s+/g, '_');
   const isProblem = ['problem', 'problem_intro', 'reason_1', 'reason_2', 'reason_3', 'reason'].includes(sceneType);
   const isSolution = ['solution', 'tip'].includes(sceneType);
   const isHookOrCta = ['hook', 'cta', 'outro'].includes(sceneType);
+  const hasVideo = !!scene.backgroundVideoUrl;
+  const hasImage = !hasVideo && !!scene.backgroundImageUrl;
 
-  const hasImage = !!scene.backgroundImageUrl;
+  // Ken Burns for image backgrounds (skip for video — video already has motion)
+  const kbScale = hasImage ? interpolate(frame, [0, durationInFrames], [1.0, 1.15], { extrapolateRight: 'clamp' }) : 1;
+  const kbX = hasImage ? interpolate(frame, [0, durationInFrames], [0, -3], { extrapolateRight: 'clamp' }) : 0;
+  const kbY = hasImage ? interpolate(frame, [0, durationInFrames], [0, -2], { extrapolateRight: 'clamp' }) : 0;
 
-  // Ken Burns effect for image backgrounds
-  const kenBurnsScale = hasImage ? interpolate(frame, [0, durationInFrames], [1.0, 1.15], { extrapolateRight: 'clamp' }) : 1;
-  const kenBurnsX = hasImage ? interpolate(frame, [0, durationInFrames], [0, -3], { extrapolateRight: 'clamp' }) : 0;
-  const kenBurnsY = hasImage ? interpolate(frame, [0, durationInFrames], [0, -2], { extrapolateRight: 'clamp' }) : 0;
-
-  // Resolve motion component
+  // Motion component
   const motionStyle = scene.motion_style || 'keyword_pop';
   const MotionComponent = MOTION_REGISTRY[motionStyle] || MOTION_REGISTRY.keyword_pop;
-
-  // Use scene.icon if provided, else theme default
   const displayIcon = scene.icon || theme.icon;
 
+  // Animated gradient angle + ambient glow positions
+  const gradAngle = 160 + Math.sin(frame * 0.008) * 20;
+  const glow1X = 45 + Math.sin(frame * 0.01) * 15;
+  const glow1Y = 30 + Math.cos(frame * 0.008) * 12;
+  const glow2X = 55 + Math.cos(frame * 0.012) * 18;
+  const glow2Y = 65 + Math.sin(frame * 0.009) * 10;
+
+  const bokehOrbs = getBokehOrbs(scene.scene_number, theme.glow);
+  const sparkles = getSparkles(scene.scene_number, theme.accent);
+  const shapes = getShapes(scene.scene_number, theme.accent);
+
   return (
-    <AbsoluteFill style={{ opacity: opacity * exitOpacity, transform }}>
+    <AbsoluteFill style={{ opacity: opacity * exitOpacity, transform, filter, clipPath }}>
+
       {/* ── Background Layer ── */}
-      {hasImage ? (
+      {hasVideo ? (
         <>
-          {/* AI-generated image background with Ken Burns */}
           <AbsoluteFill style={{ overflow: 'hidden' }}>
-            <Img
-              src={scene.backgroundImageUrl!}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transform: `scale(${kenBurnsScale}) translate(${kenBurnsX}%, ${kenBurnsY}%)`,
-              }}
-            />
+            <Video src={scene.backgroundVideoUrl!} style={{
+              width: '100%', height: '100%', objectFit: 'cover',
+            }} />
           </AbsoluteFill>
-          {/* Dark overlay for text readability */}
+          <AbsoluteFill style={{ backgroundColor: 'rgba(0,0,0,0.35)' }} />
+          <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.5) 100%)' }} />
+        </>
+      ) : hasImage ? (
+        <>
+          <AbsoluteFill style={{ overflow: 'hidden' }}>
+            <Img src={scene.backgroundImageUrl!} style={{
+              width: '100%', height: '100%', objectFit: 'cover',
+              transform: `scale(${kbScale}) translate(${kbX}%, ${kbY}%)`,
+            }} />
+          </AbsoluteFill>
           <AbsoluteFill style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} />
-          {/* Vignette */}
+          <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.5) 100%)' }} />
+          {/* Subtle grain on images */}
           <AbsoluteFill style={{
-            background: 'radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.5) 100%)',
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+            backgroundSize: '3px 3px', pointerEvents: 'none',
           }} />
         </>
       ) : (
         <>
-          {/* Gradient background */}
-          <AbsoluteFill style={{ background: `linear-gradient(160deg, ${c1}, ${c2})` }} />
-          {/* Subtle radial glow */}
+          {/* Animated 3-stop gradient */}
           <AbsoluteFill style={{
-            background: `radial-gradient(ellipse at 50% 40%, ${theme.accent}12 0%, transparent 60%)`,
+            background: `linear-gradient(${gradAngle}deg, ${c1} 0%, ${c2} 50%, ${c3} 100%)`,
           }} />
-          {/* Grid pattern overlay */}
+
+          {/* Ambient glow 1 - slow-moving radial */}
           <AbsoluteFill style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
-            backgroundSize: '60px 60px',
+            background: `radial-gradient(ellipse at ${glow1X}% ${glow1Y}%, ${theme.glow}15 0%, transparent 55%)`,
+          }} />
+
+          {/* Ambient glow 2 */}
+          <AbsoluteFill style={{
+            background: `radial-gradient(ellipse at ${glow2X}% ${glow2Y}%, ${theme.accent}0c 0%, transparent 50%)`,
+          }} />
+
+          {/* Grid pattern */}
+          <AbsoluteFill style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+            backgroundSize: '80px 80px',
             opacity: interpolate(entryProgress, [0, 1], [0, 1]),
           }} />
+
+          {/* Grain texture (dual-layer dot pattern) */}
+          <AbsoluteFill style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px), radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
+            backgroundSize: '4px 4px, 7px 7px',
+            backgroundPosition: '0 0, 3px 3px',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Bokeh orbs */}
+          {bokehOrbs.map((orb, i) => <BokehOrb key={`b${i}`} {...orb} />)}
         </>
       )}
 
-      {/* Floating shapes (reduced opacity with image background) */}
-      <div style={{ opacity: hasImage ? 0.3 : 1 }}>
-        {shapes.map((s, i) => (
-          <FloatingShape key={i} {...s} />
-        ))}
+      {/* Sparkles (both modes, subtle for images/video) */}
+      <div style={{ opacity: (hasImage || hasVideo) ? 0.3 : 1 }}>
+        {sparkles.map((s, i) => <Sparkle key={`s${i}`} {...s} />)}
       </div>
 
-      {/* Type-specific overlays (hidden with image background) */}
-      {!hasImage && isProblem && <XMarkOverlay accent={theme.accent} />}
-      {!hasImage && isSolution && <CheckOverlay accent={theme.accent} />}
-      {!hasImage && isHookOrCta && <ParticleBurst accent={theme.accent} />}
+      {/* Floating shapes */}
+      <div style={{ opacity: (hasImage || hasVideo) ? 0.15 : 0.7 }}>
+        {shapes.map((s, i) => <FloatingShape key={`f${i}`} {...s} />)}
+      </div>
+
+      {/* Type-specific overlays */}
+      {!hasImage && !hasVideo && isProblem && <XMarkOverlay accent={theme.accent} />}
+      {!hasImage && !hasVideo && isSolution && <CheckOverlay accent={theme.accent} />}
+      {isHookOrCta && <ParticleBurst accent={theme.accent} glow={theme.glow} />}
 
       {/* Type icon badge */}
       <TypeIcon icon={displayIcon} accent={theme.accent} />
 
-      {/* Scene number + type label */}
+      {/* Scene label */}
       <div style={{
         position: 'absolute', top: 88, left: 60,
         display: 'flex', alignItems: 'center', gap: 16,
-        opacity: interpolate(entryProgress, [0, 1], [0, 0.8]),
+        opacity: interpolate(entryProgress, [0, 1], [0, 0.7]),
       }}>
         <div style={{
           width: 44, height: 44, borderRadius: 12,
-          backgroundColor: `${theme.accent}30`,
+          backgroundColor: `${theme.accent}25`,
+          border: `1px solid ${theme.accent}30`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
           fontSize: 22, fontWeight: 800, color: theme.accent,
+          boxShadow: `0 0 15px ${theme.accent}15`,
         }}>
           {scene.scene_number}
         </div>
         <span style={{
           fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-          fontSize: 24, fontWeight: 600, color: `${theme.accent}80`,
+          fontSize: 24, fontWeight: 600, color: `${theme.accent}60`,
           textTransform: 'uppercase', letterSpacing: 3,
         }}>
           {scene.type}
         </span>
       </div>
 
-      {/* ── Motion Graphics: Dynamic Component ── */}
+      {/* ── Motion Graphics ── */}
       <MotionComponent scene={scene} accent={theme.accent} keywords={keywords} />
 
       {/* Accent line */}
       <AccentLine accent={theme.accent} />
 
-      {/* Visual description (subtle, top area) */}
+      {/* Visual description (very subtle) */}
       <div style={{
         position: 'absolute', top: 160, left: 60, right: 60,
         fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-        fontSize: 22, fontWeight: 400, color: 'rgba(255,255,255,0.18)',
+        fontSize: 22, fontWeight: 400, color: 'rgba(255,255,255,0.12)',
         lineHeight: 1.5,
         opacity: interpolate(entryProgress, [0, 1], [0, 1]),
       }}>

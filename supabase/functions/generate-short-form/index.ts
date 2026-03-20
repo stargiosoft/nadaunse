@@ -39,26 +39,35 @@ serve(async (req) => {
     const isMotionType = videoType === 'motion'
 
     const motionFields = isMotionType ? `
-      "motion_style": "모션 그래픽 스타일 (아래 10가지 중 택1)",
+      "motion_style": "모션 그래픽 스타일 (아래 15가지 중 택1)",
       "layout": "레이아웃 (center/top_heavy/bottom_heavy/split_left/split_right)",
       "icon": "씬 내용에 맞는 이모지 1개",` : ''
 
     const motionRules = isMotionType ? `
 
-★ 모션 그래픽 스타일 규칙 (motion_style):
+★ 모션 그래픽 스타일 규칙 (motion_style) — 15가지:
 - keyword_pop: 키워드가 크게 팝인 (기본, 강조할 단어 1~3개가 있을 때)
 - typewriter: 타이핑 효과 (설명/인용문/대화체 씬)
 - slide_stack: 좌우에서 슬라이드하며 쌓기 (목록/비교 씬)
-- counter: 숫자 카운트업 + 통계 (수치/통계가 핵심인 씬)
+- counter: 숫자 카운트업 + 원형 프로그레스 링 (수치/통계가 핵심인 씬)
 - split_compare: 좌우 분할 비교 (Before/After, 좋은것/나쁜것)
-- radial_burst: 중앙에서 방사형 버스트 (임팩트/놀라움/결론)
+- radial_burst: 중앙에서 네온 방사형 버스트 (임팩트/놀라움/결론)
 - list_reveal: 번호 매긴 항목이 순차 등장 (팁 나열, 이유 나열)
-- zoom_impact: 줌인하며 강렬히 등장 (핵심 메시지, 결론)
-- glitch: 글리치/왜곡 효과 (문제 제기, 경고, 충격적 사실)
+- zoom_impact: 줌인 + 카메라 플래시 (핵심 메시지, 결론)
+- glitch: 글리치/VHS 왜곡 효과 (문제 제기, 경고, 충격적 사실)
 - wave: 글자가 파도처럼 출렁 (감성적, 부드러운 씬)
+- spotlight: 어둠 속 스포트라이트 원형 reveal (비밀, 핵심 발견, 놀라운 사실)
+- card_flip: 3D 카드 뒤집기 (반전, 질문→답, Before/After)
+- progress_bar: 가로 프로그레스 바 + 퍼센트 (달성률, 비율, 통계)
+- emoji_rain: 이모지 비 + 중앙 텍스트 (감성, 축하, 강조)
+- parallax_layers: 3단 패럴랙스 레이어 (스토리텔링, 설명, 흐름)
 
 중요: 연속 2개 씬에 같은 motion_style 금지! 시각적 다양성을 위해 다양하게 배분.
-씬 내용에 가장 어울리는 스타일 선택 (예: 통계→counter, 경고→glitch, 팁 나열→list_reveal)` : ''
+씬 내용에 가장 어울리는 스타일 선택. 15가지를 골고루 활용할 것.
+
+★ 전환 효과 (transition) — 7가지:
+cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
+다양하게 섞어 사용. 연속 같은 전환 금지.` : ''
 
     const prompt = `당신은 숏폼 영상 대본 전문 작가이자 SNS 바이럴 콘텐츠 기획자입니다.
 
@@ -80,7 +89,7 @@ serve(async (req) => {
       "narration": "나레이션 텍스트 (읽는 속도 기준 해당 초 분량)",
       "subtitle": "화면에 표시될 자막 (짧고 임팩트 있게, 10자 이내)",
       "visual": "화면 설명 (어떤 영상/이미지를 보여줄지)",
-      "transition": "전환 효과 (cut/fade/zoom/slide)"${motionFields ? ',' : ''}${motionFields}
+      "transition": "전환 효과 (cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate)"${motionFields ? ',' : ''}${motionFields}
     }
   ],
   "hashtags": ["관련해시태그1", "관련해시태그2", "...최대10개"],

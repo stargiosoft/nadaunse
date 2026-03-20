@@ -183,11 +183,11 @@ export function NebulaOntologyGraph({ center, nodes, edges }: NebulaOntologyGrap
     const fg = graphRef.current;
     if (!fg || graphData.nodes.length === 0) return;
 
-    // 초기 카메라를 가깝게 설정
-    fg.cameraPosition({ x: 0, y: 0, z: 120 });
+    // 초기 카메라 설정
+    fg.cameraPosition({ x: 0, y: 0, z: 250 });
 
     const timer = setTimeout(() => {
-      fg.zoomToFit(600, 5);
+      fg.zoomToFit(600, 15);
     }, 1500);
     return () => clearTimeout(timer);
   }, [graphData]);
