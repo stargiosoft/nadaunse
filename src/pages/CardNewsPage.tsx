@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import JSZip from 'jszip';
 import { toPng } from 'html-to-image';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
 
@@ -93,8 +93,9 @@ const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFo
 
 export default function CardNewsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>('input');
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(searchParams.get('topic') || '');
   const [slideCount, setSlideCount] = useState<number>(5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<SlideResult | null>(null);

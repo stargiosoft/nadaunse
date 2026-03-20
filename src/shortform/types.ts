@@ -9,6 +9,11 @@ export type MotionStyle =
   | 'zoom_impact'      // 줌인 임팩트
   | 'glitch'           // 글리치/디스토션
   | 'wave'             // 웨이브 텍스트
+  | 'spotlight'        // 스포트라이트 원형 reveal
+  | 'card_flip'        // 3D 카드 뒤집기
+  | 'progress_bar'     // 가로 프로그레스 바
+  | 'emoji_rain'       // 이모지 비
+  | 'parallax_layers'  // 패럴랙스 레이어
   ;
 
 export type SceneLayout = 'center' | 'top_heavy' | 'bottom_heavy' | 'split_left' | 'split_right';
@@ -27,6 +32,8 @@ export type Scene = {
   icon?: string;
   // Scene background image (Level 2)
   backgroundImageUrl?: string;
+  // Scene background video (Level 3 — fal.ai Image-to-Video)
+  backgroundVideoUrl?: string;
 };
 
 export type ScriptResult = {

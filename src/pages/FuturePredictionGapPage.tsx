@@ -381,9 +381,6 @@ export function FuturePredictionGapPage() {
             <span style={{ fontFamily: font, fontSize: 16, fontWeight: 500, lineHeight: '25px', letterSpacing: '-0.32px', color: C.surface }}>
               맞춤 대응 리포트 보러가기
             </span>
-            <span style={{ fontFamily: font, fontSize: 12, fontWeight: 400, color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.24px', marginLeft: 6 }}>
-              19,800원
-            </span>
           </button>
           <button
             onClick={() => navigate('/future-prediction')}
