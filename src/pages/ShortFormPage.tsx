@@ -6,7 +6,8 @@ import ArrowLeft from '../components/ArrowLeft';
 import ShortFormVideo, { computeTotalFrames } from '../shortform/compositions/ShortFormVideo';
 import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS } from '../shortform/constants';
 import { renderVideoToMp4, isWebCodecsSupported } from '../shortform/renderVideo';
-import type { Scene, ScriptResult, TtsAudio } from '../shortform/types';
+import type { Scene, ScriptResult, TtsAudio, BgmAudio } from '../shortform/types';
+import { BGM_MOODS } from '../shortform/types';
 import { generateCapcutZip } from '../capcut/generateCapcutProject';
 
 // ── Types ──
@@ -33,7 +34,7 @@ const VIDEO_TYPES = [
 
 type VideoType = 'image' | 'motion';
 type Step = 'input' | 'review' | 'result';
-type VideoPhase = 'tts' | 'images' | 'preview' | 'rendering' | 'done';
+type VideoPhase = 'tts' | 'bgm' | 'images' | 'preview' | 'rendering' | 'done';
 
 // ── Design System Tokens ──
 
@@ -72,6 +73,7 @@ export default function ShortFormPage() {
   const [duration, setDuration] = useState<number>(30);
   const [platform, setPlatform] = useState<string>('reels');
   const [videoType, setVideoType] = useState<VideoType>('image');
+  const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,8 @@ export default function ShortFormPage() {
   const [copied, setCopied] = useState(false);
   const [isExportingCapcut, setIsExportingCapcut] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
+  const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
+  const [bgmLoading, setBgmLoading] = useState(false);
   const ttsAbortRef = useRef(false);
 
   useEffect(() => {
@@ -209,9 +213,13 @@ export default function ShortFormPage() {
       }
     }
 
-    // videoType === 'image'이면 이미지 생성 단계로, 아니면 바로 미리보기
-    setVideoPhase(videoType === 'image' ? 'images' : 'preview');
-  }, [videoType]);
+    // BGM 선택했으면 BGM 단계로, 아니면 이미지/미리보기로
+    if (bgmMood !== 'none') {
+      setVideoPhase('bgm');
+    } else {
+      setVideoPhase(videoType === 'image' ? 'images' : 'preview');
+    }
+  }, [videoType, bgmMood]);
 
   // Auto-start TTS when entering Step 3
   useEffect(() => {
@@ -219,6 +227,51 @@ export default function ShortFormPage() {
       generateAllTts(result.scenes);
     }
   }, [step, result, videoPhase, ttsAudios.length, generateAllTts]);
+
+  // ── Step 3-A+: BGM Generation ──
+
+  const generateBgm = useCallback(async (mood: string, targetDuration: number) => {
+    setBgmLoading(true);
+    setError(null);
+
+    try {
+      const data = await callEdgeFunction('generate-bgm', {
+        mood,
+        duration: targetDuration,
+      });
+
+      if (data.audio && data.track) {
+        // Decode to get actual duration
+        const base64 = data.audio.split(',')[1];
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+
+        const audioCtx = new AudioContext();
+        const buffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
+        await audioCtx.close();
+
+        setBgmAudio({
+          dataUrl: data.audio,
+          durationInSeconds: buffer.duration,
+          track: data.track,
+        });
+      }
+    } catch (err) {
+      console.warn('BGM 생성 실패 (무시하고 계속):', err);
+      // BGM 실패해도 영상 제작은 계속 진행
+    } finally {
+      setBgmLoading(false);
+      setVideoPhase(videoType === 'image' ? 'images' : 'preview');
+    }
+  }, [videoType]);
+
+  // Auto-start BGM generation
+  useEffect(() => {
+    if (step === 'result' && result && videoPhase === 'bgm' && !bgmLoading && !bgmAudio) {
+      generateBgm(bgmMood, result.total_duration);
+    }
+  }, [step, result, videoPhase, bgmLoading, bgmAudio, bgmMood, generateBgm]);
 
   // ── Step 3-A2: Generate scene background images ──
 
@@ -280,7 +333,7 @@ export default function ShortFormPage() {
     setError(null);
 
     try {
-      const blob = await renderVideoToMp4(result.scenes, ttsAudios, (p) => setRenderProgress(p));
+      const blob = await renderVideoToMp4(result.scenes, ttsAudios, (p) => setRenderProgress(p), bgmAudio);
       const url = URL.createObjectURL(blob);
       setVideoUrl(url);
       setVideoPhase('done');
@@ -382,6 +435,8 @@ export default function ShortFormPage() {
     setRenderProgress(0);
     setImageProgress(0);
     setVideoUrl(null);
+    setBgmAudio(null);
+    setBgmLoading(false);
   };
 
   const goToResult = () => {
@@ -391,6 +446,8 @@ export default function ShortFormPage() {
     setRenderProgress(0);
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl(null);
+    setBgmAudio(null);
+    setBgmLoading(false);
     setStep('result');
   };
 
@@ -636,6 +693,62 @@ export default function ShortFormPage() {
                     );
                   })}
                 </div>
+              </section>
+
+              {/* BGM */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  배경음악 (BGM)
+                </label>
+                <div
+                  style={{
+                    position: 'relative',
+                    backgroundColor: C.surface,
+                    border: `1px solid ${C.borderDefault}`,
+                    borderRadius: '16px',
+                  }}
+                >
+                  <select
+                    value={bgmMood}
+                    onChange={e => setBgmMood(e.target.value)}
+                    className="w-full"
+                    style={{
+                      height: '48px', padding: '0 16px',
+                      borderRadius: '16px', border: 'none', outline: 'none',
+                      backgroundColor: 'transparent',
+                      fontFamily: font, fontSize: '15px', fontWeight: 400,
+                      letterSpacing: '-0.3px', color: C.textPrimary,
+                      cursor: 'pointer',
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                    }}
+                  >
+                    {BGM_MOODS.map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                  {/* 드롭다운 화살표 */}
+                  <div style={{
+                    position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)',
+                    pointerEvents: 'none', color: C.textCaption,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+                {bgmMood !== 'none' && (
+                  <p style={{
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    color: C.textCaption, marginTop: '6px', paddingLeft: '4px',
+                  }}>
+                    Jamendo 로열티 프리 음원 (CC 라이선스)
+                  </p>
+                )}
               </section>
 
               {/* Generate CTA */}
@@ -958,6 +1071,35 @@ export default function ShortFormPage() {
                 </div>
               )}
 
+              {/* ── Phase A+: BGM Generation ── */}
+              {videoPhase === 'bgm' && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    padding: '24px 20px', backgroundColor: C.surfaceSecondary,
+                    borderRadius: '16px', textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, margin: '0 auto 16px',
+                      border: `3px solid ${C.borderDefault}`,
+                      borderTop: `3px solid ${C.primary}`,
+                      borderRadius: '50%', animation: 'spin 1s linear infinite',
+                    }} />
+                    <div style={{
+                      fontFamily: font, fontSize: '16px', fontWeight: 600,
+                      color: C.textPrimary, marginBottom: '8px',
+                    }}>
+                      배경음악 검색 중...
+                    </div>
+                    <div style={{
+                      fontFamily: font, fontSize: '14px', fontWeight: 400,
+                      color: C.textCaption,
+                    }}>
+                      {bgmMood} 분위기의 BGM
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ── Phase A-2: Image Generation ── */}
               {videoPhase === 'images' && result && (
                 <div style={{ marginBottom: '24px' }}>
@@ -1004,7 +1146,7 @@ export default function ShortFormPage() {
                     <div style={{ width: '100%', maxWidth: '280px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${C.borderDefault}` }} className="transform-gpu">
                       <Player
                         component={ShortFormVideo}
-                        inputProps={{ scenes: result.scenes, ttsAudios }}
+                        inputProps={{ scenes: result.scenes, ttsAudios, bgmAudio }}
                         durationInFrames={Math.max(1, computeTotalFrames(result.scenes, ttsAudios))}
                         fps={VIDEO_FPS}
                         compositionWidth={VIDEO_WIDTH}
@@ -1015,6 +1157,33 @@ export default function ShortFormPage() {
                       />
                     </div>
                   </div>
+
+                  {/* BGM Track Info */}
+                  {bgmAudio && (
+                    <div style={{
+                      padding: '12px 16px', backgroundColor: C.primaryLight,
+                      borderRadius: '12px', marginBottom: '16px',
+                    }}>
+                      <div style={{
+                        fontFamily: font, fontSize: '12px', fontWeight: 600,
+                        color: C.primary, marginBottom: '4px',
+                      }}>
+                        BGM
+                      </div>
+                      <div style={{
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        color: C.textSecondary,
+                      }}>
+                        {bgmAudio.track.name} — {bgmAudio.track.artist}
+                      </div>
+                      <div style={{
+                        fontFamily: font, fontSize: '11px', fontWeight: 400,
+                        color: C.textCaption, marginTop: '2px',
+                      }}>
+                        CC License · Jamendo
+                      </div>
+                    </div>
+                  )}
 
                   {/* Action buttons */}
                   <div className="flex flex-col" style={{ gap: '10px' }}>

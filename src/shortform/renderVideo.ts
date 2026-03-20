@@ -3,7 +3,7 @@
  * Chrome/Edge 전용 (WebCodecs API 필요)
  */
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
-import type { Scene, TtsAudio } from './types';
+import type { Scene, TtsAudio, BgmAudio } from './types';
 import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS } from './constants';
 
 // ── Scene colors (same as SceneRenderer.tsx) ──
@@ -261,24 +261,29 @@ function wrapTextCentered(
 
 // ── Decode TTS audio to PCM ──
 
+function decodeBase64ToBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.split(',')[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 async function decodeTtsAudio(
   ttsAudios: TtsAudio[],
   scenes: Scene[],
+  bgmAudio?: BgmAudio | null,
 ): Promise<{ pcmData: Float32Array; sampleRate: number }> {
   const audioCtx = new OfflineAudioContext(1, 1, 44100);
 
-  // Decode all audio buffers
+  // Decode all TTS audio buffers
   const buffers: { buffer: AudioBuffer; offsetSeconds: number }[] = [];
   let offset = 0;
 
   for (const scene of scenes) {
     const tts = ttsAudios.find(a => a.sceneNumber === scene.scene_number);
     if (tts) {
-      const base64 = tts.dataUrl.split(',')[1];
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
+      const bytes = decodeBase64ToBytes(tts.dataUrl);
       const buffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
       buffers.push({ buffer, offsetSeconds: offset });
       offset += tts.durationInSeconds;
@@ -291,7 +296,7 @@ async function decodeTtsAudio(
   const sampleRate = 44100;
   const totalSamples = Math.ceil(totalDuration * sampleRate);
 
-  // Mix all audio into one buffer
+  // Mix TTS into one buffer
   const mixedCtx = new OfflineAudioContext(1, totalSamples, sampleRate);
 
   for (const { buffer, offsetSeconds } of buffers) {
@@ -301,11 +306,51 @@ async function decodeTtsAudio(
     source.start(offsetSeconds);
   }
 
-  const rendered = await mixedCtx.startRendering();
-  return {
-    pcmData: rendered.getChannelData(0),
-    sampleRate,
-  };
+  const ttsRendered = await mixedCtx.startRendering();
+  const ttsPcm = ttsRendered.getChannelData(0);
+
+  // BGM이 없으면 TTS만 반환
+  if (!bgmAudio) {
+    return { pcmData: ttsPcm, sampleRate };
+  }
+
+  // BGM 디코딩
+  const bgmCtx = new OfflineAudioContext(1, 1, sampleRate);
+  const bgmBytes = decodeBase64ToBytes(bgmAudio.dataUrl);
+  const bgmBuffer = await bgmCtx.decodeAudioData(bgmBytes.buffer.slice(0));
+
+  // BGM을 영상 길이만큼 렌더링 (루프 or 트리밍)
+  const bgmMixCtx = new OfflineAudioContext(1, totalSamples, sampleRate);
+  const bgmSource = bgmMixCtx.createBufferSource();
+  bgmSource.buffer = bgmBuffer;
+
+  // BGM 볼륨 25% (나레이션 방해 방지)
+  const bgmGain = bgmMixCtx.createGain();
+  bgmGain.gain.value = 0.25;
+  // 페이드인 (처음 1초)
+  bgmGain.gain.setValueAtTime(0, 0);
+  bgmGain.gain.linearRampToValueAtTime(0.25, 1.0);
+  // 페이드아웃 (마지막 2초)
+  const fadeOutStart = Math.max(0, totalDuration - 2.0);
+  bgmGain.gain.setValueAtTime(0.25, fadeOutStart);
+  bgmGain.gain.linearRampToValueAtTime(0, totalDuration);
+
+  bgmSource.connect(bgmGain);
+  bgmGain.connect(bgmMixCtx.destination);
+  bgmSource.start(0);
+
+  const bgmRendered = await bgmMixCtx.startRendering();
+  const bgmPcm = bgmRendered.getChannelData(0);
+
+  // TTS + BGM 믹싱 (샘플 단위 합산 + 클리핑 방지)
+  const mixed = new Float32Array(totalSamples);
+  for (let i = 0; i < totalSamples; i++) {
+    const ttsVal = i < ttsPcm.length ? ttsPcm[i] : 0;
+    const bgmVal = i < bgmPcm.length ? bgmPcm[i] : 0;
+    mixed[i] = Math.max(-1, Math.min(1, ttsVal + bgmVal));
+  }
+
+  return { pcmData: mixed, sampleRate };
 }
 
 // ── Main render function ──
@@ -314,6 +359,7 @@ export async function renderVideoToMp4(
   scenes: Scene[],
   ttsAudios: TtsAudio[],
   onProgress: (progress: number) => void,
+  bgmAudio?: BgmAudio | null,
 ): Promise<Blob> {
   // Compute scene durations from TTS
   const sceneDurations = scenes.map((scene) => {
@@ -386,10 +432,10 @@ export async function renderVideoToMp4(
     }
   }
 
-  // Decode and mix audio
+  // Decode and mix audio (TTS + BGM)
   let audioData: Float32Array | null = null;
   if (ttsAudios.length > 0) {
-    const decoded = await decodeTtsAudio(ttsAudios, scenes);
+    const decoded = await decodeTtsAudio(ttsAudios, scenes, bgmAudio);
     audioData = decoded.pcmData;
   }
 
