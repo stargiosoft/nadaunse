@@ -1,5 +1,5 @@
 import { AbsoluteFill, Sequence, Audio } from 'remotion';
-import type { Scene, TtsAudio, BgmAudio } from '../types';
+import type { Scene, TtsAudio, BgmAudio, MotionTheme } from '../types';
 import { VIDEO_FPS } from '../constants';
 import SceneRenderer from './SceneRenderer';
 import SubtitleOverlay from './SubtitleOverlay';
@@ -8,6 +8,7 @@ export type ShortFormVideoProps = {
   scenes: Scene[];
   ttsAudios: TtsAudio[];
   bgmAudio?: BgmAudio | null;
+  motionTheme?: MotionTheme;
 };
 
 export function computeSceneFrames(scenes: Scene[], ttsAudios: TtsAudio[]): number[] {
@@ -22,7 +23,7 @@ export function computeTotalFrames(scenes: Scene[], ttsAudios: TtsAudio[]): numb
   return computeSceneFrames(scenes, ttsAudios).reduce((a, b) => a + b, 0);
 }
 
-export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio }: ShortFormVideoProps) {
+export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio, motionTheme }: ShortFormVideoProps) {
   const sceneFrames = computeSceneFrames(scenes, ttsAudios);
   const totalFrames = sceneFrames.reduce((a, b) => a + b, 0);
   let frameOffset = 0;
@@ -44,7 +45,7 @@ export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio }: ShortFor
 
         return (
           <Sequence key={scene.scene_number} from={from} durationInFrames={dur}>
-            <SceneRenderer scene={scene} prevScene={idx > 0 ? scenes[idx - 1] : undefined} />
+            <SceneRenderer scene={scene} prevScene={idx > 0 ? scenes[idx - 1] : undefined} motionTheme={motionTheme} />
             <SubtitleOverlay subtitle={scene.subtitle} />
             {tts && <Audio src={tts.dataUrl} />}
           </Sequence>

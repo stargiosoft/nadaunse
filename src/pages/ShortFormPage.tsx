@@ -4,10 +4,10 @@ import { Player } from '@remotion/player';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
 import ShortFormVideo, { computeTotalFrames } from '../shortform/compositions/ShortFormVideo';
-import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS } from '../shortform/constants';
+import { VIDEO_FPS, ASPECT_RATIOS } from '../shortform/constants';
 import { renderVideoToMp4, isWebCodecsSupported } from '../shortform/renderVideo';
-import type { Scene, ScriptResult, TtsAudio, BgmAudio } from '../shortform/types';
-import { BGM_MOODS } from '../shortform/types';
+import type { Scene, ScriptResult, TtsAudio, BgmAudio, MotionTheme } from '../shortform/types';
+import { BGM_MOODS, MOTION_THEMES } from '../shortform/types';
 import { generateCapcutZip } from '../capcut/generateCapcutProject';
 
 // ── Types ──
@@ -19,12 +19,12 @@ type ChatMessage = {
 
 // ── Constants ──
 
-const DURATIONS = [15, 30, 60] as const;
+const DURATIONS = [10, 15, 30] as const;
 
-const PLATFORMS = [
-  { id: 'reels', label: '릴스' },
-  { id: 'shorts', label: '쇼츠' },
-  { id: 'tiktok', label: '틱톡' },
+const STYLES = [
+  { id: 'viral', label: '바이럴', desc: '자극·공유 유도' },
+  { id: 'informative', label: '정보 전달', desc: '팩트·수치 중심' },
+  { id: 'storytelling', label: '스토리텔링', desc: '기승전결 서사' },
 ] as const;
 
 const VIDEO_TYPES = [
@@ -39,7 +39,13 @@ const I2V_MODELS = [
 ] as const;
 
 type VideoType = 'image' | 'motion';
+type ImageSource = 'ai' | 'stock';
 type I2vModel = typeof I2V_MODELS[number]['id'];
+
+const IMAGE_SOURCES = [
+  { id: 'ai' as const, label: 'AI 생성', desc: 'Gemini 이미지' },
+  { id: 'stock' as const, label: '스톡 이미지', desc: 'Unsplash·Pexels' },
+] as const;
 type Step = 'input' | 'review' | 'result';
 type VideoPhase = 'tts' | 'bgm' | 'images' | 'videos' | 'preview' | 'rendering' | 'done';
 
@@ -78,10 +84,13 @@ export default function ShortFormPage() {
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>('input');
   const [topic, setTopic] = useState(searchParams.get('topic') || '');
-  const [duration, setDuration] = useState<number>(30);
-  const [platform, setPlatform] = useState<string>('reels');
+  const [duration, setDuration] = useState<number>(10);
+  const [style, setStyle] = useState<string>('viral');
+  const [aspectRatio, setAspectRatio] = useState<string>('9:16');
   const [videoType, setVideoType] = useState<VideoType>('image');
+  const [imageSource, setImageSource] = useState<ImageSource>('ai');
   const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
+  const [motionTheme, setMotionTheme] = useState<MotionTheme>('bold_impact');
   const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
@@ -106,6 +115,11 @@ export default function ShortFormPage() {
   const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
   const [bgmLoading, setBgmLoading] = useState(false);
   const ttsAbortRef = useRef(false);
+
+  // ── Computed dimensions from aspect ratio ──
+  const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
+  const videoWidth = selectedRatio.width;
+  const videoHeight = selectedRatio.height;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,8 +151,9 @@ export default function ShortFormPage() {
       const data = await callEdgeFunction('generate-short-form', {
         topic: topic.trim(),
         duration,
-        platform,
+        style,
         videoType,
+        motionTheme: videoType === 'motion' ? motionTheme : undefined,
       });
       setResult(data);
       setStep('review');
@@ -164,7 +179,7 @@ export default function ShortFormPage() {
       const data = await callEdgeFunction('generate-short-form', {
         topic: `기존 대본:\n${currentScript}\n\n수정 요청: ${userMsg}\n\n위 대본을 수정 요청에 맞게 수정해줘. 전체 길이(${result.total_duration}초)와 씬 수는 유지.`,
         duration: result.total_duration,
-        platform,
+        style,
       });
       setResult(data);
       setChatMessages(prev => [...prev, { role: 'assistant', content: '대본을 수정했습니다. 확인해주세요!' }]);
@@ -290,42 +305,63 @@ export default function ShortFormPage() {
     setError(null);
 
     const updatedScenes = [...scenes];
+    const orientationMap: Record<string, string> = { '9:16': 'portrait', '3:4': 'portrait', '1:1': 'squarish' };
 
-    // 2개씩 병렬 처리 (429 방지)
-    for (let i = 0; i < scenes.length; i += 2) {
-      if (ttsAbortRef.current) return;
-      const batch = scenes.slice(i, Math.min(i + 2, scenes.length));
-
-      const results = await Promise.allSettled(
-        batch.map(async (scene) => {
-          const data = await callEdgeFunction('generate-card-image', {
-            slide_context: {
-              headline: scene.subtitle.replace(/\*\*/g, ''),
-              body: scene.narration,
-              type: scene.type === 'hook' ? 'cover' : scene.type === 'cta' ? 'cta' : 'content',
-              topic: topic,
-            },
-            aspect_ratio: '9:16',
-          });
-          return { sceneNumber: scene.scene_number, image: data.image, mimeType: data.mimeType };
-        })
-      );
-
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value.image) {
-          const { sceneNumber, image, mimeType } = r.value;
-          const dataUrl = `data:${mimeType || 'image/png'};base64,${image}`;
-          const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
-          if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: dataUrl };
+    if (imageSource === 'stock') {
+      // 스톡 이미지 모드: Unsplash/Pexels 검색
+      for (let i = 0; i < scenes.length; i++) {
+        if (ttsAbortRef.current) return;
+        const scene = scenes[i];
+        const query = scene.visual || scene.subtitle.replace(/\*\*/g, '');
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/search-stock-image?query=${encodeURIComponent(query)}&orientation=${orientationMap[aspectRatio] || 'portrait'}`);
+          const data = await res.json();
+          if (data.url) {
+            const idx = updatedScenes.findIndex(s => s.scene_number === scene.scene_number);
+            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: data.url };
+          }
+        } catch (err) {
+          console.warn(`Stock image failed for scene ${scene.scene_number}`, err);
         }
+        setImageProgress((i + 1) / scenes.length);
       }
+    } else {
+      // AI 이미지 모드: Gemini 생성 (2개씩 병렬, 429 방지)
+      for (let i = 0; i < scenes.length; i += 2) {
+        if (ttsAbortRef.current) return;
+        const batch = scenes.slice(i, Math.min(i + 2, scenes.length));
 
-      setImageProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
+        const results = await Promise.allSettled(
+          batch.map(async (scene) => {
+            const data = await callEdgeFunction('generate-card-image', {
+              slide_context: {
+                headline: scene.subtitle.replace(/\*\*/g, ''),
+                body: scene.narration,
+                type: scene.type === 'hook' ? 'cover' : scene.type === 'cta' ? 'cta' : 'content',
+                topic: topic,
+              },
+              aspect_ratio: aspectRatio,
+            });
+            return { sceneNumber: scene.scene_number, image: data.image, mimeType: data.mimeType };
+          })
+        );
+
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value.image) {
+            const { sceneNumber, image, mimeType } = r.value;
+            const dataUrl = `data:${mimeType || 'image/png'};base64,${image}`;
+            const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
+            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: dataUrl };
+          }
+        }
+
+        setImageProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
+      }
     }
 
     setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
     setVideoPhase('videos');
-  }, [topic]);
+  }, [topic, imageSource, aspectRatio]);
 
   // Auto-start image generation
   useEffect(() => {
@@ -441,7 +477,7 @@ export default function ShortFormPage() {
     setError(null);
 
     try {
-      const blob = await renderVideoToMp4(result.scenes, ttsAudios, (p) => setRenderProgress(p), bgmAudio);
+      const blob = await renderVideoToMp4(result.scenes, ttsAudios, (p) => setRenderProgress(p), bgmAudio, videoWidth, videoHeight, videoType === 'motion' ? motionTheme : undefined);
       const url = URL.createObjectURL(blob);
       setVideoUrl(url);
       setVideoPhase('done');
@@ -510,7 +546,7 @@ export default function ShortFormPage() {
     setIsExportingCapcut(true);
     setError(null);
     try {
-      const blob = await generateCapcutZip(result, result.scenes, ttsAudios);
+      const blob = await generateCapcutZip(result, result.scenes, ttsAudios, videoWidth, videoHeight);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -530,8 +566,11 @@ export default function ShortFormPage() {
     setStep('input');
     setTopic('');
     setDuration(30);
-    setPlatform('reels');
+    setStyle('viral');
+    setAspectRatio('9:16');
     setVideoType('image');
+    setMotionTheme('bold_impact');
+    setImageSource('ai');
     setResult(null);
     setError(null);
     setChatMessages([]);
@@ -719,22 +758,70 @@ export default function ShortFormPage() {
                 </div>
               </section>
 
-              {/* Platform */}
+              {/* Style */}
               <section style={{ marginBottom: '32px' }}>
                 <label style={{
                   display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
                   lineHeight: '16px', letterSpacing: '-0.24px',
                   color: C.textCaption, marginBottom: '10px',
                 }}>
-                  플랫폼
+                  목적
                 </label>
                 <div className="flex" style={{ gap: '10px' }}>
-                  {PLATFORMS.map(p => {
-                    const isSelected = platform === p.id;
+                  {STYLES.map(s => {
+                    const isSelected = style === s.id;
                     return (
                       <button
-                        key={p.id}
-                        onClick={() => setPlatform(p.id)}
+                        key={s.id}
+                        onClick={() => setStyle(s.id)}
+                        className="flex-1 flex flex-col items-center justify-center"
+                        style={{
+                          height: '64px', borderRadius: '16px',
+                          fontFamily: font,
+                          backgroundColor: isSelected ? C.primary : C.surface,
+                          border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}
+                        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                        onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                        onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                      >
+                        <span style={{
+                          fontSize: '15px', fontWeight: isSelected ? 600 : 400,
+                          letterSpacing: '-0.3px',
+                          color: isSelected ? C.textWhite : C.textPrimary,
+                        }}>
+                          {s.label}
+                        </span>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 400,
+                          color: isSelected ? 'rgba(255,255,255,0.7)' : C.textCaption,
+                          marginTop: '2px',
+                        }}>
+                          {s.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Aspect Ratio */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  화면 비율
+                </label>
+                <div className="flex" style={{ gap: '10px' }}>
+                  {ASPECT_RATIOS.map(r => {
+                    const isSelected = aspectRatio === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => setAspectRatio(r.id)}
                         className="flex-1 flex items-center justify-center"
                         style={{
                           height: '48px', borderRadius: '16px',
@@ -749,7 +836,7 @@ export default function ShortFormPage() {
                         onPointerUp={e => { e.currentTarget.style.transform = ''; }}
                         onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                       >
-                        {p.label}
+                        {r.label}
                       </button>
                     );
                   })}
@@ -804,6 +891,114 @@ export default function ShortFormPage() {
                 </div>
               </section>
 
+              {/* Motion Theme (모션 그래픽일 때만) */}
+              {videoType === 'motion' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    비주얼 스타일
+                  </label>
+                  <div className="flex flex-wrap" style={{ gap: '8px' }}>
+                    {MOTION_THEMES.map(mt => {
+                      const isSelected = motionTheme === mt.id;
+                      return (
+                        <button
+                          key={mt.id}
+                          onClick={() => setMotionTheme(mt.id)}
+                          className="flex items-center"
+                          style={{
+                            height: '52px', borderRadius: '14px', padding: '0 14px',
+                            fontFamily: font,
+                            backgroundColor: isSelected ? C.primary : C.surface,
+                            border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            gap: '10px',
+                          }}
+                          onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+                          onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                        >
+                          {/* Color preview dot */}
+                          <div style={{
+                            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                            background: `linear-gradient(135deg, ${mt.preview[0]} 50%, ${mt.preview[1]} 50%)`,
+                            border: isSelected ? '2px solid rgba(255,255,255,0.4)' : '1px solid rgba(0,0,0,0.08)',
+                          }} />
+                          <div className="flex flex-col items-start" style={{ gap: '1px' }}>
+                            <span style={{
+                              fontSize: '13px', fontWeight: isSelected ? 600 : 500,
+                              letterSpacing: '-0.3px',
+                              color: isSelected ? C.textWhite : C.textPrimary,
+                            }}>
+                              {mt.label}
+                            </span>
+                            <span style={{
+                              fontSize: '10px', fontWeight: 400,
+                              color: isSelected ? 'rgba(255,255,255,0.6)' : C.textCaption,
+                            }}>
+                              {mt.desc}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Image Source (이미지 기반일 때만) */}
+              {videoType === 'image' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    이미지 소스
+                  </label>
+                  <div className="flex" style={{ gap: '10px' }}>
+                    {IMAGE_SOURCES.map(is => {
+                      const isSelected = imageSource === is.id;
+                      return (
+                        <button
+                          key={is.id}
+                          onClick={() => setImageSource(is.id)}
+                          className="flex-1 flex flex-col items-center justify-center"
+                          style={{
+                            height: '64px', borderRadius: '16px',
+                            fontFamily: font,
+                            backgroundColor: isSelected ? C.primary : C.surface,
+                            border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            gap: '2px',
+                          }}
+                          onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                          onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                        >
+                          <span style={{
+                            fontSize: '15px', fontWeight: isSelected ? 600 : 400,
+                            letterSpacing: '-0.3px',
+                            color: isSelected ? C.textWhite : C.textPrimary,
+                          }}>
+                            {is.label}
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 400,
+                            color: isSelected ? 'rgba(255,255,255,0.7)' : C.textCaption,
+                          }}>
+                            {is.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
               {/* I2V Model (이미지 기반일 때만) */}
               {videoType === 'image' && (
                 <section style={{ marginBottom: '32px' }}>
@@ -855,7 +1050,7 @@ export default function ShortFormPage() {
                     fontFamily: font, fontSize: '12px', fontWeight: 400,
                     color: C.textCaption, marginTop: '6px', paddingLeft: '4px',
                   }}>
-                    fal.ai Image-to-Video · 씬별 5초 AI 영상 배경 생성
+                    Replicate Image-to-Video · 씬별 5초 AI 영상 배경 생성
                   </p>
                 </section>
               )}
@@ -1193,7 +1388,7 @@ export default function ShortFormPage() {
                   fontFamily: font, fontSize: '14px', fontWeight: 400,
                   lineHeight: '20px', color: C.textTertiary,
                 }}>
-                  {result.total_duration}초 · {result.scenes.length}씬 · {PLATFORMS.find(p => p.id === platform)?.label}
+                  {result.total_duration}초 · {result.scenes.length}씬 · {STYLES.find(s => s.id === style)?.label} · {aspectRatio}
                 </p>
               </div>
 
@@ -1352,14 +1547,14 @@ export default function ShortFormPage() {
                 <>
                   {/* Remotion Player */}
                   <div className="flex justify-center" style={{ marginBottom: '20px' }}>
-                    <div style={{ width: '100%', maxWidth: '280px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${C.borderDefault}` }} className="transform-gpu">
+                    <div style={{ width: '100%', maxWidth: aspectRatio === '9:16' ? '280px' : aspectRatio === '1:1' ? '340px' : '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${C.borderDefault}` }} className="transform-gpu">
                       <Player
                         component={ShortFormVideo}
-                        inputProps={{ scenes: result.scenes, ttsAudios, bgmAudio }}
+                        inputProps={{ scenes: result.scenes, ttsAudios, bgmAudio, motionTheme: videoType === 'motion' ? motionTheme : undefined }}
                         durationInFrames={Math.max(1, computeTotalFrames(result.scenes, ttsAudios))}
                         fps={VIDEO_FPS}
-                        compositionWidth={VIDEO_WIDTH}
-                        compositionHeight={VIDEO_HEIGHT}
+                        compositionWidth={videoWidth}
+                        compositionHeight={videoHeight}
                         style={{ width: '100%' }}
                         controls
                         autoPlay={false}

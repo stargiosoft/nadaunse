@@ -4,8 +4,9 @@
  * SceneRenderer.tsx와 동기화된 시각 효과
  */
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
-import type { Scene, TtsAudio, BgmAudio } from './types';
-import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS } from './constants';
+import type { Scene, TtsAudio, BgmAudio, MotionTheme } from './types';
+import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS, } from './constants';
+import { THEME_CONFIGS } from './types';
 
 // ── Enhanced Scene Themes (synced with SceneRenderer.tsx) ──
 
@@ -32,16 +33,25 @@ function getBaseTheme(type: string): Theme {
   return SCENE_THEMES[key] || SCENE_THEMES.content;
 }
 
-function deriveBackground(accent: string): [string, string, string] {
+function deriveBackground(accent: string, brightness = 0.08): [string, string, string] {
   const r = parseInt(accent.slice(1, 3), 16), g = parseInt(accent.slice(3, 5), 16), b = parseInt(accent.slice(5, 7), 16);
+  if (brightness > 0.5) {
+    const light = (rr: number, gg: number, bb: number, f: number) => {
+      const lr = Math.round(255 - (255 - rr) * (1 - f));
+      const lg = Math.round(255 - (255 - gg) * (1 - f));
+      const lb = Math.round(255 - (255 - bb) * (1 - f));
+      return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
+    };
+    return [light(r, g, b, brightness), light(r, g, b, brightness * 0.97), light(r, g, b, brightness * 1.02)];
+  }
   const dk = (rr: number, gg: number, bb: number, f: number) =>
     `#${Math.floor(rr * f).toString(16).padStart(2, '0')}${Math.floor(gg * f).toString(16).padStart(2, '0')}${Math.floor(bb * f).toString(16).padStart(2, '0')}`;
-  return [dk(r, g, b, 0.06), dk(r, g, b, 0.12), dk(r, g, b, 0.08)];
+  return [dk(r, g, b, brightness * 0.75), dk(r, g, b, brightness * 1.5), dk(r, g, b, brightness)];
 }
 
-function getTheme(type: string, scene?: Scene): Theme {
+function getTheme(type: string, scene?: Scene, brightness = 0.08): Theme {
   const base = getBaseTheme(type);
-  if (scene?.accent_color && scene?.glow_color) return { ...base, accent: scene.accent_color, glow: scene.glow_color, bg: deriveBackground(scene.accent_color) };
+  if (scene?.accent_color && scene?.glow_color) return { ...base, accent: scene.accent_color, glow: scene.glow_color, bg: deriveBackground(scene.accent_color, brightness) };
   return base;
 }
 
@@ -94,9 +104,9 @@ const FONT = '"Pretendard Variable", Pretendard, sans-serif';
 
 function drawBackground(
   ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frame: number, duration: number,
-  imageBitmap: ImageBitmap | undefined, theme: Theme,
+  imageBitmap: ImageBitmap | undefined, theme: Theme, w: number, h: number, motionTheme?: MotionTheme,
 ) {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+  const tc = THEME_CONFIGS[motionTheme || 'dark_neon'];
   const progress = frame / duration;
 
   if (imageBitmap) {
@@ -110,29 +120,49 @@ function drawBackground(
     ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
   } else {
     const [c1, c2, c3] = theme.bg;
-    const angle = (160 + Math.sin(frame * 0.008) * 20) * Math.PI / 180;
-    const cx = w / 2, cy = h / 2, len = Math.sqrt(w * w + h * h) / 2;
-    const grad = ctx.createLinearGradient(cx - Math.cos(angle) * len, cy - Math.sin(angle) * len, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
-    grad.addColorStop(0, c1); grad.addColorStop(0.5, c2); grad.addColorStop(1, c3);
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+
+    // Background fill
+    if (tc.bgMode === 'solid') {
+      ctx.fillStyle = c2; ctx.fillRect(0, 0, w, h);
+    } else {
+      const angle = (160 + Math.sin(frame * 0.008) * 20) * Math.PI / 180;
+      const cx = w / 2, cy = h / 2, len = Math.sqrt(w * w + h * h) / 2;
+      const grad = ctx.createLinearGradient(cx - Math.cos(angle) * len, cy - Math.sin(angle) * len, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
+      grad.addColorStop(0, c1); grad.addColorStop(0.5, c2); grad.addColorStop(1, c3);
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+    }
 
     // Ambient glows
+    const glowAlpha1 = tc.bgMode === 'light' ? 0.04 : 0.08;
+    const glowAlpha2 = tc.bgMode === 'light' ? 0.03 : 0.05;
     const g1x = (0.45 + Math.sin(frame * 0.01) * 0.15) * w, g1y = (0.3 + Math.cos(frame * 0.008) * 0.12) * h;
     const glow1 = ctx.createRadialGradient(g1x, g1y, 0, g1x, g1y, w * 0.45);
-    glow1.addColorStop(0, hexToRgba(theme.glow, 0.08)); glow1.addColorStop(1, 'transparent');
+    glow1.addColorStop(0, hexToRgba(theme.glow, glowAlpha1)); glow1.addColorStop(1, 'transparent');
     ctx.fillStyle = glow1; ctx.fillRect(0, 0, w, h);
     const g2x = (0.55 + Math.cos(frame * 0.012) * 0.18) * w, g2y = (0.65 + Math.sin(frame * 0.009) * 0.1) * h;
     const glow2 = ctx.createRadialGradient(g2x, g2y, 0, g2x, g2y, w * 0.4);
-    glow2.addColorStop(0, hexToRgba(theme.accent, 0.05)); glow2.addColorStop(1, 'transparent');
+    glow2.addColorStop(0, hexToRgba(theme.accent, glowAlpha2)); glow2.addColorStop(1, 'transparent');
     ctx.fillStyle = glow2; ctx.fillRect(0, 0, w, h);
 
-    // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.02)'; ctx.lineWidth = 1;
-    for (let gx = 0; gx < w; gx += 80) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-    for (let gy = 0; gy < h; gy += 80) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+    // Grid (dark_neon only)
+    if (tc.grid) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.02)'; ctx.lineWidth = 1;
+      for (let gx = 0; gx < w; gx += 80) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+      for (let gy = 0; gy < h; gy += 80) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+    }
+
+    // Dot pattern (bold_impact)
+    if (tc.dotPattern) {
+      ctx.save(); ctx.globalAlpha = 0.3;
+      ctx.fillStyle = hexToRgba(theme.accent, 0.07);
+      for (let dx = 0; dx < w; dx += 24) for (let dy = 0; dy < h; dy += 24) {
+        ctx.beginPath(); ctx.arc(dx, dy, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
 
     // Bokeh orbs
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < tc.bokehCount; i++) {
       const bx = seededRandom(scene.scene_number * 100 + i * 17) * w;
       const by = seededRandom(scene.scene_number * 100 + i * 31) * h;
       const bs = 30 + seededRandom(scene.scene_number * 100 + i * 47) * 50;
@@ -151,7 +181,7 @@ function drawBackground(
     }
 
     // Sparkles
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < tc.sparkleCount; i++) {
       const sx = (0.08 + seededRandom(scene.scene_number * 200 + i * 23) * 0.84) * w;
       const sy = (0.08 + seededRandom(scene.scene_number * 200 + i * 37) * 0.84) * h;
       const ss = 2 + seededRandom(scene.scene_number * 200 + i * 43) * 3;
@@ -165,7 +195,7 @@ function drawBackground(
     }
 
     // Floating shapes
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < tc.shapeCount; i++) {
       const fx = (0.05 + seededRandom(scene.scene_number * 300 + i * 19) * 0.9) * w;
       const fy = (0.08 + seededRandom(scene.scene_number * 300 + i * 29) * 0.84) * h;
       const fs = 8 + seededRandom(scene.scene_number * 300 + i * 41) * 16;
@@ -175,9 +205,9 @@ function drawBackground(
       const fa = fe * 0.2;
       if (fa <= 0) continue;
       ctx.save(); ctx.globalAlpha = fa; ctx.strokeStyle = hexToRgba(theme.accent, 0.5); ctx.lineWidth = 2;
-      const st = Math.floor(seededRandom(scene.scene_number * 300 + i * 53) * 3);
-      if (st === 0) { ctx.beginPath(); ctx.arc(fx, fy + ff, fs, 0, Math.PI * 2); ctx.stroke(); }
-      else if (st === 1) { ctx.save(); ctx.translate(fx, fy + ff); ctx.rotate(frame * 0.01); ctx.beginPath(); ctx.moveTo(0, -fs); ctx.lineTo(fs, 0); ctx.lineTo(0, fs); ctx.lineTo(-fs, 0); ctx.closePath(); ctx.stroke(); ctx.restore(); }
+      const st2 = Math.floor(seededRandom(scene.scene_number * 300 + i * 53) * 3);
+      if (st2 === 0) { ctx.beginPath(); ctx.arc(fx, fy + ff, fs, 0, Math.PI * 2); ctx.stroke(); }
+      else if (st2 === 1) { ctx.save(); ctx.translate(fx, fy + ff); ctx.rotate(frame * 0.01); ctx.beginPath(); ctx.moveTo(0, -fs); ctx.lineTo(fs, 0); ctx.lineTo(0, fs); ctx.lineTo(-fs, 0); ctx.closePath(); ctx.stroke(); ctx.restore(); }
       else { ctx.fillStyle = hexToRgba(theme.accent, 0.3); ctx.beginPath(); ctx.arc(fx, fy + ff, fs * 0.3, 0, Math.PI * 2); ctx.fill(); }
       ctx.restore();
     }
@@ -186,10 +216,9 @@ function drawBackground(
 
 // ── Motion Drawing Functions ──
 
-type MotionDrawFn = (ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frame: number, duration: number, theme: Theme, keywords: string[]) => void;
+type MotionDrawFn = (ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frame: number, duration: number, theme: Theme, keywords: string[], w: number, h: number) => void;
 
-const drawMotionKeywordPop: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionKeywordPop: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
   const pos = keywords.length === 1 ? [0.5] : keywords.length === 2 ? [0.42, 0.58] : [0.35, 0.5, 0.65];
   keywords.forEach((kw, i) => {
     const t = easeSpring((frame - i * 6) / 15); if (t <= 0) return;
@@ -204,8 +233,7 @@ const drawMotionKeywordPop: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords)
   });
 };
 
-const drawMotionTypewriter: MotionDrawFn = (ctx, scene, frame, duration, theme) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionTypewriter: MotionDrawFn = (ctx, scene, frame, duration, theme, _kw, w, h) => {
   const text = scene.subtitle.replace(/\*\*/g, '');
   const vis = Math.min(Math.floor(frame * (text.length / (duration * 0.7))), text.length);
   const fx = 80, fy = h * 0.3, fw = w - 160, fh = h * 0.35;
@@ -218,8 +246,7 @@ const drawMotionTypewriter: MotionDrawFn = (ctx, scene, frame, duration, theme) 
   ctx.restore();
 };
 
-const drawMotionSlideStack: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionSlideStack: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
   keywords.forEach((kw, i) => {
     const t = easeSpring((frame - i * 8) / 15); if (t <= 0) return;
     const tx = (1 - t) * (i % 2 === 0 ? -200 : 200), y = h * 0.35 + i * 120;
@@ -232,8 +259,7 @@ const drawMotionSlideStack: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords)
   });
 };
 
-const drawMotionCounter: MotionDrawFn = (ctx, scene, frame, duration, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionCounter: MotionDrawFn = (ctx, scene, frame, duration, theme, keywords, w, h) => {
   const text = scene.subtitle.replace(/\*\*/g, '');
   const num = parseInt((text.match(/[\d,]+/) || ['100'])[0].replace(/,/g, ''), 10);
   const cp = Math.min(frame / (duration * 0.6), 1), cur = Math.floor(num * easeOut(cp));
@@ -250,8 +276,7 @@ const drawMotionCounter: MotionDrawFn = (ctx, scene, frame, duration, theme, key
   ctx.restore();
 };
 
-const drawMotionSplitCompare: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionSplitCompare: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
   const lt = easeSpring(frame / 15), rt = easeSpring((frame - 8) / 15), dt = easeSpring((frame - 4) / 15);
   ctx.save(); ctx.globalAlpha = lt;
   let lg = ctx.createLinearGradient(0, 0, w / 2, 0); lg.addColorStop(0, hexToRgba('#FF6B6B', 0.12)); lg.addColorStop(1, 'transparent');
@@ -269,8 +294,8 @@ const drawMotionSplitCompare: MotionDrawFn = (ctx, _s, frame, _d, theme, keyword
   ctx.font = `900 28px ${FONT}`; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('VS', w / 2, h * 0.48); ctx.restore();
 };
 
-const drawMotionRadialBurst: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, cx = w / 2, cy = h * 0.45, t = easeSpring(frame / 18);
+const drawMotionRadialBurst: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const cx = w / 2, cy = h * 0.45, t = easeSpring(frame / 18);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2, ll = (150 + (i % 4) * 40) * t;
     ctx.save(); ctx.globalAlpha = (i % 2 === 0 ? 0.25 : 0.15) * t; ctx.strokeStyle = theme.accent; ctx.lineWidth = 3;
@@ -281,8 +306,7 @@ const drawMotionRadialBurst: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords
   ctx.save(); ctx.shadowColor = theme.accent; ctx.shadowBlur = 30; ctx.font = `800 80px ${FONT}`; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = t; ctx.fillText(keywords[0] || '', cx, cy); ctx.restore();
 };
 
-const drawMotionListReveal: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionListReveal: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
   keywords.forEach((kw, i) => {
     const t = easeSpring((frame - i * 12) / 15); if (t <= 0) return;
     const y = h * 0.33 + i * 130, tx = (1 - t) * -60;
@@ -295,8 +319,8 @@ const drawMotionListReveal: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords)
   });
 };
 
-const drawMotionZoomImpact: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, cx = w / 2, cy = h * 0.45;
+const drawMotionZoomImpact: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const cx = w / 2, cy = h * 0.45;
   const zt = easeSpring(frame / 12), scale = 4 - 3 * zt;
   if (frame >= 3 && frame <= 6) { ctx.save(); ctx.globalAlpha = (1 - (frame - 3) / 3) * 0.6; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, w, h); ctx.restore(); }
   let sx = 0, sy = 0; if (frame > 8 && frame < 25) { const d = Math.exp(-(frame - 8) * 0.2); sx = Math.sin(frame * 2.5) * 15 * d; sy = Math.cos(frame * 3) * 10 * d; }
@@ -306,8 +330,8 @@ const drawMotionZoomImpact: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords)
   if (keywords[1]) { ctx.shadowBlur = 15; ctx.font = `600 52px ${FONT}`; ctx.fillStyle = theme.accent; ctx.fillText(keywords[1], 0, 70); } ctx.restore();
 };
 
-const drawMotionGlitch: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, gl = (frame % 30 < 4) || (frame % 45 < 3), t = easeSpring(frame / 12);
+const drawMotionGlitch: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const gl = (frame % 30 < 4) || (frame % 45 < 3), t = easeSpring(frame / 12);
   keywords.forEach((kw, i) => {
     const y = h * (keywords.length === 1 ? 0.45 : 0.38 + i * 0.14);
     const gx = gl ? Math.sin(frame * 7 + i) * 8 : 0, gy = gl ? Math.cos(frame * 5 + i) * 4 : 0;
@@ -320,8 +344,8 @@ const drawMotionGlitch: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => 
     for (let n = 0; n < 3; n++) { ctx.globalAlpha = 0.08; ctx.fillRect(0, seededRandom(frame * 7 + n * 31) * h, w, 4 + seededRandom(frame * 11 + n * 17) * 20); } ctx.restore(); }
 };
 
-const drawMotionWave: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, text = keywords[0] || '', chars = text.split('');
+const drawMotionWave: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const text = keywords[0] || '', chars = text.split('');
   const fs = chars.length > 8 ? 60 : 80, tw = chars.length * fs * 0.6, sx = (w - tw) / 2;
   ctx.save(); ctx.globalAlpha = 0.08; ctx.fillStyle = theme.accent; ctx.beginPath(); ctx.moveTo(0, h * 0.6);
   for (let x = 0; x <= w; x += 10) ctx.lineTo(x, Math.sin(x * 0.008 + frame * 0.04) * 40 + h * 0.5);
@@ -336,8 +360,8 @@ const drawMotionWave: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
   });
 };
 
-const drawMotionSpotlight: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, cx = w / 2, cy = h * 0.45;
+const drawMotionSpotlight: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const cx = w / 2, cy = h * 0.45;
   const t = easeOut(frame / 20), r = t * 350;
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = 'destination-out';
@@ -349,8 +373,8 @@ const drawMotionSpotlight: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords) 
     ctx.font = `800 80px ${FONT}`; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(keywords[0] || '', cx, cy); ctx.restore(); }
 };
 
-const drawMotionCardFlip: MotionDrawFn = (ctx, _s, frame, duration, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, cx = w / 2, cy = h * 0.45;
+const drawMotionCardFlip: MotionDrawFn = (ctx, _s, frame, duration, theme, keywords, w, h) => {
+  const cx = w / 2, cy = h * 0.45;
   const fp = Math.min(frame / (duration * 0.4), 1), fa = fp * Math.PI, isFront = fa < Math.PI / 2, scaleX = Math.abs(Math.cos(fa)) || 0.01;
   const cw2 = 350, ch2 = 175;
   ctx.save(); ctx.translate(cx, cy); ctx.scale(scaleX, 1);
@@ -365,8 +389,8 @@ const drawMotionCardFlip: MotionDrawFn = (ctx, _s, frame, duration, theme, keywo
     ctx.fillStyle = fl; ctx.fillRect(0, 0, w, h); ctx.restore(); }
 };
 
-const drawMotionProgressBar: MotionDrawFn = (ctx, _s, frame, duration, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, bw = w - 200, bh = 36, bx = 100, by = h * 0.48;
+const drawMotionProgressBar: MotionDrawFn = (ctx, _s, frame, duration, theme, keywords, w, h) => {
+  const bw = w - 200, bh = 36, bx = 100, by = h * 0.48;
   const fp = easeOut(Math.min(frame / (duration * 0.65), 1)), pct = Math.floor(fp * 100);
   ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.1)'; roundRect(ctx, bx, by, bw, bh, bh / 2); ctx.fill();
   const fw2 = bw * fp;
@@ -378,8 +402,8 @@ const drawMotionProgressBar: MotionDrawFn = (ctx, _s, frame, duration, theme, ke
   ctx.font = `600 40px ${FONT}`; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(keywords[0] || '', w / 2, by + bh + 50); ctx.restore();
 };
 
-const drawMotionEmojiRain: MotionDrawFn = (ctx, scene, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, emoji = scene.icon || '✨';
+const drawMotionEmojiRain: MotionDrawFn = (ctx, scene, frame, _d, theme, keywords, w, h) => {
+  const emoji = scene.icon || '✨';
   ctx.save();
   for (let i = 0; i < 20; i++) {
     const ex = seededRandom(i * 47 + 13) * w, sp = 0.5 + seededRandom(i * 31 + 7) * 1.5, es = 20 + seededRandom(i * 23 + 3) * 30;
@@ -395,8 +419,7 @@ const drawMotionEmojiRain: MotionDrawFn = (ctx, scene, frame, _d, theme, keyword
   ctx.fillText(keywords[0] || '', w / 2, h * 0.45); ctx.restore();
 };
 
-const drawMotionParallaxLayers: MotionDrawFn = (ctx, scene, frame, _d, theme, keywords) => {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+const drawMotionParallaxLayers: MotionDrawFn = (ctx, scene, frame, _d, theme, keywords, w, h) => {
   ctx.save(); ctx.globalAlpha = 0.1;
   for (let i = 0; i < 3; i++) {
     const bx2 = seededRandom(scene.scene_number * 50 + i * 11) * w - frame * 0.3;
@@ -443,8 +466,7 @@ function parseSubtitle(text: string): { text: string; bold: boolean }[] {
   return parts;
 }
 
-function drawSubtitle(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frame: number) {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+function drawSubtitle(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frame: number, w: number, h: number) {
   const bottomGrad = ctx.createLinearGradient(0, h * 0.55, 0, h);
   bottomGrad.addColorStop(0, 'transparent'); bottomGrad.addColorStop(1, 'rgba(0,0,0,0.9)');
   ctx.fillStyle = bottomGrad; ctx.fillRect(0, h * 0.55, w, h * 0.45);
@@ -483,8 +505,7 @@ function drawSubtitle(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, fram
 
 // ── Transition + Helpers ──
 
-function applyTransition(ctx: OffscreenCanvasRenderingContext2D, transition: string, frame: number, entryT: number): { pre?: () => void } {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+function applyTransition(ctx: OffscreenCanvasRenderingContext2D, transition: string, frame: number, entryT: number, w: number, h: number): { pre?: () => void } {
   if (transition === 'zoom') return { pre: () => { ctx.translate(w / 2, h / 2); ctx.scale(1.2 - 0.2 * entryT, 1.2 - 0.2 * entryT); ctx.translate(-w / 2, -h / 2); } };
   if (transition === 'slide') return { pre: () => { ctx.translate((1 - entryT) * w, 0); } };
   if (transition === 'scale_rotate') { const s = 0.5 + 0.5 * entryT, r = (-15 + 15 * entryT) * Math.PI / 180; return { pre: () => { ctx.translate(w / 2, h / 2); ctx.scale(s, s); ctx.rotate(r); ctx.translate(-w / 2, -h / 2); } }; }
@@ -506,13 +527,12 @@ function wrapText(ctx: OffscreenCanvasRenderingContext2D, text: string, x: numbe
 
 // ── Main drawFrame ──
 
-function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameInScene: number, sceneDurationFrames: number, imageBitmap?: ImageBitmap, prevScene?: Scene) {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
-  const theme = getTheme(scene.type, scene);
-  const prevTheme = prevScene ? getTheme(prevScene.type, prevScene) : null;
+function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameInScene: number, sceneDurationFrames: number, w: number, h: number, imageBitmap?: ImageBitmap, prevScene?: Scene, motionTheme?: MotionTheme) {
+  const tc = THEME_CONFIGS[motionTheme || 'dark_neon'];
+  const theme = getTheme(scene.type, scene, tc.bgBrightness);
+  const prevTheme = prevScene ? getTheme(prevScene.type, prevScene, tc.bgBrightness) : null;
   const BLEND_FRAMES = 15;
   const blendT = prevTheme ? Math.min(frameInScene / BLEND_FRAMES, 1) : 1;
-  // Apply blended theme for rendering
   const renderTheme: Theme = prevTheme ? {
     accent: lerpColor(prevTheme.accent, theme.accent, blendT),
     glow: lerpColor(prevTheme.glow, theme.glow, blendT),
@@ -527,9 +547,9 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
   if (transition === 'fade') ctx.globalAlpha = Math.min(frameInScene / 10, 1) * exitAlpha;
   else if (transition === 'blur_in') ctx.globalAlpha = Math.min(frameInScene / 6, 1) * exitAlpha;
   else ctx.globalAlpha = alpha;
-  const { pre } = applyTransition(ctx, transition, frameInScene, entryT);
+  const { pre } = applyTransition(ctx, transition, frameInScene, entryT, w, h);
   ctx.save(); if (pre) pre();
-  drawBackground(ctx, scene, frameInScene, sceneDurationFrames, imageBitmap, renderTheme);
+  drawBackground(ctx, scene, frameInScene, sceneDurationFrames, imageBitmap, renderTheme, w, h, motionTheme);
   // Scene label
   ctx.save(); ctx.globalAlpha = Math.min(1, entryT) * 0.7;
   ctx.fillStyle = hexToRgba(renderTheme.accent, 0.25); roundRect(ctx, 60, 78, 44, 44, 12); ctx.fill();
@@ -556,12 +576,12 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
     ctx.font = '48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, 0, 0); ctx.restore(); }
   // Motion
   const drawer = MOTION_DRAWERS[scene.motion_style || 'keyword_pop'] || MOTION_DRAWERS.keyword_pop;
-  drawer(ctx, scene, frameInScene, sceneDurationFrames, renderTheme, keywords);
+  drawer(ctx, scene, frameInScene, sceneDurationFrames, renderTheme, keywords, w, h);
   // Accent line
   const lt = easeOut((frameInScene - 5) / 12);
   if (lt > 0) { const lg2 = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0); lg2.addColorStop(0, 'transparent'); lg2.addColorStop(0.5, hexToRgba(renderTheme.accent, 0.5)); lg2.addColorStop(1, 'transparent');
     ctx.fillStyle = lg2; ctx.fillRect(w * (0.5 - lt * 0.2), h * 0.75, w * lt * 0.4, 3); }
-  drawSubtitle(ctx, scene, frameInScene);
+  drawSubtitle(ctx, scene, frameInScene, w, h);
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
@@ -608,16 +628,22 @@ async function decodeTtsAudio(ttsAudios: TtsAudio[], scenes: Scene[], bgmAudio?:
 
 // ── Main render ──
 
-export async function renderVideoToMp4(scenes: Scene[], ttsAudios: TtsAudio[], onProgress: (progress: number) => void, bgmAudio?: BgmAudio | null): Promise<Blob> {
+export async function renderVideoToMp4(
+  scenes: Scene[], ttsAudios: TtsAudio[], onProgress: (progress: number) => void,
+  bgmAudio?: BgmAudio | null,
+  width: number = VIDEO_WIDTH, height: number = VIDEO_HEIGHT,
+  motionTheme?: MotionTheme,
+): Promise<Blob> {
+  const w = width, h = height;
   const sceneDurations = scenes.map(s => { const tts = ttsAudios.find(a => a.sceneNumber === s.scene_number); return tts ? tts.durationInSeconds : s.duration; });
   const totalDuration = sceneDurations.reduce((a, b) => a + b, 0);
   const totalFrames = Math.round(totalDuration * VIDEO_FPS);
-  const canvas = new OffscreenCanvas(VIDEO_WIDTH, VIDEO_HEIGHT);
+  const canvas = new OffscreenCanvas(w, h);
   const ctx = canvas.getContext('2d')!;
   const target = new ArrayBufferTarget();
-  const muxer = new Muxer({ target, video: { codec: 'avc', width: VIDEO_WIDTH, height: VIDEO_HEIGHT }, audio: { codec: 'aac', numberOfChannels: 1, sampleRate: 44100 }, fastStart: 'in-memory' });
+  const muxer = new Muxer({ target, video: { codec: 'avc', width: w, height: h }, audio: { codec: 'aac', numberOfChannels: 1, sampleRate: 44100 }, fastStart: 'in-memory' });
   const videoEncoder = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => console.error('VideoEncoder error:', e) });
-  videoEncoder.configure({ codec: 'avc1.640028', width: VIDEO_WIDTH, height: VIDEO_HEIGHT, bitrate: 4_000_000, framerate: VIDEO_FPS });
+  videoEncoder.configure({ codec: 'avc1.640028', width: w, height: h, bitrate: 4_000_000, framerate: VIDEO_FPS });
   const audioEncoder = new AudioEncoder({ output: (chunk, meta) => muxer.addAudioChunk(chunk, meta), error: (e) => console.error('AudioEncoder error:', e) });
   audioEncoder.configure({ codec: 'mp4a.40.2', numberOfChannels: 1, sampleRate: 44100, bitrate: 128000 });
   const sceneImageBitmaps = new Map<number, ImageBitmap>();
@@ -634,7 +660,7 @@ export async function renderVideoToMp4(scenes: Scene[], ttsAudios: TtsAudio[], o
     const scene = scenes[si], sdf = Math.round(sceneDurations[si] * VIDEO_FPS), bitmap = sceneImageBitmaps.get(scene.scene_number);
     const prevSc = si > 0 ? scenes[si - 1] : undefined;
     for (let f = 0; f < sdf; f++) {
-      drawFrame(ctx, scene, f, sdf, bitmap, prevSc);
+      drawFrame(ctx, scene, f, sdf, w, h, bitmap, prevSc, motionTheme);
       const frame = new VideoFrame(canvas, { timestamp: (globalFrame / VIDEO_FPS) * 1_000_000, duration: (1 / VIDEO_FPS) * 1_000_000 });
       videoEncoder.encode(frame, { keyFrame: f === 0 }); frame.close(); globalFrame++;
       if (globalFrame % 10 === 0) onProgress((globalFrame / totalFrames) * 0.7);
