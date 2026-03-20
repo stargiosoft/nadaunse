@@ -15,14 +15,17 @@
 |------|----------|
 | 배경 (모션 그래픽) | **씬별 다이나믹 컬러 그라디언트** (Gemini accent/glow 자동 생성) + 그리드 + 보케/스파클 + 씬간 색상 블렌딩 |
 | 배경 (이미지 기반) | **Replicate I2V 영상 배경** (Wan 2.5/Hailuo Fast/Kling v2.1 선택) / 폴백: Gemini AI 이미지 + Ken Burns |
-| 중앙 비주얼 | **AI 자동 선택 모션 컴포넌트 (15종)** — 씬 내용에 맞춰 다양하게 배정 |
+| 중앙 비주얼 | **AI 자동 선택 모션 컴포넌트 (18종)** — 씬 내용에 맞춰 다양하게 배정 |
 | 모션 효과 | 씬 타입별 오버레이 (X마크/체크/파티클) + 떠다니는 도형 + 보케 |
 | 자막 | 하단 워드별 스프링 애니메이션 + `**볼드**` 노란색 하이라이트 + 배경 블러 pill |
 | 전환 | cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate (7종) + 씬간 색상 블렌딩 |
 | 오디오 | 씬별 TTS 나레이션 + **BGM (Jamendo, 볼륨 25%, 페이드인/아웃)** |
-| 렌더러 동기화 | **renderVideo.ts가 SceneRenderer.tsx와 완전 동기화** — 15종 모션 + 파티클 + 자막 동일 재현 |
+| 렌더러 동기화 | **renderVideo.ts가 SceneRenderer.tsx와 완전 동기화** — 18종 모션 + 파티클 + 자막 동일 재현 |
+| Spring 프리셋 | **SPRING_PRESETS** 5종 표준화 (entry/secondary/bouncy/heavy/keyword) — 새 모션부터 적용 |
+| Sequence 프리로드 | **premountFor={VIDEO_FPS}** — 다음 씬 1초 전 프리로드로 전환 부드러움 개선 |
+| Lottie 인프라 | **@remotion/lottie + lottie-web** 설치 완료 — 향후 Lottie JSON 파일 드롭인 준비 |
 
-**현재 모션 스타일 15종** (`motion_style` — Gemini가 씬별 자동 선택):
+**현재 모션 스타일 18종** (`motion_style` — Gemini가 씬별 자동 선택):
 
 | 스타일 | 효과 | 적합한 씬 |
 |--------|------|-----------|
@@ -41,6 +44,9 @@
 | `progress_bar` | 가로 프로그레스 바 + 퍼센트 카운트 | 진행률, 수치 |
 | `emoji_rain` | 이모지 비 + 중앙 텍스트 | 감정 폭발, 반응 |
 | `parallax_layers` | 패럴랙스 레이어 + 파티클 | 깊이감, 스토리 |
+| `confetti_burst` | 35개 파티클 물리 시뮬레이션 (중력+공기저항) | **축하, CTA, 결과 발표** |
+| `sparkle_trail` | 3개 베지에 곡선 궤적 + 별 모양 스파클 수렴 | **솔루션, 팁, 긍정** |
+| `pulse_ring` | 동심원 펄스 파동 + 회전 에너지 아크 + 궤도 도트 | **강조, 에너지, 각성** |
 
 ---
 
@@ -75,14 +81,19 @@
 - [x] `MOTION_REGISTRY`로 동적 디스패치 — SceneRenderer에서 `scene.motion_style`로 컴포넌트 자동 선택
 - [x] **다이나믹 컬러**: `accent_color`/`glow_color`로 씬별 고유 색상 팔레트 (배경 그라디언트 자동 파생)
 - [x] **씬간 색상 블렌딩**: `prevScene` 전달 → 처음 15프레임 동안 색상 보간 (부드러운 전환)
-- [x] `renderVideo.ts` 완전 동기화 — Canvas에서 15종 모션 + 파티클 + 자막 스프링 동일 재현
+- [x] `renderVideo.ts` 완전 동기화 — Canvas에서 18종 모션 + 파티클 + 자막 스프링 동일 재현
 - [x] 기존 대본(motion_style 없음)은 `keyword_pop` 폴백으로 하위 호환
+- [x] **모션 3종 추가 (2026-03-20)**: confetti_burst (컨페티 폭발), sparkle_trail (스파클 궤적), pulse_ring (펄스 파동)
+- [x] **@remotion/lottie + lottie-web 설치** — Lottie JSON 파일 드롭인 인프라
+- [x] **premountFor={VIDEO_FPS}** — Sequence 프리로드로 씬 전환 시 이미지/비디오 로딩 지연 제거
+- [x] **SPRING_PRESETS 표준화** — entry/secondary/bouncy/heavy/keyword 5종 상수 정의 (새 모션부터 적용)
 
 **구현 파일**:
 ```
-src/shortform/types.ts                          # MotionStyle (15종), SceneLayout, accent_color/glow_color
+src/shortform/types.ts                          # MotionStyle (18종), SceneLayout, accent_color/glow_color
+src/shortform/constants.ts                      # SPRING_PRESETS 5종 표준 프리셋
 src/shortform/compositions/motions/types.ts     # MotionComponentProps 인터페이스
-src/shortform/compositions/motions/index.ts     # MOTION_REGISTRY 레지스트리 (15종)
+src/shortform/compositions/motions/index.ts     # MOTION_REGISTRY 레지스트리 (18종)
 src/shortform/compositions/motions/KeywordPopMotion.tsx
 src/shortform/compositions/motions/TypewriterMotion.tsx
 src/shortform/compositions/motions/SlideStackMotion.tsx
@@ -93,14 +104,19 @@ src/shortform/compositions/motions/ListRevealMotion.tsx
 src/shortform/compositions/motions/ZoomImpactMotion.tsx
 src/shortform/compositions/motions/GlitchMotion.tsx
 src/shortform/compositions/motions/WaveMotion.tsx
-src/shortform/compositions/motions/SpotlightMotion.tsx     # 신규
-src/shortform/compositions/motions/CardFlipMotion.tsx      # 신규
-src/shortform/compositions/motions/ProgressBarMotion.tsx   # 신규
-src/shortform/compositions/motions/EmojiRainMotion.tsx     # 신규
-src/shortform/compositions/motions/ParallaxLayersMotion.tsx # 신규
+src/shortform/compositions/motions/SpotlightMotion.tsx
+src/shortform/compositions/motions/CardFlipMotion.tsx
+src/shortform/compositions/motions/ProgressBarMotion.tsx
+src/shortform/compositions/motions/EmojiRainMotion.tsx
+src/shortform/compositions/motions/ParallaxLayersMotion.tsx
+src/shortform/compositions/motions/ConfettiBurstMotion.tsx  # 신규 — 컨페티 물리 시뮬레이션
+src/shortform/compositions/motions/SparkleTrailMotion.tsx   # 신규 — 베지에 곡선 스파클 궤적
+src/shortform/compositions/motions/PulseRingMotion.tsx      # 신규 — 동심원 펄스 파동
 src/shortform/compositions/SceneRenderer.tsx    # 다이나믹 컬러 + 씬간 블렌딩 + Video 배경
-src/shortform/renderVideo.ts                    # 15종 모션 Canvas 동기화 + 비디오 프레임 추출
-supabase/functions/generate-short-form/index.ts # 15종 모션 + accent/glow 색상 프롬프트
+src/shortform/compositions/ShortFormVideo.tsx   # premountFor 적용
+src/shortform/renderVideo.ts                    # 18종 모션 Canvas 동기화 + 비디오 프레임 추출
+supabase/functions/generate-short-form/index.ts # 18종 모션 + accent/glow 색상 프롬프트
+supabase/functions/generate-meme-ad/index.ts    # 13종 모션 (밈광고 전용 축소 세트)
 ```
 
 ---
@@ -225,9 +241,99 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 
 ---
 
+## 중기 (다음)
+
+### 6. Remotion 업그레이드 + @remotion/transitions 도입
+
+**개요**: Remotion 4.0.379 → 최신 버전 업그레이드. `@remotion/transitions`의 `TransitionSeries`로 공식 전환 시스템 도입.
+
+**주요 이점**:
+- `fade()/slide()/wipe()/flip()/clockWipe()` 내장 전환 (현재 수동 interpolate → 공식 API)
+- `springTiming/linearTiming`으로 전환 속도 정밀 제어
+- `@remotion/light-leaks` (4.0.415+) — WebGL 라이트 릭 오버레이로 시네마틱 전환
+- 씬 오버랩 시간 자동 계산 (`getDurationInFrames()`)
+
+**제약**: Player 미리보기에만 적용. renderVideo.ts Canvas 렌더링은 별도 대응 필요.
+
+**난이도**: 중간 (업그레이드 자체는 쉬우나, ShortFormVideo.tsx 씬 구성 리팩토링 필요)
+
+**체크리스트**:
+- [ ] `npx remotion upgrade` 실행 (모든 @remotion/* 동일 버전)
+- [ ] ShortFormVideo.tsx를 `TransitionSeries` 기반으로 리팩토링
+- [ ] 씬간 전환에 `@remotion/light-leaks` 오버레이 추가 (accent_color 기반 hueShift)
+- [ ] 기존 7종 전환(cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate)을 공식 전환으로 매핑
+
+---
+
+### 7. TTS 오디오 리액티브 비주얼
+
+**개요**: `@remotion/media-utils`의 `visualizeAudio()` + `useWindowedAudioData()`로 TTS/BGM에 반응하는 시각 효과.
+
+**구현 아이디어**:
+- 배경 글로우 크기가 음성 볼륨에 반응 (bassIntensity → glowScale)
+- 보케/스파클 밝기가 BGM 비트에 동기화
+- 자막 아래 미니 웨이브폼 오버레이
+- 떠다니는 도형이 저주파에 맞춰 펄스
+
+**제약**: `@remotion/media-utils`는 이미 설치됨. Player에서는 바로 사용 가능. Canvas 렌더링에서는 Web Audio API로 별도 구현 필요.
+
+**난이도**: 중간
+**체크리스트**:
+- [ ] SceneRenderer에 `useWindowedAudioData()` 연동
+- [ ] 배경 글로우 반응형 컴포넌트 프로토타입
+- [ ] renderVideo.ts에 AudioContext 기반 주파수 분석 추가
+
+---
+
+### 8. Lottie 모션 파일 연동
+
+**개요**: @remotion/lottie (설치 완료) + lottie-web을 활용하여 After Effects/LottieFiles에서 가져온 고품질 Lottie JSON 애니메이션을 모션 오버레이로 사용.
+
+**활용 시나리오**:
+- LottieFiles에서 무료 애니메이션 다운로드 (confetti, sparkles, checkmark, fire 등)
+- `/public/lottie/*.json`에 배치
+- 모션 컴포넌트에 `<Lottie>` 오버레이 레이어 추가
+- Canvas 렌더링: lottie-web canvas renderer로 프레임별 추출
+
+**체크리스트**:
+- [ ] LottieOverlay 유틸리티 컴포넌트 생성
+- [ ] LottieFiles에서 10~15개 무료 애니메이션 큐레이션
+- [ ] Canvas 렌더러에 lottie-web 통합 (OffscreenCanvas)
+- [ ] 모션 컴포넌트에 Lottie 오버레이 옵션 추가
+
+**난이도**: 중간 (Remotion 측은 쉬우나, Canvas 렌더러 통합이 도전)
+
+---
+
 ## 장기
 
-### 6. Hera API 연동
+### 9. 렌더링 통합 (이중 렌더링 해소)
+
+**개요**: 현재 Remotion Player(미리보기)와 renderVideo.ts(Canvas+WebCodecs, MP4)가 독립적으로 영상을 그리는 **이중 렌더링** 구조. 새 기능 추가 시 양쪽 모두 구현해야 하는 병목.
+
+**해결 옵션**:
+
+| 방법 | 설명 | 장단점 |
+|------|------|--------|
+| **A. @remotion/renderer** | Remotion 서버사이드 렌더링 (Lambda/Cloud Run) | Remotion 기능 100% 활용, 서버 비용 발생 |
+| **B. @remotion/webcodecs** | Remotion의 브라우저 WebCodecs 렌더러 (이미 설치됨) | 브라우저에서 Remotion 컴포넌트 직접 MP4 렌더링 가능 |
+| **C. Creatomate/Shotstack** | 외부 영상 렌더링 API | 완전 자동화, 월 비용 |
+
+**최적 방안**: **B. @remotion/webcodecs** — 이미 패키지 설치됨 (4.0.379). Remotion 컴포넌트를 그대로 WebCodecs로 렌더링하면 이중 구현 제거 가능.
+
+**체크리스트**:
+- [ ] @remotion/webcodecs 렌더링 API 조사 (renderMediaOnBrowser 등)
+- [ ] 프로토타입: ShortFormVideo 컴포지션을 직접 MP4로 렌더링
+- [ ] renderVideo.ts의 Canvas 구현과 품질/성능 비교
+- [ ] 성공 시 renderVideo.ts 점진적 대체
+
+**난이도**: 높음 (기존 renderVideo.ts 600줄+ 교체)
+
+---
+
+### 10. Hera API 연동
+
+> 기존 로드맵 #6
 
 **개요**: Hera(hera.video)는 YC 투자 스타트업으로, 텍스트 프롬프트에서 코드 기반 모션 그래픽을 생성하는 전문 도구. "AI 모션 디자이너"를 표방.
 
@@ -255,7 +361,9 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 
 ---
 
-### 7. 자체 모션 그래픽 템플릿 엔진
+### 11. 자체 모션 그래픽 템플릿 엔진
+
+> 기존 로드맵 #7
 
 **개요**: Remotion 기반으로 재사용 가능한 모션 그래픽 템플릿 시스템 구축. 씬 타입/키워드에 따라 적절한 템플릿을 자동 매칭.
 
@@ -287,15 +395,21 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 ```
                     낮은 비용 ←────────────────→ 높은 비용
                     │                                    │
-  높은 퀄리티       │  ~~③CapCut~~ ✅   ⑥Hera API        │
+  높은 퀄리티       │  ~~③CapCut~~ ✅   ⑩Hera API        │
   향상             │  ~~①이미지~~ ✅   ~~⑤AI 영상~~ ✅   │
-                    │  ~~②모션~~ ✅     ⑦자체 엔진        │
-                    │  ~~④BGM~~ ✅                        │
+                    │  ~~②모션 18종~~ ✅  ⑪자체 엔진      │
+                    │  ~~④BGM~~ ✅      ⑨렌더링 통합      │
+                    │  ⑥Remotion 업그레이드               │
+                    │  ⑦오디오 리액티브  ⑧Lottie 연동     │
   낮은 퀄리티       │                                    │
   향상             │                                    │
 ```
 
-**★ 다음 추천**: ⑥ Hera API — 코드 기반 모션 그래픽 전문 도구로 모션 타입 다양성 대폭 향상
+**★ 다음 추천 순서**:
+1. ⑥ Remotion 업그레이드 + TransitionSeries — 전환 효과 대폭 업그레이드 (Light Leaks 포함)
+2. ⑦ 오디오 리액티브 — "살아있는" 영상 느낌, @remotion/media-utils 이미 설치됨
+3. ⑧ Lottie 연동 — @remotion/lottie 이미 설치됨, LottieFiles에서 에셋만 가져오면 됨
+4. ⑨ 렌더링 통합 — 이중 렌더링 해소로 향후 모든 작업 속도 향상
 
 ---
 
@@ -325,4 +439,4 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 
 ---
 
-**최종 업데이트**: 2026-03-20 (①②이미지+모션 15종+다이나믹 컬러 완료, ③CapCut 완료, ④BGM 완료, ⑤I2V: fal.ai→Replicate 전환 완료 / 모델 3종 Wan·Hailuo·Kling / 영상 길이 10·15·30초)
+**최종 업데이트**: 2026-03-20 (②모션 18종 확장: confetti_burst/sparkle_trail/pulse_ring 신규 + @remotion/lottie 인프라 + premountFor + SPRING_PRESETS 5종 + 중기 로드맵 #6~#9 추가)

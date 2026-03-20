@@ -848,7 +848,7 @@ capcut_project/
 | 요소 | 이미지 기반 | 모션 그래픽 |
 |------|------------|------------|
 | 배경 | Replicate I2V 영상 배경 (폴백: Gemini 이미지 + Ken Burns) | 다이나믹 컬러 그라디언트 + 그리드 + 보케/스파클 |
-| 중앙 비주얼 | 모션 스타일 기본(keyword_pop) | **AI 자동 선택 15종 모션 + 씬별 다이나믹 컬러** |
+| 중앙 비주얼 | 모션 스타일 기본(keyword_pop) | **AI 자동 선택 18종 모션 + 씬별 다이나믹 컬러** |
 | 모션 효과 | 떠다니는 도형 (축소) | 오버레이 (X마크/체크/파티클) + 떠다니는 도형 |
 | 자막 | 하단 프로스트 글래스 pill + `**볼드**` 노란색 하이라이트 | (동일) |
 | 전환 | cut/fade/zoom/slide | (동일) |
@@ -863,7 +863,12 @@ capcut_project/
 | ~~중기~~ | ~~CapCut 프로젝트 export~~ | `draft_content.json` 생성 → ZIP 다운로드 | **완료** |
 | ~~중기~~ | ~~BGM 자동생성 (Jamendo)~~ | 무드별 BGM 검색 → TTS와 믹싱 (볼륨 25%) | **완료** |
 | ~~중기~~ | ~~Replicate I2V 영상 배경~~ | 이미지 → 5초 AI 영상 (Wan/Hailuo/Kling 선택) | **완료** |
+| ~~중기~~ | ~~모션 3종 추가 + Lottie 인프라~~ | confetti_burst/sparkle_trail/pulse_ring + @remotion/lottie + premountFor + Spring 프리셋 | **완료** |
 | **중기** | 영상 편집 자동화 API | Creatomate/Shotstack 등 외부 API로 완전 자동 렌더링 | TODO |
+| **중기** | Remotion 업그레이드 + TransitionSeries | 4.0.379→최신, @remotion/transitions 공식 전환 시스템 도입 | TODO |
+| **중기** | TTS 오디오 리액티브 비주얼 | visualizeAudio()로 음성/BGM 반응형 배경 글로우/파티클 | TODO |
+| **장기** | Lottie 모션 파일 연동 | LottieFiles/After Effects에서 JSON 가져와 모션 오버레이 | TODO |
+| **장기** | 렌더링 통합 (Remotion 서버 렌더) | @remotion/renderer로 Preview↔MP4 이중 렌더링 해소 | TODO |
 | **장기** | Hera API 연동 | 텍스트→모션 그래픽 전문 API (YC 투자, $29/월~) | TODO |
 | **장기** | 자체 모션 그래픽 템플릿 엔진 | 30~50개 Remotion 템플릿 + AI 자동 매칭 | TODO |
 
@@ -881,4 +886,4 @@ CapCut은 공식 API가 없어 자동화 불가. 완전 자동화가 필요하�
 
 ---
 
-**최종 업데이트**: 2026-03-20 (I2V를 fal.ai→Replicate 전환 완료 / 모델 3종: Wan 2.5·Hailuo Fast·Kling v2.1 / 영상 길이 10·15·30초 / 모션 15종 + 다이나믹 컬러 + 씬간 블렌딩 + renderVideo Canvas 동기화)
+**최종 업데이트**: 2026-03-20 (모션 18종으로 확장: confetti_burst/sparkle_trail/pulse_ring 추가 + @remotion/lottie 인프라 + premountFor 프리로드 + SPRING_PRESETS 표준화 5종)
