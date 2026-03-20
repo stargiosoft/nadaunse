@@ -79,6 +79,8 @@ import CardNewsPage from './pages/CardNewsPage';
 import ShortFormPage from './pages/ShortFormPage';
 import AdCopyPage from './pages/AdCopyPage';
 import AdCreativePage from './pages/AdCreativePage';
+import TrendTrackerPage from './pages/TrendTrackerPage';
+import MemeAdPage from './pages/MemeAdPage';
 // ── 운테 (바이럴 테스트) ──
 import UnteHomePage from './pages/UnteHomePage';
 import UnteCreatePage from './pages/UnteCreatePage';
@@ -3897,6 +3899,8 @@ export default function App() {
           <Route path="/short-form" element={<ShortFormPage />} />
           <Route path="/ad-copy" element={<AdCopyPage />} />
           <Route path="/ad-creative" element={<AdCreativePage />} />
+          <Route path="/meme-ad" element={<MemeAdPage />} />
+          <Route path="/trend-tracker" element={<TrendTrackerPage />} />
           {/* ── 운테 (바이럴 테스트) ── */}
           <Route path="/unte" element={<UnteHomePage />} />
           <Route path="/unte/create" element={<UnteCreatePage />} />
