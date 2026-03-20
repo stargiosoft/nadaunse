@@ -442,12 +442,246 @@ const drawMotionParallaxLayers: MotionDrawFn = (ctx, scene, frame, _d, theme, ke
   } ctx.restore();
 };
 
+// ── Confetti Burst ──
+const drawMotionConfettiBurst: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const GRAVITY = 600;
+  const AIR_RESISTANCE = 0.97;
+  const burstFrame = Math.max(0, frame - 8);
+  const burstT = burstFrame / VIDEO_FPS;
+  const colors = [theme.accent, '#FFD93D', '#FF6B6B', '#4ECDC4', '#A8E6CF', '#FF8A65', '#CE93D8', '#81D4FA'];
+
+  // Central flash
+  if (frame >= 6 && frame <= 18) {
+    const flashAlpha = frame <= 10 ? (frame - 6) / 4 * 0.6 : (18 - frame) / 8 * 0.6;
+    const fg = ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, 300);
+    fg.addColorStop(0, hexToRgba('#ffffff', flashAlpha)); fg.addColorStop(0.3, hexToRgba(theme.accent, flashAlpha * 0.5)); fg.addColorStop(1, 'transparent');
+    ctx.fillStyle = fg; ctx.fillRect(w / 2 - 300, h * 0.45 - 300, 600, 600);
+  }
+
+  // Confetti particles (35)
+  for (let i = 0; i < 35; i++) {
+    const delay = Math.floor(Math.abs(Math.sin(i * 1.7)) * 4);
+    const pFrame = Math.max(0, burstFrame - delay);
+    const t = pFrame / VIDEO_FPS;
+    if (t <= 0) continue;
+
+    const angle = (i / 35) * 360 + Math.sin(i * 7.3) * 30;
+    const speed = 200 + Math.abs(Math.sin(i * 3.7)) * 300;
+    const rad = (angle * Math.PI) / 180;
+    const vx = Math.cos(rad) * speed * AIR_RESISTANCE;
+    const vy = Math.sin(rad) * speed * AIR_RESISTANCE;
+    const x = w / 2 + vx * t * Math.pow(AIR_RESISTANCE, pFrame);
+    const y = h * 0.45 + vy * t + 0.5 * GRAVITY * t * t;
+    const rot = (Math.sin(i * 2.3) * 180 + (180 + Math.sin(i * 4.1) * 360) * t) * Math.PI / 180;
+    const pSize = 8 + Math.abs(Math.sin(i * 5.1)) * 16;
+
+    // Fade out
+    const yDist = y - h * 0.45;
+    let fadeOut = 1;
+    if (yDist > 800) fadeOut = Math.max(0, 1 - (yDist - 800) / 400);
+    const entryFade = Math.min(t / 0.08, 1);
+    const opacity = fadeOut * entryFade;
+    if (opacity <= 0.01) continue;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.fillStyle = colors[i % colors.length];
+    const shape = i % 3;
+    if (shape === 0) ctx.fillRect(-pSize / 2, -pSize * 0.3, pSize, pSize * 0.6);
+    else if (shape === 1) { ctx.beginPath(); ctx.arc(0, 0, pSize / 2, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.beginPath(); ctx.moveTo(0, -pSize / 2); ctx.lineTo(pSize / 2, pSize / 2); ctx.lineTo(-pSize / 2, pSize / 2); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+
+  // Keywords
+  const pos = keywords.length === 1 ? [0.48] : keywords.length === 2 ? [0.42, 0.56] : [0.36, 0.48, 0.6];
+  keywords.forEach((kw, i) => {
+    const t = easeSpring((frame - i * 5) / 15); if (t <= 0) return;
+    const y = h * pos[i], p = 1 + Math.sin((frame - i * 5) * 0.06) * 0.02;
+    // Glow
+    const kg = ctx.createRadialGradient(w / 2, y, 0, w / 2, y, 250);
+    kg.addColorStop(0, hexToRgba(theme.accent, 0.15 * t)); kg.addColorStop(1, 'transparent');
+    ctx.fillStyle = kg; ctx.fillRect(w / 2 - 250, y - 250, 500, 500);
+    ctx.save(); ctx.translate(w / 2, y); ctx.scale(t * p, t * p);
+    ctx.font = `900 ${keywords.length === 1 ? 110 : keywords.length === 2 ? 90 : 76}px ${FONT}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = hexToRgba(theme.accent, 0.7); ctx.shadowBlur = 40;
+    ctx.fillStyle = 'white'; ctx.fillText(kw, 0, 0);
+    ctx.shadowBlur = 0; ctx.restore();
+  });
+};
+
+// ── Sparkle Trail ──
+const drawMotionSparkleTrail: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  function cubicBez(t: number, p0: number, p1: number, p2: number, p3: number) {
+    const u = 1 - t; return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+  }
+
+  const trails = [
+    { p: [{ x: -0.1, y: 0.7 }, { x: 0.2, y: 0.3 }, { x: 0.6, y: 0.2 }, { x: 0.5, y: 0.5 }], color: theme.accent, delay: 0 },
+    { p: [{ x: 1.1, y: 0.65 }, { x: 0.8, y: 0.25 }, { x: 0.4, y: 0.35 }, { x: 0.5, y: 0.5 }], color: '#FFD93D', delay: 4 },
+    { p: [{ x: 0.5, y: 0.95 }, { x: 0.3, y: 0.7 }, { x: 0.7, y: 0.4 }, { x: 0.5, y: 0.5 }], color: '#81D4FA', delay: 8 },
+  ];
+
+  trails.forEach(trail => {
+    const tFrame = Math.max(0, frame - trail.delay);
+    const progress = Math.min(tFrame / (VIDEO_FPS * 1.2), 1);
+    if (progress <= 0) return;
+
+    // Trail dots
+    for (let si = 0; si < 20; si++) {
+      const segT = si / 20;
+      if (segT > progress) continue;
+      const x = cubicBez(segT, trail.p[0].x, trail.p[1].x, trail.p[2].x, trail.p[3].x) * w;
+      const y = cubicBez(segT, trail.p[0].y, trail.p[1].y, trail.p[2].y, trail.p[3].y) * h;
+      const age = (progress - segT) * 3;
+      const segA = age < 0.5 ? 0.7 : Math.max(0, 0.7 - (age - 0.5) * 0.47);
+      if (segA <= 0) continue;
+      ctx.save(); ctx.globalAlpha = segA;
+      ctx.fillStyle = trail.color; ctx.shadowColor = trail.color; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+
+    // Sparkles
+    for (let si = 0; si < 10; si++) {
+      const sT = si / 10;
+      const sDelay = sT * 1.2 * VIDEO_FPS;
+      const sFrame = Math.max(0, tFrame - sDelay);
+      const sP = Math.min(sFrame / (VIDEO_FPS * 0.5), 1);
+      if (sP <= 0) continue;
+      const x = cubicBez(Math.min(sT, progress), trail.p[0].x, trail.p[1].x, trail.p[2].x, trail.p[3].x) * w;
+      const y = cubicBez(Math.min(sT, progress), trail.p[0].y, trail.p[1].y, trail.p[2].y, trail.p[3].y) * h;
+      const sA = sP < 0.3 ? sP / 0.3 : sP < 0.7 ? 0.6 + 0.4 * (1 - (sP - 0.3) / 0.4) : Math.max(0, (1 - sP) / 0.3);
+      const sz = (6 + Math.abs(Math.sin(si * 1.3)) * 6) * (sP < 0.3 ? 0.3 + sP * 2.3 : sP < 0.7 ? 1.2 : 0.5 + (1 - sP) * 1.7);
+      ctx.save(); ctx.globalAlpha = sA; ctx.fillStyle = si % 2 === 0 ? trail.color : '#FFFFFF';
+      ctx.shadowColor = trail.color; ctx.shadowBlur = 10;
+      // 4-point star
+      ctx.translate(x + Math.sin(si * 2.7) * w * 0.03, y + Math.cos(si * 3.1) * h * 0.03);
+      ctx.rotate(sP * Math.PI / 2);
+      ctx.beginPath();
+      for (let j = 0; j < 8; j++) { const r = j % 2 === 0 ? sz : sz * 0.4; const a = (j * Math.PI) / 4 - Math.PI / 2; ctx.lineTo(r * Math.cos(a), r * Math.sin(a)); }
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+
+    // Lead sparkle
+    if (progress < 0.98) {
+      const hx = cubicBez(progress, trail.p[0].x, trail.p[1].x, trail.p[2].x, trail.p[3].x) * w;
+      const hy = cubicBez(progress, trail.p[0].y, trail.p[1].y, trail.p[2].y, trail.p[3].y) * h;
+      const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, 20);
+      hg.addColorStop(0, '#FFFFFF'); hg.addColorStop(0.4, trail.color); hg.addColorStop(1, 'transparent');
+      ctx.save(); ctx.shadowColor = trail.color; ctx.shadowBlur = 20;
+      ctx.fillStyle = hg; ctx.fillRect(hx - 20, hy - 20, 40, 40); ctx.restore();
+    }
+  });
+
+  // Keywords (appear after trails converge)
+  const pos = keywords.length === 1 ? [0.48] : keywords.length === 2 ? [0.43, 0.55] : [0.37, 0.48, 0.59];
+  keywords.forEach((kw, i) => {
+    const delay = i * 6 + 15;
+    const t = easeSpring((frame - delay) / 12); if (t <= 0) return;
+    const y = h * pos[i], p = 1 + Math.sin((frame - delay) * 0.08) * 0.03;
+    ctx.save(); ctx.translate(w / 2, y); ctx.scale(t * p, t * p);
+    ctx.font = `900 ${keywords.length === 1 ? 110 : keywords.length === 2 ? 90 : 76}px ${FONT}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = hexToRgba(theme.accent, 0.6); ctx.shadowBlur = 30;
+    ctx.fillStyle = 'white'; ctx.fillText(kw, 0, 0);
+    ctx.shadowBlur = 0; ctx.restore();
+  });
+};
+
+// ── Pulse Ring ──
+const drawMotionPulseRing: MotionDrawFn = (ctx, _s, frame, _d, theme, keywords, w, h) => {
+  const cx = w / 2, cy = h * 0.46;
+  const ringCount = 6;
+  const PULSE_INTERVAL = 8;
+
+  // Background radial glow
+  const bgEntry = easeOut(frame / 15);
+  const bgg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 400);
+  bgg.addColorStop(0, hexToRgba(theme.accent, 0.12 * bgEntry)); bgg.addColorStop(0.3, hexToRgba(theme.accent, 0.06 * bgEntry)); bgg.addColorStop(1, 'transparent');
+  ctx.fillStyle = bgg; ctx.fillRect(cx - 400, cy - 400, 800, 800);
+
+  // Pulsing rings
+  for (let i = 0; i < ringCount; i++) {
+    const ringFrame = frame - i * PULSE_INTERVAL;
+    const cycleDuration = ringCount * PULSE_INTERVAL;
+    const normalizedFrame = ((ringFrame % cycleDuration) + cycleDuration) % cycleDuration;
+    const ringT = normalizedFrame / cycleDuration;
+    if (frame < i * PULSE_INTERVAL) continue;
+    const ringScale = 0.3 + ringT * 4.2;
+    const ringR = 80 * ringScale;
+    let ringOpacity = 0;
+    if (ringT < 0.15) ringOpacity = ringT / 0.15 * 0.7;
+    else if (ringT < 0.6) ringOpacity = 0.7 - (ringT - 0.15) / 0.45 * 0.4;
+    else ringOpacity = Math.max(0, 0.3 * (1 - (ringT - 0.6) / 0.4));
+    const thickness = 3 - ringT * 2;
+    ctx.save(); ctx.globalAlpha = ringOpacity;
+    ctx.strokeStyle = theme.accent; ctx.lineWidth = Math.max(0.5, thickness);
+    ctx.shadowColor = hexToRgba(theme.accent, 0.4); ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+
+  // Rotating energy arcs
+  for (let i = 0; i < 3; i++) {
+    const arcDelay = i * 5;
+    const arcEntry = easeOut((frame - arcDelay - 6) / 15);
+    if (arcEntry <= 0) continue;
+    const arcAngle = ((i / 3) * 360 + frame * (1.5 + i * 0.3)) * Math.PI / 180;
+    const arcR = 120 + i * 30;
+    const arcLen = 0.8; // radians
+    ctx.save(); ctx.globalAlpha = arcEntry * (0.5 + Math.sin((frame + i * 20) * 0.06) * 0.2);
+    ctx.strokeStyle = theme.accent; ctx.lineWidth = 2;
+    ctx.shadowColor = hexToRgba(theme.accent, 0.5); ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(cx, cy, arcR, arcAngle, arcAngle + arcLen); ctx.stroke(); ctx.restore();
+  }
+
+  // Central core
+  const corePulse = 1 + Math.sin(frame * 0.1) * 0.08;
+  const coreSize = easeOut(frame / 12) * 50 * corePulse;
+  const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreSize);
+  cg.addColorStop(0, hexToRgba(theme.accent, 0.5)); cg.addColorStop(0.4, hexToRgba(theme.accent, 0.25)); cg.addColorStop(1, 'transparent');
+  ctx.fillStyle = cg; ctx.fillRect(cx - coreSize, cy - coreSize, coreSize * 2, coreSize * 2);
+
+  // Orbiting dots
+  for (let i = 0; i < 8; i++) {
+    const dotEntry = easeOut((frame - i * 3 - 4) / 12);
+    if (dotEntry <= 0) continue;
+    const orbitAngle = ((i / 8) * 360 + frame * 2) * Math.PI / 180;
+    const orbitR = 70 + (i % 3) * 20;
+    const dx = cx + Math.cos(orbitAngle) * orbitR;
+    const dy = cy + Math.sin(orbitAngle) * orbitR;
+    const dotSize = 2 + (i % 3);
+    const dotPulse = 0.6 + Math.sin((frame + i * 10) * 0.15) * 0.4;
+    ctx.save(); ctx.globalAlpha = dotEntry * dotPulse;
+    ctx.fillStyle = i % 2 === 0 ? theme.accent : '#FFFFFF';
+    ctx.shadowColor = hexToRgba(theme.accent, 0.5); ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(dx, dy, dotSize, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+
+  // Keywords
+  const pos = keywords.length === 1 ? [0.46] : keywords.length === 2 ? [0.4, 0.54] : [0.35, 0.46, 0.57];
+  keywords.forEach((kw, i) => {
+    const delay = i * 6 + 4;
+    const t = easeSpring((frame - delay) / 15); if (t <= 0) return;
+    const y = h * pos[i], p = 1 + Math.sin((frame - delay) * 0.07) * 0.02;
+    ctx.save(); ctx.translate(w / 2, y); ctx.scale(t * p, t * p);
+    ctx.font = `900 ${keywords.length === 1 ? 110 : keywords.length === 2 ? 90 : 76}px ${FONT}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = hexToRgba(theme.accent, 0.7); ctx.shadowBlur = 40;
+    ctx.fillStyle = 'white'; ctx.fillText(kw, 0, 0);
+    ctx.shadowBlur = 0; ctx.restore();
+  });
+};
+
 const MOTION_DRAWERS: Record<string, MotionDrawFn> = {
   keyword_pop: drawMotionKeywordPop, typewriter: drawMotionTypewriter, slide_stack: drawMotionSlideStack,
   counter: drawMotionCounter, split_compare: drawMotionSplitCompare, radial_burst: drawMotionRadialBurst,
   list_reveal: drawMotionListReveal, zoom_impact: drawMotionZoomImpact, glitch: drawMotionGlitch,
   wave: drawMotionWave, spotlight: drawMotionSpotlight, card_flip: drawMotionCardFlip,
   progress_bar: drawMotionProgressBar, emoji_rain: drawMotionEmojiRain, parallax_layers: drawMotionParallaxLayers,
+  confetti_burst: drawMotionConfettiBurst, sparkle_trail: drawMotionSparkleTrail, pulse_ring: drawMotionPulseRing,
 };
 
 // ── Subtitle Drawing ──

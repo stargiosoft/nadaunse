@@ -14,6 +14,9 @@ export type MotionStyle =
   | 'progress_bar'     // 가로 프로그레스 바
   | 'emoji_rain'       // 이모지 비
   | 'parallax_layers'  // 패럴랙스 레이어
+  | 'confetti_burst'   // 컨페티 폭발
+  | 'sparkle_trail'    // 스파클 트레일
+  | 'pulse_ring'       // 펄스 링
   ;
 
 export type SceneLayout = 'center' | 'top_heavy' | 'bottom_heavy' | 'split_left' | 'split_right';

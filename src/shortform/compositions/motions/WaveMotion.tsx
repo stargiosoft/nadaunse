@@ -3,7 +3,7 @@ import type { MotionComponentProps } from './types';
 
 export default function WaveMotion({ keywords, accent }: MotionComponentProps) {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
 
   const entrySpring = spring({ frame, fps, config: { damping: 14, mass: 0.8 } });
   const opacity = interpolate(entrySpring, [0, 1], [0, 1]);
@@ -41,7 +41,7 @@ export default function WaveMotion({ keywords, accent }: MotionComponentProps) {
       <svg style={{
         position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
         pointerEvents: 'none', zIndex: 0,
-      }} viewBox="0 0 1080 1920" preserveAspectRatio="none">
+      }} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={accent} stopOpacity="0.3" />
@@ -49,14 +49,15 @@ export default function WaveMotion({ keywords, accent }: MotionComponentProps) {
           </linearGradient>
         </defs>
         {wavePaths.map((wave, wi) => {
+          const yScale = height / 100;
           const points: string[] = [];
-          for (let x = 0; x <= 1080; x += 20) {
-            const y = wave.yBase * 19.2 +
-              Math.sin((x * wave.frequency) + (waveOffset * wave.speed * 0.05)) * wave.amplitude * 19.2 +
+          for (let x = 0; x <= width; x += 20) {
+            const y = wave.yBase * yScale +
+              Math.sin((x * wave.frequency) + (waveOffset * wave.speed * 0.05)) * wave.amplitude * yScale +
               Math.sin((x * wave.frequency * 1.5) + (waveOffset * wave.speed * 0.03) + 1) * wave.amplitude * 8;
             points.push(`${x},${y}`);
           }
-          const d = `M0,1920 L${points.map(p => `${p}`).join(' L')} L1080,1920 Z`;
+          const d = `M0,${height} L${points.map(p => `${p}`).join(' L')} L${width},${height} Z`;
           return (
             <path key={wi} d={d} fill={accent} opacity={wave.opacity} />
           );

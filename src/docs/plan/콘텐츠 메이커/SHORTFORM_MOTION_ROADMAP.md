@@ -8,33 +8,39 @@
 ## 현재 상태 (AS-IS)
 
 ```
-대본 생성 (Gemini) → TTS (OpenAI) → [BGM 검색 (Jamendo)] → [이미지 기반: AI 배경 생성] → Remotion 미리보기 → MP4 렌더링 (브라우저)
+대본 생성 (Gemini) → TTS (OpenAI) → [BGM (Jamendo)] → [이미지 생성 (Gemini)] → [I2V 영상 변환 (Replicate)] → Remotion 미리보기 → MP4 렌더링
 ```
 
 | 요소 | 현재 구현 |
 |------|----------|
-| 배경 (모션 그래픽) | 씬 타입별 다크 그라디언트 + 그리드 패턴 + 레이디얼 글로우 |
-| 배경 (이미지 기반) | **씬별 Gemini AI 이미지 + Ken Burns 줌/패닝 + 다크 오버레이 + 비네팅** |
-| 중앙 비주얼 | **AI 자동 선택 모션 컴포넌트 (10종)** — 씬 내용에 맞춰 다양하게 배정 |
-| 모션 효과 | 씬 타입별 오버레이 (X마크/체크/파티클) + 떠다니는 도형 |
-| 자막 | 하단 프로스트 글래스 pill + 볼드 하이라이트 |
-| 전환 | cut/fade/zoom/slide (코드 기반) |
+| 배경 (모션 그래픽) | **씬별 다이나믹 컬러 그라디언트** (Gemini accent/glow 자동 생성) + 그리드 + 보케/스파클 + 씬간 색상 블렌딩 |
+| 배경 (이미지 기반) | **Replicate I2V 영상 배경** (Wan 2.5/Hailuo Fast/Kling v2.1 선택) / 폴백: Gemini AI 이미지 + Ken Burns |
+| 중앙 비주얼 | **AI 자동 선택 모션 컴포넌트 (15종)** — 씬 내용에 맞춰 다양하게 배정 |
+| 모션 효과 | 씬 타입별 오버레이 (X마크/체크/파티클) + 떠다니는 도형 + 보케 |
+| 자막 | 하단 워드별 스프링 애니메이션 + `**볼드**` 노란색 하이라이트 + 배경 블러 pill |
+| 전환 | cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate (7종) + 씬간 색상 블렌딩 |
 | 오디오 | 씬별 TTS 나레이션 + **BGM (Jamendo, 볼륨 25%, 페이드인/아웃)** |
+| 렌더러 동기화 | **renderVideo.ts가 SceneRenderer.tsx와 완전 동기화** — 15종 모션 + 파티클 + 자막 동일 재현 |
 
-**현재 모션 스타일 10종** (`motion_style` — Gemini가 씬별 자동 선택):
+**현재 모션 스타일 15종** (`motion_style` — Gemini가 씬별 자동 선택):
 
 | 스타일 | 효과 | 적합한 씬 |
 |--------|------|-----------|
 | `keyword_pop` | 키워드 스프링 팝인 (기본) | 강조 단어 |
 | `typewriter` | 타이핑 + 깜빡이는 커서 | 설명, 인용문 |
 | `slide_stack` | 좌우 교차 슬라이드 + 강조 바 | 목록, 비교 |
-| `counter` | 숫자 카운트업 + 펄스 | 통계, 수치 |
+| `counter` | 숫자 카운트업 + 원형 프로그레스 | 통계, 수치 |
 | `split_compare` | 좌우 분할 + VS 배지 | Before/After |
-| `radial_burst` | 방사형 라인 + 중앙 글로우 | 결론, 임팩트 |
-| `list_reveal` | 번호 원형 + 순차 등장 | 팁 나열 |
+| `radial_burst` | 방사형 라인 + 중앙 글로우 + 충격파 | 결론, 임팩트 |
+| `list_reveal` | 번호 원형 + 순차 등장 + 연결선 | 팁 나열 |
 | `zoom_impact` | 줌인 + 충격파 링 + 쉐이크 | 핵심 메시지 |
 | `glitch` | RGB 분리 + 스캔라인 + 왜곡 | 경고, 문제 |
-| `wave` | 글자별 파도 모션 + 색상 변화 | 감성, 부드러운 |
+| `wave` | 글자별 파도 모션 + HSL 색상 변화 | 감성, 부드러운 |
+| `spotlight` | 스포트라이트 원형 reveal + 어둠 마스크 | 공개, 비밀 |
+| `card_flip` | 3D 카드 뒤집기 + 플래시 | 반전, 비교 |
+| `progress_bar` | 가로 프로그레스 바 + 퍼센트 카운트 | 진행률, 수치 |
+| `emoji_rain` | 이모지 비 + 중앙 텍스트 | 감정 폭발, 반응 |
+| `parallax_layers` | 패럴랙스 레이어 + 파티클 | 깊이감, 스토리 |
 
 ---
 
@@ -57,24 +63,26 @@
 
 ---
 
-### ~~2. AI 기반 모션 스타일 자동 선택~~ — 완료 (2026-03-19)
+### ~~2. AI 기반 모션 스타일 자동 선택~~ — 완료 (2026-03-19, 15종 확장 2026-03-20)
 
 **구현 완료 내역**:
-- [x] `types.ts`에 `MotionStyle` (10종), `SceneLayout` 타입 추가
-- [x] Scene 타입에 `motion_style`, `layout`, `icon`, `backgroundImageUrl` 필드 추가 (모두 optional)
-- [x] `generate-short-form` Edge Function에서 `videoType === 'motion'` 시 프롬프트에 모션 스타일 규칙 주입
-- [x] Gemini가 씬별로 최적 `motion_style` + `layout` + `icon` 자동 선택
+- [x] `types.ts`에 `MotionStyle` (15종), `SceneLayout` 타입 추가
+- [x] Scene 타입에 `motion_style`, `layout`, `icon`, `accent_color`, `glow_color`, `backgroundImageUrl`, `backgroundVideoUrl` 필드 추가
+- [x] `generate-short-form` Edge Function에서 `videoType === 'motion'` 시 프롬프트에 모션 스타일 규칙 + 색상 팔레트 주입
+- [x] Gemini가 씬별로 최적 `motion_style` + `layout` + `icon` + `accent_color` + `glow_color` 자동 선택
 - [x] "연속 2개 씬에 같은 motion_style 금지" 규칙으로 시각적 다양성 보장
-- [x] 10개 모션 컴포넌트 신규 구현 (`src/shortform/compositions/motions/`)
+- [x] **15개** 모션 컴포넌트 구현 (`src/shortform/compositions/motions/`)
 - [x] `MOTION_REGISTRY`로 동적 디스패치 — SceneRenderer에서 `scene.motion_style`로 컴포넌트 자동 선택
-- [x] `scene.icon` 우선 사용 (Gemini가 씬 내용에 맞는 이모지 선택)
+- [x] **다이나믹 컬러**: `accent_color`/`glow_color`로 씬별 고유 색상 팔레트 (배경 그라디언트 자동 파생)
+- [x] **씬간 색상 블렌딩**: `prevScene` 전달 → 처음 15프레임 동안 색상 보간 (부드러운 전환)
+- [x] `renderVideo.ts` 완전 동기화 — Canvas에서 15종 모션 + 파티클 + 자막 스프링 동일 재현
 - [x] 기존 대본(motion_style 없음)은 `keyword_pop` 폴백으로 하위 호환
 
 **구현 파일**:
 ```
-src/shortform/types.ts                          # MotionStyle, SceneLayout 타입
+src/shortform/types.ts                          # MotionStyle (15종), SceneLayout, accent_color/glow_color
 src/shortform/compositions/motions/types.ts     # MotionComponentProps 인터페이스
-src/shortform/compositions/motions/index.ts     # MOTION_REGISTRY 레지스트리
+src/shortform/compositions/motions/index.ts     # MOTION_REGISTRY 레지스트리 (15종)
 src/shortform/compositions/motions/KeywordPopMotion.tsx
 src/shortform/compositions/motions/TypewriterMotion.tsx
 src/shortform/compositions/motions/SlideStackMotion.tsx
@@ -85,8 +93,14 @@ src/shortform/compositions/motions/ListRevealMotion.tsx
 src/shortform/compositions/motions/ZoomImpactMotion.tsx
 src/shortform/compositions/motions/GlitchMotion.tsx
 src/shortform/compositions/motions/WaveMotion.tsx
-src/shortform/compositions/SceneRenderer.tsx    # 동적 모션 디스패치
-supabase/functions/generate-short-form/index.ts # videoType 기반 프롬프트 분기
+src/shortform/compositions/motions/SpotlightMotion.tsx     # 신규
+src/shortform/compositions/motions/CardFlipMotion.tsx      # 신규
+src/shortform/compositions/motions/ProgressBarMotion.tsx   # 신규
+src/shortform/compositions/motions/EmojiRainMotion.tsx     # 신규
+src/shortform/compositions/motions/ParallaxLayersMotion.tsx # 신규
+src/shortform/compositions/SceneRenderer.tsx    # 다이나믹 컬러 + 씬간 블렌딩 + Video 배경
+src/shortform/renderVideo.ts                    # 15종 모션 Canvas 동기화 + 비디오 프레임 추출
+supabase/functions/generate-short-form/index.ts # 15종 모션 + accent/glow 색상 프롬프트
 ```
 
 ---
@@ -183,12 +197,12 @@ src/shortform/renderVideo.ts                    # TTS + BGM PCM 믹싱
 
 ---
 
-### ~~5. fal.ai Image-to-Video 씬별 AI 영상 배경~~ — 완료 (2026-03-20)
+### ~~5. Replicate Image-to-Video 씬별 AI 영상 배경~~ — 완료 (2026-03-20)
 
 **구현 완료 내역**:
-- [x] `generate-scene-video` Edge Function 신규 (fal.ai Queue API 연동)
-- [x] 2단계 비동기 패턴: submit(큐 제출) → poll(상태 확인) → video_url 반환
-- [x] 모델 설정: Kling 2.0 Master I2V (기본) / Minimax I2V (대안)
+- [x] `generate-scene-video` Edge Function 신규 (Replicate Predictions API 연동)
+- [x] 2단계 비동기 패턴: submit(prediction 생성) → poll(상태 확인) → video_url 반환
+- [x] 모델 3종: Wan 2.5 I2V (기본, 최저가) / Hailuo 2.3 Fast (가성비) / Kling v2.1 (고품질)
 - [x] ShortFormPage Phase A-3 추가 (이미지 생성 후 → 영상 변환 → 미리보기)
 - [x] 2개씩 배치 제출 + 5초 간격 병렬 폴링 (최대 5분)
 - [x] SceneRenderer에 Remotion `<Video>` 배경 지원 (Ken Burns 불필요 — AI 모션)
@@ -198,15 +212,15 @@ src/shortform/renderVideo.ts                    # TTS + BGM PCM 믹싱
 
 **구현 파일**:
 ```
-supabase/functions/generate-scene-video/index.ts  # fal.ai Queue submit/poll
+supabase/functions/generate-scene-video/index.ts  # Replicate Predictions submit/poll
 src/shortform/types.ts                            # backgroundVideoUrl 필드
 src/pages/ShortFormPage.tsx                        # Phase A-3 + videoGenProgress
 src/shortform/compositions/SceneRenderer.tsx       # Video 배경 렌더링
 src/shortform/renderVideo.ts                       # 비디오 프레임 추출 + Canvas 드로잉
 ```
 
-**비용**: ~$0.35/씬 (Kling), 6씬 기준 ~$2.10/영상
-**환경변수**: `FAL_KEY` (Staging/Production 설정 필요)
+**비용**: Wan ~$0.10/씬 (~$0.60/영상) / Hailuo ~$0.15/씬 (~$0.90/영상) / Kling ~$0.35/씬 (~$2.10/영상)
+**환경변수**: `REPLICATE_API_TOKEN` (Staging ✅ / Production ✅ — 설정 완료)
 **배포**: `npx supabase functions deploy generate-scene-video --no-verify-jwt`
 
 ---
@@ -301,11 +315,14 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 - 공식 API 없음, 리버스 엔지니어링 기반
 
 ### AI 영상 생성 API 시장 (2026)
-- fal.ai: 600+ 모델 통합 API (Kling, Runway, Veo 등)
-- 최저가: Kling 3.0 (~$0.03/초)
+- **Replicate** (현재 사용): 선불 크레딧, Wan/Hailuo/Kling 등 다수 I2V 모델 호스팅
+- fal.ai: 600+ 모델 통합 API (법인카드 결제 불가로 미사용)
+- 최저가: Wan 2.5 I2V (~$0.10/씬, Replicate)
+- 가성비: Hailuo 2.3 Fast (~$0.15/씬, Replicate)
+- 고품질: Kling v2.1 (~$0.35/씬, Replicate)
 - 최고 품질: Google Veo 3.1 (~$0.75/초)
 - 모션 그래픽 전문: Hera ($29/월~, YC 투자)
 
 ---
 
-**최종 업데이트**: 2026-03-20 (단기 ①② 완료, ③CapCut 완료, ④BGM Jamendo 완료, ⑤fal.ai I2V 영상 배경 완료)
+**최종 업데이트**: 2026-03-20 (①②이미지+모션 15종+다이나믹 컬러 완료, ③CapCut 완료, ④BGM 완료, ⑤I2V: fal.ai→Replicate 전환 완료 / 모델 3종 Wan·Hailuo·Kling / 영상 길이 10·15·30초)

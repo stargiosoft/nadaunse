@@ -43,7 +43,7 @@ serve(async (req) => {
     const isMotionType = videoType === 'motion'
 
     const motionFields = isMotionType ? `
-      "motion_style": "모션 그래픽 스타일 (아래 15가지 중 택1)",
+      "motion_style": "모션 그래픽 스타일 (아래 18가지 중 택1)",
       "layout": "레이아웃 (center/top_heavy/bottom_heavy/split_left/split_right)",
       "icon": "씬 내용에 맞는 이모지 1개",
       "accent_color": "#hex (씬 강조색, 아래 색상 가이드 참고)",
@@ -51,7 +51,7 @@ serve(async (req) => {
 
     const motionRules = isMotionType ? `
 
-★ 모션 그래픽 스타일 규칙 (motion_style) — 15가지:
+★ 모션 그래픽 스타일 규칙 (motion_style) — 18가지:
 - keyword_pop: 키워드가 크게 팝인 (기본, 강조할 단어 1~3개가 있을 때)
 - typewriter: 타이핑 효과 (설명/인용문/대화체 씬)
 - slide_stack: 좌우에서 슬라이드하며 쌓기 (목록/비교 씬)
@@ -67,9 +67,12 @@ serve(async (req) => {
 - progress_bar: 가로 프로그레스 바 + 퍼센트 (달성률, 비율, 통계)
 - emoji_rain: 이모지 비 + 중앙 텍스트 (감성, 축하, 강조)
 - parallax_layers: 3단 패럴랙스 레이어 (스토리텔링, 설명, 흐름)
+- confetti_burst: 컨페티 폭발 (축하, CTA, 결과 발표, 성공 순간)
+- sparkle_trail: 빛나는 궤적이 곡선으로 수렴 (솔루션, 팁, 긍정적 메시지)
+- pulse_ring: 동심원 펄스 파동 (문제 제기, 강조, 에너지, 각성)
 
 중요: 연속 2개 씬에 같은 motion_style 금지! 시각적 다양성을 위해 다양하게 배분.
-씬 내용에 가장 어울리는 스타일 선택. 15가지를 골고루 활용할 것.
+씬 내용에 가장 어울리는 스타일 선택. 18가지를 골고루 활용할 것.
 
 ★ 씬별 색상 팔레트 (accent_color, glow_color):
 씬 분위기에 맞는 색상 조합을 선택. 연속 씬이 같은 색상이면 단조로우니 다양하게!

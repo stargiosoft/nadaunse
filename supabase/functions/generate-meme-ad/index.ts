@@ -10,7 +10,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { brandInfo, adDuration, platform, hookDuration, revision } = await req.json()
+    const { brandInfo, adDuration, hookDuration, revision } = await req.json()
 
     if (!brandInfo?.trim()) {
       return new Response(JSON.stringify({ error: '브랜드/제품 정보를 입력해주세요' }), {
@@ -28,14 +28,7 @@ serve(async (req) => {
     }
 
     const dur = adDuration || 15
-    const plat = platform || 'reels'
     const hookDur = hookDuration || 3
-
-    const platformGuide: Record<string, string> = {
-      reels: '인스타 릴스 (세로 9:16, 첫 3초가 핵심)',
-      shorts: '유튜브 쇼츠 (세로 9:16, 정보형 콘텐츠 강점)',
-      tiktok: '틱톡 (세로 9:16, 트렌드 음악 활용, 빠른 전환)',
-    }
 
     const totalDuration = hookDur + dur
 
@@ -49,7 +42,7 @@ serve(async (req) => {
 밈 클립이 시선을 잡은 직후 바로 광고가 나오므로, 첫 씬의 자연스러운 연결이 매우 중요합니다.
 
 브랜드/제품 정보: "${brandInfo}"
-플랫폼: ${platformGuide[plat] || platformGuide.reels}
+형식: 세로 9:16 숏폼 바이럴 광고 (릴스/쇼츠/틱톡 공용)
 광고 부분 길이: ${dur}초
 전체 영상 길이: ${totalDuration}초 (밈 ${hookDur}초 + 광고 ${dur}초)
 
@@ -100,6 +93,9 @@ serve(async (req) => {
 - zoom_impact: 줌인 (핵심 메시지)
 - glitch: 글리치 (경고/충격)
 - wave: 웨이브 (감성)
+- confetti_burst: 컨페티 폭발 (축하/CTA/성공)
+- sparkle_trail: 스파클 궤적 (솔루션/팁/긍정)
+- pulse_ring: 펄스 파동 (강조/에너지/각성)
 연속 2개 씬에 같은 motion_style 금지!
 
 ★ 광고 전략 (행동경제학):

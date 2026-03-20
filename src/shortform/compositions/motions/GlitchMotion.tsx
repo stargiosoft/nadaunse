@@ -9,7 +9,7 @@ function seededRandom(seed: number): number {
 
 export default function GlitchMotion({ keywords, accent }: MotionComponentProps) {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height } = useVideoConfig();
 
   const entrySpring = spring({ frame, fps, config: { damping: 8, mass: 0.6 } });
   const mainKeyword = keywords[0] || '';
@@ -30,7 +30,7 @@ export default function GlitchMotion({ keywords, accent }: MotionComponentProps)
   const opacity = interpolate(entrySpring, [0, 1], [0, 1]);
 
   // Scan line effect
-  const scanY = (frame * 8) % 1920;
+  const scanY = (frame * 8) % height;
 
   // Color flash (full screen color flash on strong glitches)
   const colorFlashActive = glitchSeed1 > 0.88;
@@ -97,7 +97,7 @@ export default function GlitchMotion({ keywords, accent }: MotionComponentProps)
       {Array.from({ length: 4 }, (_, i) => (
         <div key={`scan-${i}`} style={{
           position: 'absolute', left: '-10%', width: '120%',
-          top: ((frame * (3 + i * 2) + i * 400) % 1920) - 960,
+          top: ((frame * (3 + i * 2) + i * 400) % height) - 960,
           height: 1,
           backgroundColor: `rgba(255,255,255,0.03)`,
         }} />
