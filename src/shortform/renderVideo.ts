@@ -550,14 +550,6 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
   const { pre } = applyTransition(ctx, transition, frameInScene, entryT, w, h);
   ctx.save(); if (pre) pre();
   drawBackground(ctx, scene, frameInScene, sceneDurationFrames, imageBitmap, renderTheme, w, h, motionTheme);
-  // Scene label
-  ctx.save(); ctx.globalAlpha = Math.min(1, entryT) * 0.7;
-  ctx.fillStyle = hexToRgba(renderTheme.accent, 0.25); roundRect(ctx, 60, 78, 44, 44, 12); ctx.fill();
-  ctx.font = `800 22px ${FONT}`; ctx.fillStyle = renderTheme.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(scene.scene_number), 82, 100);
-  ctx.font = `600 24px ${FONT}`; ctx.fillStyle = hexToRgba(renderTheme.accent, 0.6); ctx.textAlign = 'left'; ctx.fillText(scene.type.toUpperCase(), 120, 100); ctx.restore();
-  // Visual desc
-  ctx.save(); ctx.globalAlpha = entryT * 0.12; ctx.font = `400 22px ${FONT}`; ctx.fillStyle = 'white'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  wrapText(ctx, scene.visual, 60, 160, w - 120, 34); ctx.restore();
   // Particle burst for hook/cta
   const st = scene.type.toLowerCase().replace(/\s+/g, '_');
   if (['hook', 'cta', 'outro'].includes(st) && !imageBitmap) {
@@ -569,11 +561,6 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
       ctx.arc(w / 2 + Math.cos(a) * dist, h * 0.45 + Math.sin(a) * dist, 3 + (i % 3) * 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
   }
-  // Icon badge
-  const icon = scene.icon || '';
-  if (icon) { const it = easeSpring(frameInScene / 15); ctx.save(); ctx.globalAlpha = it; ctx.translate(w - 130, 130); ctx.scale(it, it);
-    ctx.fillStyle = hexToRgba(renderTheme.accent, 0.25); ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.fill();
-    ctx.font = '48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, 0, 0); ctx.restore(); }
   // Motion
   const drawer = MOTION_DRAWERS[scene.motion_style || 'keyword_pop'] || MOTION_DRAWERS.keyword_pop;
   drawer(ctx, scene, frameInScene, sceneDurationFrames, renderTheme, keywords, w, h);
