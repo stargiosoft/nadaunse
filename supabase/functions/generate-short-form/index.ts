@@ -10,7 +10,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { topic, duration, platform, videoType, revision } = await req.json()
+    const { topic, duration, platform, style, videoType, motionTheme, revision } = await req.json()
 
     if (!topic?.trim()) {
       return new Response(JSON.stringify({ error: '주제를 입력해주세요' }), {
@@ -28,12 +28,16 @@ serve(async (req) => {
     }
 
     const dur = duration || 30
-    const plat = platform || 'reels'
+    const st = style || platform || 'informative'
 
-    const platformGuide: Record<string, string> = {
-      reels: '인스타 릴스 (세로 9:16, 15~90초, 자막 필수, 첫 3초가 핵심)',
-      shorts: '유튜브 쇼츠 (세로 9:16, 60초 이하, 정보형 콘텐츠 강점)',
-      tiktok: '틱톡 (세로 9:16, 15~60초, 트렌드 음악 활용, 빠른 전환)',
+    const styleGuide: Record<string, string> = {
+      informative: '정보 전달형: 핵심 팩트·수치 중심, 체계적 구성(리스트/비교), 신뢰감 있는 톤, 자막에 숫자·데이터 강조',
+      storytelling: '스토리텔링형: 기승전결 서사 구조, 감정 이입 유도, 공감 포인트 배치, 점진적 몰입감, 드라마틱한 전환',
+      viral: '바이럴형: 충격적 후킹, 빠른 전환, 논쟁/호기심 유발, FOMO·손실회피 극대화, 공유 욕구 자극, 자극적 자막',
+      // legacy platform values → fallback
+      reels: '인스타 릴스 스타일: 자막 필수, 첫 3초 후킹 핵심, 감각적 전환',
+      shorts: '유튜브 쇼츠 스타일: 정보형 콘텐츠 강점, 체계적 구성',
+      tiktok: '틱톡 스타일: 트렌드 활용, 빠른 전환, 바이럴 요소',
     }
 
     const isMotionType = videoType === 'motion'
@@ -69,14 +73,46 @@ serve(async (req) => {
 
 ★ 씬별 색상 팔레트 (accent_color, glow_color):
 씬 분위기에 맞는 색상 조합을 선택. 연속 씬이 같은 색상이면 단조로우니 다양하게!
-- 빨강 계열: accent "#FF6B6B", glow "#ff4757" (긴급, 위험, 열정, 후킹)
-- 주황 계열: accent "#f39c12", glow "#feca57" (에너지, 경고, 활력)
-- 초록 계열: accent "#2ecc71", glow "#00d2d3" (해결, 성장, 긍정)
-- 파랑 계열: accent "#58a6ff", glow "#74b9ff" (신뢰, 정보, 차분)
-- 보라 계열: accent "#e056fd", glow "#ff6b9d" (창의, 럭셔리, CTA)
-- 청록 계열: accent "#4ecdc4", glow "#48dbfb" (트렌디, 신선, 테크)
-- 핑크 계열: accent "#fd79a8", glow "#fab1a0" (감성, 러블리, 공감)
-- 골드 계열: accent "#ffd32a", glow "#fffa65" (성공, 프리미엄, 밝음)
+${motionTheme === 'colorful_pop' ? `비주얼 스타일: 컬러풀 팝 — 밝은 배경 위에 선명하고 채도 높은 플랫 컬러.
+- 코랄 레드: accent "#FF6B6B", glow "#FF8E8E" (임팩트, 후킹)
+- 틸 그린: accent "#4ECDC4", glow "#6ED8D0" (신선, 긍정)
+- 로열 퍼플: accent "#7C3AED", glow "#9B6BF7" (창의, CTA)
+- 선셋 오렌지: accent "#FF8C42", glow "#FFB066" (에너지, 활력)
+- 오션 블루: accent "#2563EB", glow "#4B83F0" (신뢰, 정보)
+- 핫 핑크: accent "#EC4899", glow "#F472B6" (감성, 바이럴)
+밝은 배경이므로 충분히 진한 색상 사용. 파스텔은 피할 것.`
+: motionTheme === 'pastel_soft' ? `비주얼 스타일: 파스텔 소프트 — 부드럽고 따뜻한 파스텔 톤.
+- 라벤더: accent "#A78BFA", glow "#C4B5FD" (감성, 편안)
+- 로즈 핑크: accent "#F9A8D4", glow "#FBCFE8" (사랑, 공감)
+- 민트: accent "#6EE7B7", glow "#A7F3D0" (신선, 성장)
+- 스카이: accent "#7DD3FC", glow "#BAE6FD" (차분, 신뢰)
+- 피치: accent "#FDBA74", glow "#FED7AA" (따뜻, 활력)
+- 라일락: accent "#C084FC", glow "#D8B4FE" (창의, 영감)
+부드럽고 눈이 편한 파스텔 톤 사용. 너무 진한 색 피할 것.`
+: motionTheme === 'gradient_vivid' ? `비주얼 스타일: 그라디언트 비비드 — 화려한 컬러 그라디언트 배경 위 밝은 텍스트.
+- 핫 핑크: accent "#FF6B9D", glow "#FF8FB8" (바이럴, 임팩트)
+- 일렉트릭 퍼플: accent "#A855F7", glow "#C084FC" (창의, CTA)
+- 시안: accent "#22D3EE", glow "#67E8F9" (트렌디, 테크)
+- 골든 옐로우: accent "#FBBF24", glow "#FCD34D" (성공, 밝음)
+- 라임: accent "#84CC16", glow "#A3E635" (신선, 성장)
+- 화이트: accent "#FFFFFF", glow "#F0F0FF" (깔끔한 강조)
+그라디언트 배경과 대비되는 밝은 색상 위주. 흰색도 적극 활용.`
+: motionTheme === 'dark_impact' ? `비주얼 스타일: 다크 임팩트 — 딥 네이비 배경 위에 강렬한 대비.
+- 코랄/핑크: accent "#FF4D6A", glow "#FF6B8A" (가장 자주 사용, 임팩트)
+- 핫핑크: accent "#FF2D78", glow "#FF5A93" (강렬한 후킹)
+- 시안: accent "#00D4FF", glow "#4DDBFF" (대비, 정보)
+- 화이트 골드: accent "#FFD700", glow "#FFED4A" (프리미엄)
+- 네온 그린: accent "#00FF88", glow "#33FF99" (성장, 해결)
+- 일렉트릭 퍼플: accent "#BF5AF2", glow "#D98EF7" (창의, CTA)
+큰 텍스트가 핵심이므로 채도 높은 색상 위주로 선택.`
+: `비주얼 스타일: 블랙 네온 — 순수 블랙 배경 위 네온 컬러.
+- 네온 그린: accent "#00FF88", glow "#33FF99" (신선, 테크, 성장)
+- 네온 시안: accent "#00FFFF", glow "#33FFFF" (미래, 테크)
+- 네온 마젠타: accent "#FF00FF", glow "#FF33FF" (창의, 임팩트)
+- 일렉트릭 블루: accent "#0088FF", glow "#33AAFF" (신뢰, 정보)
+- 네온 옐로우: accent "#FFFF00", glow "#FFFF44" (경고, 주의)
+- 네온 레드: accent "#FF0044", glow "#FF3366" (긴급, 후킹)
+네온 사인 같은 강렬한 채도의 색상만 사용.`}
 위 조합을 참고하되, 씬 내용에 맞게 자유롭게 조합 가능. 반드시 #hex 6자리 포맷.
 
 ★ 전환 효과 (transition) — 7가지:
@@ -86,7 +122,7 @@ cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
     const prompt = `당신은 숏폼 영상 대본 전문 작가이자 SNS 바이럴 콘텐츠 기획자입니다.
 
 주제: "${topic}"
-플랫폼: ${platformGuide[plat] || platformGuide.reels}
+스타일: ${styleGuide[st] || styleGuide.informative}
 목표 길이: 약 ${dur}초
 
 다음 JSON 형식으로 숏폼 영상 대본을 작성해주세요:
