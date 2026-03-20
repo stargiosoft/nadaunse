@@ -44,3 +44,30 @@ export type TtsAudio = {
   dataUrl: string;
   durationInSeconds: number;
 };
+
+export type BgmAudio = {
+  dataUrl: string;
+  durationInSeconds: number;
+  track: {
+    id: string;
+    name: string;
+    artist: string;
+    duration: number;
+    license: string;
+    url: string;
+  };
+};
+
+export type BgmMood = typeof BGM_MOODS[number]['id'];
+
+export const BGM_MOODS = [
+  { id: 'none', label: 'BGM 없음' },
+  { id: '밝고 경쾌한', label: '밝고 경쾌한' },
+  { id: '차분하고 편안한', label: '차분하고 편안한' },
+  { id: '긴장감 있는', label: '긴장감 있는' },
+  { id: '감성적인', label: '감성적인' },
+  { id: '힙한/트렌디', label: '힙한/트렌디' },
+  { id: '신나는', label: '신나는' },
+  { id: '동기부여', label: '동기부여' },
+  { id: '미스터리', label: '미스터리' },
+] as const;

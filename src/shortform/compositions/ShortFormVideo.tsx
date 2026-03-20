@@ -1,5 +1,5 @@
 import { AbsoluteFill, Sequence, Audio } from 'remotion';
-import type { Scene, TtsAudio } from '../types';
+import type { Scene, TtsAudio, BgmAudio } from '../types';
 import { VIDEO_FPS } from '../constants';
 import SceneRenderer from './SceneRenderer';
 import SubtitleOverlay from './SubtitleOverlay';
@@ -7,6 +7,7 @@ import SubtitleOverlay from './SubtitleOverlay';
 export type ShortFormVideoProps = {
   scenes: Scene[];
   ttsAudios: TtsAudio[];
+  bgmAudio?: BgmAudio | null;
 };
 
 export function computeSceneFrames(scenes: Scene[], ttsAudios: TtsAudio[]): number[] {
@@ -21,12 +22,20 @@ export function computeTotalFrames(scenes: Scene[], ttsAudios: TtsAudio[]): numb
   return computeSceneFrames(scenes, ttsAudios).reduce((a, b) => a + b, 0);
 }
 
-export default function ShortFormVideo({ scenes, ttsAudios }: ShortFormVideoProps) {
+export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio }: ShortFormVideoProps) {
   const sceneFrames = computeSceneFrames(scenes, ttsAudios);
+  const totalFrames = sceneFrames.reduce((a, b) => a + b, 0);
   let frameOffset = 0;
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
+      {/* BGM 트랙 (전체 영상 길이, 볼륨 25%) */}
+      {bgmAudio && (
+        <Sequence from={0} durationInFrames={totalFrames}>
+          <Audio src={bgmAudio.dataUrl} volume={0.25} />
+        </Sequence>
+      )}
+
       {scenes.map((scene, idx) => {
         const from = frameOffset;
         const dur = sceneFrames[idx];
