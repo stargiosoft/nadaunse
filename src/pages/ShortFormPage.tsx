@@ -33,8 +33,9 @@ const VIDEO_TYPES = [
 ] as const;
 
 const I2V_MODELS = [
-  { id: 'kling', label: 'Kling 2.0', desc: '고품질 · ~$2.10/영상', cost: '$0.35/씬' },
-  { id: 'minimax', label: 'Minimax Hailuo', desc: '가성비 · ~$0.70/영상', cost: '$0.12/씬' },
+  { id: 'wan', label: 'Wan 2.5', desc: '최저가 · ~$0.60/영상' },
+  { id: 'hailuo', label: 'Hailuo Fast', desc: '가성비 · ~$0.90/영상' },
+  { id: 'kling', label: 'Kling v2.1', desc: '고품질 · ~$2.10/영상' },
 ] as const;
 
 type VideoType = 'image' | 'motion';
@@ -80,7 +81,7 @@ export default function ShortFormPage() {
   const [duration, setDuration] = useState<number>(30);
   const [platform, setPlatform] = useState<string>('reels');
   const [videoType, setVideoType] = useState<VideoType>('image');
-  const [i2vModel, setI2vModel] = useState<I2vModel>('kling');
+  const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
   const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
