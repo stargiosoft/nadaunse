@@ -373,8 +373,6 @@ export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene
   // Motion component
   const motionStyle = scene.motion_style || 'keyword_pop';
   const MotionComponent = MOTION_REGISTRY[motionStyle] || MOTION_REGISTRY.keyword_pop;
-  const displayIcon = scene.icon || theme.icon;
-
   // Animated gradient angle + ambient glow positions
   const gradAngle = 160 + Math.sin(frame * 0.008) * 20;
   const glow1X = 45 + Math.sin(frame * 0.01) * 15;
@@ -493,51 +491,11 @@ export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene
       {!hasImage && !hasVideo && isSolution && <CheckOverlay accent={ac} />}
       {isHookOrCta && <ParticleBurst accent={ac} glow={gl} />}
 
-      {/* Type icon badge */}
-      <TypeIcon icon={displayIcon} accent={ac} />
-
-      {/* Scene label */}
-      <div style={{
-        position: 'absolute', top: 88, left: 60,
-        display: 'flex', alignItems: 'center', gap: 16,
-        opacity: interpolate(entryProgress, [0, 1], [0, 0.7]),
-      }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 12,
-          backgroundColor: `${ac}25`,
-          border: `1px solid ${ac}30`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-          fontSize: 22, fontWeight: 800, color: ac,
-          boxShadow: `0 0 15px ${ac}15`,
-        }}>
-          {scene.scene_number}
-        </div>
-        <span style={{
-          fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-          fontSize: 24, fontWeight: 600, color: `${ac}60`,
-          textTransform: 'uppercase', letterSpacing: 3,
-        }}>
-          {scene.type}
-        </span>
-      </div>
-
       {/* ── Motion Graphics ── */}
       <MotionComponent scene={scene} accent={ac} keywords={keywords} />
 
       {/* Accent line */}
       <AccentLine accent={ac} />
-
-      {/* Visual description (very subtle) */}
-      <div style={{
-        position: 'absolute', top: 160, left: 60, right: 60,
-        fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-        fontSize: 22, fontWeight: 400, color: tc.bgMode === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
-        lineHeight: 1.5,
-        opacity: interpolate(entryProgress, [0, 1], [0, 1]),
-      }}>
-        {scene.visual}
-      </div>
     </AbsoluteFill>
   );
 }
