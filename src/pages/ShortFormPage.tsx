@@ -90,7 +90,7 @@ export default function ShortFormPage() {
   const [videoType, setVideoType] = useState<VideoType>('motion');
   const [imageSource, setImageSource] = useState<ImageSource>('ai');
   const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
-  const [motionTheme, setMotionTheme] = useState<MotionTheme>('bold_impact');
+  const [motionTheme, setMotionTheme] = useState<MotionTheme>('colorful_pop');
   const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
@@ -568,8 +568,8 @@ export default function ShortFormPage() {
     setDuration(30);
     setStyle('viral');
     setAspectRatio('9:16');
-    setVideoType('image');
-    setMotionTheme('bold_impact');
+    setVideoType('motion');
+    setMotionTheme('colorful_pop');
     setImageSource('ai');
     setResult(null);
     setError(null);

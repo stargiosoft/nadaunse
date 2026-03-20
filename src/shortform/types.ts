@@ -70,14 +70,14 @@ export type BgmAudio = {
 
 // ── Motion Theme (visual style for motion graphics) ──
 
-export type MotionTheme = 'dark_neon' | 'bold_impact' | 'black_vivid' | 'light_clean' | 'warm_gradient';
+export type MotionTheme = 'colorful_pop' | 'pastel_soft' | 'gradient_vivid' | 'dark_impact' | 'black_neon';
 
 export const MOTION_THEMES = [
-  { id: 'dark_neon' as const, label: '다크 네온', desc: '어두운 배경 + 글로우', preview: ['#1a0a2e', '#FF6B6B'] },
-  { id: 'bold_impact' as const, label: '볼드 임팩트', desc: '딥네이비 + 강렬 타이포', preview: ['#1a2744', '#FF4D6A'] },
-  { id: 'black_vivid' as const, label: '블랙 비비드', desc: '블랙 + 네온 컬러', preview: ['#0a0a0a', '#00FF88'] },
-  { id: 'light_clean' as const, label: '라이트 클린', desc: '밝은 배경 + 선명 컬러', preview: ['#f0f0f5', '#4A90D9'] },
-  { id: 'warm_gradient' as const, label: '웜 그라디언트', desc: '따뜻한 그라디언트', preview: ['#2d1a0a', '#FF8C42'] },
+  { id: 'colorful_pop' as const, label: '컬러풀 팝', desc: '밝고 선명한 플랫 컬러', preview: ['#4ECDC4', '#FF6B6B'] },
+  { id: 'pastel_soft' as const, label: '파스텔 소프트', desc: '부드러운 파스텔 톤', preview: ['#E8D5F5', '#FFD1DC'] },
+  { id: 'gradient_vivid' as const, label: '그라디언트 비비드', desc: '화려한 컬러 그라디언트', preview: ['#667eea', '#f093fb'] },
+  { id: 'dark_impact' as const, label: '다크 임팩트', desc: '어두운 배경 + 강렬 타이포', preview: ['#1a2744', '#FF4D6A'] },
+  { id: 'black_neon' as const, label: '블랙 네온', desc: '블랙 + 네온 컬러', preview: ['#0a0a0a', '#00FF88'] },
 ] as const;
 
 // Theme rendering config (used by SceneRenderer + renderVideo)
@@ -95,34 +95,34 @@ export type ThemeConfig = {
 };
 
 export const THEME_CONFIGS: Record<MotionTheme, ThemeConfig> = {
-  dark_neon: {
-    bgMode: 'gradient', baseBg: ['#1a0a2e', '#2d1b69', '#16213e'],
-    bgBrightness: 0.08, grid: true, grain: true,
-    bokehCount: 8, sparkleCount: 7, shapeCount: 10,
+  colorful_pop: {
+    bgMode: 'light', baseBg: ['#f0f8ff', '#e8f4f8', '#f5f0ff'],
+    bgBrightness: 0.88, grid: false, grain: false,
+    bokehCount: 0, sparkleCount: 4, shapeCount: 0,
+    dotPattern: false, textColor: '#1a1a2e',
+  },
+  pastel_soft: {
+    bgMode: 'light', baseBg: ['#f5eef8', '#eef5f8', '#fdf0f4'],
+    bgBrightness: 0.92, grid: false, grain: false,
+    bokehCount: 3, sparkleCount: 3, shapeCount: 0,
+    dotPattern: false, textColor: '#2d2d3f',
+  },
+  gradient_vivid: {
+    bgMode: 'gradient', baseBg: ['#667eea', '#764ba2', '#f093fb'],
+    bgBrightness: 0.45, grid: false, grain: false,
+    bokehCount: 4, sparkleCount: 5, shapeCount: 0,
     dotPattern: false, textColor: '#ffffff',
   },
-  bold_impact: {
+  dark_impact: {
     bgMode: 'solid', baseBg: ['#1a2744', '#1e2d4f', '#162040'],
-    bgBrightness: 0.15, grid: false, grain: false,
+    bgBrightness: 0.12, grid: false, grain: false,
     bokehCount: 0, sparkleCount: 3, shapeCount: 0,
     dotPattern: true, textColor: '#ffffff',
   },
-  black_vivid: {
+  black_neon: {
     bgMode: 'solid', baseBg: ['#080808', '#0d0d0d', '#050505'],
     bgBrightness: 0.04, grid: false, grain: false,
     bokehCount: 3, sparkleCount: 5, shapeCount: 0,
-    dotPattern: false, textColor: '#ffffff',
-  },
-  light_clean: {
-    bgMode: 'light', baseBg: ['#f0f0f5', '#e8e8f0', '#f5f5fa'],
-    bgBrightness: 0.92, grid: false, grain: false,
-    bokehCount: 0, sparkleCount: 3, shapeCount: 0,
-    dotPattern: false, textColor: '#1a1a2e',
-  },
-  warm_gradient: {
-    bgMode: 'gradient', baseBg: ['#2d1a0a', '#3d2010', '#1a1008'],
-    bgBrightness: 0.10, grid: false, grain: true,
-    bokehCount: 4, sparkleCount: 5, shapeCount: 3,
     dotPattern: false, textColor: '#ffffff',
   },
 };
