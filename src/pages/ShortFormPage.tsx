@@ -28,8 +28,8 @@ const STYLES = [
 ] as const;
 
 const VIDEO_TYPES = [
-  { id: 'image', label: '이미지 기반', desc: 'AI 이미지 배경' },
   { id: 'motion', label: '모션 그래픽', desc: '텍스트 + 애니메이션' },
+  { id: 'image', label: '이미지 기반', desc: 'AI 이미지 배경' },
 ] as const;
 
 const I2V_MODELS = [
@@ -87,7 +87,7 @@ export default function ShortFormPage() {
   const [duration, setDuration] = useState<number>(10);
   const [style, setStyle] = useState<string>('viral');
   const [aspectRatio, setAspectRatio] = useState<string>('9:16');
-  const [videoType, setVideoType] = useState<VideoType>('image');
+  const [videoType, setVideoType] = useState<VideoType>('motion');
   const [imageSource, setImageSource] = useState<ImageSource>('ai');
   const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
   const [motionTheme, setMotionTheme] = useState<MotionTheme>('bold_impact');
@@ -901,21 +901,25 @@ export default function ShortFormPage() {
                   }}>
                     비주얼 스타일
                   </label>
-                  <div className="flex flex-wrap" style={{ gap: '8px' }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '8px',
+                  }}>
                     {MOTION_THEMES.map(mt => {
                       const isSelected = motionTheme === mt.id;
                       return (
                         <button
                           key={mt.id}
                           onClick={() => setMotionTheme(mt.id)}
-                          className="flex items-center"
+                          className="flex flex-col items-center justify-center"
                           style={{
-                            height: '52px', borderRadius: '14px', padding: '0 14px',
+                            height: '72px', borderRadius: '14px', padding: '8px 4px',
                             fontFamily: font,
                             backgroundColor: isSelected ? C.primary : C.surface,
                             border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
                             cursor: 'pointer', transition: 'all 0.15s ease',
-                            gap: '10px',
+                            gap: '6px',
                           }}
                           onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
                           onPointerUp={e => { e.currentTarget.style.transform = ''; }}
@@ -923,13 +927,13 @@ export default function ShortFormPage() {
                         >
                           {/* Color preview dot */}
                           <div style={{
-                            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
                             background: `linear-gradient(135deg, ${mt.preview[0]} 50%, ${mt.preview[1]} 50%)`,
                             border: isSelected ? '2px solid rgba(255,255,255,0.4)' : '1px solid rgba(0,0,0,0.08)',
                           }} />
-                          <div className="flex flex-col items-start" style={{ gap: '1px' }}>
+                          <div className="flex flex-col items-center" style={{ gap: '1px' }}>
                             <span style={{
-                              fontSize: '13px', fontWeight: isSelected ? 600 : 500,
+                              fontSize: '12px', fontWeight: isSelected ? 600 : 500,
                               letterSpacing: '-0.3px',
                               color: isSelected ? C.textWhite : C.textPrimary,
                             }}>
@@ -938,6 +942,7 @@ export default function ShortFormPage() {
                             <span style={{
                               fontSize: '10px', fontWeight: 400,
                               color: isSelected ? 'rgba(255,255,255,0.6)' : C.textCaption,
+                              whiteSpace: 'nowrap',
                             }}>
                               {mt.desc}
                             </span>
