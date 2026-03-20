@@ -23,6 +23,9 @@ export function computeTotalFrames(scenes: Scene[], ttsAudios: TtsAudio[]): numb
   return computeSceneFrames(scenes, ttsAudios).reduce((a, b) => a + b, 0);
 }
 
+// 트랜지션 오버랩 반영 버전 (staging에서 확장 예정, 현재는 동일)
+export const computeTotalFramesWithTransitions = computeTotalFrames;
+
 export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio, motionTheme }: ShortFormVideoProps) {
   const sceneFrames = computeSceneFrames(scenes, ttsAudios);
   const totalFrames = sceneFrames.reduce((a, b) => a + b, 0);
