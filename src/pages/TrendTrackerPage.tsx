@@ -35,6 +35,11 @@ type TopicKeyword = {
   heat: 'hot' | 'warm' | 'rising';
 };
 
+type TopicSource = {
+  title: string;
+  url: string;
+};
+
 type TopicAnalysis = {
   topic: string;
   summary: string;
@@ -95,6 +100,8 @@ export default function TrendTrackerPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [topicAnalysis, setTopicAnalysis] = useState<TopicAnalysis | null>(null);
   const [expandedTopicItem, setExpandedTopicItem] = useState<number | null>(null);
+  const [topicSources, setTopicSources] = useState<TopicSource[]>([]);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const callSearchTrends = async (body: Record<string, unknown>) => {
     const res = await fetch(`${supabaseUrl}/functions/v1/search-trends`, {
@@ -146,6 +153,8 @@ export default function TrendTrackerPage() {
       } else if (data.raw) {
         setTopicAnalysis({ topic: topicInput, summary: data.raw, keywords: [], insights: [], content_ideas: [] });
       }
+      setTopicSources(data.sources || []);
+      setSourcesOpen(false);
       setStep('topic-result');
     } catch (err) {
       setError(err instanceof Error ? err.message : '트렌드 분석에 실패했어요. 다시 시도해주세요.');
@@ -500,6 +509,29 @@ export default function TrendTrackerPage() {
                             </button>
                           ))}
                         </div>
+
+                        {/* X 출처 링크 */}
+                        {item.url && (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center"
+                            style={{
+                              marginTop: '10px', paddingTop: '10px',
+                              borderTop: `1px solid ${C.borderDefault}`,
+                              textDecoration: 'none', gap: '6px',
+                            }}
+                          >
+                            <span style={{ fontSize: '12px', flexShrink: 0 }}>🔗</span>
+                            <span style={{
+                              fontFamily: font, fontSize: '12px', fontWeight: 500,
+                              color: C.primary,
+                            }}>
+                              X에서 보기
+                            </span>
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
@@ -771,10 +803,10 @@ export default function TrendTrackerPage() {
                               fontFamily: font, fontSize: '12px', fontWeight: 400,
                               lineHeight: '18px', color: C.textCaption,
                               marginTop: '4px',
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                             }}>
                               {kw.description}
                             </p>
+
                           </div>
                         </button>
 
@@ -823,6 +855,7 @@ export default function TrendTrackerPage() {
                                 </button>
                               ))}
                             </div>
+
                           </div>
                         )}
                       </div>
@@ -887,6 +920,65 @@ export default function TrendTrackerPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* 출처 아코디언 */}
+            {topicSources.length > 0 && (
+              <div style={{ borderTop: `1px solid ${C.borderDefault}`, paddingTop: '16px' }}>
+                <button
+                  onClick={() => setSourcesOpen(!sourcesOpen)}
+                  className="flex items-center w-full"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: 0, gap: '6px',
+                  }}
+                >
+                  <span style={{
+                    fontFamily: font, fontSize: '13px', fontWeight: 500,
+                    color: C.textTertiary,
+                  }}>
+                    출처 ({topicSources.length})
+                  </span>
+                  <span style={{
+                    fontSize: '10px', color: C.textCaption,
+                    transform: sourcesOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s ease',
+                    display: 'inline-block',
+                  }}>
+                    ▼
+                  </span>
+                </button>
+                {sourcesOpen && (
+                  <div className="flex flex-col" style={{ gap: '6px', marginTop: '10px' }}>
+                    {topicSources.map((src, i) => (
+                      <a
+                        key={i}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start"
+                        style={{
+                          padding: '8px 12px', borderRadius: '8px',
+                          backgroundColor: C.surfaceSecondary,
+                          textDecoration: 'none', gap: '8px',
+                          transition: 'background-color 0.15s ease',
+                        }}
+                        onPointerEnter={e => { e.currentTarget.style.backgroundColor = '#f0f0f0'; }}
+                        onPointerLeave={e => { e.currentTarget.style.backgroundColor = C.surfaceSecondary; }}
+                      >
+                        <span style={{ fontSize: '12px', flexShrink: 0, marginTop: '1px' }}>🔗</span>
+                        <span style={{
+                          fontFamily: font, fontSize: '12px', fontWeight: 400,
+                          lineHeight: '18px', color: C.primary,
+                          wordBreak: 'break-all',
+                        }}>
+                          {src.title || src.url}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

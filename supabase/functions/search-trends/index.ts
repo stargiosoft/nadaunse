@@ -143,15 +143,22 @@ serve(async (req) => {
         return errorResponse(req, 'AI 응답을 받지 못했습니다', 502)
       }
 
+      // 그라운딩 출처 추출
+      const metadata = geminiData?.candidates?.[0]?.groundingMetadata
+      const sources = (metadata?.groundingChunks || []).map((chunk: Record<string, Record<string, string>>) => ({
+        title: chunk.web?.title || '',
+        url: chunk.web?.uri || '',
+      })).filter((s: { title: string; url: string }) => s.url)
+
       // JSON 추출 (마크다운 코드블록 안에 있을 수 있음)
       const jsonMatch = textPart.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, textPart]
       const cleanJson = (jsonMatch[1] || textPart).trim()
 
       try {
         const analysis = JSON.parse(cleanJson)
-        return jsonResponse(req, { success: true, mode, analysis })
+        return jsonResponse(req, { success: true, mode, analysis, sources })
       } catch {
-        return jsonResponse(req, { success: true, mode, raw: textPart })
+        return jsonResponse(req, { success: true, mode, raw: textPart, sources })
       }
     }
 
