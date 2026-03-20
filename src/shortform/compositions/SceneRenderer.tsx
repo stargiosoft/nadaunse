@@ -20,9 +20,41 @@ const SCENE_THEMES: Record<string, { bg: [string, string, string]; accent: strin
   outro:         { bg: ['#1a0a30', '#2d1b69', '#4a1a6a'], accent: '#e056fd', glow: '#ff6b9d', icon: '🎯' },
 };
 
-function getTheme(type: string) {
+function getBaseTheme(type: string) {
   const key = type.toLowerCase().replace(/\s+/g, '_');
   return SCENE_THEMES[key] || SCENE_THEMES.content;
+}
+
+// Derive dark background colors from accent color
+function deriveBackground(accent: string): [string, string, string] {
+  const r = parseInt(accent.slice(1, 3), 16);
+  const g = parseInt(accent.slice(3, 5), 16);
+  const b = parseInt(accent.slice(5, 7), 16);
+  const dark = (rr: number, gg: number, bb: number, f: number) =>
+    `#${Math.floor(rr * f).toString(16).padStart(2, '0')}${Math.floor(gg * f).toString(16).padStart(2, '0')}${Math.floor(bb * f).toString(16).padStart(2, '0')}`;
+  return [dark(r, g, b, 0.06), dark(r, g, b, 0.12), dark(r, g, b, 0.08)];
+}
+
+// Get theme with dynamic scene colors
+function getTheme(type: string, scene?: Scene) {
+  const base = getBaseTheme(type);
+  if (scene?.accent_color && scene?.glow_color) {
+    return {
+      ...base,
+      accent: scene.accent_color,
+      glow: scene.glow_color,
+      bg: deriveBackground(scene.accent_color),
+    };
+  }
+  return base;
+}
+
+// Interpolate hex colors
+function lerpColor(a: string, b: string, t: number): string {
+  const ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16);
+  const br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16);
+  const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg - ag) * t), bl = Math.round(ab + (bb - ab) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`;
 }
 
 // ── Extract keywords ──
@@ -266,11 +298,20 @@ function getShapes(sceneNumber: number, accent: string) {
 
 // ── Main SceneRenderer ──
 
-export default function SceneRenderer({ scene }: { scene: Scene }) {
+export default function SceneRenderer({ scene, prevScene }: { scene: Scene; prevScene?: Scene }) {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const theme = getTheme(scene.type);
-  const [c1, c2, c3] = theme.bg;
+  const theme = getTheme(scene.type, scene);
+  const prevTheme = prevScene ? getTheme(prevScene.type, prevScene) : null;
+
+  // Blend colors from previous scene during first 15 frames
+  const BLEND_FRAMES = 15;
+  const blendT = prevTheme ? Math.min(frame / BLEND_FRAMES, 1) : 1;
+  const blendedAccent = prevTheme ? lerpColor(prevTheme.accent, theme.accent, blendT) : theme.accent;
+  const blendedGlow = prevTheme ? lerpColor(prevTheme.glow, theme.glow, blendT) : theme.glow;
+  const [c1, c2, c3] = prevTheme
+    ? [lerpColor(prevTheme.bg[0], theme.bg[0], blendT), lerpColor(prevTheme.bg[1], theme.bg[1], blendT), lerpColor(prevTheme.bg[2], theme.bg[2], blendT)]
+    : theme.bg;
 
   const entryProgress = spring({ frame, fps, config: { damping: 20 } });
 
@@ -329,9 +370,13 @@ export default function SceneRenderer({ scene }: { scene: Scene }) {
   const glow2X = 55 + Math.cos(frame * 0.012) * 18;
   const glow2Y = 65 + Math.sin(frame * 0.009) * 10;
 
-  const bokehOrbs = getBokehOrbs(scene.scene_number, theme.glow);
-  const sparkles = getSparkles(scene.scene_number, theme.accent);
-  const shapes = getShapes(scene.scene_number, theme.accent);
+  // Use blended colors for all visual elements
+  const ac = blendedAccent;
+  const gl = blendedGlow;
+
+  const bokehOrbs = getBokehOrbs(scene.scene_number, gl);
+  const sparkles = getSparkles(scene.scene_number, ac);
+  const shapes = getShapes(scene.scene_number, ac);
 
   return (
     <AbsoluteFill style={{ opacity: opacity * exitOpacity, transform, filter, clipPath }}>
@@ -372,12 +417,12 @@ export default function SceneRenderer({ scene }: { scene: Scene }) {
 
           {/* Ambient glow 1 - slow-moving radial */}
           <AbsoluteFill style={{
-            background: `radial-gradient(ellipse at ${glow1X}% ${glow1Y}%, ${theme.glow}15 0%, transparent 55%)`,
+            background: `radial-gradient(ellipse at ${glow1X}% ${glow1Y}%, ${gl}15 0%, transparent 55%)`,
           }} />
 
           {/* Ambient glow 2 */}
           <AbsoluteFill style={{
-            background: `radial-gradient(ellipse at ${glow2X}% ${glow2Y}%, ${theme.accent}0c 0%, transparent 50%)`,
+            background: `radial-gradient(ellipse at ${glow2X}% ${glow2Y}%, ${ac}0c 0%, transparent 50%)`,
           }} />
 
           {/* Grid pattern */}
@@ -411,12 +456,12 @@ export default function SceneRenderer({ scene }: { scene: Scene }) {
       </div>
 
       {/* Type-specific overlays */}
-      {!hasImage && !hasVideo && isProblem && <XMarkOverlay accent={theme.accent} />}
-      {!hasImage && !hasVideo && isSolution && <CheckOverlay accent={theme.accent} />}
-      {isHookOrCta && <ParticleBurst accent={theme.accent} glow={theme.glow} />}
+      {!hasImage && !hasVideo && isProblem && <XMarkOverlay accent={ac} />}
+      {!hasImage && !hasVideo && isSolution && <CheckOverlay accent={ac} />}
+      {isHookOrCta && <ParticleBurst accent={ac} glow={gl} />}
 
       {/* Type icon badge */}
-      <TypeIcon icon={displayIcon} accent={theme.accent} />
+      <TypeIcon icon={displayIcon} accent={ac} />
 
       {/* Scene label */}
       <div style={{
@@ -426,18 +471,18 @@ export default function SceneRenderer({ scene }: { scene: Scene }) {
       }}>
         <div style={{
           width: 44, height: 44, borderRadius: 12,
-          backgroundColor: `${theme.accent}25`,
-          border: `1px solid ${theme.accent}30`,
+          backgroundColor: `${ac}25`,
+          border: `1px solid ${ac}30`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-          fontSize: 22, fontWeight: 800, color: theme.accent,
-          boxShadow: `0 0 15px ${theme.accent}15`,
+          fontSize: 22, fontWeight: 800, color: ac,
+          boxShadow: `0 0 15px ${ac}15`,
         }}>
           {scene.scene_number}
         </div>
         <span style={{
           fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-          fontSize: 24, fontWeight: 600, color: `${theme.accent}60`,
+          fontSize: 24, fontWeight: 600, color: `${ac}60`,
           textTransform: 'uppercase', letterSpacing: 3,
         }}>
           {scene.type}
@@ -445,10 +490,10 @@ export default function SceneRenderer({ scene }: { scene: Scene }) {
       </div>
 
       {/* ── Motion Graphics ── */}
-      <MotionComponent scene={scene} accent={theme.accent} keywords={keywords} />
+      <MotionComponent scene={scene} accent={ac} keywords={keywords} />
 
       {/* Accent line */}
-      <AccentLine accent={theme.accent} />
+      <AccentLine accent={ac} />
 
       {/* Visual description (very subtle) */}
       <div style={{

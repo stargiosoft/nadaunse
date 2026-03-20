@@ -27,9 +27,29 @@ const SCENE_THEMES: Record<string, { bg: [string, string, string]; accent: strin
 
 type Theme = { bg: [string, string, string]; accent: string; glow: string };
 
-function getTheme(type: string): Theme {
+function getBaseTheme(type: string): Theme {
   const key = type.toLowerCase().replace(/\s+/g, '_');
   return SCENE_THEMES[key] || SCENE_THEMES.content;
+}
+
+function deriveBackground(accent: string): [string, string, string] {
+  const r = parseInt(accent.slice(1, 3), 16), g = parseInt(accent.slice(3, 5), 16), b = parseInt(accent.slice(5, 7), 16);
+  const dk = (rr: number, gg: number, bb: number, f: number) =>
+    `#${Math.floor(rr * f).toString(16).padStart(2, '0')}${Math.floor(gg * f).toString(16).padStart(2, '0')}${Math.floor(bb * f).toString(16).padStart(2, '0')}`;
+  return [dk(r, g, b, 0.06), dk(r, g, b, 0.12), dk(r, g, b, 0.08)];
+}
+
+function getTheme(type: string, scene?: Scene): Theme {
+  const base = getBaseTheme(type);
+  if (scene?.accent_color && scene?.glow_color) return { ...base, accent: scene.accent_color, glow: scene.glow_color, bg: deriveBackground(scene.accent_color) };
+  return base;
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+  const ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16);
+  const br = parseInt(b.slice(1, 3), 16), bg2 = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16);
+  const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg2 - ag) * t), bl = Math.round(ab + (bb - ab) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`;
 }
 
 // ── Helpers ──
@@ -486,8 +506,19 @@ function wrapText(ctx: OffscreenCanvasRenderingContext2D, text: string, x: numbe
 
 // ── Main drawFrame ──
 
-function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameInScene: number, sceneDurationFrames: number, imageBitmap?: ImageBitmap) {
-  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT, theme = getTheme(scene.type), keywords = extractKeywords(scene.subtitle);
+function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameInScene: number, sceneDurationFrames: number, imageBitmap?: ImageBitmap, prevScene?: Scene) {
+  const w = VIDEO_WIDTH, h = VIDEO_HEIGHT;
+  const theme = getTheme(scene.type, scene);
+  const prevTheme = prevScene ? getTheme(prevScene.type, prevScene) : null;
+  const BLEND_FRAMES = 15;
+  const blendT = prevTheme ? Math.min(frameInScene / BLEND_FRAMES, 1) : 1;
+  // Apply blended theme for rendering
+  const renderTheme: Theme = prevTheme ? {
+    accent: lerpColor(prevTheme.accent, theme.accent, blendT),
+    glow: lerpColor(prevTheme.glow, theme.glow, blendT),
+    bg: [lerpColor(prevTheme.bg[0], theme.bg[0], blendT), lerpColor(prevTheme.bg[1], theme.bg[1], blendT), lerpColor(prevTheme.bg[2], theme.bg[2], blendT)],
+  } : theme;
+  const keywords = extractKeywords(scene.subtitle);
   ctx.clearRect(0, 0, w, h);
   const entryAlpha = Math.min(frameInScene / 10, 1), exitAlpha = Math.min((sceneDurationFrames - frameInScene) / 8, 1);
   const alpha = Math.max(0, Math.min(1, entryAlpha * exitAlpha));
@@ -498,12 +529,12 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
   else ctx.globalAlpha = alpha;
   const { pre } = applyTransition(ctx, transition, frameInScene, entryT);
   ctx.save(); if (pre) pre();
-  drawBackground(ctx, scene, frameInScene, sceneDurationFrames, imageBitmap, theme);
+  drawBackground(ctx, scene, frameInScene, sceneDurationFrames, imageBitmap, renderTheme);
   // Scene label
   ctx.save(); ctx.globalAlpha = Math.min(1, entryT) * 0.7;
-  ctx.fillStyle = hexToRgba(theme.accent, 0.25); roundRect(ctx, 60, 78, 44, 44, 12); ctx.fill();
-  ctx.font = `800 22px ${FONT}`; ctx.fillStyle = theme.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(scene.scene_number), 82, 100);
-  ctx.font = `600 24px ${FONT}`; ctx.fillStyle = hexToRgba(theme.accent, 0.6); ctx.textAlign = 'left'; ctx.fillText(scene.type.toUpperCase(), 120, 100); ctx.restore();
+  ctx.fillStyle = hexToRgba(renderTheme.accent, 0.25); roundRect(ctx, 60, 78, 44, 44, 12); ctx.fill();
+  ctx.font = `800 22px ${FONT}`; ctx.fillStyle = renderTheme.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(scene.scene_number), 82, 100);
+  ctx.font = `600 24px ${FONT}`; ctx.fillStyle = hexToRgba(renderTheme.accent, 0.6); ctx.textAlign = 'left'; ctx.fillText(scene.type.toUpperCase(), 120, 100); ctx.restore();
   // Visual desc
   ctx.save(); ctx.globalAlpha = entryT * 0.12; ctx.font = `400 22px ${FONT}`; ctx.fillStyle = 'white'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   wrapText(ctx, scene.visual, 60, 160, w - 120, 34); ctx.restore();
@@ -513,22 +544,22 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2, pd = i * 1.5, pt = easeOut((frameInScene - pd) / 15); if (pt <= 0) continue;
       const dist = pt * (130 + (i % 4) * 35);
-      ctx.save(); ctx.globalAlpha = (1 - pt) * 0.5; ctx.fillStyle = i % 3 === 0 ? theme.glow : theme.accent;
-      ctx.shadowColor = theme.accent; ctx.shadowBlur = 6; ctx.beginPath();
+      ctx.save(); ctx.globalAlpha = (1 - pt) * 0.5; ctx.fillStyle = i % 3 === 0 ? renderTheme.glow : renderTheme.accent;
+      ctx.shadowColor = renderTheme.accent; ctx.shadowBlur = 6; ctx.beginPath();
       ctx.arc(w / 2 + Math.cos(a) * dist, h * 0.45 + Math.sin(a) * dist, 3 + (i % 3) * 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
   }
   // Icon badge
   const icon = scene.icon || '';
   if (icon) { const it = easeSpring(frameInScene / 15); ctx.save(); ctx.globalAlpha = it; ctx.translate(w - 130, 130); ctx.scale(it, it);
-    ctx.fillStyle = hexToRgba(theme.accent, 0.25); ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = hexToRgba(renderTheme.accent, 0.25); ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.fill();
     ctx.font = '48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, 0, 0); ctx.restore(); }
   // Motion
   const drawer = MOTION_DRAWERS[scene.motion_style || 'keyword_pop'] || MOTION_DRAWERS.keyword_pop;
-  drawer(ctx, scene, frameInScene, sceneDurationFrames, theme, keywords);
+  drawer(ctx, scene, frameInScene, sceneDurationFrames, renderTheme, keywords);
   // Accent line
   const lt = easeOut((frameInScene - 5) / 12);
-  if (lt > 0) { const lg2 = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0); lg2.addColorStop(0, 'transparent'); lg2.addColorStop(0.5, hexToRgba(theme.accent, 0.5)); lg2.addColorStop(1, 'transparent');
+  if (lt > 0) { const lg2 = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0); lg2.addColorStop(0, 'transparent'); lg2.addColorStop(0.5, hexToRgba(renderTheme.accent, 0.5)); lg2.addColorStop(1, 'transparent');
     ctx.fillStyle = lg2; ctx.fillRect(w * (0.5 - lt * 0.2), h * 0.75, w * lt * 0.4, 3); }
   drawSubtitle(ctx, scene, frameInScene);
   ctx.restore(); ctx.globalAlpha = 1;
@@ -601,8 +632,9 @@ export async function renderVideoToMp4(scenes: Scene[], ttsAudios: TtsAudio[], o
   let globalFrame = 0;
   for (let si = 0; si < scenes.length; si++) {
     const scene = scenes[si], sdf = Math.round(sceneDurations[si] * VIDEO_FPS), bitmap = sceneImageBitmaps.get(scene.scene_number);
+    const prevSc = si > 0 ? scenes[si - 1] : undefined;
     for (let f = 0; f < sdf; f++) {
-      drawFrame(ctx, scene, f, sdf, bitmap);
+      drawFrame(ctx, scene, f, sdf, bitmap, prevSc);
       const frame = new VideoFrame(canvas, { timestamp: (globalFrame / VIDEO_FPS) * 1_000_000, duration: (1 / VIDEO_FPS) * 1_000_000 });
       videoEncoder.encode(frame, { keyFrame: f === 0 }); frame.close(); globalFrame++;
       if (globalFrame % 10 === 0) onProgress((globalFrame / totalFrames) * 0.7);

@@ -44,7 +44,7 @@ export default function ShortFormVideo({ scenes, ttsAudios, bgmAudio }: ShortFor
 
         return (
           <Sequence key={scene.scene_number} from={from} durationInFrames={dur}>
-            <SceneRenderer scene={scene} />
+            <SceneRenderer scene={scene} prevScene={idx > 0 ? scenes[idx - 1] : undefined} />
             <SubtitleOverlay subtitle={scene.subtitle} />
             {tts && <Audio src={tts.dataUrl} />}
           </Sequence>

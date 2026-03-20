@@ -41,7 +41,9 @@ serve(async (req) => {
     const motionFields = isMotionType ? `
       "motion_style": "모션 그래픽 스타일 (아래 15가지 중 택1)",
       "layout": "레이아웃 (center/top_heavy/bottom_heavy/split_left/split_right)",
-      "icon": "씬 내용에 맞는 이모지 1개",` : ''
+      "icon": "씬 내용에 맞는 이모지 1개",
+      "accent_color": "#hex (씬 강조색, 아래 색상 가이드 참고)",
+      "glow_color": "#hex (발광색, accent와 유사하되 약간 밝거나 다른 톤)",` : ''
 
     const motionRules = isMotionType ? `
 
@@ -64,6 +66,18 @@ serve(async (req) => {
 
 중요: 연속 2개 씬에 같은 motion_style 금지! 시각적 다양성을 위해 다양하게 배분.
 씬 내용에 가장 어울리는 스타일 선택. 15가지를 골고루 활용할 것.
+
+★ 씬별 색상 팔레트 (accent_color, glow_color):
+씬 분위기에 맞는 색상 조합을 선택. 연속 씬이 같은 색상이면 단조로우니 다양하게!
+- 빨강 계열: accent "#FF6B6B", glow "#ff4757" (긴급, 위험, 열정, 후킹)
+- 주황 계열: accent "#f39c12", glow "#feca57" (에너지, 경고, 활력)
+- 초록 계열: accent "#2ecc71", glow "#00d2d3" (해결, 성장, 긍정)
+- 파랑 계열: accent "#58a6ff", glow "#74b9ff" (신뢰, 정보, 차분)
+- 보라 계열: accent "#e056fd", glow "#ff6b9d" (창의, 럭셔리, CTA)
+- 청록 계열: accent "#4ecdc4", glow "#48dbfb" (트렌디, 신선, 테크)
+- 핑크 계열: accent "#fd79a8", glow "#fab1a0" (감성, 러블리, 공감)
+- 골드 계열: accent "#ffd32a", glow "#fffa65" (성공, 프리미엄, 밝음)
+위 조합을 참고하되, 씬 내용에 맞게 자유롭게 조합 가능. 반드시 #hex 6자리 포맷.
 
 ★ 전환 효과 (transition) — 7가지:
 cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate

@@ -30,6 +30,9 @@ export type Scene = {
   motion_style?: MotionStyle;
   layout?: SceneLayout;
   icon?: string;
+  // Dynamic color palette (Gemini-generated)
+  accent_color?: string;
+  glow_color?: string;
   // Scene background image (Level 2)
   backgroundImageUrl?: string;
   // Scene background video (Level 3 — fal.ai Image-to-Video)
