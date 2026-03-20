@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, spring, useVideoConfig, Img, Video } from 'remotion';
-import type { Scene } from '../types';
+import type { Scene, MotionTheme } from '../types';
+import { THEME_CONFIGS } from '../types';
 import { MOTION_REGISTRY } from './motions';
 
 // ── Enhanced Color Schemes (3-stop gradient + glow) ──
@@ -25,25 +26,35 @@ function getBaseTheme(type: string) {
   return SCENE_THEMES[key] || SCENE_THEMES.content;
 }
 
-// Derive dark background colors from accent color
-function deriveBackground(accent: string): [string, string, string] {
+// Derive background colors from accent color with brightness control
+function deriveBackground(accent: string, brightness = 0.08): [string, string, string] {
   const r = parseInt(accent.slice(1, 3), 16);
   const g = parseInt(accent.slice(3, 5), 16);
   const b = parseInt(accent.slice(5, 7), 16);
+  if (brightness > 0.5) {
+    // Light mode: blend accent into white
+    const light = (rr: number, gg: number, bb: number, f: number) => {
+      const lr = Math.round(255 - (255 - rr) * (1 - f));
+      const lg = Math.round(255 - (255 - gg) * (1 - f));
+      const lb = Math.round(255 - (255 - bb) * (1 - f));
+      return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
+    };
+    return [light(r, g, b, brightness), light(r, g, b, brightness * 0.97), light(r, g, b, brightness * 1.02)];
+  }
   const dark = (rr: number, gg: number, bb: number, f: number) =>
     `#${Math.floor(rr * f).toString(16).padStart(2, '0')}${Math.floor(gg * f).toString(16).padStart(2, '0')}${Math.floor(bb * f).toString(16).padStart(2, '0')}`;
-  return [dark(r, g, b, 0.06), dark(r, g, b, 0.12), dark(r, g, b, 0.08)];
+  return [dark(r, g, b, brightness * 0.75), dark(r, g, b, brightness * 1.5), dark(r, g, b, brightness)];
 }
 
 // Get theme with dynamic scene colors
-function getTheme(type: string, scene?: Scene) {
+function getTheme(type: string, scene?: Scene, brightness = 0.08) {
   const base = getBaseTheme(type);
   if (scene?.accent_color && scene?.glow_color) {
     return {
       ...base,
       accent: scene.accent_color,
       glow: scene.glow_color,
-      bg: deriveBackground(scene.accent_color),
+      bg: deriveBackground(scene.accent_color, brightness),
     };
   }
   return base;
@@ -298,11 +309,12 @@ function getShapes(sceneNumber: number, accent: string) {
 
 // ── Main SceneRenderer ──
 
-export default function SceneRenderer({ scene, prevScene }: { scene: Scene; prevScene?: Scene }) {
+export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene: Scene; prevScene?: Scene; motionTheme?: MotionTheme }) {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const theme = getTheme(scene.type, scene);
-  const prevTheme = prevScene ? getTheme(prevScene.type, prevScene) : null;
+  const tc = THEME_CONFIGS[motionTheme || 'dark_neon'];
+  const theme = getTheme(scene.type, scene, tc.bgBrightness);
+  const prevTheme = prevScene ? getTheme(prevScene.type, prevScene, tc.bgBrightness) : null;
 
   // Blend colors from previous scene during first 15 frames
   const BLEND_FRAMES = 15;
@@ -374,9 +386,9 @@ export default function SceneRenderer({ scene, prevScene }: { scene: Scene; prev
   const ac = blendedAccent;
   const gl = blendedGlow;
 
-  const bokehOrbs = getBokehOrbs(scene.scene_number, gl);
-  const sparkles = getSparkles(scene.scene_number, ac);
-  const shapes = getShapes(scene.scene_number, ac);
+  const bokehOrbs = getBokehOrbs(scene.scene_number, gl).slice(0, tc.bokehCount);
+  const sparkles = getSparkles(scene.scene_number, ac).slice(0, tc.sparkleCount);
+  const shapes = getShapes(scene.scene_number, ac).slice(0, tc.shapeCount);
 
   return (
     <AbsoluteFill style={{ opacity: opacity * exitOpacity, transform, filter, clipPath }}>
@@ -410,35 +422,56 @@ export default function SceneRenderer({ scene, prevScene }: { scene: Scene; prev
         </>
       ) : (
         <>
-          {/* Animated 3-stop gradient */}
-          <AbsoluteFill style={{
-            background: `linear-gradient(${gradAngle}deg, ${c1} 0%, ${c2} 50%, ${c3} 100%)`,
-          }} />
+          {/* Background fill */}
+          {tc.bgMode === 'solid' ? (
+            <AbsoluteFill style={{ backgroundColor: c2 }} />
+          ) : tc.bgMode === 'light' ? (
+            <AbsoluteFill style={{
+              background: `linear-gradient(${gradAngle}deg, ${c1} 0%, ${c2} 50%, ${c3} 100%)`,
+            }} />
+          ) : (
+            <AbsoluteFill style={{
+              background: `linear-gradient(${gradAngle}deg, ${c1} 0%, ${c2} 50%, ${c3} 100%)`,
+            }} />
+          )}
 
-          {/* Ambient glow 1 - slow-moving radial */}
+          {/* Ambient glow 1 */}
           <AbsoluteFill style={{
-            background: `radial-gradient(ellipse at ${glow1X}% ${glow1Y}%, ${gl}15 0%, transparent 55%)`,
+            background: `radial-gradient(ellipse at ${glow1X}% ${glow1Y}%, ${gl}${tc.bgMode === 'light' ? '0a' : '15'} 0%, transparent 55%)`,
           }} />
 
           {/* Ambient glow 2 */}
           <AbsoluteFill style={{
-            background: `radial-gradient(ellipse at ${glow2X}% ${glow2Y}%, ${ac}0c 0%, transparent 50%)`,
+            background: `radial-gradient(ellipse at ${glow2X}% ${glow2Y}%, ${ac}${tc.bgMode === 'light' ? '08' : '0c'} 0%, transparent 50%)`,
           }} />
 
           {/* Grid pattern */}
-          <AbsoluteFill style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
-            backgroundSize: '80px 80px',
-            opacity: interpolate(entryProgress, [0, 1], [0, 1]),
-          }} />
+          {tc.grid && (
+            <AbsoluteFill style={{
+              backgroundImage: `linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
+              backgroundSize: '80px 80px',
+              opacity: interpolate(entryProgress, [0, 1], [0, 1]),
+            }} />
+          )}
 
-          {/* Grain texture (dual-layer dot pattern) */}
-          <AbsoluteFill style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px), radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
-            backgroundSize: '4px 4px, 7px 7px',
-            backgroundPosition: '0 0, 3px 3px',
-            pointerEvents: 'none',
-          }} />
+          {/* Dot pattern (bold_impact style) */}
+          {tc.dotPattern && (
+            <AbsoluteFill style={{
+              backgroundImage: `radial-gradient(circle, ${ac}12 1.5px, transparent 1.5px)`,
+              backgroundSize: '24px 24px',
+              opacity: interpolate(entryProgress, [0, 1], [0, 0.5]),
+            }} />
+          )}
+
+          {/* Grain texture */}
+          {tc.grain && (
+            <AbsoluteFill style={{
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px), radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
+              backgroundSize: '4px 4px, 7px 7px',
+              backgroundPosition: '0 0, 3px 3px',
+              pointerEvents: 'none',
+            }} />
+          )}
 
           {/* Bokeh orbs */}
           {bokehOrbs.map((orb, i) => <BokehOrb key={`b${i}`} {...orb} />)}
@@ -499,7 +532,7 @@ export default function SceneRenderer({ scene, prevScene }: { scene: Scene; prev
       <div style={{
         position: 'absolute', top: 160, left: 60, right: 60,
         fontFamily: "'Pretendard Variable', Pretendard, sans-serif",
-        fontSize: 22, fontWeight: 400, color: 'rgba(255,255,255,0.12)',
+        fontSize: 22, fontWeight: 400, color: tc.bgMode === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)',
         lineHeight: 1.5,
         opacity: interpolate(entryProgress, [0, 1], [0, 1]),
       }}>
