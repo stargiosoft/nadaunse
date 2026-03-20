@@ -28,6 +28,14 @@ type ContentCard = {
 
 const CONTENT_CARDS: ContentCard[] = [
   {
+    id: 'trend-tracker',
+    title: '트렌드 추적기',
+    description: 'X 실시간 트렌드를 확인하고 바로 콘텐츠를 만들어요',
+    icon: '🔥',
+    path: '/trend-tracker',
+    ready: true,
+  },
+  {
     id: 'card-news',
     title: '카드뉴스 만들기',
     description: 'AI가 카드뉴스를 자동으로 만들어줘요',
@@ -57,6 +65,14 @@ const CONTENT_CARDS: ContentCard[] = [
     description: 'AI가 인스타 광고 포스터를 만들어줘요',
     icon: '📸',
     path: '/ad-creative',
+    ready: true,
+  },
+  {
+    id: 'meme-ad',
+    title: '밈광고영상 만들기',
+    description: '밈 후크 + AI 광고 영상을 합쳐줘요',
+    icon: '🎪',
+    path: '/meme-ad',
     ready: true,
   },
 ];
