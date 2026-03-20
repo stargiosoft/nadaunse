@@ -87,7 +87,7 @@ serve(async (req) => {
 - typewriter: 타이핑 (설명)
 - slide_stack: 좌우 슬라이드 (목록/비교)
 - counter: 숫자 카운트업 (수치)
-- split_compare: 좌우 비교 (Before/After)
+- split_compare: 좌우 비교 — ★자막에 **A** vs **B** 대비 키워드 2개 필수
 - radial_burst: 방사형 (임팩트)
 - list_reveal: 순차 등장 (팁)
 - zoom_impact: 줌인 (핵심 메시지)
@@ -97,6 +97,7 @@ serve(async (req) => {
 - sparkle_trail: 스파클 궤적 (솔루션/팁/긍정)
 - pulse_ring: 펄스 파동 (강조/에너지/각성)
 연속 2개 씬에 같은 motion_style 금지!
+★ split_compare/counter/progress_bar 사용 시 자막에 반드시 대응하는 볼드 키워드를 넣을 것!
 
 ★ 광고 전략 (행동경제학):
 - 손실 회피: "안 쓰면 손해"
