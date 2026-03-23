@@ -48,6 +48,12 @@ const REFERENCE_MODES = [
 
 const IMAGE_COUNTS = [1, 2, 3, 4] as const;
 
+const FILE_FORMATS = [
+  { id: 'png', label: 'PNG', desc: '고화질·투명 배경' },
+  { id: 'jpg', label: 'JPG', desc: '작은 용량' },
+  { id: 'webp', label: 'WebP', desc: '웹 최적화' },
+] as const;
+
 // ── Component ──
 
 export default function ThumbnailPage() {
@@ -61,6 +67,7 @@ export default function ThumbnailPage() {
   const [ratioId, setRatioId] = useState<string>('16:9');
   const [referenceMode, setReferenceMode] = useState<string>('style_only');
   const [imageCount, setImageCount] = useState<number>(2);
+  const [fileFormat, setFileFormat] = useState<string>('png');
   const [referencePreview, setReferencePreview] = useState<string | null>(null);
   const [referenceBase64, setReferenceBase64] = useState<string | null>(null);
 
@@ -160,19 +167,45 @@ export default function ThumbnailPage() {
     }
   }, [prompt, ratioId, referenceBase64, referenceMode]);
 
-  const handleDownload = (img: GeneratedImage) => {
-    if (!img.src) return;
-    const a = document.createElement('a');
-    a.href = img.src;
-    a.download = `thumbnail-${img.id}.png`;
-    a.click();
-  };
-
-  const handleDownloadAll = () => {
-    images.forEach(img => {
-      if (img.src) handleDownload(img);
+  const convertAndDownload = useCallback(async (src: string, filename: string) => {
+    if (!src) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = src;
     });
-  };
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+
+    const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+    const mime = mimeMap[fileFormat] || 'image/png';
+    const quality = fileFormat === 'png' ? undefined : 0.92;
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mime, quality));
+    if (!blob) return;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.${fileFormat}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [fileFormat]);
+
+  const handleDownload = useCallback((img: GeneratedImage) => {
+    convertAndDownload(img.src, `thumbnail-${img.id}`);
+  }, [convertAndDownload]);
+
+  const handleDownloadAll = useCallback(() => {
+    images.forEach(img => {
+      if (img.src) convertAndDownload(img.src, `thumbnail-${img.id}`);
+    });
+  }, [images, convertAndDownload]);
 
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
   const headerTitle = step === 'input' ? 'AI 썸네일 메이커' : '생성 결과';
@@ -440,6 +473,47 @@ export default function ThumbnailPage() {
               </div>
             </div>
 
+            {/* ── 파일 형식 ── */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                fontFamily: font, fontSize: '15px', fontWeight: 600,
+                lineHeight: '20px', letterSpacing: '-0.3px',
+                color: C.textPrimary, display: 'block', marginBottom: '10px',
+              }}>
+                파일 형식
+              </label>
+              <div className="flex" style={{ gap: '8px' }}>
+                {FILE_FORMATS.map(fmt => {
+                  const selected = fileFormat === fmt.id;
+                  return (
+                    <button
+                      key={fmt.id}
+                      onClick={() => setFileFormat(fmt.id)}
+                      style={{
+                        height: '40px', padding: '0 14px', borderRadius: '12px',
+                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 400,
+                        letterSpacing: '-0.26px',
+                        color: selected ? C.textWhite : C.textTertiary,
+                        backgroundColor: selected ? C.primary : C.surface,
+                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {fmt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                color: C.textCaption, marginTop: '8px',
+                letterSpacing: '-0.24px',
+              }}>
+                {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
+              </p>
+            </div>
+
             {/* ── 스펙 요약 ── */}
             <div style={{
               padding: '14px 16px', borderRadius: '12px',
@@ -449,7 +523,7 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
               }}>
-                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장
+                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
                 {referencePreview && ` · 레퍼런스 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}`}
               </p>
             </div>
