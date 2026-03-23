@@ -267,7 +267,7 @@ export default function ThumbnailPage() {
   }, [fileFormat]);
 
   const toFileName = (img: GeneratedImage) =>
-    img.label ? img.label.replace(/[\\?%*:|"<>]/g, '_') : `thumbnail-${img.id}`;
+    img.label ? img.label.replace(/[\\?%*:|"<>]/g, '_') : `${img.id}`;
 
   const handleDownload = useCallback((img: GeneratedImage) => {
     convertAndDownload(img.src, toFileName(img));
