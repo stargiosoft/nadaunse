@@ -81,6 +81,7 @@ import AdCopyPage from './pages/AdCopyPage';
 import AdCreativePage from './pages/AdCreativePage';
 import TrendTrackerPage from './pages/TrendTrackerPage';
 import MemeAdPage from './pages/MemeAdPage';
+import ThumbnailPage from './pages/ThumbnailPage';
 // ── 운테 (바이럴 테스트) ──
 import UnteHomePage from './pages/UnteHomePage';
 import UnteCreatePage from './pages/UnteCreatePage';
@@ -3901,6 +3902,7 @@ export default function App() {
           <Route path="/ad-creative" element={<AdCreativePage />} />
           <Route path="/meme-ad" element={<MemeAdPage />} />
           <Route path="/trend-tracker" element={<TrendTrackerPage />} />
+          <Route path="/thumbnail" element={<ThumbnailPage />} />
           {/* ── 운테 (바이럴 테스트) ── */}
           <Route path="/unte" element={<UnteHomePage />} />
           <Route path="/unte/create" element={<UnteCreatePage />} />
