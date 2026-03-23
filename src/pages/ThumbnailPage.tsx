@@ -10,6 +10,8 @@ type Step = 'input' | 'result';
 type GeneratedImage = {
   id: number;
   src: string; // data:image/...;base64,...
+  label?: string; // 항목별 생성 시 라벨
+  itemPrompt?: string; // 항목별 개별 프롬프트
 };
 
 // ── Constants ──
@@ -53,6 +55,32 @@ const FILE_FORMATS = [
   { id: 'jpg', label: 'JPG', desc: '작은 용량' },
   { id: 'webp', label: 'WebP', desc: '웹 최적화' },
 ] as const;
+
+// ── Prompt Parsing ──
+
+/** 프롬프트에서 리스트 항목을 감지하여 분리 */
+function parsePromptItems(text: string): { baseInstruction: string; items: string[] } | null {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 3) return null; // 최소 지시문 1줄 + 항목 2개
+
+  // 지시문과 항목 리스트 분리: 짧은 줄(30자 이하)이 연속 2개 이상이면 리스트로 판단
+  let listStartIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    // 연속 2줄이 30자 이하 + 숫자/글머리 패턴이 아닌 짧은 텍스트면 리스트 시작
+    if (lines[i].length <= 30 && i + 1 < lines.length && lines[i + 1].length <= 30) {
+      listStartIdx = i;
+      break;
+    }
+  }
+
+  if (listStartIdx < 1) return null; // 지시문이 최소 1줄은 있어야 함
+
+  const baseInstruction = lines.slice(0, listStartIdx).join('\n');
+  const items = lines.slice(listStartIdx).filter(l => l.length > 0 && l.length <= 30);
+
+  if (items.length < 2) return null;
+  return { baseInstruction, items };
+}
 
 // ── Component ──
 
@@ -103,9 +131,9 @@ export default function ThumbnailPage() {
     setReferenceBase64(null);
   };
 
-  const callGenerateApi = async (): Promise<{ image: string; mimeType: string }> => {
+  const callGenerateApi = async (promptOverride?: string): Promise<{ image: string; mimeType: string }> => {
     const body: Record<string, unknown> = {
-      prompt,
+      prompt: promptOverride || prompt,
       aspect_ratio: ratioId,
     };
     if (referenceBase64) {
@@ -122,6 +150,11 @@ export default function ThumbnailPage() {
     return data as { image: string; mimeType: string };
   };
 
+  // 프롬프트에서 항목 리스트 감지
+  const parsedItems = parsePromptItems(prompt);
+  const isListMode = parsedItems !== null && parsedItems.items.length >= 2;
+  const effectiveCount = isListMode ? parsedItems!.items.length : imageCount;
+
   const handleGenerate = useCallback(async () => {
     setGenerating(true);
     setError(null);
@@ -131,15 +164,36 @@ export default function ThumbnailPage() {
 
     const BATCH_SIZE = 4;
     const results: GeneratedImage[] = [];
+    const totalCount = isListMode ? parsedItems!.items.length : imageCount;
 
-    for (let batchStart = 0; batchStart < imageCount; batchStart += BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + BATCH_SIZE, imageCount);
-      const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
+    // 항목별 생성 작업 목록 구성
+    const tasks: { id: number; label?: string; itemPrompt?: string }[] = [];
+    if (isListMode) {
+      parsedItems!.items.forEach((item, i) => {
+        tasks.push({
+          id: i + 1,
+          label: item,
+          itemPrompt: `${parsedItems!.baseInstruction}\n\n이번 이미지의 주제: ${item}`,
+        });
+      });
+    } else {
+      for (let i = 0; i < totalCount; i++) {
+        tasks.push({ id: i + 1 });
+      }
+    }
+
+    for (let batchStart = 0; batchStart < tasks.length; batchStart += BATCH_SIZE) {
+      const batch = tasks.slice(batchStart, batchStart + BATCH_SIZE);
 
       const settled = await Promise.allSettled(
-        batchIndices.map(async (idx) => {
-          const data = await callGenerateApi();
-          return { id: idx + 1, src: `data:${data.mimeType};base64,${data.image}` } as GeneratedImage;
+        batch.map(async (task) => {
+          const data = await callGenerateApi(task.itemPrompt);
+          return {
+            id: task.id,
+            src: `data:${data.mimeType};base64,${data.image}`,
+            label: task.label,
+            itemPrompt: task.itemPrompt,
+          } as GeneratedImage;
         })
       );
 
@@ -161,23 +215,25 @@ export default function ThumbnailPage() {
     }
 
     setGenerating(false);
-  }, [prompt, ratioId, referenceBase64, referenceMode, imageCount]);
+  }, [prompt, ratioId, referenceBase64, referenceMode, imageCount, isListMode, parsedItems]);
 
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
+    // 해당 이미지의 개별 프롬프트 찾기
+    const targetImg = images.find(img => img.id === targetId);
+    const regenPrompt = targetImg?.itemPrompt;
     setImages(prev => prev.map(img =>
       img.id === targetId ? { ...img, src: '' } : img
     ));
     try {
-      const data = await callGenerateApi();
+      const data = await callGenerateApi(regenPrompt);
       setImages(prev => prev.map(img =>
         img.id === targetId ? { ...img, src: `data:${data.mimeType};base64,${data.image}` } : img
       ));
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생성 실패');
-      // 실패 시 원래 이미지 복구 불가 — 빈 상태로 두기
     }
-  }, [prompt, ratioId, referenceBase64, referenceMode]);
+  }, [prompt, ratioId, referenceBase64, referenceMode, images]);
 
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
@@ -210,12 +266,16 @@ export default function ThumbnailPage() {
   }, [fileFormat]);
 
   const handleDownload = useCallback((img: GeneratedImage) => {
-    convertAndDownload(img.src, `thumbnail-${img.id}`);
+    const name = img.label ? `thumbnail-${img.label.replace(/[/\\?%*:|"<>]/g, '_')}` : `thumbnail-${img.id}`;
+    convertAndDownload(img.src, name);
   }, [convertAndDownload]);
 
   const handleDownloadAll = useCallback(() => {
     images.forEach(img => {
-      if (img.src) convertAndDownload(img.src, `thumbnail-${img.id}`);
+      if (img.src) {
+        const name = img.label ? `thumbnail-${img.label.replace(/[/\\?%*:|"<>]/g, '_')}` : `thumbnail-${img.id}`;
+        convertAndDownload(img.src, name);
+      }
     });
   }, [images, convertAndDownload]);
 
@@ -559,6 +619,34 @@ export default function ThumbnailPage() {
               </p>
             </div>
 
+            {/* ── 리스트 감지 안내 ── */}
+            {isListMode && parsedItems && (
+              <div style={{
+                padding: '14px 16px', borderRadius: '12px',
+                backgroundColor: C.primaryLight, marginBottom: '16px',
+                border: `1px solid ${C.primary}20`,
+              }}>
+                <p style={{
+                  fontFamily: font, fontSize: '13px', fontWeight: 600,
+                  color: C.primaryDark, letterSpacing: '-0.26px', marginBottom: '8px',
+                }}>
+                  {parsedItems.items.length}개 항목 감지됨 — 항목별 1장씩 생성
+                </p>
+                <div className="flex flex-wrap" style={{ gap: '6px' }}>
+                  {parsedItems.items.map((item, i) => (
+                    <span key={i} style={{
+                      padding: '3px 8px', borderRadius: '6px',
+                      backgroundColor: C.surface,
+                      fontFamily: font, fontSize: '12px', fontWeight: 400,
+                      color: C.textSecondary, letterSpacing: '-0.24px',
+                    }}>
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* ── 스펙 요약 ── */}
             <div style={{
               padding: '14px 16px', borderRadius: '12px',
@@ -568,7 +656,7 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
               }}>
-                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
+                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {isListMode ? `${parsedItems!.items.length}장 (항목별)` : `${imageCount}장`} · {fileFormat.toUpperCase()}
                 {referencePreview && ` · 레퍼런스 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}`}
               </p>
             </div>
@@ -596,7 +684,7 @@ export default function ThumbnailPage() {
                 onPointerUp={e => { e.currentTarget.style.transform = ''; }}
                 onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
               >
-                썸네일 생성하기
+                {isListMode ? `${parsedItems!.items.length}장 생성하기` : '썸네일 생성하기'}
               </button>
             </div>
           </div>
@@ -616,14 +704,14 @@ export default function ThumbnailPage() {
                   fontFamily: font, fontSize: '14px', fontWeight: 500,
                   color: C.primaryDark, letterSpacing: '-0.28px',
                 }}>
-                  {generatedCount}/{imageCount}장 생성 중...
+                  {generatedCount}/{effectiveCount}장 생성 중...
                 </p>
                 <div style={{
                   width: '100%', height: '4px', borderRadius: '2px',
                   backgroundColor: '#d4eceb', marginTop: '8px',
                 }}>
                   <div style={{
-                    width: `${(generatedCount / imageCount) * 100}%`,
+                    width: `${(generatedCount / effectiveCount) * 100}%`,
                     height: '100%', borderRadius: '2px',
                     backgroundColor: C.primary,
                     transition: 'width 0.3s ease',
@@ -658,7 +746,7 @@ export default function ThumbnailPage() {
                       fontFamily: font, fontSize: '14px', fontWeight: 600,
                       color: C.textPrimary, letterSpacing: '-0.28px',
                     }}>
-                      #{img.id}
+                      #{img.id}{img.label && ` ${img.label}`}
                     </span>
                     {img.src && (
                       <div className="flex" style={{ gap: '8px' }}>
@@ -731,16 +819,19 @@ export default function ThumbnailPage() {
             </div>
 
             {/* Generating placeholders for remaining */}
-            {generating && images.length < imageCount && (
+            {generating && images.length < effectiveCount && (
               <div className="flex flex-col" style={{ gap: '20px', marginTop: images.length > 0 ? '20px' : '8px' }}>
-                {Array.from({ length: imageCount - images.length }, (_, i) => (
+                {Array.from({ length: effectiveCount - images.length }, (_, i) => {
+                  const pendingIdx = images.length + i;
+                  const pendingLabel = isListMode && parsedItems ? parsedItems.items[pendingIdx] : undefined;
+                  return (
                   <div key={`pending-${i}`}>
                     <div style={{ marginBottom: '10px' }}>
                       <span style={{
                         fontFamily: font, fontSize: '14px', fontWeight: 600,
                         color: C.textDisabled, letterSpacing: '-0.28px',
                       }}>
-                        #{images.length + i + 1}
+                        #{pendingIdx + 1}{pendingLabel && ` ${pendingLabel}`}
                       </span>
                     </div>
                     <div
@@ -771,7 +862,8 @@ export default function ThumbnailPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
