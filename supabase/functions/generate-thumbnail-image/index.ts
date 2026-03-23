@@ -92,11 +92,40 @@ serve(async (req) => {
       })
     }
 
-    const data = await geminiRes.json()
-    const responseParts = data?.candidates?.[0]?.content?.parts
+    let data = await geminiRes.json()
+    let responseParts = data?.candidates?.[0]?.content?.parts
+
+    // 안전 필터 차단 시 1회 재시도 (프롬프트 완화)
+    if (!responseParts) {
+      const blockReason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || 'unknown'
+      console.warn(`[generate-thumbnail-image] Empty response, blockReason: ${blockReason}. Retrying...`)
+
+      // 재시도: 프롬프트 간소화
+      const retryParts: Array<Record<string, unknown>> = []
+      if (reference_image) {
+        retryParts.push({ inlineData: { mimeType: 'image/png', data: reference_image } })
+      }
+      retryParts.push({ text: prompt })
+
+      const retryBody = JSON.stringify({
+        contents: [{ parts: retryParts }],
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: { aspectRatio: aspect_ratio || '16:9' },
+        },
+      })
+
+      const retryRes = await fetch(url, { method: 'POST', headers, body: retryBody })
+      if (retryRes.ok) {
+        data = await retryRes.json()
+        responseParts = data?.candidates?.[0]?.content?.parts
+      }
+    }
 
     if (!responseParts) {
-      return new Response(JSON.stringify({ error: '이미지 생성 실패: 빈 응답' }), {
+      const blockReason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || 'unknown'
+      console.error(`[generate-thumbnail-image] Final empty response. blockReason: ${blockReason}`)
+      return new Response(JSON.stringify({ error: `이미지 생성 실패: ${blockReason}` }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
