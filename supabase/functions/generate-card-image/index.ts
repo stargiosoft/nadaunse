@@ -10,7 +10,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { image_prompt, aspect_ratio, reference_image, slide_context } = await req.json()
+    const { image_prompt, aspect_ratio, reference_image, reference_mode, slide_context } = await req.json()
 
     if (!image_prompt && !slide_context) {
       return new Response(JSON.stringify({ error: 'image_prompt 또는 slide_context 필수' }), {
@@ -71,9 +71,15 @@ Anti-AI style guide (CRITICAL):
           data: reference_image,
         },
       })
-      parts.push({
-        text: `Use the attached image as a style/tone reference. Generate a NEW image with the same visual style, color palette, lighting, and mood. ${finalPrompt}, no text, no letters, no words, no watermark`,
-      })
+      if (reference_mode === 'style_and_character') {
+        parts.push({
+          text: `Use the attached image as a CHARACTER reference. Keep the SAME person's face, facial features, hairstyle, and identity — they must be clearly recognizable as the same person. Freely change their clothing, pose, background, and setting to match the scene. Generate a NEW image: ${finalPrompt}\n\nCRITICAL: Do NOT include ANY text, letters, words, numbers, titles, labels, or watermarks in the image.`,
+        })
+      } else {
+        parts.push({
+          text: `Use the attached image as a STYLE reference only. Copy the visual style, color palette, lighting, and mood but create completely new content. Do NOT copy specific characters or people. Generate a NEW image: ${finalPrompt}, no text, no letters, no words, no watermark`,
+        })
+      }
     } else {
       const antiAiSuffix = ', editorial photography style, natural lighting, grounded objects, no floating elements, no neon glow, no robot hands, subtle film grain, no text, no letters, no words, no watermark'
       parts.push({ text: slide_context ? finalPrompt : `${finalPrompt}${antiAiSuffix}` })

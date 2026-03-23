@@ -10,6 +10,62 @@ import type { Scene, ScriptResult, TtsAudio, BgmAudio, MotionTheme, MotionStyle 
 import { BGM_MOODS, MOTION_THEMES } from '../shortform/types';
 import { generateCapcutZip } from '../capcut/generateCapcutProject';
 
+// ── AudioBuffer → WAV Blob 변환 ──
+
+function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataLength = buffer.length * blockAlign;
+  const headerLength = 44;
+  const arrayBuffer = new ArrayBuffer(headerLength + dataLength);
+  const view = new DataView(arrayBuffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataLength, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataLength, true);
+
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+// ── **bold** 마크다운 → <strong> 렌더링 ──
+
+function renderBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
 // ── Sanitize: 연속 중복 모션/전환 보정 ──
 
 const ALL_MOTIONS: MotionStyle[] = [
@@ -74,7 +130,8 @@ const STYLES = [
 
 const VIDEO_TYPES = [
   { id: 'motion', label: '모션 그래픽', desc: '텍스트 + 애니메이션' },
-  { id: 'image', label: '이미지 기반', desc: 'AI 이미지 배경' },
+  { id: 'image', label: '이미지 기반', desc: 'AI 이미지 + 줌/패닝 효과' },
+  { id: 'video', label: '영상 기반', desc: 'AI 이미지 → AI 영상' },
 ] as const;
 
 const I2V_MODELS = [
@@ -83,7 +140,7 @@ const I2V_MODELS = [
   { id: 'kling', label: 'Kling v2.1', desc: '고품질 · ~$2.10/영상' },
 ] as const;
 
-type VideoType = 'image' | 'motion';
+type VideoType = 'image' | 'motion' | 'video';
 type ImageSource = 'ai' | 'stock';
 type I2vModel = typeof I2V_MODELS[number]['id'];
 
@@ -92,7 +149,7 @@ const IMAGE_SOURCES = [
   { id: 'stock' as const, label: '스톡 이미지', desc: 'Unsplash·Pexels' },
 ] as const;
 type Step = 'input' | 'review' | 'result';
-type VideoPhase = 'tts' | 'bgm' | 'images' | 'videos' | 'preview' | 'rendering' | 'done';
+type VideoPhase = 'tts' | 'bgm' | 'images' | 'image_review' | 'videos' | 'preview' | 'rendering' | 'done';
 
 // ── Design System Tokens ──
 
@@ -134,6 +191,9 @@ export default function ShortFormPage() {
   const [aspectRatio, setAspectRatio] = useState<string>('9:16');
   const [videoType, setVideoType] = useState<VideoType>('motion');
   const [imageSource, setImageSource] = useState<ImageSource>('ai');
+  const [refPreview, setRefPreview] = useState<string | null>(null);
+  const [refBase64, setRefBase64] = useState<string | null>(null);
+  const [refMode, setRefMode] = useState<'style_only' | 'style_and_character'>('style_only');
   const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
   const [motionTheme, setMotionTheme] = useState<MotionTheme>('colorful_pop');
   const [narrationVoice, setNarrationVoice] = useState<NarrationVoice>('none');
@@ -160,6 +220,7 @@ export default function ShortFormPage() {
   const [videoGenProgress, setVideoGenProgress] = useState(0);
   const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
   const [bgmLoading, setBgmLoading] = useState(false);
+  const [regenScenes, setRegenScenes] = useState<Set<number>>(new Set());
   const ttsAbortRef = useRef(false);
   const storagePaths = useRef<string[]>([]);
 
@@ -216,7 +277,7 @@ export default function ShortFormPage() {
         topic: topic.trim(),
         duration,
         style,
-        videoType,
+        videoType: videoType === 'video' ? 'image' : videoType,
         motionTheme: videoType === 'motion' ? motionTheme : undefined,
       });
       setResult(sanitizeScriptResult(data));
@@ -241,11 +302,15 @@ export default function ShortFormPage() {
     try {
       const currentScript = JSON.stringify(result, null, 2);
       const data = await callEdgeFunction('generate-short-form', {
-        topic: `기존 대본:\n${currentScript}\n\n수정 요청: ${userMsg}\n\n위 대본을 수정 요청에 맞게 수정해줘. 전체 길이(${result.total_duration}초)와 씬 수는 유지.`,
+        topic: topic.trim(),
         duration: result.total_duration,
         style,
-        videoType,
+        videoType: videoType === 'video' ? 'image' : videoType,
         motionTheme: videoType === 'motion' ? motionTheme : undefined,
+        revision: {
+          currentScript,
+          request: userMsg,
+        },
       });
       setResult(sanitizeScriptResult(data));
       setChatMessages(prev => [...prev, { role: 'assistant', content: '대본을 수정했습니다. 확인해주세요!' }]);
@@ -273,7 +338,7 @@ export default function ShortFormPage() {
       if (bgmMood !== 'none') {
         setVideoPhase('bgm');
       } else {
-        setVideoPhase(videoType === 'image' ? 'images' : 'preview');
+        setVideoPhase((videoType === 'image' || videoType === 'video') ? 'images' : 'preview');
       }
       return;
     }
@@ -291,7 +356,7 @@ export default function ShortFormPage() {
           speed: 1.0,
         });
 
-        // Decode audio to get actual duration
+        // Decode audio + append silence padding for natural breathing
         const base64 = data.audio.split(',')[1];
         const binary = atob(base64);
         const bytes = new Uint8Array(binary.length);
@@ -299,12 +364,29 @@ export default function ShortFormPage() {
 
         const audioCtx = new AudioContext();
         const buffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
+
+        // 0.5초 무음 패딩 추가 — 씬 간 호흡 공간 확보
+        const SILENCE_PADDING = 0.5;
+        const paddedLength = buffer.length + Math.round(SILENCE_PADDING * buffer.sampleRate);
+        const paddedBuffer = audioCtx.createBuffer(buffer.numberOfChannels, paddedLength, buffer.sampleRate);
+        for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+          paddedBuffer.getChannelData(ch).set(buffer.getChannelData(ch));
+        }
+
+        // Padded buffer → WAV data URL
+        const wavBlob = audioBufferToWav(paddedBuffer);
+        const paddedDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(wavBlob);
+        });
+
         await audioCtx.close();
 
         audios.push({
           sceneNumber: scene.scene_number,
-          dataUrl: data.audio,
-          durationInSeconds: buffer.duration,
+          dataUrl: paddedDataUrl,
+          durationInSeconds: paddedBuffer.duration,
         });
 
         setTtsAudios([...audios]);
@@ -319,7 +401,7 @@ export default function ShortFormPage() {
     if (bgmMood !== 'none') {
       setVideoPhase('bgm');
     } else {
-      setVideoPhase(videoType === 'image' ? 'images' : 'preview');
+      setVideoPhase((videoType === 'image' || videoType === 'video') ? 'images' : 'preview');
     }
   }, [videoType, bgmMood, narrationVoice]);
 
@@ -342,19 +424,24 @@ export default function ShortFormPage() {
         duration: targetDuration,
       });
 
-      if (data.audio && data.track) {
-        // Decode to get actual duration
-        const base64 = data.audio.split(',')[1];
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+      if (data.audioUrl && data.track) {
+        // Jamendo URL에서 직접 fetch → dataUrl 변환
+        const audioRes = await fetch(data.audioUrl);
+        const audioBlob = await audioRes.blob();
+        const arrayBuf = await audioBlob.arrayBuffer();
 
         const audioCtx = new AudioContext();
-        const buffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
+        const buffer = await audioCtx.decodeAudioData(arrayBuf.slice(0));
         await audioCtx.close();
 
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(audioBlob);
+        });
+
         setBgmAudio({
-          dataUrl: data.audio,
+          dataUrl,
           durationInSeconds: buffer.duration,
           track: data.track,
         });
@@ -364,7 +451,7 @@ export default function ShortFormPage() {
       // BGM 실패해도 영상 제작은 계속 진행
     } finally {
       setBgmLoading(false);
-      setVideoPhase(videoType === 'image' ? 'images' : 'preview');
+      setVideoPhase((videoType === 'image' || videoType === 'video') ? 'images' : 'preview');
     }
   }, [videoType]);
 
@@ -418,7 +505,7 @@ export default function ShortFormPage() {
 
         const results = await Promise.allSettled(
           batch.map(async (scene) => {
-            const data = await callEdgeFunction('generate-card-image', {
+            const payload: Record<string, unknown> = {
               slide_context: {
                 headline: scene.subtitle.replace(/\*\*/g, ''),
                 body: scene.narration,
@@ -426,7 +513,12 @@ export default function ShortFormPage() {
                 topic: topic,
               },
               aspect_ratio: aspectRatio,
-            });
+            };
+            if (refBase64) {
+              payload.reference_image = refBase64;
+              payload.reference_mode = refMode;
+            }
+            const data = await callEdgeFunction('generate-card-image', payload);
             return { sceneNumber: scene.scene_number, image: data.image, mimeType: data.mimeType };
           })
         );
@@ -476,8 +568,8 @@ export default function ShortFormPage() {
     }
 
     setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
-    setVideoPhase('videos');
-  }, [topic, imageSource, aspectRatio]);
+    setVideoPhase('image_review');
+  }, [topic, imageSource, aspectRatio, refBase64, refMode]);
 
   // Auto-start image generation
   useEffect(() => {
@@ -485,6 +577,52 @@ export default function ShortFormPage() {
       generateSceneImages(result.scenes);
     }
   }, [step, result, videoPhase, generateSceneImages]);
+
+  // ── Regenerate single scene image ──
+
+  const regenerateSceneImage = useCallback(async (scene: Scene) => {
+    if (regenScenes.has(scene.scene_number)) return;
+    setRegenScenes(prev => new Set(prev).add(scene.scene_number));
+    setError(null);
+
+    try {
+      const regenPayload: Record<string, unknown> = {
+        slide_context: {
+          headline: scene.subtitle.replace(/\*\*/g, ''),
+          body: scene.narration,
+          type: scene.type === 'cta' ? 'cta' : 'content',
+          topic,
+        },
+        aspect_ratio: aspectRatio,
+      };
+      if (refBase64) {
+        regenPayload.reference_image = refBase64;
+        regenPayload.reference_mode = refMode;
+      }
+      const data = await callEdgeFunction('generate-card-image', regenPayload);
+
+      if (data.image) {
+        const dataUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`;
+        setResult(prev => {
+          if (!prev) return prev;
+          const scenes = prev.scenes.map(s =>
+            s.scene_number === scene.scene_number
+              ? { ...s, backgroundImageUrl: dataUrl, backgroundVideoUrl: undefined }
+              : s
+          );
+          return { ...prev, scenes };
+        });
+      }
+    } catch (err) {
+      setError(`씬 ${scene.scene_number} 재생성 실패: ${err instanceof Error ? err.message : '오류'}`);
+    } finally {
+      setRegenScenes(prev => {
+        const next = new Set(prev);
+        next.delete(scene.scene_number);
+        return next;
+      });
+    }
+  }, [regenScenes, topic, aspectRatio, refBase64, refMode]);
 
   // ── Step 3-A3: Generate scene background videos (fal.ai Image-to-Video) ──
 
@@ -498,34 +636,28 @@ export default function ShortFormPage() {
       return;
     }
 
-    // 1. Submit all scenes to Replicate queue (3개씩 배치)
+    // 1. Submit scenes to Replicate queue (순차 요청 — rate limit 대응)
     const submissions: { sceneNumber: number; requestId: string }[] = [];
     let submitFailCount = 0;
 
-    for (let i = 0; i < scenesWithImages.length; i += 3) {
+    for (let i = 0; i < scenesWithImages.length; i++) {
       if (ttsAbortRef.current) return;
-      const batch = scenesWithImages.slice(i, Math.min(i + 3, scenesWithImages.length));
+      const scene = scenesWithImages[i];
 
-      const results = await Promise.allSettled(
-        batch.map(async (scene) => {
-          const data = await callEdgeFunction('generate-scene-video', {
-            action: 'submit',
-            model: i2vModel,
-            image_data_url: scene.backgroundImageUrl,
-            prompt: scene.visual ? `${scene.visual}. Cinematic motion.` : undefined,
-            scene_type: scene.type,
-            motion_style: scene.motion_style,
-          });
-          return { sceneNumber: scene.scene_number, requestId: data.request_id as string };
-        })
-      );
-
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value.requestId) {
-          submissions.push(r.value);
+      try {
+        const data = await callEdgeFunction('generate-scene-video', {
+          action: 'submit',
+          model: i2vModel,
+          image_data_url: scene.backgroundImageUrl,
+          motion_style: scene.motion_style,
+        });
+        if (data.request_id) {
+          submissions.push({ sceneNumber: scene.scene_number, requestId: data.request_id as string });
         } else {
           submitFailCount++;
         }
+      } catch {
+        submitFailCount++;
       }
 
       // 첫 배치 전부 실패 시 API 문제로 판단, 나머지 스킵
@@ -1097,8 +1229,8 @@ export default function ShortFormPage() {
                 </section>
               )}
 
-              {/* Image Source (이미지 기반일 때만) */}
-              {videoType === 'image' && (
+              {/* Image Source (이미지/영상 기반일 때만) */}
+              {(videoType === 'image' || videoType === 'video') && (
                 <section style={{ marginBottom: '32px' }}>
                   <label style={{
                     display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -1147,8 +1279,121 @@ export default function ShortFormPage() {
                 </section>
               )}
 
-              {/* I2V Model (이미지 기반일 때만) */}
-              {videoType === 'image' && (
+              {/* Reference Image (이미지/영상 + AI 생성일 때만) */}
+              {(videoType === 'image' || videoType === 'video') && imageSource === 'ai' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    레퍼런스 이미지
+                  </label>
+
+                  {refPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img
+                        src={refPreview}
+                        alt="레퍼런스"
+                        style={{
+                          width: '100px', height: '100px', objectFit: 'cover',
+                          borderRadius: '12px', border: `1px solid ${C.borderDefault}`,
+                        }}
+                      />
+                      <button
+                        onClick={() => { setRefPreview(null); setRefBase64(null); }}
+                        style={{
+                          position: 'absolute', top: '-8px', right: '-8px',
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          backgroundColor: '#ff4d4f', border: 'none',
+                          color: '#fff', fontSize: '14px', fontWeight: 700,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      width: '100%', height: '80px', borderRadius: '16px',
+                      border: `2px dashed ${C.borderDefault}`, backgroundColor: C.surfaceSecondary,
+                      cursor: 'pointer', gap: '4px',
+                    }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                      <span style={{
+                        fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textCaption,
+                      }}>
+                        선택사항 · 스타일/캐릭터 참고용
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 10 * 1024 * 1024) { setError('10MB 이하만 업로드 가능'); return; }
+                          const reader = new FileReader();
+                          reader.onload = ev => {
+                            const dataUrl = ev.target?.result as string;
+                            setRefPreview(dataUrl);
+                            setRefBase64(dataUrl.split(',')[1]);
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+
+                  {/* 참고 방식 (레퍼런스 있을 때만) */}
+                  {refPreview && (
+                    <div className="flex" style={{ gap: '8px', marginTop: '12px' }}>
+                      {([
+                        { id: 'style_only' as const, label: '스타일만 참고', desc: '색감·구도·분위기' },
+                        { id: 'style_and_character' as const, label: '캐릭터+스타일', desc: '캐릭터·인물 유지' },
+                      ]).map(mode => {
+                        const sel = refMode === mode.id;
+                        return (
+                          <button
+                            key={mode.id}
+                            onClick={() => setRefMode(mode.id)}
+                            className="flex-1 flex flex-col items-center justify-center"
+                            style={{
+                              height: '56px', borderRadius: '12px',
+                              backgroundColor: sel ? C.primaryLight : C.surface,
+                              border: `1.5px solid ${sel ? C.primary : C.borderDefault}`,
+                              cursor: 'pointer', transition: 'all 0.15s ease',
+                              gap: '2px',
+                            }}
+                          >
+                            <span style={{
+                              fontFamily: font, fontSize: '13px', fontWeight: sel ? 600 : 400,
+                              color: sel ? C.primary : C.textPrimary, letterSpacing: '-0.26px',
+                            }}>
+                              {mode.label}
+                            </span>
+                            <span style={{
+                              fontFamily: font, fontSize: '10px', fontWeight: 400,
+                              color: sel ? C.primary : C.textCaption,
+                            }}>
+                              {mode.desc}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* I2V Model (영상 기반일 때만) */}
+              {videoType === 'video' && (
                 <section style={{ marginBottom: '32px' }}>
                   <label style={{
                     display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -1329,13 +1574,13 @@ export default function ShortFormPage() {
                   fontFamily: font, fontSize: '16px', fontWeight: 600,
                   lineHeight: '25px', letterSpacing: '-0.32px', color: C.primaryDark,
                 }}>
-                  {result.title}
+                  {renderBold(result.title)}
                 </div>
                 <div style={{
                   fontFamily: font, fontSize: '13px', fontWeight: 400,
                   lineHeight: '20px', color: C.textTertiary, marginTop: '6px',
                 }}>
-                  {result.hook}
+                  {renderBold(result.hook)}
                 </div>
                 <div style={{
                   fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -1397,17 +1642,13 @@ export default function ShortFormPage() {
                           lineHeight: '20px', letterSpacing: '-0.45px', color: C.textPrimary,
                           marginBottom: '6px',
                         }}>
-                          {scene.narration}
+                          {renderBold(scene.narration)}
                         </div>
                         <div style={{
                           fontFamily: font, fontSize: '12px', fontWeight: 600,
                           lineHeight: '18px', color: C.primaryDark, marginBottom: '4px',
                         }}>
-                          자막: {scene.subtitle.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
-                            part.startsWith('**') && part.endsWith('**')
-                              ? <strong key={i}>{part.slice(2, -2)}</strong>
-                              : part
-                          )}
+                          자막: {renderBold(scene.subtitle)}
                         </div>
                         <div style={{
                           fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -1460,7 +1701,7 @@ export default function ShortFormPage() {
                     fontFamily: font, fontSize: '13px', fontWeight: 600,
                     lineHeight: '20px', color: C.textPrimary, marginTop: '4px',
                   }}>
-                    {result.thumbnail_text}
+                    {renderBold(result.thumbnail_text)}
                   </div>
                 </div>
               </div>
@@ -1583,7 +1824,7 @@ export default function ShortFormPage() {
                   lineHeight: '26px', letterSpacing: '-0.36px',
                   color: C.textPrimary, margin: 0, marginBottom: '4px',
                 }}>
-                  {result.title}
+                  {renderBold(result.title)}
                 </h2>
                 <p style={{
                   fontFamily: font, fontSize: '14px', fontWeight: 400,
@@ -1699,6 +1940,100 @@ export default function ShortFormPage() {
                 </div>
               )}
 
+              {/* ── Phase A-2.5: Image Review ── */}
+              {videoPhase === 'image_review' && result && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    fontFamily: font, fontSize: '14px', fontWeight: 600,
+                    color: C.textPrimary, marginBottom: '12px',
+                  }}>
+                    배경 이미지 확인
+                    <span style={{ fontWeight: 400, color: C.textCaption, marginLeft: '8px', fontSize: '12px' }}>
+                      탭하여 재생성
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                    gap: '8px', marginBottom: '16px',
+                  }}>
+                    {result.scenes.map(scene => {
+                      const isRegen = regenScenes.has(scene.scene_number);
+                      return (
+                        <div
+                          key={scene.scene_number}
+                          onClick={() => !isRegen && regenerateSceneImage(scene)}
+                          style={{
+                            position: 'relative', aspectRatio: '9/16',
+                            borderRadius: '10px', overflow: 'hidden',
+                            border: `1px solid ${C.borderDivider}`,
+                            cursor: isRegen ? 'not-allowed' : 'pointer',
+                            background: scene.backgroundImageUrl ? undefined : `linear-gradient(135deg, ${scene.accent_color || C.primary}40, ${scene.glow_color || C.primaryDark}30)`,
+                          }}
+                          className="transform-gpu"
+                        >
+                          {scene.backgroundImageUrl && (
+                            <img src={scene.backgroundImageUrl} alt={`씬 ${scene.scene_number}`}
+                              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          )}
+                          {isRegen && (
+                            <div className="flex items-center justify-center"
+                              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }}>
+                              <div style={{
+                                width: 24, height: 24,
+                                border: '2px solid rgba(255,255,255,0.3)',
+                                borderTop: '2px solid white',
+                                borderRadius: '50%', animation: 'spin 1s linear infinite',
+                              }} />
+                            </div>
+                          )}
+                          <div style={{
+                            position: 'absolute', bottom: 0, left: 0, right: 0,
+                            padding: '4px 6px',
+                            background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                          }}>
+                            <div style={{
+                              fontFamily: font, fontSize: '9px', fontWeight: 600,
+                              color: 'white', textTransform: 'uppercase',
+                            }}>
+                              {scene.scene_number}. {scene.type}
+                            </div>
+                          </div>
+                          {!isRegen && scene.backgroundImageUrl && (
+                            <div className="flex items-center justify-center" style={{
+                              position: 'absolute', top: '4px', right: '4px',
+                              width: 22, height: 22, borderRadius: '50%',
+                              backgroundColor: 'rgba(0,0,0,0.5)',
+                            }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                                <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 105.64-11.36L3 10" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setVideoPhase(videoType === 'video' ? 'videos' : 'preview')}
+                    disabled={regenScenes.size > 0}
+                    className="w-full flex items-center justify-center"
+                    style={{
+                      height: '48px', borderRadius: '16px', border: 'none',
+                      backgroundColor: regenScenes.size > 0 ? C.surfaceDisabled : C.primary,
+                      cursor: regenScenes.size > 0 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <span style={{
+                      fontFamily: font, fontSize: '15px', fontWeight: 600,
+                      color: regenScenes.size > 0 ? C.textDisabled : C.textWhite,
+                    }}>
+                      {videoType === 'video' ? '영상 만들기' : '미리보기'}
+                    </span>
+                  </button>
+                </div>
+              )}
+
               {/* ── Phase A-3: Video Generation (fal.ai I2V) ── */}
               {videoPhase === 'videos' && result && (
                 <div style={{ marginBottom: '24px' }}>
@@ -1744,7 +2079,7 @@ export default function ShortFormPage() {
               )}
 
               {/* ── Phase B: Preview ── */}
-              {videoPhase === 'preview' && ttsAudios.length > 0 && (
+              {videoPhase === 'preview' && (narrationVoice === 'none' || ttsAudios.length > 0) && (
                 <>
                   {/* Remotion Player */}
                   <div className="flex justify-center" style={{ marginBottom: '20px' }}>
