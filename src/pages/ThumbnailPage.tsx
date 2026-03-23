@@ -265,17 +265,16 @@ export default function ThumbnailPage() {
     URL.revokeObjectURL(url);
   }, [fileFormat]);
 
+  const toFileName = (img: GeneratedImage) =>
+    img.label ? img.label.replace(/[\\?%*:|"<>]/g, '_') : `thumbnail-${img.id}`;
+
   const handleDownload = useCallback((img: GeneratedImage) => {
-    const name = img.label ? `thumbnail-${img.label.replace(/[/\\?%*:|"<>]/g, '_')}` : `thumbnail-${img.id}`;
-    convertAndDownload(img.src, name);
+    convertAndDownload(img.src, toFileName(img));
   }, [convertAndDownload]);
 
   const handleDownloadAll = useCallback(() => {
     images.forEach(img => {
-      if (img.src) {
-        const name = img.label ? `thumbnail-${img.label.replace(/[/\\?%*:|"<>]/g, '_')}` : `thumbnail-${img.id}`;
-        convertAndDownload(img.src, name);
-      }
+      if (img.src) convertAndDownload(img.src, toFileName(img));
     });
   }, [images, convertAndDownload]);
 
