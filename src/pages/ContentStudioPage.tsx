@@ -36,6 +36,14 @@ const CONTENT_CARDS: ContentCard[] = [
     ready: true,
   },
   {
+    id: 'thumbnail',
+    title: '썸네일 만들기',
+    description: '레퍼런스 기반으로 AI가 썸네일을 만들어줘요',
+    icon: '🖼️',
+    path: '/thumbnail',
+    ready: true,
+  },
+  {
     id: 'ad-copy',
     title: '광고 카피 만들기',
     description: 'AI가 전환율 높은 광고 카피를 만들어줘요',
