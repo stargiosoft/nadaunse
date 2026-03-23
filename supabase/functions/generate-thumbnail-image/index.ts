@@ -40,19 +40,21 @@ serve(async (req) => {
       })
 
       // reference_mode에 따라 프롬프트 분기
+      const noTextRule = '\n\nCRITICAL RULE: Do NOT include ANY text, letters, words, numbers, titles, labels, watermarks, captions, or typography in the image. The image must contain ONLY visual elements — no written characters of any language.'
+
       if (reference_mode === 'style_and_character') {
         parts.push({
-          text: `Use the attached image as a reference. Keep the same characters, people, and visual style (colors, lighting, composition, art style). Generate a NEW thumbnail image based on this instruction: ${prompt}`,
+          text: `Use the attached image as a reference. Keep the same characters, people, and visual style (colors, lighting, composition, art style). Generate a NEW thumbnail image based on this instruction: ${prompt}${noTextRule}`,
         })
       } else {
         // style_only (기본값)
         parts.push({
-          text: `Use the attached image as a STYLE reference only. Copy the visual style (colors, lighting, composition, typography style, art style) but create completely new content. Do NOT copy specific characters or people. Generate a NEW thumbnail image based on this instruction: ${prompt}`,
+          text: `Use the attached image as a STYLE reference only. Copy the visual style (colors, lighting, composition, typography style, art style) but create completely new content. Do NOT copy specific characters or people. Generate a NEW thumbnail image based on this instruction: ${prompt}${noTextRule}`,
         })
       }
     } else {
       parts.push({
-        text: `Generate a professional thumbnail image. ${prompt}`,
+        text: `Generate a professional thumbnail image. ${prompt}\n\nCRITICAL RULE: Do NOT include ANY text, letters, words, numbers, titles, labels, watermarks, captions, or typography in the image. The image must contain ONLY visual elements — no written characters of any language.`,
       })
     }
 
