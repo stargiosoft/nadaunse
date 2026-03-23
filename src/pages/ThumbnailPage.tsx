@@ -67,6 +67,7 @@ export default function ThumbnailPage() {
   const [ratioId, setRatioId] = useState<string>('16:9');
   const [referenceMode, setReferenceMode] = useState<string>('style_only');
   const [imageCount, setImageCount] = useState<number>(2);
+  const [customCountActive, setCustomCountActive] = useState(false);
   const [fileFormat, setFileFormat] = useState<string>('png');
   const [referencePreview, setReferencePreview] = useState<string | null>(null);
   const [referenceBase64, setReferenceBase64] = useState<string | null>(null);
@@ -128,24 +129,35 @@ export default function ThumbnailPage() {
     setGeneratedCount(0);
     setStep('result');
 
+    const BATCH_SIZE = 4;
     const results: GeneratedImage[] = [];
 
-    for (let i = 0; i < imageCount; i++) {
-      try {
-        const data = await callGenerateApi();
-        const img: GeneratedImage = {
-          id: i + 1,
-          src: `data:${data.mimeType};base64,${data.image}`,
-        };
-        results.push(img);
-        setImages([...results]);
-        setGeneratedCount(i + 1);
-      } catch (err) {
-        console.error(`Image ${i + 1} failed:`, err);
-        if (results.length === 0) {
-          setError(err instanceof Error ? err.message : '이미지 생성에 실패했어요');
+    for (let batchStart = 0; batchStart < imageCount; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, imageCount);
+      const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
+
+      const settled = await Promise.allSettled(
+        batchIndices.map(async (idx) => {
+          const data = await callGenerateApi();
+          return { id: idx + 1, src: `data:${data.mimeType};base64,${data.image}` } as GeneratedImage;
+        })
+      );
+
+      for (const result of settled) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          console.error('Image generation failed:', result.reason);
         }
       }
+
+      results.sort((a, b) => a.id - b.id);
+      setImages([...results]);
+      setGeneratedCount(results.length);
+    }
+
+    if (results.length === 0) {
+      setError('이미지 생성에 실패했어요');
     }
 
     setGenerating(false);
@@ -450,13 +462,13 @@ export default function ThumbnailPage() {
               }}>
                 생성 개수
               </label>
-              <div className="flex" style={{ gap: '8px' }}>
+              <div className="flex items-center" style={{ gap: '8px' }}>
                 {IMAGE_COUNTS.map(count => {
-                  const selected = imageCount === count;
+                  const selected = imageCount === count && !customCountActive;
                   return (
                     <button
                       key={count}
-                      onClick={() => setImageCount(count)}
+                      onClick={() => { setImageCount(count); setCustomCountActive(false); }}
                       style={{
                         width: '48px', height: '40px', borderRadius: '12px',
                         fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
@@ -470,6 +482,39 @@ export default function ThumbnailPage() {
                     </button>
                   );
                 })}
+                <div className="flex items-center" style={{
+                  height: '40px', borderRadius: '12px',
+                  border: `1.5px solid ${customCountActive ? C.primary : C.borderDefault}`,
+                  backgroundColor: customCountActive ? C.primaryLight : C.surface,
+                  padding: '0 4px 0 10px',
+                  transition: 'all 0.15s ease',
+                  gap: '2px',
+                }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={customCountActive ? imageCount : ''}
+                    placeholder="직접"
+                    onFocus={() => setCustomCountActive(true)}
+                    onChange={e => {
+                      setCustomCountActive(true);
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
+                    }}
+                    className="outline-none bg-transparent"
+                    style={{
+                      width: '40px', height: '100%',
+                      fontFamily: font, fontSize: '14px', fontWeight: customCountActive ? 600 : 400,
+                      color: customCountActive ? C.primary : C.textTertiary,
+                      textAlign: 'center', border: 'none',
+                    }}
+                  />
+                  <span style={{
+                    fontFamily: font, fontSize: '13px', fontWeight: 400,
+                    color: customCountActive ? C.primary : C.textCaption,
+                  }}>장</span>
+                </div>
               </div>
             </div>
 
