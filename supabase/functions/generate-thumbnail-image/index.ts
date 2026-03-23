@@ -44,7 +44,7 @@ serve(async (req) => {
 
       if (reference_mode === 'style_and_character') {
         parts.push({
-          text: `Use the attached image as a reference. Keep the same characters, people, and visual style (colors, lighting, composition, art style). Generate a NEW thumbnail image based on this instruction: ${prompt}${noTextRule}`,
+          text: `Use the attached image as a CHARACTER reference. Keep the SAME person's face, facial features, hairstyle, and identity — they must be clearly recognizable as the same person. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW image based on this instruction: ${prompt}${noTextRule}`,
         })
       } else {
         // style_only (기본값)
