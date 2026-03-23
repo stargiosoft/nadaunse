@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import JSZip from 'jszip';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
 
@@ -272,11 +273,52 @@ export default function ThumbnailPage() {
     convertAndDownload(img.src, toFileName(img));
   }, [convertAndDownload]);
 
-  const handleDownloadAll = useCallback(() => {
-    images.forEach(img => {
-      if (img.src) convertAndDownload(img.src, toFileName(img));
-    });
-  }, [images, convertAndDownload]);
+  const [zipping, setZipping] = useState(false);
+
+  const handleDownloadAll = useCallback(async () => {
+    const validImages = images.filter(img => img.src);
+    if (validImages.length === 0) return;
+
+    setZipping(true);
+    try {
+      const zip = new JSZip();
+      const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+      const mime = mimeMap[fileFormat] || 'image/png';
+      const quality = fileFormat === 'png' ? undefined : 0.92;
+
+      for (const img of validImages) {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          image.onload = () => resolve();
+          image.onerror = reject;
+          image.src = img.src;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        canvas.getContext('2d')!.drawImage(image, 0, 0);
+
+        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mime, quality));
+        if (blob) {
+          zip.file(`${toFileName(img)}.${fileFormat}`, blob);
+        }
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'thumbnails.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('ZIP 생성 실패:', err);
+      setError('ZIP 다운로드에 실패했어요');
+    } finally {
+      setZipping(false);
+    }
+  }, [images, fileFormat]);
 
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
   const headerTitle = step === 'input' ? 'AI 썸네일 메이커' : '생성 결과';
@@ -891,19 +933,20 @@ export default function ThumbnailPage() {
                   </button>
                   <button
                     onClick={handleDownloadAll}
+                    disabled={zipping}
                     style={{
                       flex: 1, height: '56px', borderRadius: '16px',
-                      backgroundColor: C.primary, border: 'none',
-                      cursor: 'pointer',
+                      backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
+                      cursor: zipping ? 'default' : 'pointer',
                       fontFamily: font, fontSize: '16px', fontWeight: 500,
                       color: C.textWhite, letterSpacing: '-0.32px',
                       transition: 'all 0.15s ease',
                     }}
-                    onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                    onPointerDown={e => { if (!zipping) e.currentTarget.style.transform = 'scale(0.99)'; }}
                     onPointerUp={e => { e.currentTarget.style.transform = ''; }}
                     onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                   >
-                    전체 다운로드
+                    {zipping ? 'ZIP 생성 중...' : 'ZIP 다운로드'}
                   </button>
                 </div>
               </div>
