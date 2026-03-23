@@ -38,10 +38,10 @@ const C = {
 };
 
 const ASPECT_RATIOS = [
-  { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
+  { id: '9:16', label: '9:16', desc: '릴스·쇼츠·틱톡', width: 1080, height: 1920 },
   { id: '3:4', label: '3:4', desc: '네이버 블로그', width: 900, height: 1200 },
   { id: '1:1', label: '1:1', desc: '인스타 정사각', width: 1080, height: 1080 },
-  { id: '9:16', label: '9:16', desc: '릴스·쇼츠·틱톡', width: 1080, height: 1920 },
+  { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
 ] as const;
 
 const REFERENCE_MODES = [
@@ -93,7 +93,7 @@ export default function ThumbnailPage() {
 
   // Input
   const [prompt, setPrompt] = useState('');
-  const [ratioId, setRatioId] = useState<string>('16:9');
+  const [ratioId, setRatioId] = useState<string>('9:16');
   const [referenceMode, setReferenceMode] = useState<string>('style_only');
   const [imageCount, setImageCount] = useState<number>(2);
   const [customCountActive, setCustomCountActive] = useState(false);
