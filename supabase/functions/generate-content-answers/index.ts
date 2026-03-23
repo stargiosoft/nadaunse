@@ -529,29 +529,23 @@ ${freeList}
             data = await response.json()
             if (!data.success) throw new Error(`사주 답변 생성 실패: ${data.error}`)
 
-            // DB 저장
-            const { data: existing } = await supabase
-              .from('order_results').select('id')
-              .eq('order_id', orderId).eq('question_id', question.id).single()
+            // DB 저장 (UPSERT: race condition 방지)
+            const { error: upsertError } = await supabase.from('order_results').upsert({
+              order_id: orderId, question_id: question.id,
+              question_order: question.question_order,
+              question_text: question.question_text,
+              gpt_response: data.answerText,
+              question_type: 'saju',
+              created_at: new Date().toISOString()
+            }, { onConflict: 'order_id,question_id' })
 
-            if (existing) {
-              console.log(`⚠️ 이미 존재하는 답변 스킵 (질문 ${question.question_order})`)
+            if (upsertError) {
+              console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, upsertError)
+              throw new Error(`order_results 저장 실패: ${upsertError.message}`)
             } else {
-              const { error: insertError } = await supabase.from('order_results').insert({
-                order_id: orderId, question_id: question.id,
-                question_order: question.question_order,
-                question_text: question.question_text,
-                gpt_response: data.answerText,
-                question_type: 'saju',
-                created_at: new Date().toISOString()
-              })
-              if (insertError) {
-                console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
-              } else {
-                console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
-                await checkAndSetCompletion()
-              }
+              console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
             }
+            await checkAndSetCompletion()
 
             console.log(`✅ 사주 답변 생성 완료 (질문 ${question.question_order})`)
             return { questionId: question.id, success: true, type: 'saju', attempt, answerText: data.answerText }
@@ -577,31 +571,25 @@ ${freeList}
             data = await response.json()
             if (!data.success) throw new Error(`타로 답변 생성 실패: ${data.error}`)
 
-            // DB 저장
-            const { data: existingTarot } = await supabase
-              .from('order_results').select('id')
-              .eq('order_id', orderId).eq('question_id', question.id).single()
+            // DB 저장 (UPSERT: race condition 방지)
+            const { error: upsertError } = await supabase.from('order_results').upsert({
+              order_id: orderId, question_id: question.id,
+              question_order: question.question_order,
+              question_text: question.question_text,
+              gpt_response: data.answerText,
+              question_type: 'tarot',
+              tarot_card_name: data.tarotCard || null,
+              tarot_card_image_url: data.imageUrl || null,
+              created_at: new Date().toISOString()
+            }, { onConflict: 'order_id,question_id' })
 
-            if (existingTarot) {
-              console.log(`⚠️ 이미 존재하는 타로 답변 스킵 (질문 ${question.question_order})`)
+            if (upsertError) {
+              console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, upsertError)
+              throw new Error(`order_results 저장 실패: ${upsertError.message}`)
             } else {
-              const { error: insertError } = await supabase.from('order_results').insert({
-                order_id: orderId, question_id: question.id,
-                question_order: question.question_order,
-                question_text: question.question_text,
-                gpt_response: data.answerText,
-                question_type: 'tarot',
-                tarot_card_name: data.tarotCard || null,
-                tarot_card_image_url: data.imageUrl || null,
-                created_at: new Date().toISOString()
-              })
-              if (insertError) {
-                console.error(`❌ order_results 저장 실패 (질문 ${question.question_order}):`, insertError)
-              } else {
-                console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
-                await checkAndSetCompletion()
-              }
+              console.log(`✅ order_results 저장 완료 (질문 ${question.question_order})`)
             }
+            await checkAndSetCompletion()
 
             console.log(`✅ 타로 답변 생성 완료 (질문 ${question.question_order})`)
             return { questionId: question.id, success: true, type: 'tarot', attempt, answerText: data.answerText }
@@ -739,39 +727,24 @@ ${freeList}
     console.log('🎉 모든 답변 생성 완료')
     console.log('📊 결과:', results)
 
-    // 실패한 질문 확인 (⭐ 시간 제한 시 DB 기반 체크)
+    // 실패한 질문 확인 (⭐ 항상 DB 기반 체크 — results 배열은 신뢰하지 않음)
     const successCount = results.filter(r => r.success).length
-    const failedCount = questions.length - successCount
-    let allSucceeded: boolean
+    const failedByResults = questions.length - successCount
 
-    if (stoppedByTimeLimit) {
-      // 시간 제한 후 fall-through: DB에서 실제 완료 상태 확인
-      const { data: finalCheck } = await supabase
-        .from('order_results')
-        .select('question_id')
-        .eq('order_id', orderId)
-      allSucceeded = (finalCheck?.length || 0) >= questions.length
-    } else {
-      allSucceeded = failedCount === 0
-    }
-
-    if (failedCount > 0 && !stoppedByTimeLimit) {
-      console.warn(`⚠️ 일부 질문 처리 실패: ${failedCount}/${questions.length}개`)
+    if (failedByResults > 0) {
+      console.warn(`⚠️ results 기반: ${failedByResults}/${questions.length}개 실패 보고`)
     }
 
     // 5. orders 테이블 업데이트
-    // ⭐ results 기반 판정이 실패해도 DB에서 실제 완료 상태를 한번 더 확인 (안전장치)
-    if (!allSucceeded) {
-      console.warn(`⚠️ results 기반 판정: ${failedCount}개 실패 - DB에서 실제 완료 상태 재확인`)
-      const { data: dbCheck } = await supabase
-        .from('order_results')
-        .select('question_id')
-        .eq('order_id', orderId)
-      if ((dbCheck?.length || 0) >= questions.length) {
-        console.log('✅ DB 확인 결과 모든 답변 존재 → allSucceeded 보정')
-        allSucceeded = true
-      }
-    }
+    // ⭐ 항상 DB에서 실제 저장된 행 수로 완료 판정 (results 배열 거짓 긍정 방지)
+    const { data: dbFinalCheck } = await supabase
+      .from('order_results')
+      .select('question_id')
+      .eq('order_id', orderId)
+
+    const actualSavedCount = dbFinalCheck?.length || 0
+    const allSucceeded = actualSavedCount >= questions.length
+    console.log(`📊 DB 최종 확인: ${actualSavedCount}/${questions.length}개 저장됨 → ${allSucceeded ? '완료' : '미완료'}`)
 
     if (allSucceeded) {
       const { error: orderUpdateError } = await supabase
@@ -788,7 +761,7 @@ ${freeList}
         console.log('✅ orders 테이블 업데이트 완료 (ai_generation_completed = true)')
       }
     } else {
-      console.warn(`⚠️ AI 생성 미완료 (${failedCount}개 실패) - ai_generation_completed 유지 (false)`)
+      console.warn(`⚠️ AI 생성 미완료 (${questions.length - actualSavedCount}개 누락) - ai_generation_completed 유지 (false)`)
     }
 
     // 7. 알림톡 발송 (실패해도 전체 프로세스 계속 진행)
@@ -907,7 +880,7 @@ ${freeList}
     if (allSucceeded) {
       console.log('✅ 전체 프로세스 완료! 모든 질문 생성 성공')
     } else {
-      console.warn(`⚠️ 전체 프로세스 완료하였으나 일부 질문 실패 (${failedCount}/${questions.length})`)
+      console.warn(`⚠️ 전체 프로세스 완료하였으나 일부 질문 실패 (${questions.length - actualSavedCount}/${questions.length})`)
     }
 
     return new Response(
@@ -915,7 +888,7 @@ ${freeList}
         success: allSucceeded,  // ⭐ 모든 질문이 성공한 경우에만 true
         totalQuestions: questions.length,
         successCount,
-        failedCount,
+        failedCount: questions.length - actualSavedCount,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
