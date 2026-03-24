@@ -1045,4 +1045,134 @@ CapCut은 공식 API가 없어 자동화 불가. 완전 자동화가 필요하�
 
 ---
 
-**최종 업데이트**: 2026-03-23 (썸네일 메이커 신규 추가: 레퍼런스 기반 AI 썸네일 생성, 리스트 자동 감지 항목별 생성, 4장씩 병렬 배치, 파일 형식 선택 PNG/JPG/WebP, ZIP 전체 다운로드, 안전 필터 재시도 / 숏폼 레퍼런스 이미지 지원: 이미지/영상 기반+AI 생성 시 레퍼런스 업로드+참고 방식 선택, generate-card-image에 reference_mode 추가 / generate-thumbnail-image Edge Function 신규 배포)
+## 17. 성장 공식 기반 프롬프트 고도화 — 스테이징 적용 (2026-03-24)
+
+> **근거 문서**: `src/docs/business/UNIVERSAL_GROWTH_FORMULA.md`
+> **상태**: 스테이징만 적용 / 프로덕션 미적용
+> **롤백**: 프로덕션 기준으로 스테이징·로컬 롤백 가능 (아래 절차 참고)
+
+### 17.1 변경 개요
+
+`UNIVERSAL_GROWTH_FORMULA.md`의 5단계 성장 엔진(본능→훅→확산→전환→잠금) 중 Stage 1~3을 콘텐츠 메이커 프롬프트에 반영.
+
+### 17.2 변경 항목 (4가지)
+
+| # | 개선 | 내용 | 적용 대상 |
+|---|------|------|-----------|
+| 1 | **본문 3단 구조 강제** | 문제 제시(30%) → 반전/인사이트(40%) → 해결+CTA(30%) 감정 흐름 | 숏폼, 카드뉴스, 밈광고 |
+| 2 | **본능 언어 주입** | 7대 본능 중 2개 이상 교차 자극 원칙 (오만+시기, 나태+탐욕 등) | 전체 6개 메이커 |
+| 3 | **CTA 원칙 강화** | 20자 이내, 동사 경량화, 확실한 보상 명시, 감정 최고조 직후 배치 | 전체 6개 메이커 |
+| 4 | **바이럴 체크 필드** | `viral_elements` JSON 필드 추가 (instinct_combo, emotion_flow, controversy_point, share_trigger) | 전체 5개 메이커 + 트렌드 추적기 |
+
+### 17.3 변경된 파일
+
+**Edge Functions (6개)**:
+
+| 함수 | #1 3단구조 | #2 본능 | #3 CTA | #4 바이럴 |
+|------|:---------:|:------:|:------:|:--------:|
+| `generate-short-form` | O | O | O | O |
+| `generate-card-news` | O | O | O | O |
+| `generate-meme-ad` | O | O | O | O |
+| `generate-ad-copy` | - (PAS 기존) | O | O | O |
+| `generate-ad-creative` | - | O | O | O |
+| `search-trends` | - | O (인사이트 본능분석) | O (팁에 CTA 가이드) | O (아이디어에 바이럴 삼각형) |
+
+**프론트엔드 (7개)**:
+
+| 파일 | 변경 |
+|------|------|
+| `src/shortform/types.ts` | `ViralElements` 타입 + `ScriptResult`에 optional 추가 |
+| `src/pages/ShortFormPage.tsx` | 바이럴 분석 UI 카드 (노란색, 메타 정보 아래) |
+| `src/pages/MemeAdPage.tsx` | 바이럴 분석 UI 카드 |
+| `src/pages/CardNewsPage.tsx` | `SlideResult` 타입 확장 + 바이럴 분석 UI 카드 |
+| `src/pages/AdCopyPage.tsx` | `AdCopyResult` 타입 확장 + 바이럴 분석 UI 카드 |
+| `src/pages/AdCreativePage.tsx` | `CreativeResult` 타입 확장 + 바이럴 분석 UI 카드 |
+| `src/pages/TrendTrackerPage.tsx` | 인사이트/아이디어/팁 타입 `string → string\|object` 유니온 + 세부정보 렌더링 |
+
+### 17.4 바이럴 분석 UI 카드
+
+대본 검토 / 결과 화면에 노란색 카드로 표시:
+
+| 필드 | 설명 | 색상 |
+|------|------|------|
+| **본능 자극** | 어떤 본능 조합을 사용했는지 (예: "나태+탐욕") | 기본 |
+| **감정 흐름** | 감정 이동 경로 (숏폼/카드뉴스/밈광고만) | 기본 |
+| **논란 포인트** | 댓글 유도용 찬반 갈림 포인트 | 주황 |
+| **공유 동기** | 공유 이유 (공감/유용함/놀람/유머) | 틸 |
+
+### 17.5 트렌드 추적기 변경 상세
+
+**topic-analysis 모드**:
+- `insights`: `string[]` → `{ text, instinct }[]` (본능 분석 추가)
+- `content_ideas`: `string[]` → `{ idea, differentiation, controversy, meme_potential, hook_strategy }[]` (바이럴 삼각형)
+
+**trending-insights 모드**:
+- `top_insights`: `string[]` → `{ text, instinct }[]`
+- `content_tips`: `string[]` → `{ tip, emotion, hook_example, cta_example }[]`
+
+**하위호환**: 프론트엔드에서 `typeof item === 'string'` 체크로 기존 string 형식도 정상 렌더링.
+
+### 17.6 롤백 절차
+
+이 변경이 마음에 안 들 경우, 프로덕션 버전 기준으로 롤백 가능.
+
+#### 프론트엔드 롤백 (로컬 + 스테이징)
+
+```bash
+# 프로덕션 브랜치에서 변경 전 소스 가져오기
+git checkout production -- \
+  src/shortform/types.ts \
+  src/pages/ShortFormPage.tsx \
+  src/pages/MemeAdPage.tsx \
+  src/pages/CardNewsPage.tsx \
+  src/pages/AdCopyPage.tsx \
+  src/pages/AdCreativePage.tsx \
+  src/pages/TrendTrackerPage.tsx
+
+git commit -m "revert: 성장 공식 프롬프트 고도화 프론트엔드 롤백"
+git push origin staging
+```
+
+#### Edge Function 롤백 (스테이징)
+
+```bash
+# 프로덕션 브랜치에서 원본 소스 가져오기
+git checkout production -- \
+  supabase/functions/generate-short-form/index.ts \
+  supabase/functions/generate-card-news/index.ts \
+  supabase/functions/generate-meme-ad/index.ts \
+  supabase/functions/generate-ad-copy/index.ts \
+  supabase/functions/generate-ad-creative/index.ts \
+  supabase/functions/search-trends/index.ts
+
+# 스테이징에 재배포
+npx supabase functions deploy generate-short-form --no-verify-jwt --project-ref hyltbeewxaqashyivilu
+npx supabase functions deploy generate-card-news --no-verify-jwt --project-ref hyltbeewxaqashyivilu
+npx supabase functions deploy generate-meme-ad --no-verify-jwt --project-ref hyltbeewxaqashyivilu
+npx supabase functions deploy generate-ad-copy --no-verify-jwt --project-ref hyltbeewxaqashyivilu
+npx supabase functions deploy generate-ad-creative --no-verify-jwt --project-ref hyltbeewxaqashyivilu
+npx supabase functions deploy search-trends --no-verify-jwt --project-ref hyltbeewxaqashyivilu
+
+# 로컬 소스 원복
+git checkout staging -- supabase/functions/
+```
+
+#### 프로덕션 배포 (검증 후)
+
+```bash
+# staging에서 검증 완료 후 production에 cherry-pick
+git checkout production
+git cherry-pick <커밋SHA>  # 프론트엔드 커밋
+git push origin production
+
+# Edge Function 프로덕션 배포
+npx supabase functions deploy <함수명> --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
+# (6개 함수 각각)
+
+# 역머지
+git checkout staging && git merge production --no-edit && git push origin staging
+```
+
+---
+
+**최종 업데이트**: 2026-03-24 (성장 공식 기반 프롬프트 고도화: 본능 자극 원칙, 감정 흐름 3단 구조, CTA 강화, 바이럴 체크 필드 — 전체 6개 Edge Function + 7개 프론트엔드 페이지. 스테이징만 적용, 프로덕션 미적용. 롤백 절차 포함)
