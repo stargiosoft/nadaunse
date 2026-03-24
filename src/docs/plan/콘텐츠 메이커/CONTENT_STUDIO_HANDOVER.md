@@ -62,7 +62,7 @@ src/
 │   └── generateCapcutProject.ts   # CapCut 프로젝트 JSON + TTS mp3 → ZIP 생성
 
 supabase/functions/
-├── search-trends/index.ts         # Apify X 트렌딩 + Gemini 주제별 트렌드 분석
+├── search-trends/index.ts         # Apify X 트렌딩 (scrape.badger WOEID) + Gemini 주제별 트렌드 분석
 ├── generate-card-news/index.ts    # Gemini 2.5 Flash → 슬라이드 기획 JSON
 ├── generate-card-image/index.ts   # Gemini 2.5 Flash Image → 배경 이미지
 ├── search-stock-image/index.ts    # Unsplash/Pexels 이미지 검색 프록시
@@ -116,7 +116,7 @@ supabase/functions/
 
 | 구성 요소 | 기술 | 역할 |
 |-----------|------|------|
-| **X 트렌딩** | Apify REST API (`data-slayer/twitter-trends-by-location`) | 한국 실시간 트렌딩 50개 |
+| **X 트렌딩** | Apify REST API (`scrape.badger/twitter-trends-scraper`, WOEID 23424868) | 한국 실시간 트렌딩 50개 |
 | **X 트렌딩 AI 분석** | Gemini 2.5 Flash (JSON 모드) | 트렌딩 키워드 종합 분석 (카테고리/인사이트/팁) |
 | **주제 분석** | Gemini 2.5 Flash + Google Search 그라운딩 | 실시간 웹 검색 기반 트렌드 분석 |
 | **API 호출** | `fetch(supabaseUrl + '/functions/v1/search-trends')` | 다른 콘텐츠 메이커와 동일 패턴 |
@@ -127,7 +127,7 @@ supabase/functions/
 - **역할**: 트렌드 검색 프록시 (3개 모드)
 - **입력**: `{ mode, country?, topic? }`
 - **모드 분기**:
-  - `x-trending`: Apify `run-sync-get-dataset-items` → 정규화된 `TrendItem[]` 반환
+  - `x-trending`: Apify `scrape.badger/twitter-trends-scraper` (WOEID 23424868=한국) → 정규화된 `TrendItem[]` 반환
   - `trending-insights`: Gemini 2.5 Flash JSON 모드 → 트렌딩 키워드 종합 분석 (카테고리 분류, 인사이트, 콘텐츠 팁)
   - `topic-analysis`: Gemini 2.5 Flash + `google_search` 그라운딩 → 주제별 트렌드 분석 JSON 반환
 - **폴백**: Google Search 그라운딩 실패 시 일반 JSON 모드로 재시도
@@ -182,7 +182,7 @@ supabase/functions/
 
 | 기능 | 비용 | 비고 |
 |------|------|------|
-| X 트렌딩 | ~$0.01/회 | Apify Actor (무료 플랜 월 $5 크레딧, ~500회) |
+| X 트렌딩 | ~$0.01/회 | Apify Actor `scrape.badger/twitter-trends-scraper` (무료 플랜 월 $5 크레딧) |
 | X 트렌딩 AI 분석 | Gemini API 비용 | 트렌딩 결과 자동 분석 |
 | 주제별 분석 | Gemini API 비용 | Google Search 그라운딩 포함 |
 | **Apify 무료 플랜** | 월 $5 크레딧 | 카드 미등록 시 한도 초과 자동 차단, 과금 없음 |
