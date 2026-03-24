@@ -26,6 +26,7 @@ type TrendItem = {
   category: string | null;
   volume: string | number | null;
   url: string | null;
+  description: string | null;
 };
 
 type TopicKeyword = {
@@ -271,7 +272,7 @@ export default function TrendTrackerPage() {
               fontFamily: font, fontSize: '12px', fontWeight: 400,
               color: C.textCaption, marginTop: '16px', textAlign: 'center',
             }}>
-              Apify API 사용 · 1회 약 $0.01
+              Gemini AI + Google Search 기반 실시간 분석
             </p>
 
             {/* 구분선 */}
@@ -472,6 +473,15 @@ export default function TrendTrackerPage() {
                         border: `1px solid ${C.primary}`, borderTop: 'none',
                         marginBottom: '4px',
                       }}>
+                        {item.description && (
+                          <p style={{
+                            fontFamily: font, fontSize: '13px', fontWeight: 400,
+                            lineHeight: '20px', letterSpacing: '-0.2px',
+                            color: C.textSecondary, marginBottom: '10px',
+                          }}>
+                            {item.description}
+                          </p>
+                        )}
                         <p style={{
                           fontFamily: font, fontSize: '12px', fontWeight: 500,
                           color: C.textTertiary, marginBottom: '10px',
