@@ -84,6 +84,11 @@ D. 3D Typography - 3D text signage style, dimensional typography
 ## 출력 JSON 형식
 
 {
+  "viral_elements": {
+    "instinct_combo": "자극하는 본능 조합 (예: 나태+탐욕)",
+    "controversy_point": "댓글에서 찬반이 갈릴 수 있는 의견 갈림 포인트 1개",
+    "share_trigger": "공유 동기 (공감/유용함/놀람/유머 중 1개)"
+  },
   "options": [
     {
       "id": "A",
@@ -118,6 +123,19 @@ D. 3D Typography - 3D text signage style, dimensional typography
 3. 텍스트 배치: "At the top, a bold headline '[한글 헤드라인]' is placed in [Color]..."
 4. CTA 버튼: "At the bottom center, a pill-shaped CTA button with [Color] background displays '[한글 CTA]' in White."
 5. 분위기: "The overall mood is [tone], with [quality details]."
+
+## 본능 자극 원칙 (7대 본능 중 2개 이상 교차)
+각 옵션의 headline은 반드시 아래 본능 중 2개 이상을 동시에 건드려야 한다:
+- 오만(나는 특별하다) + 시기(나도 저렇게) = "상위 1%만 아는 비밀"
+- 나태(시간 아껴줘) + 탐욕(더 벌고 싶다) = "자동으로 돈 버는 법"
+- 분노(이건 부당하다) + 나태(쉽게 해결) = "몰라서 손해 보던 것"
+- 음욕(매력적으로) + 시기(비교) = "요즘 다들 하는데 나만 모르는"
+제품에 가장 잘 맞는 본능 조합을 선택하라.
+
+## CTA 작성 원칙
+- 20자 이내 — 동사 하나 + 보상 하나
+- 동사 경량화: "가입"→"시작하기", "신청"→"확인하기"
+- 확실한 보상 명시: "뭔가 좋은 것" X → "무료 체험 시작" O
 
 ## AI 티 방지 (CRITICAL)
 - "Glowing" → "Ambient lighting", "Soft glow"

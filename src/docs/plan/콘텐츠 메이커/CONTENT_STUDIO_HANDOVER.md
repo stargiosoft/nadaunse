@@ -1,15 +1,15 @@
 # 콘텐츠 스튜디오 인수인계서
 
 > **작성일**: 2026-03-20
-> **상태**: 카드뉴스 메이커 완료 / 숏폼 메이커 완료 / 광고 카피 메이커 완료 / 광고 소재 메이커 완료 / CapCut 프로젝트 내보내기 완료 / 숏폼 모션 그래픽 15종 완료 / 숏폼 AI 이미지 배경 완료 / 숏폼 BGM 자동생성 완료 / 트렌드 추적기 완료 / 밈광고영상 메이커 완료 / **Replicate I2V 영상 배경 완료** / **씬별 다이나믹 컬러 완료**
+> **상태**: 카드뉴스 메이커 완료 / 숏폼 메이커 완료 / 광고 카피 메이커 완료 / 광고 소재 메이커 완료 / CapCut 프로젝트 내보내기 완료 / 숏폼 모션 그래픽 18종 완료 / 숏폼 AI 이미지 배경 완료 / 숏폼 BGM 자동생성 완료 / 트렌드 추적기 완료 / 밈광고영상 메이커 완료 / Replicate I2V 영상 배경 완료 / 씬별 다이나믹 컬러 완료 / Lottie 모션 오버레이 10종 완료 / ElevenLabs TTS 전환 완료 / 나레이션 음성 선택 UI 완료 / 프롬프트 품질 개선 완료 / **Remotion 4.0.438 + TransitionSeries + Light Leaks 완료** / **오디오 리액티브 비주얼 완료 (프레임 기반 시뮬레이션)** / **병렬 처리 최적화 완료 (이미지 3개씩 배치, I2V 순차)** / **I2V 영상 뮤트 + 카메라모션 전용 프롬프트** / **Storage RLS 정책 추가** / **TTS 문장 간 쉼 전처리 + 0.5초 무음 패딩 완료** / **밈광고 화면비율·영상타입·비주얼스타일·I2V모델 선택 완료** / **BGM Edge Function audioUrl 직접 반환 (메모리 초과 해결)** / **이미지 재생성 병렬 처리 완료** / **나레이션 없음 시 미리보기 수정** / **영상 타입 3종 분리 (모션/이미지/영상) 완료** / **대본 수정 revision 프롬프트 분리 완료** / **BGM Ducking (TTS 구간 볼륨 자동 조절) 완료** / **카드뉴스 본문 글자수 축소 완료** / **밈광고 전환 효과 라벨 직관화 완료** / **광고 소재 전략명 한글 전용 완료** / **썸네일 메이커 완료 (레퍼런스 기반 AI 생성 + 리스트 자동 감지 + ZIP 다운로드)** / **숏폼 레퍼런스 이미지 지원 완료 (스타일/캐릭터+스타일 참고 방식)**
 
 ---
 
 ## 1. 개요
 
-AI 기반 콘텐츠 제작 허브. **트렌드 추적기**, **카드뉴스 메이커**, **숏폼 메이커**, **밈광고영상 메이커**, **광고 카피 메이커**, **광고 소재 메이커** 기능이 구현되어 있다.
+AI 기반 콘텐츠 제작 허브. **트렌드 추적기**, **카드뉴스 메이커**, **숏폼 메이커**, **밈광고영상 메이커**, **광고 카피 메이커**, **광고 소재 메이커**, **썸네일 메이커** 기능이 구현되어 있다.
 
-**진입 경로**: `/contents-maker` (콘텐츠 허브) → `/trend-tracker` (트렌드 추적기) / `/card-news` (카드뉴스) / `/short-form` (숏폼) / `/meme-ad` (밈광고영상) / `/ad-copy` (광고 카피) / `/ad-creative` (광고 소재)
+**진입 경로**: `/contents-maker` (콘텐츠 허브) → `/trend-tracker` (트렌드 추적기) / `/thumbnail` (썸네일) / `/card-news` (카드뉴스) / `/short-form` (숏폼) / `/meme-ad` (밈광고영상) / `/ad-copy` (광고 카피) / `/ad-creative` (광고 소재)
 
 ---
 
@@ -24,16 +24,23 @@ src/
 │   ├── ShortFormPage.tsx          # 숏폼 메이커 (2depth)
 │   ├── MemeAdPage.tsx              # 밈광고영상 메이커 (2depth)
 │   ├── AdCopyPage.tsx             # 광고 카피 메이커 (2depth)
-│   └── AdCreativePage.tsx         # 광고 소재 메이커 (2depth)
+│   ├── AdCreativePage.tsx         # 광고 소재 메이커 (2depth)
+│   └── ThumbnailPage.tsx         # 썸네일 메이커 (2depth)
 ├── shortform/
 │   ├── types.ts                   # Scene, ScriptResult, TtsAudio, MotionStyle 타입 (accent_color/glow_color/backgroundVideoUrl 포함)
 │   ├── constants.ts               # VIDEO_WIDTH(1080), HEIGHT(1920), FPS(30)
-│   ├── renderVideo.ts             # Canvas + WebCodecs + mp4-muxer 브라우저 MP4 렌더링 (이미지/비디오 배경 + 15종 모션 동기화)
+│   ├── renderVideo.ts             # Canvas + WebCodecs + mp4-muxer 브라우저 MP4 렌더링 (이미지/비디오 배경 + 18종 모션 + Lottie + 오디오 리액티브)
+│   ├── lottie/                    # Lottie 오버레이 시스템
+│   │   ├── index.ts               # 에셋 레지스트리 + fetch 캐시 + 프리로드
+│   │   ├── types.ts               # LottieOverlayType, Position, Config 타입
+│   │   └── overlayMapping.ts      # 씬타입/모션스타일 → Lottie 오버레이 매핑
 │   └── compositions/
-│       ├── ShortFormVideo.tsx      # Remotion 영상 루트 컴포지션 (prevScene 전달)
-│       ├── SceneRenderer.tsx       # 씬별 배경 (비디오/이미지/그라디언트) + 다이나믹 컬러 + 모션 디스패치 + 전환 효과
+│       ├── ShortFormVideo.tsx      # Remotion 영상 루트 (TransitionSeries + Light Leaks + 오디오 리액티브)
+│       ├── SceneRenderer.tsx       # 씬별 배경 + 모션 디스패치 + Lottie 오버레이
+│       ├── AudioReactiveOverlay.tsx # 프레임 기반 시뮬레이션 비주얼 (글로우 펄스 + 비트 플래시 + 웨이브폼, @remotion/media-utils 제거)
+│       ├── LottieOverlay.tsx       # @remotion/lottie 래퍼 컴포넌트 (fetch + 캐시 + 페이드)
 │       ├── SubtitleOverlay.tsx     # 자막 워드별 스프링 애니메이션 (**볼드** 노란색 하이라이트)
-│       └── motions/               # 모션 그래픽 컴포넌트 (15종)
+│       └── motions/               # 모션 그래픽 컴포넌트 (18종)
 │           ├── index.ts           # MOTION_REGISTRY (MotionStyle → 컴포넌트 매핑)
 │           ├── types.ts           # MotionComponentProps 인터페이스
 │           ├── KeywordPopMotion.tsx    # 키워드 스프링 팝인 (기본)
@@ -73,7 +80,8 @@ supabase/functions/
 ├── generate-ad-copy/index.ts      # Gemini 2.5 Flash → 광고 카피 JSON
 ├── generate-ad-creative/index.ts  # Gemini 2.5 Flash → 광고 소재 기획안 JSON
 ├── generate-ad-image/index.ts     # Gemini 2.5 Flash Image → 광고 포스터 이미지
-└── generate-scene-video/index.ts  # Replicate Predictions API → 씬별 Image-to-Video (Wan/Hailuo/Kling)
+├── generate-scene-video/index.ts  # Replicate Predictions API → 씬별 Image-to-Video (Wan/Hailuo/Kling)
+└── generate-thumbnail-image/index.ts  # Gemini 3.1 Flash Image → 썸네일 이미지 (레퍼런스 + reference_mode 지원)
 ```
 
 ---
@@ -90,8 +98,8 @@ supabase/functions/
 [X 트렌딩 결과 — 탭 UI]
 ┌─ [트렌드 탭] ─────────────────┐  ┌─ [AI 분석 탭] ────────────────┐
 │ 한국 실시간 트렌딩 50개 리스트   │  │ 오늘의 X 분위기 (한 줄 요약)   │
-│ 키워드 탭 → 콘텐츠 만들기       │  │ 카테고리 분류 (3~6개, 태그)    │
-│                                │  │ 핵심 인사이트 (3~5개)          │
+│ 키워드 탭 → "X에서 보기" 링크   │  │ 카테고리 분류 (3~6개, 태그)    │
+│ 키워드 탭 → 콘텐츠 만들기       │  │ 핵심 인사이트 (3~5개)          │
 │                                │  │ 콘텐츠 제작 팁 (2~3개)         │
 └────────────────────────────────┘  └────────────────────────────────┘
 
@@ -100,7 +108,8 @@ supabase/functions/
 ├── 트렌딩 키워드 5~10개 (HOT/WARM/RISING 배지 + 플랫폼 배지)
 │   └── 키워드 탭 → 카드뉴스/숏폼/광고카피 만들기
 ├── 핵심 인사이트 3~5개
-└── 콘텐츠 아이디어 3~5개
+├── 콘텐츠 아이디어 3~5개
+└── Google Search 그라운딩 출처 아코디언 (접힘 기본)
 ```
 
 ### 3.2 콘텐츠 제작 연동
@@ -129,7 +138,7 @@ supabase/functions/
 - **모드 분기**:
   - `x-trending`: Apify `run-sync-get-dataset-items` → 정규화된 `TrendItem[]` 반환
   - `trending-insights`: Gemini 2.5 Flash JSON 모드 → 트렌딩 키워드 종합 분석 (카테고리 분류, 인사이트, 콘텐츠 팁)
-  - `topic-analysis`: Gemini 2.5 Flash + `google_search` 그라운딩 → 주제별 트렌드 분석 JSON 반환
+  - `topic-analysis`: Gemini 2.5 Flash + `google_search` 그라운딩 → 주제별 트렌드 분석 JSON 반환 + `groundingChunks` 출처 추출
 - **폴백**: Google Search 그라운딩 실패 시 일반 JSON 모드로 재시도
 - **JSON 추출**: 마크다운 코드블록 자동 파싱
 - **환경변수**: `APIFY_API_TOKEN`, `GOOGLE_API_KEY`
@@ -210,7 +219,7 @@ supabase/functions/
 ### 4.3 제작 프로세스
 
 1. 커버 이미지 먼저 생성 (Unsplash 또는 AI)
-2. 사용자가 커버 승인 → 나머지 슬라이드 배치 생성 (3개씩 `Promise.allSettled`)
+2. 사용자가 커버 승인 → 나머지 슬라이드 배치 생성 (AI: 3개씩 `Promise.allSettled` / Unsplash: 3개씩 병렬 검색)
 3. AI 모드에서는 커버 이미지를 `reference_image`로 전달해 톤/스타일 통일
 4. 각 슬라이드 hover 시 개별 재생성 가능
 5. 전체 완료 후 `html-to-image` + `JSZip`으로 ZIP 다운로드
@@ -235,41 +244,49 @@ supabase/functions/
 
 ```
 [Step 1: 입력]           [Step 2: 대본 검토]       [Step 3: 영상 제작]
-주제 텍스트 입력      →   AI 대본 확인           →   Phase A: TTS 나레이션 생성
+주제 텍스트 입력      →   AI 대본 확인           →   Phase A: TTS 나레이션 생성 (나레이션 없음 시 스킵)
 영상 길이 선택             씬별 타임라인              Phase A+: BGM 검색 (Jamendo, 선택 시)
-(10/15/30초)              채팅으로 수정 요청          Phase A-2: AI 배경 이미지 생성 (이미지 타입만)
-플랫폼 선택                해시태그/BGM/썸네일         Phase A-3: Replicate I2V 영상 배경 변환 (이미지 타입만)
-(릴스/쇼츠/틱톡)           처음으로 / 영상 만들기      Phase B: Remotion 미리보기
+(10/15/30초)              채팅으로 수정 요청          Phase A-2: AI 배경 이미지 생성 (이미지/영상 타입)
+목적 선택                  해시태그/BGM/썸네일         Phase A-3: Replicate I2V 영상 배경 변환 (영상 타입만)
+(바이럴/정보전달/스토리텔링) 처음으로 / 영상 만들기     Phase B: Remotion 미리보기
 영상 타입 선택                                        Phase C: MP4 렌더링
-(이미지 기반/모션 그래픽)                              Phase D: 다운로드 (MP4/TXT/CapCut)
-I2V 모델 선택 (이미지 타입 시)
+(모션 그래픽/이미지 기반/영상 기반)                    Phase D: 다운로드 (MP4/TXT/CapCut)
+이미지 소스 (이미지/영상 타입 시)
+(AI 생성/스톡 이미지)
+I2V 모델 선택 (영상 타입 시)
 (Wan 2.5 / Hailuo Fast / Kling v2.1)
+나레이션 음성 선택 (드롭다운)
+(없음/Aria 차분한여성/Sarah 따뜻한여성/Laura 명랑한여성/Roger 신뢰감남성/Charlie 또렷한남성)
 BGM 선택 (드롭다운)
 (없음/밝고 경쾌한/차분한/긴장감/감성/힙한/신나는/동기부여/미스터리)
 ```
 
-### 4.1.1 영상 타입 선택 (2종) — 모두 구현 완료
+### 4.1.1 영상 타입 선택 (3종) — 모두 구현 완료
 
-| 타입 | 설명 | 상태 |
+| 타입 | 설명 | 흐름 |
 |------|------|------|
-| **이미지 기반** (기본값) | 씬별 Gemini AI 이미지 → Replicate I2V 영상 배경 (폴백: Ken Burns) | **구현 완료** |
-| **모션 그래픽** | AI 자동 선택 모션 스타일 (15종) + 다이나믹 컬러 팔레트 | **구현 완료** |
+| **모션 그래픽** (기본값) | AI 자동 선택 모션 스타일 (18종) + 다이나믹 컬러 팔레트 | TTS → BGM → 미리보기 |
+| **이미지 기반** | 씬별 AI 이미지 + 줌/패닝(Ken Burns) 효과 | TTS → BGM → 이미지 생성 → 이미지 확인 → 미리보기 |
+| **영상 기반** | 씬별 AI 이미지 → Replicate I2V 영상 배경 | TTS → BGM → 이미지 생성 → 이미지 확인 → I2V 영상 변환 → 미리보기 |
 
-- `videoType` 파라미터를 Edge Function에 전달
+- `videoType` 파라미터를 Edge Function에 전달 (`video` 타입은 `image`로 변환하여 전달)
   - `motion`: 프롬프트에 `motion_style`, `layout`, `icon`, `accent_color`, `glow_color` 필드 추가 → Gemini가 씬별 최적 모션 + 색상 자동 선택
-  - `image`: TTS 생성 후 Phase A-2에서 `generate-card-image` 재활용하여 씬별 9:16 배경 이미지 생성 → Phase A-3에서 Replicate I2V로 영상 변환
-- I2V 모델 선택 (UI 버튼): Wan 2.5 (~$0.60/영상, 기본) / Hailuo Fast (~$0.90/영상) / Kling v2.1 (~$2.10/영상)
+  - `image`: TTS 생성 후 Phase A-2에서 이미지 생성 → 이미지 확인/재생성 → Ken Burns 배경으로 미리보기
+  - `video`: `image`와 동일하게 이미지 생성 → 이미지 확인/재생성 → Phase A-3에서 Replicate I2V로 영상 변환
+  - 페이지 이탈/처음으로/뒤로가기 시 **Storage 임시 이미지 자동 삭제**
+- 이미지 소스 선택 (이미지/영상 타입 시): AI 생성 (Gemini) / 스톡 이미지 (Unsplash·Pexels)
+- I2V 모델 선택 (영상 타입 시): Wan 2.5 (~$0.60/영상, 기본) / Hailuo Fast (~$0.90/영상) / Kling v2.1 (~$2.10/영상)
 
 ### 4.2 기술 스택
 
 | 구성 요소 | 기술 | 역할 |
 |-----------|------|------|
 | **대본 생성** | Gemini 2.5 Flash | 씬별 나레이션+자막+비주얼 JSON |
-| **나레이션 TTS** | OpenAI TTS (`tts-1`, voice: `nova`) | 씬별 mp3 음성 생성 |
+| **나레이션 TTS** | ElevenLabs (`eleven_turbo_v2_5`, 5종 음성) / OpenAI TTS (`tts-1-hd`) 폴백 | 씬별 mp3 음성 생성 (나레이션 없음 옵션 포함) |
 | **배경음악 BGM** | Jamendo API v3.0 | 무드별 로열티 프리 BGM 검색 (CC 라이선스) |
 | **영상 배경 I2V** | Replicate Predictions API (Wan 2.5 / Hailuo Fast / Kling v2.1) | 이미지 → 5초 AI 영상 변환 |
 | **영상 미리보기** | Remotion `@remotion/player` | 브라우저 내 실시간 재생 |
-| **영상 렌더링** | Canvas + WebCodecs + `mp4-muxer` | 브라우저에서 MP4 인코딩 (15종 모션 동기화) |
+| **영상 렌더링** | Canvas + WebCodecs + `mp4-muxer` | 브라우저에서 MP4 인코딩 (18종 모션 동기화) |
 
 ### 4.3 영상 사양
 
@@ -281,15 +298,15 @@ BGM 선택 (드롭다운)
 
 ### 4.4 영상 구성 요소
 
-| 요소 | 이미지 기반 | 모션 그래픽 |
-|------|------------|------------|
-| **배경** | Replicate I2V 영상 배경 (이미지 → 5초 AI 영상) + 다크 오버레이 + 비네팅 / 폴백: Gemini AI 이미지 + Ken Burns | 씬 타입별 다크 그라디언트 + 그리드 패턴 + 레이디얼 글로우 |
-| **모션** | keyword_pop 등 15종 (motion_style 미지정 시 기본) | **AI 자동 선택 15종** (Gemini가 씬별 최적 스타일 + 색상 배정) |
-| **자막** | 하단 중앙, `**볼드**` 마커 → 노란색 강조, 스프링 애니메이션 | (동일) |
-| **전환** | cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate (7종, 씬별 `transition` 값 기반) + 씬간 색상 블렌딩 | (동일) |
-| **오디오** | 씬별 TTS 나레이션 + BGM (Jamendo, 볼륨 25%, 페이드인/아웃) | (동일) |
-| **아이콘** | 기본 테마 아이콘 | Gemini가 씬별 `icon` 이모지 자동 선택 |
-| **오버레이** | 숨김 (이미지 배경이 비주얼 역할) | X마크/체크/파티클 (씬 타입별) + 떠다니는 도형 |
+| 요소 | 이미지 기반 | 영상 기반 | 모션 그래픽 |
+|------|------------|----------|------------|
+| **배경** | AI 이미지 + Ken Burns 줌/패닝 + 다크 오버레이 | Replicate I2V 영상 배경 (**muted**, 카메라 모션 전용) + 다크 오버레이 / 폴백: 이미지 + Ken Burns | 씬 타입별 다크 그라디언트 + 그리드 패턴 + 레이디얼 글로우 |
+| **모션** | keyword_pop 등 18종 (기본) | (동일) | **AI 자동 선택 18종** (Gemini가 씬별 최적 스타일 + 색상 배정) |
+| **자막** | 하단 중앙, `**볼드**` → 노란색, 스프링 | (동일) | (동일) |
+| **전환** | 7종 (cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate) | (동일) | (동일) |
+| **오디오** | TTS + BGM (Jamendo, **TTS 구간 ducking**: 0.04 / 비TTS: 0.12) | (동일) | (동일) |
+| **아이콘** | 기본 테마 아이콘 | (동일) | Gemini가 씬별 `icon` 이모지 자동 선택 |
+| **오버레이** | 숨김 (이미지가 비주얼) | 숨김 (영상이 비주얼) | X마크/체크/파티클 + 떠다니는 도형 |
 
 ### 4.5 대본 JSON 구조
 
@@ -319,14 +336,14 @@ BGM 선택 (드롭다운)
 ```
 
 **모션 그래픽 타입 전용 필드** (`videoType === 'motion'` 시에만 생성):
-- `motion_style`: 15종 중 1개 (keyword_pop/typewriter/slide_stack/counter/split_compare/radial_burst/list_reveal/zoom_impact/glitch/wave/spotlight/card_flip/progress_bar/emoji_rain/parallax_layers)
+- `motion_style`: 18종 중 1개 (keyword_pop/typewriter/slide_stack/counter/split_compare/radial_burst/list_reveal/zoom_impact/glitch/wave/spotlight/card_flip/progress_bar/emoji_rain/parallax_layers/confetti_burst/sparkle_trail/pulse_ring)
 - `layout`: center/top_heavy/bottom_heavy/split_left/split_right
 - `icon`: 씬 내용에 맞는 이모지 1개
 - `accent_color`: 씬 분위기에 맞는 HEX 색상 (예: `#FF6B6B`) — Gemini 자동 선택
 - `glow_color`: 글로우/배경 HEX 색상 — accent와 유사 톤
 
 **이미지 기반 타입 전용** (클라이언트에서 추가):
-- `backgroundImageUrl`: Phase A-2에서 생성된 이미지 data URL (Scene 객체에 동적 첨부)
+- `backgroundImageUrl`: Phase A-2에서 생성된 이미지 → webp 변환 → Supabase Storage public URL (Scene 객체에 동적 첨부)
 - `backgroundVideoUrl`: Phase A-3에서 Replicate I2V로 생성된 영상 URL (CDN)
 
 ---
@@ -342,12 +359,29 @@ BGM 선택 (드롭다운)
 ```
 [Step 1: 입력]                    [Step 2: 광고 대본]              [Step 3: 영상 제작]
 훅 영상 업로드 (1~10초 MP4)    →   AI 광고 대본 생성            →   Phase A: TTS 나레이션 생성
-외부 사이트 링크 CTA               씬별 나레이션/자막              Phase A-2: AI 배경 이미지 생성
-브랜드/제품 정보 입력              채팅으로 수정 요청              Phase B: Remotion 미리보기
-광고 길이 (5/10/15초)              처음으로 / 영상 만들기           (훅 + 전환효과 + 광고)
-플랫폼 (릴스/쇼츠/틱톡)                                          Phase C: MP4 렌더링
-전환 효과 (fade/flash/glitch/zoom)                               Phase D: 다운로드 (MP4/TXT)
+외부 사이트 링크 CTA               씬별 나레이션/자막              Phase A+: BGM 검색 (선택 시)
+브랜드/제품 정보 입력              채팅으로 수정 요청              Phase A-2: AI 배경 이미지 생성 (이미지/영상 타입)
+광고 길이 (5/10/15초)              처음으로 / 영상 만들기          Phase A-3: 이미지 확인 + 재생성 (이미지/영상 타입)
+전환 효과 (부드럽게/번쩍/찢어짐/확대)                             Phase A-4: I2V 영상 변환 (영상 타입만)
+화면 비율 (9:16/3:4/1:1)                                         Phase B: Remotion 미리보기
+영상 타입 (모션 그래픽/이미지 기반/영상 기반)                      Phase C: MP4 렌더링
+비주얼 스타일 (5종, 모션 시)                                      Phase D: 다운로드 (MP4/TXT)
+I2V 모델 (Wan/Hailuo/Kling, 영상 시)
+나레이션 음성 / BGM
 ```
+
+### 5.2.1 영상 타입 선택 (3종) — 숏폼과 동일
+
+| 타입 | 설명 | 흐름 |
+|------|------|------|
+| **모션 그래픽** (기본값) | AI 자동 선택 모션 스타일 (18종) + 다이나믹 컬러 팔레트 + 비주얼 스타일 5종 | TTS → BGM → 미리보기 |
+| **이미지 기반** | 씬별 AI 이미지 + 줌/패닝(Ken Burns) 효과 | TTS → BGM → 이미지 → 확인 → 미리보기 |
+| **영상 기반** | 씬별 AI 이미지 → Replicate I2V 영상 배경 | TTS → BGM → 이미지 → 확인 → I2V → 미리보기 |
+
+- `videoType` 파라미터를 Edge Function에 전달 (`video` 타입은 `image`로 변환하여 전달)
+  - `motion`: 프롬프트에 `accent_color`, `glow_color` 필드 추가 → Gemini가 씬별 최적 색상 자동 선택
+  - `image`: TTS 생성 후 Phase A-2에서 이미지 생성 → 확인/재생성 → Ken Burns 배경으로 미리보기
+  - `video`: `image`와 동일하게 이미지 생성 → 확인/재생성 → Phase A-4에서 Replicate I2V로 영상 변환
 
 ### 5.3 핵심 구성
 
@@ -356,9 +390,11 @@ BGM 선택 (드롭다운)
 | **훅 영상** | 사용자 업로드 MP4 (1~10초, 최대 50MB), 드래그&드롭 지원 |
 | **외부 사이트 CTA** | Transitional Hooks, VideoHooks.app, AISEO, VideoHooks.art, ViralHooks.org |
 | **광고 대본** | Gemini가 브랜드 정보 기반으로 생성 (밈→광고 자연스러운 전환 멘트 포함) |
-| **전환 효과** | 4종 — fade(페이드), flash(플래시), glitch(글리치), zoom(줌) |
-| **Remotion 미리보기** | `<Video>` 컴포넌트로 훅 재생 + `SceneRenderer` 재사용 |
-| **MP4 렌더링** | 훅 프레임 추출(`createImageBitmap`) + 광고 씬 Canvas + 오디오 믹싱 |
+| **전환 효과** | 4종 — fade(부드럽게), flash(번쩍), glitch(찢어짐), zoom(확대) |
+| **화면 비율** | 3종 — 9:16 (1080×1920), 3:4 (1080×1440), 1:1 (1080×1080) |
+| **영상 타입** | 모션 그래픽 (18종 모션 + 비주얼 5종) / 이미지 기반 (AI 이미지 + Ken Burns) / 영상 기반 (AI 이미지 → I2V 영상) |
+| **Remotion 미리보기** | `<Video>` 컴포넌트로 훅 재생 + `SceneRenderer` 재사용 + `motionTheme` 전달 |
+| **MP4 렌더링** | 훅 프레임 추출(`createImageBitmap`) + 광고 씬 Canvas + 오디오 믹싱 (가변 해상도 지원) |
 
 ### 5.4 기술 구현
 
@@ -546,6 +582,90 @@ CTA 위치 선택                      채팅으로 수정 요청
 
 ---
 
+## 7.5. 썸네일 메이커 — 완료
+
+### 7.5.1 개요
+
+레퍼런스 이미지 + 명령어 기반 AI 썸네일 생성 도구. 리스트를 자동 감지하여 항목별 개별 이미지를 생성한다.
+
+### 7.5.2 기능 흐름 (2단계)
+
+```
+[Step 1: 입력]                    [Step 2: 결과]
+명령어 텍스트 입력 (필수)      →   이미지 그리드 (프로그레스 바)
+레퍼런스 이미지 업로드 (선택)      개별 재생성 / 다운로드
+참고 방식 (스타일만/캐릭터+스타일)  ZIP 전체 다운로드
+이미지 비율 (9:16/3:4/1:1/16:9)
+생성 개수 (1~4 프리셋 / 직접 입력 최대 50)
+파일 형식 (PNG/JPG/WebP)
+```
+
+### 7.5.3 핵심 기능
+
+| 기능 | 설명 |
+|------|------|
+| **레퍼런스 이미지** | 10MB 이하 이미지 업로드, base64 변환 후 Gemini에 전달 |
+| **참고 방식** | `style_only` (색감·구도·분위기만) / `style_and_character` (얼굴·정체성 고정, 옷·배경 자유) |
+| **리스트 자동 감지** | 프롬프트에서 줄바꿈 리스트 파싱 → 지시문 + 항목 분리 → 항목별 개별 프롬프트 생성 |
+| **병렬 배치 처리** | 4장씩 `Promise.allSettled` 병렬, 그룹 간 직렬 |
+| **파일 형식 변환** | Canvas 기반 PNG/JPG/WebP 변환 후 다운로드 |
+| **ZIP 다운로드** | JSZip으로 전체 이미지 압축 다운로드 |
+| **텍스트 금지** | 프롬프트에 "Do NOT include ANY text" 규칙 내장 |
+| **안전 필터 재시도** | Gemini 빈 응답(안전 필터 차단) 시 프롬프트 간소화 후 1회 자동 재시도 |
+
+### 7.5.4 Edge Function: generate-thumbnail-image
+
+- **역할**: 명령어 + 레퍼런스 → 썸네일 이미지 (base64 PNG)
+- **AI**: Gemini 3.1 Flash Image (`responseModalities: ['TEXT', 'IMAGE']`)
+- **입력**: `{ prompt, reference_image?, reference_mode?, aspect_ratio? }`
+- **출력**: `{ image: base64, mimeType }`
+- **reference_mode 분기**:
+  - `style_only`: 스타일만 참고, 캐릭터 새로 생성
+  - `style_and_character`: 얼굴·헤어·정체성 고정, 옷·포즈·배경 자유 변경
+- **텍스트 금지 규칙**: 모든 모드에 "CRITICAL RULE: Do NOT include ANY text..." 자동 추가
+- **429 재시도**: 3회, 10초/20초/30초 간격
+- **빈 응답 재시도**: 안전 필터 차단 시 프롬프트 간소화 후 1회 재시도, blockReason 로깅
+- **환경변수**: `GOOGLE_API_KEY`
+- **배포 옵션**: `--no-verify-jwt`
+
+### 7.5.5 리스트 자동 감지 로직
+
+```
+입력: "캐릭터를 아래 직업으로 바꿔줘\nUX/UI 디자이너\n사운드 디자이너\n..."
+     ↓ parsePromptItems()
+지시문: "캐릭터를 아래 직업으로 바꿔줘"
+항목: ["UX/UI 디자이너", "사운드 디자이너", ...]
+     ↓ 항목별 개별 프롬프트 생성
+"캐릭터를 아래 직업으로 바꿔줘\n\n이번 이미지의 주제: UX/UI 디자이너"
+```
+
+- 조건: 지시문 1줄 이상 + 30자 이하 짧은 줄 연속 2개 이상
+- 감지 시 UI에 태그 프리뷰 + CTA "N장 생성하기" 표시
+- 다운로드 파일명에 항목명 반영 (예: `UX/UI 디자이너.png`)
+
+---
+
+## 7.6. 숏폼 레퍼런스 이미지 지원 — 완료
+
+### 7.6.1 개요
+
+숏폼 메이커에서 이미지 기반 / 영상 기반 + AI 생성 선택 시, 레퍼런스 이미지를 첨부하여 씬별 이미지 생성에 스타일/캐릭터를 반영할 수 있다.
+
+### 7.6.2 동작 방식
+
+1. 이미지/영상 기반 + AI 생성 선택 시 레퍼런스 업로드 UI 표시
+2. 참고 방식 선택 (스타일만 참고 / 캐릭터+스타일)
+3. Phase A-2 이미지 생성 시 `generate-card-image`에 `reference_image` + `reference_mode` 전달
+4. 재생성 시에도 동일 레퍼런스 적용
+
+### 7.6.3 generate-card-image 변경
+
+- `reference_mode` 파라미터 추가
+- `style_and_character`: "Keep the SAME person's face... freely change clothing, pose, background"
+- `style_only` (기존): "Copy the visual style, color palette, lighting, and mood but create completely new content"
+
+---
+
 ## 8. Edge Functions 상세
 
 ### 8.1 generate-card-news
@@ -586,28 +706,42 @@ CTA 위치 선택                      채팅으로 수정 요청
 - **AI**: Gemini 2.5 Flash (`responseMimeType: 'application/json'`)
 - **입력**: `{ topic, duration, platform, videoType?, revision? }`
 - **출력**: `{ title, hook, total_duration, scenes, hashtags, bgm_mood, thumbnail_text }`
-- **프롬프트 특징**: 행동경제학 후킹 전략 5가지 + 자막 스타일 가이드 + 플랫폼별 최적화
-- **videoType 분기**: `motion` 시 프롬프트에 모션 스타일 15종 + 색상 팔레트 8계열 + 전환 7종 규칙 추가 → 씬별 `motion_style`, `layout`, `icon`, `accent_color`, `glow_color` 필드 생성
+- **프롬프트 특징**: 행동경제학 후킹 전략 5가지 + 자막 스타일 가이드 + 나레이션 글자수 제한 (초당 6자) + 모션-자막 연동 규칙 (CRITICAL)
+- **videoType 분기**: `motion` 시 프롬프트에 모션 스타일 18종 + 모션별 자막 필수 형식 표 + 레이아웃 가이드 + 색상 팔레트 5테마 + 전환 7종 규칙 추가 → 씬별 `motion_style`, `layout`, `icon`, `accent_color`, `glow_color` 필드 생성
+- **JSON 파싱**: 마크다운 코드블록 자동 제거 + try-catch 에러 핸들링
+- **temperature**: 0.7 (구조화 출력 안정성)
 - **환경변수**: `GOOGLE_API_KEY`
 - **배포 옵션**: `--no-verify-jwt`
 
 ### 8.5 generate-tts
 
 - **역할**: 텍스트 → 나레이션 음성 (mp3 base64)
-- **AI**: OpenAI TTS (`tts-1` 모델)
+- **1순위 AI**: ElevenLabs (`eleven_turbo_v2_5` 모델, 저지연 + 다국어 고품질)
+- **2순위 폴백**: OpenAI TTS (`tts-1-hd` 모델) — ElevenLabs 실패/크레딧 소진 시 자동 전환
 - **입력**: `{ text, voice?, speed? }`
 - **출력**: `{ audio: "data:audio/mp3;base64,..." }`
-- **기본 설정**: voice=`nova` (한국어 적합), speed=`1.0`
-- **환경변수**: `OPENAI_API_KEY`
+- **문장 간 쉼 처리 (2단계)**:
+  1. **Edge Function 전처리**: 마침표/물음표/느낌표 → `\n\n` (줄바꿈, ElevenLabs 문단 경계), 쉼표 → `,... ` (중간 쉼)
+  2. **프론트 무음 패딩**: TTS 오디오 끝에 **0.5초 무음** 자동 추가 (`audioBufferToWav`) — 씬 간 호흡 공간 확보
+- **ElevenLabs 음성** (5종):
+  - `aria` (기본) — 차분하고 자연스러운 여성 (ID: `9BWtsMINqrJLrRacOk9x`)
+  - `sarah` — 부드럽고 따뜻한 여성 (ID: `EXAVITQu4vr4xnSDxMaL`)
+  - `laura` — 밝고 명랑한 여성 (ID: `FGY2WhTYpPnrIDTdsKH5`)
+  - `roger` — 신뢰감 있는 남성 (ID: `CwhRBWXzGAHq8TQ4Fs17`)
+  - `charlie` — 또렷한 남성 (ID: `IKne3meq5aSn9XLyUdCD`)
+- **ElevenLabs 설정**: stability=0.65, similarity_boost=0.75, style=0.2, speaker_boost=true
+- **OpenAI 폴백 설정**: voice=`nova`, speed=`1.0`
+- **환경변수**: `ELEVENLABS_API_KEY` (1순위), `OPENAI_API_KEY` (폴백)
 - **배포 옵션**: `--no-verify-jwt`
-- **비용**: ~$0.005/30초 대본 (300자 기준)
+- **비용**: ElevenLabs Starter 플랜 $5/월 30,000자 / OpenAI ~$0.005/30초
 
 ### 8.6 generate-bgm
 
-- **역할**: 무드 키워드 → 로열티 프리 BGM 검색 + mp3 base64 반환
+- **역할**: 무드 키워드 → 로열티 프리 BGM 검색 + Jamendo streaming URL 반환
 - **API**: Jamendo API v3.0 (REST, OAuth 불필요 — Client ID만 사용)
 - **입력**: `{ mood, duration? }`
-- **출력**: `{ audio: "data:audio/mp3;base64,...", track: { id, name, artist, duration, license, url } }`
+- **출력**: `{ audioUrl: "https://prod-1.storage.jamendo.com/...", track: { id, name, artist, duration, license, url } }`
+- **아키텍처**: Edge Function은 URL만 반환, 프론트에서 직접 fetch → dataUrl 변환 (Edge Function 메모리 초과 방지)
 - **검색 로직**:
   1. 무드 → 태그 매핑 (예: "밝고 경쾌한" → `happy+upbeat+energetic`)
   2. instrumental 우선, 인기순 정렬, 상위 5곡 중 랜덤 선택
@@ -623,9 +757,10 @@ CTA 위치 선택                      채팅으로 수정 요청
 
 - **역할**: 브랜드 정보 → 밈광고 대본 JSON 생성 (광고 부분만)
 - **AI**: Gemini 2.5 Flash (`responseMimeType: 'application/json'`)
-- **입력**: `{ brandInfo, adDuration, platform, hookDuration }`
+- **입력**: `{ brandInfo, adDuration, hookDuration, videoType? }`
 - **출력**: `{ title, hook, total_duration, ad_duration, scenes, hashtags, bgm_mood, thumbnail_text }`
-- **프롬프트 특징**: 밈→광고 자연스러운 전환 + 행동경제학 전략 5가지 + 모션 스타일 10종 자동 선택
+- **프롬프트 특징**: 밈→광고 자연스러운 전환 + 행동경제학 전략 5가지 + 모션 스타일 18종 자동 선택
+- **videoType 분기**: `motion` 시 프롬프트에 `accent_color`, `glow_color` 필드 추가 → 씬별 다이나믹 컬러 생성
 - **씬 타입**: intro, benefit, feature, testimonial, offer, cta
 - **환경변수**: `GOOGLE_API_KEY`
 - **배포 옵션**: `--no-verify-jwt`
@@ -666,10 +801,14 @@ CTA 위치 선택                      채팅으로 수정 요청
 
 - **역할**: Replicate Image-to-Video 비동기 프록시 (submit/poll 2단계)
 - **API**: Replicate Predictions API (REST)
-- **입력 (submit)**: `{ action: 'submit', model?, image_data_url, prompt }`
+- **입력 (submit)**: `{ action: 'submit', model?, image_data_url, motion_style? }`
 - **입력 (poll)**: `{ action: 'poll', request_id }`
 - **출력 (submit)**: `{ request_id }`
 - **출력 (poll)**: `{ status: 'IN_QUEUE'|'IN_PROGRESS'|'COMPLETED'|'FAILED', video_url? }`
+- **프롬프트 정책**: **카메라 모션 전용** — `scene.visual`(대본 비주얼 설명)은 전달하지 않음. `motion_style`에 따라 줌/팬/틸트 등 카메라 움직임만 지시. 새로운 객체·사람·텍스트·UI 생성 명시적 금지 (`"Do NOT add any new objects, people, hands, fingers, text..."`)
+- **429 재시도**: 최대 3회, `retry_after` 값만큼 대기 후 재시도. Replicate 크레딧 $5 미만 시 버스트 1건 제한
+- **클라이언트 호출 방식**: 순차 요청 (1건씩) — rate limit 버스트 제한 대응 (기존 3개 병렬에서 변경)
+- **영상 오디오**: Remotion `<Video muted>` — I2V 생성 영상의 자체 오디오 뮤트, TTS/BGM만 재생
 - **모델 선택**: `wan` (기본, `wan-video/wan-2.5-i2v`, 최저가) / `hailuo` (`minimax/hailuo-2.3-fast`, 가성비) / `kling` (`kwaivgi/kling-v2.1`, 고품질)
 - **비용**: Wan ~$0.10/씬, Hailuo ~$0.15/씬, Kling ~$0.35/씬
 - **환경변수**: `REPLICATE_API_TOKEN`
@@ -688,6 +827,7 @@ CTA 위치 선택                      채팅으로 수정 요청
 | `JAMENDO_CLIENT_ID` | ✅ | ✅ |
 | `APIFY_API_TOKEN` | ✅ | ✅ |
 | `REPLICATE_API_TOKEN` | ✅ | ✅ |
+| `ELEVENLABS_API_KEY` | ✅ | ✅ |
 
 ---
 
@@ -702,6 +842,7 @@ CTA 위치 선택                      채팅으로 수정 요청
 <Route path="/meme-ad" element={<MemeAdPage />} />                 // 밈광고영상 메이커
 <Route path="/ad-copy" element={<AdCopyPage />} />                 // 광고 카피 메이커
 <Route path="/ad-creative" element={<AdCreativePage />} />         // 광고 소재 메이커
+<Route path="/thumbnail" element={<ThumbnailPage />} />             // 썸네일 메이커
 ```
 
 - 인증 가드 없음 — 비로그인 사용자도 접근 가능
@@ -739,7 +880,7 @@ CTA 위치 선택                      채팅으로 수정 요청
 ## 13. 배포 명령어
 
 ```bash
-# Edge Functions (11개 모두 --no-verify-jwt 필수)
+# Edge Functions (12개 모두 --no-verify-jwt 필수)
 npx supabase functions deploy search-trends --no-verify-jwt --project-ref <PROJECT_ID>
 npx supabase functions deploy generate-card-news --no-verify-jwt --project-ref <PROJECT_ID>
 npx supabase functions deploy generate-card-image --no-verify-jwt --project-ref <PROJECT_ID>
@@ -752,6 +893,7 @@ npx supabase functions deploy generate-ad-copy --no-verify-jwt --project-ref <PR
 npx supabase functions deploy generate-ad-creative --no-verify-jwt --project-ref <PROJECT_ID>
 npx supabase functions deploy generate-ad-image --no-verify-jwt --project-ref <PROJECT_ID>
 npx supabase functions deploy generate-scene-video --no-verify-jwt --project-ref <PROJECT_ID>
+npx supabase functions deploy generate-thumbnail-image --no-verify-jwt --project-ref <PROJECT_ID>
 
 # 프론트엔드: staging/production 브랜치 push → Vercel 자동 배포
 ```
@@ -767,15 +909,31 @@ npx supabase functions deploy generate-scene-video --no-verify-jwt --project-ref
 | 다운로드 품질 | `pixelRatio: 2` | 6에서 2로 낮춤 (속도 우선). 필요시 조정 가능 |
 | CSP 제한 | ⚠️ | Unsplash/Pexels 이미지 URL이 CSP `img-src`에 없음 |
 | 숏폼 영상 렌더링 | ⚠️ Chrome/Edge 전용 | WebCodecs API 필요. Safari/Firefox 미지원. PC 내부 도구 전용 |
-| ~~숏폼 영상 비주얼~~ | ✅ 해결됨 | 이미지 기반: Replicate I2V 영상 배경 (폴백: Ken Burns) / 모션 그래픽: 15종 모션 + 다이나믹 컬러 + 씬간 블렌딩 |
+| ~~숏폼 영상 비주얼~~ | ✅ 해결됨 | 이미지 기반: Replicate I2V 영상 배경 (폴백: 줌/패닝) / 모션 그래픽: 18종 모션 + 다이나믹 컬러 + 씬간 블렌딩 |
 | CapCut 내보내기 | 프로젝트 파일만 | 공식 API 없어서 자동 편집/렌더링 불가. 수동으로 CapCut에서 열어야 함 |
 | ~~영상 타입 선택~~ | ✅ 해결됨 | 이미지 기반 + 모션 그래픽 모두 완전 구현 |
-| 이미지 배경 생성 시간 | ⚠️ 느림 | 씬당 5~15초, 6씬 기준 30~90초 (2개씩 병렬). 429 재시도 시 더 길어질 수 있음 |
-| 이미지 배경 메모리 | ⚠️ | 씬별 base64 이미지 (1~5MB), 10씬 시 최대 50MB. data URL 방식 |
+| 이미지 배경 생성 시간 | ⚠️ 개선됨 | 씬당 5~15초, 6씬 기준 20~60초 (3개씩 병렬). 429 재시도 시 더 길어질 수 있음 |
+| ~~이미지 배경 메모리~~ | ✅ 해결됨 | webp 변환 + Supabase Storage 업로드로 data URL 제거. 이탈 시 자동 삭제 |
 | BGM Jamendo API | ⚠️ 비상업적 | 월 35,000 요청 무료. 상업적 사용 시 Jamendo 라이선싱 필요 |
 | BGM 곡 길이 | ⚠️ | Jamendo 곡이 영상보다 길 수 있음 (자동 트리밍 없이 페이드아웃으로 처리) |
 | 밈광고 훅 프레임 추출 | ⚠️ 느림 | 5초 훅 = 150프레임, 추출 5~10초 소요. `<video>` 시크 방식 |
 | 밈광고 훅 메모리 | ⚠️ | 150 ImageBitmap + 광고 이미지 합산 시 메모리 부담 가능 |
+
+### 14.1 병렬 처리 최적화 현황
+
+| 페이지 | 기능 | 배치 크기 | 처리 방식 |
+|--------|------|-----------|-----------|
+| **숏폼** | AI 이미지 생성 | 3개씩 | `Promise.allSettled` |
+| **숏폼** | 스톡 이미지 검색 | 3개씩 | `Promise.allSettled` |
+| **숏폼** | I2V 영상 생성 submit | **1개씩 순차** | 순차 호출 (Replicate rate limit 버스트 1건 대응) + Edge Function 내 429 재시도 3회 |
+| **숏폼** | I2V 영상 폴링 | 전체 동시 | 5초 간격, 최대 5분 |
+| **카드뉴스** | AI 이미지 생성 | 3개씩 | `Promise.allSettled` |
+| **카드뉴스** | Unsplash 검색 | 3개씩 | `Promise.allSettled` |
+| **밈광고** | TTS 생성 | 3개씩 | `Promise.allSettled` |
+| **밈광고** | 이미지 생성 | 3개씩 | `Promise.allSettled` |
+| **광고 소재** | 이미지 생성 | 전체 동시 (3개) | `Promise.allSettled` |
+| **숏폼** | 이미지 재생성 | 제한 없음 (병렬) | `Set<number>` 기반 동시 재생성, 씬별 독립 로딩 |
+| **밈광고** | 이미지 재생성 | 제한 없음 (병렬) | `Set<number>` 기반 동시 재생성, 씬별 독립 로딩 |
 
 ---
 
@@ -847,7 +1005,7 @@ capcut_project/
 
 | 요소 | 이미지 기반 | 모션 그래픽 |
 |------|------------|------------|
-| 배경 | Replicate I2V 영상 배경 (폴백: Gemini 이미지 + Ken Burns) | 다이나믹 컬러 그라디언트 + 그리드 + 보케/스파클 |
+| 배경 | Replicate I2V 영상 배경 (폴백: Gemini 이미지 + 줌/패닝) | 다이나믹 컬러 그라디언트 + 그리드 + 보케/스파클 |
 | 중앙 비주얼 | 모션 스타일 기본(keyword_pop) | **AI 자동 선택 18종 모션 + 씬별 다이나믹 컬러** |
 | 모션 효과 | 떠다니는 도형 (축소) | 오버레이 (X마크/체크/파티클) + 떠다니는 도형 |
 | 자막 | 하단 프로스트 글래스 pill + `**볼드**` 노란색 하이라이트 | (동일) |
@@ -858,16 +1016,17 @@ capcut_project/
 
 | 단계 | 항목 | 설명 | 상태 |
 |------|------|------|------|
-| ~~단기~~ | ~~씬별 Gemini 이미지 배경~~ | `generate-card-image` 재활용 → Ken Burns 배경 | **완료** |
-| ~~단기~~ | ~~AI 모션 스타일 자동 선택~~ | 15종 모션 컴포넌트 + Gemini 자동 배정 + 다이나믹 컬러 | **완료** |
+| ~~단기~~ | ~~씬별 Gemini 이미지 배경~~ | `generate-card-image` 재활용 → 줌/패닝 배경 | **완료** |
+| ~~단기~~ | ~~AI 모션 스타일 자동 선택~~ | 18종 모션 컴포넌트 + Gemini 자동 배정 + 다이나믹 컬러 | **완료** |
 | ~~중기~~ | ~~CapCut 프로젝트 export~~ | `draft_content.json` 생성 → ZIP 다운로드 | **완료** |
 | ~~중기~~ | ~~BGM 자동생성 (Jamendo)~~ | 무드별 BGM 검색 → TTS와 믹싱 (볼륨 25%) | **완료** |
 | ~~중기~~ | ~~Replicate I2V 영상 배경~~ | 이미지 → 5초 AI 영상 (Wan/Hailuo/Kling 선택) | **완료** |
 | ~~중기~~ | ~~모션 3종 추가 + Lottie 인프라~~ | confetti_burst/sparkle_trail/pulse_ring + @remotion/lottie + premountFor + Spring 프리셋 | **완료** |
+| ~~중기~~ | ~~Remotion 업그레이드 + TransitionSeries~~ | 4.0.379→4.0.438, @remotion/transitions + Light Leaks 전환 | **완료** |
+| ~~중기~~ | ~~TTS 오디오 리액티브 비주얼~~ | 글로우 펄스 + 비트 플래시 + 웨이브폼 + 엣지 글로우 | **완료** |
+| ~~중기~~ | ~~병렬 처리 최적화~~ | 이미지·TTS·I2V 전체 3개씩 배치 병렬 + Unsplash 3개씩 병렬 + I2V 폴백 개선 | **완료** |
 | **중기** | 영상 편집 자동화 API | Creatomate/Shotstack 등 외부 API로 완전 자동 렌더링 | TODO |
-| **중기** | Remotion 업그레이드 + TransitionSeries | 4.0.379→최신, @remotion/transitions 공식 전환 시스템 도입 | TODO |
-| **중기** | TTS 오디오 리액티브 비주얼 | visualizeAudio()로 음성/BGM 반응형 배경 글로우/파티클 | TODO |
-| **장기** | Lottie 모션 파일 연동 | LottieFiles/After Effects에서 JSON 가져와 모션 오버레이 | TODO |
+| ~~장기~~ | ~~Lottie 모션 파일 연동~~ | 10종 Lottie JSON 오버레이 + SceneRenderer/renderVideo 통합 | **완료** |
 | **장기** | 렌더링 통합 (Remotion 서버 렌더) | @remotion/renderer로 Preview↔MP4 이중 렌더링 해소 | TODO |
 | **장기** | Hera API 연동 | 텍스트→모션 그래픽 전문 API (YC 투자, $29/월~) | TODO |
 | **장기** | 자체 모션 그래픽 템플릿 엔진 | 30~50개 Remotion 템플릿 + AI 자동 매칭 | TODO |
@@ -886,4 +1045,4 @@ CapCut은 공식 API가 없어 자동화 불가. 완전 자동화가 필요하�
 
 ---
 
-**최종 업데이트**: 2026-03-20 (모션 18종으로 확장: confetti_burst/sparkle_trail/pulse_ring 추가 + @remotion/lottie 인프라 + premountFor 프리로드 + SPRING_PRESETS 표준화 5종)
+**최종 업데이트**: 2026-03-23 (썸네일 메이커 신규 추가: 레퍼런스 기반 AI 썸네일 생성, 리스트 자동 감지 항목별 생성, 4장씩 병렬 배치, 파일 형식 선택 PNG/JPG/WebP, ZIP 전체 다운로드, 안전 필터 재시도 / 숏폼 레퍼런스 이미지 지원: 이미지/영상 기반+AI 생성 시 레퍼런스 업로드+참고 방식 선택, generate-card-image에 reference_mode 추가 / generate-thumbnail-image Edge Function 신규 배포)

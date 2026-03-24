@@ -81,7 +81,7 @@ if errorlevel 1 goto :error
 
 echo.
 echo [14/32] get-failed-reports
-call npx supabase functions deploy get-failed-reports --project-ref %PROJECT_REF%
+call npx supabase functions deploy get-failed-reports --no-verify-jwt --project-ref %PROJECT_REF%
 if errorlevel 1 goto :error
 
 echo.

@@ -81,7 +81,7 @@ npx supabase functions deploy <함수명> --project-ref kcthtpmxffppfbkjjkub
 npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref kcthtpmxffppfbkjjkub
 ```
 
-**--no-verify-jwt 필수 함수**: `generate-saju-answer`, `generate-tarot-answer`, `send-alimtalk`, `generate-weekly-report`, `send-report-alimtalk`, `generate-sitemap`, `generate-upsell-mapping`, `generate-nadaum-analysis`, `mind-talk-chat`
+**--no-verify-jwt 필수 함수**: `generate-saju-answer`, `generate-tarot-answer`, `send-alimtalk`, `generate-weekly-report`, `send-report-alimtalk`, `generate-sitemap`, `generate-upsell-mapping`, `generate-nadaum-analysis`, `mind-talk-chat`, `get-failed-reports`
 
 **배포 스크립트**: `/scripts/` (deploy-production.bat, deploy-staging.bat, deploy-core.bat)
 

@@ -18,12 +18,13 @@
 | 중앙 비주얼 | **AI 자동 선택 모션 컴포넌트 (18종)** — 씬 내용에 맞춰 다양하게 배정 |
 | 모션 효과 | 씬 타입별 오버레이 (X마크/체크/파티클) + 떠다니는 도형 + 보케 |
 | 자막 | 하단 워드별 스프링 애니메이션 + `**볼드**` 노란색 하이라이트 + 배경 블러 pill |
-| 전환 | cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate (7종) + 씬간 색상 블렌딩 |
+| 전환 | **@remotion/transitions TransitionSeries** — fade/slide/wipe/flip/none 공식 전환 + springTiming 10프레임 오버랩 + **@remotion/light-leaks** WebGL 시네마틱 플래시 (accent hueShift) |
 | 오디오 | 씬별 TTS 나레이션 + **BGM (Jamendo, 볼륨 25%, 페이드인/아웃)** |
-| 렌더러 동기화 | **renderVideo.ts가 SceneRenderer.tsx와 완전 동기화** — 18종 모션 + 파티클 + 자막 동일 재현 |
+| 오디오 리액티브 | **AudioReactiveOverlay** — TTS/BGM 실시간 분석 (bass 글로우 펄스 + 비트 플래시 + 웨이브폼 바 + 에지 글로우 + 스파클 부스트) |
+| 렌더러 동기화 | **renderVideo.ts가 SceneRenderer.tsx와 완전 동기화** — 18종 모션 + 파티클 + 자막 + 오디오 리액티브 동일 재현 |
 | Spring 프리셋 | **SPRING_PRESETS** 5종 표준화 (entry/secondary/bouncy/heavy/keyword) — 새 모션부터 적용 |
-| Sequence 프리로드 | **premountFor={VIDEO_FPS}** — 다음 씬 1초 전 프리로드로 전환 부드러움 개선 |
-| Lottie 인프라 | **@remotion/lottie + lottie-web** 설치 완료 — 향후 Lottie JSON 파일 드롭인 준비 |
+| Remotion 버전 | **4.0.438** (remotion, @remotion/player, @remotion/transitions, @remotion/light-leaks, @remotion/media-utils, @remotion/lottie, @remotion/webcodecs) |
+| Lottie 인프라 | **@remotion/lottie + lottie-web** — 10종 Lottie JSON 에셋 + 씬타입/모션 자동 매핑 |
 
 **현재 모션 스타일 18종** (`motion_style` — Gemini가 씬별 자동 선택):
 
@@ -241,67 +242,109 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 
 ---
 
-## 중기 (다음)
+## ~~중기~~ — 완료
 
-### 6. Remotion 업그레이드 + @remotion/transitions 도입
+### ~~6. Remotion 업그레이드 + @remotion/transitions 도입~~ — 완료 (2026-03-20)
 
-**개요**: Remotion 4.0.379 → 최신 버전 업그레이드. `@remotion/transitions`의 `TransitionSeries`로 공식 전환 시스템 도입.
+**구현 완료 내역**:
+- [x] Remotion 4.0.379 → **4.0.438** 전체 업그레이드 (remotion, @remotion/player, @remotion/media-utils, @remotion/webcodecs, @remotion/lottie)
+- [x] `@remotion/transitions` 설치 — `TransitionSeries` 기반으로 ShortFormVideo.tsx 리팩토링
+- [x] 기존 7종 전환을 공식 프레젠테이션으로 매핑: fade→`fade()`, slide→`slide()`, wipe_left→`wipe()`, zoom→`slide(from-bottom)`, blur_in→`fade()`, scale_rotate→`flip()`, cut→`none()`
+- [x] `springTiming`으로 전환 속도 정밀 제어 (damping: 200, 10프레임 오버랩)
+- [x] `@remotion/light-leaks` 설치 — 씬간 전환에 WebGL 라이트 릭 오버레이 (accent_color → hueShift 자동 변환, opacity 35%, screen blend)
+- [x] `computeTotalFramesWithTransitions()` 함수 추가 — Player에서 transition 오버랩 반영한 정확한 duration 계산
+- [x] TTS 오디오 오프셋 계산 — transition 오버랩에 맞춘 정확한 타이밍 동기화
+- [x] SceneRenderer에서 exit fade 제거 (TransitionSeries가 대체)
 
-**주요 이점**:
-- `fade()/slide()/wipe()/flip()/clockWipe()` 내장 전환 (현재 수동 interpolate → 공식 API)
-- `springTiming/linearTiming`으로 전환 속도 정밀 제어
-- `@remotion/light-leaks` (4.0.415+) — WebGL 라이트 릭 오버레이로 시네마틱 전환
-- 씬 오버랩 시간 자동 계산 (`getDurationInFrames()`)
+**전환 매핑**:
 
-**제약**: Player 미리보기에만 적용. renderVideo.ts Canvas 렌더링은 별도 대응 필요.
+| 기존 (수동 interpolate) | 새 (@remotion/transitions) |
+|------------------------|---------------------------|
+| `cut` | `none()` (0프레임 오버랩) |
+| `fade` | `fade()` + 10프레임 springTiming |
+| `slide` | `slide({ direction: 'from-right' })` |
+| `zoom` | `slide({ direction: 'from-bottom' })` |
+| `blur_in` | `fade()` |
+| `wipe_left` | `wipe({ direction: 'from-left' })` |
+| `scale_rotate` | `flip({ direction: 'from-right' })` |
 
-**난이도**: 중간 (업그레이드 자체는 쉬우나, ShortFormVideo.tsx 씬 구성 리팩토링 필요)
+**구현 파일**:
+```
+src/shortform/compositions/ShortFormVideo.tsx   # TransitionSeries + LightLeak 오버레이 + TTS 오프셋 계산
+src/shortform/compositions/SceneRenderer.tsx    # exit fade 제거
+src/pages/ShortFormPage.tsx                     # computeTotalFramesWithTransitions 사용
+```
 
-**체크리스트**:
-- [ ] `npx remotion upgrade` 실행 (모든 @remotion/* 동일 버전)
-- [ ] ShortFormVideo.tsx를 `TransitionSeries` 기반으로 리팩토링
-- [ ] 씬간 전환에 `@remotion/light-leaks` 오버레이 추가 (accent_color 기반 hueShift)
-- [ ] 기존 7종 전환(cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate)을 공식 전환으로 매핑
-
----
-
-### 7. TTS 오디오 리액티브 비주얼
-
-**개요**: `@remotion/media-utils`의 `visualizeAudio()` + `useWindowedAudioData()`로 TTS/BGM에 반응하는 시각 효과.
-
-**구현 아이디어**:
-- 배경 글로우 크기가 음성 볼륨에 반응 (bassIntensity → glowScale)
-- 보케/스파클 밝기가 BGM 비트에 동기화
-- 자막 아래 미니 웨이브폼 오버레이
-- 떠다니는 도형이 저주파에 맞춰 펄스
-
-**제약**: `@remotion/media-utils`는 이미 설치됨. Player에서는 바로 사용 가능. Canvas 렌더링에서는 Web Audio API로 별도 구현 필요.
-
-**난이도**: 중간
-**체크리스트**:
-- [ ] SceneRenderer에 `useWindowedAudioData()` 연동
-- [ ] 배경 글로우 반응형 컴포넌트 프로토타입
-- [ ] renderVideo.ts에 AudioContext 기반 주파수 분석 추가
+**제약**: TransitionSeries는 Remotion Player(미리보기)에만 적용. renderVideo.ts Canvas 렌더러는 기존 수동 전환 유지 (Task #9 렌더링 통합 시 해소 예정).
 
 ---
 
-### 8. Lottie 모션 파일 연동
+### ~~7. TTS 오디오 리액티브 비주얼~~ — 완료 (2026-03-20)
 
-**개요**: @remotion/lottie (설치 완료) + lottie-web을 활용하여 After Effects/LottieFiles에서 가져온 고품질 Lottie JSON 애니메이션을 모션 오버레이로 사용.
+**구현 완료 내역**:
+- [x] `AudioReactiveOverlay.tsx` 신규 — `useWindowedAudioData()` + `visualizeAudio()`로 TTS/BGM 실시간 분석
+- [x] Bass 반응형 중앙 글로우 (RMS → glowScale 1.0~1.6, radial gradient 펄스)
+- [x] 비트 플래시 (peak > 0.6일 때 accent color overlay 플래시)
+- [x] 하단 웨이브폼 바 12개 (Bass=glow / Mid=accent / High=accent 반투명, 자막 영역 위)
+- [x] Edge 글로우 펄스 (Mid 주파수 → 테두리 box-shadow 호흡)
+- [x] High-frequency 스파클 부스트 (고음 > 0.3일 때 상단 코너 반짝임)
+- [x] renderVideo.ts Canvas에도 오디오 리액티브 동기화: `computeFrameEnergies()` → 프레임별 RMS/Peak 에너지 → `drawAudioReactive()` (글로우 펄스 + 비트 플래시 + 에지 글로우)
+- [x] ShortFormVideo.tsx에서 각 씬에 AudioReactiveOverlay 자동 삽입 (TTS src + BGM src + accent/glow color 전달)
 
-**활용 시나리오**:
-- LottieFiles에서 무료 애니메이션 다운로드 (confetti, sparkles, checkmark, fire 등)
-- `/public/lottie/*.json`에 배치
-- 모션 컴포넌트에 `<Lottie>` 오버레이 레이어 추가
-- Canvas 렌더링: lottie-web canvas renderer로 프레임별 추출
+**구현 파일**:
+```
+src/shortform/compositions/AudioReactiveOverlay.tsx  # @remotion/media-utils 기반 오디오 리액티브 비주얼
+src/shortform/compositions/ShortFormVideo.tsx         # AudioReactiveOverlay 씬별 삽입
+src/shortform/renderVideo.ts                          # computeFrameEnergies + drawAudioReactive (Canvas 동기화)
+```
 
-**체크리스트**:
-- [ ] LottieOverlay 유틸리티 컴포넌트 생성
-- [ ] LottieFiles에서 10~15개 무료 애니메이션 큐레이션
-- [ ] Canvas 렌더러에 lottie-web 통합 (OffscreenCanvas)
-- [ ] 모션 컴포넌트에 Lottie 오버레이 옵션 추가
+**오디오 리액티브 효과 5종**:
 
-**난이도**: 중간 (Remotion 측은 쉬우나, Canvas 렌더러 통합이 도전)
+| 효과 | 트리거 | 시각 |
+|------|--------|------|
+| 중앙 글로우 펄스 | Bass RMS | glowColor radial gradient 확대/축소 |
+| 비트 플래시 | Peak > 0.6 | accentColor overlay 번쩍 |
+| 웨이브폼 바 | 전 주파수 12밴드 | 하단 미니 이퀄라이저 |
+| 에지 글로우 | Mid 주파수 | 테두리 box-shadow 호흡 |
+| 스파클 부스트 | High > 0.3 | 상단 코너 반짝이 점 |
+
+---
+
+### ~~8. Lottie 모션 파일 연동~~ — 완료 (2026-03-20)
+
+**구현 완료 내역**:
+- [x] LottieOverlay Remotion 컴포넌트 생성 (`@remotion/lottie` + `delayRender` + fetch 캐시)
+- [x] 10종 Lottie JSON 에셋 생성 (`/public/lottie/`)
+- [x] Canvas 렌더러에 lottie-web `lottie_light_canvas` 통합 (프레임 프리렌더링 → ImageBitmap 배열)
+- [x] SceneRenderer에 Lottie 오버레이 레이어 추가 (모션 ↔ 악센트라인 사이)
+- [x] 씬타입/모션스타일 → Lottie 자동 매핑 (`overlayMapping.ts`)
+
+**Lottie 에셋 10종** (`/public/lottie/`):
+
+| 파일 | 크기 | 매핑 씬타입 |
+|------|------|-----------|
+| `confetti.json` | 25KB | outro, confetti_burst 모션 |
+| `sparkles.json` | 18KB | intro, sparkle_trail 모션 |
+| `fire.json` | 11KB | hook |
+| `checkmark.json` | 5KB | solution |
+| `heart_pulse.json` | 4KB | emoji_rain 모션 |
+| `star_burst.json` | 10KB | pulse_ring 모션 |
+| `alert.json` | 6KB | problem, problem_intro |
+| `lightbulb.json` | 10KB | tip |
+| `trophy.json` | 9KB | (수동 지정) |
+| `megaphone.json` | 8KB | cta |
+
+**구현 파일**:
+```
+src/shortform/lottie/index.ts           # 에셋 레지스트리 + fetch 캐시 + 프리로드
+src/shortform/lottie/types.ts           # LottieOverlayType, Position, Config 타입
+src/shortform/lottie/overlayMapping.ts  # 씬타입/모션스타일 → Lottie 매핑
+src/shortform/compositions/LottieOverlay.tsx  # @remotion/lottie 래퍼
+src/shortform/compositions/SceneRenderer.tsx  # Lottie 레이어 추가
+src/shortform/renderVideo.ts            # lottie-web canvas 프리렌더링 + drawFrame 합성
+```
+
+**투명도 규칙**: 이미지/비디오 배경 씬 = 12%, 그라디언트 배경 = 20%
 
 ---
 
@@ -311,23 +354,28 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 
 **개요**: 현재 Remotion Player(미리보기)와 renderVideo.ts(Canvas+WebCodecs, MP4)가 독립적으로 영상을 그리는 **이중 렌더링** 구조. 새 기능 추가 시 양쪽 모두 구현해야 하는 병목.
 
+**⚠️ 조사 결과 (2026-03-20)**: `@remotion/webcodecs`는 미디어 변환(포맷 변환, 프레임 추출) 라이브러리이며, Remotion 컴포지션을 브라우저에서 MP4로 렌더링하는 기능은 **없음**. 옵션 B는 불가.
+
 **해결 옵션**:
 
 | 방법 | 설명 | 장단점 |
 |------|------|--------|
 | **A. @remotion/renderer** | Remotion 서버사이드 렌더링 (Lambda/Cloud Run) | Remotion 기능 100% 활용, 서버 비용 발생 |
-| **B. @remotion/webcodecs** | Remotion의 브라우저 WebCodecs 렌더러 (이미 설치됨) | 브라우저에서 Remotion 컴포넌트 직접 MP4 렌더링 가능 |
+| ~~**B. @remotion/webcodecs**~~ | ~~브라우저 WebCodecs 렌더러~~ | **불가** — 미디어 변환 전용, 컴포지션 렌더링 미지원 |
 | **C. Creatomate/Shotstack** | 외부 영상 렌더링 API | 완전 자동화, 월 비용 |
+| **D. 현재 구조 유지 + 개선** | renderVideo.ts 모듈화, SceneRenderer와 로직 공유 최대화 | 무료, 점진적 개선 |
 
-**최적 방안**: **B. @remotion/webcodecs** — 이미 패키지 설치됨 (4.0.379). Remotion 컴포넌트를 그대로 WebCodecs로 렌더링하면 이중 구현 제거 가능.
+**현실적 방안**: **A 또는 D**
+- **A**: Remotion Lambda ($0.01~0.05/영상) — 완전한 이중 렌더링 해소, 서버 인프라 필요
+- **D**: renderVideo.ts를 리팩토링하여 테마/색상/모션 로직을 공유 모듈로 분리 — 비용 없음
 
 **체크리스트**:
-- [ ] @remotion/webcodecs 렌더링 API 조사 (renderMediaOnBrowser 등)
-- [ ] 프로토타입: ShortFormVideo 컴포지션을 직접 MP4로 렌더링
-- [ ] renderVideo.ts의 Canvas 구현과 품질/성능 비교
-- [ ] 성공 시 renderVideo.ts 점진적 대체
+- [x] @remotion/webcodecs API 조사 — 컴포지션 렌더링 불가 확인
+- [ ] Remotion Lambda 비용/구조 검토
+- [ ] renderVideo.ts 모듈화 (테마/색상 계산 로직 → 공유 유틸리티)
+- [ ] 또는 Remotion Lambda 도입 시 renderVideo.ts 완전 대체
 
-**난이도**: 높음 (기존 renderVideo.ts 600줄+ 교체)
+**난이도**: 높음
 
 ---
 
@@ -399,17 +447,17 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
   향상             │  ~~①이미지~~ ✅   ~~⑤AI 영상~~ ✅   │
                     │  ~~②모션 18종~~ ✅  ⑪자체 엔진      │
                     │  ~~④BGM~~ ✅      ⑨렌더링 통합      │
-                    │  ⑥Remotion 업그레이드               │
-                    │  ⑦오디오 리액티브  ⑧Lottie 연동     │
+                    │  ~~⑥Remotion~~ ✅                   │
+                    │  ~~⑦오디오 리액티브~~ ✅  ~~⑧Lottie~~ ✅ │
   낮은 퀄리티       │                                    │
   향상             │                                    │
 ```
 
 **★ 다음 추천 순서**:
-1. ⑥ Remotion 업그레이드 + TransitionSeries — 전환 효과 대폭 업그레이드 (Light Leaks 포함)
-2. ⑦ 오디오 리액티브 — "살아있는" 영상 느낌, @remotion/media-utils 이미 설치됨
-3. ⑧ Lottie 연동 — @remotion/lottie 이미 설치됨, LottieFiles에서 에셋만 가져오면 됨
-4. ⑨ 렌더링 통합 — 이중 렌더링 해소로 향후 모든 작업 속도 향상
+1. ~~⑥ Remotion 업그레이드~~ — **완료** (4.0.438 + TransitionSeries + Light Leaks)
+2. ~~⑦ 오디오 리액티브~~ — **완료** (AudioReactiveOverlay + Canvas 동기화)
+3. ~~⑧ Lottie 연동~~ — **완료** (10종 에셋 + Remotion/Canvas 이중 렌더링 통합)
+4. ⑨ 렌더링 통합 — @remotion/webcodecs 불가 확인, Remotion Lambda 또는 모듈화 검토 필요
 
 ---
 
@@ -439,4 +487,4 @@ src/shortform/renderVideo.ts                       # 비디오 프레임 추출 
 
 ---
 
-**최종 업데이트**: 2026-03-20 (②모션 18종 확장: confetti_burst/sparkle_trail/pulse_ring 신규 + @remotion/lottie 인프라 + premountFor + SPRING_PRESETS 5종 + 중기 로드맵 #6~#9 추가)
+**최종 업데이트**: 2026-03-20 (⑥Remotion 4.0.438 + TransitionSeries + Light Leaks 완료, ⑦오디오 리액티브 비주얼 완료, ⑨렌더링 통합 @remotion/webcodecs 불가 확인)
