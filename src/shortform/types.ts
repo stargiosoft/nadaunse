@@ -42,13 +42,6 @@ export type Scene = {
   backgroundVideoUrl?: string;
 };
 
-export type ViralElements = {
-  instinct_combo?: string;
-  emotion_flow?: string;
-  controversy_point?: string;
-  share_trigger?: string;
-};
-
 export type ScriptResult = {
   title: string;
   hook: string;
@@ -57,7 +50,6 @@ export type ScriptResult = {
   hashtags: string[];
   bgm_mood: string;
   thumbnail_text: string;
-  viral_elements?: ViralElements;
 };
 
 export type TtsAudio = {
