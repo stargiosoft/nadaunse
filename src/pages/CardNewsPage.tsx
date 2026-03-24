@@ -30,12 +30,6 @@ type UnsplashPhoto = {
 type SlideResult = {
   title: string;
   slides: Slide[];
-  viral_elements?: {
-    instinct_combo?: string;
-    emotion_flow?: string;
-    controversy_point?: string;
-    share_trigger?: string;
-  };
 };
 
 type ChatMessage = {
@@ -626,55 +620,6 @@ export default function CardNewsPage() {
                   {result.slides.length}장 슬라이드
                 </div>
               </div>
-
-              {/* Viral Elements */}
-              {result.viral_elements && (
-                <div style={{
-                  padding: '14px 16px', backgroundColor: '#FFF8E1',
-                  borderRadius: '16px', marginBottom: '16px',
-                  border: '1px solid #FFE082',
-                }}>
-                  <div style={{
-                    fontFamily: font, fontSize: '11px', fontWeight: 700,
-                    color: '#F57F17', textTransform: 'uppercase' as const,
-                    marginBottom: '10px', letterSpacing: '0.5px',
-                  }}>
-                    바이럴 분석
-                  </div>
-                  {result.viral_elements.instinct_combo && (
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>본능 자극</span>
-                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: C.textPrimary, marginTop: '2px' }}>
-                        {result.viral_elements.instinct_combo}
-                      </div>
-                    </div>
-                  )}
-                  {result.viral_elements.emotion_flow && (
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>감정 흐름</span>
-                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: C.textPrimary, marginTop: '2px' }}>
-                        {result.viral_elements.emotion_flow}
-                      </div>
-                    </div>
-                  )}
-                  {result.viral_elements.controversy_point && (
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>논란 포인트</span>
-                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: '#E65100', marginTop: '2px' }}>
-                        {result.viral_elements.controversy_point}
-                      </div>
-                    </div>
-                  )}
-                  {result.viral_elements.share_trigger && (
-                    <div>
-                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>공유 동기</span>
-                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: C.primary, marginTop: '2px' }}>
-                        {result.viral_elements.share_trigger}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Slide List */}
               <div className="flex flex-col" style={{ gap: '8px', marginBottom: '24px' }}>
