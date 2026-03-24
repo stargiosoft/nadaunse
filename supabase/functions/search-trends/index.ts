@@ -10,20 +10,26 @@ serve(async (req) => {
   try {
     const { mode, country, topic } = await req.json()
 
-    // ── X 트렌딩 모드 ──
+    // ── X 트렌딩 모드 (Apify scrape.badger WOEID 기반) ──
     if (mode === 'x-trending') {
       const apiToken = Deno.env.get('APIFY_API_TOKEN')
       if (!apiToken) {
         return errorResponse(req, 'APIFY_API_TOKEN not configured', 500)
       }
 
-      const actorId = 'data-slayer~twitter-trends-by-location'
+      // scrape.badger/twitter-trends-scraper — WOEID 방식, 한국=23424868
+      const actorId = 'scrape.badger~twitter-trends-scraper'
+      const woeid = country === 'Worldwide' ? '1' : '23424868' // 기본값: 한국
       const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apiToken}&timeout=60`
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ country: country || 'SouthKorea' }),
+        body: JSON.stringify({
+          mode: 'Get Place Trends',
+          woeid,
+          max_results: 50,
+        }),
       })
 
       if (!response.ok) {
@@ -31,16 +37,19 @@ serve(async (req) => {
         return errorResponse(req, '트렌드 검색에 실패했습니다. 잠시 후 다시 시도해주세요.', 502)
       }
 
-      const rawItems = await response.json()
-      const items = Array.isArray(rawItems)
-        ? rawItems.map((item: Record<string, unknown>, i: number) => ({
-            rank: i + 1,
-            keyword: (item.name as string) || (item.trend as string) || '',
-            category: (item.context as string) || (item.category as string) || null,
-            volume: (item.tweet_volume as string | number) || null,
-            url: (item.url as string) || null,
-          }))
+      const rawData = await response.json()
+      // 응답 구조: [{ woeid, name, trends: [{ name, url, query }] }]
+      const trendsArray = Array.isArray(rawData) && rawData[0]?.trends
+        ? rawData[0].trends
         : []
+
+      const items = trendsArray.map((item: Record<string, unknown>, i: number) => ({
+        rank: i + 1,
+        keyword: (item.name as string) || '',
+        category: null,
+        volume: null,
+        url: (item.url as string) || null,
+      }))
 
       return jsonResponse(req, { success: true, mode, count: items.length, items })
     }
