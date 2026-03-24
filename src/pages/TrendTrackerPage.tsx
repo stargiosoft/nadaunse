@@ -287,7 +287,7 @@ export default function TrendTrackerPage() {
               fontFamily: font, fontSize: '12px', fontWeight: 400,
               color: C.textCaption, marginTop: '16px', textAlign: 'center',
             }}>
-              Gemini AI + Google Search 기반 실시간 분석
+              Apify API 사용 · 1회 약 $0.01
             </p>
 
             {/* 구분선 */}

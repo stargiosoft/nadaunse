@@ -10,79 +10,48 @@ serve(async (req) => {
   try {
     const { mode, country, topic } = await req.json()
 
-    // ── X 트렌딩 모드 (Gemini + Google Search 그라운딩) ──
+    // ── X 트렌딩 모드 (Apify scrape.badger WOEID 기반) ──
     if (mode === 'x-trending') {
-      const apiKey = Deno.env.get('GOOGLE_API_KEY')
-      if (!apiKey) {
-        return errorResponse(req, 'GOOGLE_API_KEY not configured', 500)
+      const apiToken = Deno.env.get('APIFY_API_TOKEN')
+      if (!apiToken) {
+        return errorResponse(req, 'APIFY_API_TOKEN not configured', 500)
       }
 
-      const trendPrompt = `당신은 X(트위터) 한국 실시간 트렌드 분석 전문가입니다.
+      // scrape.badger/twitter-trends-scraper — WOEID 방식, 한국=23424868
+      const actorId = 'scrape.badger~twitter-trends-scraper'
+      const woeid = country === 'Worldwide' ? '1' : '23424868' // 기본값: 한국
+      const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apiToken}&timeout=60`
 
-현재 X(트위터)에서 한국 사용자들 사이에 실시간으로 화제가 되고 있는 키워드, 해시태그, 주제를 조사해주세요.
-
-## 출력 형식 (JSON)
-[
-  {
-    "rank": 1,
-    "keyword": "트렌딩 키워드/해시태그",
-    "category": "카테고리 (K-POP, 정치, 사회, 게임, 스포츠, 연예, IT/기술, 경제, 밈/유머, 기타)",
-    "volume": "화제 규모 (많음/보통/적음)",
-    "description": "왜 뜨고 있는지 한 줄 설명"
-  }
-]
-
-## 규칙
-- 30~50개의 트렌딩 키워드를 rank 순으로 정렬
-- 반드시 현재 시점 기준 실시간 검색 결과를 반영
-- 한국어 키워드 위주, 영어 키워드도 한국에서 뜨는 것이면 포함
-- JSON 배열만 출력, 마크다운 코드블록 없이`
-
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
-
-      const response = await fetch(geminiUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: trendPrompt }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: { temperature: 0.5 },
+          mode: 'Get Place Trends',
+          woeid,
+          max_results: 50,
         }),
       })
 
       if (!response.ok) {
-        console.error('Gemini x-trending error:', response.status, await response.text())
+        console.error('Apify API error:', response.status, await response.text())
         return errorResponse(req, '트렌드 검색에 실패했습니다. 잠시 후 다시 시도해주세요.', 502)
       }
 
-      const geminiData = await response.json()
-      const parts = geminiData?.candidates?.[0]?.content?.parts || []
-      const textPart = parts.find((p: Record<string, unknown>) => p.text)?.text
+      const rawData = await response.json()
+      // 응답 구조: [{ woeid, name, trends: [{ name, url, query }] }]
+      const trendsArray = Array.isArray(rawData) && rawData[0]?.trends
+        ? rawData[0].trends
+        : []
 
-      if (!textPart) {
-        return errorResponse(req, '트렌드 데이터를 받지 못했습니다', 502)
-      }
+      const items = trendsArray.map((item: Record<string, unknown>, i: number) => ({
+        rank: i + 1,
+        keyword: (item.name as string) || '',
+        category: null,
+        volume: null,
+        url: (item.url as string) || null,
+      }))
 
-      // JSON 추출 (마크다운 코드블록 안에 있을 수 있음)
-      const jsonMatch = textPart.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, textPart]
-      const cleanJson = (jsonMatch[1] || textPart).trim()
-
-      try {
-        const rawItems = JSON.parse(cleanJson)
-        const items = Array.isArray(rawItems)
-          ? rawItems.map((item: Record<string, unknown>, i: number) => ({
-              rank: (item.rank as number) || i + 1,
-              keyword: (item.keyword as string) || '',
-              category: (item.category as string) || null,
-              volume: (item.volume as string) || null,
-              description: (item.description as string) || null,
-            }))
-          : []
-        return jsonResponse(req, { success: true, mode, count: items.length, items })
-      } catch {
-        console.error('x-trending JSON parse failed:', cleanJson.slice(0, 200))
-        return errorResponse(req, '트렌드 데이터 파싱에 실패했습니다', 502)
-      }
+      return jsonResponse(req, { success: true, mode, count: items.length, items })
     }
 
     // ── 주제별 트렌드 분석 모드 (Gemini + Google Search 그라운딩) ──
