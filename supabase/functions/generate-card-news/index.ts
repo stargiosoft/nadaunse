@@ -54,7 +54,7 @@ serve(async (req) => {
       "slide_number": 2,
       "type": "content",
       "headline": "핵심 메시지 (15자 이내)",
-      "body": "본문 텍스트 (2~3문장, 80~120자, 구체적 정보/수치/사례 포함)",
+      "body": "본문 텍스트 (1~2문장, 30~50자, 핵심만 짧게)",
       "image_prompt": "배경 이미지 프롬프트 (영문, no text/letters)",
       "search_keyword": "Unsplash 검색 키워드 (영문 1~3단어)",
       "color_scheme": "#hex"
@@ -64,7 +64,7 @@ serve(async (req) => {
 
 규칙:
 - 1장: cover (강렬한 후킹 제목)
-- 2~${count - 1}장: content (핵심 정보, 숫자/통계 활용, 각 장마다 하나의 메시지). body는 반드시 2~3문장(60~100자)으로 핵심만 간결하게. 불필요한 수식어 제거.
+- 2~${count - 1}장: content (핵심 정보, 숫자/통계 활용, 각 장마다 하나의 메시지). body는 반드시 1~2문장(30~50자)으로 핵심 한 줄만. 긴 설명 금지, 수식어 제거, 카드뉴스답게 짧고 임팩트 있게.
 - ${count}장: cta (행동 유도). headline은 질문형 한 줄 (15자 이내), subtext는 참여 유도 한 줄 (25자 이내). body 없음. 예시: headline "AI의 미래, 어떻게 생각하세요?" / subtext "댓글로 자유롭게 의견을 남겨주세요!"
 - image_prompt: 텍스트 없는 배경 이미지용, 영문으로, "no text, no letters" 포함 필수
 - 모든 카피는 한국어, image_prompt만 영문

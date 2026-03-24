@@ -89,9 +89,9 @@ function drawAdFrame(
   frameInScene: number,
   sceneDurationFrames: number,
   imageBitmap?: ImageBitmap,
+  w = VIDEO_WIDTH,
+  h = VIDEO_HEIGHT,
 ) {
-  const w = VIDEO_WIDTH;
-  const h = VIDEO_HEIGHT;
   const progress = frameInScene / sceneDurationFrames;
 
   ctx.clearRect(0, 0, w, h);
@@ -302,20 +302,36 @@ async function mixAllAudio(
     }
   }
 
-  // 3. BGM (full duration, low volume)
+  // 3. BGM (full duration, ducking when TTS plays)
   if (bgmAudio) {
     const bgmTempCtx = new OfflineAudioContext(1, 1, sampleRate);
     const bgmBytes = decodeBase64ToBytes(bgmAudio.dataUrl);
     const bgmBuffer = await bgmTempCtx.decodeAudioData(bgmBytes.buffer.slice(0));
 
+    const BGM_FULL = 0.12;
+    const BGM_DUCKED = 0.04; // TTS 나올 때 BGM 볼륨 낮춤
+    const DUCK_FADE = 0.3; // 볼륨 전환 시간 (초)
+
     const bgmSrc = mixCtx.createBufferSource();
     bgmSrc.buffer = bgmBuffer;
     const gain = mixCtx.createGain();
-    gain.gain.value = 0.25;
+    gain.gain.value = 0;
+    // 페이드인 (훅 구간은 TTS 없으므로 풀 볼륨)
     gain.gain.setValueAtTime(0, 0);
-    gain.gain.linearRampToValueAtTime(0.25, 1.0);
+    gain.gain.linearRampToValueAtTime(BGM_FULL, 1.0);
+    // 훅→광고 전환 시점에서 ducking 시작
+    let sceneOffset = hookDuration;
+    for (const scene of scenes) {
+      const hasTts = ttsAudios.some(a => a.sceneNumber === scene.scene_number);
+      const targetVol = hasTts ? BGM_DUCKED : BGM_FULL;
+      const t = Math.max(0.01, sceneOffset);
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(targetVol, Math.min(t + DUCK_FADE, totalDuration));
+      sceneOffset += ttsAudios.find(a => a.sceneNumber === scene.scene_number)?.durationInSeconds ?? scene.duration;
+    }
+    // 페이드아웃
     const fadeOutStart = Math.max(0, totalDuration - 2.0);
-    gain.gain.setValueAtTime(0.25, fadeOutStart);
+    gain.gain.setValueAtTime(gain.gain.value, fadeOutStart);
     gain.gain.linearRampToValueAtTime(0, totalDuration);
 
     bgmSrc.connect(gain);
@@ -340,9 +356,9 @@ function drawTransitionFrame(
   ctx: OffscreenCanvasRenderingContext2D,
   lastHookBitmap: ImageBitmap | undefined,
   progress: number, // 0→1
+  w = VIDEO_WIDTH,
+  h = VIDEO_HEIGHT,
 ) {
-  const w = VIDEO_WIDTH;
-  const h = VIDEO_HEIGHT;
 
   // Black fade-through
   if (lastHookBitmap && progress < 0.5) {
@@ -364,7 +380,11 @@ export async function renderMemeAdVideoToMp4(
   ttsAudios: TtsAudio[],
   onProgress: (progress: number) => void,
   bgmAudio?: BgmAudio | null,
+  width?: number,
+  height?: number,
 ): Promise<Blob> {
+  const W = width || VIDEO_WIDTH;
+  const H = height || VIDEO_HEIGHT;
   onProgress(0);
 
   // Phase 1: Extract hook frames (0~20%)
@@ -413,13 +433,13 @@ export async function renderMemeAdVideoToMp4(
   onProgress(0.3);
 
   // Phase 4: Setup encoders (30%)
-  const canvas = new OffscreenCanvas(VIDEO_WIDTH, VIDEO_HEIGHT);
+  const canvas = new OffscreenCanvas(W, H);
   const ctx = canvas.getContext('2d')!;
 
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
     target,
-    video: { codec: 'avc', width: VIDEO_WIDTH, height: VIDEO_HEIGHT },
+    video: { codec: 'avc', width: W, height: H },
     audio: { codec: 'aac', numberOfChannels: 1, sampleRate: 44100 },
     fastStart: 'in-memory',
   });
@@ -431,8 +451,8 @@ export async function renderMemeAdVideoToMp4(
 
   videoEncoder.configure({
     codec: 'avc1.640028',
-    width: VIDEO_WIDTH,
-    height: VIDEO_HEIGHT,
+    width: W,
+    height: H,
     bitrate: 4_000_000,
     framerate: VIDEO_FPS,
   });
@@ -452,11 +472,11 @@ export async function renderMemeAdVideoToMp4(
   // Phase 5: Encode hook frames (30~50%)
   let globalFrame = 0;
   for (let f = 0; f < hookFrames; f++) {
-    ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+    ctx.clearRect(0, 0, W, H);
     // Cover-fit the hook bitmap
     const bmp = hookBitmaps[f];
     const srcAspect = bmp.width / bmp.height;
-    const dstAspect = VIDEO_WIDTH / VIDEO_HEIGHT;
+    const dstAspect = W / H;
     let sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;
     if (srcAspect > dstAspect) {
       sw = bmp.height * dstAspect;
@@ -465,14 +485,14 @@ export async function renderMemeAdVideoToMp4(
       sh = bmp.width / dstAspect;
       sy = (bmp.height - sh) / 2;
     }
-    ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+    ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, W, H);
 
     // Transition overlay at the end of hook
     const transitionStart = hookFrames - transitionFrames;
     if (f >= transitionStart) {
       const progress = (f - transitionStart) / transitionFrames;
       ctx.fillStyle = `rgba(0,0,0,${progress})`;
-      ctx.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+      ctx.fillRect(0, 0, W, H);
     }
 
     const frame = new VideoFrame(canvas, {
@@ -502,11 +522,11 @@ export async function renderMemeAdVideoToMp4(
       // Fade-in from black for first scene's first few frames
       if (sceneIdx === 0 && f < transitionFrames) {
         const progress = f / transitionFrames;
-        drawAdFrame(ctx, scene, f, sceneDurFrames, imageBitmap);
+        drawAdFrame(ctx, scene, f, sceneDurFrames, imageBitmap, W, H);
         ctx.fillStyle = `rgba(0,0,0,${1 - progress})`;
-        ctx.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+        ctx.fillRect(0, 0, W, H);
       } else {
-        drawAdFrame(ctx, scene, f, sceneDurFrames, imageBitmap);
+        drawAdFrame(ctx, scene, f, sceneDurFrames, imageBitmap, W, H);
       }
 
       const frame = new VideoFrame(canvas, {

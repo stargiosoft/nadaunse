@@ -74,11 +74,20 @@ serve(async (req) => {
 중요: 연속 2개 씬에 같은 motion_style 금지! 시각적 다양성을 위해 다양하게 배분.
 씬 내용에 가장 어울리는 스타일 선택. 18가지를 골고루 활용할 것.
 
-★ 모션-자막 연동 규칙 (매우 중요):
-- split_compare 사용 시: 반드시 자막에 **왼쪽값** … **오른쪽값** 형태로 2개 이상의 대비 볼드 키워드 포함
-- counter 사용 시: 반드시 자막에 **숫자+단위** 형태의 볼드 키워드 포함 (예: **92%**, **3배**)
-- progress_bar 사용 시: 반드시 자막에 **퍼센트** 또는 **비율** 볼드 키워드 포함
-- 모션이 데이터를 자막의 **볼드** 키워드에서 추출하므로, 모션에 맞는 키워드를 자막에 반드시 넣어야 함!
+★★★ 모션-자막 연동 규칙 (CRITICAL — 이 규칙 위반 시 영상 렌더링 실패):
+모션 컴포넌트는 자막의 **볼드** 키워드를 추출하여 화면에 표시합니다. 모션별 자막 형식을 반드시 지켜야 합니다:
+
+| motion_style | 자막 필수 형식 | 예시 | 자막 길이 |
+|---|---|---|---|
+| split_compare | **A값** vs **B값** (대비 2개 필수) | "**월50만원**이 **월5만원**으로" | 20자까지 허용 |
+| counter | **숫자+단위** 볼드 1개 이상 | "무려 **92%**가 모른다" | 15자 |
+| progress_bar | **퍼센트/비율** 볼드 1개 이상 | "달성률 **78%** 돌파" | 15자 |
+| list_reveal | **항목** 볼드 1~3개 | "**수면**, **식단**, **운동**" | 15자 |
+| keyword_pop | **키워드** 볼드 1~3개 | "핵심은 **복리**입니다" | 15자 |
+| 그 외 모션 | **키워드** 볼드 1개 이상 권장 | "**충격적** 결과" | 15자 |
+
+위 표의 형식을 지키지 않으면 해당 모션이 빈 화면으로 렌더링됩니다!
+먼저 motion_style을 정한 뒤, 그에 맞는 자막 형식으로 작성하세요.
 
 ★ 씬별 색상 팔레트 (accent_color, glow_color):
 씬 분위기에 맞는 색상 조합을 선택. 연속 씬이 같은 색상이면 단조로우니 다양하게!
@@ -124,12 +133,32 @@ ${motionTheme === 'colorful_pop' ? `비주얼 스타일: 컬러풀 팝 — 밝�
 네온 사인 같은 강렬한 채도의 색상만 사용.`}
 위 조합을 참고하되, 씬 내용에 맞게 자유롭게 조합 가능. 반드시 #hex 6자리 포맷.
 
+★ 레이아웃 선택 가이드 (layout):
+- center: 기본값. keyword_pop, zoom_impact, radial_burst, glitch, wave, emoji_rain, confetti_burst, sparkle_trail, pulse_ring
+- top_heavy: list_reveal, parallax_layers (항목이 위에서 아래로 나열)
+- bottom_heavy: counter, progress_bar (데이터가 하단에 집중)
+- split_left / split_right: split_compare 전용 (좌우 비교)
+motion_style에 맞는 layout을 선택하세요.
+
 ★ 전환 효과 (transition) — 7가지:
 cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
 다양하게 섞어 사용. 연속 같은 전환 금지.` : ''
 
-    const prompt = `당신은 숏폼 영상 대본 전문 작가이자 SNS 바이럴 콘텐츠 기획자입니다.
+    const isRevision = revision && revision.currentScript && revision.request
 
+    const prompt = `당신은 숏폼 영상 대본 전문 작가이자 SNS 바이럴 콘텐츠 기획자입니다.
+${isRevision ? `
+★★★ [수정 모드] ★★★
+아래는 기존 대본입니다. 사용자의 수정 요청에 따라 해당 부분만 정확히 수정하고, 나머지는 그대로 유지하세요.
+전체 길이(${dur}초)와 씬 수를 반드시 유지하세요.
+
+기존 대본:
+${revision.currentScript}
+
+사용자 수정 요청: "${revision.request}"
+
+위 수정 요청을 반영한 수정된 대본을 동일한 JSON 형식으로 반환하세요.
+` : ''}
 주제: "${topic}"
 스타일: ${styleGuide[st] || styleGuide.informative}
 목표 길이: 약 ${dur}초
@@ -145,8 +174,8 @@ cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
       "scene_number": 1,
       "duration": 3,
       "type": "hook",
-      "narration": "나레이션 텍스트 (읽는 속도 기준 해당 초 분량)",
-      "subtitle": "화면에 표시될 자막 (짧고 임팩트 있게, 10자 이내)",
+      "narration": "나레이션 텍스트 (duration × 6자 기준. 3초 씬이면 약 18자)",
+      "subtitle": "화면에 표시될 자막 (핵심 키워드 중심, 15자 이내. **볼드**로 강조)",
       "visual": "화면 설명 (어떤 영상/이미지를 보여줄지)",
       "transition": "전환 효과 (cut/fade/zoom/slide/blur_in/wipe_left/scale_rotate)"${motionFields ? ',' : ''}${motionFields}
     }
@@ -159,11 +188,17 @@ cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
 ★ 대본 작성 규칙:
 1. 첫 번째 씬(hook): 반드시 3초 이내. "~하면 큰일납니다", "이거 모르면 손해", "딱 1분만 투자하세요" 등 시청 유지를 위한 강한 후킹
 2. 씬 전환: ${dur}초 기준 ${dur <= 15 ? '3~4개' : dur <= 30 ? '5~7개' : '7~10개'} 씬으로 구성. 각 씬은 2~5초
-3. 나레이션: 자연스러운 구어체, 1초에 약 3~4음절 기준으로 분량 조절
+3. ★★★ [최중요] 나레이션 글자수 제한 (TTS 초당 약 6자 기준):
+   - 2초 씬: 나레이션 10~12자 (예: "이거 모르면 큰일납니다")
+   - 3초 씬: 나레이션 15~18자 (예: "아침에 딱 이것만 하면 인생 달라져요")
+   - 4초 씬: 나레이션 20~24자
+   - 5초 씬: 나레이션 25~30자
+   - 전체 나레이션 총 글자수: 약 ${dur * 6}자 내외 (${dur}초 × 6자/초)
+   ※ 너무 짧으면 어색하고, 너무 길면 영상이 초과됩니다. 자연스러운 한 문장으로!
 4. 자막: 화면에 표시할 핵심 키워드만. 나레이션 전체를 자막으로 넣지 말 것
 5. 마지막 씬: CTA (팔로우/좋아요/댓글/공유 유도) 또는 여운 남기기
 6. visual: 구체적으로 어떤 화면을 촬영/편집할지 설명 (예: "데스크 위 노트북 클로즈업", "텍스트 애니메이션: 숫자 카운트업")
-7. 전체 duration 합이 목표 길이(${dur}초)와 일치하도록
+7. 전체 duration 합이 목표 길이(${dur}초)와 정확히 일치하도록
 8. JSON만 반환, 마크다운/설명 없이
 
 ★ 후킹 전략 (행동경제학 기반):
@@ -188,7 +223,7 @@ cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: 'application/json',
-            temperature: 0.85,
+            temperature: 0.7,
           },
         }),
       }
@@ -213,7 +248,22 @@ cut, fade, zoom, slide, blur_in, wipe_left, scale_rotate
       })
     }
 
-    const result = JSON.parse(text)
+    // 마크다운 코드블록 래핑 제거 + JSON 파싱
+    let cleaned = text.trim()
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+    }
+
+    let result
+    try {
+      result = JSON.parse(cleaned)
+    } catch (parseErr) {
+      console.error('[generate-short-form] JSON parse failed:', (parseErr as Error).message, 'raw:', cleaned.slice(0, 200))
+      return new Response(JSON.stringify({ error: 'AI 응답 파싱 실패. 다시 시도해주세요.' }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -109,9 +109,8 @@ export default function ThumbnailPage() {
 
   // ── Handlers ──
 
-  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processReferenceFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
     if (file.size > 10 * 1024 * 1024) {
       setError('이미지는 10MB 이하만 업로드 가능해요');
       return;
@@ -120,11 +119,37 @@ export default function ThumbnailPage() {
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
       setReferencePreview(dataUrl);
-      // base64 부분만 추출 (data:image/png;base64, 뒤)
       const base64 = dataUrl.split(',')[1];
       setReferenceBase64(base64);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processReferenceFile(file);
+  };
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processReferenceFile(file);
   };
 
   const removeReference = () => {
@@ -438,23 +463,28 @@ export default function ThumbnailPage() {
                   </button>
                 </div>
               ) : (
-                <label style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  width: '100%', height: '120px', borderRadius: '16px',
-                  border: `2px dashed ${C.borderDefault}`, backgroundColor: C.surfaceSecondary,
-                  cursor: 'pointer', transition: 'all 0.15s ease',
-                  gap: '8px',
-                }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <label
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    width: '100%', height: '120px', borderRadius: '16px',
+                    border: `2px dashed ${isDragging ? C.primary : C.borderDefault}`,
+                    backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surfaceSecondary,
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                    gap: '8px',
+                  }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={isDragging ? C.primary : C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                     <circle cx="8.5" cy="8.5" r="1.5" />
                     <polyline points="21 15 16 10 5 21" />
                   </svg>
                   <span style={{
                     fontFamily: font, fontSize: '13px', fontWeight: 400,
-                    color: C.textCaption,
+                    color: isDragging ? C.primary : C.textCaption,
                   }}>
-                    이미지를 업로드하세요 (10MB 이하)
+                    {isDragging ? '여기에 놓으세요' : '이미지를 드래그하거나 클릭하세요 (10MB 이하)'}
                   </span>
                   <input
                     type="file"

@@ -4,17 +4,140 @@ import { Player } from '@remotion/player';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
 import MemeAdVideo, { computeTotalMemeAdFrames } from '../meme-ad/compositions/MemeAdVideo';
-import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS, AD_DURATIONS, MAX_HOOK_DURATION, MIN_HOOK_DURATION, MAX_HOOK_FILE_SIZE, HOOK_SITES } from '../meme-ad/constants';
+import { VIDEO_FPS, AD_DURATIONS, MAX_HOOK_DURATION, MIN_HOOK_DURATION, MAX_HOOK_FILE_SIZE, HOOK_SITES } from '../meme-ad/constants';
+import { ASPECT_RATIOS } from '../shortform/constants';
 import { renderMemeAdVideoToMp4 } from '../meme-ad/renderMemeAdVideo';
 import { isWebCodecsSupported } from '../shortform/renderVideo';
 import type { Scene, ScriptResult, TtsAudio, BgmAudio } from '../meme-ad/types';
+import { BGM_MOODS, MOTION_THEMES } from '../shortform/types';
+import type { MotionTheme, MotionStyle } from '../shortform/types';
 import type { TransitionType } from '../meme-ad/compositions/TransitionOverlay';
+
+// ── AudioBuffer → WAV Blob 변환 ──
+
+function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataLength = buffer.length * blockAlign;
+  const arrayBuffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(arrayBuffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataLength, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataLength, true);
+
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+// ── **bold** 마크다운 → <strong> 렌더링 ──
+
+function renderBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
+// ── Sanitize: 연속 중복 모션/전환 보정 ──
+
+const ALL_MOTIONS: MotionStyle[] = [
+  'keyword_pop', 'typewriter', 'slide_stack', 'counter', 'split_compare',
+  'radial_burst', 'list_reveal', 'zoom_impact', 'glitch', 'wave',
+  'spotlight', 'card_flip', 'progress_bar', 'emoji_rain', 'parallax_layers',
+  'confetti_burst', 'sparkle_trail', 'pulse_ring',
+];
+const ALL_TRANSITIONS = ['cut', 'fade', 'zoom', 'slide', 'blur_in', 'wipe_left', 'scale_rotate'];
+
+function sanitizeScriptResult(data: ScriptResult): ScriptResult {
+  if (!data?.scenes?.length) return data;
+  const scenes = data.scenes.map((scene, i, arr) => {
+    const s = { ...scene };
+    if (i > 0 && s.motion_style && s.motion_style === arr[i - 1].motion_style) {
+      const others = ALL_MOTIONS.filter(m => m !== s.motion_style);
+      s.motion_style = others[Math.floor(Math.random() * others.length)];
+    }
+    if (i > 0 && s.transition && s.transition === arr[i - 1].transition) {
+      const others = ALL_TRANSITIONS.filter(t => t !== s.transition);
+      s.transition = others[Math.floor(Math.random() * others.length)];
+    }
+    return s;
+  });
+  return { ...data, scenes };
+}
+
+// ── Constants ──
+
+const VIDEO_TYPES = [
+  { id: 'motion', label: '모션 그래픽', desc: '텍스트 + 애니메이션' },
+  { id: 'image', label: '이미지 기반', desc: 'AI 이미지 + 줌/패닝 효과' },
+  { id: 'video', label: '영상 기반', desc: 'AI 이미지 → AI 영상' },
+] as const;
+
+const I2V_MODELS = [
+  { id: 'wan', label: 'Wan 2.5', desc: '최저가 · ~$0.60/영상' },
+  { id: 'hailuo', label: 'Hailuo Fast', desc: '가성비 · ~$0.90/영상' },
+  { id: 'kling', label: 'Kling v2.1', desc: '고품질 · ~$2.10/영상' },
+] as const;
+
+type VideoType = 'image' | 'motion' | 'video';
+type I2vModel = typeof I2V_MODELS[number]['id'];
+type ImageSource = 'ai' | 'stock';
+
+const IMAGE_SOURCES = [
+  { id: 'ai' as const, label: 'AI 생성', desc: 'Gemini 이미지' },
+  { id: 'stock' as const, label: '스톡 이미지', desc: 'Unsplash·Pexels' },
+] as const;
+
+const REFERENCE_MODES = [
+  { id: 'style_only' as const, label: '스타일만 참고', desc: '색감·구도·분위기' },
+  { id: 'style_and_character' as const, label: '캐릭터+스타일', desc: '캐릭터·인물 유지' },
+] as const;
 
 // ── Types ──
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 type Step = 'input' | 'review' | 'result';
-type VideoPhase = 'tts' | 'images' | 'preview' | 'rendering' | 'done';
+type VideoPhase = 'tts' | 'bgm' | 'images' | 'image_review' | 'videos' | 'preview' | 'rendering' | 'done';
+
+const NARRATION_VOICES = [
+  { id: 'none', label: '나레이션 없음', desc: '' },
+  { id: 'aria', label: 'Aria', desc: '차분한 여성' },
+  { id: 'sarah', label: 'Sarah', desc: '따뜻한 여성' },
+  { id: 'laura', label: 'Laura', desc: '명랑한 여성' },
+  { id: 'roger', label: 'Roger', desc: '신뢰감 남성' },
+  { id: 'charlie', label: 'Charlie', desc: '또렷한 남성' },
+] as const;
+
+type NarrationVoice = typeof NARRATION_VOICES[number]['id'];
 
 // ── Design Tokens ──
 
@@ -44,11 +167,11 @@ const C = {
 const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 
 
-const TRANSITIONS: { id: TransitionType; label: string }[] = [
-  { id: 'fade', label: '페이드' },
-  { id: 'flash', label: '플래시' },
-  { id: 'glitch', label: '글리치' },
-  { id: 'zoom', label: '줌' },
+const TRANSITIONS: { id: TransitionType; label: string; desc: string }[] = [
+  { id: 'fade', label: '부드럽게', desc: '자연스러운 전환' },
+  { id: 'flash', label: '번쩍', desc: '강렬한 전환' },
+  { id: 'glitch', label: '찢어짐', desc: '파격적 전환' },
+  { id: 'zoom', label: '확대', desc: '빨려드는 전환' },
 ];
 
 // ── Main Page ──
@@ -64,9 +187,33 @@ export default function MemeAdPage() {
   const [brandInfo, setBrandInfo] = useState('');
   const [adDuration, setAdDuration] = useState<number>(10);
   const [transitionType, setTransitionType] = useState<TransitionType>('fade');
+  const [aspectRatio, setAspectRatio] = useState<string>('9:16');
+  const [videoType, setVideoType] = useState<VideoType>('motion');
+  const [imageSource, setImageSource] = useState<ImageSource>('ai');
+  const [refPreview, setRefPreview] = useState<string | null>(null);
+  const [refBase64, setRefBase64] = useState<string | null>(null);
+  const [refMode, setRefMode] = useState<'style_only' | 'style_and_character'>('style_only');
+  const [refDragging, setRefDragging] = useState(false);
+  const [motionTheme, setMotionTheme] = useState<MotionTheme>('colorful_pop');
+  const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
+  const [narrationVoice, setNarrationVoice] = useState<NarrationVoice>('none');
+  const [bgmMood, setBgmMood] = useState<string>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Reference image helpers
+  const processRefFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 10 * 1024 * 1024) { setError('10MB 이하만 업로드 가능'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      setRefPreview(dataUrl);
+      setRefBase64(dataUrl.split(',')[1]);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -81,8 +228,16 @@ export default function MemeAdPage() {
   const [imageProgress, setImageProgress] = useState(0);
   const [renderProgress, setRenderProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
+  const [regenScenes, setRegenScenes] = useState<Set<number>>(new Set());
+  const [videoGenProgress, setVideoGenProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const ttsAbortRef = useRef(false);
+
+  // ── Computed dimensions from aspect ratio ──
+  const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio) || ASPECT_RATIOS[0];
+  const videoWidth = selectedRatio.width;
+  const videoHeight = selectedRatio.height;
 
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,8 +328,9 @@ export default function MemeAdPage() {
         brandInfo: brandInfo.trim(),
         adDuration,
         hookDuration: Math.round(hookDuration),
+        videoType: videoType === 'video' ? 'image' : videoType,
       });
-      setResult(data);
+      setResult(sanitizeScriptResult(data));
       setStep('review');
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류');
@@ -196,11 +352,16 @@ export default function MemeAdPage() {
     try {
       const currentScript = JSON.stringify(result, null, 2);
       const data = await callEdgeFunction('generate-meme-ad', {
-        brandInfo: `기존 대본:\n${currentScript}\n\n수정 요청: ${userMsg}\n\n위 대본을 수정 요청에 맞게 수정해줘. 전체 길이(${result.total_duration}초)와 씬 수는 유지.`,
+        brandInfo: brandInfo.trim(),
         adDuration: result.total_duration,
         hookDuration: Math.round(hookDuration),
+        videoType: videoType === 'video' ? 'image' : videoType,
+        revision: {
+          currentScript,
+          request: userMsg,
+        },
       });
-      setResult(data);
+      setResult(sanitizeScriptResult(data));
       setChatMessages(prev => [...prev, { role: 'assistant', content: '대본을 수정했습니다!' }]);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : '오류';
@@ -219,51 +380,145 @@ export default function MemeAdPage() {
     setError(null);
     ttsAbortRef.current = false;
 
-    const audios: TtsAudio[] = [];
-
-    for (let i = 0; i < scenes.length; i++) {
-      if (ttsAbortRef.current) return;
-      const scene = scenes[i];
-
-      try {
-        const data = await callEdgeFunction('generate-tts', {
-          text: scene.narration,
-          voice: 'nova',
-          speed: 1.0,
-        });
-
-        const base64 = data.audio.split(',')[1];
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
-
-        const audioCtx = new AudioContext();
-        const buffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
-        await audioCtx.close();
-
-        audios.push({
-          sceneNumber: scene.scene_number,
-          dataUrl: data.audio,
-          durationInSeconds: buffer.duration,
-        });
-
-        setTtsAudios([...audios]);
-        setTtsProgress((i + 1) / scenes.length);
-      } catch (err) {
-        setError(`씬 ${scene.scene_number} TTS 실패: ${err instanceof Error ? err.message : '오류'}`);
-        return;
+    // 나레이션 없음이면 TTS 건너뛰기
+    if (narrationVoice === 'none') {
+      if (bgmMood !== 'none') {
+        setVideoPhase('bgm');
+      } else if (videoType === 'image') {
+        setVideoPhase('images');
+      } else {
+        setVideoPhase('preview');
       }
+      return;
     }
 
-    // 이미지 생성 후 미리보기로
-    setVideoPhase('images');
-  }, []);
+    const audios: TtsAudio[] = [];
+    const TTS_BATCH = 3;
+
+    for (let i = 0; i < scenes.length; i += TTS_BATCH) {
+      if (ttsAbortRef.current) return;
+      const batch = scenes.slice(i, Math.min(i + TTS_BATCH, scenes.length));
+
+      const results = await Promise.allSettled(
+        batch.map(async (scene) => {
+          const data = await callEdgeFunction('generate-tts', {
+            text: scene.narration,
+            voice: narrationVoice,
+            speed: 1.0,
+          });
+
+          const base64 = data.audio.split(',')[1];
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+
+          const audioCtx = new AudioContext();
+          const buffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
+
+          // 0.5초 무음 패딩 — 씬 간 호흡 공간
+          const SILENCE_PADDING = 0.5;
+          const paddedLength = buffer.length + Math.round(SILENCE_PADDING * buffer.sampleRate);
+          const paddedBuffer = audioCtx.createBuffer(buffer.numberOfChannels, paddedLength, buffer.sampleRate);
+          for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+            paddedBuffer.getChannelData(ch).set(buffer.getChannelData(ch));
+          }
+
+          const wavBlob = audioBufferToWav(paddedBuffer);
+          const paddedDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(wavBlob);
+          });
+
+          await audioCtx.close();
+
+          return {
+            sceneNumber: scene.scene_number,
+            dataUrl: paddedDataUrl,
+            durationInSeconds: paddedBuffer.duration,
+          };
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          audios.push(r.value);
+        } else {
+          setError(`TTS 생성 실패: ${r.reason instanceof Error ? r.reason.message : '오류'}`);
+          return;
+        }
+      }
+
+      setTtsAudios([...audios]);
+      setTtsProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
+    }
+
+    // BGM 생성 또는 이미지 또는 프리뷰로
+    if (bgmMood !== 'none') {
+      setVideoPhase('bgm');
+    } else if (videoType === 'image' || videoType === 'video') {
+      setVideoPhase('images');
+    } else {
+      setVideoPhase('preview');
+    }
+  }, [narrationVoice, bgmMood, videoType]);
 
   useEffect(() => {
     if (step === 'result' && result && videoPhase === 'tts' && ttsAudios.length === 0) {
       generateAllTts(result.scenes);
     }
   }, [step, result, videoPhase, ttsAudios.length, generateAllTts]);
+
+  // ── Step 3-A+: BGM Generation ──
+
+  const generateBgm = useCallback(async (mood: string, targetDuration: number) => {
+    setBgmAudio(null);
+    setError(null);
+
+    try {
+      const data = await callEdgeFunction('generate-bgm', {
+        mood,
+        duration: targetDuration,
+      });
+
+      if (data.audioUrl && data.track) {
+        const audioRes = await fetch(data.audioUrl);
+        const audioBlob = await audioRes.blob();
+        const arrayBuf = await audioBlob.arrayBuffer();
+
+        const audioCtx = new AudioContext();
+        const buffer = await audioCtx.decodeAudioData(arrayBuf.slice(0));
+        await audioCtx.close();
+
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(audioBlob);
+        });
+
+        setBgmAudio({
+          dataUrl,
+          durationInSeconds: buffer.duration,
+          track: data.track,
+        });
+      }
+    } catch (err) {
+      console.warn('BGM 생성 실패 (계속 진행):', err);
+    }
+
+    if (videoType === 'image' || videoType === 'video') {
+      setVideoPhase('images');
+    } else {
+      setVideoPhase('preview');
+    }
+  }, [videoType]);
+
+  useEffect(() => {
+    if (step === 'result' && result && videoPhase === 'bgm') {
+      generateBgm(bgmMood, result.total_duration + hookDuration);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, result, videoPhase, generateBgm]);
 
   // ── Step 3-A2: Generate scene images ──
 
@@ -272,47 +527,242 @@ export default function MemeAdPage() {
     setError(null);
 
     const updatedScenes = [...scenes];
+    const BATCH_SIZE = 3;
+    const orientationMap: Record<string, string> = { '9:16': 'portrait', '3:4': 'portrait', '1:1': 'squarish' };
 
-    for (let i = 0; i < scenes.length; i += 2) {
-      if (ttsAbortRef.current) return;
-      const batch = scenes.slice(i, Math.min(i + 2, scenes.length));
+    if (imageSource === 'stock') {
+      // 스톡 이미지 모드: Unsplash/Pexels 검색
+      for (let i = 0; i < scenes.length; i += BATCH_SIZE) {
+        if (ttsAbortRef.current) return;
+        const batch = scenes.slice(i, Math.min(i + BATCH_SIZE, scenes.length));
 
-      const results = await Promise.allSettled(
-        batch.map(async (scene) => {
-          const data = await callEdgeFunction('generate-card-image', {
-            slide_context: {
-              headline: scene.subtitle.replace(/\*\*/g, ''),
-              body: scene.narration,
-              type: scene.type === 'cta' ? 'cta' : 'content',
-              topic: brandInfo,
-            },
-            aspect_ratio: '9:16',
-          });
-          return { sceneNumber: scene.scene_number, image: data.image, mimeType: data.mimeType };
-        })
-      );
+        const results = await Promise.allSettled(
+          batch.map(async (scene) => {
+            const query = scene.visual || scene.subtitle.replace(/\*\*/g, '');
+            const res = await fetch(`${supabaseUrl}/functions/v1/search-stock-image?query=${encodeURIComponent(query)}&orientation=${orientationMap[aspectRatio] || 'portrait'}`);
+            const data = await res.json();
+            return { sceneNumber: scene.scene_number, url: data.url as string | undefined };
+          })
+        );
 
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value.image) {
-          const { sceneNumber, image, mimeType } = r.value;
-          const dataUrl = `data:${mimeType || 'image/png'};base64,${image}`;
-          const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
-          if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: dataUrl };
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value.url) {
+            const idx = updatedScenes.findIndex(s => s.scene_number === r.value.sceneNumber);
+            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: r.value.url };
+          }
         }
-      }
 
-      setImageProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
+        setImageProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
+      }
+    } else {
+      // AI 이미지 모드: Gemini 생성
+      for (let i = 0; i < scenes.length; i += BATCH_SIZE) {
+        if (ttsAbortRef.current) return;
+        const batch = scenes.slice(i, Math.min(i + BATCH_SIZE, scenes.length));
+
+        const results = await Promise.allSettled(
+          batch.map(async (scene) => {
+            const payload: Record<string, unknown> = {
+              slide_context: {
+                headline: scene.subtitle.replace(/\*\*/g, ''),
+                body: scene.narration,
+                type: scene.type === 'cta' ? 'cta' : 'content',
+                topic: brandInfo,
+              },
+              aspect_ratio: aspectRatio,
+            };
+            if (refBase64) {
+              payload.reference_image = refBase64;
+              payload.reference_mode = refMode;
+            }
+            const data = await callEdgeFunction('generate-card-image', payload);
+            return { sceneNumber: scene.scene_number, image: data.image, mimeType: data.mimeType };
+          })
+        );
+
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value.image) {
+            const { sceneNumber, image, mimeType } = r.value;
+            const dataUrl = `data:${mimeType || 'image/png'};base64,${image}`;
+            const idx = updatedScenes.findIndex(s => s.scene_number === sceneNumber);
+            if (idx >= 0) updatedScenes[idx] = { ...updatedScenes[idx], backgroundImageUrl: dataUrl };
+          }
+        }
+
+        setImageProgress(Math.min(i + batch.length, scenes.length) / scenes.length);
+      }
     }
 
     setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
-    setVideoPhase('preview');
-  }, [brandInfo]);
+    setVideoPhase('image_review');
+  }, [brandInfo, imageSource, aspectRatio, refBase64, refMode]);
 
   useEffect(() => {
     if (step === 'result' && result && videoPhase === 'images') {
       generateSceneImages(result.scenes);
     }
   }, [step, result, videoPhase, generateSceneImages]);
+
+  // ── Regenerate single scene image ──
+
+  const regenerateSceneImage = useCallback(async (scene: Scene) => {
+    if (regenScenes.has(scene.scene_number)) return;
+    setRegenScenes(prev => new Set(prev).add(scene.scene_number));
+    setError(null);
+
+    try {
+      const regenPayload: Record<string, unknown> = {
+        slide_context: {
+          headline: scene.subtitle.replace(/\*\*/g, ''),
+          body: scene.narration,
+          type: scene.type === 'cta' ? 'cta' : 'content',
+          topic: brandInfo,
+        },
+        aspect_ratio: aspectRatio,
+      };
+      if (refBase64) {
+        regenPayload.reference_image = refBase64;
+        regenPayload.reference_mode = refMode;
+      }
+      const data = await callEdgeFunction('generate-card-image', regenPayload);
+
+      if (data.image) {
+        const dataUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`;
+        setResult(prev => {
+          if (!prev) return prev;
+          const scenes = prev.scenes.map(s =>
+            s.scene_number === scene.scene_number
+              ? { ...s, backgroundImageUrl: dataUrl }
+              : s
+          );
+          return { ...prev, scenes };
+        });
+      }
+    } catch (err) {
+      setError(`씬 ${scene.scene_number} 재생성 실패: ${err instanceof Error ? err.message : '오류'}`);
+    } finally {
+      setRegenScenes(prev => {
+        const next = new Set(prev);
+        next.delete(scene.scene_number);
+        return next;
+      });
+    }
+  }, [regenScenes, brandInfo, aspectRatio, refBase64, refMode]);
+
+  // ── Step 3-A3: Generate scene background videos (Replicate I2V) ──
+
+  const generateSceneVideos = useCallback(async (scenes: Scene[]) => {
+    setVideoGenProgress(0);
+    setError(null);
+
+    const scenesWithImages = scenes.filter(s => s.backgroundImageUrl);
+    if (scenesWithImages.length === 0) {
+      setVideoPhase('preview');
+      return;
+    }
+
+    // 1. Submit scenes to Replicate queue (순차 요청)
+    const submissions: { sceneNumber: number; requestId: string }[] = [];
+    let submitFailCount = 0;
+
+    for (let i = 0; i < scenesWithImages.length; i++) {
+      if (ttsAbortRef.current) return;
+      const scene = scenesWithImages[i];
+
+      try {
+        const data = await callEdgeFunction('generate-scene-video', {
+          action: 'submit',
+          model: i2vModel,
+          image_data_url: scene.backgroundImageUrl,
+          motion_style: scene.motion_style,
+        });
+        if (data.request_id) {
+          submissions.push({ sceneNumber: scene.scene_number, requestId: data.request_id as string });
+        } else {
+          submitFailCount++;
+        }
+      } catch {
+        submitFailCount++;
+      }
+
+      if (i === 0 && submissions.length === 0 && submitFailCount > 0) {
+        console.warn('[MemeAd] I2V API 연결 실패, 이미지 배경으로 폴백');
+        setError('AI 영상 배경 생성을 건너뛰었습니다 (API 연결 오류). 이미지 배경으로 영상이 생성됩니다.');
+        setVideoPhase('preview');
+        return;
+      }
+
+      if (i + 3 < scenesWithImages.length) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    if (submissions.length === 0) {
+      setError('AI 영상 배경 생성을 건너뛰었습니다. 이미지 배경으로 영상이 생성됩니다.');
+      setVideoPhase('preview');
+      return;
+    }
+
+    // 2. Poll all in parallel (최대 5분)
+    const completed = new Set<number>();
+    const updatedScenes = [...scenes];
+    let videoSuccessCount = 0;
+
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (ttsAbortRef.current) return;
+      if (completed.size >= submissions.length) break;
+
+      await new Promise(r => setTimeout(r, 5000));
+
+      for (const sub of submissions) {
+        if (completed.has(sub.sceneNumber)) continue;
+
+        try {
+          const data = await callEdgeFunction('generate-scene-video', {
+            action: 'poll',
+            model: i2vModel,
+            request_id: sub.requestId,
+          });
+
+          if (data.status === 'COMPLETED' && data.video_url) {
+            completed.add(sub.sceneNumber);
+            videoSuccessCount++;
+            const idx = updatedScenes.findIndex(s => s.scene_number === sub.sceneNumber);
+            if (idx >= 0) {
+              updatedScenes[idx] = { ...updatedScenes[idx], backgroundVideoUrl: data.video_url as string };
+            }
+            setVideoGenProgress(completed.size / submissions.length);
+          }
+
+          if (data.status === 'FAILED') {
+            completed.add(sub.sceneNumber);
+            setVideoGenProgress(completed.size / submissions.length);
+          }
+        } catch (err) {
+          console.warn(`Poll failed for scene ${sub.sceneNumber}:`, err);
+        }
+      }
+    }
+
+    if (completed.size < submissions.length) {
+      console.warn(`[MemeAd] ${submissions.length - completed.size}개 씬 I2V 타임아웃, 이미지 폴백`);
+    }
+
+    if (videoSuccessCount < submissions.length) {
+      const failCount = submissions.length - videoSuccessCount;
+      setError(`${failCount}개 씬의 AI 영상이 생성되지 않아 이미지 배경으로 대체됩니다.`);
+    }
+
+    setResult(prev => prev ? { ...prev, scenes: updatedScenes } : prev);
+    setVideoPhase('preview');
+  }, [i2vModel]);
+
+  // Auto-start video generation
+  useEffect(() => {
+    if (step === 'result' && result && videoPhase === 'videos') {
+      generateSceneVideos(result.scenes);
+    }
+  }, [step, result, videoPhase, generateSceneVideos]);
 
   // ── Step 3: Render ──
 
@@ -329,6 +779,9 @@ export default function MemeAdPage() {
         result.scenes,
         ttsAudios,
         (p) => setRenderProgress(p),
+        bgmAudio,
+        videoWidth,
+        videoHeight,
       );
       const url = URL.createObjectURL(blob);
       setVideoUrl(url);
@@ -697,10 +1150,58 @@ export default function MemeAdPage() {
                       <button
                         key={t.id}
                         onClick={() => setTransitionType(t.id)}
+                        className="flex-1 flex flex-col items-center justify-center"
+                        style={{
+                          height: '56px', borderRadius: '16px',
+                          fontFamily: font,
+                          backgroundColor: isSelected ? C.primary : C.surface,
+                          border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                          gap: '2px',
+                        }}
+                        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                        onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                        onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                      >
+                        <span style={{
+                          fontSize: '14px', fontWeight: isSelected ? 600 : 400,
+                          letterSpacing: '-0.3px',
+                          color: isSelected ? C.textWhite : C.textTertiary,
+                        }}>
+                          {t.label}
+                        </span>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 400,
+                          color: isSelected ? 'rgba(255,255,255,0.6)' : C.textCaption,
+                        }}>
+                          {t.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Aspect Ratio */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  화면 비율
+                </label>
+                <div className="flex" style={{ gap: '10px' }}>
+                  {ASPECT_RATIOS.map(r => {
+                    const isSelected = aspectRatio === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => setAspectRatio(r.id)}
                         className="flex-1 flex items-center justify-center"
                         style={{
                           height: '48px', borderRadius: '16px',
-                          fontFamily: font, fontSize: '14px', fontWeight: isSelected ? 600 : 400,
+                          fontFamily: font, fontSize: '15px', fontWeight: isSelected ? 600 : 400,
                           letterSpacing: '-0.3px',
                           color: isSelected ? C.textWhite : C.textTertiary,
                           backgroundColor: isSelected ? C.primary : C.surface,
@@ -711,11 +1212,412 @@ export default function MemeAdPage() {
                         onPointerUp={e => { e.currentTarget.style.transform = ''; }}
                         onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                       >
-                        {t.label}
+                        {r.label}
                       </button>
                     );
                   })}
                 </div>
+              </section>
+
+              {/* Video Type */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  영상 타입
+                </label>
+                <div className="flex" style={{ gap: '10px' }}>
+                  {VIDEO_TYPES.map(vt => {
+                    const isSelected = videoType === vt.id;
+                    return (
+                      <button
+                        key={vt.id}
+                        onClick={() => setVideoType(vt.id)}
+                        className="flex-1 flex flex-col items-center justify-center"
+                        style={{
+                          height: '64px', borderRadius: '16px',
+                          fontFamily: font,
+                          backgroundColor: isSelected ? C.primary : C.surface,
+                          border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                          gap: '2px',
+                        }}
+                        onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                        onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                        onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                      >
+                        <span style={{
+                          fontSize: '15px', fontWeight: isSelected ? 600 : 400,
+                          letterSpacing: '-0.3px',
+                          color: isSelected ? C.textWhite : C.textTertiary,
+                        }}>
+                          {vt.label}
+                        </span>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 400,
+                          color: isSelected ? 'rgba(255,255,255,0.7)' : C.textCaption,
+                        }}>
+                          {vt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Motion Theme (모션 그래픽일 때만) */}
+              {videoType === 'motion' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    비주얼 스타일
+                  </label>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '8px',
+                  }}>
+                    {MOTION_THEMES.map(mt => {
+                      const isSelected = motionTheme === mt.id;
+                      return (
+                        <button
+                          key={mt.id}
+                          onClick={() => setMotionTheme(mt.id)}
+                          className="flex flex-col items-center justify-center"
+                          style={{
+                            height: '72px', borderRadius: '14px', padding: '8px 4px',
+                            fontFamily: font,
+                            backgroundColor: isSelected ? C.primary : C.surface,
+                            border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            gap: '6px',
+                          }}
+                          onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+                          onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                        >
+                          <div style={{
+                            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                            background: `linear-gradient(135deg, ${mt.preview[0]} 50%, ${mt.preview[1]} 50%)`,
+                            border: isSelected ? '2px solid rgba(255,255,255,0.4)' : '1px solid rgba(0,0,0,0.08)',
+                          }} />
+                          <div className="flex flex-col items-center" style={{ gap: '1px' }}>
+                            <span style={{
+                              fontSize: '12px', fontWeight: isSelected ? 600 : 500,
+                              letterSpacing: '-0.3px',
+                              color: isSelected ? C.textWhite : C.textPrimary,
+                            }}>
+                              {mt.label}
+                            </span>
+                            <span style={{
+                              fontSize: '10px', fontWeight: 400,
+                              color: isSelected ? 'rgba(255,255,255,0.6)' : C.textCaption,
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {mt.desc}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* I2V Model (영상 기반일 때만) */}
+              {videoType === 'video' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    영상 배경 AI 모델
+                  </label>
+                  <div className="flex" style={{ gap: '10px' }}>
+                    {I2V_MODELS.map(m => {
+                      const isSelected = i2vModel === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setI2vModel(m.id)}
+                          className="flex-1 flex flex-col items-center justify-center"
+                          style={{
+                            height: '72px', borderRadius: '16px',
+                            fontFamily: font,
+                            backgroundColor: isSelected ? C.primary : C.surface,
+                            border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            gap: '2px',
+                          }}
+                          onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                          onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                        >
+                          <span style={{
+                            fontSize: '14px', fontWeight: isSelected ? 600 : 400,
+                            letterSpacing: '-0.3px',
+                            color: isSelected ? C.textWhite : C.textPrimary,
+                          }}>
+                            {m.label}
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 400,
+                            color: isSelected ? 'rgba(255,255,255,0.7)' : C.textCaption,
+                          }}>
+                            {m.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Image Source (이미지/영상 기반일 때만) */}
+              {(videoType === 'image' || videoType === 'video') && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    이미지 소스
+                  </label>
+                  <div className="flex" style={{ gap: '10px' }}>
+                    {IMAGE_SOURCES.map(is => {
+                      const isSelected = imageSource === is.id;
+                      return (
+                        <button
+                          key={is.id}
+                          onClick={() => setImageSource(is.id)}
+                          className="flex-1 flex flex-col items-center justify-center"
+                          style={{
+                            height: '64px', borderRadius: '16px',
+                            fontFamily: font,
+                            backgroundColor: isSelected ? C.primary : C.surface,
+                            border: isSelected ? 'none' : `1px solid ${C.borderDefault}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            gap: '2px',
+                          }}
+                          onPointerDown={e => { e.currentTarget.style.transform = 'scale(0.99)'; }}
+                          onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                          onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                        >
+                          <span style={{
+                            fontSize: '15px', fontWeight: isSelected ? 600 : 400,
+                            letterSpacing: '-0.3px',
+                            color: isSelected ? C.textWhite : C.textPrimary,
+                          }}>
+                            {is.label}
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 400,
+                            color: isSelected ? 'rgba(255,255,255,0.7)' : C.textCaption,
+                          }}>
+                            {is.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Reference Image (이미지/영상 + AI 생성일 때만) */}
+              {(videoType === 'image' || videoType === 'video') && imageSource === 'ai' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <label style={{
+                    display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    lineHeight: '16px', letterSpacing: '-0.24px',
+                    color: C.textCaption, marginBottom: '10px',
+                  }}>
+                    레퍼런스 이미지
+                  </label>
+
+                  {refPreview ? (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img
+                        src={refPreview}
+                        alt="레퍼런스"
+                        style={{
+                          width: '100px', height: '100px', objectFit: 'cover',
+                          borderRadius: '12px', border: `1px solid ${C.borderDefault}`,
+                        }}
+                      />
+                      <button
+                        onClick={() => { setRefPreview(null); setRefBase64(null); }}
+                        style={{
+                          position: 'absolute', top: '-8px', right: '-8px',
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          backgroundColor: '#ff4d4f', border: 'none',
+                          color: '#fff', fontSize: '14px', fontWeight: 700,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation(); setRefDragging(true); }}
+                      onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setRefDragging(false); }}
+                      onDrop={e => { e.preventDefault(); e.stopPropagation(); setRefDragging(false); const f = e.dataTransfer.files?.[0]; if (f) processRefFile(f); }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        width: '100%', height: '80px', borderRadius: '16px',
+                        border: `2px dashed ${refDragging ? C.primary : C.borderDefault}`,
+                        backgroundColor: refDragging ? 'rgba(72, 178, 175, 0.06)' : C.surfaceSecondary,
+                        cursor: 'pointer', gap: '4px', transition: 'all 0.15s ease',
+                      }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={refDragging ? C.primary : C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                      <span style={{
+                        fontFamily: font, fontSize: '12px', fontWeight: 400,
+                        color: refDragging ? C.primary : C.textCaption,
+                      }}>
+                        {refDragging ? '여기에 놓으세요' : '드래그하거나 클릭 · 스타일/캐릭터 참고용'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) processRefFile(f); }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+
+                  {/* 참고 방식 (레퍼런스 있을 때만) */}
+                  {refPreview && (
+                    <div className="flex" style={{ gap: '8px', marginTop: '12px' }}>
+                      {REFERENCE_MODES.map(mode => {
+                        const sel = refMode === mode.id;
+                        return (
+                          <button
+                            key={mode.id}
+                            onClick={() => setRefMode(mode.id)}
+                            className="flex-1 flex flex-col items-center justify-center"
+                            style={{
+                              height: '56px', borderRadius: '12px',
+                              backgroundColor: sel ? C.primaryLight : C.surface,
+                              border: `1.5px solid ${sel ? C.primary : C.borderDefault}`,
+                              cursor: 'pointer', transition: 'all 0.15s ease',
+                              gap: '2px',
+                            }}
+                          >
+                            <span style={{
+                              fontFamily: font, fontSize: '13px', fontWeight: sel ? 600 : 400,
+                              letterSpacing: '-0.3px', color: sel ? C.primary : C.textPrimary,
+                            }}>
+                              {mode.label}
+                            </span>
+                            <span style={{
+                              fontFamily: font, fontSize: '10px', fontWeight: 400,
+                              color: sel ? C.primary : C.textCaption,
+                            }}>
+                              {mode.desc}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Narration Voice */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  나레이션 음성
+                </label>
+                <div style={{
+                  position: 'relative',
+                  backgroundColor: C.surface,
+                  border: `1px solid ${C.borderDefault}`,
+                  borderRadius: '16px',
+                }}>
+                  <select
+                    value={narrationVoice}
+                    onChange={e => setNarrationVoice(e.target.value as NarrationVoice)}
+                    className="w-full"
+                    style={{
+                      height: '48px', padding: '0 16px',
+                      borderRadius: '16px', border: 'none', outline: 'none',
+                      backgroundColor: 'transparent',
+                      fontFamily: font, fontSize: '15px', fontWeight: 400,
+                      letterSpacing: '-0.3px', color: C.textPrimary,
+                      cursor: 'pointer',
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                    }}
+                  >
+                    {NARRATION_VOICES.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.desc ? `${v.label} — ${v.desc}` : v.label}
+                      </option>
+                    ))}
+                  </select>
+                  <svg style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.textCaption} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </div>
+              </section>
+
+              {/* BGM */}
+              <section style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block', fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '16px', letterSpacing: '-0.24px',
+                  color: C.textCaption, marginBottom: '10px',
+                }}>
+                  배경음악 (BGM)
+                </label>
+                <div style={{
+                  position: 'relative',
+                  backgroundColor: C.surface,
+                  border: `1px solid ${C.borderDefault}`,
+                  borderRadius: '16px',
+                }}>
+                  <select
+                    value={bgmMood}
+                    onChange={e => setBgmMood(e.target.value)}
+                    className="w-full"
+                    style={{
+                      height: '48px', padding: '0 16px',
+                      borderRadius: '16px', border: 'none', outline: 'none',
+                      backgroundColor: 'transparent',
+                      fontFamily: font, fontSize: '15px', fontWeight: 400,
+                      letterSpacing: '-0.3px', color: C.textPrimary,
+                      cursor: 'pointer',
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                    }}
+                  >
+                    {BGM_MOODS.map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                  <svg style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.textCaption} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                </div>
+                {bgmMood !== 'none' && (
+                  <p style={{
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    color: C.textCaption, marginTop: '6px', paddingLeft: '4px',
+                  }}>
+                    Jamendo 로열티 프리 음원 (CC 라이선스)
+                  </p>
+                )}
               </section>
 
               {/* Generate CTA */}
@@ -739,13 +1641,13 @@ export default function MemeAdPage() {
                   fontFamily: font, fontSize: '16px', fontWeight: 600,
                   lineHeight: '25px', letterSpacing: '-0.32px', color: C.primaryDark,
                 }}>
-                  {result.title}
+                  {renderBold(result.title)}
                 </div>
                 <div style={{
                   fontFamily: font, fontSize: '13px', fontWeight: 400,
                   lineHeight: '20px', color: C.textTertiary, marginTop: '6px',
                 }}>
-                  {result.hook}
+                  {renderBold(result.hook)}
                 </div>
                 <div style={{
                   fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -831,13 +1733,13 @@ export default function MemeAdPage() {
                           lineHeight: '20px', letterSpacing: '-0.45px', color: C.textPrimary,
                           marginBottom: '6px',
                         }}>
-                          {scene.narration}
+                          {renderBold(scene.narration)}
                         </div>
                         <div style={{
                           fontFamily: font, fontSize: '12px', fontWeight: 600,
                           lineHeight: '18px', color: C.primaryDark,
                         }}>
-                          자막: {scene.subtitle}
+                          자막: {renderBold(scene.subtitle)}
                         </div>
                       </div>
                     </div>
@@ -872,7 +1774,7 @@ export default function MemeAdPage() {
                     fontFamily: font, fontSize: '13px', fontWeight: 600,
                     lineHeight: '20px', color: C.textPrimary, marginTop: '4px',
                   }}>
-                    {result.thumbnail_text}
+                    {renderBold(result.thumbnail_text)}
                   </div>
                 </div>
               </div>
@@ -987,7 +1889,7 @@ export default function MemeAdPage() {
                   lineHeight: '26px', letterSpacing: '-0.36px',
                   color: C.textPrimary, margin: 0, marginBottom: '4px',
                 }}>
-                  {result.title}
+                  {renderBold(result.title)}
                 </h2>
                 <p style={{
                   fontFamily: font, fontSize: '14px', fontWeight: 400,
@@ -1035,6 +1937,35 @@ export default function MemeAdPage() {
                 </div>
               )}
 
+              {/* Phase A+: BGM */}
+              {videoPhase === 'bgm' && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    padding: '24px 20px', backgroundColor: C.surfaceSecondary,
+                    borderRadius: '16px', textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, margin: '0 auto 16px',
+                      border: `3px solid ${C.borderDefault}`,
+                      borderTop: `3px solid ${C.primary}`,
+                      borderRadius: '50%', animation: 'spin 1s linear infinite',
+                    }} />
+                    <div style={{
+                      fontFamily: font, fontSize: '16px', fontWeight: 600,
+                      color: C.textPrimary, marginBottom: '8px',
+                    }}>
+                      BGM 검색 중...
+                    </div>
+                    <div style={{
+                      fontFamily: font, fontSize: '14px', fontWeight: 400,
+                      color: C.textCaption,
+                    }}>
+                      {bgmMood}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Phase A-2: Images */}
               {videoPhase === 'images' && (
                 <div style={{ marginBottom: '24px' }}>
@@ -1073,8 +2004,147 @@ export default function MemeAdPage() {
                 </div>
               )}
 
+              {/* Phase A-2.5: Image Review */}
+              {videoPhase === 'image_review' && result && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    fontFamily: font, fontSize: '14px', fontWeight: 600,
+                    color: C.textPrimary, marginBottom: '12px',
+                  }}>
+                    배경 이미지 확인
+                    <span style={{ fontWeight: 400, color: C.textCaption, marginLeft: '8px', fontSize: '12px' }}>
+                      탭하여 재생성
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                    gap: '8px', marginBottom: '16px',
+                  }}>
+                    {result.scenes.map(scene => {
+                      const isRegen = regenScenes.has(scene.scene_number);
+                      return (
+                        <div
+                          key={scene.scene_number}
+                          onClick={() => !isRegen && regenerateSceneImage(scene)}
+                          style={{
+                            position: 'relative', aspectRatio: '9/16',
+                            borderRadius: '10px', overflow: 'hidden',
+                            border: `1px solid ${C.borderDivider}`,
+                            cursor: isRegen ? 'not-allowed' : 'pointer',
+                            background: scene.backgroundImageUrl ? undefined : `linear-gradient(135deg, ${scene.accent_color || C.primary}40, ${scene.glow_color || C.primaryDark}30)`,
+                          }}
+                          className="transform-gpu"
+                        >
+                          {scene.backgroundImageUrl && (
+                            <img src={scene.backgroundImageUrl} alt={`씬 ${scene.scene_number}`}
+                              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          )}
+                          {isRegen && (
+                            <div className="flex items-center justify-center"
+                              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }}>
+                              <div style={{
+                                width: 24, height: 24,
+                                border: '2px solid rgba(255,255,255,0.3)',
+                                borderTop: '2px solid white',
+                                borderRadius: '50%', animation: 'spin 1s linear infinite',
+                              }} />
+                            </div>
+                          )}
+                          <div style={{
+                            position: 'absolute', bottom: 0, left: 0, right: 0,
+                            padding: '4px 6px',
+                            background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                          }}>
+                            <div style={{
+                              fontFamily: font, fontSize: '9px', fontWeight: 600,
+                              color: 'white', textTransform: 'uppercase',
+                            }}>
+                              {scene.scene_number}. {scene.type}
+                            </div>
+                          </div>
+                          {!isRegen && scene.backgroundImageUrl && (
+                            <div className="flex items-center justify-center" style={{
+                              position: 'absolute', top: '4px', right: '4px',
+                              width: 22, height: 22, borderRadius: '50%',
+                              backgroundColor: 'rgba(0,0,0,0.5)',
+                            }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                                <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 105.64-11.36L3 10" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setVideoPhase(videoType === 'video' ? 'videos' : 'preview')}
+                    disabled={regenScenes.size > 0}
+                    className="w-full flex items-center justify-center"
+                    style={{
+                      height: '48px', borderRadius: '16px', border: 'none',
+                      backgroundColor: regenScenes.size > 0 ? C.surfaceDisabled : C.primary,
+                      cursor: regenScenes.size > 0 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <span style={{
+                      fontFamily: font, fontSize: '15px', fontWeight: 600,
+                      color: regenScenes.size > 0 ? C.textDisabled : C.textWhite,
+                    }}>
+                      {videoType === 'video' ? 'AI 영상 생성' : '미리보기'}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* Phase A-3: Video Generation (Replicate I2V) */}
+              {videoPhase === 'videos' && result && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    padding: '24px 20px', backgroundColor: C.surfaceSecondary,
+                    borderRadius: '16px', textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, margin: '0 auto 16px',
+                      border: `3px solid ${C.borderDefault}`,
+                      borderTop: `3px solid ${C.primary}`,
+                      borderRadius: '50%', animation: 'spin 1s linear infinite',
+                    }} />
+                    <div style={{
+                      fontFamily: font, fontSize: '16px', fontWeight: 600,
+                      color: C.textPrimary, marginBottom: '8px',
+                    }}>
+                      AI 영상 배경 생성 중...
+                    </div>
+                    <div style={{
+                      fontFamily: font, fontSize: '14px', fontWeight: 400,
+                      color: C.textCaption, marginBottom: '8px',
+                    }}>
+                      {Math.round(videoGenProgress * result.scenes.length)} / {result.scenes.length} 씬
+                    </div>
+                    <div style={{
+                      fontFamily: font, fontSize: '12px', fontWeight: 400,
+                      color: C.textCaption,
+                    }}>
+                      씬당 1~3분 소요 · 이미지 배경으로 자동 폴백
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{
+                      height: '4px', backgroundColor: C.borderDefault,
+                      borderRadius: '2px', overflow: 'hidden', marginTop: '16px',
+                    }}>
+                      <div style={{
+                        height: '100%', backgroundColor: C.primary,
+                        width: `${videoGenProgress * 100}%`, transition: 'width 0.3s ease',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Phase B: Preview */}
-              {videoPhase === 'preview' && ttsAudios.length > 0 && hookUrl && (
+              {videoPhase === 'preview' && (narrationVoice === 'none' || ttsAudios.length > 0) && hookUrl && (
                 <>
                   <div className="flex justify-center" style={{ marginBottom: '20px' }}>
                     <div style={{ width: '100%', maxWidth: '280px', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${C.borderDefault}` }} className="transform-gpu">
@@ -1085,18 +2155,42 @@ export default function MemeAdPage() {
                           hookDurationInSeconds: hookDuration,
                           scenes: result.scenes,
                           ttsAudios,
+                          bgmAudio,
                           transitionType,
+                          motionTheme: videoType === 'motion' ? motionTheme : undefined,
                         }}
                         durationInFrames={Math.max(1, computeTotalMemeAdFrames(hookDuration, result.scenes, ttsAudios))}
                         fps={VIDEO_FPS}
-                        compositionWidth={VIDEO_WIDTH}
-                        compositionHeight={VIDEO_HEIGHT}
+                        compositionWidth={videoWidth}
+                        compositionHeight={videoHeight}
                         style={{ width: '100%' }}
                         controls
                         autoPlay={false}
                       />
                     </div>
                   </div>
+
+                  {/* BGM Track Info */}
+                  {bgmAudio && (
+                    <div style={{
+                      padding: '10px 14px', backgroundColor: C.surfaceTertiary,
+                      borderRadius: '12px', marginBottom: '12px',
+                    }}>
+                      <div style={{
+                        fontFamily: font, fontSize: '11px', fontWeight: 600,
+                        color: C.textCaption, marginBottom: '4px', textTransform: 'uppercase' as const,
+                      }}>BGM</div>
+                      <div style={{
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        color: C.textSecondary, lineHeight: '18px',
+                      }}>
+                        {bgmAudio.track.name} — {bgmAudio.track.artist}
+                        <span style={{ color: C.textCaption, fontSize: '11px', marginLeft: '6px' }}>
+                          ({bgmAudio.track.license})
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex flex-col" style={{ gap: '10px' }}>
                     {isWebCodecsSupported() ? (
