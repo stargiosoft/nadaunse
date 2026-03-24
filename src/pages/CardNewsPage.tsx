@@ -325,23 +325,37 @@ export default function CardNewsPage() {
     keywordPageMap[coverKw] = unsplashPageRef.current[1] || 1;
 
     const remaining = result.slides.slice(1);
-    for (let i = 0; i < remaining.length; i++) {
-      const slide = remaining[i];
-      setImageGenerating(slide.slide_number);
-      setImageProgress(i);
 
+    // 키워드 페이지 맵 미리 계산
+    for (const slide of remaining) {
       const kw = slide.search_keyword || slide.image_prompt.split(',')[0].trim();
       keywordPageMap[kw] = (keywordPageMap[kw] || 0) + 1;
+    }
 
-      try {
-        const photo = await fetchUnsplashImage(slide, keywordPageMap[kw]);
-        setImages(prev => ({ ...prev, [slide.slide_number]: photo.url }));
-        setUnsplashCredits(prev => ({ ...prev, [slide.slide_number]: photo }));
-      } catch (err) {
-        setError(`${slide.slide_number}장 이미지 실패: ${err instanceof Error ? err.message : '오류'}`);
+    // 3개씩 병렬 검색
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
+      const batch = remaining.slice(i, Math.min(i + BATCH_SIZE, remaining.length));
+      setImageGenerating(batch[0].slide_number);
+      setImageProgress(i);
+
+      const results = await Promise.allSettled(
+        batch.map(async (slide) => {
+          const kw = slide.search_keyword || slide.image_prompt.split(',')[0].trim();
+          const photo = await fetchUnsplashImage(slide, keywordPageMap[kw]);
+          return { slideNumber: slide.slide_number, photo };
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          const { slideNumber, photo } = r.value;
+          setImages(prev => ({ ...prev, [slideNumber]: photo.url }));
+          setUnsplashCredits(prev => ({ ...prev, [slideNumber]: photo }));
+        } else {
+          setError(`이미지 검색 실패: ${r.reason instanceof Error ? r.reason.message : '오류'}`);
+        }
       }
-
-      if (i < remaining.length - 1) await new Promise(r => setTimeout(r, 300));
     }
 
     setImageGenerating(null);

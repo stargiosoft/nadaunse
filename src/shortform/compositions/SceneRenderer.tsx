@@ -2,6 +2,8 @@ import { AbsoluteFill, interpolate, useCurrentFrame, spring, useVideoConfig, Img
 import type { Scene, MotionTheme } from '../types';
 import { THEME_CONFIGS } from '../types';
 import { MOTION_REGISTRY } from './motions';
+import LottieOverlay from './LottieOverlay';
+import { resolveLottieType } from '../lottie';
 
 // ── Enhanced Color Schemes (3-stop gradient + glow) ──
 
@@ -312,7 +314,7 @@ function getShapes(sceneNumber: number, accent: string) {
 export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene: Scene; prevScene?: Scene; motionTheme?: MotionTheme }) {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
-  const tc = THEME_CONFIGS[motionTheme || 'dark_neon'];
+  const tc = THEME_CONFIGS[motionTheme || 'black_neon'] || THEME_CONFIGS['black_neon'];
   const theme = getTheme(scene.type, scene, tc.bgBrightness);
   const prevTheme = prevScene ? getTheme(prevScene.type, prevScene, tc.bgBrightness) : null;
 
@@ -353,10 +355,6 @@ export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene
     opacity = interpolate(frame, [0, 6], [0, 1], { extrapolateRight: 'clamp' });
   }
 
-  // Exit fade (smoother 8-frame)
-  const exitStart = durationInFrames - 8;
-  const exitOpacity = interpolate(frame, [exitStart, durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-
   const keywords = extractKeywords(scene.subtitle);
   const sceneType = scene.type.toLowerCase().replace(/\s+/g, '_');
   const isProblem = ['problem', 'problem_intro', 'reason_1', 'reason_2', 'reason_3', 'reason'].includes(sceneType);
@@ -389,13 +387,13 @@ export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene
   const shapes = getShapes(scene.scene_number, ac).slice(0, tc.shapeCount);
 
   return (
-    <AbsoluteFill style={{ opacity: opacity * exitOpacity, transform, filter, clipPath }}>
+    <AbsoluteFill style={{ opacity, transform, filter, clipPath }}>
 
       {/* ── Background Layer ── */}
       {hasVideo ? (
         <>
           <AbsoluteFill style={{ overflow: 'hidden' }}>
-            <Video src={scene.backgroundVideoUrl!} style={{
+            <Video src={scene.backgroundVideoUrl!} muted style={{
               width: '100%', height: '100%', objectFit: 'cover',
             }} />
           </AbsoluteFill>
@@ -493,6 +491,19 @@ export default function SceneRenderer({ scene, prevScene, motionTheme }: { scene
 
       {/* ── Motion Graphics ── */}
       <MotionComponent scene={scene} accent={ac} keywords={keywords} />
+
+      {/* ── Lottie Overlay ── */}
+      {(() => {
+        const lottieType = resolveLottieType(sceneType, scene.motion_style);
+        if (!lottieType) return null;
+        return (
+          <LottieOverlay
+            type={lottieType}
+            opacity={(hasImage || hasVideo) ? 0.12 : 0.2}
+            position="center"
+          />
+        );
+      })()}
 
       {/* Accent line */}
       <AccentLine accent={ac} />

@@ -53,7 +53,7 @@ serve(async (req) => {
 
     // ── Submit: 이미지 → Replicate prediction 생성 ──
     if (action === 'submit') {
-      const { image_data_url, prompt } = body
+      const { image_data_url, motion_style } = body
 
       if (!image_data_url) {
         return new Response(JSON.stringify({ error: 'image_data_url 필수' }), {
@@ -61,25 +61,66 @@ serve(async (req) => {
         })
       }
 
+      // 카메라 모션만 지시 — 새로운 객체/텍스트/사람 생성 금지
+      const cameraOnly: Record<string, string> = {
+        zoom_impact: 'Slow cinematic zoom-in toward center',
+        wave: 'Gentle horizontal pan from left to right',
+        radial_burst: 'Slow zoom-out from center',
+        glitch: 'Subtle camera shake',
+        spotlight: 'Slow push-in with slight focus shift',
+        parallax_layers: 'Gentle parallax drift with depth separation',
+        counter: 'Steady slow push-in',
+        split_compare: 'Slow horizontal pan',
+        confetti_burst: 'Gentle upward tilt',
+        sparkle_trail: 'Slow arc camera sweep',
+        pulse_ring: 'Subtle breathing zoom pulse',
+      }
+
+      const cameraMotion = cameraOnly[motion_style || ''] || 'Slow gentle zoom-in with subtle camera drift'
+      const finalPrompt = `${cameraMotion}. Camera movement only. Keep the original image exactly as-is. Do NOT add any new objects, people, hands, fingers, text, letters, words, icons, UI elements, watermarks, or any visual elements that are not already in the image. Only apply smooth cinematic camera motion to the existing scene.`
+
       const input: Record<string, unknown> = {
-        prompt: prompt || 'Subtle cinematic motion with gentle zoom and smooth camera drift',
+        prompt: finalPrompt,
         [modelConfig.imageField]: image_data_url,
         ...modelConfig.extraInput,
       }
 
       console.log(`[generate-scene-video] Submitting to ${modelConfig.owner}/${modelConfig.name}`)
 
-      const res = await fetch(`${REPLICATE_API}/models/${modelConfig.owner}/${modelConfig.name}/predictions`, {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({ input }),
-      })
+      // 429 재시도 (최대 3회, retry_after 대기)
+      let res: Response | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        res = await fetch(`${REPLICATE_API}/models/${modelConfig.owner}/${modelConfig.name}/predictions`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ input }),
+        })
 
-      if (!res.ok) {
-        const errText = await res.text()
-        console.error(`[generate-scene-video] Submit error: ${res.status}`, errText.slice(0, 300))
-        return new Response(JSON.stringify({ error: `Replicate 제출 실패: ${res.status}` }), {
-          status: 502, headers: jsonHeaders,
+        if (res.status === 429) {
+          const errBody = await res.text()
+          const retryMatch = errBody.match(/"retry_after":\s*(\d+)/)
+          const waitSec = retryMatch ? parseInt(retryMatch[1], 10) : 12
+          console.warn(`[generate-scene-video] 429 rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/3)`)
+          await new Promise(r => setTimeout(r, waitSec * 1000))
+          continue
+        }
+        break
+      }
+
+      if (!res!.ok) {
+        const errText = await res!.text()
+        console.error(`[generate-scene-video] Submit error: ${res!.status}`, errText.slice(0, 300))
+        const isAuthError = res!.status === 401 || res!.status === 403
+        const isRateLimit = res!.status === 429
+        return new Response(JSON.stringify({
+          error: isAuthError
+            ? 'Replicate API 인증 실패 (토큰 만료 또는 무효)'
+            : isRateLimit
+            ? 'Replicate 요청 한도 초과. 잠시 후 다시 시도해주세요.'
+            : `Replicate 제출 실패: ${res!.status}`,
+          code: isAuthError ? 'AUTH_ERROR' : isRateLimit ? 'RATE_LIMIT' : 'API_ERROR',
+        }), {
+          status: isAuthError ? 401 : isRateLimit ? 429 : 502, headers: jsonHeaders,
         })
       }
 

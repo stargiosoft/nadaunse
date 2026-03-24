@@ -101,22 +101,12 @@ serve(async (req) => {
     const topTracks = searchData.results.slice(0, 5);
     const selected = topTracks[Math.floor(Math.random() * topTracks.length)];
 
-    // 오디오 파일을 base64로 변환하여 반환
+    // Jamendo mp3 streaming URL을 직접 반환 (base64 변환 시 메모리 초과 방지)
     const audioUrl = selected.audio; // Jamendo mp3 streaming URL
     console.log(`[generate-bgm] Selected: "${selected.name}" by ${selected.artist_name} (${selected.duration}s)`);
 
-    const audioRes = await fetch(audioUrl);
-    if (!audioRes.ok) {
-      throw new Error(`BGM 오디오 다운로드 실패: ${audioRes.status}`);
-    }
-
-    const audioBuffer = await audioRes.arrayBuffer();
-    const base64 = btoa(
-      new Uint8Array(audioBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''),
-    );
-
     const result = {
-      audio: `data:audio/mp3;base64,${base64}`,
+      audioUrl,
       track: {
         id: selected.id,
         name: selected.name,
@@ -127,7 +117,7 @@ serve(async (req) => {
       },
     };
 
-    console.log(`[generate-bgm] Success: ${selected.name} (${base64.length} bytes base64)`);
+    console.log(`[generate-bgm] Success: ${selected.name}`);
 
     return new Response(
       JSON.stringify(result),

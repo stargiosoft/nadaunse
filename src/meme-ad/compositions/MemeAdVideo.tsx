@@ -1,5 +1,6 @@
 import { AbsoluteFill, Sequence, Audio, Video } from 'remotion';
 import type { Scene, TtsAudio, BgmAudio } from '../types';
+import type { MotionTheme } from '../../shortform/types';
 import { VIDEO_FPS } from '../constants';
 import SceneRenderer from '../../shortform/compositions/SceneRenderer';
 import SubtitleOverlay from '../../shortform/compositions/SubtitleOverlay';
@@ -13,6 +14,7 @@ export type MemeAdVideoProps = {
   ttsAudios: TtsAudio[];
   bgmAudio?: BgmAudio | null;
   transitionType?: TransitionType;
+  motionTheme?: MotionTheme;
 };
 
 export function computeAdSceneFrames(scenes: Scene[], ttsAudios: TtsAudio[]): number[] {
@@ -40,6 +42,7 @@ export default function MemeAdVideo({
   ttsAudios,
   bgmAudio,
   transitionType = 'fade',
+  motionTheme,
 }: MemeAdVideoProps) {
   const hookFrames = Math.round(hookDurationInSeconds * VIDEO_FPS);
   const adSceneFrames = computeAdSceneFrames(scenes, ttsAudios);
@@ -78,17 +81,33 @@ export default function MemeAdVideo({
 
         return (
           <Sequence key={scene.scene_number} from={from} durationInFrames={dur}>
-            <SceneRenderer scene={scene} />
+            <SceneRenderer scene={scene} motionTheme={motionTheme} />
             <SubtitleOverlay subtitle={scene.subtitle} />
             {tts && <Audio src={tts.dataUrl} />}
           </Sequence>
         );
       })}
 
-      {/* ── BGM (전체) ── */}
+      {/* ── BGM (전체, TTS 구간 ducking) ── */}
       {bgmAudio && (
         <Sequence from={0} durationInFrames={totalFrames}>
-          <Audio src={bgmAudio.dataUrl} volume={0.25} />
+          <Audio src={bgmAudio.dataUrl} volume={(f) => {
+            const BGM_FULL = 0.12;
+            const BGM_DUCKED = 0.04;
+            // 훅 구간은 풀 볼륨
+            if (f < hookFrames) return BGM_FULL;
+            // 광고 구간: TTS 있는 씬이면 ducking
+            let adOffset = 0;
+            for (let i = 0; i < scenes.length; i++) {
+              const dur = adSceneFrames[i];
+              if (f >= hookFrames + adOffset && f < hookFrames + adOffset + dur) {
+                const hasTts = ttsAudios.some(a => a.sceneNumber === scenes[i].scene_number);
+                return hasTts ? BGM_DUCKED : BGM_FULL;
+              }
+              adOffset += dur;
+            }
+            return BGM_FULL;
+          }} />
         </Sequence>
       )}
     </AbsoluteFill>

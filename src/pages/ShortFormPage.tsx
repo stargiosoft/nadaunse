@@ -194,6 +194,7 @@ export default function ShortFormPage() {
   const [refPreview, setRefPreview] = useState<string | null>(null);
   const [refBase64, setRefBase64] = useState<string | null>(null);
   const [refMode, setRefMode] = useState<'style_only' | 'style_and_character'>('style_only');
+  const [refDragging, setRefDragging] = useState(false);
   const [i2vModel, setI2vModel] = useState<I2vModel>('wan');
   const [motionTheme, setMotionTheme] = useState<MotionTheme>('colorful_pop');
   const [narrationVoice, setNarrationVoice] = useState<NarrationVoice>('none');
@@ -201,6 +202,19 @@ export default function ShortFormPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<ScriptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Reference image helpers
+  const processRefFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 10 * 1024 * 1024) { setError('10MB 이하만 업로드 가능'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      setRefPreview(dataUrl);
+      setRefBase64(dataUrl.split(',')[1]);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Chat revision
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1315,37 +1329,32 @@ export default function ShortFormPage() {
                       </button>
                     </div>
                   ) : (
-                    <label style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      width: '100%', height: '80px', borderRadius: '16px',
-                      border: `2px dashed ${C.borderDefault}`, backgroundColor: C.surfaceSecondary,
-                      cursor: 'pointer', gap: '4px',
-                    }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <label
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation(); setRefDragging(true); }}
+                      onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setRefDragging(false); }}
+                      onDrop={e => { e.preventDefault(); e.stopPropagation(); setRefDragging(false); const f = e.dataTransfer.files?.[0]; if (f) processRefFile(f); }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        width: '100%', height: '80px', borderRadius: '16px',
+                        border: `2px dashed ${refDragging ? C.primary : C.borderDefault}`,
+                        backgroundColor: refDragging ? 'rgba(72, 178, 175, 0.06)' : C.surfaceSecondary,
+                        cursor: 'pointer', gap: '4px', transition: 'all 0.15s ease',
+                      }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={refDragging ? C.primary : C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                         <circle cx="8.5" cy="8.5" r="1.5" />
                         <polyline points="21 15 16 10 5 21" />
                       </svg>
                       <span style={{
-                        fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textCaption,
+                        fontFamily: font, fontSize: '12px', fontWeight: 400,
+                        color: refDragging ? C.primary : C.textCaption,
                       }}>
-                        선택사항 · 스타일/캐릭터 참고용
+                        {refDragging ? '여기에 놓으세요' : '드래그하거나 클릭 · 스타일/캐릭터 참고용'}
                       </span>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 10 * 1024 * 1024) { setError('10MB 이하만 업로드 가능'); return; }
-                          const reader = new FileReader();
-                          reader.onload = ev => {
-                            const dataUrl = ev.target?.result as string;
-                            setRefPreview(dataUrl);
-                            setRefBase64(dataUrl.split(',')[1]);
-                          };
-                          reader.readAsDataURL(file);
-                        }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) processRefFile(f); }}
                         style={{ display: 'none' }}
                       />
                     </label>

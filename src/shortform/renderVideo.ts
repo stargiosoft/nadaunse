@@ -4,9 +4,15 @@
  * SceneRenderer.tsx와 동기화된 시각 효과
  */
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+// lottie-web canvas 전용 빌드 (SVG 미포함, 번들 크기 절약)
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — lottie_canvas.js에 .d.ts 파일 없음 (lottie-web 패키지 한계)
+import lottie from 'lottie-web/build/player/lottie_light_canvas';
 import type { Scene, TtsAudio, BgmAudio, MotionTheme } from './types';
 import { VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS, } from './constants';
 import { THEME_CONFIGS } from './types';
+import type { LottieOverlayType } from './lottie';
+import { resolveLottieType, loadLottieData } from './lottie';
 
 // ── Enhanced Scene Themes (synced with SceneRenderer.tsx) ──
 
@@ -106,7 +112,7 @@ function drawBackground(
   ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frame: number, duration: number,
   imageBitmap: ImageBitmap | undefined, theme: Theme, w: number, h: number, motionTheme?: MotionTheme,
 ) {
-  const tc = THEME_CONFIGS[motionTheme || 'dark_neon'];
+  const tc = THEME_CONFIGS[motionTheme || 'black_neon'] || THEME_CONFIGS['black_neon'];
   const progress = frame / duration;
 
   if (imageBitmap) {
@@ -759,10 +765,49 @@ function wrapText(ctx: OffscreenCanvasRenderingContext2D, text: string, x: numbe
   ctx.fillText(line, x, curY);
 }
 
+// ── Lottie pre-rendering ──
+
+async function preRenderLottieFrames(
+  type: LottieOverlayType,
+  fw: number,
+  fh: number,
+): Promise<ImageBitmap[]> {
+  const animData = await loadLottieData(type);
+  // lottie-web canvas renderer로 프레임별 렌더링
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = fw;
+  tempCanvas.height = fh;
+  const tempCtx = tempCanvas.getContext('2d')!;
+
+  const anim = lottie.loadAnimation({
+    container: tempCanvas as unknown as HTMLElement,
+    renderer: 'canvas',
+    rendererSettings: { context: tempCtx, clearCanvas: true },
+    animationData: animData,
+    loop: false,
+    autoplay: false,
+  });
+
+  const totalLottieFrames = anim.totalFrames;
+  // Lottie 자체 프레임 수만큼만 렌더 (보통 60~90프레임 = 메모리 절약)
+  const frameCount = Math.min(Math.ceil(totalLottieFrames), 120);
+  const frames: ImageBitmap[] = [];
+
+  for (let i = 0; i < frameCount; i++) {
+    const lf = (i / frameCount) * totalLottieFrames;
+    anim.goToAndStop(lf, true);
+    frames.push(await createImageBitmap(tempCanvas));
+  }
+
+  anim.destroy();
+  tempCanvas.remove();
+  return frames;
+}
+
 // ── Main drawFrame ──
 
-function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameInScene: number, sceneDurationFrames: number, w: number, h: number, imageBitmap?: ImageBitmap, prevScene?: Scene, motionTheme?: MotionTheme) {
-  const tc = THEME_CONFIGS[motionTheme || 'dark_neon'];
+function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameInScene: number, sceneDurationFrames: number, w: number, h: number, imageBitmap?: ImageBitmap, prevScene?: Scene, motionTheme?: MotionTheme, lottieFrames?: ImageBitmap[], audioEnergy?: AudioEnergy) {
+  const tc = THEME_CONFIGS[motionTheme || 'black_neon'] || THEME_CONFIGS['black_neon'];
   const theme = getTheme(scene.type, scene, tc.bgBrightness);
   const prevTheme = prevScene ? getTheme(prevScene.type, prevScene, tc.bgBrightness) : null;
   const BLEND_FRAMES = 15;
@@ -798,6 +843,24 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, scene: Scene, frameIn
   // Motion
   const drawer = MOTION_DRAWERS[scene.motion_style || 'keyword_pop'] || MOTION_DRAWERS.keyword_pop;
   drawer(ctx, scene, frameInScene, sceneDurationFrames, renderTheme, keywords, w, h);
+  // Lottie overlay
+  if (lottieFrames && lottieFrames.length > 0) {
+    const lf = frameInScene % lottieFrames.length;
+    const fadeIn = Math.min(frameInScene / 10, 1);
+    const fadeOut = Math.min((sceneDurationFrames - frameInScene) / 10, 1);
+    const lottieOp = fadeIn * fadeOut * (imageBitmap ? 0.12 : 0.2);
+    ctx.save();
+    ctx.globalAlpha = lottieOp;
+    // 중앙 60% 영역에 그리기
+    const lw = w * 0.6, lh = h * 0.6;
+    const lx = (w - lw) / 2, ly = (h - lh) / 2;
+    ctx.drawImage(lottieFrames[lf], lx, ly, lw, lh);
+    ctx.restore();
+  }
+  // Audio-reactive overlay
+  if (audioEnergy && audioEnergy.rms > 0.01) {
+    drawAudioReactive(ctx, audioEnergy, renderTheme.accent, renderTheme.glow, w, h);
+  }
   // Accent line
   const lt = easeOut((frameInScene - 5) / 12);
   if (lt > 0) { const lg2 = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0); lg2.addColorStop(0, 'transparent'); lg2.addColorStop(0.5, hexToRgba(renderTheme.accent, 0.5)); lg2.addColorStop(1, 'transparent');
@@ -835,16 +898,92 @@ async function decodeTtsAudio(ttsAudios: TtsAudio[], scenes: Scene[], bgmAudio?:
   const bgmBuffer = await bgmCtx.decodeAudioData(bgmBytes.buffer.slice(0));
   const bgmMixCtx = new OfflineAudioContext(1, totalSamples, sampleRate);
   const bgmSource = bgmMixCtx.createBufferSource(); bgmSource.buffer = bgmBuffer;
-  const bgmGain = bgmMixCtx.createGain(); bgmGain.gain.value = 0.25;
-  bgmGain.gain.setValueAtTime(0, 0); bgmGain.gain.linearRampToValueAtTime(0.25, 1.0);
+  const BGM_FULL = 0.12;
+  const BGM_DUCKED = 0.04; // TTS 나올 때 BGM 볼륨 낮춤
+  const DUCK_FADE = 0.3; // 볼륨 전환 시간 (초)
+  const bgmGain = bgmMixCtx.createGain(); bgmGain.gain.value = 0;
+  // 페이드인
+  bgmGain.gain.setValueAtTime(0, 0);
+  bgmGain.gain.linearRampToValueAtTime(buffers.length > 0 ? BGM_DUCKED : BGM_FULL, 1.0);
+  // TTS 구간 ducking: TTS 있는 씬은 낮게, 없는 씬은 높게
+  let sceneOffset = 0;
+  for (const scene of scenes) {
+    const hasTts = ttsAudios.some(a => a.sceneNumber === scene.scene_number);
+    const targetVol = hasTts ? BGM_DUCKED : BGM_FULL;
+    const t = Math.max(0.01, sceneOffset);
+    bgmGain.gain.setValueAtTime(bgmGain.gain.value, t);
+    bgmGain.gain.linearRampToValueAtTime(targetVol, Math.min(t + DUCK_FADE, totalDuration));
+    sceneOffset += ttsAudios.find(a => a.sceneNumber === scene.scene_number)?.durationInSeconds ?? scene.duration;
+  }
+  // 페이드아웃
   const fadeOutStart = Math.max(0, totalDuration - 2.0);
-  bgmGain.gain.setValueAtTime(0.25, fadeOutStart); bgmGain.gain.linearRampToValueAtTime(0, totalDuration);
+  bgmGain.gain.setValueAtTime(bgmGain.gain.value, fadeOutStart);
+  bgmGain.gain.linearRampToValueAtTime(0, totalDuration);
   bgmSource.connect(bgmGain); bgmGain.connect(bgmMixCtx.destination); bgmSource.start(0);
   const bgmRendered = await bgmMixCtx.startRendering();
   const bgmPcm = bgmRendered.getChannelData(0);
   const mixed = new Float32Array(totalSamples);
   for (let i = 0; i < totalSamples; i++) mixed[i] = Math.max(-1, Math.min(1, (i < ttsPcm.length ? ttsPcm[i] : 0) + (i < bgmPcm.length ? bgmPcm[i] : 0)));
   return { pcmData: mixed, sampleRate };
+}
+
+// ── Audio-reactive energy per frame ──
+
+type AudioEnergy = { rms: number; peak: number };
+
+function computeFrameEnergies(pcmData: Float32Array, sampleRate: number, totalFrames: number): AudioEnergy[] {
+  const energies: AudioEnergy[] = [];
+  const samplesPerFrame = Math.floor(sampleRate / VIDEO_FPS);
+  for (let f = 0; f < totalFrames; f++) {
+    const start = f * samplesPerFrame;
+    const end = Math.min(start + samplesPerFrame, pcmData.length);
+    let sumSq = 0, peak = 0;
+    for (let i = start; i < end; i++) {
+      const v = pcmData[i] || 0;
+      sumSq += v * v;
+      if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    const rms = Math.sqrt(sumSq / Math.max(1, end - start));
+    energies.push({ rms: Math.min(rms * 3, 1), peak: Math.min(peak * 2, 1) }); // normalize & amplify
+  }
+  return energies;
+}
+
+function drawAudioReactive(ctx: OffscreenCanvasRenderingContext2D, energy: AudioEnergy, accent: string, glow: string, w: number, h: number) {
+  // Bass-reactive center glow
+  const glowScale = 1 + energy.rms * 0.6;
+  const glowR = 300 * glowScale;
+  const glowGrad = ctx.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, glowR);
+  glowGrad.addColorStop(0, hexToRgba(glow, 0.08 + energy.rms * 0.15));
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.save();
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(w / 2 - glowR, h * 0.45 - glowR, glowR * 2, glowR * 2);
+  ctx.restore();
+
+  // Beat flash (on strong peaks)
+  if (energy.peak > 0.6) {
+    ctx.save();
+    ctx.globalAlpha = (energy.peak - 0.6) * 0.2;
+    ctx.fillStyle = accent;
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // Edge glow pulse
+  const edgeGlow = energy.rms * 0.05;
+  if (edgeGlow > 0.01) {
+    ctx.save();
+    ctx.globalAlpha = edgeGlow;
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 60 + energy.rms * 40;
+    ctx.strokeStyle = hexToRgba(glow, edgeGlow);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, w - 20, h - 20);
+    ctx.restore();
+  }
 }
 
 // ── Main render ──
@@ -874,14 +1013,34 @@ export async function renderVideoToMp4(
       catch (err) { console.warn(`Failed to decode image for scene ${scene.scene_number}`, err); }
     }
   }
+  // Pre-render Lottie overlays per unique type
+  const sceneLottieFrames = new Map<number, ImageBitmap[]>();
+  const lottieFrameCache = new Map<string, ImageBitmap[]>();
+  for (const scene of scenes) {
+    const lt = resolveLottieType(scene.type, scene.motion_style);
+    if (!lt) continue;
+    if (lottieFrameCache.has(lt)) { sceneLottieFrames.set(scene.scene_number, lottieFrameCache.get(lt)!); continue; }
+    try {
+      const frames = await preRenderLottieFrames(lt, 540, 540);
+      lottieFrameCache.set(lt, frames);
+      sceneLottieFrames.set(scene.scene_number, frames);
+    } catch (err) { console.warn(`Lottie pre-render failed for ${lt}`, err); }
+  }
   let audioData: Float32Array | null = null;
-  if (ttsAudios.length > 0) audioData = (await decodeTtsAudio(ttsAudios, scenes, bgmAudio)).pcmData;
+  let audioEnergies: AudioEnergy[] | null = null;
+  if (ttsAudios.length > 0) {
+    const decoded = await decodeTtsAudio(ttsAudios, scenes, bgmAudio);
+    audioData = decoded.pcmData;
+    audioEnergies = computeFrameEnergies(decoded.pcmData, decoded.sampleRate, totalFrames);
+  }
   let globalFrame = 0;
   for (let si = 0; si < scenes.length; si++) {
     const scene = scenes[si], sdf = Math.round(sceneDurations[si] * VIDEO_FPS), bitmap = sceneImageBitmaps.get(scene.scene_number);
     const prevSc = si > 0 ? scenes[si - 1] : undefined;
+    const lottieFr = sceneLottieFrames.get(scene.scene_number);
     for (let f = 0; f < sdf; f++) {
-      drawFrame(ctx, scene, f, sdf, w, h, bitmap, prevSc, motionTheme);
+      const energy = audioEnergies ? audioEnergies[globalFrame] : undefined;
+      drawFrame(ctx, scene, f, sdf, w, h, bitmap, prevSc, motionTheme, lottieFr, energy);
       const frame = new VideoFrame(canvas, { timestamp: (globalFrame / VIDEO_FPS) * 1_000_000, duration: (1 / VIDEO_FPS) * 1_000_000 });
       videoEncoder.encode(frame, { keyFrame: f === 0 }); frame.close(); globalFrame++;
       if (globalFrame % 10 === 0) onProgress((globalFrame / totalFrames) * 0.7);

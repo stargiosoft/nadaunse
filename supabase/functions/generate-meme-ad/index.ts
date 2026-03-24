@@ -10,7 +10,13 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { brandInfo, adDuration, hookDuration, revision } = await req.json()
+    const { brandInfo, adDuration, hookDuration, revision, videoType } = await req.json() as {
+      brandInfo: string;
+      adDuration?: number;
+      hookDuration?: number;
+      revision?: { currentScript: string; request: string };
+      videoType?: string;
+    }
 
     if (!brandInfo?.trim()) {
       return new Response(JSON.stringify({ error: '브랜드/제품 정보를 입력해주세요' }), {
@@ -32,8 +38,21 @@ serve(async (req) => {
 
     const totalDuration = hookDur + dur
 
-    const prompt = `당신은 밈 광고 영상 대본 전문 작가입니다.
+    const isRevision = revision && revision.currentScript && revision.request
 
+    const prompt = `당신은 밈 광고 영상 대본 전문 작가입니다.
+${isRevision ? `
+★★★ [수정 모드] ★★★
+아래는 기존 대본입니다. 사용자의 수정 요청에 따라 해당 부분만 정확히 수정하고, 나머지는 그대로 유지하세요.
+전체 길이(${dur}초)와 씬 수를 반드시 유지하세요.
+
+기존 대본:
+${revision.currentScript}
+
+사용자 수정 요청: "${revision.request}"
+
+위 수정 요청을 반영한 수정된 대본을 동일한 JSON 형식으로 반환하세요.
+` : ''}
 ★ 핵심 컨셉:
 이 영상은 "밈 후크 + 브랜드 광고" 구조입니다.
 - 앞부분 (${hookDur}초): 사용자가 직접 업로드한 재밌는/충격적인 밈 영상 클립
@@ -58,13 +77,15 @@ serve(async (req) => {
       "scene_number": 1,
       "duration": 3,
       "type": "intro",
-      "narration": "나레이션 텍스트",
+      "narration": "나레이션 텍스트 (duration × 6자 기준. 3초면 약 18자)",
       "subtitle": "화면 자막 (**강조**)",
       "visual": "화면 설명",
       "transition": "fade",
       "motion_style": "zoom_impact",
       "layout": "center",
-      "icon": "🔥"
+      "icon": "🔥"${videoType === 'motion' ? `,
+      "accent_color": "#FF6B6B",
+      "glow_color": "#FF4040"` : ''}
     }
   ],
   "hashtags": ["해시태그1", "해시태그2", "...최대10개"],
@@ -75,10 +96,14 @@ serve(async (req) => {
 ★ 대본 작성 규칙:
 1. 첫 씬(intro): 밈에서 자연스럽게 이어지는 전환. "근데 진짜 이거 아세요?", "그런데 말입니다" 등 밈의 웃음/충격에서 광고로 전환
 2. 씬 구성: ${dur <= 5 ? '2~3개' : dur <= 10 ? '3~4개' : '4~5개'} 씬. 각 씬 2~4초
-3. 나레이션: 자연스러운 구어체, 1초에 약 3~4음절
+3. ★★★ [최중요] 나레이션 글자수 제한 (TTS 초당 약 6자):
+   - 2초 씬: 10~12자 (예: "이거 모르면 큰일납니다")
+   - 3초 씬: 15~18자 (예: "아침에 딱 이것만 하면 인생 달라져요")
+   - 4초 씬: 20~24자
+   - 전체 나레이션 합계: 약 ${dur * 6}자 내외
 4. 자막: 핵심 키워드만 (나레이션의 20~30%)
 5. 마지막 씬: 강한 CTA (클릭/팔로우/구매 유도)
-6. 전체 duration 합이 ${dur}초와 일치하도록
+6. 전체 duration 합이 ${dur}초와 정확히 일치하도록
 7. JSON만 반환
 
 ★ 씬 타입: intro, benefit, feature, testimonial, offer, cta
@@ -97,6 +122,9 @@ serve(async (req) => {
 - sparkle_trail: 스파클 궤적 (솔루션/팁/긍정)
 - pulse_ring: 펄스 파동 (강조/에너지/각성)
 연속 2개 씬에 같은 motion_style 금지!
+★ split_compare/counter/progress_bar 사용 시 자막에 반드시 대응하는 볼드 키워드를 넣을 것!${videoType === 'motion' ? `
+★ accent_color: 씬 분위기에 맞는 HEX 색상 (예: #FF6B6B) — 씬마다 다르게!
+★ glow_color: 글로우/배경 HEX 색상 — accent와 유사 톤` : ''}
 
 ★ 광고 전략 (행동경제학):
 - 손실 회피: "안 쓰면 손해"
@@ -114,7 +142,7 @@ serve(async (req) => {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: 'application/json',
-            temperature: 0.85,
+            temperature: 0.7,
           },
         }),
       }
@@ -139,7 +167,21 @@ serve(async (req) => {
       })
     }
 
-    const result = JSON.parse(text)
+    let cleaned = text.trim()
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+    }
+
+    let result
+    try {
+      result = JSON.parse(cleaned)
+    } catch (parseErr) {
+      console.error('[generate-meme-ad] JSON parse failed:', (parseErr as Error).message, 'raw:', cleaned.slice(0, 200))
+      return new Response(JSON.stringify({ error: 'AI 응답 파싱 실패. 다시 시도해주세요.' }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
