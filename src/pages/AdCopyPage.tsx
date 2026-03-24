@@ -17,6 +17,11 @@ type AdCopy = {
 
 type AdCopyResult = {
   product_summary: string;
+  viral_elements?: {
+    instinct_combo?: string;
+    controversy_point?: string;
+    share_trigger?: string;
+  };
   copies: AdCopy[];
 };
 
@@ -474,6 +479,47 @@ export default function AdCopyPage() {
                   {target && `타겟: ${target} · `}{goalAction} · {ctaLocation}
                 </div>
               </div>
+
+              {/* Viral Elements */}
+              {result.viral_elements && (
+                <div style={{
+                  padding: '14px 16px', backgroundColor: '#FFF8E1',
+                  borderRadius: '16px', marginBottom: '16px',
+                  border: '1px solid #FFE082',
+                }}>
+                  <div style={{
+                    fontFamily: font, fontSize: '11px', fontWeight: 700,
+                    color: '#F57F17', textTransform: 'uppercase' as const,
+                    marginBottom: '10px', letterSpacing: '0.5px',
+                  }}>
+                    바이럴 분석
+                  </div>
+                  {result.viral_elements.instinct_combo && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>본능 자극</span>
+                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: C.textPrimary, marginTop: '2px' }}>
+                        {result.viral_elements.instinct_combo}
+                      </div>
+                    </div>
+                  )}
+                  {result.viral_elements.controversy_point && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>논란 포인트</span>
+                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: '#E65100', marginTop: '2px' }}>
+                        {result.viral_elements.controversy_point}
+                      </div>
+                    </div>
+                  )}
+                  {result.viral_elements.share_trigger && (
+                    <div>
+                      <span style={{ fontFamily: font, fontSize: '11px', fontWeight: 600, color: C.textCaption }}>공유 동기</span>
+                      <div style={{ fontFamily: font, fontSize: '13px', fontWeight: 500, lineHeight: '20px', color: C.primary, marginTop: '2px' }}>
+                        {result.viral_elements.share_trigger}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Copy All Button */}
               <button
