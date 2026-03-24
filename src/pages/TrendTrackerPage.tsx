@@ -41,19 +41,34 @@ type TopicSource = {
   url: string;
 };
 
+type InsightItem = string | { text: string; instinct?: string };
+type ContentIdeaItem = string | {
+  idea: string;
+  differentiation?: string;
+  controversy?: string;
+  meme_potential?: string;
+  hook_strategy?: string;
+};
+type ContentTipItem = string | {
+  tip: string;
+  emotion?: string;
+  hook_example?: string;
+  cta_example?: string;
+};
+
 type TopicAnalysis = {
   topic: string;
   summary: string;
   keywords: TopicKeyword[];
-  insights: string[];
-  content_ideas: string[];
+  insights: InsightItem[];
+  content_ideas: ContentIdeaItem[];
 };
 
 type TrendingInsights = {
   categories: { name: string; keywords: string[]; summary: string }[];
-  top_insights: string[];
+  top_insights: InsightItem[];
   mood: string;
-  content_tips: string[];
+  content_tips: ContentTipItem[];
 };
 
 function getHeatStyle(heat: string): { bg: string; text: string; label: string } {
@@ -655,21 +670,36 @@ export default function TrendTrackerPage() {
                     핵심 인사이트
                   </h3>
                   <div className="flex flex-col" style={{ gap: '8px', marginBottom: '24px' }}>
-                    {trendingInsights.top_insights.map((insight, i) => (
-                      <div key={i} className="flex" style={{
-                        padding: '12px 14px', borderRadius: '10px',
-                        backgroundColor: C.surfaceSecondary, gap: '10px',
-                      }}>
-                        <span style={{ fontSize: '14px', flexShrink: 0 }}>💡</span>
-                        <p style={{
-                          fontFamily: font, fontSize: '14px', fontWeight: 400,
-                          lineHeight: '21px', letterSpacing: '-0.28px',
-                          color: C.textSecondary, margin: 0,
+                    {trendingInsights.top_insights.map((insight, i) => {
+                      const text = typeof insight === 'string' ? insight : insight.text;
+                      const instinct = typeof insight === 'object' ? insight.instinct : null;
+                      return (
+                        <div key={i} style={{
+                          padding: '12px 14px', borderRadius: '10px',
+                          backgroundColor: C.surfaceSecondary,
                         }}>
-                          {renderBoldText(insight)}
-                        </p>
-                      </div>
-                    ))}
+                          <div className="flex" style={{ gap: '10px' }}>
+                            <span style={{ fontSize: '14px', flexShrink: 0 }}>💡</span>
+                            <p style={{
+                              fontFamily: font, fontSize: '14px', fontWeight: 400,
+                              lineHeight: '21px', letterSpacing: '-0.28px',
+                              color: C.textSecondary, margin: 0,
+                            }}>
+                              {renderBoldText(text)}
+                            </p>
+                          </div>
+                          {instinct && (
+                            <div style={{
+                              marginTop: '6px', marginLeft: '24px',
+                              fontFamily: font, fontSize: '12px', fontWeight: 500,
+                              color: '#F57F17', lineHeight: '18px',
+                            }}>
+                              본능: {instinct}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* 콘텐츠 팁 */}
@@ -682,21 +712,46 @@ export default function TrendTrackerPage() {
                         콘텐츠 제작 팁
                       </h3>
                       <div className="flex flex-col" style={{ gap: '8px' }}>
-                        {trendingInsights.content_tips.map((tip, i) => (
-                          <div key={i} className="flex" style={{
-                            padding: '12px 14px', borderRadius: '10px',
-                            backgroundColor: C.surfaceSecondary, gap: '10px',
-                          }}>
-                            <span style={{ fontSize: '14px', flexShrink: 0 }}>✨</span>
-                            <p style={{
-                              fontFamily: font, fontSize: '14px', fontWeight: 400,
-                              lineHeight: '21px', letterSpacing: '-0.28px',
-                              color: C.textSecondary, margin: 0,
+                        {trendingInsights.content_tips.map((tip, i) => {
+                          const tipText = typeof tip === 'string' ? tip : tip.tip;
+                          const tipObj = typeof tip === 'object' ? tip : null;
+                          return (
+                            <div key={i} style={{
+                              padding: '12px 14px', borderRadius: '10px',
+                              backgroundColor: C.surfaceSecondary,
                             }}>
-                              {renderBoldText(tip)}
-                            </p>
-                          </div>
-                        ))}
+                              <div className="flex" style={{ gap: '10px' }}>
+                                <span style={{ fontSize: '14px', flexShrink: 0 }}>✨</span>
+                                <p style={{
+                                  fontFamily: font, fontSize: '14px', fontWeight: 400,
+                                  lineHeight: '21px', letterSpacing: '-0.28px',
+                                  color: C.textSecondary, margin: 0,
+                                }}>
+                                  {renderBoldText(tipText)}
+                                </p>
+                              </div>
+                              {tipObj && (tipObj.emotion || tipObj.hook_example || tipObj.cta_example) && (
+                                <div style={{ marginTop: '8px', marginLeft: '24px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {tipObj.emotion && (
+                                    <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.primary, lineHeight: '18px' }}>
+                                      감정: {tipObj.emotion}
+                                    </span>
+                                  )}
+                                  {tipObj.hook_example && (
+                                    <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: '#E65100', lineHeight: '18px' }}>
+                                      후킹: "{tipObj.hook_example}"
+                                    </span>
+                                  )}
+                                  {tipObj.cta_example && (
+                                    <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 500, color: C.textCaption, lineHeight: '18px' }}>
+                                      CTA: {tipObj.cta_example}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -885,21 +940,36 @@ export default function TrendTrackerPage() {
                   핵심 인사이트
                 </h3>
                 <div className="flex flex-col" style={{ gap: '8px' }}>
-                  {topicAnalysis.insights.map((insight, i) => (
-                    <div key={i} className="flex" style={{
-                      padding: '12px 14px', borderRadius: '10px',
-                      backgroundColor: C.surfaceSecondary, gap: '10px',
-                    }}>
-                      <span style={{ fontSize: '14px', flexShrink: 0 }}>💡</span>
-                      <p style={{
-                        fontFamily: font, fontSize: '14px', fontWeight: 400,
-                        lineHeight: '21px', letterSpacing: '-0.28px',
-                        color: C.textSecondary, margin: 0,
+                  {topicAnalysis.insights.map((insight, i) => {
+                    const text = typeof insight === 'string' ? insight : insight.text;
+                    const instinct = typeof insight === 'object' ? insight.instinct : null;
+                    return (
+                      <div key={i} style={{
+                        padding: '12px 14px', borderRadius: '10px',
+                        backgroundColor: C.surfaceSecondary,
                       }}>
-                        {renderBoldText(insight)}
-                      </p>
-                    </div>
-                  ))}
+                        <div className="flex" style={{ gap: '10px' }}>
+                          <span style={{ fontSize: '14px', flexShrink: 0 }}>💡</span>
+                          <p style={{
+                            fontFamily: font, fontSize: '14px', fontWeight: 400,
+                            lineHeight: '21px', letterSpacing: '-0.28px',
+                            color: C.textSecondary, margin: 0,
+                          }}>
+                            {renderBoldText(text)}
+                          </p>
+                        </div>
+                        {instinct && (
+                          <div style={{
+                            marginTop: '6px', marginLeft: '24px',
+                            fontFamily: font, fontSize: '12px', fontWeight: 500,
+                            color: '#F57F17', lineHeight: '18px',
+                          }}>
+                            본능: {instinct}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -913,22 +983,56 @@ export default function TrendTrackerPage() {
                 }}>
                   콘텐츠 아이디어
                 </h3>
-                <div className="flex flex-col" style={{ gap: '8px' }}>
-                  {topicAnalysis.content_ideas.map((idea, i) => (
-                    <div key={i} className="flex items-start" style={{
-                      padding: '12px 14px', borderRadius: '10px',
-                      backgroundColor: C.surfaceSecondary, gap: '10px',
-                    }}>
-                      <span style={{ fontSize: '14px', flexShrink: 0 }}>✨</span>
-                      <p style={{
-                        fontFamily: font, fontSize: '14px', fontWeight: 400,
-                        lineHeight: '21px', letterSpacing: '-0.28px',
-                        color: C.textSecondary, margin: 0,
+                <div className="flex flex-col" style={{ gap: '10px' }}>
+                  {topicAnalysis.content_ideas.map((idea, i) => {
+                    const ideaText = typeof idea === 'string' ? idea : idea.idea;
+                    const ideaObj = typeof idea === 'object' ? idea : null;
+                    return (
+                      <div key={i} style={{
+                        padding: '14px', borderRadius: '12px',
+                        backgroundColor: C.surfaceSecondary,
                       }}>
-                        {renderBoldText(idea)}
-                      </p>
-                    </div>
-                  ))}
+                        <div className="flex items-start" style={{ gap: '10px' }}>
+                          <span style={{ fontSize: '14px', flexShrink: 0 }}>✨</span>
+                          <p style={{
+                            fontFamily: font, fontSize: '14px', fontWeight: 500,
+                            lineHeight: '21px', letterSpacing: '-0.28px',
+                            color: C.textPrimary, margin: 0,
+                          }}>
+                            {renderBoldText(ideaText)}
+                          </p>
+                        </div>
+                        {ideaObj && (ideaObj.differentiation || ideaObj.controversy || ideaObj.meme_potential || ideaObj.hook_strategy) && (
+                          <div style={{ marginTop: '10px', marginLeft: '24px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {ideaObj.differentiation && (
+                              <div style={{ fontFamily: font, fontSize: '12px', lineHeight: '18px' }}>
+                                <span style={{ fontWeight: 600, color: C.primary }}>차별화</span>
+                                <span style={{ fontWeight: 400, color: C.textSecondary, marginLeft: '6px' }}>{ideaObj.differentiation}</span>
+                              </div>
+                            )}
+                            {ideaObj.controversy && (
+                              <div style={{ fontFamily: font, fontSize: '12px', lineHeight: '18px' }}>
+                                <span style={{ fontWeight: 600, color: '#E65100' }}>논란</span>
+                                <span style={{ fontWeight: 400, color: C.textSecondary, marginLeft: '6px' }}>{ideaObj.controversy}</span>
+                              </div>
+                            )}
+                            {ideaObj.meme_potential && (
+                              <div style={{ fontFamily: font, fontSize: '12px', lineHeight: '18px' }}>
+                                <span style={{ fontWeight: 600, color: '#7B1FA2' }}>밈</span>
+                                <span style={{ fontWeight: 400, color: C.textSecondary, marginLeft: '6px' }}>{ideaObj.meme_potential}</span>
+                              </div>
+                            )}
+                            {ideaObj.hook_strategy && (
+                              <div style={{ fontFamily: font, fontSize: '12px', lineHeight: '18px' }}>
+                                <span style={{ fontWeight: 600, color: '#F57F17' }}>후킹</span>
+                                <span style={{ fontWeight: 400, color: C.textSecondary, marginLeft: '6px' }}>{ideaObj.hook_strategy}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
