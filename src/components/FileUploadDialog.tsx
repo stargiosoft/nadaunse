@@ -131,9 +131,10 @@ export default function FileUploadDialog({ isOpen, onClose, onSuccess }: FileUpl
     const jsonData: Record<string, unknown>[] = [];
     const headers: string[] = [];
 
-    // 첫 번째 행에서 헤더 추출
+    // 첫 번째 행에서 헤더 추출 (괄호 설명 제거: "콘텐츠 질문지 1 (Who)" → "콘텐츠 질문지 1")
     worksheet.getRow(1).eachCell((cell, colNumber) => {
-      headers[colNumber - 1] = cell.value?.toString() || '';
+      const raw = cell.value?.toString() || '';
+      headers[colNumber - 1] = raw.replace(/\s*\(.*?\)\s*$/, '').trim();
     });
 
     // 데이터 행 파싱 (2번째 행부터)
