@@ -40,21 +40,34 @@ serve(async (req) => {
       })
 
       // reference_mode에 따라 프롬프트 분기
-      const noTextRule = '\n\nCRITICAL RULE: Do NOT include ANY text, letters, words, numbers, titles, labels, watermarks, captions, or typography in the image. The image must contain ONLY visual elements — no written characters of any language.'
+      const imageRules = `[MANDATORY OUTPUT RULES — VIOLATION = FAILURE]
+• OUTPUT EXACTLY ONE SINGLE PHOTO. The entire canvas is ONE continuous photograph of ONE scene with ONE subject/person.
+• ABSOLUTELY FORBIDDEN: collage, grid, triptych, diptych, split-screen, side-by-side, multi-panel, montage, photo strip, before/after, multiple poses of the same person, or any form of image subdivision.
+• ABSOLUTELY FORBIDDEN: any text, letters, words, numbers, titles, labels, watermarks, captions, or typography.
+• If the instruction mentions multiple outfits/styles/variations, pick ONLY ONE and show it as a single full photo.
+
+`
 
       if (reference_mode === 'style_and_character') {
         parts.push({
-          text: `Use the attached image as a CHARACTER reference. Keep the SAME person's face, facial features, hairstyle, and identity — they must be clearly recognizable as the same person. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW image based on this instruction: ${prompt}${noTextRule}`,
+          text: `${imageRules}Use the attached image as a CHARACTER reference. Keep the SAME person's face, facial features, hairstyle, and identity — they must be clearly recognizable as the same person. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW single image based on this instruction: ${prompt}`,
         })
       } else {
         // style_only (기본값)
         parts.push({
-          text: `Use the attached image as a STYLE reference only. Copy the visual style (colors, lighting, composition, typography style, art style) but create completely new content. Do NOT copy specific characters or people. Generate a NEW thumbnail image based on this instruction: ${prompt}${noTextRule}`,
+          text: `${imageRules}Use the attached image as a STYLE reference only. Copy the visual style (colors, lighting, composition, typography style, art style) but create completely new content. Do NOT copy specific characters or people. Generate a NEW single thumbnail image based on this instruction: ${prompt}`,
         })
       }
     } else {
+      const imageRules = `[MANDATORY OUTPUT RULES — VIOLATION = FAILURE]
+• OUTPUT EXACTLY ONE SINGLE PHOTO. The entire canvas is ONE continuous photograph of ONE scene with ONE subject/person.
+• ABSOLUTELY FORBIDDEN: collage, grid, triptych, diptych, split-screen, side-by-side, multi-panel, montage, photo strip, before/after, multiple poses of the same person, or any form of image subdivision.
+• ABSOLUTELY FORBIDDEN: any text, letters, words, numbers, titles, labels, watermarks, captions, or typography.
+• If the instruction mentions multiple outfits/styles/variations, pick ONLY ONE and show it as a single full photo.
+
+`
       parts.push({
-        text: `Generate a professional thumbnail image. ${prompt}\n\nCRITICAL RULE: Do NOT include ANY text, letters, words, numbers, titles, labels, watermarks, captions, or typography in the image. The image must contain ONLY visual elements — no written characters of any language.`,
+        text: `${imageRules}Generate a professional thumbnail image. ${prompt}`,
       })
     }
 
