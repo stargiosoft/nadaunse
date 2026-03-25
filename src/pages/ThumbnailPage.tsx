@@ -243,18 +243,6 @@ export default function ThumbnailPage() {
     setGenerating(false);
   }, [prompt, ratioId, referenceBase64, referenceMode, imageCount, isListMode, parsedItems]);
 
-  // Shift+1 단축키 → 썸네일 생성하기
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.shiftKey && e.key === '!' && step === 'input' && canGenerate && !generating) {
-        e.preventDefault();
-        handleGenerate();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [step, canGenerate, generating, handleGenerate]);
-
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
     // 해당 이미지의 개별 프롬프트 찾기
@@ -360,6 +348,18 @@ export default function ThumbnailPage() {
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
   const headerTitle = step === 'input' ? 'AI 썸네일 메이커' : '생성 결과';
   const canGenerate = prompt.trim().length > 0;
+
+  // Shift+1 단축키 → 썸네일 생성하기
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key === '!' && step === 'input' && canGenerate && !generating) {
+        e.preventDefault();
+        handleGenerate();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [step, canGenerate, generating, handleGenerate]);
 
   // ── Render ──
 
