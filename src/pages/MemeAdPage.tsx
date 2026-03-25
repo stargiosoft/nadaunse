@@ -230,6 +230,7 @@ export default function MemeAdPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [bgmAudio, setBgmAudio] = useState<BgmAudio | null>(null);
   const [regenScenes, setRegenScenes] = useState<Set<number>>(new Set());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [videoGenProgress, setVideoGenProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const ttsAbortRef = useRef(false);
@@ -2013,7 +2014,7 @@ export default function MemeAdPage() {
                   }}>
                     배경 이미지 확인
                     <span style={{ fontWeight: 400, color: C.textCaption, marginLeft: '8px', fontSize: '12px' }}>
-                      탭하여 재생성
+                      탭하여 크게 보기
                     </span>
                   </div>
                   <div style={{
@@ -2026,12 +2027,12 @@ export default function MemeAdPage() {
                       return (
                         <div
                           key={scene.scene_number}
-                          onClick={() => !isRegen && regenerateSceneImage(scene)}
+                          onClick={() => scene.backgroundImageUrl && !isRegen && setLightboxUrl(scene.backgroundImageUrl)}
                           style={{
                             position: 'relative', aspectRatio: '9/16',
                             borderRadius: '10px', overflow: 'hidden',
                             border: `1px solid ${C.borderDivider}`,
-                            cursor: isRegen ? 'not-allowed' : 'pointer',
+                            cursor: isRegen ? 'not-allowed' : scene.backgroundImageUrl ? 'pointer' : 'default',
                             background: scene.backgroundImageUrl ? undefined : `linear-gradient(135deg, ${scene.accent_color || C.primary}40, ${scene.glow_color || C.primaryDark}30)`,
                           }}
                           className="transform-gpu"
@@ -2064,12 +2065,17 @@ export default function MemeAdPage() {
                             </div>
                           </div>
                           {!isRegen && scene.backgroundImageUrl && (
-                            <div className="flex items-center justify-center" style={{
-                              position: 'absolute', top: '4px', right: '4px',
-                              width: 22, height: 22, borderRadius: '50%',
-                              backgroundColor: 'rgba(0,0,0,0.5)',
-                            }}>
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                            <div
+                              onClick={(e) => { e.stopPropagation(); regenerateSceneImage(scene); }}
+                              className="flex items-center justify-center"
+                              style={{
+                                position: 'absolute', top: '4px', right: '4px',
+                                width: 26, height: 26, borderRadius: '50%',
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                                 <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 105.64-11.36L3 10" />
                               </svg>
                             </div>
@@ -2345,6 +2351,38 @@ export default function MemeAdPage() {
           )}
         </div>
       </div>
+
+      {/* ── Image Lightbox ── */}
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.85)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <img
+            src={lightboxUrl}
+            alt="확대 보기"
+            style={{
+              maxWidth: '90vw', maxHeight: '90vh',
+              objectFit: 'contain', borderRadius: '12px',
+            }}
+          />
+          <div style={{
+            position: 'absolute', top: '16px', right: '16px',
+            width: 36, height: 36, borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+            </svg>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin {
