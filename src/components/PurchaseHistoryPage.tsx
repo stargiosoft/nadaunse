@@ -497,12 +497,12 @@ export default function PurchaseHistoryPage() {
             .eq('content_id', item.content_id),
           supabase
             .from('order_results')
-            .select('id, orders!inner(user_id)', { count: 'exact', head: true })
+            .select('id', { count: 'exact', head: true })
             .eq('order_id', item.id),
           // ⭐ 첫 번째 질문의 타로 상태 확인
           supabase
             .from('order_results')
-            .select('question_type, tarot_user_viewed, orders!inner(user_id)')
+            .select('question_type, tarot_user_viewed')
             .eq('order_id', item.id)
             .eq('question_order', 1)
             .single()
