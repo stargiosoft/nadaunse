@@ -13,7 +13,6 @@ import { PageLoader } from './ui/PageLoader';
 import { getZodiacImageUrl } from '../lib/zodiacUtils';
 import { getChineseZodiacByLichun } from '../lib/zodiacCalculator';
 import { Radio } from './ui/Radio';
-import { isProduction } from '../lib/env';
 
 interface SajuRecord {
   id: string;
@@ -390,7 +389,7 @@ export default function SajuSelectPage() {
 
       if (!mySajuError && mySajuList && mySajuList.length > 0) {
         const mySaju = mySajuList[0];
-        if (!mySaju.phone_number && !isProduction()) {
+        if (!mySaju.phone_number) {
           console.log('📱 [사주선택] 휴대폰 번호 없음 → AlimtalkInfoInputPage로 이동');
           // ⭐ 리다이렉트 전에 대표 사주 캐시 업데이트 (ProfilePage 빈 사주 방지)
           localStorage.setItem('primary_saju', JSON.stringify({ ...selectedSaju, is_primary: true }));
