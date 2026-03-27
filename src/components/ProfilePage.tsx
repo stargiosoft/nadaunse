@@ -659,6 +659,32 @@ export default function ProfilePage({
     checkUnreadReplies();
   }, []);
 
+  // ⭐ 문의 관리: 미답변(pending) CS 알림 dot (마스터 전용)
+  useEffect(() => {
+    if (!isMaster) return;
+
+    const checkPendingInquiries = async () => {
+      try {
+        // ⭐ auth 세션 초기화 보장 (캐시에서 isMaster=true 즉시 시작 시 세션 미준비 방지)
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+
+        const { count, error } = await supabase
+          .from('customer_inquiries')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        if (!error && (count ?? 0) > 0) {
+          setHasUnreadInquiry(true);
+        }
+      } catch {
+        // 조용히 실패
+      }
+    };
+
+    checkPendingInquiries();
+  }, [isMaster]);
+
   // 🔧 태그 리프레시: 페이지 가시성 변경 또는 포커스 시 refresh 플래그 체크
   useEffect(() => {
     const checkAndRefreshTags = async () => {
