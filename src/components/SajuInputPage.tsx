@@ -45,6 +45,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
   const editingSaju = sajuInfo || sajuData; // 수정할 사주 정보
   // ⭐ 내 사주 수정 여부 (관계 필드 숨김, 탈퇴하기 표시)
   const isMySajuEdit = isEditMode && editingSaju?.notes === '본인';
+  // ⭐ 최초 사주 등록 여부 (프로필에서 진입 + 편집 아님 = 본인 사주 최초 등록 → 관계 필드 숨김)
+  const isFirstRegistration = !isEditMode && fromProfile;
 
   // ⭐ 편집 모드일 때 초기 gender 값을 미리 계산 (애니메이션 깜빡임 방지)
   const getInitialGender = (): 'female' | 'male' => {
@@ -1054,8 +1056,8 @@ export default function SajuInputPage({ onBack, onSaved }: SajuInputPageProps) {
             </div>
           </motion.div>
 
-          {/* 관계 - 내 사주 수정 시 숨김 */}
-          {!isMySajuEdit && <motion.div
+          {/* 관계 - 내 사주 수정 또는 최초 등록 시 숨김 */}
+          {!isMySajuEdit && !isFirstRegistration && <motion.div
             className="flex flex-col gap-[0px] w-full mt-[28px]"
             variants={{
               hidden: { opacity: 0, y: 20 },

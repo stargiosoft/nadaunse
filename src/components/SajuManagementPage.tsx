@@ -984,7 +984,7 @@ export default function SajuManagementPage({ onBack, onNavigateToInput, onNaviga
               <div className="w-full flex justify-center relative">
                 <div className="w-full max-w-[440px] px-[20px] py-[12px]">
                   <div
-                    onClick={onNavigateToInput}
+                    onClick={handleNavigateToAdd}
                     className="bg-[#48b2af] h-[56px] w-full cursor-pointer flex items-center justify-center"
                     style={{ borderRadius: '20px', transition: 'all 0.15s ease' }}
                     onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.99)'; e.currentTarget.style.backgroundColor = '#41a09e'; }}

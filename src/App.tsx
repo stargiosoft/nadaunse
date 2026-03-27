@@ -3211,6 +3211,8 @@ function SajuInputPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = location.state?.returnTo;
+  const fromProfile = location.state?.fromProfile === true;
+  const isEditMode = !!(location.state?.sajuInfo || (location.state?.editMode && location.state?.sajuData));
   const loginAuth = useLoginRequired();
 
   if (loginAuth === 'checking') return <PageLoader />;
@@ -3222,15 +3224,19 @@ function SajuInputPageWrapper() {
     <SajuInputPage
       onBack={() => navigate('/profile')}
       onSaved={() => {
-        // 저장 완료 후 returnTo가 있으면 해당 경로로, 없으면 관리 페이지로 이동
         // ⭐ replace: true로 히스토리 교체 → iOS 스와이프 뒤로가기 시 올바른 페이지(프로필)로 이동
         if (returnTo) {
           navigate(returnTo, { replace: true });
+        } else if (fromProfile && !isEditMode) {
+          // ⭐ 최초 등록(프로필에서 진입) → 프로필로 바로 이동
+          navigate('/profile', { replace: true });
         } else {
           navigate('/saju/management', { replace: true });
         }
-        // ⭐ navigate 후 토스트 표시 (수정 완료 화면에서 노출)
-        setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
+        // ⭐ 편집 모드일 때만 토스트 표시 (신규 등록은 SajuInputPage 내부에서 표시)
+        if (isEditMode) {
+          setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
+        }
       }}
     />
   );
@@ -3270,6 +3276,7 @@ function SajuAddPageWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = location.state?.returnTo;
+  const isEditMode = !!(location.state?.sajuInfo || (location.state?.editMode && location.state?.sajuData));
   const loginAuth = useLoginRequired();
 
   if (loginAuth === 'checking') return <PageLoader />;
@@ -3288,8 +3295,10 @@ function SajuAddPageWrapper() {
         } else {
           navigate('/saju/management', { replace: true });
         }
-        // ⭐ navigate 후 토스트 표시 (수정 완료 화면에서 노출)
-        setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
+        // ⭐ 편집 모드일 때만 토스트 표시 (신규 등록은 SajuAddPage 내부에서 표시)
+        if (isEditMode) {
+          setTimeout(() => toast.success('수정되었습니다.', { duration: 2200 }), 100);
+        }
       }}
     />
   );
