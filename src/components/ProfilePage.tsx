@@ -276,6 +276,8 @@ export default function ProfilePage({
 
   // ⭐ 의견 전달하기 미읽은 답변 알림 dot
   const [hasUnreadReply, setHasUnreadReply] = useState(false);
+  // ⭐ 문의 관리 미답변 CS 알림 dot (마스터 전용)
+  const [hasUnreadInquiry, setHasUnreadInquiry] = useState(false);
 
   // ⭐ 핸드폰 번호 바텀시트 상태
   const [showPhoneBottomSheet, setShowPhoneBottomSheet] = useState(false);
@@ -1319,6 +1321,9 @@ export default function ProfilePage({
                         <p style={{ fontFamily: 'Pretendard Variable', fontWeight: 400, fontSize: '16px', lineHeight: '28.5px', letterSpacing: '-0.32px', color: '#000000' }}>
                           문의 관리
                         </p>
+                        {hasUnreadInquiry && (
+                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#6AC9C6', marginTop: '-7px' }} />
+                        )}
                       </div>
                       <div className="relative shrink-0 size-[16px]">
                         <MenuArrowRightIcon />
