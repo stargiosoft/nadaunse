@@ -78,6 +78,86 @@ export default function AlimtalkInfoInputPage({
     return phoneNumbers.length === 11 && phoneNumbers.startsWith('01');
   };
 
+  // ⭐ "다음에 할래요" - 핸드폰 번호 저장 없이 바로 로딩 페이지로 이동
+  const handleSkip = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('로그인이 필요합니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 주문 소유자 확인
+      const { data: orderData, error: orderCheckError } = await supabase
+        .from('orders')
+        .select('user_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderCheckError || !orderData || orderData.user_id !== user.id) {
+        toast.error('주문 정보를 찾을 수 없습니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 선택된 사주 정보 조회 및 orders 업데이트
+      const { data: selectedSaju, error: sajuFetchError } = await supabase
+        .from('saju_records')
+        .select('full_name, gender, birth_date, birth_time')
+        .eq('id', selectedSajuId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (sajuFetchError || !selectedSaju) {
+        toast.error('사주 정보를 찾을 수 없습니다.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      await supabase
+        .from('orders')
+        .update({
+          saju_record_id: selectedSajuId,
+          full_name: selectedSaju.full_name,
+          gender: selectedSaju.gender,
+          birth_date: selectedSaju.birth_date,
+          birth_time: selectedSaju.birth_time,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .eq('user_id', user.id);
+
+      // 로딩 페이지로 이동
+      navigate(`/loading?contentId=${contentId}&orderId=${orderId}`);
+
+      // 백그라운드 AI 생성
+      const [contentResult, questionsResult] = await Promise.all([
+        supabase.from('master_contents').select('category_main').eq('id', contentId).single(),
+        supabase.from('master_content_questions').select('question_type').eq('content_id', contentId).eq('question_type', 'tarot')
+      ]);
+
+      const contentData = contentResult.data;
+      const questionsData = questionsResult.data;
+      const isTarotContent = contentData?.category_main?.includes('타로') || contentData?.category_main?.toLowerCase() === 'tarot';
+      const tarotQuestionCount = questionsData?.length || 0;
+
+      const requestBody: Record<string, unknown> = { contentId, orderId, sajuRecordId: selectedSajuId };
+      if (isTarotContent && tarotQuestionCount > 0) {
+        requestBody.tarotCards = getTarotCardsForQuestions(tarotQuestionCount);
+      }
+
+      supabase.functions.invoke('generate-content-answers', { body: requestBody }).catch(console.error);
+    } catch (error) {
+      console.error('❌ [AlimtalkInfoInput] 스킵 처리 오류:', error);
+      toast.error('처리 중 오류가 발생했습니다.');
+      setIsSubmitting(false);
+    }
+  };
+
   // 다음 버튼 클릭 핸들러
   const handleNext = async () => {
     if (!isValidPhoneNumber()) {
@@ -467,6 +547,31 @@ export default function AlimtalkInfoInputPage({
               >
                 {isSubmitting ? '처리 중...' : '다음'}
               </span>
+            </button>
+
+            {/* 다음에 할래요 버튼 */}
+            <button
+              onClick={handleSkip}
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center"
+              style={{
+                marginTop: '8px',
+                padding: '8px 0',
+                background: 'none',
+                border: 'none',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <p style={{
+                fontFamily: 'Pretendard Variable, sans-serif',
+                fontSize: '14px',
+                fontWeight: 400,
+                lineHeight: '22px',
+                color: '#848484',
+                letterSpacing: '-0.42px'
+              }}>
+                다음에 할래요
+              </p>
             </button>
           </div>
         </div>
