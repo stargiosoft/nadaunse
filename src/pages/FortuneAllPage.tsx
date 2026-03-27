@@ -325,9 +325,7 @@ export function FortuneAllPage() {
     return '추천순';
   });
   const sortRef = useRef<HTMLDivElement>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filterType, setFilterType] = useState<'전체' | '심화' | '무료'>('전체');
-  const filterRef = useRef<HTMLDivElement>(null);
+  const [filterType, setFilterType] = useState<'all' | 'paid' | 'free'>('all');
 
   const [items, setItems] = useState<FortuneItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -360,7 +358,7 @@ export function FortuneAllPage() {
   const fetchData = useCallback(async () => {
     try {
       const category = TAB_CATEGORIES[activeTab] || '전체';
-      const pContentType = filterType === '심화' ? 'paid' : filterType === '무료' ? 'free' : 'all';
+      const pContentType = filterType;
 
       // 추천순: get_recommended_contents RPC, 그 외: get_home_contents RPC
       const rpcName = sortBy === '추천순' ? 'get_recommended_contents' : 'get_home_contents';
@@ -462,21 +460,6 @@ export function FortuneAllPage() {
       document.removeEventListener('touchstart', handler);
     };
   }, [sortOpen]);
-
-  useEffect(() => {
-    if (!filterOpen) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
-    };
-  }, [filterOpen]);
 
   return (
     <div className="fixed inset-0 flex justify-center overflow-hidden" style={{ backgroundColor: C.white, touchAction: 'none' }}>
@@ -618,63 +601,54 @@ export function FortuneAllPage() {
           </div>
         </div>
 
+        {/* ── SegmentedControl: 종합 / 심화 해석판 / 무료 체험판 ── */}
+        <div style={{ paddingLeft: 22, paddingRight: 22, paddingTop: 4, paddingBottom: 4, backgroundColor: C.white }}>
+          <div className="relative rounded-[16px] shrink-0 w-full" style={{ backgroundColor: '#f9f9f9' }}>
+            <div className="box-border flex flex-col items-start p-[6px] relative w-full">
+              <div className="flex gap-[4px] items-center relative shrink-0 w-full">
+                {([['all', '종합'], ['paid', '심화 해석판'], ['free', '무료 체험판']] as const).map(([value, label]) => (
+                  <div
+                    key={value}
+                    onClick={() => setFilterType(value)}
+                    className="basis-0 grow relative rounded-[12px] shrink-0 cursor-pointer"
+                  >
+                    {filterType === value && (
+                      <motion.div
+                        layoutId="segmentedControlIndicator"
+                        className="absolute inset-0 bg-white rounded-[12px]"
+                        style={{ boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)' }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                      />
+                    )}
+                    <div className="flex items-center justify-center size-full relative z-10">
+                      <div className="box-border flex items-center justify-center p-[8px] relative w-full">
+                        <span
+                          className="transition-colors duration-200"
+                          style={{
+                            fontFamily: font,
+                            fontSize: 14,
+                            fontWeight: filterType === value ? 500 : 400,
+                            color: filterType === value ? '#151515' : '#999999',
+                            lineHeight: '22px',
+                            letterSpacing: '-0.42px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ── Content header: count + sort ── */}
         <div className="flex items-center justify-between w-full" style={{ paddingTop: 8, paddingBottom: 10, paddingLeft: 22, paddingRight: 22, backgroundColor: C.white }}>
           <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>총 {totalCount}개</span>
           <div className="flex items-center" style={{ gap: 16 }}>
-            {/* 필터 드롭다운 */}
-            <div className="relative" ref={filterRef}>
-              <button
-                className="flex items-center cursor-pointer"
-                style={{ backgroundColor: 'transparent', border: 'none', gap: 1, padding: 0, WebkitTapHighlightColor: 'transparent' }}
-                onClick={() => setFilterOpen(v => !v)}
-              >
-                <span style={{ fontFamily: font, fontSize: 13, fontWeight: 500, color: C.gray600, lineHeight: '22px' }}>{filterType}</span>
-                <ArrowDownFillIcon />
-              </button>
-              {filterOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                  transition={{ duration: 0.15, ease: 'easeOut' }}
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 6px)',
-                    right: -6,
-                    width: 140,
-                    backgroundColor: C.white,
-                    borderRadius: 16,
-                    border: '1px solid #f3f3f3',
-                    boxShadow: '6px 7px 12px 0px rgba(0,0,0,0.04), -3px -3px 12px 0px rgba(0,0,0,0.04)',
-                    zIndex: 200,
-                    paddingTop: 14,
-                    paddingBottom: 12,
-                  }}
-                >
-                  <div style={{ padding: '0 22px', marginBottom: 4 }}>
-                    <span style={{ fontFamily: font, fontSize: 15, fontWeight: 600, color: '#151515', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>필터</span>
-                  </div>
-                  {(['전체', '심화', '무료'] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => { setFilterType(opt); setFilterOpen(false); }}
-                      className="flex items-center w-full cursor-pointer"
-                      style={{ padding: '2px 12px', backgroundColor: 'transparent', border: 'none', gap: 7, WebkitTapHighlightColor: 'transparent' }}
-                    >
-                      <div className="flex items-center justify-center" style={{ width: 36, height: 36 }}>
-                        {filterType === opt ? (
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: '6px solid #48b2af' }} />
-                        ) : (
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #e7e7e7', backgroundColor: C.white }} />
-                        )}
-                      </div>
-                      <span style={{ fontFamily: font, fontSize: 15, fontWeight: 400, color: '#6d6d6d', letterSpacing: '-0.3px', lineHeight: '25.5px' }}>{opt}</span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </div>
             {/* 정렬 드롭다운 */}
           <div className="relative" ref={sortRef}>
             <button
