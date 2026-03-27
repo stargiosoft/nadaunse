@@ -661,12 +661,16 @@ export default function ProfilePage({
     checkUnreadReplies();
   }, []);
 
-  // ⭐ 문의 관리: 미답변(pending) CS 체크 (마스터 전용)
+  // ⭐ 문의 관리: 미답변(pending) CS 알림 dot (마스터 전용)
   useEffect(() => {
     if (!isMaster) return;
 
     const checkPendingInquiries = async () => {
       try {
+        // ⭐ auth 세션 초기화 보장 (캐시에서 isMaster=true 즉시 시작 시 세션 미준비 방지)
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+
         const { count, error } = await supabase
           .from('customer_inquiries')
           .select('id', { count: 'exact', head: true })
