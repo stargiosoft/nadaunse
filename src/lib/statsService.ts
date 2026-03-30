@@ -5,6 +5,20 @@
 
 import { supabase } from './supabase';
 
+/**
+ * URL 길이 제한(~8KB) 방지를 위한 배열 청크 분할
+ * Supabase .in() 필터에 UUID 150개 이상 넣으면 400 에러 발생
+ */
+const CHUNK_SIZE = 150;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 // 관리자 ID 목록 (통계에서 제외)
 const ADMIN_IDS = [
   'ed0f8340-77fd-4b4c-9e59-65d69dcb6af8',
@@ -1726,35 +1740,31 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
   // 보고서 user_id 목록 (알림톡 매칭용)
   const reportUserIds = reports?.map(r => r.user_id) || [];
 
-  // 2. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
-  const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
-    supabase
-      .from('report_tarot_selections')
-      .select('report_id, user_viewed')
-      .in('report_id', reportIds)
-      .range(0, 9999),
-    supabase
-      .from('user_coupons')
-      .select('source_order_id')
-      .not('user_id', 'in', `(${adminFilter})`)
-      .in('source_order_id', reportIds),
-    supabase
-      .from('alimtalk_logs')
-      .select('user_id', { count: 'exact', head: true })
-      .eq('template_code', '10003')
-      .eq('status', 'success')
-      .in('user_id', reportUserIds),
+  // 2. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회 (청크 분할로 URL 길이 제한 방지)
+  const reportIdChunks = chunkArray(reportIds, CHUNK_SIZE);
+  const userIdChunks = chunkArray(reportUserIds, CHUNK_SIZE);
+
+  const [tarotResults, couponResults, alimtalkResults] = await Promise.all([
+    Promise.all(reportIdChunks.map(chunk =>
+      supabase.from('report_tarot_selections').select('report_id, user_viewed').in('report_id', chunk).range(0, 9999)
+    )),
+    Promise.all(reportIdChunks.map(chunk =>
+      supabase.from('user_coupons').select('source_order_id').not('user_id', 'in', `(${adminFilter})`).in('source_order_id', chunk)
+    )),
+    Promise.all(userIdChunks.map(chunk =>
+      supabase.from('alimtalk_logs').select('user_id', { count: 'exact', head: true }).eq('template_code', '10003').eq('status', 'success').in('user_id', chunk)
+    )),
   ]);
 
-  const { data: tarotSelections, error: tarotError } = tarotResult;
-  if (tarotError) {
-    console.error('타로 선택 조회 오류:', tarotError);
-    throw new Error('타로 선택 데이터 조회에 실패했습니다.');
+  const tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
+  for (const r of tarotResults) {
+    if (r.error) { console.error('타로 선택 조회 오류:', r.error); throw new Error('타로 선택 데이터 조회에 실패했습니다.'); }
+    if (r.data) tarotSelections.push(...r.data);
   }
 
   // 보고서별 타로 상태 집계
   const tarotByReport: Record<string, { total: number; viewed: number }> = {};
-  tarotSelections?.forEach(ts => {
+  tarotSelections.forEach(ts => {
     if (!tarotByReport[ts.report_id]) {
       tarotByReport[ts.report_id] = { total: 0, viewed: 0 };
     }
@@ -1768,14 +1778,17 @@ export async function fetchReportFunnelStats(): Promise<ReportFunnelData> {
   const tarotStarted = Object.values(tarotByReport).filter(t => t.viewed >= 1).length;
   const tarotCompleted = Object.values(tarotByReport).filter(t => t.viewed >= 3).length;
 
-  const { error: couponError } = couponResult;
-  if (couponError) {
-    console.error('쿠폰 조회 오류:', couponError);
-    throw new Error('쿠폰 데이터 조회에 실패했습니다.');
+  const couponOrderIds: string[] = [];
+  for (const r of couponResults) {
+    if (r.error) { console.error('쿠폰 조회 오류:', r.error); throw new Error('쿠폰 데이터 조회에 실패했습니다.'); }
+    if (r.data) couponOrderIds.push(...r.data.map(c => c.source_order_id));
   }
-  const couponIssued = new Set(couponResult.data?.map(c => c.source_order_id) || []).size;
+  const couponIssued = new Set(couponOrderIds).size;
 
-  const alimtalkSent = alimtalkResult.count || 0;
+  let alimtalkSent = 0;
+  for (const r of alimtalkResults) {
+    alimtalkSent += r.count || 0;
+  }
 
   return { totalReports, alimtalkSent, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
 }
@@ -1828,32 +1841,29 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
     return { totalReports: 0, alimtalkSent: 0, tarotGenerated: 0, tarotStarted: 0, tarotCompleted: 0, wroteEncouragement: 0, couponIssued: 0 };
   }
 
-  // 4. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
-  const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
-    supabase
-      .from('report_tarot_selections')
-      .select('report_id, user_viewed')
-      .in('report_id', reportIds)
-      .range(0, 9999),
-    supabase
-      .from('user_coupons')
-      .select('source_order_id')
-      .not('user_id', 'in', `(${adminFilter})`)
-      .in('source_order_id', reportIds),
-    // 알림톡: 해당 보고서 ID에 매칭되는 건만 조회 (variables->>'reportId')
-    supabase
-      .from('alimtalk_logs')
-      .select('id', { count: 'exact', head: true })
-      .eq('template_code', '10003')
-      .eq('status', 'success')
-      .filter('variables->>reportId', 'in', `(${reportIds.join(',')})`),
+  // 4. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회 (청크 분할)
+  const reportIdChunks = chunkArray(reportIds, CHUNK_SIZE);
+
+  const [tarotResults, couponResults, alimtalkResults] = await Promise.all([
+    Promise.all(reportIdChunks.map(chunk =>
+      supabase.from('report_tarot_selections').select('report_id, user_viewed').in('report_id', chunk).range(0, 9999)
+    )),
+    Promise.all(reportIdChunks.map(chunk =>
+      supabase.from('user_coupons').select('source_order_id').not('user_id', 'in', `(${adminFilter})`).in('source_order_id', chunk)
+    )),
+    Promise.all(reportIdChunks.map(chunk =>
+      supabase.from('alimtalk_logs').select('id', { count: 'exact', head: true }).eq('template_code', '10003').eq('status', 'success').filter('variables->>reportId', 'in', `(${chunk.join(',')})`)
+    )),
   ]);
 
-  const { data: tarotSelections, error: tarotError } = tarotResult;
-  if (tarotError) throw new Error('타로 선택 데이터 조회에 실패했습니다.');
+  const tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
+  for (const r of tarotResults) {
+    if (r.error) throw new Error('타로 선택 데이터 조회에 실패했습니다.');
+    if (r.data) tarotSelections.push(...r.data);
+  }
 
   const tarotByReport: Record<string, { total: number; viewed: number }> = {};
-  tarotSelections?.forEach(ts => {
+  tarotSelections.forEach(ts => {
     if (!tarotByReport[ts.report_id]) tarotByReport[ts.report_id] = { total: 0, viewed: 0 };
     tarotByReport[ts.report_id].total++;
     if (ts.user_viewed) tarotByReport[ts.report_id].viewed++;
@@ -1863,11 +1873,17 @@ export async function fetchReportFunnelByCount(count: number): Promise<ReportFun
   const tarotStarted = Object.values(tarotByReport).filter(t => t.viewed >= 1).length;
   const tarotCompleted = Object.values(tarotByReport).filter(t => t.viewed >= 3).length;
 
-  const { error: couponError } = couponResult;
-  if (couponError) throw new Error('쿠폰 데이터 조회에 실패했습니다.');
-  const couponIssued = new Set(couponResult.data?.map(c => c.source_order_id) || []).size;
+  const couponOrderIds: string[] = [];
+  for (const r of couponResults) {
+    if (r.error) throw new Error('쿠폰 데이터 조회에 실패했습니다.');
+    if (r.data) couponOrderIds.push(...r.data.map(c => c.source_order_id));
+  }
+  const couponIssued = new Set(couponOrderIds).size;
 
-  const alimtalkSent = alimtalkResult.count || 0;
+  let alimtalkSent = 0;
+  for (const r of alimtalkResults) {
+    alimtalkSent += r.count || 0;
+  }
 
   return { totalReports, alimtalkSent, tarotGenerated, tarotStarted, tarotCompleted, wroteEncouragement, couponIssued };
 }
@@ -1904,32 +1920,28 @@ export async function fetchReportTrendStats(dateRange: DateRangeFilter, preset?:
   const reportUserIds = reports?.map(r => r.user_id) || [];
 
   // 2. 타로 선택, 쿠폰, 알림톡 데이터 병렬 조회
-  let tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
-  let coupons: { source_order_id: string }[] = [];
-  let alimtalkLogs: { user_id: string; sent_at: string | null; created_at: string; variables: Record<string, string> | null }[] = [];
+  const tarotSelections: { report_id: string; user_viewed: boolean }[] = [];
+  const coupons: { source_order_id: string }[] = [];
+  const alimtalkLogs: { user_id: string; sent_at: string | null; created_at: string; variables: Record<string, string> | null }[] = [];
 
   if (reportIds.length > 0) {
-    const [tarotResult, couponResult, alimtalkResult] = await Promise.all([
-      supabase
-        .from('report_tarot_selections')
-        .select('report_id, user_viewed')
-        .in('report_id', reportIds)
-        .range(0, 9999),
-      supabase
-        .from('user_coupons')
-        .select('source_order_id')
-        .not('user_id', 'in', `(${adminFilter})`)
-        .in('source_order_id', reportIds),
-      supabase
-        .from('alimtalk_logs')
-        .select('user_id, sent_at, created_at, variables')
-        .eq('template_code', '10003')
-        .eq('status', 'success')
-        .in('user_id', reportUserIds),
+    const reportIdChunks = chunkArray(reportIds, CHUNK_SIZE);
+    const userIdChunks = chunkArray(reportUserIds, CHUNK_SIZE);
+
+    const [tarotResults, couponResults, alimtalkResults] = await Promise.all([
+      Promise.all(reportIdChunks.map(chunk =>
+        supabase.from('report_tarot_selections').select('report_id, user_viewed').in('report_id', chunk).range(0, 9999)
+      )),
+      Promise.all(reportIdChunks.map(chunk =>
+        supabase.from('user_coupons').select('source_order_id').not('user_id', 'in', `(${adminFilter})`).in('source_order_id', chunk)
+      )),
+      Promise.all(userIdChunks.map(chunk =>
+        supabase.from('alimtalk_logs').select('user_id, sent_at, created_at, variables').eq('template_code', '10003').eq('status', 'success').in('user_id', chunk)
+      )),
     ]);
-    if (!tarotResult.error) tarotSelections = tarotResult.data || [];
-    if (!couponResult.error) coupons = couponResult.data || [];
-    if (!alimtalkResult.error) alimtalkLogs = alimtalkResult.data || [];
+    for (const r of tarotResults) { if (!r.error && r.data) tarotSelections.push(...r.data); }
+    for (const r of couponResults) { if (!r.error && r.data) coupons.push(...r.data); }
+    for (const r of alimtalkResults) { if (!r.error && r.data) alimtalkLogs.push(...(r.data as typeof alimtalkLogs)); }
   }
 
   // 보고서별 타로 완료 수 Map
