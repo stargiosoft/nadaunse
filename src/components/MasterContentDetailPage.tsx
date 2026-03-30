@@ -565,8 +565,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
 
   // ⭐ AI 개인화 구매 가이드 로드 (콘텐츠 로드와 동시 시작)
   useEffect(() => {
-    // 비로그인 또는 태그 없음 → 스킵
-    if (!hasTraitTags) return;
+    // 비로그인 → 스킵 (로그인 유저는 태그 없어도 Tier 3 범용 바넘으로 노출)
     const userJson = localStorage.getItem('user');
     if (!userJson) return;
 
@@ -578,7 +577,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
     }
 
     // localStorage 캐시 확인 (24시간 TTL)
-    const cacheKey = `purchase_guide_v1_${userId}_${contentId}`;
+    const cacheKey = `purchase_guide_v2_${userId}_${contentId}`;
     const needsRefresh = localStorage.getItem('trait_tags_needs_refresh') === 'true';
     try {
       const cached = localStorage.getItem(cacheKey);
@@ -1437,7 +1436,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
               </motion.div>
 
               {/* AI 개인화 구매 가이드 섹션 */}
-              {(hasTraitTags && (isPurchaseGuideLoading || purchaseGuide) || import.meta.env.DEV) && (
+              {((isPurchaseGuideLoading || purchaseGuide) || import.meta.env.DEV) && (
                 <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
                 <div className="px-[20px] mb-[28px]">
                   <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: '24px', letterSpacing: '-0.34px', color: '#1a1a1a', marginBottom: '10px' }}>
@@ -1451,7 +1450,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                       </div>
                     ) : (purchaseGuide || import.meta.env.DEV) ? (
                       <p style={{ fontSize: '14px', fontWeight: 400, lineHeight: '22px', letterSpacing: '-0.28px', color: '#2d2d2d', margin: 0, whiteSpace: 'pre-line' }}>
-                        {purchaseGuide || '[DEV] 사주 분석 결과, 현재 연인과의 관계에서 중요한 전환점이 예상됩니다. 재회 가능성과 새로운 인연의 시기를 상세히 풀어드립니다.'}
+                        {purchaseGuide || '[DEV] 지금 흐름은 커다란 원석을 쥐고도 세공할 도구를 찾지 못한 형국이에요.\n내면의 열정은 누구보다 뜨거운데 운의 매듭이 풀리지 않아 성취의 문턱에서 번번이 미끄러지고 있어요.\n막혀 있는 건 능력이 아니라 흐름이 들어오는 길목이에요.\n지금 선택 하나가 그 흐름을 바꿀 수 있어요.'}
                       </p>
                     ) : null}
                   </div>
@@ -1459,7 +1458,7 @@ export default function MasterContentDetailPage({ contentId }: MasterContentDeta
                 </motion.div>
               )}
 
-              {(hasTraitTags && (isPurchaseGuideLoading || purchaseGuide) || import.meta.env.DEV) && (
+              {((isPurchaseGuideLoading || purchaseGuide) || import.meta.env.DEV) && (
                 <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } }}>
                 <div className="bg-[#f9f9f9] h-[4px] w-full mt-[12px] mb-[24px]" />
                 </motion.div>

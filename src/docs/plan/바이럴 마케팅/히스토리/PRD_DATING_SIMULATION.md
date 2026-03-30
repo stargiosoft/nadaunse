@@ -51,52 +51,7 @@
 ### Step 1. 초저마찰 랜딩 및 정보 입력
 
 - 메인 화면: "5턴 안에 데이트 따낼 수 있어?" 문구 + 도전 버튼
-- 입력 항목 4가지 (**3초 컷** 설계):
-  1. **성별**: 필수
-  2. **생년월일**: 필수. 숫자 키패드 노출
-  3. **태어난 시간**: 선택. "모름" 기본 선택
-  4. **양력/음력**: 양력 기본 선택
-
-#### UTM 파라미터 자동입력 (사주GPT 제휴 유입)
-
-사주GPT 광고 배너 클릭 시 아래 형식으로 유저 정보가 URL에 포함되어 유입된다:
-
-```
-/dating-sim?utm_source=sajugpt&utm_medium=affiliate&utm_campaign=sdowha&birthday=199112252315&gender=male
-```
-
-**파라미터 파싱 및 자동입력 로직**:
-
-```typescript
-const params = new URLSearchParams(window.location.search);
-const birthdayParam = params.get('birthday'); // "199112252315" (YYYYMMDDHHMI)
-const genderParam = params.get('gender');     // "male" | "female"
-
-if (birthdayParam && birthdayParam.length >= 8) {
-  const year = birthdayParam.slice(0, 4);
-  const month = birthdayParam.slice(4, 6);
-  const day = birthdayParam.slice(6, 8);
-  const hour = birthdayParam.slice(8, 10);
-  const minute = birthdayParam.slice(10, 12);
-
-  setBirthDate({ year, month, day });
-  if (birthdayParam.length >= 10) {
-    setBirthTime({ hour, minute });
-  }
-  setCalendarType('solar'); // 양력 기본값
-}
-
-if (genderParam) {
-  setGender(genderParam === 'male' ? 'male' : 'female');
-}
-```
-
-**핵심 규칙**:
-- `birthday` 파라미터가 있으면 생년월일 + 시간 자동입력 → 유저는 확인만 하고 바로 시작
-- `gender` 파라미터가 있으면 성별 자동입력
-- 양력/음력은 **양력 기본값** 유지 (sajuGPT에서 양력으로 전달)
-- 파라미터 없으면 기존 수동 입력 플로우 그대로
-
+- 입력폼: 생년월일(양력/음력), 성별, 태어난 시간(선택). **3초 컷** 설계
 - 입력 직후 "사주 분석 중..." 로딩 연출 (기대감 증폭)
 
 ### Step 2. 사주 기반 캐릭터 3명 추천 + 선택

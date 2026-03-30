@@ -24,6 +24,20 @@
 
 ---
 
+## 개발 원칙
+
+- **CLAUDE.md 문서는 200줄 이상 작성 금지**
+- **객체지향적 모듈화 우선** — 결합도↓ 응집도↑, 책임이 명확한 클래스/모듈/서비스 단위로 분리
+- **작은 수정이라도 확장 가능한 구조인지 먼저 검토** — 임시 로직/산발적 분기보다 역할이 분명한 구조 우선
+- **변경 시 전체 흐름 점검** — 해당 파일만 보지 말고 입력→처리→저장→출력→발행 흐름에서 앞뒤 연결이 깨지지 않는지 확인
+- **독립적인 비동기 작업은 순차 `await` 대신 `Promise.all`로 병렬 실행**
+- **Provider/Context에서 이미 제공하는 데이터 재활용** — 중복 API/DB 호출 금지
+- **미들웨어/가드에 네트워크 호출 금지** — 순수 로직만, API 호출은 컴포넌트/서비스 레이어에서
+- **캐시 우선 렌더링** — 캐시 데이터로 즉시 표시 후 백그라운드 갱신 (stale-while-revalidate)
+- **공통 디자인 규칙**: `src/docs/develop/★DESIGN_SYSTEM★.md` 참조 필수
+
+---
+
 ## 핵심 규칙 (Critical Rules)
 
 ### 1. 스타일링
@@ -51,7 +65,6 @@ import { DEV } from '../lib/env';  // 권장 (Figma Make에서도 정확)
 - CSP 허용: `self`, `data:`, `blob:`, `https://*.supabase.co`, `https://*.kakaocdn.net`
 
 ### 6. Supabase 환경 분리
-
 | 환경 | Project ID |
 |------|------------|
 | Production | `kcthtpmxffppfbkjjkub` |
@@ -91,7 +104,6 @@ npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref
 - 핵심 파일: `supabase/functions/generate-content-answers/index.ts`
 
 ### 10. Serena 사용 (토큰 절약)
-
 **필수 워크플로우**: `get_symbols_overview` → `find_symbol()` → `find_referencing_symbols` → 수정
 
 - 파일 전체 읽기 금지 → Serena로 필요한 심볼만 조회
@@ -124,20 +136,11 @@ npx supabase functions deploy generate-saju-answer --no-verify-jwt --project-ref
 
 ---
 
-## 핵심 라이브러리
+## 핵심 라이브러리 (`/lib/`)
 
-| 파일 | 역할 |
-|------|------|
-| `/lib/env.ts` | 환경 감지 (DEV, isProduction) |
-| `/lib/logger.ts` | 구조화된 로거 (민감정보 마스킹) |
-| `/lib/sentry.ts` | Sentry 에러 모니터링 |
-| `/lib/fetchWithRetry.ts` | 재시도 (Exponential Backoff) |
-| `/lib/freeContentService.ts` | 무료 콘텐츠 비즈니스 로직 |
-| `/lib/freeContentLimitService.ts` | 비회원 일일 제한 |
-| `/lib/coupon.ts` | 쿠폰 관리 |
-| `/lib/consultStatus.ts` | 상담 상태 관리 |
-| `/lib/consultLimitService.ts` | 비회원 상담 1회 제한 |
-| `/lib/consultRecommendationService.ts` | AI 카테고리 기반 추천 |
+`env.ts`(환경감지) | `logger.ts`(로거) | `sentry.ts`(에러모니터링) | `fetchWithRetry.ts`(재시도)
+`freeContentService.ts`(무료콘텐츠) | `freeContentLimitService.ts`(비회원제한) | `coupon.ts`(쿠폰)
+`consultStatus.ts`(상담상태) | `consultLimitService.ts`(상담제한) | `consultRecommendationService.ts`(AI추천)
 
 ---
 
@@ -180,42 +183,17 @@ FigmaMake 코드는 Tailwind arbitrary value를 사용하지만, globals.css bas
 
 | 변경사항 | 문서 |
 |----------|------|
-| 개발 규칙 | **CLAUDE.md** |
-| 환경 설정 | **README.md** |
-| 아키텍처/플로우 | **PROJECT_CONTEXT.md** |
-| 설계 결정 | **DECISIONS.md** |
-| 컴포넌트 추가 | **components-inventory.md** |
-| DB 스키마 | **DATABASE_SCHEMA.md** |
-| Edge Function 추가 | **EDGE_FUNCTIONS_GUIDE.md** |
-| Trigger/Function 추가 | **DATABASE_TRIGGERS_AND_FUNCTIONS.md** |
-| RLS 정책 | **RLS_POLICIES.md** |
-| 보안 정책 | **src/docs/★SECURITY★.md** |
-
----
+| 개발 규칙 | [CLAUDE.md](./CLAUDE.md) |
+| 환경 설정 | [README.md](./README.md) |
+| 아키텍처/플로우 | [PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md) |
+| 설계 결정 | [DECISIONS.md](./src/DECISIONS.md) |
+| 컴포넌트 추가 | [components-inventory.md](./src/components-inventory.md) |
+| DB 스키마 | [DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md) |
+| Edge Function 추가 | [EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md) |
+| Trigger/Function 추가 | [DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md) |
+| RLS 정책 | [RLS_POLICIES.md](./supabase/RLS_POLICIES.md) |
+| 보안 정책 | [★SECURITY★.md](./src/docs/★SECURITY★.md) |
 
 ## Git 커밋 규칙
 
-```bash
-<type>: <description>
-# types: feat, fix, docs, style, refactor, test, chore
-```
-
----
-
-## 문서 이정표
-
-| 문서 | 용도 |
-|------|------|
-| **[PROJECT_CONTEXT.md](./src/PROJECT_CONTEXT.md)** | 아키텍처, 플로우, 파일 참조, 버그 패턴 |
-| **[DECISIONS.md](./src/DECISIONS.md)** | 설계 의도 기록 (ADR) |
-| **[DATABASE_SCHEMA.md](./src/DATABASE_SCHEMA.md)** | 테이블 구조, 컬럼, 제약조건 |
-| **[RLS_POLICIES.md](./supabase/RLS_POLICIES.md)** | RLS 정책 |
-| **[DATABASE_TRIGGERS_AND_FUNCTIONS.md](./supabase/DATABASE_TRIGGERS_AND_FUNCTIONS.md)** | Triggers, Functions, pg_cron |
-| **[EDGE_FUNCTIONS_GUIDE.md](./supabase/EDGE_FUNCTIONS_GUIDE.md)** | Edge Functions 상세 |
-| **[components-inventory.md](./src/components-inventory.md)** | 컴포넌트 분류/위치 |
-| **[README.md](./README.md)** | 환경 설정, 빠른 시작 |
-| **[★SECURITY★.md](./src/docs/★SECURITY★.md)** | 보안 가이드 |
-
----
-
-**최종 업데이트**: 2026-03-11
+`<type>: <description>` — types: feat, fix, docs, style, refactor, test, chore
