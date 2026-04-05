@@ -596,11 +596,15 @@ export type TrendGranularity = 'daily' | 'weekly' | 'monthly';
 /**
  * 프리셋에 따른 집계 단위 결정
  */
-export function getGranularityFromPreset(preset: TrendRangePreset): TrendGranularity {
+export function getGranularityFromPreset(preset: TrendRangePreset, dateRange?: DateRangeFilter): TrendGranularity {
+  if (preset === 'custom' && dateRange?.startDate && dateRange?.endDate) {
+    const days = Math.ceil((new Date(dateRange.endDate).getTime() - new Date(dateRange.startDate).getTime()) / (1000 * 60 * 60 * 24));
+    if (days >= 30) return 'weekly';
+    return 'daily';
+  }
   switch (preset) {
     case '7days':
     case '30days':
-    case 'custom':
       return 'daily';
     case '90days':
       return 'weekly';
@@ -1019,7 +1023,7 @@ export async function fetchDailyTrendStats(dateRange: DateRangeFilter, preset?: 
   });
 
   // 프리셋에 따른 집계 적용
-  const granularity = preset ? getGranularityFromPreset(preset) : 'daily';
+  const granularity = preset ? getGranularityFromPreset(preset, dateRange) : 'daily';
 
   if (granularity === 'daily') {
     return dailyData;
