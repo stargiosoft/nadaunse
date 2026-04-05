@@ -349,19 +349,21 @@ function AppHeader() {
       }}
     >
       <LogoLarge />
-      <button
-        className="group flex items-center justify-center cursor-pointer active:bg-gray-100 transition-colors duration-150"
-        style={{
-          width: 44, height: 44, borderRadius: 12,
-          border: 'none', padding: 4,
-          WebkitTapHighlightColor: 'transparent',
-        }}
-        onClick={handleRewardClick}
-      >
-        <span className="group-active:scale-90 transition-transform duration-150 flex items-center justify-center">
-          <RewardIcon />
-        </span>
-      </button>
+      {DEV && (
+        <button
+          className="group flex items-center justify-center cursor-pointer active:bg-gray-100 transition-colors duration-150"
+          style={{
+            width: 44, height: 44, borderRadius: 12,
+            border: 'none', padding: 4,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          onClick={handleRewardClick}
+        >
+          <span className="group-active:scale-90 transition-transform duration-150 flex items-center justify-center">
+            <RewardIcon />
+          </span>
+        </button>
+      )}
     </header>
   );
 }

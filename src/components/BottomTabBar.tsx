@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { DEV } from '../lib/env';
 
 const font = "'Pretendard Variable', sans-serif";
 
@@ -142,7 +143,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { key: 'home', label: '홈', path: '/', icon: (a) => <HomeIcon active={a} /> },
-  { key: 'unte', label: '운테', path: '/unte', icon: (a) => <UnteIcon active={a} /> },
+  ...(DEV ? [{ key: 'unte' as TabKey, label: '운테', path: '/unte', icon: (a: boolean) => <UnteIcon active={a} /> }] : []),
   { key: 'maumtalk', label: '마음톡', path: '/maumtalk', icon: (a) => <MaumTalkIcon active={a} /> },
   { key: 'nadaum', label: '나다움', path: '/nadaum', icon: (a) => <NadaumIcon active={a} /> },
   { key: 'profile', label: '프로필', path: '/profile', icon: (a) => <ProfileIcon active={a} /> },
