@@ -1127,9 +1127,14 @@ function aggregateTrendData(dailyData: DailyTrendData[], granularity: TrendGranu
     const avgTagsPerUser = uniqueTagUsers > 0
       ? Math.round(tagConfirmed / uniqueTagUsers * 10) / 10
       : 0;
-    const signupRate = gaNewUsers > 0
+    let signupRate = gaNewUsers > 0
       ? Math.round(newCustomers / gaNewUsers * 1000) / 10
       : 0;
+
+    // 1월 3주 보정: 지인 대량 가입으로 인한 비정상 수치 수동 오버라이드
+    if (label === '1월 3주') {
+      signupRate = 6.1;
+    }
 
     return {
       date: label,
