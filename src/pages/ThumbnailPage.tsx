@@ -378,13 +378,13 @@ export default function ThumbnailPage() {
         </div>
 
         {/* 헤더 여백 */}
-        <div className="h-[60px]" />
+        <div style={{ height: '100px' }} />
 
         {/* ════════ STEP: INPUT ════════ */}
         {step === 'input' && (
           <div style={{
             padding: '0 20px', paddingBottom: '140px',
-            display: 'flex', gap: '24px', flexWrap: 'wrap-reverse',
+            display: 'flex', gap: '48px', flexWrap: 'wrap',
             alignItems: 'flex-start',
           }}>
 
@@ -539,6 +539,20 @@ export default function ThumbnailPage() {
                 letterSpacing: '-0.24px',
               }}>
                 {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
+              </p>
+            </div>
+
+            {/* ── 스펙 요약 ── */}
+            <div style={{
+              padding: '14px 16px', borderRadius: '16px',
+              backgroundColor: C.surfaceSecondary,
+            }}>
+              <p style={{
+                fontFamily: font, fontSize: '13px', fontWeight: 400,
+                lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
+              }}>
+                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
+                {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}${autoFillBackground ? ' · 여백 채우기' : ''}`}
               </p>
             </div>
 
@@ -821,20 +835,6 @@ export default function ThumbnailPage() {
                 </div>
               </div>
             )}
-
-            {/* ── 스펙 요약 ── */}
-            <div style={{
-              padding: '14px 16px', borderRadius: '16px',
-              backgroundColor: C.surfaceSecondary, marginBottom: '24px',
-            }}>
-              <p style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
-              }}>
-                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
-                {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}${autoFillBackground ? ' · 여백 채우기' : ''}`}
-              </p>
-            </div>
 
           </div>{/* close main column */}
 
