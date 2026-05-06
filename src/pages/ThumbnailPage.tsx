@@ -355,10 +355,10 @@ export default function ThumbnailPage() {
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full relative" style={{ maxWidth: '900px', fontFamily: font }}>
+      <div className="w-full relative" style={{ maxWidth: '1080px', fontFamily: font }}>
 
         {/* NavigationHeader */}
-        <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '900px' }}>
+        <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '1080px' }}>
           <div className="flex flex-col justify-center size-full">
             <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
               <ArrowLeft onClick={() => {
@@ -382,7 +382,170 @@ export default function ThumbnailPage() {
 
         {/* ════════ STEP: INPUT ════════ */}
         {step === 'input' && (
-          <div style={{ padding: '0 20px', paddingBottom: '140px' }}>
+          <div style={{
+            padding: '0 20px', paddingBottom: '140px',
+            display: 'flex', gap: '24px', flexWrap: 'wrap-reverse',
+            alignItems: 'flex-start',
+          }}>
+
+          {/* ── 좌측 설정 패널 ── */}
+          <aside style={{
+            width: '260px', flexShrink: 0,
+            position: 'sticky', top: '68px',
+            display: 'flex', flexDirection: 'column', gap: '24px',
+          }}>
+
+            {/* ── 이미지 비율 ── */}
+            <div>
+              <label style={{
+                fontFamily: font, fontSize: '15px', fontWeight: 600,
+                lineHeight: '20px', letterSpacing: '-0.3px',
+                color: C.textPrimary, display: 'block', marginBottom: '10px',
+              }}>
+                이미지 비율
+              </label>
+              <div className="flex flex-wrap" style={{ gap: '8px' }}>
+                {ASPECT_RATIOS.map(ratio => {
+                  const selected = ratioId === ratio.id;
+                  return (
+                    <button
+                      key={ratio.id}
+                      onClick={() => setRatioId(ratio.id)}
+                      style={{
+                        height: '40px', padding: '0 14px', borderRadius: '12px',
+                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
+                        letterSpacing: '-0.26px',
+                        color: selected ? C.textWhite : C.textTertiary,
+                        backgroundColor: selected ? C.primary : C.surface,
+                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {ratio.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                color: C.textCaption, marginTop: '8px',
+                letterSpacing: '-0.24px',
+              }}>
+                {selectedRatio.desc} ({selectedRatio.width}×{selectedRatio.height}px)
+              </p>
+            </div>
+
+            {/* ── 생성 개수 ── */}
+            <div>
+              <label style={{
+                fontFamily: font, fontSize: '15px', fontWeight: 600,
+                lineHeight: '20px', letterSpacing: '-0.3px',
+                color: C.textPrimary, display: 'block', marginBottom: '10px',
+              }}>
+                생성 개수
+              </label>
+              <div className="flex flex-wrap items-center" style={{ gap: '8px' }}>
+                {IMAGE_COUNTS.map(count => {
+                  const selected = imageCount === count && !customCountActive;
+                  return (
+                    <button
+                      key={count}
+                      onClick={() => { setImageCount(count); setCustomCountActive(false); }}
+                      style={{
+                        width: '48px', height: '40px', borderRadius: '12px',
+                        fontFamily: font, fontSize: '15px', fontWeight: selected ? 600 : 400,
+                        color: selected ? C.textWhite : C.textTertiary,
+                        backgroundColor: selected ? C.primary : C.surface,
+                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {count}장
+                    </button>
+                  );
+                })}
+                <div className="flex items-center" style={{
+                  height: '40px', borderRadius: '12px',
+                  border: `1.5px solid ${customCountActive ? C.primary : C.borderDefault}`,
+                  backgroundColor: customCountActive ? C.primaryLight : C.surface,
+                  padding: '0 4px 0 10px',
+                  transition: 'all 0.15s ease',
+                  gap: '2px',
+                }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={customCountActive ? imageCount : ''}
+                    placeholder="직접"
+                    onFocus={() => setCustomCountActive(true)}
+                    onChange={e => {
+                      setCustomCountActive(true);
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
+                    }}
+                    className="outline-none bg-transparent"
+                    style={{
+                      width: '40px', height: '100%',
+                      fontFamily: font, fontSize: '15px', fontWeight: customCountActive ? 600 : 400,
+                      color: customCountActive ? C.primary : C.textTertiary,
+                      textAlign: 'center', border: 'none',
+                    }}
+                  />
+                  <span style={{
+                    fontFamily: font, fontSize: '14px', fontWeight: 400,
+                    color: customCountActive ? C.primary : C.textCaption,
+                  }}>장</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 파일 형식 ── */}
+            <div>
+              <label style={{
+                fontFamily: font, fontSize: '15px', fontWeight: 600,
+                lineHeight: '20px', letterSpacing: '-0.3px',
+                color: C.textPrimary, display: 'block', marginBottom: '10px',
+              }}>
+                파일 형식
+              </label>
+              <div className="flex flex-wrap" style={{ gap: '8px' }}>
+                {FILE_FORMATS.map(fmt => {
+                  const selected = fileFormat === fmt.id;
+                  return (
+                    <button
+                      key={fmt.id}
+                      onClick={() => setFileFormat(fmt.id)}
+                      style={{
+                        height: '40px', padding: '0 14px', borderRadius: '12px',
+                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
+                        letterSpacing: '-0.26px',
+                        color: selected ? C.textWhite : C.textTertiary,
+                        backgroundColor: selected ? C.primary : C.surface,
+                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {fmt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                color: C.textCaption, marginTop: '8px',
+                letterSpacing: '-0.24px',
+              }}>
+                {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
+              </p>
+            </div>
+
+          </aside>
+
+          {/* ── 메인 컬럼 ── */}
+          <div style={{ flex: '1 1 480px', minWidth: 0 }}>
 
             {/* ── 명령어 입력 ── */}
             <div style={{ marginBottom: '24px' }}>
@@ -659,161 +822,6 @@ export default function ThumbnailPage() {
               </div>
             )}
 
-            {/* ── 이미지 비율 / 생성 개수 / 파일 형식 (반응형 가로 배치) ── */}
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: '24px',
-              marginBottom: '24px',
-            }}>
-
-            {/* ── 이미지 비율 ── */}
-            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
-                color: C.textPrimary, display: 'block', marginBottom: '10px',
-              }}>
-                이미지 비율
-              </label>
-              <div className="flex flex-wrap" style={{ gap: '8px' }}>
-                {ASPECT_RATIOS.map(ratio => {
-                  const selected = ratioId === ratio.id;
-                  return (
-                    <button
-                      key={ratio.id}
-                      onClick={() => setRatioId(ratio.id)}
-                      style={{
-                        height: '40px', padding: '0 14px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
-                        letterSpacing: '-0.26px',
-                        color: selected ? C.textWhite : C.textTertiary,
-                        backgroundColor: selected ? C.primary : C.surface,
-                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
-                        cursor: 'pointer', transition: 'all 0.15s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {ratio.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{
-                fontFamily: font, fontSize: '12px', fontWeight: 400,
-                color: C.textCaption, marginTop: '8px',
-                letterSpacing: '-0.24px',
-              }}>
-                {selectedRatio.desc} ({selectedRatio.width}×{selectedRatio.height}px)
-              </p>
-            </div>
-
-            {/* ── 생성 개수 ── */}
-            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
-                color: C.textPrimary, display: 'block', marginBottom: '10px',
-              }}>
-                생성 개수
-              </label>
-              <div className="flex items-center" style={{ gap: '8px' }}>
-                {IMAGE_COUNTS.map(count => {
-                  const selected = imageCount === count && !customCountActive;
-                  return (
-                    <button
-                      key={count}
-                      onClick={() => { setImageCount(count); setCustomCountActive(false); }}
-                      style={{
-                        width: '48px', height: '40px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '15px', fontWeight: selected ? 600 : 400,
-                        color: selected ? C.textWhite : C.textTertiary,
-                        backgroundColor: selected ? C.primary : C.surface,
-                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
-                        cursor: 'pointer', transition: 'all 0.15s ease',
-                      }}
-                    >
-                      {count}장
-                    </button>
-                  );
-                })}
-                <div className="flex items-center" style={{
-                  height: '40px', borderRadius: '12px',
-                  border: `1.5px solid ${customCountActive ? C.primary : C.borderDefault}`,
-                  backgroundColor: customCountActive ? C.primaryLight : C.surface,
-                  padding: '0 4px 0 10px',
-                  transition: 'all 0.15s ease',
-                  gap: '2px',
-                }}>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={customCountActive ? imageCount : ''}
-                    placeholder="직접"
-                    onFocus={() => setCustomCountActive(true)}
-                    onChange={e => {
-                      setCustomCountActive(true);
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
-                    }}
-                    className="outline-none bg-transparent"
-                    style={{
-                      width: '40px', height: '100%',
-                      fontFamily: font, fontSize: '15px', fontWeight: customCountActive ? 600 : 400,
-                      color: customCountActive ? C.primary : C.textTertiary,
-                      textAlign: 'center', border: 'none',
-                    }}
-                  />
-                  <span style={{
-                    fontFamily: font, fontSize: '14px', fontWeight: 400,
-                    color: customCountActive ? C.primary : C.textCaption,
-                  }}>장</span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── 파일 형식 ── */}
-            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
-                color: C.textPrimary, display: 'block', marginBottom: '10px',
-              }}>
-                파일 형식
-              </label>
-              <div className="flex" style={{ gap: '8px' }}>
-                {FILE_FORMATS.map(fmt => {
-                  const selected = fileFormat === fmt.id;
-                  return (
-                    <button
-                      key={fmt.id}
-                      onClick={() => setFileFormat(fmt.id)}
-                      style={{
-                        height: '40px', padding: '0 14px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
-                        letterSpacing: '-0.26px',
-                        color: selected ? C.textWhite : C.textTertiary,
-                        backgroundColor: selected ? C.primary : C.surface,
-                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
-                        cursor: 'pointer', transition: 'all 0.15s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {fmt.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{
-                fontFamily: font, fontSize: '12px', fontWeight: 400,
-                color: C.textCaption, marginTop: '8px',
-                letterSpacing: '-0.24px',
-              }}>
-                {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
-              </p>
-            </div>
-
-            </div>
-
             {/* ── 스펙 요약 ── */}
             <div style={{
               padding: '14px 16px', borderRadius: '16px',
@@ -828,10 +836,12 @@ export default function ThumbnailPage() {
               </p>
             </div>
 
+          </div>{/* close main column */}
+
             {/* ── CTA Button ── */}
             <div style={{
               position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-              maxWidth: '900px', width: '100%', padding: '12px 20px 32px',
+              maxWidth: '1080px', width: '100%', padding: '12px 20px 32px',
               backgroundColor: C.surface,
               borderTop: `1px solid ${C.borderDivider}`,
             }}>
@@ -1038,7 +1048,7 @@ export default function ThumbnailPage() {
             {!generating && images.length > 0 && (
               <div style={{
                 position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-                maxWidth: '900px', width: '100%', padding: '12px 20px 32px',
+                maxWidth: '1080px', width: '100%', padding: '12px 20px 32px',
                 backgroundColor: C.surface,
                 borderTop: `1px solid ${C.borderDivider}`,
               }}>
