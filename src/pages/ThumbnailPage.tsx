@@ -99,8 +99,8 @@ export default function ThumbnailPage() {
   const [imageCount, setImageCount] = useState<number>(2);
   const [customCountActive, setCustomCountActive] = useState(false);
   const [fileFormat, setFileFormat] = useState<string>('png');
-  const [referencePreview, setReferencePreview] = useState<string | null>(null);
-  const [referenceBase64, setReferenceBase64] = useState<string | null>(null);
+  const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
+  const [referenceBase64s, setReferenceBase64s] = useState<string[]>([]);
 
   // Result
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -110,25 +110,45 @@ export default function ThumbnailPage() {
 
   // ── Handlers ──
 
-  const processReferenceFile = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setError('이미지는 10MB 이하만 업로드 가능해요');
+  const MAX_REFERENCES = 8;
+
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = ev => resolve(ev.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const processReferenceFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    const remaining = MAX_REFERENCES - referencePreviews.length;
+    if (remaining <= 0) {
+      setError(`레퍼런스 이미지는 최대 ${MAX_REFERENCES}장까지 업로드 가능해요`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      setReferencePreview(dataUrl);
-      const base64 = dataUrl.split(',')[1];
-      setReferenceBase64(base64);
-    };
-    reader.readAsDataURL(file);
+    const valid: File[] = [];
+    for (const file of files.slice(0, remaining)) {
+      if (!file.type.startsWith('image/')) continue;
+      if (file.size > 10 * 1024 * 1024) {
+        setError('이미지는 10MB 이하만 업로드 가능해요');
+        continue;
+      }
+      valid.push(file);
+    }
+    if (valid.length === 0) return;
+    const dataUrls = await Promise.all(valid.map(readFileAsDataUrl));
+    setReferencePreviews(prev => [...prev, ...dataUrls]);
+    setReferenceBase64s(prev => [...prev, ...dataUrls.map(u => u.split(',')[1])]);
+    if (files.length > remaining) {
+      setError(`최대 ${MAX_REFERENCES}장까지만 업로드돼요`);
+    }
   };
 
   const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processReferenceFile(file);
+    const files = Array.from(e.target.files ?? []);
+    processReferenceFiles(files);
+    e.target.value = '';
   };
 
   const [isDragging, setIsDragging] = useState(false);
@@ -149,22 +169,24 @@ export default function ThumbnailPage() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processReferenceFile(file);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    processReferenceFiles(files);
   };
 
-  const removeReference = () => {
-    setReferencePreview(null);
-    setReferenceBase64(null);
+  const removeReferenceAt = (index: number) => {
+    setReferencePreviews(prev => prev.filter((_, i) => i !== index));
+    setReferenceBase64s(prev => prev.filter((_, i) => i !== index));
   };
+
+  const hasReferences = referencePreviews.length > 0;
 
   const callGenerateApi = async (promptOverride?: string): Promise<{ image: string; mimeType: string }> => {
     const body: Record<string, unknown> = {
       prompt: promptOverride || prompt,
       aspect_ratio: ratioId,
     };
-    if (referenceBase64) {
-      body.reference_image = referenceBase64;
+    if (referenceBase64s.length > 0) {
+      body.reference_images = referenceBase64s;
       body.reference_mode = referenceMode;
     }
     const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
@@ -242,7 +264,7 @@ export default function ThumbnailPage() {
     }
 
     setGenerating(false);
-  }, [prompt, ratioId, referenceBase64, referenceMode, imageCount, isListMode, parsedItems]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, imageCount, isListMode, parsedItems]);
 
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
@@ -260,7 +282,7 @@ export default function ThumbnailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생성 실패');
     }
-  }, [prompt, ratioId, referenceBase64, referenceMode, images]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, images]);
 
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
@@ -366,10 +388,10 @@ export default function ThumbnailPage() {
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[440px] relative" style={{ fontFamily: font }}>
+      <div className="w-full max-w-[900px] relative" style={{ fontFamily: font }}>
 
         {/* NavigationHeader */}
-        <div className="bg-white h-[52px] shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2 max-w-[440px]">
+        <div className="bg-white h-[52px] shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2 max-w-[900px]">
           <div className="flex flex-col justify-center size-full">
             <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
               <ArrowLeft onClick={() => {
@@ -431,11 +453,12 @@ export default function ThumbnailPage() {
                   onChange={e => setPrompt(e.target.value)}
                   placeholder="예: 유튜브 먹방 썸네일, 맛있는 치킨 앞에서 놀란 표정의 남자, 큰 글씨로 '역대급 치킨 먹방' 텍스트"
                   rows={4}
-                  className="w-full outline-none bg-transparent resize-none"
+                  className="w-full outline-none bg-transparent resize-y"
                   style={{
                     fontFamily: font, fontSize: '15px', fontWeight: 400,
                     lineHeight: '22px', letterSpacing: '-0.45px',
                     color: C.textPrimary, border: 'none',
+                    minHeight: '88px', display: 'block',
                   }}
                 />
               </div>
@@ -451,29 +474,75 @@ export default function ThumbnailPage() {
                 레퍼런스 이미지
               </label>
 
-              {referencePreview ? (
-                <div style={{ position: 'relative', display: 'inline-block' }}>
-                  <img
-                    src={referencePreview}
-                    alt="레퍼런스"
-                    style={{
-                      width: '120px', height: '120px', objectFit: 'cover',
-                      borderRadius: '12px', border: `1px solid ${C.borderDefault}`,
-                    }}
-                  />
-                  <button
-                    onClick={removeReference}
-                    style={{
-                      position: 'absolute', top: '-8px', right: '-8px',
-                      width: '24px', height: '24px', borderRadius: '50%',
-                      backgroundColor: '#ff4d4f', border: 'none',
-                      color: C.textWhite, fontSize: '14px', fontWeight: 700,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
+              {hasReferences ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  style={{
+                    display: 'flex', flexWrap: 'wrap', gap: '10px',
+                    padding: '12px', borderRadius: '16px',
+                    border: `2px dashed ${isDragging ? C.primary : C.borderDefault}`,
+                    backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surfaceSecondary,
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {referencePreviews.map((src, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '80px', height: '80px' }}>
+                      <img
+                        src={src}
+                        alt={`레퍼런스 ${idx + 1}`}
+                        style={{
+                          width: '80px', height: '80px', objectFit: 'cover',
+                          borderRadius: '12px', border: `1px solid ${C.borderDefault}`,
+                          display: 'block',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeReferenceAt(idx)}
+                        aria-label="이미지 삭제"
+                        style={{
+                          position: 'absolute', top: '-6px', right: '-6px',
+                          width: '22px', height: '22px', borderRadius: '50%',
+                          backgroundColor: '#1f1f1f', border: `2px solid ${C.surface}`,
+                          color: C.textWhite, fontSize: '13px', fontWeight: 700,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          lineHeight: 1, padding: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {referencePreviews.length < MAX_REFERENCES && (
+                    <label style={{
+                      width: '80px', height: '80px', borderRadius: '12px',
+                      border: `1.5px dashed ${C.borderDefault}`,
+                      backgroundColor: C.surface,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                    }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.textCaption} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleReferenceUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                  <div style={{
+                    width: '100%', textAlign: 'right',
+                    fontFamily: font, fontSize: '12px', color: C.textCaption,
+                    letterSpacing: '-0.24px',
+                  }}>
+                    {referencePreviews.length}/{MAX_REFERENCES}
+                  </div>
                 </div>
               ) : (
                 <label
@@ -497,11 +566,12 @@ export default function ThumbnailPage() {
                     fontFamily: font, fontSize: '13px', fontWeight: 400,
                     color: isDragging ? C.primary : C.textCaption,
                   }}>
-                    {isDragging ? '여기에 놓으세요' : '이미지를 드래그하거나 클릭하세요 (10MB 이하)'}
+                    {isDragging ? '여기에 놓으세요' : `이미지를 드래그하거나 클릭하세요 (최대 ${MAX_REFERENCES}장 · 10MB 이하)`}
                   </span>
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleReferenceUpload}
                     style={{ display: 'none' }}
                   />
@@ -510,7 +580,7 @@ export default function ThumbnailPage() {
             </div>
 
             {/* ── 레퍼런스 모드 (레퍼런스가 있을 때만) ── */}
-            {referencePreview && (
+            {hasReferences && (
               <div style={{ marginBottom: '24px' }}>
                 <label style={{
                   fontFamily: font, fontSize: '15px', fontWeight: 600,
@@ -741,14 +811,14 @@ export default function ThumbnailPage() {
                 lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
               }}>
                 {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {isListMode ? `${parsedItems!.items.length}장 (항목별)` : `${imageCount}장`} · {fileFormat.toUpperCase()}
-                {referencePreview && ` · 레퍼런스 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}`}
+                {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}`}
               </p>
             </div>
 
             {/* ── CTA Button ── */}
             <div style={{
               position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-              maxWidth: '440px', width: '100%', padding: '12px 20px 32px',
+              maxWidth: '900px', width: '100%', padding: '12px 20px 32px',
               backgroundColor: C.surface,
               borderTop: `1px solid ${C.borderDivider}`,
             }}>
@@ -955,7 +1025,7 @@ export default function ThumbnailPage() {
             {!generating && images.length > 0 && (
               <div style={{
                 position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-                maxWidth: '440px', width: '100%', padding: '12px 20px 32px',
+                maxWidth: '900px', width: '100%', padding: '12px 20px 32px',
                 backgroundColor: C.surface,
                 borderTop: `1px solid ${C.borderDivider}`,
               }}>

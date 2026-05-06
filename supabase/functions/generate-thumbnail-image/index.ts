@@ -11,7 +11,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_mode, aspect_ratio } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio } = await req.json()
 
     if (!prompt?.trim()) {
       return new Response(JSON.stringify({ error: 'prompt 필수' }), {
@@ -30,14 +30,23 @@ serve(async (req) => {
 
     const parts: Array<Record<string, unknown>> = []
 
-    if (reference_image) {
-      // 레퍼런스 이미지 첨부
-      parts.push({
-        inlineData: {
-          mimeType: 'image/png',
-          data: reference_image,
-        },
-      })
+    // 레퍼런스 이미지 배열 정규화 (단일 reference_image 하위호환 + reference_images 신규)
+    const refs: string[] = Array.isArray(reference_images)
+      ? reference_images.filter((s: unknown) => typeof s === 'string' && s.length > 0)
+      : reference_image
+        ? [reference_image]
+        : []
+
+    if (refs.length > 0) {
+      // 레퍼런스 이미지 모두 첨부
+      for (const data of refs) {
+        parts.push({
+          inlineData: {
+            mimeType: 'image/png',
+            data,
+          },
+        })
+      }
 
       // reference_mode에 따라 프롬프트 분기
       const imageRules = `[MANDATORY OUTPUT RULES — VIOLATION = FAILURE]
@@ -48,14 +57,16 @@ serve(async (req) => {
 
 `
 
+      const refCountText = refs.length > 1 ? `${refs.length} attached images` : 'the attached image'
+
       if (reference_mode === 'style_and_character') {
         parts.push({
-          text: `${imageRules}Use the attached image as a CHARACTER reference. Keep the SAME person's face, facial features, hairstyle, and identity — they must be clearly recognizable as the same person. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW single image based on this instruction: ${prompt}`,
+          text: `${imageRules}Use ${refCountText} as CHARACTER references. Keep the SAME person's face, facial features, hairstyle, and identity across them — the person must be clearly recognizable as the same individual shown in the references. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW single image based on this instruction: ${prompt}`,
         })
       } else {
         // style_only (기본값)
         parts.push({
-          text: `${imageRules}Use the attached image as a STYLE reference only. Copy the visual style (colors, lighting, composition, typography style, art style) but create completely new content. Do NOT copy specific characters or people. Generate a NEW single thumbnail image based on this instruction: ${prompt}`,
+          text: `${imageRules}Use ${refCountText} as STYLE references only. Copy the visual style (colors, lighting, composition, typography style, art style) — combine cues across all references if multiple — but create completely new content. Do NOT copy specific characters or people. Generate a NEW single thumbnail image based on this instruction: ${prompt}`,
         })
       }
     } else {
