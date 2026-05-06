@@ -383,8 +383,8 @@ export default function ThumbnailPage() {
         {/* ════════ STEP: INPUT ════════ */}
         {step === 'input' && (
           <div style={{
-            padding: '0 20px', paddingBottom: '140px',
-            display: 'flex', gap: '48px', flexWrap: 'wrap',
+            padding: '0 20px', paddingBottom: '40px',
+            display: 'flex', gap: '68px', flexWrap: 'wrap',
             alignItems: 'flex-start',
           }}>
 
@@ -393,18 +393,19 @@ export default function ThumbnailPage() {
             width: '240px', flexShrink: 0,
             position: 'sticky', top: '68px',
             display: 'flex', flexDirection: 'column',
+            paddingRight: '20px', borderRight: '1px solid #ececec',
           }}>
 
             {/* ── 이미지 비율 ── */}
             <div style={{ padding: '0 0 16px', borderBottom: '1px solid #ececec' }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 600,
+                fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 이미지 비율
               </label>
-              <div className="flex flex-wrap" style={{ gap: '4px' }}>
+              <div className="flex" style={{ gap: '4px' }}>
                 {ASPECT_RATIOS.map(ratio => {
                   const selected = ratioId === ratio.id;
                   return (
@@ -418,8 +419,8 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
                       }}
                       style={{
-                        height: '32px', padding: '0 10px', borderRadius: '8px',
-                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 500,
+                        flex: 1, height: '30px', padding: '0', borderRadius: '8px',
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
                         letterSpacing: '-0.26px',
                         color: selected ? C.textWhite : C.textPrimary,
                         backgroundColor: selected ? C.primary : '#f4f4f5',
@@ -445,13 +446,13 @@ export default function ThumbnailPage() {
             {/* ── 생성 개수 ── */}
             <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 600,
+                fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 생성 개수
               </label>
-              <div className="flex flex-wrap items-center" style={{ gap: '4px' }}>
+              <div className="flex items-center" style={{ gap: '4px' }}>
                 {IMAGE_COUNTS.map(count => {
                   const selected = imageCount === count && !customCountActive;
                   return (
@@ -465,64 +466,54 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
                       }}
                       style={{
-                        width: '40px', height: '32px', borderRadius: '8px',
-                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 500,
+                        flex: 1, height: '30px', borderRadius: '8px',
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
                         color: selected ? C.textWhite : C.textPrimary,
                         backgroundColor: selected ? C.primary : '#f4f4f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                       }}
                     >
-                      {count}장
+                      {count}
                     </button>
                   );
                 })}
-                <div className="flex items-center" style={{
-                  height: '32px', borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: customCountActive ? C.primaryLight : '#f4f4f5',
-                  padding: '0 4px 0 8px',
-                  transition: 'all 0.15s ease',
-                  gap: '2px',
-                }}>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={customCountActive ? imageCount : ''}
-                    placeholder="직접"
-                    onFocus={() => setCustomCountActive(true)}
-                    onChange={e => {
-                      setCustomCountActive(true);
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
-                    }}
-                    className="outline-none bg-transparent"
-                    style={{
-                      width: '32px', height: '100%',
-                      fontFamily: font, fontSize: '13px', fontWeight: customCountActive ? 600 : 500,
-                      color: customCountActive ? C.primary : C.textPrimary,
-                      textAlign: 'center', border: 'none',
-                    }}
-                  />
-                  <span style={{
-                    fontFamily: font, fontSize: '12px', fontWeight: 400,
-                    color: customCountActive ? C.primary : '#9a9a9a',
-                  }}>장</span>
-                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={customCountActive ? imageCount : ''}
+                  placeholder="직접"
+                  onFocus={() => setCustomCountActive(true)}
+                  onChange={e => {
+                    setCustomCountActive(true);
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
+                  }}
+                  className="outline-none"
+                  style={{
+                    flex: 1, height: '30px', borderRadius: '8px',
+                    backgroundColor: customCountActive ? C.primaryLight : '#f4f4f5',
+                    padding: '0 8px',
+                    fontFamily: font, fontSize: '13px', fontWeight: 400,
+                    color: customCountActive ? C.primary : C.textPrimary,
+                    textAlign: 'center', border: 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                />
               </div>
             </div>
 
             {/* ── 파일 형식 ── */}
             <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 600,
+                fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 파일 형식
               </label>
-              <div className="flex flex-wrap" style={{ gap: '4px' }}>
+              <div className="flex" style={{ gap: '4px' }}>
                 {FILE_FORMATS.map(fmt => {
                   const selected = fileFormat === fmt.id;
                   return (
@@ -536,8 +527,8 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
                       }}
                       style={{
-                        height: '32px', padding: '0 10px', borderRadius: '8px',
-                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 500,
+                        flex: 1, height: '30px', padding: '0', borderRadius: '8px',
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
                         letterSpacing: '-0.26px',
                         color: selected ? C.textWhite : C.textPrimary,
                         backgroundColor: selected ? C.primary : '#f4f4f5',
@@ -584,8 +575,8 @@ export default function ThumbnailPage() {
             {/* ── 명령어 입력 ── */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
+                fontFamily: font, fontSize: '13px', fontWeight: 400,
+                lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 명령어
@@ -611,10 +602,10 @@ export default function ThumbnailPage() {
             </div>
 
             {/* ── 레퍼런스 이미지 ── */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '24px', position: 'relative' }}>
               <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
+                fontFamily: font, fontSize: '13px', fontWeight: 400,
+                lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 레퍼런스 이미지
@@ -744,6 +735,29 @@ export default function ThumbnailPage() {
                   />
                 </label>
               )}
+
+              {/* ── CTA: 레퍼런스 영역 우측 하단 floating ── */}
+              <button
+                onClick={handleGenerate}
+                disabled={!canGenerate}
+                onPointerDown={e => { if (canGenerate) e.currentTarget.style.transform = 'scale(0.99)'; }}
+                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                style={{
+                  position: 'absolute', bottom: '16px', right: '16px',
+                  height: '40px', padding: '0 20px', borderRadius: '12px',
+                  backgroundColor: canGenerate ? C.primary : C.surfaceDisabled,
+                  border: 'none', cursor: canGenerate ? 'pointer' : 'default',
+                  fontFamily: font, fontSize: '14px', fontWeight: 600,
+                  color: canGenerate ? C.textWhite : C.textDisabled,
+                  letterSpacing: '-0.28px',
+                  transition: 'all 0.15s ease',
+                  boxShadow: canGenerate ? '0 2px 8px rgba(72, 178, 175, 0.25)' : 'none',
+                  zIndex: 2,
+                }}
+              >
+                썸네일 생성하기
+              </button>
             </div>
 
             {/* ── 레퍼런스 모드 (레퍼런스가 있을 때만) ── */}
@@ -857,33 +871,6 @@ export default function ThumbnailPage() {
             )}
 
           </div>{/* close main column */}
-
-            {/* ── CTA Button ── */}
-            <div style={{
-              position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-              maxWidth: '1080px', width: '100%', padding: '12px 20px 32px',
-              backgroundColor: C.surface,
-              borderTop: `1px solid ${C.borderDivider}`,
-            }}>
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate}
-                style={{
-                  width: '100%', height: '56px', borderRadius: '16px',
-                  backgroundColor: canGenerate ? C.primary : C.surfaceDisabled,
-                  border: 'none', cursor: canGenerate ? 'pointer' : 'default',
-                  fontFamily: font, fontSize: '16px', fontWeight: 500,
-                  color: canGenerate ? C.textWhite : C.textDisabled,
-                  letterSpacing: '-0.32px',
-                  transition: 'all 0.15s ease',
-                }}
-                onPointerDown={e => { if (canGenerate) e.currentTarget.style.transform = 'scale(0.99)'; }}
-                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
-              >
-                썸네일 생성하기
-              </button>
-            </div>
           </div>
         )}
 
