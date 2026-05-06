@@ -388,36 +388,42 @@ export default function ThumbnailPage() {
             alignItems: 'flex-start',
           }}>
 
-          {/* ── 좌측 설정 패널 ── */}
+          {/* ── 좌측 설정 패널 (Figma 스타일) ── */}
           <aside style={{
-            width: '260px', flexShrink: 0,
+            width: '240px', flexShrink: 0,
             position: 'sticky', top: '68px',
-            display: 'flex', flexDirection: 'column', gap: '24px',
+            display: 'flex', flexDirection: 'column',
           }}>
 
             {/* ── 이미지 비율 ── */}
-            <div>
+            <div style={{ padding: '0 0 16px', borderBottom: '1px solid #ececec' }}>
               <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
+                fontFamily: font, fontSize: '13px', fontWeight: 600,
+                lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 이미지 비율
               </label>
-              <div className="flex flex-wrap" style={{ gap: '8px' }}>
+              <div className="flex flex-wrap" style={{ gap: '4px' }}>
                 {ASPECT_RATIOS.map(ratio => {
                   const selected = ratioId === ratio.id;
                   return (
                     <button
                       key={ratio.id}
                       onClick={() => setRatioId(ratio.id)}
+                      onMouseEnter={(e) => {
+                        if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                      }}
                       style={{
-                        height: '40px', padding: '0 14px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
+                        height: '32px', padding: '0 10px', borderRadius: '8px',
+                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 500,
                         letterSpacing: '-0.26px',
-                        color: selected ? C.textWhite : C.textTertiary,
-                        backgroundColor: selected ? C.primary : C.surface,
-                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        color: selected ? C.textWhite : C.textPrimary,
+                        backgroundColor: selected ? C.primary : '#f4f4f5',
+                        border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         whiteSpace: 'nowrap',
                       }}
@@ -428,36 +434,42 @@ export default function ThumbnailPage() {
                 })}
               </div>
               <p style={{
-                fontFamily: font, fontSize: '12px', fontWeight: 400,
-                color: C.textCaption, marginTop: '8px',
-                letterSpacing: '-0.24px',
+                fontFamily: font, fontSize: '11px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '8px',
+                letterSpacing: '-0.22px',
               }}>
                 {selectedRatio.desc} ({selectedRatio.width}×{selectedRatio.height}px)
               </p>
             </div>
 
             {/* ── 생성 개수 ── */}
-            <div>
+            <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
               <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
+                fontFamily: font, fontSize: '13px', fontWeight: 600,
+                lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 생성 개수
               </label>
-              <div className="flex flex-wrap items-center" style={{ gap: '8px' }}>
+              <div className="flex flex-wrap items-center" style={{ gap: '4px' }}>
                 {IMAGE_COUNTS.map(count => {
                   const selected = imageCount === count && !customCountActive;
                   return (
                     <button
                       key={count}
                       onClick={() => { setImageCount(count); setCustomCountActive(false); }}
+                      onMouseEnter={(e) => {
+                        if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                      }}
                       style={{
-                        width: '48px', height: '40px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '15px', fontWeight: selected ? 600 : 400,
-                        color: selected ? C.textWhite : C.textTertiary,
-                        backgroundColor: selected ? C.primary : C.surface,
-                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        width: '40px', height: '32px', borderRadius: '8px',
+                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 500,
+                        color: selected ? C.textWhite : C.textPrimary,
+                        backgroundColor: selected ? C.primary : '#f4f4f5',
+                        border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                       }}
                     >
@@ -466,10 +478,10 @@ export default function ThumbnailPage() {
                   );
                 })}
                 <div className="flex items-center" style={{
-                  height: '40px', borderRadius: '12px',
-                  border: `1.5px solid ${customCountActive ? C.primary : C.borderDefault}`,
-                  backgroundColor: customCountActive ? C.primaryLight : C.surface,
-                  padding: '0 4px 0 10px',
+                  height: '32px', borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: customCountActive ? C.primaryLight : '#f4f4f5',
+                  padding: '0 4px 0 8px',
                   transition: 'all 0.15s ease',
                   gap: '2px',
                 }}>
@@ -487,43 +499,49 @@ export default function ThumbnailPage() {
                     }}
                     className="outline-none bg-transparent"
                     style={{
-                      width: '40px', height: '100%',
-                      fontFamily: font, fontSize: '15px', fontWeight: customCountActive ? 600 : 400,
-                      color: customCountActive ? C.primary : C.textTertiary,
+                      width: '32px', height: '100%',
+                      fontFamily: font, fontSize: '13px', fontWeight: customCountActive ? 600 : 500,
+                      color: customCountActive ? C.primary : C.textPrimary,
                       textAlign: 'center', border: 'none',
                     }}
                   />
                   <span style={{
-                    fontFamily: font, fontSize: '14px', fontWeight: 400,
-                    color: customCountActive ? C.primary : C.textCaption,
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    color: customCountActive ? C.primary : '#9a9a9a',
                   }}>장</span>
                 </div>
               </div>
             </div>
 
             {/* ── 파일 형식 ── */}
-            <div>
+            <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
               <label style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 600,
-                lineHeight: '20px', letterSpacing: '-0.3px',
+                fontFamily: font, fontSize: '13px', fontWeight: 600,
+                lineHeight: '18px', letterSpacing: '-0.26px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 파일 형식
               </label>
-              <div className="flex flex-wrap" style={{ gap: '8px' }}>
+              <div className="flex flex-wrap" style={{ gap: '4px' }}>
                 {FILE_FORMATS.map(fmt => {
                   const selected = fileFormat === fmt.id;
                   return (
                     <button
                       key={fmt.id}
                       onClick={() => setFileFormat(fmt.id)}
+                      onMouseEnter={(e) => {
+                        if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                      }}
                       style={{
-                        height: '40px', padding: '0 14px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
+                        height: '32px', padding: '0 10px', borderRadius: '8px',
+                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 500,
                         letterSpacing: '-0.26px',
-                        color: selected ? C.textWhite : C.textTertiary,
-                        backgroundColor: selected ? C.primary : C.surface,
-                        border: selected ? 'none' : `1px solid ${C.borderDefault}`,
+                        color: selected ? C.textWhite : C.textPrimary,
+                        backgroundColor: selected ? C.primary : '#f4f4f5',
+                        border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         whiteSpace: 'nowrap',
                       }}
@@ -534,26 +552,28 @@ export default function ThumbnailPage() {
                 })}
               </div>
               <p style={{
-                fontFamily: font, fontSize: '12px', fontWeight: 400,
-                color: C.textCaption, marginTop: '8px',
-                letterSpacing: '-0.24px',
+                fontFamily: font, fontSize: '11px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '8px',
+                letterSpacing: '-0.22px',
               }}>
                 {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
               </p>
             </div>
 
             {/* ── 스펙 요약 ── */}
-            <div style={{
-              padding: '14px 16px', borderRadius: '16px',
-              backgroundColor: C.surfaceSecondary,
-            }}>
-              <p style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
+            <div style={{ padding: '16px 0 0' }}>
+              <div style={{
+                padding: '10px 12px', borderRadius: '8px',
+                backgroundColor: '#f4f4f5',
               }}>
-                {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
-                {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}${autoFillBackground ? ' · 여백 채우기' : ''}`}
-              </p>
+                <p style={{
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  lineHeight: '16px', color: '#6a6a6a', letterSpacing: '-0.22px',
+                }}>
+                  {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
+                  {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}${autoFillBackground ? ' · 여백 채우기' : ''}`}
+                </p>
+              </div>
             </div>
 
           </aside>
@@ -608,7 +628,7 @@ export default function ThumbnailPage() {
                   style={{
                     display: 'flex', flexWrap: 'wrap', gap: '10px',
                     padding: '12px', borderRadius: '20px',
-                    border: `1px solid ${isDragging ? C.primary : C.borderDefault}`,
+                    border: `1.5px dashed ${isDragging ? C.primary : C.borderDefault}`,
                     backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     transition: 'all 0.15s ease',
                   }}
@@ -699,7 +719,7 @@ export default function ThumbnailPage() {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     width: '100%', height: '120px', borderRadius: '20px',
-                    border: `1px solid ${isDragging ? C.primary : C.borderDefault}`,
+                    border: `1.5px dashed ${isDragging ? C.primary : C.borderDefault}`,
                     backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     cursor: 'pointer', transition: 'all 0.15s ease',
                     gap: '8px',
