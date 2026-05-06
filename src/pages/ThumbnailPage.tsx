@@ -423,17 +423,17 @@ export default function ThumbnailPage() {
                       key={ratio.id}
                       onClick={() => setRatioId(ratio.id)}
                       onMouseEnter={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#ececec';
                       }}
                       onMouseLeave={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
                         flex: 1, height: '30px', padding: '0', borderRadius: '8px',
                         fontFamily: font, fontSize: '12px', fontWeight: 400,
                         letterSpacing: '-0.24px',
-                        color: selected ? C.textWhite : C.textPrimary,
-                        backgroundColor: selected ? C.primary : '#e8e8ea',
+                        color: selected ? C.textWhite : '#7f7f7f',
+                        backgroundColor: selected ? C.primary : '#f5f5f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         whiteSpace: 'nowrap',
@@ -474,16 +474,16 @@ export default function ThumbnailPage() {
                       key={count}
                       onClick={() => { setImageCount(count); setCustomCountActive(false); }}
                       onMouseEnter={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#ececec';
                       }}
                       onMouseLeave={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
                         flex: 1, height: '30px', borderRadius: '8px',
                         fontFamily: font, fontSize: '12px', fontWeight: 400,
-                        color: selected ? C.textWhite : C.textPrimary,
-                        backgroundColor: selected ? C.primary : '#e8e8ea',
+                        color: selected ? C.textWhite : '#7f7f7f',
+                        backgroundColor: selected ? C.primary : '#f5f5f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                       }}
@@ -538,17 +538,17 @@ export default function ThumbnailPage() {
                       key={fmt.id}
                       onClick={() => setFileFormat(fmt.id)}
                       onMouseEnter={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#ececec';
                       }}
                       onMouseLeave={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
                         flex: 1, height: '30px', padding: '0', borderRadius: '8px',
                         fontFamily: font, fontSize: '12px', fontWeight: 400,
                         letterSpacing: '-0.24px',
-                        color: selected ? C.textWhite : C.textPrimary,
-                        backgroundColor: selected ? C.primary : '#e8e8ea',
+                        color: selected ? C.textWhite : '#7f7f7f',
+                        backgroundColor: selected ? C.primary : '#f5f5f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         whiteSpace: 'nowrap',
@@ -589,17 +589,17 @@ export default function ThumbnailPage() {
                         key={mode.id}
                         onClick={() => setReferenceMode(mode.id)}
                         onMouseEnter={(e) => {
-                          if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
+                          if (!selected) e.currentTarget.style.backgroundColor = '#ececec';
                         }}
                         onMouseLeave={(e) => {
-                          if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
+                          if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                         }}
                         style={{
                           flex: 1, height: '30px', padding: '0', borderRadius: '8px',
                           fontFamily: font, fontSize: '12px', fontWeight: 400,
                           letterSpacing: '-0.24px',
-                          color: selected ? C.textWhite : C.textPrimary,
-                          backgroundColor: selected ? C.primary : '#e8e8ea',
+                          color: selected ? C.textWhite : '#7f7f7f',
+                          backgroundColor: selected ? C.primary : '#f5f5f5',
                           border: 'none',
                           cursor: 'pointer', transition: 'all 0.15s ease',
                           whiteSpace: 'nowrap',
@@ -876,16 +876,16 @@ export default function ThumbnailPage() {
                 onPointerUp={e => { e.currentTarget.style.transform = ''; }}
                 onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
                 style={{
-                  height: '44px', padding: '0 24px', borderRadius: '12px',
+                  height: '44px', padding: '0 44px', borderRadius: '12px',
                   backgroundColor: canGenerate ? C.primary : C.surfaceDisabled,
                   border: 'none', cursor: canGenerate ? 'pointer' : 'default',
-                  fontFamily: font, fontSize: '14px', fontWeight: 600,
+                  fontFamily: font, fontSize: '13px', fontWeight: 400,
                   color: canGenerate ? C.textWhite : C.textDisabled,
-                  letterSpacing: '-0.28px',
+                  letterSpacing: '0.72px',
                   transition: 'all 0.15s ease',
                 }}
               >
-                썸네일 생성하기
+                생성하기
               </button>
             </div>
 
