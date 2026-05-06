@@ -403,7 +403,10 @@ export default function ThumbnailPage() {
           }}>
 
             {/* ── 이미지 비율 ── */}
-            <div style={{ padding: '0 0 16px', borderBottom: '1px solid #ececec' }}>
+            <div style={{
+              padding: '0 28px 20px 0', borderBottom: '1px solid #ececec',
+              marginRight: '-28px',
+            }}>
               <label style={{
                 fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
@@ -442,7 +445,8 @@ export default function ThumbnailPage() {
               </div>
               <p style={{
                 fontFamily: font, fontSize: '11px', fontWeight: 400,
-                color: '#9a9a9a', marginTop: '8px',
+                color: '#9a9a9a', marginTop: '10px',
+                paddingLeft: '2px',
                 letterSpacing: '-0.22px',
               }}>
                 {selectedRatio.desc} ({selectedRatio.width}×{selectedRatio.height}px)
@@ -550,16 +554,19 @@ export default function ThumbnailPage() {
               </div>
               <p style={{
                 fontFamily: font, fontSize: '11px', fontWeight: 400,
-                color: '#9a9a9a', marginTop: '8px',
+                color: '#9a9a9a', marginTop: '10px',
+                paddingLeft: '2px',
                 letterSpacing: '-0.22px',
               }}>
                 {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
               </p>
             </div>
 
-            {/* ── 참고 방식 (레퍼런스 있을 때만) ── */}
-            {hasReferences && (
-              <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
+            {/* ── 참고 방식 ── */}
+            <div style={{
+              padding: '20px 28px 20px 0', borderBottom: '1px solid #ececec',
+              marginRight: '-28px',
+            }}>
                 <label style={{
                   fontFamily: font, fontSize: '13px', fontWeight: 400,
                   lineHeight: '18px', letterSpacing: '-0.26px',
@@ -596,29 +603,96 @@ export default function ThumbnailPage() {
                     );
                   })}
                 </div>
-                <p style={{
-                  fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  color: '#9a9a9a', marginTop: '8px',
-                  letterSpacing: '-0.22px',
+              <p style={{
+                fontFamily: font, fontSize: '11px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '10px',
+                paddingLeft: '2px',
+                letterSpacing: '-0.22px',
+              }}>
+                {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
+              </p>
+            </div>
+
+            {/* ── 흰색 여백 자동 채우기 ── */}
+            <div
+              onClick={() => setAutoFillBackground(v => !v)}
+              style={{
+                padding: '20px 28px 20px 0', borderBottom: '1px solid #ececec',
+                marginRight: '-28px',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  flexShrink: 0,
+                  width: '18px', height: '18px', borderRadius: '5px',
+                  border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
+                  backgroundColor: autoFillBackground ? C.primary : C.surface,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s ease',
                 }}>
-                  {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
-                </p>
+                  {autoFillBackground && (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span style={{
+                  fontFamily: font, fontSize: '13px', fontWeight: 400,
+                  color: autoFillBackground ? C.primary : C.textPrimary,
+                  letterSpacing: '-0.26px',
+                }}>
+                  흰색 여백 자동 채우기
+                </span>
               </div>
-            )}
+              <p style={{
+                fontFamily: font, fontSize: '11px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '6px',
+                paddingLeft: '28px',
+                letterSpacing: '-0.22px', lineHeight: '15px',
+              }}>
+                이미지의 흰 여백·레터박스를 같은 톤·구도로 확장해 캔버스를 가득 채워요
+              </p>
+            </div>
 
             {/* ── 스펙 요약 ── */}
-            <div style={{ padding: '16px 0 0' }}>
+            <div style={{ padding: '20px 0 0' }}>
               <div style={{
                 padding: '10px 12px', borderRadius: '8px',
-                backgroundColor: '#f4f4f5',
+                backgroundColor: C.surface,
+                border: '1px solid #ececec',
               }}>
                 <p style={{
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  lineHeight: '16px', color: '#6a6a6a', letterSpacing: '-0.22px',
+                  lineHeight: '17.3px', color: '#6a6a6a', letterSpacing: '-0.22px',
+                  margin: 0,
                 }}>
-                  {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
-                  {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}${autoFillBackground ? ' · 여백 채우기' : ''}`}
+                  {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px
                 </p>
+                <p style={{
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  lineHeight: '17.3px', color: '#6a6a6a', letterSpacing: '-0.22px',
+                  margin: 0,
+                }}>
+                  {imageCount}장 · {fileFormat.toUpperCase()}
+                </p>
+                <p style={{
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  lineHeight: '17.3px', letterSpacing: '-0.22px',
+                  margin: 0,
+                }}>
+                  <span style={{ color: C.primary }}>참고 방식</span>
+                  <span style={{ color: '#6a6a6a' }}> · {referenceMode === 'style_only' ? '스타일만 참고' : '캐릭터+스타일'}</span>
+                </p>
+                {autoFillBackground && (
+                  <p style={{
+                    fontFamily: font, fontSize: '11px', fontWeight: 400,
+                    lineHeight: '17.3px', color: C.primary, letterSpacing: '-0.22px',
+                    margin: 0,
+                  }}>
+                    여백 채우기
+                  </p>
+                )}
               </div>
             </div>
 
@@ -791,58 +865,6 @@ export default function ThumbnailPage() {
               )}
             </div>
 
-            {/* ── 흰색 여백 자동 채우기 (레퍼런스 있을 때만) ── */}
-            {hasReferences && (
-              <div
-                onClick={() => setAutoFillBackground(v => !v)}
-                onMouseEnter={(e) => {
-                  if (!autoFillBackground) e.currentTarget.style.backgroundColor = '#fafafa';
-                }}
-                onMouseLeave={(e) => {
-                  if (!autoFillBackground) e.currentTarget.style.backgroundColor = C.surface;
-                }}
-                style={{
-                  marginBottom: '24px',
-                  display: 'flex', alignItems: 'flex-start', gap: '10px',
-                  padding: '12px 14px', borderRadius: '16px',
-                  backgroundColor: autoFillBackground ? C.primaryLight : C.surface,
-                  border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
-                  cursor: 'pointer', transition: 'all 0.15s ease',
-                }}
-              >
-                <div style={{
-                  flexShrink: 0, marginTop: '2px',
-                  width: '24px', height: '24px', borderRadius: '11px',
-                  border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
-                  backgroundColor: autoFillBackground ? C.primary : C.surface,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                }}>
-                  {autoFillBackground && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{
-                    fontFamily: font, fontSize: '14px',
-                    fontWeight: autoFillBackground ? 600 : 500,
-                    color: autoFillBackground ? C.primaryDark : C.textPrimary,
-                    letterSpacing: '-0.28px',
-                  }}>
-                    흰색 여백 자동 채우기
-                  </p>
-                  <p style={{
-                    fontFamily: font, fontSize: '12px', fontWeight: 400,
-                    color: C.textCaption, marginTop: '2px',
-                    letterSpacing: '-0.24px', lineHeight: '16px',
-                  }}>
-                    이미지의 흰 여백·레터박스를 같은 톤·구도로 확장해 캔버스를 가득 채워요
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* ── CTA: 메인 컬럼 끝, 우측 정렬 ── */}
             <div style={{
