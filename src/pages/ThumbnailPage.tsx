@@ -378,13 +378,13 @@ export default function ThumbnailPage() {
         </div>
 
         {/* 헤더 여백 */}
-        <div style={{ height: '100px' }} />
+        <div style={{ height: '52px' }} />
 
         {/* ════════ STEP: INPUT ════════ */}
         {step === 'input' && (
           <div style={{
-            padding: '0 20px', paddingBottom: '40px',
-            display: 'flex', gap: '68px', flexWrap: 'wrap',
+            padding: '32px 20px 40px',
+            display: 'flex', gap: '44px', flexWrap: 'wrap',
             alignItems: 'flex-start', position: 'relative',
           }}>
           {/* 패널 우측 풀하이트 라인 */}
@@ -399,7 +399,7 @@ export default function ThumbnailPage() {
             width: '240px', flexShrink: 0,
             position: 'sticky', top: '68px',
             display: 'flex', flexDirection: 'column',
-            paddingRight: '20px',
+            paddingRight: '28px',
           }}>
 
             {/* ── 이미지 비율 ── */}
@@ -556,6 +556,55 @@ export default function ThumbnailPage() {
                 {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
               </p>
             </div>
+
+            {/* ── 참고 방식 (레퍼런스 있을 때만) ── */}
+            {hasReferences && (
+              <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
+                <label style={{
+                  fontFamily: font, fontSize: '13px', fontWeight: 400,
+                  lineHeight: '18px', letterSpacing: '-0.26px',
+                  color: C.textPrimary, display: 'block', marginBottom: '10px',
+                }}>
+                  참고 방식
+                </label>
+                <div className="flex" style={{ gap: '4px' }}>
+                  {REFERENCE_MODES.map(mode => {
+                    const selected = referenceMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        onClick={() => setReferenceMode(mode.id)}
+                        onMouseEnter={(e) => {
+                          if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                        }}
+                        style={{
+                          flex: 1, height: '30px', padding: '0', borderRadius: '8px',
+                          fontFamily: font, fontSize: '13px', fontWeight: 400,
+                          letterSpacing: '-0.26px',
+                          color: selected ? C.textWhite : C.textPrimary,
+                          backgroundColor: selected ? C.primary : '#f4f4f5',
+                          border: 'none',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {mode.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  color: '#9a9a9a', marginTop: '8px',
+                  letterSpacing: '-0.22px',
+                }}>
+                  {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
+                </p>
+              </div>
+            )}
 
             {/* ── 스펙 요약 ── */}
             <div style={{ padding: '16px 0 0' }}>
@@ -742,112 +791,55 @@ export default function ThumbnailPage() {
               )}
             </div>
 
-            {/* ── 레퍼런스 모드 (레퍼런스가 있을 때만) ── */}
+            {/* ── 흰색 여백 자동 채우기 (레퍼런스 있을 때만) ── */}
             {hasReferences && (
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{
-                  fontFamily: font, fontSize: '15px', fontWeight: 600,
-                  lineHeight: '20px', letterSpacing: '-0.3px',
-                  color: C.textPrimary, display: 'block', marginBottom: '10px',
+              <div
+                onClick={() => setAutoFillBackground(v => !v)}
+                onMouseEnter={(e) => {
+                  if (!autoFillBackground) e.currentTarget.style.backgroundColor = '#fafafa';
+                }}
+                onMouseLeave={(e) => {
+                  if (!autoFillBackground) e.currentTarget.style.backgroundColor = C.surface;
+                }}
+                style={{
+                  marginBottom: '24px',
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  padding: '12px 14px', borderRadius: '16px',
+                  backgroundColor: autoFillBackground ? C.primaryLight : C.surface,
+                  border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                }}
+              >
+                <div style={{
+                  flexShrink: 0, marginTop: '2px',
+                  width: '24px', height: '24px', borderRadius: '11px',
+                  border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
+                  backgroundColor: autoFillBackground ? C.primary : C.surface,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s ease',
                 }}>
-                  참고 방식
-                </label>
-                <div className="flex" style={{ gap: '8px' }}>
-                  {REFERENCE_MODES.map(mode => {
-                    const selected = referenceMode === mode.id;
-                    return (
-                      <button
-                        key={mode.id}
-                        onClick={() => setReferenceMode(mode.id)}
-                        onMouseEnter={(e) => {
-                          if (!selected) {
-                            e.currentTarget.style.backgroundColor = '#fafafa';
-                            e.currentTarget.style.borderColor = '#cfcfcf';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!selected) {
-                            e.currentTarget.style.backgroundColor = C.surface;
-                            e.currentTarget.style.borderColor = C.borderDefault;
-                          }
-                        }}
-                        className="flex-1"
-                        style={{
-                          padding: '12px 8px', borderRadius: '16px',
-                          backgroundColor: selected ? C.primaryLight : C.surface,
-                          border: `1.5px solid ${selected ? C.primary : C.borderDefault}`,
-                          cursor: 'pointer', transition: 'all 0.15s ease',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <p style={{
-                          fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
-                          color: selected ? C.primary : C.textPrimary,
-                          letterSpacing: '-0.28px',
-                        }}>
-                          {mode.label}
-                        </p>
-                        <p style={{
-                          fontFamily: font, fontSize: '11px', fontWeight: 400,
-                          color: C.textCaption, marginTop: '4px',
-                          letterSpacing: '-0.22px',
-                        }}>
-                          {mode.desc}
-                        </p>
-                      </button>
-                    );
-                  })}
+                  {autoFillBackground && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
                 </div>
-
-                {/* ── 흰색 여백 자동 채우기 ── */}
-                <div
-                  onClick={() => setAutoFillBackground(v => !v)}
-                  onMouseEnter={(e) => {
-                    if (!autoFillBackground) e.currentTarget.style.backgroundColor = '#fafafa';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!autoFillBackground) e.currentTarget.style.backgroundColor = C.surface;
-                  }}
-                  style={{
-                    marginTop: '12px',
-                    display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    padding: '12px 14px', borderRadius: '16px',
-                    backgroundColor: autoFillBackground ? C.primaryLight : C.surface,
-                    border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
-                    cursor: 'pointer', transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div style={{
-                    flexShrink: 0, marginTop: '2px',
-                    width: '24px', height: '24px', borderRadius: '11px',
-                    border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
-                    backgroundColor: autoFillBackground ? C.primary : C.surface,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s ease',
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    fontFamily: font, fontSize: '14px',
+                    fontWeight: autoFillBackground ? 600 : 500,
+                    color: autoFillBackground ? C.primaryDark : C.textPrimary,
+                    letterSpacing: '-0.28px',
                   }}>
-                    {autoFillBackground && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{
-                      fontFamily: font, fontSize: '14px',
-                      fontWeight: autoFillBackground ? 600 : 500,
-                      color: autoFillBackground ? C.primaryDark : C.textPrimary,
-                      letterSpacing: '-0.28px',
-                    }}>
-                      흰색 여백 자동 채우기
-                    </p>
-                    <p style={{
-                      fontFamily: font, fontSize: '12px', fontWeight: 400,
-                      color: C.textCaption, marginTop: '2px',
-                      letterSpacing: '-0.24px', lineHeight: '16px',
-                    }}>
-                      이미지의 흰 여백·레터박스를 같은 톤·구도로 확장해 캔버스를 가득 채워요
-                    </p>
-                  </div>
+                    흰색 여백 자동 채우기
+                  </p>
+                  <p style={{
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    color: C.textCaption, marginTop: '2px',
+                    letterSpacing: '-0.24px', lineHeight: '16px',
+                  }}>
+                    이미지의 흰 여백·레터박스를 같은 톤·구도로 확장해 캔버스를 가득 채워요
+                  </p>
                 </div>
               </div>
             )}
