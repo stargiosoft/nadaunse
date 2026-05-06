@@ -386,6 +386,7 @@ export default function ThumbnailPage() {
             padding: '32px 20px 40px',
             display: 'flex', gap: '44px', flexWrap: 'nowrap',
             alignItems: 'flex-start', position: 'relative',
+            minHeight: 'calc(100vh - 52px)',
           }}>
           {/* 패널 우측 풀하이트 라인 */}
           <div style={{
@@ -444,17 +445,20 @@ export default function ThumbnailPage() {
                 })}
               </div>
               <p style={{
-                fontFamily: font, fontSize: '11px', fontWeight: 400,
-                color: '#9a9a9a', marginTop: '10px',
+                fontFamily: font, fontSize: '10px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '8px',
                 paddingLeft: '2px',
-                letterSpacing: '-0.22px',
+                letterSpacing: '0.78px',
               }}>
                 {selectedRatio.desc} ({selectedRatio.width}×{selectedRatio.height}px)
               </p>
             </div>
 
             {/* ── 생성 개수 ── */}
-            <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
+            <div style={{
+              padding: '20px 28px 20px 0', borderBottom: '1px solid #ececec',
+              marginRight: '-28px',
+            }}>
               <label style={{
                 fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
@@ -505,7 +509,7 @@ export default function ThumbnailPage() {
                     flex: 1, height: '30px', borderRadius: '8px',
                     backgroundColor: customCountActive ? C.primaryLight : '#f4f4f5',
                     padding: '0 8px',
-                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    fontFamily: font, fontSize: '10px', fontWeight: 400,
                     color: customCountActive ? C.primary : C.textPrimary,
                     textAlign: 'center', border: 'none',
                     transition: 'all 0.15s ease',
@@ -515,7 +519,10 @@ export default function ThumbnailPage() {
             </div>
 
             {/* ── 파일 형식 ── */}
-            <div style={{ padding: '16px 0', borderBottom: '1px solid #ececec' }}>
+            <div style={{
+              padding: '20px 28px 20px 0', borderBottom: '1px solid #ececec',
+              marginRight: '-28px',
+            }}>
               <label style={{
                 fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
@@ -553,10 +560,10 @@ export default function ThumbnailPage() {
                 })}
               </div>
               <p style={{
-                fontFamily: font, fontSize: '11px', fontWeight: 400,
-                color: '#9a9a9a', marginTop: '10px',
+                fontFamily: font, fontSize: '10px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '8px',
                 paddingLeft: '2px',
-                letterSpacing: '-0.22px',
+                letterSpacing: '0.78px',
               }}>
                 {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
               </p>
@@ -604,10 +611,10 @@ export default function ThumbnailPage() {
                   })}
                 </div>
               <p style={{
-                fontFamily: font, fontSize: '11px', fontWeight: 400,
-                color: '#9a9a9a', marginTop: '10px',
+                fontFamily: font, fontSize: '10px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '8px',
                 paddingLeft: '2px',
-                letterSpacing: '-0.22px',
+                letterSpacing: '0.78px',
               }}>
                 {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
               </p>
@@ -625,14 +632,14 @@ export default function ThumbnailPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
                   flexShrink: 0,
-                  width: '18px', height: '18px', borderRadius: '5px',
+                  width: '20px', height: '20px', borderRadius: '8px',
                   border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
                   backgroundColor: autoFillBackground ? C.primary : C.surface,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s ease',
                 }}>
                   {autoFillBackground && (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   )}
@@ -645,14 +652,6 @@ export default function ThumbnailPage() {
                   흰색 여백 자동 채우기
                 </span>
               </div>
-              <p style={{
-                fontFamily: font, fontSize: '11px', fontWeight: 400,
-                color: '#9a9a9a', marginTop: '6px',
-                paddingLeft: '28px',
-                letterSpacing: '-0.22px', lineHeight: '15px',
-              }}>
-                이미지의 흰 여백·레터박스를 같은 톤·구도로 확장해 캔버스를 가득 채워요
-              </p>
             </div>
 
             {/* ── 스펙 요약 ── */}
@@ -678,11 +677,10 @@ export default function ThumbnailPage() {
                 </p>
                 <p style={{
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  lineHeight: '17.3px', letterSpacing: '-0.22px',
+                  lineHeight: '17.3px', color: C.primary, letterSpacing: '-0.22px',
                   margin: 0,
                 }}>
-                  <span style={{ color: C.primary }}>참고 방식</span>
-                  <span style={{ color: '#6a6a6a' }}> · {referenceMode === 'style_only' ? '스타일만 참고' : '캐릭터+스타일'}</span>
+                  {referenceMode === 'style_only' ? '스타일만 참고' : '캐릭터+스타일'}
                 </p>
                 {autoFillBackground && (
                   <p style={{
@@ -885,7 +883,6 @@ export default function ThumbnailPage() {
                   color: canGenerate ? C.textWhite : C.textDisabled,
                   letterSpacing: '-0.28px',
                   transition: 'all 0.15s ease',
-                  boxShadow: canGenerate ? '0 2px 8px rgba(72, 178, 175, 0.25)' : 'none',
                 }}
               >
                 썸네일 생성하기
