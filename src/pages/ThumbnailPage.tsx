@@ -384,17 +384,6 @@ export default function ThumbnailPage() {
         {step === 'input' && (
           <div style={{ padding: '0 20px', paddingBottom: '140px' }}>
 
-            {/* Title */}
-            <div style={{ marginTop: '8px', marginBottom: '24px' }}>
-              <h1 style={{
-                fontFamily: font, fontSize: '22px', fontWeight: 600,
-                lineHeight: '32.5px', letterSpacing: '-0.22px',
-                color: C.textPrimary, margin: 0,
-              }}>
-                AI 썸네일 메이커
-              </h1>
-            </div>
-
             {/* ── 명령어 입력 ── */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{
@@ -402,7 +391,7 @@ export default function ThumbnailPage() {
                 lineHeight: '20px', letterSpacing: '-0.3px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
-                명령어 <span style={{ color: C.primary }}>*</span>
+                명령어
               </label>
               <div style={{
                 borderRadius: '20px', border: `1px solid ${C.borderDefault}`,
