@@ -1022,7 +1022,7 @@ export default function ThumbnailPage() {
               position: 'relative',
             }}>
               {/* Vertical divider between main and thumbnail rail */}
-              {effectiveCount > 1 && (
+              {effectiveCount > 1 && images.length > 0 && (
                 <div style={{
                   position: 'absolute', top: 0, bottom: 0,
                   right: 'calc(88px + 12px)',
@@ -1106,7 +1106,7 @@ export default function ThumbnailPage() {
                         fontFamily: font, fontSize: '14px', fontWeight: 400,
                         color: C.textCaption,
                       }}>
-                        {generating ? '생성 중...' : '재생성 중...'}
+                        {generating ? `${effectiveCount}장 생성 중...` : '재생성 중...'}
                       </p>
                     </div>
                   </div>
@@ -1114,7 +1114,7 @@ export default function ThumbnailPage() {
               </div>
 
               {/* Right thumbnail rail */}
-              {effectiveCount > 1 && (
+              {effectiveCount > 1 && images.length > 0 && (
                 <aside style={{
                   width: '88px',
                   flexShrink: 0,
@@ -1122,14 +1122,12 @@ export default function ThumbnailPage() {
                   top: '68px',
                 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {Array.from({ length: effectiveCount }, (_, i) => {
-                      const img = images[i];
-                      const isSelected = !!img && img.id === selectedImageId;
+                    {images.map((img) => {
+                      const isSelected = img.id === selectedImageId;
                       return (
                         <button
-                          key={i}
-                          onClick={() => img && setSelectedImageId(img.id)}
-                          disabled={!img}
+                          key={img.id}
+                          onClick={() => setSelectedImageId(img.id)}
                           className="transform-gpu"
                           style={{
                             width: '100%',
@@ -1140,7 +1138,7 @@ export default function ThumbnailPage() {
                               ? `2px solid ${C.primary}`
                               : `1px solid ${C.borderDefault}`,
                             padding: 0,
-                            cursor: img ? 'pointer' : 'default',
+                            cursor: 'pointer',
                             backgroundColor: C.surfaceSecondary,
                             display: 'flex',
                             alignItems: 'center',
@@ -1148,19 +1146,12 @@ export default function ThumbnailPage() {
                             transition: 'border 0.15s ease',
                           }}
                         >
-                          {img && img.src ? (
+                          {img.src && (
                             <img
                               src={img.src}
                               alt={`썸네일 ${img.id}`}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
-                          ) : (
-                            <div style={{
-                              width: '20px', height: '20px', borderRadius: '50%',
-                              border: `2px solid ${C.borderDefault}`,
-                              borderTopColor: C.primary,
-                              animation: 'spin 1s linear infinite',
-                            }} />
                           )}
                         </button>
                       );
