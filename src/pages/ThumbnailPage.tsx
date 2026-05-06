@@ -348,10 +348,10 @@ export default function ThumbnailPage() {
 
   return (
     <div className="bg-white relative min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-[900px] relative" style={{ fontFamily: font }}>
+      <div className="w-full relative" style={{ maxWidth: '900px', fontFamily: font }}>
 
         {/* NavigationHeader */}
-        <div className="bg-white h-[52px] shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2 max-w-[900px]">
+        <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '900px' }}>
           <div className="flex flex-col justify-center size-full">
             <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
               <ArrowLeft onClick={() => {
