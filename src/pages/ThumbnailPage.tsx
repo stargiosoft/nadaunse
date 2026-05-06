@@ -461,15 +461,15 @@ export default function ThumbnailPage() {
         {step === 'input' && (
           <div style={{
             padding: '32px 20px 40px',
-            display: 'flex', gap: '44px', flexWrap: 'nowrap',
+            display: 'flex', flexDirection: 'row-reverse', gap: '44px', flexWrap: 'nowrap',
             alignItems: 'flex-start', position: 'relative',
             minHeight: 'calc(100vh - 52px)',
           }}>
-          {/* 패널 우측 풀하이트 라인 */}
+          {/* 패널 좌측 풀하이트 라인 (패널이 우측에 있을 때 메인과의 구분선) */}
           {!panelHidden && (
             <div style={{
               position: 'absolute', top: 0, bottom: 0,
-              left: 'calc(20px + 240px)', width: '1px',
+              right: 'calc(20px + 240px)', width: '1px',
               backgroundColor: '#f0f0f0', pointerEvents: 'none',
             }} />
           )}
@@ -480,13 +480,13 @@ export default function ThumbnailPage() {
             width: '240px', flexShrink: 0,
             position: 'sticky', top: '68px',
             display: 'flex', flexDirection: 'column',
-            paddingRight: '28px',
+            paddingLeft: '28px',
           }}>
 
             {/* ── 이미지 비율 ── */}
             <div style={{
-              padding: '0 28px 20px 20px', borderBottom: '1px solid #f0f0f0',
-              marginLeft: '-20px', marginRight: '-28px',
+              padding: '0 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              marginLeft: '-28px', marginRight: '-20px',
             }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -536,8 +536,8 @@ export default function ThumbnailPage() {
 
             {/* ── 생성 개수 ── */}
             <div style={{
-              padding: '20px 28px 18px 20px', borderBottom: '1px solid #f0f0f0',
-              marginLeft: '-20px', marginRight: '-28px',
+              padding: '20px 20px 18px 28px', borderBottom: '1px solid #f0f0f0',
+              marginLeft: '-28px', marginRight: '-20px',
             }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -604,8 +604,8 @@ export default function ThumbnailPage() {
 
             {/* ── 파일 형식 ── */}
             <div style={{
-              padding: '20px 28px 20px 20px', borderBottom: '1px solid #f0f0f0',
-              marginLeft: '-20px', marginRight: '-28px',
+              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              marginLeft: '-28px', marginRight: '-20px',
             }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -655,8 +655,8 @@ export default function ThumbnailPage() {
 
             {/* ── 참고 방식 ── */}
             <div style={{
-              padding: '20px 28px 20px 20px', borderBottom: '1px solid #f0f0f0',
-              marginLeft: '-20px', marginRight: '-28px',
+              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              marginLeft: '-28px', marginRight: '-20px',
             }}>
                 <label style={{
                   fontFamily: font, fontSize: '12px', fontWeight: 400,
@@ -708,8 +708,8 @@ export default function ThumbnailPage() {
             <div
               onClick={() => setAutoFillBackground(v => !v)}
               style={{
-                padding: '20px 28px 20px 20px', borderBottom: '1px solid #f0f0f0',
-                marginLeft: '-20px', marginRight: '-28px',
+                padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+                marginLeft: '-28px', marginRight: '-20px',
                 cursor: 'pointer',
               }}
             >
@@ -790,6 +790,7 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
               }}>
                 명령어
               </label>
@@ -815,21 +816,14 @@ export default function ThumbnailPage() {
 
             {/* ── 고정 명령어 ── */}
             <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{
-                  fontFamily: font, fontSize: '12px', fontWeight: 400,
-                  lineHeight: '17px', letterSpacing: '-0.24px',
-                  color: C.textPrimary, display: 'block',
-                }}>
-                  고정 명령어
-                </label>
-                <span style={{
-                  fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  color: C.textCaption, letterSpacing: '-0.22px',
-                }}>
-                  매 생성마다 자동으로 함께 전달돼요 · 새로고침해도 유지
-                </span>
-              </div>
+              <label style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
+                color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
+              }}>
+                고정 명령어
+              </label>
               <div style={{
                 borderRadius: '20px', border: `1px solid ${C.borderDefault}`,
                 padding: '14px 16px', backgroundColor: C.surface,
@@ -856,12 +850,12 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
               }}>
                 레퍼런스
               </label>
 
               {hasReferences ? (
-                <>
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -933,14 +927,6 @@ export default function ThumbnailPage() {
                     </label>
                   )}
                 </div>
-                <div style={{
-                  marginTop: '8px', textAlign: 'right',
-                  fontFamily: font, fontSize: '12px', color: C.textCaption,
-                  letterSpacing: '-0.24px',
-                }}>
-                  {referencePreviews.length}/{MAX_REFERENCES}
-                </div>
-                </>
               ) : (
                 <label
                   onDragOver={handleDragOver}
@@ -987,6 +973,14 @@ export default function ThumbnailPage() {
                   />
                 </label>
               )}
+              <div style={{
+                marginTop: '8px', textAlign: 'right',
+                fontFamily: font, fontSize: '12px', color: C.textCaption,
+                letterSpacing: '-0.24px',
+                paddingRight: '2px',
+              }}>
+                {referencePreviews.length}/{MAX_REFERENCES}
+              </div>
             </div>
 
 
@@ -1032,32 +1026,6 @@ export default function ThumbnailPage() {
                 backgroundColor: '#f0f0f0',
                 pointerEvents: 'none',
               }} />
-            )}
-
-            {/* Progress */}
-            {generating && (
-              <div style={{
-                padding: '16px', borderRadius: '12px',
-                backgroundColor: C.primaryLight, marginBottom: '16px', marginTop: '8px',
-              }}>
-                <p style={{
-                  fontFamily: font, fontSize: '14px', fontWeight: 500,
-                  color: C.primaryDark, letterSpacing: '-0.28px',
-                }}>
-                  {generatedCount}/{effectiveCount}장 생성 중...
-                </p>
-                <div style={{
-                  width: '100%', height: '4px', borderRadius: '2px',
-                  backgroundColor: '#d4eceb', marginTop: '8px',
-                }}>
-                  <div style={{
-                    width: `${(generatedCount / effectiveCount) * 100}%`,
-                    height: '100%', borderRadius: '2px',
-                    backgroundColor: C.primary,
-                    transition: 'width 0.3s ease',
-                  }} />
-                </div>
-              </div>
             )}
 
             {/* Error */}
