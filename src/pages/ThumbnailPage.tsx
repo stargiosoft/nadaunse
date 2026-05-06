@@ -156,8 +156,13 @@ export default function ThumbnailPage() {
   const hasReferences = referencePreviews.length > 0;
 
   const callGenerateApi = async (promptOverride?: string): Promise<{ image: string; mimeType: string }> => {
+    const rawPrompt = (promptOverride || prompt).trim();
+    const effectivePrompt = rawPrompt
+      || (autoFillBackground && referenceBase64s.length > 0
+        ? 'Recreate and naturally extend the reference photograph to fill the entire canvas, preserving its original photographic style, lighting, depth, and composition.'
+        : '');
     const body: Record<string, unknown> = {
-      prompt: promptOverride || prompt,
+      prompt: effectivePrompt,
       aspect_ratio: ratioId,
     };
     if (referenceBase64s.length > 0) {
@@ -332,7 +337,7 @@ export default function ThumbnailPage() {
 
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
   const headerTitle = step === 'input' ? 'AI 썸네일 메이커' : '생성 결과';
-  const canGenerate = prompt.trim().length > 0;
+  const canGenerate = prompt.trim().length > 0 || (autoFillBackground && hasReferences);
 
   // Shift+1 단축키 → 썸네일 생성하기
   useEffect(() => {
@@ -400,7 +405,7 @@ export default function ThumbnailPage() {
                 명령어 <span style={{ color: C.primary }}>*</span>
               </label>
               <div style={{
-                borderRadius: '16px', border: `1px solid ${C.borderDefault}`,
+                borderRadius: '20px', border: `1px solid ${C.borderDefault}`,
                 padding: '14px 16px', backgroundColor: C.surface,
               }}>
                 <textarea
@@ -436,7 +441,7 @@ export default function ThumbnailPage() {
                   onDrop={handleDrop}
                   style={{
                     display: 'flex', flexWrap: 'wrap', gap: '10px',
-                    padding: '12px', borderRadius: '16px',
+                    padding: '12px', borderRadius: '20px',
                     border: `1px solid ${isDragging ? C.primary : C.borderDefault}`,
                     backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     transition: 'all 0.15s ease',
@@ -449,7 +454,7 @@ export default function ThumbnailPage() {
                         alt={`레퍼런스 ${idx + 1}`}
                         style={{
                           width: '80px', height: '80px', objectFit: 'cover',
-                          borderRadius: '12px', border: `1px solid ${C.borderDefault}`,
+                          borderRadius: '16px', border: `1px solid ${C.borderDefault}`,
                           display: 'block',
                         }}
                       />
@@ -471,8 +476,17 @@ export default function ThumbnailPage() {
                     </div>
                   ))}
                   {referencePreviews.length < MAX_REFERENCES && (
-                    <label style={{
-                      width: '80px', height: '80px', borderRadius: '12px',
+                    <label
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fafafa';
+                        e.currentTarget.style.borderColor = '#cfcfcf';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = C.surface;
+                        e.currentTarget.style.borderColor = C.borderDefault;
+                      }}
+                      style={{
+                      width: '80px', height: '80px', borderRadius: '16px',
                       border: `1.5px dashed ${C.borderDefault}`,
                       backgroundColor: C.surface,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -504,25 +518,37 @@ export default function ThumbnailPage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
+                  onMouseEnter={(e) => {
+                    if (!isDragging) {
+                      e.currentTarget.style.backgroundColor = '#fafafa';
+                      e.currentTarget.style.borderColor = '#cfcfcf';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isDragging) {
+                      e.currentTarget.style.backgroundColor = C.surface;
+                      e.currentTarget.style.borderColor = C.borderDefault;
+                    }
+                  }}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    width: '100%', height: '120px', borderRadius: '16px',
+                    width: '100%', height: '120px', borderRadius: '20px',
                     border: `1px solid ${isDragging ? C.primary : C.borderDefault}`,
                     backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     cursor: 'pointer', transition: 'all 0.15s ease',
                     gap: '8px',
                   }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={isDragging ? C.primary : C.textDisabled} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill={isDragging ? C.primary : '#dcdcdc'} xmlns="http://www.w3.org/2000/svg">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M3.75 3.75A2.25 2.25 0 0 0 1.5 6v12a2.25 2.25 0 0 0 2.25 2.25h16.5A2.25 2.25 0 0 0 22.5 18V6a2.25 2.25 0 0 0-2.25-2.25H3.75ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" />
                   </svg>
-                  <span style={{
-                    fontFamily: font, fontSize: '13px', fontWeight: 400,
-                    color: isDragging ? C.primary : C.textCaption,
-                  }}>
-                    {isDragging ? '여기에 놓으세요' : `이미지를 드래그하거나 클릭하세요 (최대 ${MAX_REFERENCES}장 · 10MB 이하)`}
-                  </span>
+                  {isDragging && (
+                    <span style={{
+                      fontFamily: font, fontSize: '13px', fontWeight: 400,
+                      color: C.primary,
+                    }}>
+                      여기에 놓으세요
+                    </span>
+                  )}
                   <input
                     type="file"
                     accept="image/*"
@@ -551,9 +577,21 @@ export default function ThumbnailPage() {
                       <button
                         key={mode.id}
                         onClick={() => setReferenceMode(mode.id)}
+                        onMouseEnter={(e) => {
+                          if (!selected) {
+                            e.currentTarget.style.backgroundColor = '#fafafa';
+                            e.currentTarget.style.borderColor = '#cfcfcf';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!selected) {
+                            e.currentTarget.style.backgroundColor = C.surface;
+                            e.currentTarget.style.borderColor = C.borderDefault;
+                          }
+                        }}
                         className="flex-1"
                         style={{
-                          padding: '12px 8px', borderRadius: '12px',
+                          padding: '12px 8px', borderRadius: '16px',
                           backgroundColor: selected ? C.primaryLight : C.surface,
                           border: `1.5px solid ${selected ? C.primary : C.borderDefault}`,
                           cursor: 'pointer', transition: 'all 0.15s ease',
@@ -582,25 +620,31 @@ export default function ThumbnailPage() {
                 {/* ── 흰색 여백 자동 채우기 ── */}
                 <div
                   onClick={() => setAutoFillBackground(v => !v)}
+                  onMouseEnter={(e) => {
+                    if (!autoFillBackground) e.currentTarget.style.backgroundColor = '#fafafa';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!autoFillBackground) e.currentTarget.style.backgroundColor = C.surface;
+                  }}
                   style={{
                     marginTop: '12px',
                     display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    padding: '12px 14px', borderRadius: '12px',
-                    backgroundColor: autoFillBackground ? C.primaryLight : C.surfaceSecondary,
+                    padding: '12px 14px', borderRadius: '16px',
+                    backgroundColor: autoFillBackground ? C.primaryLight : C.surface,
                     border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
                     cursor: 'pointer', transition: 'all 0.15s ease',
                   }}
                 >
                   <div style={{
                     flexShrink: 0, marginTop: '2px',
-                    width: '20px', height: '20px', borderRadius: '6px',
+                    width: '24px', height: '24px', borderRadius: '11px',
                     border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
                     backgroundColor: autoFillBackground ? C.primary : C.surface,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.15s ease',
                   }}>
                     {autoFillBackground && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     )}
@@ -626,8 +670,14 @@ export default function ThumbnailPage() {
               </div>
             )}
 
+            {/* ── 이미지 비율 / 생성 개수 / 파일 형식 (반응형 가로 배치) ── */}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: '24px',
+              marginBottom: '24px',
+            }}>
+
             {/* ── 이미지 비율 ── */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
               <label style={{
                 fontFamily: font, fontSize: '15px', fontWeight: 600,
                 lineHeight: '20px', letterSpacing: '-0.3px',
@@ -644,7 +694,7 @@ export default function ThumbnailPage() {
                       onClick={() => setRatioId(ratio.id)}
                       style={{
                         height: '40px', padding: '0 14px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 400,
+                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
                         letterSpacing: '-0.26px',
                         color: selected ? C.textWhite : C.textTertiary,
                         backgroundColor: selected ? C.primary : C.surface,
@@ -668,7 +718,7 @@ export default function ThumbnailPage() {
             </div>
 
             {/* ── 생성 개수 ── */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
               <label style={{
                 fontFamily: font, fontSize: '15px', fontWeight: 600,
                 lineHeight: '20px', letterSpacing: '-0.3px',
@@ -685,7 +735,7 @@ export default function ThumbnailPage() {
                       onClick={() => { setImageCount(count); setCustomCountActive(false); }}
                       style={{
                         width: '48px', height: '40px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
+                        fontFamily: font, fontSize: '15px', fontWeight: selected ? 600 : 400,
                         color: selected ? C.textWhite : C.textTertiary,
                         backgroundColor: selected ? C.primary : C.surface,
                         border: selected ? 'none' : `1px solid ${C.borderDefault}`,
@@ -719,13 +769,13 @@ export default function ThumbnailPage() {
                     className="outline-none bg-transparent"
                     style={{
                       width: '40px', height: '100%',
-                      fontFamily: font, fontSize: '14px', fontWeight: customCountActive ? 600 : 400,
+                      fontFamily: font, fontSize: '15px', fontWeight: customCountActive ? 600 : 400,
                       color: customCountActive ? C.primary : C.textTertiary,
                       textAlign: 'center', border: 'none',
                     }}
                   />
                   <span style={{
-                    fontFamily: font, fontSize: '13px', fontWeight: 400,
+                    fontFamily: font, fontSize: '14px', fontWeight: 400,
                     color: customCountActive ? C.primary : C.textCaption,
                   }}>장</span>
                 </div>
@@ -733,7 +783,7 @@ export default function ThumbnailPage() {
             </div>
 
             {/* ── 파일 형식 ── */}
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
               <label style={{
                 fontFamily: font, fontSize: '15px', fontWeight: 600,
                 lineHeight: '20px', letterSpacing: '-0.3px',
@@ -750,7 +800,7 @@ export default function ThumbnailPage() {
                       onClick={() => setFileFormat(fmt.id)}
                       style={{
                         height: '40px', padding: '0 14px', borderRadius: '12px',
-                        fontFamily: font, fontSize: '13px', fontWeight: selected ? 600 : 400,
+                        fontFamily: font, fontSize: '14px', fontWeight: selected ? 600 : 400,
                         letterSpacing: '-0.26px',
                         color: selected ? C.textWhite : C.textTertiary,
                         backgroundColor: selected ? C.primary : C.surface,
@@ -773,9 +823,11 @@ export default function ThumbnailPage() {
               </p>
             </div>
 
+            </div>
+
             {/* ── 스펙 요약 ── */}
             <div style={{
-              padding: '14px 16px', borderRadius: '12px',
+              padding: '14px 16px', borderRadius: '16px',
               backgroundColor: C.surfaceSecondary, marginBottom: '24px',
             }}>
               <p style={{
