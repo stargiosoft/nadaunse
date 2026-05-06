@@ -65,6 +65,7 @@ export default function ThumbnailPage() {
 
   // Step
   const [step, setStep] = useState<Step>('input');
+  const [panelHidden, setPanelHidden] = useState(false);
 
   // Input
   const [prompt, setPrompt] = useState('');
@@ -73,6 +74,7 @@ export default function ThumbnailPage() {
   const [autoFillBackground, setAutoFillBackground] = useState(false);
   const [imageCount, setImageCount] = useState<number>(2);
   const [customCountActive, setCustomCountActive] = useState(false);
+  const [customCountText, setCustomCountText] = useState('');
   const [fileFormat, setFileFormat] = useState<string>('png');
   const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
   const [referenceBase64s, setReferenceBase64s] = useState<string[]>([]);
@@ -83,6 +85,7 @@ export default function ThumbnailPage() {
   const [generatedCount, setGeneratedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
+  const [isMainHover, setIsMainHover] = useState(false);
 
   // ── Handlers ──
 
@@ -365,6 +368,18 @@ export default function ThumbnailPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [step, canGenerate, generating, handleGenerate]);
 
+  // Cmd/Ctrl + \ → 사이드 패널 토글
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        setPanelHidden(p => !p);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   // ── Render ──
 
   return (
@@ -374,7 +389,7 @@ export default function ThumbnailPage() {
         {/* NavigationHeader */}
         <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '1200px', borderBottom: '1px solid #f0f0f0' }}>
           <div className="flex flex-col justify-center size-full">
-            <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
+            <div className="flex items-center justify-between px-[12px] py-[4px] relative size-full">
               <ArrowLeft onClick={() => {
                 if (step === 'result') { setStep('input'); return; }
                 navigate(-1);
@@ -383,10 +398,45 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '16px', fontWeight: 500,
                 lineHeight: '24px', letterSpacing: '0.14px',
                 color: C.textBlack, textAlign: 'center',
+                position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
               }}>
                 {headerTitle}
               </p>
-              <div className="w-[44px]" />
+              {step === 'result' && images.length > 0 && !generating ? (
+                <div className="flex" style={{ gap: '8px' }}>
+                  <button
+                    onClick={() => setStep('input')}
+                    style={{
+                      height: '32px', padding: '0 16px', borderRadius: '8px',
+                      backgroundColor: C.surface,
+                      border: `1px solid ${C.borderDefault}`,
+                      cursor: 'pointer',
+                      fontFamily: font, fontSize: '13px', fontWeight: 400,
+                      color: C.textSecondary, letterSpacing: '-0.26px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    처음으로
+                  </button>
+                  <button
+                    onClick={handleDownloadAll}
+                    disabled={zipping}
+                    style={{
+                      height: '32px', padding: '0 16px', borderRadius: '8px',
+                      backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
+                      cursor: zipping ? 'default' : 'pointer',
+                      fontFamily: font, fontSize: '13px', fontWeight: 400,
+                      color: C.textWhite, letterSpacing: '-0.26px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {zipping ? 'ZIP 생성 중...' : 'ZIP 다운로드'}
+                  </button>
+                </div>
+              ) : (
+                <div className="w-[44px]" />
+              )}
             </div>
           </div>
         </div>
@@ -403,13 +453,16 @@ export default function ThumbnailPage() {
             minHeight: 'calc(100vh - 52px)',
           }}>
           {/* 패널 우측 풀하이트 라인 */}
-          <div style={{
-            position: 'absolute', top: 0, bottom: 0,
-            left: 'calc(20px + 240px)', width: '1px',
-            backgroundColor: '#f0f0f0', pointerEvents: 'none',
-          }} />
+          {!panelHidden && (
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0,
+              left: 'calc(20px + 240px)', width: '1px',
+              backgroundColor: '#f0f0f0', pointerEvents: 'none',
+            }} />
+          )}
 
           {/* ── 좌측 설정 패널 (Figma 스타일) ── */}
+          {!panelHidden && (
           <aside style={{
             width: '240px', flexShrink: 0,
             position: 'sticky', top: '68px',
@@ -443,7 +496,7 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
-                        flex: 1, height: '28px', padding: '0 2px', borderRadius: '8px',
+                        flex: 1, height: '26px', padding: '0 4px', borderRadius: '12px',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
                         letterSpacing: '0.76px',
                         color: selected ? C.textWhite : '#5a5a5a',
@@ -486,7 +539,7 @@ export default function ThumbnailPage() {
                   return (
                     <button
                       key={count}
-                      onClick={() => { setImageCount(count); setCustomCountActive(false); }}
+                      onClick={() => { setImageCount(count); setCustomCountActive(false); setCustomCountText(''); }}
                       onMouseEnter={(e) => {
                         if (!selected) e.currentTarget.style.backgroundColor = '#ececec';
                       }}
@@ -494,7 +547,7 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
-                        flex: 1, height: '28px', borderRadius: '8px',
+                        flex: 1, height: '26px', borderRadius: '12px',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
                         letterSpacing: '0.76px',
                         color: selected ? C.textWhite : '#5a5a5a',
@@ -512,17 +565,19 @@ export default function ThumbnailPage() {
                 type="number"
                 min={1}
                 max={50}
-                value={customCountActive ? imageCount : ''}
+                value={customCountActive ? customCountText : ''}
                 placeholder="직접 입력"
                 onFocus={() => setCustomCountActive(true)}
                 onChange={e => {
+                  const txt = e.target.value;
                   setCustomCountActive(true);
-                  const v = parseInt(e.target.value, 10);
+                  setCustomCountText(txt);
+                  const v = parseInt(txt, 10);
                   if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
                 }}
                 className="outline-none"
                 style={{
-                  width: '100%', height: '30px', borderRadius: '8px',
+                  width: '100%', height: '28px', borderRadius: '12px',
                   backgroundColor: C.surface,
                   padding: '0 12px', marginTop: '8px',
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
@@ -560,7 +615,7 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
-                        flex: 1, height: '28px', padding: '0', borderRadius: '8px',
+                        flex: 1, height: '26px', padding: '0', borderRadius: '12px',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
                         letterSpacing: '0.76px',
                         color: selected ? C.textWhite : '#5a5a5a',
@@ -611,7 +666,7 @@ export default function ThumbnailPage() {
                           if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                         }}
                         style={{
-                          flex: 1, height: '28px', padding: '0', borderRadius: '8px',
+                          flex: 1, height: '26px', padding: '0', borderRadius: '12px',
                           fontFamily: font, fontSize: '11px', fontWeight: 400,
                           letterSpacing: '0.76px',
                           color: selected ? C.textWhite : '#5a5a5a',
@@ -648,7 +703,7 @@ export default function ThumbnailPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
                   flexShrink: 0, marginTop: '0px',
-                  width: '20px', height: '20px', borderRadius: '8px',
+                  width: '20px', height: '20px', borderRadius: '12px',
                   border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
                   backgroundColor: autoFillBackground ? C.primary : C.surface,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -711,6 +766,7 @@ export default function ThumbnailPage() {
             </div>
 
           </aside>
+          )}
 
           {/* ── 메인 컬럼 ── */}
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
@@ -755,6 +811,7 @@ export default function ThumbnailPage() {
               </label>
 
               {hasReferences ? (
+                <>
                 <div
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -825,14 +882,15 @@ export default function ThumbnailPage() {
                       />
                     </label>
                   )}
-                  <div style={{
-                    width: '100%', textAlign: 'right',
-                    fontFamily: font, fontSize: '12px', color: C.textCaption,
-                    letterSpacing: '-0.24px',
-                  }}>
-                    {referencePreviews.length}/{MAX_REFERENCES}
-                  </div>
                 </div>
+                <div style={{
+                  marginTop: '8px', textAlign: 'right',
+                  fontFamily: font, fontSize: '12px', color: C.textCaption,
+                  letterSpacing: '-0.24px',
+                }}>
+                  {referencePreviews.length}/{MAX_REFERENCES}
+                </div>
+                </>
               ) : (
                 <label
                   onDragOver={handleDragOver}
@@ -856,7 +914,7 @@ export default function ThumbnailPage() {
                     border: `1.5px dashed ${isDragging ? C.primary : C.borderDefault}`,
                     backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     cursor: 'pointer', transition: 'all 0.15s ease',
-                    gap: '8px',
+                    gap: '12px',
                   }}>
                   <svg width="32" height="32" viewBox="0 0 24 24" fill={isDragging ? C.primary : '#e5e5e5'} xmlns="http://www.w3.org/2000/svg">
                     <path d="M2.58078 19.0112L2.56078 19.0312C2.29078 18.4413 2.12078 17.7713 2.05078 17.0312C2.12078 17.7613 2.31078 18.4212 2.58078 19.0112Z" />
@@ -913,7 +971,7 @@ export default function ThumbnailPage() {
 
         {/* ════════ STEP: RESULT ════════ */}
         {step === 'result' && (
-          <div style={{ padding: '0 20px', paddingBottom: '140px' }}>
+          <div style={{ padding: '0 20px 40px' }}>
 
             {/* Progress */}
             {generating && (
@@ -959,101 +1017,98 @@ export default function ThumbnailPage() {
 
             {/* Main viewer + thumbnail rail */}
             <div style={{
-              display: 'flex', gap: '20px', alignItems: 'flex-start',
-              marginTop: generating || error ? '0' : '8px',
+              display: 'flex', gap: '24px', alignItems: 'flex-start',
+              marginTop: '24px',
+              position: 'relative',
             }}>
+              {/* Vertical divider between main and thumbnail rail */}
+              {effectiveCount > 1 && (
+                <div style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  right: 'calc(88px + 12px)',
+                  width: '1px',
+                  backgroundColor: '#f0f0f0',
+                  pointerEvents: 'none',
+                }} />
+              )}
               {/* Main preview column */}
               <div style={{ flex: '1 1 0', minWidth: 0 }}>
-                {/* Image preview (aspect-ratio sized, capped by viewport) */}
-                <div style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'center',
-                }}>
-                  <div
-                    className="transform-gpu"
-                    style={{
-                      aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
-                      maxHeight: 'min(72vh, 720px)',
-                      maxWidth: '100%',
-                      width: 'auto',
-                      height: 'auto',
-                      borderRadius: '12px',
-                      border: `1px solid ${C.borderDefault}`,
-                      backgroundColor: C.surfaceSecondary,
-                      overflow: 'hidden',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {currentImage?.src ? (
+                {currentImage?.src ? (
+                  <div style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                  }}>
+                    <div
+                      className="transform-gpu"
+                      onMouseEnter={() => setIsMainHover(true)}
+                      onMouseLeave={() => setIsMainHover(false)}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
+                        maxHeight: 'min(72vh, 720px)',
+                        maxWidth: '100%',
+                        width: 'auto',
+                        height: 'auto',
+                        borderRadius: '24px',
+                        border: `1px solid ${C.borderDefault}`,
+                        overflow: 'hidden',
+                      }}
+                    >
                       <img
                         src={currentImage.src}
                         alt={`썸네일 ${currentImage.id}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
-                    ) : (
-                      <div className="flex flex-col items-center" style={{ gap: '12px' }}>
-                        <div style={{
-                          width: '40px', height: '40px', borderRadius: '50%',
-                          border: `3px solid ${C.borderDefault}`,
-                          borderTopColor: C.primary,
-                          animation: 'spin 1s linear infinite',
-                        }} />
-                        <p style={{
-                          fontFamily: font, fontSize: '14px', fontWeight: 400,
-                          color: C.textCaption,
-                        }}>
-                          {generating ? '생성 중...' : '재생성 중...'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action row BELOW image */}
-                {currentImage && (
-                  <div className="flex items-center justify-between" style={{
-                    marginTop: '14px',
-                    paddingBottom: '14px',
-                    borderBottom: '1px solid #f0f0f0',
-                  }}>
-                    <span style={{
-                      fontFamily: font, fontSize: '14px', fontWeight: 600,
-                      color: C.textPrimary, letterSpacing: '-0.28px',
-                    }}>
-                      #{currentImage.id}{currentImage.label && ` ${currentImage.label}`}
-                    </span>
-                    {currentImage.src && (
-                      <div className="flex" style={{ gap: '8px' }}>
-                        <button
-                          onClick={() => handleRegenerate(currentImage.id)}
-                          style={{
-                            padding: '6px 12px', borderRadius: '8px',
-                            border: `1px solid ${C.borderDefault}`,
-                            backgroundColor: C.surface, cursor: 'pointer',
-                            fontFamily: font, fontSize: '12px', fontWeight: 500,
-                            color: C.textSecondary, letterSpacing: '-0.24px',
-                          }}
-                        >
-                          재생성
-                        </button>
+                      {/* Hover overlay: download button */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '16px', right: '16px',
+                        opacity: isMainHover ? 1 : 0,
+                        transition: 'opacity 0.15s ease',
+                        pointerEvents: isMainHover ? 'auto' : 'none',
+                      }}>
                         <button
                           onClick={() => handleDownload(currentImage)}
                           style={{
-                            padding: '6px 12px', borderRadius: '8px',
+                            padding: '10px 20px', borderRadius: '12px',
                             border: 'none',
-                            backgroundColor: C.primary, cursor: 'pointer',
-                            fontFamily: font, fontSize: '12px', fontWeight: 500,
-                            color: C.textWhite, letterSpacing: '-0.24px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                            backdropFilter: 'blur(6px)',
+                            WebkitBackdropFilter: 'blur(6px)',
+                            color: C.textWhite, cursor: 'pointer',
+                            fontFamily: font, fontSize: '13px', fontWeight: 400,
+                            letterSpacing: '-0.26px',
                           }}
                         >
                           다운로드
                         </button>
                       </div>
-                    )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: 'min(72vh, 720px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <div className="flex flex-col items-center" style={{ gap: '12px' }}>
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '50%',
+                        border: `3px solid ${C.borderDefault}`,
+                        borderTopColor: C.primary,
+                        animation: 'spin 1s linear infinite',
+                      }} />
+                      <p style={{
+                        fontFamily: font, fontSize: '14px', fontWeight: 400,
+                        color: C.textCaption,
+                      }}>
+                        {generating ? '생성 중...' : '재생성 중...'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1066,7 +1121,7 @@ export default function ThumbnailPage() {
                   position: 'sticky',
                   top: '68px',
                 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {Array.from({ length: effectiveCount }, (_, i) => {
                       const img = images[i];
                       const isSelected = !!img && img.id === selectedImageId;
@@ -1079,7 +1134,7 @@ export default function ThumbnailPage() {
                           style={{
                             width: '100%',
                             aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
-                            borderRadius: '8px',
+                            borderRadius: '24px',
                             overflow: 'hidden',
                             border: isSelected
                               ? `2px solid ${C.primary}`
@@ -1115,49 +1170,6 @@ export default function ThumbnailPage() {
               )}
             </div>
 
-            {/* Bottom Buttons */}
-            {!generating && images.length > 0 && (
-              <div style={{
-                position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-                maxWidth: '1200px', width: '100%', padding: '12px 20px 32px',
-                backgroundColor: C.surface,
-                borderTop: `1px solid ${C.borderDivider}`,
-              }}>
-                <div className="flex" style={{ gap: '8px' }}>
-                  <button
-                    onClick={() => setStep('input')}
-                    style={{
-                      flex: 1, height: '56px', borderRadius: '16px',
-                      backgroundColor: C.surface,
-                      border: `1.5px solid ${C.borderDefault}`,
-                      cursor: 'pointer',
-                      fontFamily: font, fontSize: '16px', fontWeight: 500,
-                      color: C.textSecondary, letterSpacing: '-0.32px',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    처음으로
-                  </button>
-                  <button
-                    onClick={handleDownloadAll}
-                    disabled={zipping}
-                    style={{
-                      flex: 1, height: '56px', borderRadius: '16px',
-                      backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
-                      cursor: zipping ? 'default' : 'pointer',
-                      fontFamily: font, fontSize: '16px', fontWeight: 500,
-                      color: C.textWhite, letterSpacing: '-0.32px',
-                      transition: 'all 0.15s ease',
-                    }}
-                    onPointerDown={e => { if (!zipping) e.currentTarget.style.transform = 'scale(0.99)'; }}
-                    onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-                    onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
-                  >
-                    {zipping ? 'ZIP 생성 중...' : 'ZIP 다운로드'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
