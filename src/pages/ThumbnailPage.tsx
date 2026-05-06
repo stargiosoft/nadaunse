@@ -384,7 +384,7 @@ export default function ThumbnailPage() {
         {step === 'input' && (
           <div style={{
             padding: '32px 20px 40px',
-            display: 'flex', gap: '44px', flexWrap: 'wrap',
+            display: 'flex', gap: '44px', flexWrap: 'nowrap',
             alignItems: 'flex-start', position: 'relative',
           }}>
           {/* 패널 우측 풀하이트 라인 */}
@@ -422,17 +422,17 @@ export default function ThumbnailPage() {
                       key={ratio.id}
                       onClick={() => setRatioId(ratio.id)}
                       onMouseEnter={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
                       }}
                       onMouseLeave={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
                       }}
                       style={{
                         flex: 1, height: '30px', padding: '0', borderRadius: '8px',
-                        fontFamily: font, fontSize: '13px', fontWeight: 400,
-                        letterSpacing: '-0.26px',
+                        fontFamily: font, fontSize: '12px', fontWeight: 400,
+                        letterSpacing: '-0.24px',
                         color: selected ? C.textWhite : C.textPrimary,
-                        backgroundColor: selected ? C.primary : '#f4f4f5',
+                        backgroundColor: selected ? C.primary : '#e8e8ea',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         whiteSpace: 'nowrap',
@@ -470,16 +470,16 @@ export default function ThumbnailPage() {
                       key={count}
                       onClick={() => { setImageCount(count); setCustomCountActive(false); }}
                       onMouseEnter={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
                       }}
                       onMouseLeave={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
                       }}
                       style={{
                         flex: 1, height: '30px', borderRadius: '8px',
-                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        fontFamily: font, fontSize: '12px', fontWeight: 400,
                         color: selected ? C.textWhite : C.textPrimary,
-                        backgroundColor: selected ? C.primary : '#f4f4f5',
+                        backgroundColor: selected ? C.primary : '#e8e8ea',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                       }}
@@ -505,7 +505,7 @@ export default function ThumbnailPage() {
                     flex: 1, height: '30px', borderRadius: '8px',
                     backgroundColor: customCountActive ? C.primaryLight : '#f4f4f5',
                     padding: '0 8px',
-                    fontFamily: font, fontSize: '13px', fontWeight: 400,
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
                     color: customCountActive ? C.primary : C.textPrimary,
                     textAlign: 'center', border: 'none',
                     transition: 'all 0.15s ease',
@@ -531,17 +531,17 @@ export default function ThumbnailPage() {
                       key={fmt.id}
                       onClick={() => setFileFormat(fmt.id)}
                       onMouseEnter={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
                       }}
                       onMouseLeave={(e) => {
-                        if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                        if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
                       }}
                       style={{
                         flex: 1, height: '30px', padding: '0', borderRadius: '8px',
-                        fontFamily: font, fontSize: '13px', fontWeight: 400,
-                        letterSpacing: '-0.26px',
+                        fontFamily: font, fontSize: '12px', fontWeight: 400,
+                        letterSpacing: '-0.24px',
                         color: selected ? C.textWhite : C.textPrimary,
-                        backgroundColor: selected ? C.primary : '#f4f4f5',
+                        backgroundColor: selected ? C.primary : '#e8e8ea',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         whiteSpace: 'nowrap',
@@ -582,17 +582,17 @@ export default function ThumbnailPage() {
                         key={mode.id}
                         onClick={() => setReferenceMode(mode.id)}
                         onMouseEnter={(e) => {
-                          if (!selected) e.currentTarget.style.backgroundColor = '#ececee';
+                          if (!selected) e.currentTarget.style.backgroundColor = '#dcdce0';
                         }}
                         onMouseLeave={(e) => {
-                          if (!selected) e.currentTarget.style.backgroundColor = '#f4f4f5';
+                          if (!selected) e.currentTarget.style.backgroundColor = '#e8e8ea';
                         }}
                         style={{
                           flex: 1, height: '30px', padding: '0', borderRadius: '8px',
-                          fontFamily: font, fontSize: '13px', fontWeight: 400,
-                          letterSpacing: '-0.26px',
+                          fontFamily: font, fontSize: '12px', fontWeight: 400,
+                          letterSpacing: '-0.24px',
                           color: selected ? C.textWhite : C.textPrimary,
-                          backgroundColor: selected ? C.primary : '#f4f4f5',
+                          backgroundColor: selected ? C.primary : '#e8e8ea',
                           border: 'none',
                           cursor: 'pointer', transition: 'all 0.15s ease',
                           whiteSpace: 'nowrap',
@@ -699,7 +699,7 @@ export default function ThumbnailPage() {
           </aside>
 
           {/* ── 메인 컬럼 ── */}
-          <div style={{ flex: '1 1 480px', minWidth: 0 }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
 
             {/* ── 명령어 입력 ── */}
             <div style={{ marginBottom: '24px' }}>
@@ -826,8 +826,8 @@ export default function ThumbnailPage() {
                   onDrop={handleDrop}
                   onMouseEnter={(e) => {
                     if (!isDragging) {
-                      e.currentTarget.style.backgroundColor = '#fafafa';
-                      e.currentTarget.style.borderColor = '#cfcfcf';
+                      e.currentTarget.style.backgroundColor = '#fcfcfc';
+                      e.currentTarget.style.borderColor = '#dcdcdc';
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -848,9 +848,9 @@ export default function ThumbnailPage() {
                     <path fillRule="evenodd" clipRule="evenodd" d="M3.75 3.75A2.25 2.25 0 0 0 1.5 6v12a2.25 2.25 0 0 0 2.25 2.25h16.5A2.25 2.25 0 0 0 22.5 18V6a2.25 2.25 0 0 0-2.25-2.25H3.75ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" />
                   </svg>
                   <span style={{
-                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    fontFamily: font, fontSize: '11px', fontWeight: 400,
                     color: isDragging ? C.primary : '#c8c8c8',
-                    letterSpacing: '-0.24px',
+                    letterSpacing: '0.76px',
                   }}>
                     {isDragging ? '여기에 놓으세요' : `최대 ${MAX_REFERENCES}장 · 장당 10MB 이하`}
                   </span>
