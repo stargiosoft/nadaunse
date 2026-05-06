@@ -336,7 +336,7 @@ export default function ThumbnailPage() {
   }, [images, fileFormat]);
 
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
-  const headerTitle = step === 'input' ? 'AI 썸네일 메이커' : '생성 결과';
+  const headerTitle = step === 'input' ? 'AI 이미지 제작' : '생성 결과';
   const canGenerate = prompt.trim().length > 0 || (autoFillBackground && hasReferences);
 
   // Shift+1 단축키 → 썸네일 생성하기
@@ -366,8 +366,8 @@ export default function ThumbnailPage() {
                 navigate(-1);
               }} />
               <p style={{
-                fontFamily: font, fontSize: '18px', fontWeight: 600,
-                lineHeight: '25.5px', letterSpacing: '-0.36px',
+                fontFamily: font, fontSize: '16px', fontWeight: 500,
+                lineHeight: '24px', letterSpacing: '0.14px',
                 color: C.textBlack, textAlign: 'center',
               }}>
                 {headerTitle}
@@ -409,8 +409,8 @@ export default function ThumbnailPage() {
               marginRight: '-28px',
             }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '18px', letterSpacing: '-0.26px',
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 이미지 비율
@@ -432,7 +432,7 @@ export default function ThumbnailPage() {
                         flex: 1, height: '30px', padding: '0', borderRadius: '8px',
                         fontFamily: font, fontSize: '12px', fontWeight: 400,
                         letterSpacing: '-0.24px',
-                        color: selected ? C.textWhite : '#7f7f7f',
+                        color: selected ? C.textWhite : '#5a5a5a',
                         backgroundColor: selected ? C.primary : '#f5f5f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
@@ -460,8 +460,8 @@ export default function ThumbnailPage() {
               marginRight: '-28px',
             }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '18px', letterSpacing: '-0.26px',
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 생성 개수
@@ -482,7 +482,7 @@ export default function ThumbnailPage() {
                       style={{
                         flex: 1, height: '30px', borderRadius: '8px',
                         fontFamily: font, fontSize: '12px', fontWeight: 400,
-                        color: selected ? C.textWhite : '#7f7f7f',
+                        color: selected ? C.textWhite : '#5a5a5a',
                         backgroundColor: selected ? C.primary : '#f5f5f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
@@ -492,30 +492,30 @@ export default function ThumbnailPage() {
                     </button>
                   );
                 })}
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={customCountActive ? imageCount : ''}
-                  placeholder="직접"
-                  onFocus={() => setCustomCountActive(true)}
-                  onChange={e => {
-                    setCustomCountActive(true);
-                    const v = parseInt(e.target.value, 10);
-                    if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
-                  }}
-                  className="outline-none"
-                  style={{
-                    flex: 1, height: '30px', borderRadius: '8px',
-                    backgroundColor: customCountActive ? C.primaryLight : '#f4f4f5',
-                    padding: '0 8px',
-                    fontFamily: font, fontSize: '10px', fontWeight: 400,
-                    color: customCountActive ? C.primary : C.textPrimary,
-                    textAlign: 'center', border: 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                />
               </div>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={customCountActive ? imageCount : ''}
+                placeholder="직접 입력"
+                onFocus={() => setCustomCountActive(true)}
+                onChange={e => {
+                  setCustomCountActive(true);
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v) && v >= 1 && v <= 50) setImageCount(v);
+                }}
+                className="outline-none"
+                style={{
+                  width: '100%', height: '30px', borderRadius: '8px',
+                  backgroundColor: customCountActive ? C.primaryLight : '#f5f5f5',
+                  padding: '0 10px', marginTop: '4px',
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  color: customCountActive ? C.primary : '#5a5a5a',
+                  textAlign: 'center', border: 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              />
             </div>
 
             {/* ── 파일 형식 ── */}
@@ -524,8 +524,8 @@ export default function ThumbnailPage() {
               marginRight: '-28px',
             }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '18px', letterSpacing: '-0.26px',
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 파일 형식
@@ -547,7 +547,7 @@ export default function ThumbnailPage() {
                         flex: 1, height: '30px', padding: '0', borderRadius: '8px',
                         fontFamily: font, fontSize: '12px', fontWeight: 400,
                         letterSpacing: '-0.24px',
-                        color: selected ? C.textWhite : '#7f7f7f',
+                        color: selected ? C.textWhite : '#5a5a5a',
                         backgroundColor: selected ? C.primary : '#f5f5f5',
                         border: 'none',
                         cursor: 'pointer', transition: 'all 0.15s ease',
@@ -575,8 +575,8 @@ export default function ThumbnailPage() {
               marginRight: '-28px',
             }}>
                 <label style={{
-                  fontFamily: font, fontSize: '13px', fontWeight: 400,
-                  lineHeight: '18px', letterSpacing: '-0.26px',
+                  fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '17px', letterSpacing: '-0.24px',
                   color: C.textPrimary, display: 'block', marginBottom: '10px',
                 }}>
                   참고 방식
@@ -598,7 +598,7 @@ export default function ThumbnailPage() {
                           flex: 1, height: '30px', padding: '0', borderRadius: '8px',
                           fontFamily: font, fontSize: '12px', fontWeight: 400,
                           letterSpacing: '-0.24px',
-                          color: selected ? C.textWhite : '#7f7f7f',
+                          color: selected ? C.textWhite : '#5a5a5a',
                           backgroundColor: selected ? C.primary : '#f5f5f5',
                           border: 'none',
                           cursor: 'pointer', transition: 'all 0.15s ease',
@@ -629,9 +629,9 @@ export default function ThumbnailPage() {
                 cursor: 'pointer',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
-                  flexShrink: 0,
+                  flexShrink: 0, marginTop: '2px',
                   width: '20px', height: '20px', borderRadius: '8px',
                   border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
                   backgroundColor: autoFillBackground ? C.primary : C.surface,
@@ -645,9 +645,9 @@ export default function ThumbnailPage() {
                   )}
                 </div>
                 <span style={{
-                  fontFamily: font, fontSize: '13px', fontWeight: 400,
+                  fontFamily: font, fontSize: '12px', fontWeight: 400,
                   color: autoFillBackground ? C.primary : C.textPrimary,
-                  letterSpacing: '-0.26px',
+                  letterSpacing: '-0.24px',
                 }}>
                   흰색 여백 자동 채우기
                 </span>
@@ -657,27 +657,27 @@ export default function ThumbnailPage() {
             {/* ── 스펙 요약 ── */}
             <div style={{ padding: '20px 0 0' }}>
               <div style={{
-                padding: '10px 12px', borderRadius: '8px',
+                padding: '13px 16px 10px', borderRadius: '12px',
                 backgroundColor: C.surface,
                 border: '1px solid #ececec',
               }}>
                 <p style={{
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  lineHeight: '17.3px', color: '#6a6a6a', letterSpacing: '-0.22px',
+                  lineHeight: '18.3px', color: '#6a6a6a', letterSpacing: '-0.22px',
                   margin: 0,
                 }}>
                   {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px
                 </p>
                 <p style={{
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  lineHeight: '17.3px', color: '#6a6a6a', letterSpacing: '-0.22px',
+                  lineHeight: '18.3px', color: '#6a6a6a', letterSpacing: '-0.22px',
                   margin: 0,
                 }}>
                   {imageCount}장 · {fileFormat.toUpperCase()}
                 </p>
                 <p style={{
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  lineHeight: '17.3px', color: C.primary, letterSpacing: '-0.22px',
+                  lineHeight: '18.3px', color: C.primary, letterSpacing: '-0.22px',
                   margin: 0,
                 }}>
                   {referenceMode === 'style_only' ? '스타일만 참고' : '캐릭터+스타일'}
@@ -685,7 +685,7 @@ export default function ThumbnailPage() {
                 {autoFillBackground && (
                   <p style={{
                     fontFamily: font, fontSize: '11px', fontWeight: 400,
-                    lineHeight: '17.3px', color: C.primary, letterSpacing: '-0.22px',
+                    lineHeight: '18.3px', color: C.primary, letterSpacing: '-0.22px',
                     margin: 0,
                   }}>
                     여백 채우기
@@ -702,8 +702,8 @@ export default function ThumbnailPage() {
             {/* ── 명령어 입력 ── */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '18px', letterSpacing: '-0.26px',
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 명령어
@@ -719,8 +719,8 @@ export default function ThumbnailPage() {
                   rows={4}
                   className="w-full outline-none bg-transparent resize-y"
                   style={{
-                    fontFamily: font, fontSize: '15px', fontWeight: 400,
-                    lineHeight: '22px', letterSpacing: '-0.45px',
+                    fontFamily: font, fontSize: '14px', fontWeight: 400,
+                    lineHeight: '21px', letterSpacing: '-0.42px',
                     color: C.textPrimary, border: 'none',
                     minHeight: '88px', display: 'block',
                   }}
@@ -731,8 +731,8 @@ export default function ThumbnailPage() {
             {/* ── 레퍼런스 이미지 ── */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{
-                fontFamily: font, fontSize: '13px', fontWeight: 400,
-                lineHeight: '18px', letterSpacing: '-0.26px',
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '10px',
               }}>
                 레퍼런스 이미지
