@@ -70,6 +70,7 @@ export default function ThumbnailPage() {
   const [prompt, setPrompt] = useState('');
   const [ratioId, setRatioId] = useState<string>('9:16');
   const [referenceMode, setReferenceMode] = useState<string>('style_only');
+  const [autoFillBackground, setAutoFillBackground] = useState(false);
   const [imageCount, setImageCount] = useState<number>(2);
   const [customCountActive, setCustomCountActive] = useState(false);
   const [fileFormat, setFileFormat] = useState<string>('png');
@@ -162,6 +163,7 @@ export default function ThumbnailPage() {
     if (referenceBase64s.length > 0) {
       body.reference_images = referenceBase64s;
       body.reference_mode = referenceMode;
+      if (autoFillBackground) body.auto_fill_background = true;
     }
     const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
       method: 'POST',
@@ -224,7 +226,7 @@ export default function ThumbnailPage() {
     }
 
     setGenerating(false);
-  }, [prompt, ratioId, referenceBase64s, referenceMode, imageCount]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount]);
 
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
@@ -242,7 +244,7 @@ export default function ThumbnailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생성 실패');
     }
-  }, [prompt, ratioId, referenceBase64s, referenceMode, images]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images]);
 
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
@@ -386,13 +388,6 @@ export default function ThumbnailPage() {
               }}>
                 AI 썸네일 메이커
               </h1>
-              <p style={{
-                fontFamily: font, fontSize: '15px', fontWeight: 400,
-                lineHeight: '20px', letterSpacing: '-0.45px',
-                color: C.textTertiary, marginTop: '8px',
-              }}>
-                레퍼런스를 넣고 명령하면 AI가 썸네일을 만들어요
-              </p>
             </div>
 
             {/* ── 명령어 입력 ── */}
@@ -442,8 +437,8 @@ export default function ThumbnailPage() {
                   style={{
                     display: 'flex', flexWrap: 'wrap', gap: '10px',
                     padding: '12px', borderRadius: '16px',
-                    border: `2px dashed ${isDragging ? C.primary : C.borderDefault}`,
-                    backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surfaceSecondary,
+                    border: `1px solid ${isDragging ? C.primary : C.borderDefault}`,
+                    backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     transition: 'all 0.15s ease',
                   }}
                 >
@@ -512,8 +507,8 @@ export default function ThumbnailPage() {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     width: '100%', height: '120px', borderRadius: '16px',
-                    border: `2px dashed ${isDragging ? C.primary : C.borderDefault}`,
-                    backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surfaceSecondary,
+                    border: `1px solid ${isDragging ? C.primary : C.borderDefault}`,
+                    backgroundColor: isDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
                     cursor: 'pointer', transition: 'all 0.15s ease',
                     gap: '8px',
                   }}>
@@ -582,6 +577,51 @@ export default function ThumbnailPage() {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* ── 흰색 여백 자동 채우기 ── */}
+                <div
+                  onClick={() => setAutoFillBackground(v => !v)}
+                  style={{
+                    marginTop: '12px',
+                    display: 'flex', alignItems: 'flex-start', gap: '10px',
+                    padding: '12px 14px', borderRadius: '12px',
+                    backgroundColor: autoFillBackground ? C.primaryLight : C.surfaceSecondary,
+                    border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{
+                    flexShrink: 0, marginTop: '2px',
+                    width: '20px', height: '20px', borderRadius: '6px',
+                    border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
+                    backgroundColor: autoFillBackground ? C.primary : C.surface,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s ease',
+                  }}>
+                    {autoFillBackground && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{
+                      fontFamily: font, fontSize: '14px',
+                      fontWeight: autoFillBackground ? 600 : 500,
+                      color: autoFillBackground ? C.primaryDark : C.textPrimary,
+                      letterSpacing: '-0.28px',
+                    }}>
+                      흰색 여백 자동 채우기
+                    </p>
+                    <p style={{
+                      fontFamily: font, fontSize: '12px', fontWeight: 400,
+                      color: C.textCaption, marginTop: '2px',
+                      letterSpacing: '-0.24px', lineHeight: '16px',
+                    }}>
+                      이미지의 흰 여백·레터박스를 같은 톤·구도로 확장해 캔버스를 가득 채워요
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -743,7 +783,7 @@ export default function ThumbnailPage() {
                 lineHeight: '20px', color: C.textCaption, letterSpacing: '-0.26px',
               }}>
                 {selectedRatio.label} · {selectedRatio.width}×{selectedRatio.height}px · {imageCount}장 · {fileFormat.toUpperCase()}
-                {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}`}
+                {hasReferences && ` · 레퍼런스 ${referencePreviews.length}장 ${referenceMode === 'style_only' ? '스타일' : '캐릭터+스타일'}${autoFillBackground ? ' · 여백 채우기' : ''}`}
               </p>
             </div>
 

@@ -11,7 +11,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background } = await req.json()
 
     if (!prompt?.trim()) {
       return new Response(JSON.stringify({ error: 'prompt 필수' }), {
@@ -59,14 +59,18 @@ serve(async (req) => {
 
       const refCountText = refs.length > 1 ? `${refs.length} attached images` : 'the attached image'
 
+      const fillRule = auto_fill_background
+        ? `\n\n[CANVAS FILL — MANDATORY]\nThe reference may contain white/blank borders, letterboxing, or padding around the actual photograph. TREAT IT AS A CROP: extend the photographed scene OUTWARD so it fills the ENTIRE output canvas edge-to-edge with content matching the original photograph's lighting, color palette, depth, focal style, and composition. The final output must have ZERO white margins, ZERO blank borders, and ZERO empty space — the photographic content covers 100% of the canvas.`
+        : ''
+
       if (reference_mode === 'style_and_character') {
         parts.push({
-          text: `${imageRules}Use ${refCountText} as CHARACTER references. Keep the SAME person's face, facial features, hairstyle, and identity across them — the person must be clearly recognizable as the same individual shown in the references. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW single image based on this instruction: ${prompt}`,
+          text: `${imageRules}Use ${refCountText} as CHARACTER references. Keep the SAME person's face, facial features, hairstyle, and identity across them — the person must be clearly recognizable as the same individual shown in the references. However, freely change their clothing, outfit, pose, background, setting, and environment to match the instruction. The person's face is the ONLY thing that must stay consistent. Generate a NEW single image based on this instruction: ${prompt}${fillRule}`,
         })
       } else {
         // style_only (기본값)
         parts.push({
-          text: `${imageRules}Use ${refCountText} as STYLE references only. Copy the visual style (colors, lighting, composition, typography style, art style) — combine cues across all references if multiple — but create completely new content. Do NOT copy specific characters or people. Generate a NEW single thumbnail image based on this instruction: ${prompt}`,
+          text: `${imageRules}Use ${refCountText} as STYLE references only. Copy the visual style (colors, lighting, composition, typography style, art style) — combine cues across all references if multiple — but create completely new content. Do NOT copy specific characters or people. Generate a NEW single thumbnail image based on this instruction: ${prompt}${fillRule}`,
         })
       }
     } else {
