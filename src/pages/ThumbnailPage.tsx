@@ -40,6 +40,7 @@ const C = {
 const ASPECT_RATIOS = [
   { id: '9:16', label: '9:16', desc: '릴스·쇼츠·틱톡', width: 1080, height: 1920 },
   { id: '3:4', label: '3:4', desc: '네이버 블로그', width: 900, height: 1200 },
+  { id: '2:3', label: '2:3', desc: '로맨스 타로', width: 1000, height: 1500 },
   { id: '1:1', label: '1:1', desc: '인스타 정사각', width: 1080, height: 1080 },
   { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
 ] as const;
