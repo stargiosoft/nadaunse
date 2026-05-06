@@ -69,6 +69,10 @@ export default function ThumbnailPage() {
 
   // Input
   const [prompt, setPrompt] = useState('');
+  const [persistentPrompt, setPersistentPrompt] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('thumbnail-fixed-prompt') || '';
+  });
   const [ratioId, setRatioId] = useState<string>('9:16');
   const [referenceMode, setReferenceMode] = useState<string>('style_only');
   const [autoFillBackground, setAutoFillBackground] = useState(false);
@@ -86,6 +90,7 @@ export default function ThumbnailPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [isMainHover, setIsMainHover] = useState(false);
+  const [hoverThumbId, setHoverThumbId] = useState<number | null>(null);
 
   // ── Handlers ──
 
@@ -160,8 +165,10 @@ export default function ThumbnailPage() {
   const hasReferences = referencePreviews.length > 0;
 
   const callGenerateApi = async (promptOverride?: string): Promise<{ image: string; mimeType: string }> => {
-    const rawPrompt = (promptOverride || prompt).trim();
-    const effectivePrompt = rawPrompt
+    const userPrompt = (promptOverride || prompt).trim();
+    const fixedPrompt = persistentPrompt.trim();
+    const combinedPrompt = [userPrompt, fixedPrompt].filter(Boolean).join('\n\n');
+    const effectivePrompt = combinedPrompt
       || (autoFillBackground && referenceBase64s.length > 0
         ? "Keep the reference image's design, colors, and overall composition exactly as they are — do not alter or reinterpret them. Only fill the empty white/blank areas with a natural background that seamlessly matches the original art style, brushwork, and palette of the reference image."
         : '');
@@ -342,7 +349,13 @@ export default function ThumbnailPage() {
 
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
   const headerTitle = step === 'input' ? 'AI 이미지 제작' : '생성 결과';
-  const canGenerate = prompt.trim().length > 0 || (autoFillBackground && hasReferences);
+  const canGenerate = prompt.trim().length > 0 || persistentPrompt.trim().length > 0 || (autoFillBackground && hasReferences);
+
+  // 고정 명령어 localStorage 동기화
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('thumbnail-fixed-prompt', persistentPrompt);
+  }, [persistentPrompt]);
 
   // 새 이미지가 도착하면 첫 번째를 선택, 또는 선택 항목이 사라졌으면 첫 번째로 폴백
   useEffect(() => {
@@ -408,7 +421,7 @@ export default function ThumbnailPage() {
                   <button
                     onClick={() => setStep('input')}
                     style={{
-                      height: '32px', padding: '0 16px', borderRadius: '8px',
+                      height: '32px', padding: '0 24px', borderRadius: '12px',
                       backgroundColor: C.surface,
                       border: `1px solid ${C.borderDefault}`,
                       cursor: 'pointer',
@@ -423,7 +436,7 @@ export default function ThumbnailPage() {
                     onClick={handleDownloadAll}
                     disabled={zipping}
                     style={{
-                      height: '32px', padding: '0 16px', borderRadius: '8px',
+                      height: '32px', padding: '0 24px', borderRadius: '12px',
                       backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
                       cursor: zipping ? 'default' : 'pointer',
                       fontFamily: font, fontSize: '13px', fontWeight: 400,
@@ -496,7 +509,7 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
-                        flex: 1, height: '26px', padding: '0 4px', borderRadius: '12px',
+                        flex: 1, height: '26px', padding: '0 4px', borderRadius: '8px',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
                         letterSpacing: '0.76px',
                         color: selected ? C.textWhite : '#5a5a5a',
@@ -547,7 +560,7 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
-                        flex: 1, height: '26px', borderRadius: '12px',
+                        flex: 1, height: '26px', borderRadius: '8px',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
                         letterSpacing: '0.76px',
                         color: selected ? C.textWhite : '#5a5a5a',
@@ -577,7 +590,7 @@ export default function ThumbnailPage() {
                 }}
                 className="outline-none"
                 style={{
-                  width: '100%', height: '28px', borderRadius: '12px',
+                  width: '100%', height: '28px', borderRadius: '8px',
                   backgroundColor: C.surface,
                   padding: '0 12px', marginTop: '8px',
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
@@ -615,7 +628,7 @@ export default function ThumbnailPage() {
                         if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                       }}
                       style={{
-                        flex: 1, height: '26px', padding: '0', borderRadius: '12px',
+                        flex: 1, height: '26px', padding: '0', borderRadius: '8px',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
                         letterSpacing: '0.76px',
                         color: selected ? C.textWhite : '#5a5a5a',
@@ -666,7 +679,7 @@ export default function ThumbnailPage() {
                           if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                         }}
                         style={{
-                          flex: 1, height: '26px', padding: '0', borderRadius: '12px',
+                          flex: 1, height: '26px', padding: '0', borderRadius: '8px',
                           fontFamily: font, fontSize: '11px', fontWeight: 400,
                           letterSpacing: '0.76px',
                           color: selected ? C.textWhite : '#5a5a5a',
@@ -795,6 +808,43 @@ export default function ThumbnailPage() {
                     lineHeight: '21px', letterSpacing: '-0.42px',
                     color: C.textPrimary, border: 'none',
                     minHeight: '88px', display: 'block',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* ── 고정 명령어 ── */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{
+                  fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  lineHeight: '17px', letterSpacing: '-0.24px',
+                  color: C.textPrimary, display: 'block',
+                }}>
+                  고정 명령어
+                </label>
+                <span style={{
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  color: C.textCaption, letterSpacing: '-0.22px',
+                }}>
+                  매 생성마다 자동으로 함께 전달돼요 · 새로고침해도 유지
+                </span>
+              </div>
+              <div style={{
+                borderRadius: '20px', border: `1px solid ${C.borderDefault}`,
+                padding: '14px 16px', backgroundColor: C.surface,
+              }}>
+                <textarea
+                  value={persistentPrompt}
+                  onChange={e => setPersistentPrompt(e.target.value)}
+                  placeholder="예: 항상 한국어 텍스트는 또렷하게, 인물은 가운데 정렬, 톤은 따뜻하게"
+                  rows={3}
+                  className="w-full outline-none bg-transparent resize-y"
+                  style={{
+                    fontFamily: font, fontSize: '14px', fontWeight: 400,
+                    lineHeight: '21px', letterSpacing: '-0.42px',
+                    color: C.textPrimary, border: 'none',
+                    minHeight: '64px', display: 'block',
                   }}
                 />
               </div>
@@ -971,7 +1021,18 @@ export default function ThumbnailPage() {
 
         {/* ════════ STEP: RESULT ════════ */}
         {step === 'result' && (
-          <div style={{ padding: '0 20px 40px' }}>
+          <div style={{ padding: '0 20px 40px', position: 'relative' }}>
+
+            {/* Vertical divider — extends from nav bottom to result content bottom */}
+            {effectiveCount > 1 && images.length > 0 && (
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0,
+                right: 'calc(20px + 88px + 12px)',
+                width: '1px',
+                backgroundColor: '#f0f0f0',
+                pointerEvents: 'none',
+              }} />
+            )}
 
             {/* Progress */}
             {generating && (
@@ -1019,18 +1080,7 @@ export default function ThumbnailPage() {
             <div style={{
               display: 'flex', gap: '24px', alignItems: 'flex-start',
               marginTop: '24px',
-              position: 'relative',
             }}>
-              {/* Vertical divider between main and thumbnail rail */}
-              {effectiveCount > 1 && images.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: 0, bottom: 0,
-                  right: 'calc(88px + 12px)',
-                  width: '1px',
-                  backgroundColor: '#f0f0f0',
-                  pointerEvents: 'none',
-                }} />
-              )}
               {/* Main preview column */}
               <div style={{ flex: '1 1 0', minWidth: 0 }}>
                 {currentImage?.src ? (
@@ -1061,10 +1111,11 @@ export default function ThumbnailPage() {
                         alt={`썸네일 ${currentImage.id}`}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
-                      {/* Hover overlay: download button */}
+                      {/* Hover overlay: full-width download button */}
                       <div style={{
                         position: 'absolute',
-                        bottom: '16px', right: '16px',
+                        bottom: 0, left: 0, right: 0,
+                        padding: '16px',
                         opacity: isMainHover ? 1 : 0,
                         transition: 'opacity 0.15s ease',
                         pointerEvents: isMainHover ? 'auto' : 'none',
@@ -1072,14 +1123,16 @@ export default function ThumbnailPage() {
                         <button
                           onClick={() => handleDownload(currentImage)}
                           style={{
-                            padding: '10px 20px', borderRadius: '12px',
+                            width: '100%',
+                            padding: '14px',
+                            borderRadius: '12px',
                             border: 'none',
                             backgroundColor: 'rgba(0, 0, 0, 0.65)',
                             backdropFilter: 'blur(6px)',
                             WebkitBackdropFilter: 'blur(6px)',
                             color: C.textWhite, cursor: 'pointer',
-                            fontFamily: font, fontSize: '13px', fontWeight: 400,
-                            letterSpacing: '-0.26px',
+                            fontFamily: font, fontSize: '14px', fontWeight: 400,
+                            letterSpacing: '-0.28px',
                           }}
                         >
                           다운로드
@@ -1124,15 +1177,19 @@ export default function ThumbnailPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {images.map((img) => {
                       const isSelected = img.id === selectedImageId;
+                      const isHovered = hoverThumbId === img.id;
                       return (
                         <button
                           key={img.id}
                           onClick={() => setSelectedImageId(img.id)}
+                          onMouseEnter={() => setHoverThumbId(img.id)}
+                          onMouseLeave={() => setHoverThumbId(null)}
                           className="transform-gpu"
                           style={{
+                            position: 'relative',
                             width: '100%',
                             aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
-                            borderRadius: '24px',
+                            borderRadius: '12px',
                             overflow: 'hidden',
                             border: isSelected
                               ? `2px solid ${C.primary}`
@@ -1147,11 +1204,36 @@ export default function ThumbnailPage() {
                           }}
                         >
                           {img.src && (
-                            <img
-                              src={img.src}
-                              alt={`썸네일 ${img.id}`}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
+                            <>
+                              <img
+                                src={img.src}
+                                alt={`썸네일 ${img.id}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                              <span
+                                onClick={(e) => { e.stopPropagation(); handleDownload(img); }}
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '6px', left: '6px', right: '6px',
+                                  display: 'block',
+                                  padding: '6px',
+                                  borderRadius: '6px',
+                                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                                  backdropFilter: 'blur(4px)',
+                                  WebkitBackdropFilter: 'blur(4px)',
+                                  color: C.textWhite,
+                                  fontFamily: font, fontSize: '10px', fontWeight: 400,
+                                  letterSpacing: '-0.2px',
+                                  textAlign: 'center',
+                                  cursor: 'pointer',
+                                  opacity: isHovered ? 1 : 0,
+                                  transition: 'opacity 0.15s ease',
+                                  pointerEvents: isHovered ? 'auto' : 'none',
+                                }}
+                              >
+                                다운로드
+                              </span>
+                            </>
                           )}
                         </button>
                       );
