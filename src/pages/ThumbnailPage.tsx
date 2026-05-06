@@ -358,7 +358,7 @@ export default function ThumbnailPage() {
       <div className="w-full relative" style={{ maxWidth: '1080px', fontFamily: font }}>
 
         {/* NavigationHeader */}
-        <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '1080px' }}>
+        <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '1080px', borderBottom: '1px solid #ececec' }}>
           <div className="flex flex-col justify-center size-full">
             <div className="content-stretch flex items-center justify-between px-[12px] py-[4px] relative size-full">
               <ArrowLeft onClick={() => {
@@ -385,15 +385,21 @@ export default function ThumbnailPage() {
           <div style={{
             padding: '0 20px', paddingBottom: '40px',
             display: 'flex', gap: '68px', flexWrap: 'wrap',
-            alignItems: 'flex-start',
+            alignItems: 'flex-start', position: 'relative',
           }}>
+          {/* 패널 우측 풀하이트 라인 */}
+          <div style={{
+            position: 'absolute', top: 0, bottom: 0,
+            left: 'calc(20px + 240px)', width: '1px',
+            backgroundColor: '#ececec', pointerEvents: 'none',
+          }} />
 
           {/* ── 좌측 설정 패널 (Figma 스타일) ── */}
           <aside style={{
             width: '240px', flexShrink: 0,
             position: 'sticky', top: '68px',
             display: 'flex', flexDirection: 'column',
-            paddingRight: '20px', borderRight: '1px solid #ececec',
+            paddingRight: '20px',
           }}>
 
             {/* ── 이미지 비율 ── */}
@@ -602,7 +608,7 @@ export default function ThumbnailPage() {
             </div>
 
             {/* ── 레퍼런스 이미지 ── */}
-            <div style={{ marginBottom: '24px', position: 'relative' }}>
+            <div style={{ marginBottom: '24px' }}>
               <label style={{
                 fontFamily: font, fontSize: '13px', fontWeight: 400,
                 lineHeight: '18px', letterSpacing: '-0.26px',
@@ -734,29 +740,6 @@ export default function ThumbnailPage() {
                   />
                 </label>
               )}
-
-              {/* ── CTA: 레퍼런스 영역 우측 하단 floating ── */}
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate}
-                onPointerDown={e => { if (canGenerate) e.currentTarget.style.transform = 'scale(0.99)'; }}
-                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
-                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
-                style={{
-                  position: 'absolute', bottom: '16px', right: '16px',
-                  height: '40px', padding: '0 20px', borderRadius: '12px',
-                  backgroundColor: canGenerate ? C.primary : C.surfaceDisabled,
-                  border: 'none', cursor: canGenerate ? 'pointer' : 'default',
-                  fontFamily: font, fontSize: '14px', fontWeight: 600,
-                  color: canGenerate ? C.textWhite : C.textDisabled,
-                  letterSpacing: '-0.28px',
-                  transition: 'all 0.15s ease',
-                  boxShadow: canGenerate ? '0 2px 8px rgba(72, 178, 175, 0.25)' : 'none',
-                  zIndex: 2,
-                }}
-              >
-                썸네일 생성하기
-              </button>
             </div>
 
             {/* ── 레퍼런스 모드 (레퍼런스가 있을 때만) ── */}
@@ -868,6 +851,32 @@ export default function ThumbnailPage() {
                 </div>
               </div>
             )}
+
+            {/* ── CTA: 메인 컬럼 끝, 우측 정렬 ── */}
+            <div style={{
+              display: 'flex', justifyContent: 'flex-end',
+              marginTop: '8px',
+            }}>
+              <button
+                onClick={handleGenerate}
+                disabled={!canGenerate}
+                onPointerDown={e => { if (canGenerate) e.currentTarget.style.transform = 'scale(0.99)'; }}
+                onPointerUp={e => { e.currentTarget.style.transform = ''; }}
+                onPointerLeave={e => { e.currentTarget.style.transform = ''; }}
+                style={{
+                  height: '44px', padding: '0 24px', borderRadius: '12px',
+                  backgroundColor: canGenerate ? C.primary : C.surfaceDisabled,
+                  border: 'none', cursor: canGenerate ? 'pointer' : 'default',
+                  fontFamily: font, fontSize: '14px', fontWeight: 600,
+                  color: canGenerate ? C.textWhite : C.textDisabled,
+                  letterSpacing: '-0.28px',
+                  transition: 'all 0.15s ease',
+                  boxShadow: canGenerate ? '0 2px 8px rgba(72, 178, 175, 0.25)' : 'none',
+                }}
+              >
+                썸네일 생성하기
+              </button>
+            </div>
 
           </div>{/* close main column */}
           </div>
