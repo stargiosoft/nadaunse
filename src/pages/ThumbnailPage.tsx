@@ -135,6 +135,10 @@ export default function ThumbnailPage() {
   const [isMainHover, setIsMainHover] = useState(false);
   const [hoverThumbId, setHoverThumbId] = useState<number | null>(null);
 
+  // Edit (이미지 디벨롭)
+  const [editPrompt, setEditPrompt] = useState('');
+  const [editing, setEditing] = useState(false);
+
   // ── Handlers ──
 
   const MAX_REFERENCES = 8;
@@ -320,6 +324,47 @@ export default function ThumbnailPage() {
       setError(err instanceof Error ? err.message : '재생성 실패');
     }
   }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images]);
+
+  const handleEdit = useCallback(async () => {
+    const target = (selectedImageId !== null ? images.find(img => img.id === selectedImageId) : undefined) || images[0];
+    const editText = editPrompt.trim();
+    if (!target?.src || !editText || editing) return;
+
+    setEditing(true);
+    setError(null);
+
+    const base64 = target.src.split(',')[1];
+    const fixedPrompt = persistentPrompt.trim();
+    const combinedPrompt = [editText, fixedPrompt].filter(Boolean).join('\n\n');
+    const newId = images.reduce((max, img) => Math.max(max, img.id), 0) + 1;
+
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: combinedPrompt,
+          aspect_ratio: ratioId,
+          reference_images: [base64],
+          reference_mode: 'style_and_character',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '이미지 수정 실패');
+
+      const newImage: GeneratedImage = {
+        id: newId,
+        src: `data:${data.mimeType};base64,${data.image}`,
+      };
+      setImages(prev => [...prev, newImage]);
+      setSelectedImageId(newId);
+      setEditPrompt('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '이미지 수정 실패');
+    } finally {
+      setEditing(false);
+    }
+  }, [selectedImageId, images, editPrompt, editing, persistentPrompt, ratioId]);
 
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
@@ -1033,7 +1078,7 @@ export default function ThumbnailPage() {
           <div style={{ padding: '0 20px 40px', position: 'relative' }}>
 
             {/* Vertical divider — extends from nav bottom to result content bottom */}
-            {effectiveCount > 1 && images.length > 0 && (
+            {images.length > 1 && (
               <div style={{
                 position: 'absolute', top: '-1px', bottom: 0,
                 right: 'calc(20px + 88px + 16px)',
@@ -1070,55 +1115,108 @@ export default function ThumbnailPage() {
                   <div style={{
                     width: '100%',
                     display: 'flex',
-                    alignItems: 'flex-start',
                     justifyContent: 'center',
                   }}>
-                    <div
-                      className="transform-gpu"
-                      onMouseEnter={() => setIsMainHover(true)}
-                      onMouseLeave={() => setIsMainHover(false)}
-                      style={{
-                        position: 'relative',
-                        aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
-                        maxHeight: 'min(72vh, 720px)',
-                        maxWidth: '100%',
-                        width: 'auto',
-                        height: 'auto',
-                        borderRadius: '24px',
-                        border: `1px solid ${C.borderDefault}`,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <img
-                        src={currentImage.src}
-                        alt={`썸네일 ${currentImage.id}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      />
-                      {/* Hover overlay: full-width download button */}
+                    <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
+                      <div
+                        className="transform-gpu"
+                        onMouseEnter={() => setIsMainHover(true)}
+                        onMouseLeave={() => setIsMainHover(false)}
+                        style={{
+                          position: 'relative',
+                          aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
+                          maxHeight: 'min(72vh, 720px)',
+                          maxWidth: '100%',
+                          width: 'auto',
+                          height: 'auto',
+                          borderRadius: '24px',
+                          border: `1px solid ${C.borderDefault}`,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <img
+                          src={currentImage.src}
+                          alt={`썸네일 ${currentImage.id}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                        {/* Hover overlay: full-width download button */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0, left: 0, right: 0,
+                          padding: '16px',
+                          opacity: isMainHover ? 1 : 0,
+                          transition: 'opacity 0.15s ease',
+                          pointerEvents: isMainHover ? 'auto' : 'none',
+                        }}>
+                          <button
+                            onClick={() => handleDownload(currentImage)}
+                            style={{
+                              width: '100%',
+                              padding: '14px',
+                              borderRadius: '12px',
+                              border: 'none',
+                              backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                              backdropFilter: 'blur(6px)',
+                              WebkitBackdropFilter: 'blur(6px)',
+                              color: C.textWhite, cursor: 'pointer',
+                              fontFamily: font, fontSize: '14px', fontWeight: 400,
+                              letterSpacing: '-0.28px',
+                            }}
+                          >
+                            다운로드
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* ── 이미지 수정 입력 ── */}
                       <div style={{
-                        position: 'absolute',
-                        bottom: 0, left: 0, right: 0,
-                        padding: '16px',
-                        opacity: isMainHover ? 1 : 0,
-                        transition: 'opacity 0.15s ease',
-                        pointerEvents: isMainHover ? 'auto' : 'none',
+                        marginTop: '16px',
+                        display: 'flex', gap: '8px', alignItems: 'stretch',
                       }}>
-                        <button
-                          onClick={() => handleDownload(currentImage)}
+                        <input
+                          type="text"
+                          value={editPrompt}
+                          onChange={e => setEditPrompt(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.nativeEvent.isComposing && editPrompt.trim() && !editing) {
+                              e.preventDefault();
+                              handleEdit();
+                            }
+                          }}
+                          placeholder="이미지를 어떻게 수정할까요? (예: 배경을 노을지는 해변으로)"
+                          disabled={editing}
+                          className="outline-none"
                           style={{
-                            width: '100%',
-                            padding: '14px',
-                            borderRadius: '12px',
+                            flex: 1, height: '44px', borderRadius: '12px',
+                            padding: '0 16px',
+                            fontFamily: font, fontSize: '13px', fontWeight: 400,
+                            color: C.textPrimary,
+                            backgroundColor: editing ? C.surfaceDisabled : C.surface,
+                            border: `1px solid ${C.borderDefault}`,
+                            letterSpacing: '-0.26px',
+                            transition: 'all 0.15s ease',
+                            minWidth: 0,
+                          }}
+                          onFocus={e => { if (!editing) e.currentTarget.style.borderColor = C.primary; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = C.borderDefault; }}
+                        />
+                        <button
+                          onClick={handleEdit}
+                          disabled={!editPrompt.trim() || editing}
+                          style={{
+                            height: '44px', padding: '0 24px', borderRadius: '12px',
+                            backgroundColor: editPrompt.trim() && !editing ? C.primary : C.surfaceDisabled,
                             border: 'none',
-                            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                            backdropFilter: 'blur(6px)',
-                            WebkitBackdropFilter: 'blur(6px)',
-                            color: C.textWhite, cursor: 'pointer',
-                            fontFamily: font, fontSize: '14px', fontWeight: 400,
-                            letterSpacing: '-0.28px',
+                            cursor: editPrompt.trim() && !editing ? 'pointer' : 'default',
+                            fontFamily: font, fontSize: '13px', fontWeight: 400,
+                            color: editPrompt.trim() && !editing ? C.textWhite : C.textDisabled,
+                            letterSpacing: '-0.26px',
+                            transition: 'all 0.15s ease',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
                           }}
                         >
-                          다운로드
+                          {editing ? '수정 중...' : '수정하기'}
                         </button>
                       </div>
                     </div>
@@ -1150,7 +1248,7 @@ export default function ThumbnailPage() {
               </div>
 
               {/* Right thumbnail rail */}
-              {effectiveCount > 1 && images.length > 0 && (
+              {images.length > 1 && (
                 <aside style={{
                   width: '88px',
                   flexShrink: 0,
