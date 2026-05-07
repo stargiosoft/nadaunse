@@ -503,7 +503,14 @@ export default function ThumbnailPage() {
       <div className="w-full relative" style={{ maxWidth: '1200px', fontFamily: font }}>
 
         {/* NavigationHeader */}
-        <div className="bg-white shrink-0 w-full z-20 fixed top-0 left-1/2 -translate-x-1/2" style={{ height: '52px', maxWidth: '1200px', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{
+          position: 'fixed', top: 0, left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%', maxWidth: '1200px',
+          height: '52px', zIndex: 50,
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #f0f0f0',
+        }}>
           <div className="flex flex-col justify-center size-full">
             <div className="flex items-center justify-between px-[12px] py-[4px] relative size-full">
               <ArrowLeft onClick={() => {
@@ -595,6 +602,7 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
               }}>
                 이미지 비율
               </label>
@@ -646,6 +654,7 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
               }}>
                 생성 개수
               </label>
@@ -714,6 +723,7 @@ export default function ThumbnailPage() {
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
                 color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
               }}>
                 파일 형식
               </label>
@@ -765,6 +775,7 @@ export default function ThumbnailPage() {
                   fontFamily: font, fontSize: '12px', fontWeight: 400,
                   lineHeight: '17px', letterSpacing: '-0.24px',
                   color: C.textPrimary, display: 'block', marginBottom: '8px',
+                  paddingLeft: '2px',
                 }}>
                   참고 방식
                 </label>
@@ -1183,7 +1194,7 @@ export default function ThumbnailPage() {
                               handleEdit();
                             }
                           }}
-                          placeholder="이미지를 어떻게 수정할까요? (예: 배경을 노을지는 해변으로)"
+                          placeholder="어떻게 수정할까요? (예: 여자 드레스를 흰색으로)"
                           disabled={editing}
                           className="outline-none"
                           style={{
