@@ -48,6 +48,7 @@ const ASPECT_RATIOS = [
 const REFERENCE_MODES = [
   { id: 'style_only', label: '스타일만 참고', desc: '색감·구도·분위기만 따라감' },
   { id: 'style_and_character', label: '캐릭터+스타일', desc: '캐릭터·인물까지 유지' },
+  { id: 'outpaint', label: '여백 채우기', desc: '레퍼런스 그대로, 빈 공간만 자동 확장' },
 ] as const;
 
 const IMAGE_COUNTS = [1, 2, 3, 4] as const;
@@ -57,6 +58,47 @@ const FILE_FORMATS = [
   { id: 'jpg', label: 'JPG', desc: '작은 용량' },
   { id: 'webp', label: 'WebP', desc: '웹 최적화' },
 ] as const;
+
+// 흰 여백 자동 채우기용: 레퍼런스를 선택된 비율에 맞춰 흰 padding으로 감싼 base64를 반환.
+// 이렇게 하면 모델이 "어디를 채워야 하는지" 픽셀 레벨로 보게 되어 outpaint 정확도가 크게 올라감.
+async function padReferenceForOutpaint(rawBase64: string, targetW: number, targetH: number): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const targetAspect = targetW / targetH;
+      const imgAspect = img.naturalWidth / img.naturalHeight;
+      // 비율이 거의 같으면 padding 불필요
+      if (Math.abs(targetAspect - imgAspect) < 0.01) {
+        resolve(rawBase64);
+        return;
+      }
+      let canvasW: number, canvasH: number;
+      if (imgAspect > targetAspect) {
+        // 레퍼런스가 더 가로로 길다 → 위/아래에 흰 padding (캔버스 폭은 그대로, 높이만 늘림)
+        canvasW = img.naturalWidth;
+        canvasH = Math.round(img.naturalWidth / targetAspect);
+      } else {
+        // 레퍼런스가 더 세로로 길다 → 좌/우에 흰 padding
+        canvasH = img.naturalHeight;
+        canvasW = Math.round(img.naturalHeight * targetAspect);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('canvas context unavailable')); return; }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+      const x = Math.round((canvasW - img.naturalWidth) / 2);
+      const y = Math.round((canvasH - img.naturalHeight) / 2);
+      ctx.drawImage(img, x, y);
+      const dataUrl = canvas.toDataURL('image/png');
+      resolve(dataUrl.split(',')[1] || rawBase64);
+    };
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = `data:image/png;base64,${rawBase64}`;
+  });
+}
 
 // ── Component ──
 
@@ -75,7 +117,8 @@ export default function ThumbnailPage() {
   });
   const [ratioId, setRatioId] = useState<string>('9:16');
   const [referenceMode, setReferenceMode] = useState<string>('style_only');
-  const [autoFillBackground, setAutoFillBackground] = useState(false);
+  // 여백 채우기 모드는 referenceMode에서 파생 (별도 체크박스 제거)
+  const autoFillBackground = referenceMode === 'outpaint';
   const [imageCount, setImageCount] = useState<number>(2);
   const [customCountActive, setCustomCountActive] = useState(false);
   const [customCountText, setCustomCountText] = useState('');
@@ -168,16 +211,27 @@ export default function ThumbnailPage() {
     const userPrompt = (promptOverride || prompt).trim();
     const fixedPrompt = persistentPrompt.trim();
     const combinedPrompt = [userPrompt, fixedPrompt].filter(Boolean).join('\n\n');
-    const effectivePrompt = combinedPrompt
-      || (autoFillBackground && referenceBase64s.length > 0
-        ? "Keep the reference image's design, colors, and overall composition exactly as they are — do not alter or reinterpret them. Only fill the empty white/blank areas with a natural background that seamlessly matches the original art style, brushwork, and palette of the reference image."
-        : '');
+    // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
+    // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
+    const effectivePrompt = combinedPrompt;
     const body: Record<string, unknown> = {
       prompt: effectivePrompt,
       aspect_ratio: ratioId,
     };
     if (referenceBase64s.length > 0) {
-      body.reference_images = referenceBase64s;
+      let refsToSend = referenceBase64s;
+      if (autoFillBackground) {
+        // 선택된 비율에 맞게 레퍼런스를 흰 padding으로 감싸 outpaint 영역을 명시
+        const targetRatio = ASPECT_RATIOS.find(r => r.id === ratioId) || ASPECT_RATIOS[0];
+        try {
+          refsToSend = await Promise.all(
+            referenceBase64s.map(b64 => padReferenceForOutpaint(b64, targetRatio.width, targetRatio.height))
+          );
+        } catch (e) {
+          console.warn('[ThumbnailPage] padReferenceForOutpaint failed, falling back to raw:', e);
+        }
+      }
+      body.reference_images = refsToSend;
       body.reference_mode = referenceMode;
       if (autoFillBackground) body.auto_fill_background = true;
     }
@@ -210,6 +264,7 @@ export default function ThumbnailPage() {
       tasks.push({ id: i + 1 });
     }
 
+    let firstFailureMessage: string | null = null;
     for (let batchStart = 0; batchStart < tasks.length; batchStart += BATCH_SIZE) {
       const batch = tasks.slice(batchStart, batchStart + BATCH_SIZE);
 
@@ -230,6 +285,9 @@ export default function ThumbnailPage() {
           results.push(result.value);
         } else {
           console.error('Image generation failed:', result.reason);
+          if (!firstFailureMessage) {
+            firstFailureMessage = result.reason instanceof Error ? result.reason.message : String(result.reason);
+          }
         }
       }
 
@@ -239,7 +297,7 @@ export default function ThumbnailPage() {
     }
 
     if (results.length === 0) {
-      setError('이미지 생성에 실패했어요');
+      setError(firstFailureMessage || '이미지 생성에 실패했어요');
     }
 
     setGenerating(false);
@@ -665,7 +723,7 @@ export default function ThumbnailPage() {
                 }}>
                   참고 방식
                 </label>
-                <div className="flex" style={{ gap: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {REFERENCE_MODES.map(mode => {
                     const selected = referenceMode === mode.id;
                     return (
@@ -679,7 +737,7 @@ export default function ThumbnailPage() {
                           if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
                         }}
                         style={{
-                          flex: 1, height: '26px', padding: '0', borderRadius: '8px',
+                          width: '100%', height: '30px', padding: '0', borderRadius: '8px',
                           fontFamily: font, fontSize: '11px', fontWeight: 400,
                           letterSpacing: '0.76px',
                           color: selected ? C.textWhite : '#5a5a5a',
@@ -702,40 +760,6 @@ export default function ThumbnailPage() {
               }}>
                 {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
               </p>
-            </div>
-
-            {/* ── 흰색 여백 자동 채우기 ── */}
-            <div
-              onClick={() => setAutoFillBackground(v => !v)}
-              style={{
-                padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
-                marginLeft: '-28px', marginRight: '-20px',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  flexShrink: 0, marginTop: '0px',
-                  width: '20px', height: '20px', borderRadius: '12px',
-                  border: `1.5px solid ${autoFillBackground ? C.primary : C.borderDefault}`,
-                  backgroundColor: autoFillBackground ? C.primary : C.surface,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.15s ease',
-                }}>
-                  {autoFillBackground && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </div>
-                <span style={{
-                  fontFamily: font, fontSize: '12px', fontWeight: 400,
-                  color: autoFillBackground ? C.primary : C.textPrimary,
-                  letterSpacing: '-0.24px',
-                }}>
-                  흰색 여백 자동 채우기
-                </span>
-              </div>
             </div>
 
             {/* ── 스펙 요약 ── */}
@@ -764,17 +788,8 @@ export default function ThumbnailPage() {
                   lineHeight: '18.3px', color: C.primary, letterSpacing: '-0.22px',
                   margin: 0,
                 }}>
-                  {referenceMode === 'style_only' ? '스타일만 참고' : '캐릭터+스타일'}
+                  {REFERENCE_MODES.find(m => m.id === referenceMode)?.label || referenceMode}
                 </p>
-                {autoFillBackground && (
-                  <p style={{
-                    fontFamily: font, fontSize: '11px', fontWeight: 400,
-                    lineHeight: '18.3px', color: C.primary, letterSpacing: '-0.22px',
-                    margin: 0,
-                  }}>
-                    여백 채우기
-                  </p>
-                )}
               </div>
             </div>
 
@@ -1020,8 +1035,8 @@ export default function ThumbnailPage() {
             {/* Vertical divider — extends from nav bottom to result content bottom */}
             {effectiveCount > 1 && images.length > 0 && (
               <div style={{
-                position: 'absolute', top: 0, bottom: 0,
-                right: 'calc(20px + 88px + 12px)',
+                position: 'absolute', top: '-1px', bottom: 0,
+                right: 'calc(20px + 88px + 16px)',
                 width: '1px',
                 backgroundColor: '#f0f0f0',
                 pointerEvents: 'none',
@@ -1142,7 +1157,7 @@ export default function ThumbnailPage() {
                   position: 'sticky',
                   top: '68px',
                 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {images.map((img) => {
                       const isSelected = img.id === selectedImageId;
                       const isHovered = hoverThumbId === img.id;
