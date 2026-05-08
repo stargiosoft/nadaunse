@@ -126,7 +126,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -160,12 +160,12 @@ serve(async (req) => {
       const styleDescription = await extractStyleDescription(refs, apiKey)
 
       const variation2StepBlock = (typeof variation_directive === 'string' && variation_directive.trim().length > 0)
-        ? `[VARIATION DIRECTIVE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
-This image is one of multiple images sharing the same user prompt. Each sibling must be visually distinct via different angle/framing/lighting/expression/action/time-of-day. Follow this directive faithfully:
+        ? `[VARIATION GUIDANCE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
+This image is one of multiple images sharing the same user prompt and the SAME REFERENCE IMAGE. All siblings must look like they came from the same series — the visual style, medium, line work, texture, color palette, lighting mood, and overall concept extracted from the reference image are LOCKED across every sibling. The reference image is the absolute source of truth for these visual properties; nothing in the variation guidance below is allowed to alter them.
+
+Apply ONLY the subtle differentiation specified below, strictly within the locked visual identity:
 
 ${variation_directive.trim()}
-
-DO NOT regress to a default centered medium shot with neutral expression. Visibly execute every directive point so a viewer can identify which directive this image follows.
 
 `
         : ''
@@ -241,26 +241,25 @@ INCORRECT BEHAVIOR (do NOT do this): outputting the people from image 2, or blen
 `
         : ''
 
-      // 멀티 생성 시 호출별로 카메라/프레이밍/조명/순간을 다르게 강제하는 directive.
-      // STYLE LOCK / CHARACTER LOCK과 동등한 최상위 우선순위로 배치하지 않으면 모델이 LOCK에 끌려 평균값으로 회귀해 결과가 비슷해진다.
+      // 멀티 생성 시 호출별로 약한 변주만 부여. STYLE LOCK / CHARACTER LOCK이 우선이며,
+      // 변주는 사용자 슬라이더(앵글 다양성·이미지 다양성)가 정한 강도 안에서만 적용된다.
       const hasVariation = typeof variation_directive === 'string' && variation_directive.trim().length > 0
       const variationBlock = hasVariation
-        ? `[VARIATION DIRECTIVE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'} — ABSOLUTE TOP PRIORITY, EQUAL WEIGHT TO INDEXED REFERENCE MAPPING AND STYLE/CHARACTER LOCK]
+        ? `[VARIATION GUIDANCE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
 
-This image is one of multiple images being generated from the SAME user prompt and SAME reference(s). All sibling images in this set share the same character, same style, same outfit, same overall scene concept — but EACH image must be a visually distinct shot/moment. Your sole job for THIS image is to follow the directive below FAITHFULLY.
+This image is one of multiple images being generated from the SAME user prompt and the SAME reference image(s). All sibling images must look like the SAME SERIES, sourced from the same reference:
+• Visual style, medium, line work, rendering technique — taken from the reference, identical across all siblings.
+• Texture, brush feel, grain, post-processing — taken from the reference, identical across all siblings.
+• Color palette, tonal range, overall mood — taken from the reference, identical across all siblings.
+• Character/subject identity, outfit, props — taken from the reference, identical across all siblings.
+• Concept, world, narrative atmosphere — taken from the reference, identical across all siblings.
 
-This directive does NOT override [STYLE LOCK] (medium and drawing/photographic style still come from references) or [CHARACTER LOCK] (the same person/character must be preserved). It REDIRECTS only camera/framing/lighting/moment dimensions — making this one image visually distinct from its siblings while keeping subject identity and visual style locked.
+The reference image is the ABSOLUTE source of truth for those properties. Apply ONLY the subtle differentiation specified below, strictly within that locked visual identity.
 
-CRITICAL ANTI-REGRESSION RULES:
-• DO NOT default to a centered eye-level medium shot with soft front lighting. That is the regression-to-the-mean behavior that makes sibling images look identical.
-• DO NOT replace the directive with a "safer" or "more conventional" composition. Follow EXACTLY what is specified — same angle, same framing, same lighting direction, same moment.
-• Visibly execute every one of the 4 directive points (angle, framing, lighting, moment). A reviewer must be able to identify each one in the final image.
-• If the directive conflicts with the user instruction's implied default composition, the directive WINS for camera/framing/lighting/moment. The user instruction still defines subject and scene content.
+This guidance does NOT override [STYLE LOCK] or [CHARACTER LOCK] — those win in any conflict. It only suggests light variation in the dimensions explicitly listed below; do not fabricate variation in dimensions the directive doesn't mention.
 
 DIRECTIVE FOR THIS SPECIFIC IMAGE:
 ${variation_directive.trim()}
-
-Apply this directive while keeping the person/character identical to references and the visual style identical to references. Subject identity and style: locked to references. Camera, framing, lighting, moment: as instructed above, NOT a default fallback.
 
 `
         : ''
@@ -329,11 +328,23 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
       'x-goog-api-key': apiKey,
     }
 
-    // 같은 prompt+레퍼런스로 N번 호출되어도 출력이 다양하게 나오도록 temperature를 살짝 올리고
     // 호출별 seed를 반영. seed가 없으면 매 호출마다 다른 난수를 자동 부여해 결정론적 출력을 깨뜨림.
     const effectiveSeed = typeof seed === 'number' && Number.isFinite(seed)
       ? Math.floor(seed)
       : Math.floor(Math.random() * 2_147_483_647)
+
+    // 클라이언트의 "이미지 다양성" 슬라이더(0~100)를 Gemini temperature(0.5~1.2)로 비선형 매핑.
+    // 슬라이더가 없으면 0.75(적당히 일관성)로 기본 설정.
+    const variationLevel = typeof image_variation === 'number' && Number.isFinite(image_variation)
+      ? Math.max(0, Math.min(100, image_variation))
+      : 33
+    const effectiveTemperature = (() => {
+      const v = variationLevel
+      if (v <= 20) return 0.5 + (v / 20) * 0.15
+      if (v <= 50) return 0.65 + ((v - 20) / 30) * 0.15
+      if (v <= 80) return 0.80 + ((v - 50) / 30) * 0.20
+      return 1.0 + ((v - 80) / 20) * 0.20
+    })()
 
     const requestBody = JSON.stringify({
       contents: [{ parts }],
@@ -342,7 +353,7 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
         imageConfig: {
           aspectRatio: aspect_ratio || '16:9',
         },
-        temperature: 1.3,
+        temperature: effectiveTemperature,
         seed: effectiveSeed,
       },
     })

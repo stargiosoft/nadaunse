@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { supabaseUrl } from '../lib/supabase';
 import ArrowLeft from '../components/ArrowLeft';
+import { VariationSlider } from '../components/ui/VariationSlider';
 
 // ── Types ──
 
@@ -103,56 +104,83 @@ async function padReferenceForOutpaint(rawBase64: string, targetW: number, targe
 // 멀티 생성(생성 개수 ≥ 2)에서 매 호출이 동일 prompt+레퍼런스라 결과가 너무 비슷하게 나오는 문제를 해결하기 위해,
 // 호출별로 카메라/프레이밍/조명/표정/동작/시간대를 다르게 지정하는 directive를 백엔드 최상위 블록으로 주입한다.
 // 카메라 차원만 흔들면 모델이 큰 차이를 못 만드므로, 콘텐츠 레벨(표정·동작·시간대)까지 같이 분기해야 사람 눈에 "다르다"고 느껴진다.
-const VARIATION_PRESETS = [
-  {
-    angle: '강한 로우 앵글, 가슴 높이에서 인물 얼굴을 올려다보는 시점',
-    framing: '얼굴과 상반신을 화면에 가득 채우는 타이트 클로즈업, 인물이 프레임을 압도',
-    lighting: '한쪽 측면에서 들어오는 강한 사이드 라이트, 얼굴 절반은 짙은 그림자',
-    timeOfDay: '늦은 저녁, 인공조명이 주광원으로 작용하는 시간대',
-    expression: '진지하고 강렬한 표정, 입꼬리는 살짝 닫힌 채 시선만 카메라를 꿰뚫는 느낌',
-    action: '정적인 포즈에서 카메라를 정면 응시, 손은 자연스럽게 한쪽에 두고 몸은 약간 비틀어진 자세',
-  },
-  {
-    angle: '아이레벨에서 약간 떨어진 와이드 앵글, 공간이 인물을 감싸는 시점',
-    framing: '전신 또는 무릎 위까지 보이고 주변 환경이 화면의 50% 이상 차지',
-    lighting: '실내 앰비언트 광원의 부드러운 전반 광량, 그림자가 약하고 콘트라스트가 낮음',
-    timeOfDay: '낮 또는 이른 오후, 자연광이 섞인 부드러운 시간대',
-    expression: '편안하고 차분한 표정, 시선이 카메라가 아닌 비껴 있고 입가에 미세한 여유',
-    action: '환경과 자연스럽게 상호작용 — 창밖 응시, 무언가를 만지거나 들고 있는 자연스러운 동작',
-  },
-  {
-    angle: '하이 앵글, 살짝 위에서 비스듬히 내려다보는 대각선 시점',
-    framing: '인물을 화면의 한쪽 구석(좌하단 또는 우하단)에 배치하는 대각선 구도',
-    lighting: '인물 뒤쪽에서 들어오는 강한 백라이트, 얼굴 앞면은 어둡고 머리·어깨 윤곽선이 빛남',
-    timeOfDay: '해 질 녘 골든 아워, 따뜻한 호박색 톤이 전체를 감싸는 시간대',
-    expression: '서로를 향한 미세한 미소나 친밀한 시선 교환, 입술이 살짝 벌어진 정도의 부드러움',
-    action: '두 인물이 서로를 향해 몸이 기울어지는 동적 인터랙션 — 가까이 다가서거나 신체 접촉이 있는 한 순간',
-  },
-  {
-    angle: '오버더숄더 또는 더치 틸트(살짝 기울어진) 사이드 앵글',
-    framing: '한 인물의 뒷모습/어깨가 전경을 차지하고 다른 인물이 배경에 또렷하게 자리잡는 구성',
-    lighting: '강한 콘트라스트의 무드 조명, 깊은 검은 음영과 강한 하이라이트의 극단적 대비',
-    timeOfDay: '밤, 강한 인공 조명 또는 네온 톤이 도드라지는 시간대',
-    expression: '집중하거나 무언가에 사로잡힌 듯한 강렬한 표정, 시선은 정면이 아닌 한 점에 고정',
-    action: '움직임이 살아있는 동적 자세 — 걷거나, 손을 뻗거나, 몸이 한쪽으로 기울어지는 한 순간',
-  },
+// 컷별로 순환할 앵글 후보. angleVariation 슬라이더가 0이면 directive에 포함하지 않음.
+const ANGLE_PRESETS = [
+  '정면 아이레벨 — 평범하고 자연스러운 시점',
+  '로우 앵글 — 살짝 올려다보는 시점',
+  '하이 앵글 — 살짝 내려다보는 시점',
+  '사이드/오버더숄더 — 비스듬한 시점',
 ] as const;
+
+// 슬라이더(0~100) → 앵글 강조 어조
+function angleAdjective(v: number): string {
+  if (v < 41) return '아주 살짝';
+  if (v < 71) return '뚜렷하게';
+  return '강하게';
+}
+
+// 사용자가 보는 helper 텍스트 (Slider 아래 보조 설명)
+export function angleHelperText(v: number): string {
+  if (v < 15) return '앵글 변화 없음 — 모든 컷이 같은 시점';
+  if (v < 41) return '약한 앵글 변화 — 정면 위주, 미세한 시점 차이';
+  if (v < 71) return '다양한 앵글 — 로우·하이·사이드 시점이 뚜렷하게 섞임';
+  return '강한 앵글 변주 — 익스트림 시점까지 적극 활용';
+}
+
+export function imageHelperText(v: number): string {
+  if (v < 15) return '거의 동일한 결과 — 컷 간 차이 최소';
+  if (v < 41) return '비슷한 결과, 미세 변주만 — 같은 시리즈의 연속 컷 느낌';
+  if (v < 71) return '프롬프트를 다양한 방향으로 해석 — 명확한 변주';
+  return '자유로운 해석 — 결과 분기 폭이 큼';
+}
+
+// 슬라이더(0~100) → Gemini temperature (비선형 매핑)
+export function imageVariationToTemperature(v: number): number {
+  if (v <= 20) return 0.5 + (v / 20) * 0.15;          // 0~20 → 0.50~0.65
+  if (v <= 50) return 0.65 + ((v - 20) / 30) * 0.15;  // 20~50 → 0.65~0.80
+  if (v <= 80) return 0.80 + ((v - 50) / 30) * 0.20;  // 50~80 → 0.80~1.00
+  return 1.0 + ((v - 80) / 20) * 0.20;                // 80~100 → 1.00~1.20
+}
 
 type VariationInfo = { index: number; total: number; directive: string };
 
-function buildVariationInfo(index: number, total: number): VariationInfo | null {
+function buildVariationInfo(
+  index: number,
+  total: number,
+  angleVariation: number,
+  imageVariation: number,
+): VariationInfo | null {
   if (total <= 1) return null;
-  const v = VARIATION_PRESETS[index % VARIATION_PRESETS.length];
-  const directive = `다음 6가지 항목을 모두 충실히 시각화해서 다른 컷과 한눈에 구분되도록 출력하세요:
+  // 두 슬라이더 모두 매우 낮으면 directive 자체를 생략 (seed 차이로만 자연 변주)
+  if (angleVariation < 10 && imageVariation < 10) return null;
 
-• 카메라 앵글: ${v.angle}
-• 프레이밍/구도: ${v.framing}
-• 조명/라이팅: ${v.lighting}
-• 시간대/분위기: ${v.timeOfDay}
-• 표정/시선: ${v.expression}
-• 동작/포즈: ${v.action}
+  const includeAngle = angleVariation >= 15;
+  const angleClause = includeAngle
+    ? `• 카메라 앵글: ${angleAdjective(angleVariation)} ${ANGLE_PRESETS[index % ANGLE_PRESETS.length]} (인물·캐릭터가 등장하는 이미지에 한해 자연스럽게 적용. 텍스트·플랫 일러스트·풍경 등 앵글이 어색한 경우 무시)\n`
+    : '';
 
-평범한 정면샷·미디엄샷·정면조명·중립표정으로의 회귀 절대 금지. 위 6가지 항목 모두 결과 이미지에서 즉시 식별 가능해야 하며, 이 directive를 따르는 컷이라는 게 한눈에 보여야 합니다.`;
+  const intensityNote = imageVariation < 41
+    ? '"같은 시리즈의 연속 컷" 수준의 미세 변주만. 강한 차이 금지.'
+    : imageVariation < 71
+      ? '같은 시리즈처럼 일관성을 유지하되, 프롬프트 해석의 방향성은 컷마다 분명히 다르게.'
+      : '프롬프트의 다양한 해석을 적극적으로 시도. 같은 화풍·색감·캐릭터는 유지.';
+
+  const directive = `이 컷은 ${total}장 시리즈 중 ${index + 1}번째.
+
+[일관성 LOCK — 레퍼런스 이미지 기반으로 절대 동일하게 유지]
+• 그림체·일러스트 화풍 (medium·line work·rendering 기법)
+• 질감·텍스처 (붓터치·러프함·픽셀감·필터·후처리 정도)
+• 색감·팔레트·톤·전체 분위기
+• 캐릭터/오브젝트 외형 (의상·헤어·얼굴 형태·디테일)
+• 컨셉·세계관·서사적 분위기
+• 조명 무드와 시간대
+
+레퍼런스 이미지가 있는 경우, 위 항목은 모두 레퍼런스에서 추출된 시각 정체성을 그대로 따름. 이 LOCK은 어떤 변주보다도 우선.
+
+[이 컷의 변주 — 다른 컷과 약간만 다르게]
+${angleClause}• ${intensityNote}
+• 변주는 LOCK 항목을 절대 흔들지 않는 범위 안에서만 적용.`;
+
   return { index, total, directive };
 }
 
@@ -179,6 +207,9 @@ export default function ThumbnailPage() {
   const [customCountActive, setCustomCountActive] = useState(false);
   const [customCountText, setCustomCountText] = useState('');
   const [fileFormat, setFileFormat] = useState<string>('png');
+  // 변주 강도 슬라이더 (생성 개수 ≥ 2일 때만 의미 있음)
+  const [angleVariation, setAngleVariation] = useState<number>(33);
+  const [imageVariation, setImageVariation] = useState<number>(33);
   const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
   const [referenceBase64s, setReferenceBase64s] = useState<string[]>([]);
 
@@ -281,6 +312,7 @@ export default function ThumbnailPage() {
     const body: Record<string, unknown> = {
       prompt: effectivePrompt,
       aspect_ratio: ratioId,
+      image_variation: imageVariation,
     };
     if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
       body.seed = seedOverride;
@@ -340,7 +372,7 @@ export default function ThumbnailPage() {
       tasks.push({
         id: i + 1,
         seed: Math.floor(Math.random() * 2_147_483_647),
-        variation: shouldVary ? buildVariationInfo(i, totalCount) : null,
+        variation: shouldVary ? buildVariationInfo(i, totalCount, angleVariation, imageVariation) : null,
       });
     }
 
@@ -381,7 +413,7 @@ export default function ThumbnailPage() {
     }
 
     setGenerating(false);
-  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount, angleVariation, imageVariation]);
 
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
@@ -395,7 +427,7 @@ export default function ThumbnailPage() {
       // 재생성은 같은 슬롯이라도 매번 다른 결과가 나와야 하므로 fresh seed 사용.
       // 단, 그 슬롯의 variation directive(앵글·프레이밍·조명·순간)는 동일하게 유지해 다른 슬롯과의 차별화는 보존한다.
       const slotVariation = images.length > 1 && !autoFillBackground
-        ? buildVariationInfo(targetId - 1, images.length)
+        ? buildVariationInfo(targetId - 1, images.length, angleVariation, imageVariation)
         : null;
       const data = await callGenerateApi(regenPrompt, Math.floor(Math.random() * 2_147_483_647), slotVariation);
       setImages(prev => prev.map(img =>
@@ -404,7 +436,7 @@ export default function ThumbnailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생성 실패');
     }
-  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images, angleVariation, imageVariation]);
 
   const handleEdit = useCallback(async () => {
     const target = (selectedImageId !== null ? images.find(img => img.id === selectedImageId) : undefined) || images[0];
@@ -898,6 +930,30 @@ export default function ThumbnailPage() {
                 {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
               </p>
             </div>
+
+            {/* ── 변주 강도 (생성 개수 ≥ 2일 때만 노출) ── */}
+            {imageCount >= 2 && (
+              <div style={{
+                padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+                marginLeft: '-28px', marginRight: '-20px',
+                display: 'flex', flexDirection: 'column', gap: '20px',
+              }}>
+                <VariationSlider
+                  label="앵글 다양성"
+                  value={angleVariation}
+                  onChange={setAngleVariation}
+                  endLabels={['거의 동일', '매우 다양']}
+                  getHelperText={angleHelperText}
+                />
+                <VariationSlider
+                  label="이미지 다양성"
+                  value={imageVariation}
+                  onChange={setImageVariation}
+                  endLabels={['일관성', '자유 해석']}
+                  getHelperText={imageHelperText}
+                />
+              </div>
+            )}
 
             {/* ── 스펙 요약 ── */}
             <div style={{ padding: '20px 0 0' }}>
