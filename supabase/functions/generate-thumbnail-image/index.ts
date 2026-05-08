@@ -74,7 +74,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -117,10 +117,64 @@ serve(async (req) => {
       const formatRules = `\n\n[OUTPUT FORMAT RULES]
 • Output exactly ONE single image — one continuous scene, not a collage, grid, triptych, diptych, split-screen, side-by-side, multi-panel, montage, photo strip, or before/after layout.
 • Do NOT include any text, letters, words, numbers, titles, labels, watermarks, captions, or typography in the image.
-• When multiple reference images are attached, blend cues across ALL of them into one cohesive output — do not pick just one reference and ignore the rest.
+• When multiple reference images are attached AND the user instruction does NOT reference any image by number, blend cues across all references into one cohesive output. When the user instruction does reference specific images by number, follow the [INDEXED REFERENCE MAPPING] strictly.
 • If the user instruction itself asks for multiple outfit/pose/scene variations in a single output (e.g. "show 3 different outfits"), pick ONE variation and render it as a single full image rather than a collage.`
 
       const refCountText = refs.length > 1 ? `${refs.length} attached images` : 'the attached image'
+
+      // 다중 레퍼런스일 때만 인덱스 매핑 가이드 부착 — 사용자가 "1번째 이미지", "image 2" 등으로 특정 요소를 가리킬 수 있게 함
+      const ordinalLines = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth']
+      const koOrdinalLines = ['첫번째', '두번째', '세번째', '네번째', '다섯번째', '여섯번째', '일곱번째', '여덟번째']
+      const indexedRefGuidance = refs.length > 1
+        ? `[INDEXED REFERENCE MAPPING — ABSOLUTE TOP PRIORITY, READ AND APPLY BEFORE ANY OTHER RULE BELOW]
+
+The ${refs.length} reference images are NUMBERED in attachment order:
+${refs.map((_, i) => `• "image ${i + 1}" / "${i + 1}번째 이미지" / "${koOrdinalLines[i] || `${i + 1}번째`} 이미지" / "${ordinalLines[i] || `${i + 1}-th`} image" = the ${ordinalLines[i] || `${i + 1}-th`} attached image (the ${ordinalLines[i] || `${i + 1}-th`} inlineData block in this request)`).join('\n')}
+
+WHEN THE USER INSTRUCTION ATTRIBUTES AN ELEMENT TO A SPECIFIC IMAGE NUMBER, that mapping is BINDING and OVERRIDES every other rule in this prompt — including [STYLE LOCK], [CHARACTER LOCK], "do not reuse characters", "preserve all references", "blend cues", and the [OUTPUT FORMAT RULES]. The user's explicit number→element mapping is the ABSOLUTE source of truth for that element.
+
+How to apply:
+• Identify each "image N의 X" / "X from image N" attribution in the user instruction.
+• Source X (face / person / identity / pose / clothing / background / lighting / mood / composition / etc.) ONLY from image N. Reproduce X faithfully and recognizably from image N — for faces and identities, the output's face must be VISIBLY THE SAME PERSON as in image N, with same face shape, eyes, nose, lips, hair, skin tone, age, and identity. Do NOT swap faces or blend identities from other images into that element.
+• For elements NOT attributed to a specific image number, default behavior applies (blending across all references for style; per the mode's normal rules for everything else).
+• If the user references a non-existent image number, ignore that fragment and apply defaults for that element.
+
+CONCRETE EXAMPLE that matches a common user pattern:
+USER SAYS: "1번째 이미지에 있는 남녀가 2번째 이미지처럼 저런 의상을 입고 배에 앉아 있는 모습. 1번째 이미지의 남녀 얼굴을 바꾸면 안돼"
+CORRECT BEHAVIOR:
+- The man and woman in the OUTPUT must have the EXACT same faces and identities as the man and woman in IMAGE 1 (same face shape, same eyes, same hairstyle, same skin tone, same identity).
+- Their clothing in the OUTPUT must match the clothing seen in IMAGE 2.
+- The setting/pose in the OUTPUT must match IMAGE 2 (sitting on a boat).
+- The faces from IMAGE 2's people must NOT appear in the output. The output's man = image 1's man, output's woman = image 1's woman.
+
+INCORRECT BEHAVIOR (do NOT do this): outputting the people from image 2, or blending faces from image 1 and image 2, or substituting different people.
+
+`
+        : ''
+
+      // 멀티 생성 시 호출별로 카메라/프레이밍/조명/순간을 다르게 강제하는 directive.
+      // STYLE LOCK / CHARACTER LOCK과 동등한 최상위 우선순위로 배치하지 않으면 모델이 LOCK에 끌려 평균값으로 회귀해 결과가 비슷해진다.
+      const hasVariation = typeof variation_directive === 'string' && variation_directive.trim().length > 0
+      const variationBlock = hasVariation
+        ? `[VARIATION DIRECTIVE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'} — ABSOLUTE TOP PRIORITY, EQUAL WEIGHT TO INDEXED REFERENCE MAPPING AND STYLE/CHARACTER LOCK]
+
+This image is one of multiple images being generated from the SAME user prompt and SAME reference(s). All sibling images in this set share the same character, same style, same outfit, same overall scene concept — but EACH image must be a visually distinct shot/moment. Your sole job for THIS image is to follow the directive below FAITHFULLY.
+
+This directive does NOT override [STYLE LOCK] (medium and drawing/photographic style still come from references) or [CHARACTER LOCK] (the same person/character must be preserved). It REDIRECTS only camera/framing/lighting/moment dimensions — making this one image visually distinct from its siblings while keeping subject identity and visual style locked.
+
+CRITICAL ANTI-REGRESSION RULES:
+• DO NOT default to a centered eye-level medium shot with soft front lighting. That is the regression-to-the-mean behavior that makes sibling images look identical.
+• DO NOT replace the directive with a "safer" or "more conventional" composition. Follow EXACTLY what is specified — same angle, same framing, same lighting direction, same moment.
+• Visibly execute every one of the 4 directive points (angle, framing, lighting, moment). A reviewer must be able to identify each one in the final image.
+• If the directive conflicts with the user instruction's implied default composition, the directive WINS for camera/framing/lighting/moment. The user instruction still defines subject and scene content.
+
+DIRECTIVE FOR THIS SPECIFIC IMAGE:
+${variation_directive.trim()}
+
+Apply this directive while keeping the person/character identical to references and the visual style identical to references. Subject identity and style: locked to references. Camera, framing, lighting, moment: as instructed above, NOT a default fallback.
+
+`
+        : ''
 
       if (auto_fill_background) {
         // 흰 여백 자동 채우기 (Outpaint) — 레퍼런스 이미지를 그대로 유지하고 흰 여백만 확장
@@ -144,7 +198,7 @@ REQUIREMENTS:
         })
       } else if (reference_mode === 'style_and_character') {
         parts.push({
-          text: `[STYLE LOCK — READ FIRST, THIS OVERRIDES EVERYTHING ELSE]
+          text: `${indexedRefGuidance}${variationBlock}[STYLE LOCK — READ THIS NEXT (after [INDEXED REFERENCE MAPPING] and [VARIATION DIRECTIVE] if present above)]
 ${refCountText.charAt(0).toUpperCase() + refCountText.slice(1)} define the EXACT visual style of the output. Before reading any other instruction, study and lock onto the reference's:
 • Medium — is it a photograph, a 2D illustration, an anime/manga drawing, a webtoon, a 3D render, a watercolor, an oil painting, a pencil sketch, etc.? Identify it precisely and reproduce that exact medium.
 • Line work — line weight, line color, presence/absence of outlines, sketchy vs clean lines.
@@ -161,7 +215,7 @@ THIS STYLE IS NON-NEGOTIABLE. The output must be visually indistinguishable in s
 NEVER convert between mediums. NEVER "upgrade" to a more polished or photorealistic look. NEVER drift to a generic AI illustration style.
 
 [CHARACTER LOCK]
-Faithfully preserve the same person/character across the references — face shape, facial features, eye shape & color, nose, lips, hairstyle, hair color, identity. The output must clearly be the SAME character as in the references, drawn/rendered in the SAME style.
+Faithfully preserve the person/character — face shape, facial features, eye shape & color, nose, lips, hairstyle, hair color, identity. ${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference images by number, treat all references as showing the same character (or blend characters consistently). When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top of this prompt is BINDING and overrides this rule — pick the face/identity from the specifically named image and reproduce it exactly.' : 'The output must clearly be the SAME character as in the reference, drawn/rendered in the SAME style.'}
 
 [HOW TO APPLY THE USER INSTRUCTION]
 USER INSTRUCTION: ${prompt}
@@ -173,7 +227,7 @@ If the user instruction conflicts with the reference's style (e.g. asks for "rea
       } else {
         // style_only (기본값)
         parts.push({
-          text: `[STYLE LOCK — READ FIRST, THIS OVERRIDES EVERYTHING ELSE]
+          text: `${indexedRefGuidance}${variationBlock}[STYLE LOCK — READ THIS NEXT (after [INDEXED REFERENCE MAPPING] and [VARIATION DIRECTIVE] if present above)]
 ${refCountText.charAt(0).toUpperCase() + refCountText.slice(1)} define the EXACT visual style of the output. Before reading any other instruction, study and lock onto the reference's:
 • Medium — is it a photograph, a 2D illustration, an anime/manga drawing, a webtoon, a 3D render, a watercolor, an oil painting, a pencil sketch, etc.? Identify it precisely and reproduce that exact medium.
 • Line work — line weight, line color, presence/absence of outlines, sketchy vs clean lines.
@@ -188,14 +242,14 @@ THIS STYLE IS NON-NEGOTIABLE. The output must be visually indistinguishable in s
 • If the reference is an illustration / anime / webtoon → output must be in that exact same drawing style (NOT photorealistic, NOT a different anime style, NOT "improved" or "more detailed").
 • If the reference is a painting → output must be in that exact painting style.
 NEVER convert between mediums. NEVER "upgrade" to a more polished or photorealistic look. NEVER drift to a generic AI illustration style.
-${refs.length > 1 ? 'When multiple references are attached, blend their stylistic cues into one consistent style — do not let one reference dominate while ignoring others.' : ''}
+${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference any image by number, blend their stylistic cues into one consistent style — do not let one reference dominate. When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top of this prompt overrides this rule.' : ''}
 
 [HOW TO APPLY THE USER INSTRUCTION]
 USER INSTRUCTION: ${prompt}
 
 The user instruction defines WHAT to depict (subject, scene, composition, mood content). It does NOT define HOW to depict it — the HOW is fully determined by the [STYLE LOCK] above. Create new subjects/characters per the instruction, but draw/render them in the reference's exact style, as if the same artist created this new image with the same tools.
 
-Do NOT reuse the specific characters/people from the references — only their STYLE. But the new characters/subjects must be rendered in that exact same style.
+Do NOT reuse the specific characters/people from the references — only their STYLE. EXCEPTION: when the user instruction references a person/face/character from a specific image by number, [INDEXED REFERENCE MAPPING] at the top of this prompt is BINDING — reproduce that person from the named image exactly (same face, same identity). The new characters/subjects (whether sourced from a numbered image or invented per the instruction) must be rendered in the references' exact style.
 
 If the user instruction conflicts with the reference's style (e.g. asks for "realistic" when reference is anime, or "anime" when reference is photo), IGNORE the style hint in the instruction and obey the reference's style. Only the WHAT (subject/scene/action) from the instruction applies.${formatRules}`,
         })
@@ -217,6 +271,12 @@ If the user instruction conflicts with the reference's style (e.g. asks for "rea
       'x-goog-api-key': apiKey,
     }
 
+    // 같은 prompt+레퍼런스로 N번 호출되어도 출력이 다양하게 나오도록 temperature를 살짝 올리고
+    // 호출별 seed를 반영. seed가 없으면 매 호출마다 다른 난수를 자동 부여해 결정론적 출력을 깨뜨림.
+    const effectiveSeed = typeof seed === 'number' && Number.isFinite(seed)
+      ? Math.floor(seed)
+      : Math.floor(Math.random() * 2_147_483_647)
+
     const requestBody = JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
@@ -224,6 +284,8 @@ If the user instruction conflicts with the reference's style (e.g. asks for "rea
         imageConfig: {
           aspectRatio: aspect_ratio || '16:9',
         },
+        temperature: 1.3,
+        seed: effectiveSeed,
       },
     })
 

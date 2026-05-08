@@ -100,6 +100,53 @@ async function padReferenceForOutpaint(rawBase64: string, targetW: number, targe
   });
 }
 
+// 멀티 생성(생성 개수 ≥ 2)에서 매 호출이 동일 prompt+레퍼런스라 결과가 너무 비슷하게 나오는 문제를 해결하기 위해,
+// 호출별로 카메라/프레이밍/조명/순간을 다르게 지정하는 directive를 백엔드 최상위 블록으로 주입한다.
+// 핵심 의도(주제·인물·의상·세계관)는 그대로 두고 HOW만 분기해, 콜라주 없이 같은 컨셉의 다른 컷처럼 보이게 한다.
+// 프리셋은 모델이 "안전한 미디엄샷·정면조명"으로 회귀하지 않도록, 앵글·프레이밍·조명을 명확히 대비되게 설계.
+const VARIATION_PRESETS = [
+  {
+    angle: '강한 로우 앵글, 가슴 높이에서 인물 얼굴을 올려다보는 시점',
+    framing: '얼굴과 상반신을 화면에 가득 채우는 타이트 클로즈업, 인물이 프레임을 압도',
+    lighting: '한쪽 측면에서 들어오는 강한 사이드 라이트, 얼굴 절반은 짙은 그림자',
+    moment: '카메라를 정면으로 응시하는 강렬한 시선, 미세한 입꼬리·턱선 변화 강조',
+  },
+  {
+    angle: '아이레벨보다 살짝 떨어진 와이드 앵글, 공간이 인물을 감싸는 시점',
+    framing: '전신 또는 무릎 위까지 보이고 주변 환경이 화면의 50% 이상 차지',
+    lighting: '실내 앰비언트 광원의 부드러운 전반 광량, 그림자가 약하고 콘트라스트가 낮음',
+    moment: '인물이 정면이 아닌 다른 방향을 응시하거나 환경과 상호작용하는 자연스러운 순간',
+  },
+  {
+    angle: '하이 앵글, 살짝 위에서 비스듬히 내려다보는 대각선 시점',
+    framing: '인물을 화면의 한쪽 구석(좌하단 또는 우하단)에 배치하는 대각선 구도',
+    lighting: '인물 뒤쪽에서 들어오는 강한 백라이트, 얼굴 앞면은 어둡고 머리·어깨 윤곽선이 빛남',
+    moment: '두 인물이 서로를 가까이 마주보거나 신체적으로 접근하는 인터랙션의 한 순간',
+  },
+  {
+    angle: '오버더숄더 또는 더치 틸트(살짝 기울어진) 사이드 앵글',
+    framing: '한 인물의 뒷모습/어깨가 전경을 차지하고 다른 인물이 배경에 또렷하게 자리잡는 구성',
+    lighting: '강한 콘트라스트의 무드 조명, 깊은 검은 음영과 강한 하이라이트의 극단적 대비',
+    moment: '동작감이 살아있는 자연스러운 자세 변화, 정적인 포즈가 아닌 움직임의 한 순간',
+  },
+] as const;
+
+type VariationInfo = { index: number; total: number; directive: string };
+
+function buildVariationInfo(index: number, total: number): VariationInfo | null {
+  if (total <= 1) return null;
+  const v = VARIATION_PRESETS[index % VARIATION_PRESETS.length];
+  const directive = `다음 4가지 항목을 반드시 충실히 시각화해서 다른 컷과 한눈에 구분되도록 출력하세요:
+
+• 카메라 앵글: ${v.angle}
+• 프레이밍/구도: ${v.framing}
+• 조명/라이팅: ${v.lighting}
+• 순간/표정/포즈: ${v.moment}
+
+평범한 정면샷·미디엄샷·정면조명으로의 회귀 절대 금지. 위 네 항목 모두 결과 이미지에서 즉시 식별 가능해야 합니다.`;
+  return { index, total, directive };
+}
+
 // ── Component ──
 
 export default function ThumbnailPage() {
@@ -211,7 +258,11 @@ export default function ThumbnailPage() {
 
   const hasReferences = referencePreviews.length > 0;
 
-  const callGenerateApi = async (promptOverride?: string): Promise<{ image: string; mimeType: string }> => {
+  const callGenerateApi = async (
+    promptOverride?: string,
+    seedOverride?: number,
+    variationInfo?: VariationInfo | null,
+  ): Promise<{ image: string; mimeType: string }> => {
     const userPrompt = (promptOverride || prompt).trim();
     const fixedPrompt = persistentPrompt.trim();
     const combinedPrompt = [userPrompt, fixedPrompt].filter(Boolean).join('\n\n');
@@ -222,6 +273,15 @@ export default function ThumbnailPage() {
       prompt: effectivePrompt,
       aspect_ratio: ratioId,
     };
+    if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
+      body.seed = seedOverride;
+    }
+    // variation hint는 prompt에 섞지 않고 별도 필드로 보내 백엔드에서 STYLE/CHARACTER LOCK과 동등한 최상위 블록으로 끌어올린다.
+    if (variationInfo) {
+      body.variation_directive = variationInfo.directive;
+      body.variation_index = variationInfo.index;
+      body.variation_total = variationInfo.total;
+    }
     if (referenceBase64s.length > 0) {
       let refsToSend = referenceBase64s;
       if (autoFillBackground) {
@@ -263,9 +323,16 @@ export default function ThumbnailPage() {
     const results: GeneratedImage[] = [];
     const totalCount = imageCount;
 
-    const tasks: { id: number; label?: string; itemPrompt?: string }[] = [];
+    // 생성 개수 ≥ 2일 때만 variation directive를 주입해 같은 prompt+레퍼런스에서도 결과를 분기.
+    // outpaint(여백 채우기)는 레퍼런스를 픽셀 단위로 보존해야 하므로 variation directive를 부착하지 않는다.
+    const shouldVary = totalCount > 1 && !autoFillBackground;
+    const tasks: { id: number; label?: string; itemPrompt?: string; seed: number; variation: VariationInfo | null }[] = [];
     for (let i = 0; i < totalCount; i++) {
-      tasks.push({ id: i + 1 });
+      tasks.push({
+        id: i + 1,
+        seed: Math.floor(Math.random() * 2_147_483_647),
+        variation: shouldVary ? buildVariationInfo(i, totalCount) : null,
+      });
     }
 
     let firstFailureMessage: string | null = null;
@@ -274,7 +341,7 @@ export default function ThumbnailPage() {
 
       const settled = await Promise.allSettled(
         batch.map(async (task) => {
-          const data = await callGenerateApi(task.itemPrompt);
+          const data = await callGenerateApi(task.itemPrompt, task.seed, task.variation);
           return {
             id: task.id,
             src: `data:${data.mimeType};base64,${data.image}`,
@@ -316,7 +383,12 @@ export default function ThumbnailPage() {
       img.id === targetId ? { ...img, src: '' } : img
     ));
     try {
-      const data = await callGenerateApi(regenPrompt);
+      // 재생성은 같은 슬롯이라도 매번 다른 결과가 나와야 하므로 fresh seed 사용.
+      // 단, 그 슬롯의 variation directive(앵글·프레이밍·조명·순간)는 동일하게 유지해 다른 슬롯과의 차별화는 보존한다.
+      const slotVariation = images.length > 1 && !autoFillBackground
+        ? buildVariationInfo(targetId - 1, images.length)
+        : null;
+      const data = await callGenerateApi(regenPrompt, Math.floor(Math.random() * 2_147_483_647), slotVariation);
       setImages(prev => prev.map(img =>
         img.id === targetId ? { ...img, src: `data:${data.mimeType};base64,${data.image}` } : img
       ));
