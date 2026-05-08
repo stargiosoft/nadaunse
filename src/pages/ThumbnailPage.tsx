@@ -155,8 +155,11 @@ function buildVariationInfo(
   if (angleVariation < 10 && imageVariation < 10) return null;
 
   const includeAngle = angleVariation >= 15;
+  // 슬라이더 강도에 따라 사용할 앵글 프리셋 풀의 크기를 제한.
+  // 낮은 값에서는 모든 컷이 같은(또는 비슷한) 앵글 → 컨셉 흔들림 최소화.
+  const presetPoolSize = angleVariation < 41 ? 1 : angleVariation < 71 ? 2 : ANGLE_PRESETS.length;
   const angleClause = includeAngle
-    ? `• 카메라 앵글: ${angleAdjective(angleVariation)} ${ANGLE_PRESETS[index % ANGLE_PRESETS.length]} (인물·캐릭터가 등장하는 이미지에 한해 자연스럽게 적용. 텍스트·플랫 일러스트·풍경 등 앵글이 어색한 경우 무시)\n`
+    ? `• 카메라 앵글: ${angleAdjective(angleVariation)} ${ANGLE_PRESETS[index % presetPoolSize]} (인물·캐릭터가 등장하는 이미지에 한해 자연스럽게 적용. 텍스트·플랫 일러스트·풍경 등 앵글이 어색한 경우 무시)\n`
     : '';
 
   const intensityNote = imageVariation < 41
@@ -167,19 +170,24 @@ function buildVariationInfo(
 
   const directive = `이 컷은 ${total}장 시리즈 중 ${index + 1}번째.
 
+핵심 원칙: 시리즈의 모든 컷은 "같은 씬을 다른 각도/순간에서 본 한 장면"임. 새로운 씬·새로운 상황·새로운 디자인 컨셉으로 바꾸지 않음. 1번째 컷과 N번째 컷이 같은 영화의 연속된 다른 프레임처럼 보여야 함.
+
 [일관성 LOCK — 레퍼런스 이미지 기반으로 절대 동일하게 유지]
 • 그림체·일러스트 화풍 (medium·line work·rendering 기법)
 • 질감·텍스처 (붓터치·러프함·픽셀감·필터·후처리 정도)
 • 색감·팔레트·톤·전체 분위기
 • 캐릭터/오브젝트 외형 (의상·헤어·얼굴 형태·디테일)
-• 컨셉·세계관·서사적 분위기
+• 씬·상황·컨셉 (같은 장소, 같은 상황, 같은 서사적 순간 — 시리즈 전 컷 동일)
+• 디자인 컨셉 (전체 구성·아트디렉션·씬 해석 — 1번째 컷의 컨셉을 N번째 컷도 그대로)
 • 조명 무드와 시간대
 
 레퍼런스 이미지가 있는 경우, 위 항목은 모두 레퍼런스에서 추출된 시각 정체성을 그대로 따름. 이 LOCK은 어떤 변주보다도 우선.
 
-[이 컷의 변주 — 다른 컷과 약간만 다르게]
+[이 컷의 변주 — 같은 씬 안에서, 컷마다 약간만 다른 디자인 표현]
 ${angleClause}• ${intensityNote}
-• 변주는 LOCK 항목을 절대 흔들지 않는 범위 안에서만 적용.`;
+• 변주는 카메라 시점·구도·포즈·순간 차원에서만 일어남.
+• 절대 다른 씬, 다른 상황, 다른 컨셉으로 바꾸지 않음. 새로운 디자인 아이디어를 추가하지 않음.
+• 1번째 컷이 ${total}컷 중 컨셉의 기준선이며, 모든 컷이 그 기준선 위에서 디자인 변형만 있어야 함.`;
 
   return { index, total, directive };
 }

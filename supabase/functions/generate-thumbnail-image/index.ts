@@ -161,9 +161,13 @@ serve(async (req) => {
 
       const variation2StepBlock = (typeof variation_directive === 'string' && variation_directive.trim().length > 0)
         ? `[VARIATION GUIDANCE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
-This image is one of multiple images sharing the same user prompt and the SAME REFERENCE IMAGE. All siblings must look like they came from the same series — the visual style, medium, line work, texture, color palette, lighting mood, and overall concept extracted from the reference image are LOCKED across every sibling. The reference image is the absolute source of truth for these visual properties; nothing in the variation guidance below is allowed to alter them.
+CORE PRINCIPLE: All sibling images are "different shots OF THE SAME SCENE", not different scenes. Same setting, same situation, same characters, same narrative beat, same overall design concept across every sibling. Image #1 establishes the conceptual baseline; every later image must stay on that baseline.
 
-Apply ONLY the subtle differentiation specified below, strictly within the locked visual identity:
+Locked across siblings (from the reference image): visual style, medium, line work, texture, color palette, lighting mood, overall design concept, scene interpretation, characters, situation. The reference is the absolute source of truth.
+
+ABSOLUTELY FORBIDDEN past image #1: inventing a new scene, new situation, new design concept, new art direction. Image #N must read as "same concept as image #1, viewed from a slightly different angle/moment", not as a separate idea.
+
+Apply ONLY the subtle differentiation specified below, strictly within the locked concept:
 
 ${variation_directive.trim()}
 
@@ -247,16 +251,19 @@ INCORRECT BEHAVIOR (do NOT do this): outputting the people from image 2, or blen
       const variationBlock = hasVariation
         ? `[VARIATION GUIDANCE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
 
-This image is one of multiple images being generated from the SAME user prompt and the SAME reference image(s). All sibling images must look like the SAME SERIES, sourced from the same reference:
-• Visual style, medium, line work, rendering technique — taken from the reference, identical across all siblings.
-• Texture, brush feel, grain, post-processing — taken from the reference, identical across all siblings.
-• Color palette, tonal range, overall mood — taken from the reference, identical across all siblings.
-• Character/subject identity, outfit, props — taken from the reference, identical across all siblings.
-• Concept, world, narrative atmosphere — taken from the reference, identical across all siblings.
+CORE PRINCIPLE: All sibling images in this set are "different shots/moments OF THE SAME SCENE", not different scenes. They must look like consecutive frames of the same film — same setting, same situation, same characters, same narrative beat — viewed from slightly different angles/moments. Image #1 establishes the conceptual baseline; every later image must stay on that baseline and only vary in the dimensions explicitly named below.
 
-The reference image is the ABSOLUTE source of truth for those properties. Apply ONLY the subtle differentiation specified below, strictly within that locked visual identity.
+Locked across all siblings (taken from the reference image, identical in every sibling):
+• Visual style, medium, line work, rendering technique.
+• Texture, brush feel, grain, post-processing.
+• Color palette, tonal range, overall mood.
+• Character/subject identity, outfit, props, accessories.
+• Scene, setting, location, situation, narrative moment.
+• Overall design concept, art direction, scene interpretation.
 
-This guidance does NOT override [STYLE LOCK] or [CHARACTER LOCK] — those win in any conflict. It only suggests light variation in the dimensions explicitly listed below; do not fabricate variation in dimensions the directive doesn't mention.
+ABSOLUTELY FORBIDDEN: Inventing a new scene, a new situation, a new design concept, a new art direction, or new design ideas in any sibling image past the first. Image #2 must NOT be "a different idea from image #1" — it must be "the same idea seen from a slightly different angle/moment".
+
+This guidance does NOT override [STYLE LOCK] or [CHARACTER LOCK] — those win in any conflict. The variation directive below ONLY suggests light variation in camera/angle/pose/moment dimensions; do not fabricate variation in scene, situation, concept, or design.
 
 DIRECTIVE FOR THIS SPECIFIC IMAGE:
 ${variation_directive.trim()}
