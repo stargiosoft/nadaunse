@@ -214,15 +214,27 @@ THIS STYLE IS NON-NEGOTIABLE. The output must be visually indistinguishable in s
 • If the reference is a painting → output must be in that exact painting style.
 NEVER convert between mediums. NEVER "upgrade" to a more polished or photorealistic look. NEVER drift to a generic AI illustration style.
 
-[CHARACTER LOCK]
-Faithfully preserve the person/character — face shape, facial features, eye shape & color, nose, lips, hairstyle, hair color, identity. ${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference images by number, treat all references as showing the same character (or blend characters consistently). When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top of this prompt is BINDING and overrides this rule — pick the face/identity from the specifically named image and reproduce it exactly.' : 'The output must clearly be the SAME character as in the reference, drawn/rendered in the SAME style.'}
+[CHARACTER LOCK — IDENTITY ONLY, NOT WARDROBE OR SCENE]
+Preserve from the reference ONLY the person/character's IDENTITY: face shape, facial features (eye shape & color, nose, lips, brow, jawline), hair color and natural hairstyle (unless the instruction specifies otherwise), skin tone, age, ethnicity, overall identity. ${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference images by number, treat all references as showing the same character (or blend identities consistently). When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top is BINDING and overrides this rule — use the face/identity from the named image exactly.' : 'The output must clearly be the SAME PERSON as in the reference — a viewer comparing both faces must immediately recognize them as the same individual.'}
 
-[HOW TO APPLY THE USER INSTRUCTION]
-USER INSTRUCTION: ${prompt}
+[APPEARANCE OVERRIDE — DO NOT COPY THE FOLLOWING FROM REFERENCES]
+The reference contributes ONLY visual style + face/identity. The following come EXCLUSIVELY from the user instruction below — DO NOT reuse them from the reference even though the reference shows them:
+• Outfit, clothing, accessories, jewelry, footwear — render whatever the instruction describes; do NOT clone the reference's wardrobe.
+• Pose, body language, gesture, facial expression — follow the instruction (and [VARIATION DIRECTIVE] if present); do NOT mirror the reference's pose.
+• Scene, environment, background, location, props, set dressing — follow the instruction; do NOT reuse the reference's setting.
+• Composition, framing, camera angle, distance, crop — follow the instruction (and [VARIATION DIRECTIVE]); do NOT replicate the reference's framing.
+• Number/arrangement of subjects, supporting characters — follow the instruction.
 
-The user instruction defines WHAT to depict (clothing, pose, background, setting, environment, action). It does NOT define HOW to depict it — the HOW is fully determined by the [STYLE LOCK] above. Apply the instruction by drawing the new content in the reference's exact style, as if the same artist drew this new scene of the same character.
+CONCRETE EXAMPLE: if the reference shows the character in a black suit at a hotel bar but the user instruction says "wearing a white t-shirt at the beach," the output must be the SAME PERSON's face wearing a white t-shirt at the beach. The reference's outfit and setting are completely IGNORED for content. Only face/identity transfers.
 
-If the user instruction conflicts with the reference's style (e.g. asks for "realistic" when reference is anime, or "anime" when reference is photo), IGNORE the style hint in the instruction and obey the reference's style. Only the WHAT (subject/scene/action) from the instruction applies.${formatRules}`,
+[USER INSTRUCTION — DEFINES OUTFIT, SCENE, POSE, ENVIRONMENT, MOOD]
+${prompt}
+
+The user instruction is the single source of truth for outfit, accessories, scene, environment, background, pose, action, expression, mood, props, lighting setup, composition, and supporting subjects. Render the reference's character in the situation described by the instruction, drawn in the reference's exact style.
+
+[CRITICAL CONFLICT RESOLUTION]
+• If the instruction's outfit/scene/pose differs from the reference: OBEY THE INSTRUCTION. The reference is for face/identity only.
+• If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks "realistic" when reference is anime): IGNORE the style hint, keep the reference's style. The instruction's content (clothing/scene/etc.) is still fully applied.${formatRules}`,
         })
       } else {
         // style_only (기본값)
@@ -244,14 +256,29 @@ THIS STYLE IS NON-NEGOTIABLE. The output must be visually indistinguishable in s
 NEVER convert between mediums. NEVER "upgrade" to a more polished or photorealistic look. NEVER drift to a generic AI illustration style.
 ${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference any image by number, blend their stylistic cues into one consistent style — do not let one reference dominate. When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top of this prompt overrides this rule.' : ''}
 
-[HOW TO APPLY THE USER INSTRUCTION]
-USER INSTRUCTION: ${prompt}
+[FRESH CONTENT DIRECTIVE — ABSOLUTE TOP PRIORITY, DO NOT COPY SUBJECTS FROM REFERENCES]
+The references are STYLE SAMPLES — art swatches you study to learn HOW to render. They are NOT subjects to reproduce. The output must be a completely NEW image with NEW content as defined by the user instruction.
 
-The user instruction defines WHAT to depict (subject, scene, composition, mood content). It does NOT define HOW to depict it — the HOW is fully determined by the [STYLE LOCK] above. Create new subjects/characters per the instruction, but draw/render them in the reference's exact style, as if the same artist created this new image with the same tools.
+DO NOT reuse the following from references:
+• Faces, identities, specific people — the output must depict DIFFERENT people from those in the references. A viewer comparing the reference's face and the output's face must say "different person."
+• Outfits, clothing, accessories, jewelry, footwear — invent new clothing per the user instruction; do NOT clone the reference's wardrobe.
+• Pose, body language, gesture, expression — follow the instruction.
+• Scene, environment, background, location, props, set dressing — follow the instruction; do NOT reproduce the reference's setting.
+• Composition, framing, camera angle, distance — follow the instruction (and [VARIATION DIRECTIVE] if present).
+• Number/arrangement of subjects, supporting characters.
 
-Do NOT reuse the specific characters/people from the references — only their STYLE. EXCEPTION: when the user instruction references a person/face/character from a specific image by number, [INDEXED REFERENCE MAPPING] at the top of this prompt is BINDING — reproduce that person from the named image exactly (same face, same identity). The new characters/subjects (whether sourced from a numbered image or invented per the instruction) must be rendered in the references' exact style.
+If you find yourself reproducing a person, outfit, pose, or scene from the reference: STOP. Treat the reference like a paint swatch — copy the technique, not the subject. Generate completely fresh content per the user instruction.
 
-If the user instruction conflicts with the reference's style (e.g. asks for "realistic" when reference is anime, or "anime" when reference is photo), IGNORE the style hint in the instruction and obey the reference's style. Only the WHAT (subject/scene/action) from the instruction applies.${formatRules}`,
+EXCEPTION: when the user instruction explicitly references a person/face/character from a specific image by number (handled by [INDEXED REFERENCE MAPPING] at the top), reproduce that named person from the named image exactly. All non-attributed elements still follow the FRESH CONTENT DIRECTIVE above.
+
+[USER INSTRUCTION — DEFINES ALL CONTENT (WHO, WHAT, WHERE, MOOD)]
+${prompt}
+
+The user instruction is the single source of truth for: who appears (new characters, not the reference's), what they look like, what they wear, where they are, what they do, the mood, the composition, and any props. Render whatever the instruction describes, drawn/painted in the references' exact style as if the same artist drew this completely new picture from scratch.
+
+[CRITICAL CONFLICT RESOLUTION]
+• If the instruction's subject/scene differs from what's in the references: OBEY THE INSTRUCTION. References are style samples, not content templates.
+• If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks "realistic" when reference is anime): IGNORE the style hint, keep the reference's style. The instruction's content (who/what/where) is still fully applied.${formatRules}`,
         })
       }
     } else {
