@@ -66,6 +66,58 @@ function describeGeminiNoImage(data: unknown): string {
   return '이미지 생성에 실패했습니다 (빈 응답). 잠시 후 다시 시도해주세요.'
 }
 
+// "스타일만 참고" 모드용 1단계 호출.
+// 레퍼런스 이미지를 image-conditioning으로 그대로 넘기면 모델이 인물/복장/장면까지 복사하므로,
+// 시각 스타일만 텍스트로 추출한 뒤 2단계에서는 이미지 없이 텍스트만으로 생성한다.
+async function extractStyleDescription(refs: string[], apiKey: string): Promise<string> {
+  const visionParts: Array<Record<string, unknown>> = []
+  for (const data of refs) {
+    visionParts.push({ inlineData: { mimeType: 'image/png', data } })
+  }
+  visionParts.push({
+    text: `Describe the VISUAL STYLE of the attached image${refs.length > 1 ? 's' : ''} in 150-200 words. Cover ONLY:
+- Medium (photograph / 2D illustration / anime/manga / webtoon / 3D render / watercolor / oil painting / pencil sketch / digital painting / etc.)
+- Line work (line weight, line color, presence/absence of outlines, sketchy vs clean)
+- Shading & rendering technique (flat colors / cel-shading / soft shading / painterly / photorealistic lighting)
+- Color palette, saturation, contrast, color grading, white balance
+- Texture and grain (film grain, paper texture, brush texture, smooth digital, etc.)
+- Proportions and stylization level (realistic anatomy / stylized / anime / chibi / etc.)
+- Detail density (how detailed eyes, skin, hair, fabric are rendered)
+- Lighting mood and atmospheric quality (warm/cool, soft/harsh, dramatic/flat)
+
+DO NOT describe specific people, faces, identities, clothing, accessories, poses, scenes, environments, props, or any content. Style only — write as if explaining the artist's technique to someone trying to replicate it on a completely different subject they will invent themselves.
+
+Output: a single descriptive paragraph. No bullet points, no headings, no preamble like "This image shows" — just the style description.`,
+  })
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+  let res: Response | undefined
+  for (let attempt = 0; attempt < 2; attempt++) {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ contents: [{ parts: visionParts }] }),
+    })
+    if (res.status !== 429 && res.status < 500) break
+    await new Promise(r => setTimeout(r, (attempt + 1) * 5000))
+  }
+
+  if (!res || !res.ok) {
+    const errText = res ? await res.text() : 'no response'
+    throw new Error(`스타일 추출 실패 (HTTP ${res?.status ?? 'no-response'}): ${errText.slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+  const text: string = (data?.candidates?.[0]?.content?.parts || [])
+    .filter((p: any) => typeof p?.text === 'string')
+    .map((p: any) => p.text)
+    .join(' ')
+    .trim()
+
+  if (!text) throw new Error('스타일 추출 결과가 비어 있습니다. 잠시 후 다시 시도해주세요.')
+  return text
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req)
@@ -101,8 +153,45 @@ serve(async (req) => {
         ? [reference_image]
         : []
 
-    if (refs.length > 0) {
-      // 레퍼런스 이미지 모두 첨부
+    if (refs.length > 0 && !auto_fill_background && reference_mode !== 'style_and_character') {
+      // ── "스타일만 참고" 2-step 파이프라인 ──
+      // 레퍼런스를 inlineData로 직접 넘기면 image-conditioning이 너무 강해 인물·복장·장면까지 그대로 복사된다.
+      // 1단계에서 시각 스타일만 텍스트로 추출 → 2단계에서는 이미지 없이 텍스트만으로 생성.
+      const styleDescription = await extractStyleDescription(refs, apiKey)
+
+      const variation2StepBlock = (typeof variation_directive === 'string' && variation_directive.trim().length > 0)
+        ? `[VARIATION DIRECTIVE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
+This image is one of multiple images sharing the same user prompt. Each sibling must be visually distinct via different angle/framing/lighting/expression/action/time-of-day. Follow this directive faithfully:
+
+${variation_directive.trim()}
+
+DO NOT regress to a default centered medium shot with neutral expression. Visibly execute every directive point so a viewer can identify which directive this image follows.
+
+`
+        : ''
+
+      parts.push({
+        text: `[YOUR TASK]
+Generate ONE new image entirely from scratch. NO reference image is attached — the visual style is fully described in text below. Render the user instruction's content rendered in that visual style.
+
+[USER INSTRUCTION — DEFINES ALL CONTENT (WHO, WHAT, WHERE, MOOD)]
+${prompt}
+
+[VISUAL STYLE — APPLY EXACTLY (extracted from a reference image)]
+${styleDescription}
+
+${variation2StepBlock}[GENERATION INSTRUCTIONS]
+Render the user instruction's content (subjects, characters, clothing, scene, action, mood, props, environment) entirely from your imagination. The user instruction is the complete source of truth for WHAT appears in the image.
+
+Apply the visual style described above pixel-for-pixel — same medium, same line work, same palette, same rendering technique, same texture, same lighting mood, same proportions/stylization, same detail density. The result should look as if a single artist created this image from scratch using exactly that style on a completely new subject they invented themselves.
+
+[OUTPUT FORMAT RULES]
+• Output exactly ONE single image — one continuous scene, not a collage, grid, multi-panel, split-screen, or before/after layout.
+• Do NOT include any text, letters, numbers, titles, labels, watermarks, captions, or typography in the image.
+• If the user instruction itself asks for multiple outfit/pose/scene variations in a single output, pick ONE and render it as a single full image rather than a collage.`,
+      })
+    } else if (refs.length > 0) {
+      // 레퍼런스 이미지 모두 첨부 (auto_fill_background 또는 캐릭터+스타일 모드)
       for (const data of refs) {
         parts.push({
           inlineData: {
@@ -196,89 +285,31 @@ REQUIREMENTS:
 [OUTPUT FORMAT]
 • ONE single ${targetAspect} image, fully filled, no text/typography/watermarks anywhere.`,
         })
-      } else if (reference_mode === 'style_and_character') {
-        parts.push({
-          text: `${indexedRefGuidance}${variationBlock}[STYLE LOCK — READ THIS NEXT (after [INDEXED REFERENCE MAPPING] and [VARIATION DIRECTIVE] if present above)]
-${refCountText.charAt(0).toUpperCase() + refCountText.slice(1)} define the EXACT visual style of the output. Before reading any other instruction, study and lock onto the reference's:
-• Medium — is it a photograph, a 2D illustration, an anime/manga drawing, a webtoon, a 3D render, a watercolor, an oil painting, a pencil sketch, etc.? Identify it precisely and reproduce that exact medium.
-• Line work — line weight, line color, presence/absence of outlines, sketchy vs clean lines.
-• Shading & rendering — flat colors / cel-shading / soft shading / painterly / photorealistic lighting / etc. Match the rendering technique pixel-for-pixel.
-• Color palette, saturation, contrast, color grading, white balance.
-• Texture and grain — film grain, paper texture, brush texture, smooth digital, etc.
-• Proportions and stylization level — realistic anatomy vs stylized vs anime proportions vs chibi, etc.
-• Detail density — how detailed eyes, skin, hair, fabric are rendered.
-
-THIS STYLE IS NON-NEGOTIABLE. The output must be visually indistinguishable in style from the reference — as if drawn/photographed by the same artist in the same session with the same tools.
-• If the reference is a photograph → output must be a photograph (NOT illustration, NOT 3D, NOT stylized).
-• If the reference is an illustration / anime / webtoon → output must be in that exact same drawing style (NOT photorealistic, NOT a different anime style, NOT "improved" or "more detailed").
-• If the reference is a painting → output must be in that exact painting style.
-NEVER convert between mediums. NEVER "upgrade" to a more polished or photorealistic look. NEVER drift to a generic AI illustration style.
-
-[CHARACTER LOCK — IDENTITY ONLY, NOT WARDROBE OR SCENE]
-Preserve from the reference ONLY the person/character's IDENTITY: face shape, facial features (eye shape & color, nose, lips, brow, jawline), hair color and natural hairstyle (unless the instruction specifies otherwise), skin tone, age, ethnicity, overall identity. ${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference images by number, treat all references as showing the same character (or blend identities consistently). When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top is BINDING and overrides this rule — use the face/identity from the named image exactly.' : 'The output must clearly be the SAME PERSON as in the reference — a viewer comparing both faces must immediately recognize them as the same individual.'}
-
-[APPEARANCE OVERRIDE — DO NOT COPY THE FOLLOWING FROM REFERENCES]
-The reference contributes ONLY visual style + face/identity. The following come EXCLUSIVELY from the user instruction below — DO NOT reuse them from the reference even though the reference shows them:
-• Outfit, clothing, accessories, jewelry, footwear — render whatever the instruction describes; do NOT clone the reference's wardrobe.
-• Pose, body language, gesture, facial expression — follow the instruction (and [VARIATION DIRECTIVE] if present); do NOT mirror the reference's pose.
-• Scene, environment, background, location, props, set dressing — follow the instruction; do NOT reuse the reference's setting.
-• Composition, framing, camera angle, distance, crop — follow the instruction (and [VARIATION DIRECTIVE]); do NOT replicate the reference's framing.
-• Number/arrangement of subjects, supporting characters — follow the instruction.
-
-CONCRETE EXAMPLE: if the reference shows the character in a black suit at a hotel bar but the user instruction says "wearing a white t-shirt at the beach," the output must be the SAME PERSON's face wearing a white t-shirt at the beach. The reference's outfit and setting are completely IGNORED for content. Only face/identity transfers.
-
-[USER INSTRUCTION — DEFINES OUTFIT, SCENE, POSE, ENVIRONMENT, MOOD]
-${prompt}
-
-The user instruction is the single source of truth for outfit, accessories, scene, environment, background, pose, action, expression, mood, props, lighting setup, composition, and supporting subjects. Render the reference's character in the situation described by the instruction, drawn in the reference's exact style.
-
-[CRITICAL CONFLICT RESOLUTION]
-• If the instruction's outfit/scene/pose differs from the reference: OBEY THE INSTRUCTION. The reference is for face/identity only.
-• If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks "realistic" when reference is anime): IGNORE the style hint, keep the reference's style. The instruction's content (clothing/scene/etc.) is still fully applied.${formatRules}`,
-        })
       } else {
-        // style_only (기본값)
+        // style_and_character — 레퍼런스에서는 face/identity + 시각 스타일만 가져오고, 나머지는 모두 명령어를 따라 렌더한다.
+        // (style_only는 위쪽 outer if에서 2-step 파이프라인으로 라우팅되므로 이 분기에는 도달하지 않음)
         parts.push({
-          text: `${indexedRefGuidance}${variationBlock}[STYLE LOCK — READ THIS NEXT (after [INDEXED REFERENCE MAPPING] and [VARIATION DIRECTIVE] if present above)]
-${refCountText.charAt(0).toUpperCase() + refCountText.slice(1)} define the EXACT visual style of the output. Before reading any other instruction, study and lock onto the reference's:
-• Medium — is it a photograph, a 2D illustration, an anime/manga drawing, a webtoon, a 3D render, a watercolor, an oil painting, a pencil sketch, etc.? Identify it precisely and reproduce that exact medium.
-• Line work — line weight, line color, presence/absence of outlines, sketchy vs clean lines.
-• Shading & rendering — flat colors / cel-shading / soft shading / painterly / photorealistic lighting / etc. Match the rendering technique pixel-for-pixel.
-• Color palette, saturation, contrast, color grading, white balance.
-• Texture and grain — film grain, paper texture, brush texture, smooth digital, etc.
-• Proportions and stylization level — realistic anatomy vs stylized vs anime proportions vs chibi, etc.
-• Detail density — how detailed eyes, skin, hair, fabric are rendered.
+          text: `${indexedRefGuidance}${variationBlock}[YOUR TASK]
+Generate ONE new image showing the SAME PERSON whose face is in the reference, depicted in a NEW situation defined by the user instruction below.
 
-THIS STYLE IS NON-NEGOTIABLE. The output must be visually indistinguishable in style from the reference — as if drawn/photographed by the same artist in the same session with the same tools.
-• If the reference is a photograph → output must be a photograph (NOT illustration, NOT 3D, NOT stylized).
-• If the reference is an illustration / anime / webtoon → output must be in that exact same drawing style (NOT photorealistic, NOT a different anime style, NOT "improved" or "more detailed").
-• If the reference is a painting → output must be in that exact painting style.
-NEVER convert between mediums. NEVER "upgrade" to a more polished or photorealistic look. NEVER drift to a generic AI illustration style.
-${refs.length > 1 ? 'When multiple references are attached AND the user instruction does NOT reference any image by number, blend their stylistic cues into one consistent style — do not let one reference dominate. When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top of this prompt overrides this rule.' : ''}
+[FROM THE REFERENCE — TAKE ONLY: face/identity + visual style]
+- Face/identity: same face shape, eye shape & color, nose, lips, brow, jawline, hair color, natural hairstyle (unless instruction specifies different), skin tone, age, ethnicity, overall identity. The output must be IMMEDIATELY RECOGNIZABLE as the same person.${refs.length > 1 ? ' When multiple references are attached AND the user instruction does NOT reference images by number, treat all references as showing the same character (or blend identities consistently). When the user instruction DOES reference images by number, [INDEXED REFERENCE MAPPING] at the top is BINDING — use the face from the named image exactly.' : ''}
+- Visual style: same medium (photo / 2D illustration / anime/manga / webtoon / 3D / watercolor / painting / etc.), same line work, same shading technique, same color palette, same texture, same proportions/stylization, same detail density. NEVER convert between mediums or "upgrade" to a more polished/photorealistic look.
 
-[FRESH CONTENT DIRECTIVE — ABSOLUTE TOP PRIORITY, DO NOT COPY SUBJECTS FROM REFERENCES]
-The references are STYLE SAMPLES — art swatches you study to learn HOW to render. They are NOT subjects to reproduce. The output must be a completely NEW image with NEW content as defined by the user instruction.
+[FROM THE USER INSTRUCTION — TAKE: everything else]
+- Outfit, clothing, accessories, jewelry, footwear: render whatever the instruction describes.
+- Pose, body language, gesture, facial expression: render per instruction (and [VARIATION DIRECTIVE] if present).
+- Scene, environment, background, location, props, set dressing: render per instruction.
+- Composition, framing, camera angle, distance: render per instruction (and [VARIATION DIRECTIVE]).
+- Number of subjects, supporting characters: per instruction.
 
-DO NOT reuse the following from references:
-• Faces, identities, specific people — the output must depict DIFFERENT people from those in the references. A viewer comparing the reference's face and the output's face must say "different person."
-• Outfits, clothing, accessories, jewelry, footwear — invent new clothing per the user instruction; do NOT clone the reference's wardrobe.
-• Pose, body language, gesture, expression — follow the instruction.
-• Scene, environment, background, location, props, set dressing — follow the instruction; do NOT reproduce the reference's setting.
-• Composition, framing, camera angle, distance — follow the instruction (and [VARIATION DIRECTIVE] if present).
-• Number/arrangement of subjects, supporting characters.
-
-If you find yourself reproducing a person, outfit, pose, or scene from the reference: STOP. Treat the reference like a paint swatch — copy the technique, not the subject. Generate completely fresh content per the user instruction.
-
-EXCEPTION: when the user instruction explicitly references a person/face/character from a specific image by number (handled by [INDEXED REFERENCE MAPPING] at the top), reproduce that named person from the named image exactly. All non-attributed elements still follow the FRESH CONTENT DIRECTIVE above.
-
-[USER INSTRUCTION — DEFINES ALL CONTENT (WHO, WHAT, WHERE, MOOD)]
+[USER INSTRUCTION — DEFINES OUTFIT, SCENE, POSE, EVERYTHING EXCEPT FACE/STYLE]
 ${prompt}
 
-The user instruction is the single source of truth for: who appears (new characters, not the reference's), what they look like, what they wear, where they are, what they do, the mood, the composition, and any props. Render whatever the instruction describes, drawn/painted in the references' exact style as if the same artist drew this completely new picture from scratch.
+[CRITICAL]
+The reference's outfit, scene, pose, and setting are NOT in the output. Even though the reference shows the person wearing X at location A, the output must show the SAME PERSON wearing Y at location B per the instruction. Reference contributes face + visual style only — NOTHING ELSE.
 
-[CRITICAL CONFLICT RESOLUTION]
-• If the instruction's subject/scene differs from what's in the references: OBEY THE INSTRUCTION. References are style samples, not content templates.
-• If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks "realistic" when reference is anime): IGNORE the style hint, keep the reference's style. The instruction's content (who/what/where) is still fully applied.${formatRules}`,
+If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks "realistic" when reference is anime): IGNORE the style hint, keep the reference's style. The instruction's content (clothing/scene/etc.) is still fully applied.${formatRules}`,
         })
       }
     } else {
