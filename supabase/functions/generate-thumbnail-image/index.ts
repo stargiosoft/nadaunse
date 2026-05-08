@@ -154,10 +154,22 @@ serve(async (req) => {
         : []
 
     if (refs.length > 0 && !auto_fill_background && reference_mode !== 'style_and_character') {
-      // ── "스타일만 참고" 2-step 파이프라인 ──
-      // 레퍼런스를 inlineData로 직접 넘기면 image-conditioning이 너무 강해 인물·복장·장면까지 그대로 복사된다.
-      // 1단계에서 시각 스타일만 텍스트로 추출 → 2단계에서는 이미지 없이 텍스트만으로 생성.
+      // ── "스타일만 참고" Hybrid 파이프라인 ──
+      // 1단계: 레퍼런스에서 시각 스타일을 텍스트로 추출 (인지적 가이드).
+      // 2단계: 추출된 텍스트 + 레퍼런스 이미지 inlineData를 함께 전달하되,
+      //        강한 anti-copy 프롬프트로 "스타일만 보고 컨텐츠는 무시"하도록 유도.
+      // 텍스트만 사용하던 이전 방식은 그림체 디테일(붓터치·라인 두께·컬러그레이딩 톤)이 손실됐음.
       const styleDescription = await extractStyleDescription(refs, apiKey)
+
+      // 레퍼런스 이미지를 inline으로 첨부 — 시각 스타일의 high-fidelity 앵커
+      for (const data of refs) {
+        parts.push({
+          inlineData: {
+            mimeType: 'image/png',
+            data,
+          },
+        })
+      }
 
       const variation2StepBlock = (typeof variation_directive === 'string' && variation_directive.trim().length > 0)
         ? `[VARIATION GUIDANCE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
@@ -176,18 +188,36 @@ ${variation_directive.trim()}
 
       parts.push({
         text: `[YOUR TASK]
-Generate ONE new image entirely from scratch. NO reference image is attached — the visual style is fully described in text below. Render the user instruction's content rendered in that visual style.
+Generate ONE new image. The attached reference image${refs.length > 1 ? 's are' : ' is'} provided ONLY as a visual style sample — to anchor your understanding of the artwork's medium, line work, texture, palette, shading, and rendering technique. The CONTENT of the output (who/what/where/scene/poses) is defined exclusively by the [USER INSTRUCTION] below.
+
+[CRITICAL — REFERENCE IMAGE USAGE]
+The reference is a STYLE SAMPLE, not a CONTENT TEMPLATE. From the reference, take ONLY:
+• Medium (photo / 2D illustration / anime/manga / webtoon / 3D / watercolor / painting / etc.)
+• Line work (line weight, line color, sketchy vs clean, presence/absence of outlines)
+• Shading & rendering (flat / cel / soft / painterly / photorealistic)
+• Color palette, saturation, contrast, color grading, white balance
+• Texture & grain (film grain, paper, brush strokes, smooth digital)
+• Proportions & stylization level (realistic / stylized / anime / chibi)
+• Detail density (how detailed eyes, skin, hair, fabric are rendered)
+• Lighting mood and atmospheric quality
+
+ABSOLUTELY DO NOT take from the reference:
+• Any specific person, face, or identity — even if a recognizable face is visible in the reference, the output's people must be DIFFERENT, INVENTED people.
+• Any clothing, outfit, or accessory the reference person wears.
+• Any pose, body language, or facial expression from the reference person.
+• Any scene, environment, location, background, or props from the reference.
+• Any composition, framing, or camera angle from the reference.
+
+The output must look as if a single artist used the reference's style/technique to create a brand new image of subject and scene that the artist invented themselves, never having seen the reference's content. A viewer comparing reference and output should recognize the same artistic hand and same visual style, but should NOT recognize any person/scene/item from the reference appearing in the output.
 
 [USER INSTRUCTION — DEFINES ALL CONTENT (WHO, WHAT, WHERE, MOOD)]
 ${prompt}
 
-[VISUAL STYLE — APPLY EXACTLY (extracted from a reference image)]
+[VISUAL STYLE TEXT GUIDE — supplements the reference image, do not contradict it]
 ${styleDescription}
 
-${variation2StepBlock}[GENERATION INSTRUCTIONS]
-Render the user instruction's content (subjects, characters, clothing, scene, action, mood, props, environment) entirely from your imagination. The user instruction is the complete source of truth for WHAT appears in the image.
-
-Apply the visual style described above pixel-for-pixel — same medium, same line work, same palette, same rendering technique, same texture, same lighting mood, same proportions/stylization, same detail density. The result should look as if a single artist created this image from scratch using exactly that style on a completely new subject they invented themselves.
+${variation2StepBlock}[STYLE FIDELITY REQUIREMENTS]
+Apply the reference's visual style with high fidelity — same medium, same line work, same palette, same rendering technique, same texture, same lighting mood, same proportions/stylization, same detail density. If the text guide above conflicts with what is visible in the attached reference, the attached reference WINS — the text is only a supplement.
 
 [OUTPUT FORMAT RULES]
 • Output exactly ONE single image — one continuous scene, not a collage, grid, multi-panel, split-screen, or before/after layout.
