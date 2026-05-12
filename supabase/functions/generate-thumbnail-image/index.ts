@@ -155,22 +155,24 @@ serve(async (req) => {
         ? [reference_image]
         : []
 
+    const styleTextOnly = reference_mode === 'style_text_only'
+
     if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character') {
-      // ── "스타일만 참고" Hybrid 파이프라인 ──
-      // 1단계: 레퍼런스에서 시각 스타일을 텍스트로 추출 (인지적 가이드).
-      // 2단계: 추출된 텍스트 + 레퍼런스 이미지 inlineData를 함께 전달하되,
-      //        강한 anti-copy 프롬프트로 "스타일만 보고 컨텐츠는 무시"하도록 유도.
-      // 텍스트만 사용하던 이전 방식은 그림체 디테일(붓터치·라인 두께·컬러그레이딩 톤)이 손실됐음.
+      // ── "스타일만 참고" 계열 — 레퍼런스에서 시각 스타일을 텍스트로 추출 ──
+      // style_only:      추출 텍스트 + 레퍼런스 이미지 inlineData 함께 전달 (강한 anti-copy). 화풍 정확하지만 소재가 새어들 수 있음.
+      // style_text_only: 추출 텍스트만 사용하고 생성 호출엔 레퍼런스 이미지를 첨부하지 않음 → 소재 누출 거의 0, 화풍 디테일은 약간 덜 정밀.
       const styleDescription = await extractStyleDescription(refs, apiKey)
 
-      // 레퍼런스 이미지를 inline으로 첨부 — 시각 스타일의 high-fidelity 앵커
-      for (const data of refs) {
-        parts.push({
-          inlineData: {
-            mimeType: 'image/png',
-            data,
-          },
-        })
+      // style_only일 때만 레퍼런스 이미지를 inline 첨부 (high-fidelity 앵커)
+      if (!styleTextOnly) {
+        for (const data of refs) {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/png',
+              data,
+            },
+          })
+        }
       }
 
       const variation2StepBlock = (typeof variation_directive === 'string' && variation_directive.trim().length > 0)
@@ -188,6 +190,27 @@ ${variation_directive.trim()}
 `
         : ''
 
+      if (styleTextOnly) {
+        // 레퍼런스 이미지 없이, 추출된 화풍 텍스트 가이드만으로 생성 → 레퍼런스 소재가 출력에 새어들 일이 없음.
+        parts.push({
+          text: `[YOUR TASK]
+Generate ONE new image. NO reference image is attached. You are recreating ONLY the ARTISTIC STYLE described in [VISUAL STYLE GUIDE] below, applied to brand-new subject matter that is defined entirely by [USER INSTRUCTION]. The style guide describes TECHNIQUE ONLY — it contains no content for you to copy; the content of the image is 100% from the user instruction.
+
+[USER INSTRUCTION — DEFINES ALL CONTENT (WHAT, WHERE, COMPOSITION, MOOD)]
+${prompt}
+
+[VISUAL STYLE GUIDE — replicate this artistic style/technique exactly]
+${styleDescription}
+
+${variation2StepBlock}[STYLE FIDELITY REQUIREMENTS]
+Match the medium, line work, color palette, saturation/contrast, rendering/shading technique, texture and grain, proportions/stylization level, detail density, and lighting mood described above as faithfully as possible. Do not invent a different style; do not drift toward photorealism unless the guide explicitly says photographic. The ENTIRE image must be in this one consistent style/medium — every subject, object, background element, pattern, ornament, and any celestial body — never mix in a photo-real or differently-styled element. If the style is flat / low-poly / geometric-faceted / vector / illustrated, even normally-photographic subjects (a moon, a face, water, metal) must be built from that same technique's primitives.
+
+[OUTPUT FORMAT RULES]
+• Output exactly ONE single image — one continuous composition, not a collage, grid, multi-panel, split-screen, montage, or before/after layout.
+• Do NOT include any text, letters, numbers, titles, labels, watermarks, captions, or typography in the image.
+• If the user instruction asks for multiple outfit/pose/scene variations in a single output, pick ONE and render it as a single full image rather than a collage.`,
+        })
+      } else {
       parts.push({
         text: `[YOUR TASK]
 Generate ONE new image. The attached reference image${refs.length > 1 ? 's are' : ' is'} provided ONLY as a visual style sample — to anchor your understanding of the artwork's medium, line work, texture, palette, shading, and rendering technique. The CONTENT of the output (who/what/where/scene/poses) is defined exclusively by the [USER INSTRUCTION] below.
@@ -229,6 +252,7 @@ The ENTIRE output must be rendered in the reference's ONE medium and technique �
 • Do NOT include any text, letters, numbers, titles, labels, watermarks, captions, or typography in the image.
 • If the user instruction itself asks for multiple outfit/pose/scene variations in a single output, pick ONE and render it as a single full image rather than a collage.`,
       })
+      }
     } else if (refs.length > 0) {
       // 레퍼런스 이미지 모두 첨부 (auto_fill_background 또는 캐릭터+스타일 모드)
       for (const data of refs) {
