@@ -168,9 +168,19 @@ function buildVariationInfo(
       ? '같은 시리즈처럼 일관성을 유지하되, 프롬프트 해석의 방향성은 컷마다 분명히 다르게.'
       : '프롬프트의 다양한 해석을 적극적으로 시도. 같은 화풍·색감·캐릭터는 유지.';
 
+  // 앵글 다양성이 임계값 미만이면 "앵글 고정"이 directive 본문 전체에서 일관되게 유지되도록
+  // 핵심 원칙·LOCK 목록·변주 차원 문구를 분기한다. (예전엔 angleClause만 빠지고 본문엔 "다른 각도"가 그대로 남아 모순)
+  const sceneDescription = includeAngle
+    ? '같은 씬을 다른 각도/순간에서 본 한 장면'
+    : '같은 씬을 같은 카메라 앵글에서 본, 거의 동일한 한 장면';
+  const angleLockLine = includeAngle ? '' : '\n• 카메라 앵글·시점 (모든 컷 동일 — 앵글 변화 없음)';
+  const variationDimensionLine = includeAngle
+    ? '• 변주는 카메라 시점·구도·포즈·순간 차원에서만 일어남.'
+    : '• 변주는 구도·포즈·순간·미세한 디테일 차원에서만 일어남. 카메라 앵글·시점은 모든 컷 동일하게 고정.';
+
   const directive = `이 컷은 ${total}장 시리즈 중 ${index + 1}번째.
 
-핵심 원칙: 시리즈의 모든 컷은 "같은 씬을 다른 각도/순간에서 본 한 장면"임. 새로운 씬·새로운 상황·새로운 디자인 컨셉으로 바꾸지 않음. 1번째 컷과 N번째 컷이 같은 영화의 연속된 다른 프레임처럼 보여야 함.
+핵심 원칙: 시리즈의 모든 컷은 "${sceneDescription}"임. 새로운 씬·새로운 상황·새로운 디자인 컨셉으로 바꾸지 않음. 1번째 컷과 N번째 컷이 같은 영화의 연속된 다른 프레임처럼 보여야 함.
 
 [일관성 LOCK — 레퍼런스 이미지 기반으로 절대 동일하게 유지]
 • 그림체·일러스트 화풍 (medium·line work·rendering 기법)
@@ -179,17 +189,98 @@ function buildVariationInfo(
 • 캐릭터/오브젝트 외형 (의상·헤어·얼굴 형태·디테일)
 • 씬·상황·컨셉 (같은 장소, 같은 상황, 같은 서사적 순간 — 시리즈 전 컷 동일)
 • 디자인 컨셉 (전체 구성·아트디렉션·씬 해석 — 1번째 컷의 컨셉을 N번째 컷도 그대로)
-• 조명 무드와 시간대
+• 조명 무드와 시간대${angleLockLine}
 
 레퍼런스 이미지가 있는 경우, 위 항목은 모두 레퍼런스에서 추출된 시각 정체성을 그대로 따름. 이 LOCK은 어떤 변주보다도 우선.
 
 [이 컷의 변주 — 같은 씬 안에서, 컷마다 약간만 다른 디자인 표현]
 ${angleClause}• ${intensityNote}
-• 변주는 카메라 시점·구도·포즈·순간 차원에서만 일어남.
+${variationDimensionLine}
 • 절대 다른 씬, 다른 상황, 다른 컨셉으로 바꾸지 않음. 새로운 디자인 아이디어를 추가하지 않음.
 • 1번째 컷이 ${total}컷 중 컨셉의 기준선이며, 모든 컷이 그 기준선 위에서 디자인 변형만 있어야 함.`;
 
   return { index, total, directive };
+}
+
+// ── 영역 지정 수정(인페인팅) 유틸 ──
+
+type NormRect = { x: number; y: number; w: number; h: number }; // 0~1 정규화 좌표
+
+function loadImageEl(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image load failed'));
+    img.src = src;
+  });
+}
+
+// 원본 이미지 위에 선택 영역을 반투명 빨간 박스로 합성 → base64(png, 헤더 제외) 반환.
+// 모델이 "이 박스 안쪽만 바꿔라"를 픽셀 레벨로 인식하게 하는 마커.
+async function buildRegionMarkedImage(src: string, rect: NormRect): Promise<string> {
+  const img = await loadImageEl(src);
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas context unavailable');
+  ctx.drawImage(img, 0, 0, W, H);
+  const rx = Math.round(rect.x * W), ry = Math.round(rect.y * H);
+  const rw = Math.round(rect.w * W), rh = Math.round(rect.h * H);
+  ctx.fillStyle = 'rgba(255, 0, 0, 0.25)';
+  ctx.fillRect(rx, ry, rw, rh);
+  ctx.strokeStyle = 'rgba(255, 0, 0, 0.95)';
+  ctx.lineWidth = Math.max(4, Math.round(Math.min(W, H) * 0.012));
+  ctx.strokeRect(rx, ry, rw, rh);
+  return canvas.toDataURL('image/png').split(',')[1] || '';
+}
+
+// AI 결과에서 선택 영역만 잘라 원본 위에 페더 합성 → dataURL(png) 반환. 박스 바깥은 원본 픽셀 그대로.
+async function compositeRegionResult(originalSrc: string, resultSrc: string, rect: NormRect): Promise<string> {
+  const [orig, result] = await Promise.all([loadImageEl(originalSrc), loadImageEl(resultSrc)]);
+  const W = orig.naturalWidth, H = orig.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas context unavailable');
+  ctx.drawImage(orig, 0, 0, W, H);
+
+  const dstX = rect.x * W, dstY = rect.y * H, dstW = rect.w * W, dstH = rect.h * H;
+  const rW = result.naturalWidth, rH = result.naturalHeight;
+  const srcX = rect.x * rW, srcY = rect.y * rH, srcW = rect.w * rW, srcH = rect.h * rH;
+
+  const pw = Math.max(1, Math.round(dstW));
+  const ph = Math.max(1, Math.round(dstH));
+  const patch = document.createElement('canvas');
+  patch.width = pw; patch.height = ph;
+  const pctx = patch.getContext('2d');
+  if (!pctx) throw new Error('canvas context unavailable');
+  pctx.drawImage(result, srcX, srcY, srcW, srcH, 0, 0, pw, ph);
+
+  // 가장자리 페더 마스크 — 가로/세로 그라데이션을 destination-in으로 두 번 적용해 4변을 부드럽게.
+  const feather = Math.max(1, Math.round(Math.min(pw, ph) * 0.06));
+  pctx.globalCompositeOperation = 'destination-in';
+  const fx = Math.min(0.49, feather / pw);
+  let g = pctx.createLinearGradient(0, 0, pw, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(fx, 'rgba(0,0,0,1)');
+  g.addColorStop(1 - fx, 'rgba(0,0,0,1)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  pctx.fillStyle = g;
+  pctx.fillRect(0, 0, pw, ph);
+  const fy = Math.min(0.49, feather / ph);
+  g = pctx.createLinearGradient(0, 0, 0, ph);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(fy, 'rgba(0,0,0,1)');
+  g.addColorStop(1 - fy, 'rgba(0,0,0,1)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  pctx.fillStyle = g;
+  pctx.fillRect(0, 0, pw, ph);
+  pctx.globalCompositeOperation = 'source-over';
+
+  ctx.drawImage(patch, dstX, dstY);
+  return canvas.toDataURL('image/png');
 }
 
 // ── Component ──
@@ -233,6 +324,11 @@ export default function ThumbnailPage() {
   // Edit (이미지 디벨롭)
   const [editPrompt, setEditPrompt] = useState('');
   const [editing, setEditing] = useState(false);
+
+  // 영역 지정 수정 (인페인팅) — 결과 이미지 위에서 사각형 드래그 → 그 영역만 수정
+  const [regionMode, setRegionMode] = useState(false);
+  const [selRect, setSelRect] = useState<NormRect | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   // ── Handlers ──
 
@@ -487,6 +583,57 @@ export default function ThumbnailPage() {
     }
   }, [selectedImageId, images, editPrompt, editing, persistentPrompt, ratioId]);
 
+  const handleRegionEdit = useCallback(async () => {
+    const target = (selectedImageId !== null ? images.find(img => img.id === selectedImageId) : undefined) || images[0];
+    const editText = editPrompt.trim();
+    if (!target?.src || !editText || editing) return;
+    if (!selRect || selRect.w < 0.02 || selRect.h < 0.02) {
+      setError('수정할 영역을 이미지 위에서 드래그해 선택해주세요');
+      return;
+    }
+
+    setEditing(true);
+    setError(null);
+
+    const fixedPrompt = persistentPrompt.trim();
+    const combinedPrompt = [editText, fixedPrompt].filter(Boolean).join('\n\n');
+    const rect = selRect;
+    const newId = images.reduce((max, img) => Math.max(max, img.id), 0) + 1;
+
+    try {
+      const markedBase64 = await buildRegionMarkedImage(target.src, rect);
+      const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: combinedPrompt,
+          aspect_ratio: ratioId,
+          reference_images: [markedBase64],
+          reference_mode: 'style_and_character',
+          edit_region: true,
+          image_variation: 5, // 영역 수정은 충실도가 우선 → 낮은 temperature
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '영역 수정 실패');
+
+      const resultDataUrl = `data:${data.mimeType};base64,${data.image}`;
+      // 박스 바깥은 원본 픽셀 그대로 유지하기 위해, AI 결과에서 선택 영역만 잘라 원본 위에 합성.
+      const composited = await compositeRegionResult(target.src, resultDataUrl, rect);
+
+      const newImage: GeneratedImage = { id: newId, src: composited };
+      setImages(prev => [...prev, newImage]);
+      setSelectedImageId(newId);
+      setEditPrompt('');
+      setSelRect(null);
+      setRegionMode(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '영역 수정 실패');
+    } finally {
+      setEditing(false);
+    }
+  }, [selectedImageId, images, editPrompt, editing, selRect, persistentPrompt, ratioId]);
+
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
     const img = new Image();
@@ -592,6 +739,11 @@ export default function ThumbnailPage() {
   const currentImage = (selectedImageId !== null
     ? images.find(img => img.id === selectedImageId)
     : undefined) || images[0];
+
+  // 선택 이미지가 바뀌면 영역 선택 초기화 (좌표가 다른 이미지에 맞지 않으므로)
+  useEffect(() => { setSelRect(null); }, [selectedImageId]);
+  // 결과 화면을 벗어나면 영역 지정 모드 해제
+  useEffect(() => { if (step !== 'result') { setRegionMode(false); setSelRect(null); setDragStart(null); } }, [step]);
 
   // Shift+1 단축키 → 썸네일 생성하기
   useEffect(() => {
@@ -1278,6 +1430,31 @@ export default function ThumbnailPage() {
                         className="transform-gpu"
                         onMouseEnter={() => setIsMainHover(true)}
                         onMouseLeave={() => setIsMainHover(false)}
+                        onPointerDown={regionMode ? (e) => {
+                          const r = e.currentTarget.getBoundingClientRect();
+                          const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+                          const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+                          setDragStart({ x, y });
+                          setSelRect({ x, y, w: 0, h: 0 });
+                          try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+                        } : undefined}
+                        onPointerMove={regionMode ? (e) => {
+                          if (!dragStart) return;
+                          const r = e.currentTarget.getBoundingClientRect();
+                          const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+                          const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+                          setSelRect({
+                            x: Math.min(dragStart.x, x),
+                            y: Math.min(dragStart.y, y),
+                            w: Math.abs(x - dragStart.x),
+                            h: Math.abs(y - dragStart.y),
+                          });
+                        } : undefined}
+                        onPointerUp={regionMode ? (e) => {
+                          try { if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+                          setDragStart(null);
+                          setSelRect(prev => (prev && (prev.w < 0.02 || prev.h < 0.02)) ? null : prev);
+                        } : undefined}
                         style={{
                           position: 'relative',
                           aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
@@ -1288,21 +1465,40 @@ export default function ThumbnailPage() {
                           borderRadius: '24px',
                           border: `1px solid ${C.borderDefault}`,
                           overflow: 'hidden',
+                          cursor: regionMode ? 'crosshair' : 'default',
+                          touchAction: regionMode ? 'none' : 'auto',
+                          userSelect: regionMode ? 'none' : 'auto',
+                          WebkitUserSelect: regionMode ? 'none' : 'auto',
                         }}
                       >
                         <img
                           src={currentImage.src}
                           alt={`썸네일 ${currentImage.id}`}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          draggable={false}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
                         />
+                        {/* 영역 지정 오버레이 — 선택 박스 + 바깥 디밍 */}
+                        {regionMode && selRect && (
+                          <div style={{
+                            position: 'absolute',
+                            left: `${selRect.x * 100}%`,
+                            top: `${selRect.y * 100}%`,
+                            width: `${selRect.w * 100}%`,
+                            height: `${selRect.h * 100}%`,
+                            border: '2px solid #ff3b30',
+                            backgroundColor: 'rgba(255, 59, 48, 0.16)',
+                            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.34)',
+                            pointerEvents: 'none',
+                          }} />
+                        )}
                         {/* Hover overlay: full-width download button */}
                         <div style={{
                           position: 'absolute',
                           bottom: 0, left: 0, right: 0,
                           padding: '16px',
-                          opacity: isMainHover ? 1 : 0,
+                          opacity: (isMainHover && !regionMode) ? 1 : 0,
                           transition: 'opacity 0.15s ease',
-                          pointerEvents: isMainHover ? 'auto' : 'none',
+                          pointerEvents: (isMainHover && !regionMode) ? 'auto' : 'none',
                         }}>
                           <button
                             onClick={() => handleDownload(currentImage)}
@@ -1324,9 +1520,52 @@ export default function ThumbnailPage() {
                         </div>
                       </div>
 
-                      {/* ── 이미지 수정 입력 ── */}
+                      {/* ── 영역 지정 툴바 ── */}
                       <div style={{
                         marginTop: '16px',
+                        display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                      }}>
+                        <button
+                          onClick={() => { setRegionMode(m => !m); setSelRect(null); setDragStart(null); }}
+                          style={{
+                            height: '32px', padding: '0 14px', borderRadius: '10px',
+                            border: `1px solid ${regionMode ? C.primary : C.borderDefault}`,
+                            backgroundColor: regionMode ? C.primaryLight : C.surface,
+                            color: regionMode ? C.primaryDark : C.textSecondary,
+                            cursor: 'pointer',
+                            fontFamily: font, fontSize: '12px', fontWeight: 400,
+                            letterSpacing: '-0.24px', transition: 'all 0.15s ease',
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3" strokeDasharray="4 3" />
+                          </svg>
+                          {regionMode ? '영역 지정 중' : '영역 지정해서 수정'}
+                        </button>
+                        {regionMode && (
+                          <span style={{
+                            fontFamily: font, fontSize: '12px', color: C.textCaption, letterSpacing: '-0.24px',
+                          }}>
+                            {selRect ? '드래그로 영역을 다시 그릴 수 있어요' : '이미지 위에서 드래그해 수정할 영역을 선택하세요'}
+                          </span>
+                        )}
+                        {regionMode && selRect && (
+                          <button
+                            onClick={() => setSelRect(null)}
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
+                              fontFamily: font, fontSize: '12px', color: C.primary, letterSpacing: '-0.24px',
+                            }}
+                          >
+                            선택 해제
+                          </button>
+                        )}
+                      </div>
+
+                      {/* ── 이미지 수정 입력 ── */}
+                      <div style={{
+                        marginTop: '10px',
                         display: 'flex', gap: '8px', alignItems: 'stretch',
                       }}>
                         <input
@@ -1336,43 +1575,49 @@ export default function ThumbnailPage() {
                           onKeyDown={e => {
                             if (e.key === 'Enter' && !e.nativeEvent.isComposing && editPrompt.trim() && !editing) {
                               e.preventDefault();
-                              handleEdit();
+                              if (regionMode && selRect) handleRegionEdit(); else if (!regionMode) handleEdit();
                             }
                           }}
-                          placeholder="어떻게 수정할까요? (예: 여자 드레스를 흰색으로)"
-                          disabled={editing}
+                          placeholder={
+                            regionMode
+                              ? (selRect ? '선택한 부분을 어떻게 바꿀까요? (예: 이 별을 더 크게)' : '먼저 이미지에서 수정할 영역을 드래그하세요')
+                              : '어떻게 수정할까요? (예: 여자 드레스를 흰색으로)'
+                          }
+                          disabled={editing || (regionMode && !selRect)}
                           className="outline-none"
                           style={{
                             flex: 1, height: '44px', borderRadius: '12px',
                             padding: '0 16px',
                             fontFamily: font, fontSize: '13px', fontWeight: 400,
                             color: C.textPrimary,
-                            backgroundColor: editing ? C.surfaceDisabled : C.surface,
+                            backgroundColor: (editing || (regionMode && !selRect)) ? C.surfaceDisabled : C.surface,
                             border: `1px solid ${C.borderDefault}`,
                             letterSpacing: '-0.26px',
                             transition: 'all 0.15s ease',
                             minWidth: 0,
                           }}
-                          onFocus={e => { if (!editing) e.currentTarget.style.borderColor = C.primary; }}
+                          onFocus={e => { if (!editing && !(regionMode && !selRect)) e.currentTarget.style.borderColor = C.primary; }}
                           onBlur={e => { e.currentTarget.style.borderColor = C.borderDefault; }}
                         />
                         <button
-                          onClick={handleEdit}
-                          disabled={!editPrompt.trim() || editing}
+                          onClick={() => { if (regionMode && selRect) handleRegionEdit(); else if (!regionMode) handleEdit(); }}
+                          disabled={!editPrompt.trim() || editing || (regionMode && !selRect)}
                           style={{
                             height: '44px', padding: '0 24px', borderRadius: '12px',
-                            backgroundColor: editPrompt.trim() && !editing ? C.primary : C.surfaceDisabled,
+                            backgroundColor: (editPrompt.trim() && !editing && !(regionMode && !selRect)) ? C.primary : C.surfaceDisabled,
                             border: 'none',
-                            cursor: editPrompt.trim() && !editing ? 'pointer' : 'default',
+                            cursor: (editPrompt.trim() && !editing && !(regionMode && !selRect)) ? 'pointer' : 'default',
                             fontFamily: font, fontSize: '13px', fontWeight: 400,
-                            color: editPrompt.trim() && !editing ? C.textWhite : C.textDisabled,
+                            color: (editPrompt.trim() && !editing && !(regionMode && !selRect)) ? C.textWhite : C.textDisabled,
                             letterSpacing: '-0.26px',
                             transition: 'all 0.15s ease',
                             whiteSpace: 'nowrap',
                             flexShrink: 0,
                           }}
                         >
-                          {editing ? '수정 중...' : '수정하기'}
+                          {editing
+                            ? (regionMode && selRect ? '영역 수정 중...' : '수정 중...')
+                            : (regionMode && selRect ? '선택 영역 수정' : '수정하기')}
                         </button>
                       </div>
                     </div>

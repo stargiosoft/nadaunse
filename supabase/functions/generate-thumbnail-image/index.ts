@@ -85,6 +85,8 @@ async function extractStyleDescription(refs: string[], apiKey: string): Promise<
 - Detail density (how detailed eyes, skin, hair, fabric are rendered)
 - Lighting mood and atmospheric quality (warm/cool, soft/harsh, dramatic/flat)
 
+IMPORTANT — if the medium is stylized rather than photographic (e.g. low-poly / flat-vector / geometric-faceted / cel-shaded / paper-cut / pixel-art / painterly / cartoon): explicitly state that EVERY form in this style — organic shapes, faces, skin, water, sky, clouds, foliage, fabric, AND celestial bodies like the sun/moon/stars — is constructed from the SAME stylized primitives (e.g. flat triangular polygonal facets with hard edges and no gradients on the subject itself), and is NEVER rendered with photographic detail, smooth photo-real textures, or a different medium. Spell out the exact geometric/illustrative construction so a replicator would draw a moon as faceted polygons, not as a photograph.
+
 DO NOT describe specific people, faces, identities, clothing, accessories, poses, scenes, environments, props, or any content. Style only — write as if explaining the artist's technique to someone trying to replicate it on a completely different subject they will invent themselves.
 
 Output: a single descriptive paragraph. No bullet points, no headings, no preamble like "This image shows" — just the style description.`,
@@ -126,7 +128,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -153,7 +155,7 @@ serve(async (req) => {
         ? [reference_image]
         : []
 
-    if (refs.length > 0 && !auto_fill_background && reference_mode !== 'style_and_character') {
+    if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character') {
       // ── "스타일만 참고" Hybrid 파이프라인 ──
       // 1단계: 레퍼런스에서 시각 스타일을 텍스트로 추출 (인지적 가이드).
       // 2단계: 추출된 텍스트 + 레퍼런스 이미지 inlineData를 함께 전달하되,
@@ -218,6 +220,9 @@ ${styleDescription}
 
 ${variation2StepBlock}[STYLE FIDELITY REQUIREMENTS]
 Apply the reference's visual style with high fidelity — same medium, same line work, same palette, same rendering technique, same texture, same lighting mood, same proportions/stylization, same detail density. If the text guide above conflicts with what is visible in the attached reference, the attached reference WINS — the text is only a supplement.
+
+[WHOLE-IMAGE STYLE CONSISTENCY — CRITICAL]
+The ENTIRE output must be rendered in the reference's ONE medium and technique — every subject, object, background element, pattern, ornament, and any celestial body (sun, moon, stars, clouds). NEVER mix media: do not drop a photorealistic or differently-styled element into an otherwise stylized image. If the reference is flat / low-poly / geometric-faceted / vector / illustrated, then even subjects that are normally depicted photographically (a moon, a face, water, foliage, metal) MUST be redrawn in that same flat / low-poly / geometric-faceted / vector / illustrated technique — built from the same primitives (e.g. flat polygonal facets, hard edges, no photo-real gradients or textures on the subject). A common failure to avoid: rendering the background and decorations in the stylized look but inserting a photo-real moon/sun/face in the center — that is WRONG. One coherent medium across 100% of the image.
 
 [OUTPUT FORMAT RULES]
 • Output exactly ONE single image — one continuous scene, not a collage, grid, multi-panel, split-screen, or before/after layout.
@@ -301,7 +306,25 @@ ${variation_directive.trim()}
 `
         : ''
 
-      if (auto_fill_background) {
+      if (edit_region) {
+        // 영역 지정 수정 (Inpaint) — 첨부 이미지에 반투명 빨간 박스가 그려져 있고, 그 안쪽만 지시대로 바꾼다.
+        // 박스 바깥 픽셀 보존은 클라이언트에서 원본 재합성으로 보장하므로, 여기서는 "박스 안쪽을 자연스럽게 바꾸고 빨간 마커는 출력에 남기지 말 것"만 강제.
+        parts.push({
+          text: `EDIT the attached image. It contains a TRANSLUCENT RED RECTANGLE (with a solid red outline) marking the EDIT REGION.
+
+RULES:
+1. Change ONLY the content located INSIDE the red rectangle, following the instruction below. Everything OUTSIDE the red rectangle must stay pixel-identical — same composition, same colors, same shapes, same style — do not touch, shift, recolor, or restyle anything outside the marked region.
+2. Do NOT keep, draw, leave, or output ANY red rectangle, red outline, red fill, or red tint. The red overlay is an editing aid only — the final image must look clean with NO markings of any kind.
+3. The edited region must blend seamlessly with its surroundings — match the surrounding art style, medium, line work, color palette, lighting direction, and texture so there is no visible seam at the rectangle boundary.
+4. Do not change the image dimensions or aspect ratio.
+
+INSTRUCTION FOR THE MARKED REGION:
+${prompt}
+
+[OUTPUT FORMAT]
+• ONE single image, same dimensions/aspect as the input. No text, letters, numbers, watermarks, captions, or typography. No red markings anywhere.`,
+        })
+      } else if (auto_fill_background) {
         // 흰 여백 자동 채우기 (Outpaint) — 레퍼런스 이미지를 그대로 유지하고 흰 여백만 확장
         const targetAspect = aspect_ratio || '16:9'
         const userExtras = prompt && prompt.trim()
