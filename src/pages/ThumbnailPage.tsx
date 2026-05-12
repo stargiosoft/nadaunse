@@ -782,11 +782,10 @@ export default function ThumbnailPage() {
     <div className="bg-white relative min-h-screen w-full flex justify-center">
       <div className="w-full relative" style={{ maxWidth: '1200px', fontFamily: font }}>
 
-        {/* NavigationHeader */}
+        {/* NavigationHeader — sticky로 상단 고정 (transform 가진 조상이 있어도 동작, fixed와 달리 스크롤로 안 사라짐) */}
         <div style={{
-          position: 'fixed', top: 0, left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%', maxWidth: '1200px',
+          position: 'sticky', top: 0,
+          width: '100%',
           height: '52px', zIndex: 50,
           backgroundColor: '#ffffff',
           borderBottom: '1px solid #f0f0f0',
@@ -844,8 +843,7 @@ export default function ThumbnailPage() {
           </div>
         </div>
 
-        {/* 헤더 여백 */}
-        <div style={{ height: '52px' }} />
+        {/* sticky 헤더는 흐름에 남아 52px를 차지하므로 별도 스페이서 불필요 */}
 
         {/* ════════ STEP: INPUT ════════ */}
         {step === 'input' && (
