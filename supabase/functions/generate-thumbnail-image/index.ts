@@ -128,7 +128,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -310,19 +310,19 @@ ${variation_directive.trim()}
         // 영역 지정 수정 (Inpaint) — 첨부 이미지에 반투명 빨간 박스가 그려져 있고, 그 안쪽만 지시대로 바꾼다.
         // 박스 바깥 픽셀 보존은 클라이언트에서 원본 재합성으로 보장하므로, 여기서는 "박스 안쪽을 자연스럽게 바꾸고 빨간 마커는 출력에 남기지 말 것"만 강제.
         parts.push({
-          text: `EDIT the attached image. It contains a TRANSLUCENT RED RECTANGLE (with a solid red outline) marking the EDIT REGION.
+          text: `EDIT the attached image. ${(typeof edit_region_count === 'number' && edit_region_count > 1) ? `${edit_region_count} thin BRIGHT RED/MAGENTA RECTANGLE OUTLINES have` : 'A thin BRIGHT RED/MAGENTA RECTANGLE OUTLINE has'} been drawn ON TOP of the artwork to mark the EDIT REGION(S). ${(typeof edit_region_count === 'number' && edit_region_count > 1) ? 'These outlines are' : 'This outline is'} an annotation only — NOT part of the picture.
 
 RULES:
-1. Change ONLY the content located INSIDE the red rectangle, following the instruction below. Everything OUTSIDE the red rectangle must stay pixel-identical — same composition, same colors, same shapes, same style — do not touch, shift, recolor, or restyle anything outside the marked region.
-2. Do NOT keep, draw, leave, or output ANY red rectangle, red outline, red fill, or red tint. The red overlay is an editing aid only — the final image must look clean with NO markings of any kind.
-3. The edited region must blend seamlessly with its surroundings — match the surrounding art style, medium, line work, color palette, lighting direction, and texture so there is no visible seam at the rectangle boundary.
+1. Change ONLY the content located INSIDE the red rectangle outline(s), following the instruction below. Apply the instruction to EACH marked region. Everything OUTSIDE all red outlines must stay pixel-identical — same composition, same colors, same shapes, same style — do not touch, shift, recolor, or restyle anything outside the marked region(s).
+2. The output must contain NO red line, NO magenta line, NO rectangle, and NO red/pink tint, glow, smear, halo, or residue ANYWHERE — not at any boundary, not in any center, nowhere. Reconstruct each marked region as if the outline had never been drawn: continue the surrounding pattern, colors, and shapes naturally into it.
+3. Each edited region must blend seamlessly with its surroundings — match the surrounding art style, medium, line work, color palette, lighting direction, and texture so there is no visible seam at any boundary.
 4. Do not change the image dimensions or aspect ratio.
 
-INSTRUCTION FOR THE MARKED REGION:
+INSTRUCTION FOR THE MARKED REGION(S):
 ${prompt}
 
 [OUTPUT FORMAT]
-• ONE single image, same dimensions/aspect as the input. No text, letters, numbers, watermarks, captions, or typography. No red markings anywhere.`,
+• ONE single clean image, same dimensions/aspect as the input. No text, letters, numbers, watermarks, captions, or typography. Absolutely no red/pink/magenta markings or residue anywhere.`,
         })
       } else if (auto_fill_background) {
         // 흰 여백 자동 채우기 (Outpaint) — 레퍼런스 이미지를 그대로 유지하고 흰 여백만 확장
