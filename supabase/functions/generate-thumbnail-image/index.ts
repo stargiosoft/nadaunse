@@ -3,8 +3,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 
-// 사용 모델 — preview는 다운/스펙 변동 잦아 stable 사용
+// 사용 모델
+// - 기본(저렴, 빠름): gemini-2.5-flash-image (Nano Banana 1세대)
+// - 고품질 토글 ON: gemini-3-pro-image-preview (Nano Banana Pro) — 레퍼런스 화풍 추종 훨씬 좋음, 단가 ~3-4배.
+//   ※ 모델 ID가 바뀌어 404가 나면 PRO_MODEL_ID만 갱신하면 됨.
 const MODEL_ID = 'gemini-2.5-flash-image'
+const PRO_MODEL_ID = 'gemini-3-pro-image-preview'
 
 // Gemini HTTP 에러 → 한국어 사용자 메시지
 function describeGeminiHttpError(status: number, body: string): string {
@@ -133,7 +137,10 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, use_pro_model } = await req.json()
+
+    // 고품질 모드 토글 — 클라이언트가 use_pro_model: true 를 보내면 Pro 모델 사용 (단가 ↑)
+    const modelId = use_pro_model === true ? PRO_MODEL_ID : MODEL_ID
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -426,7 +433,7 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
       })
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey,
@@ -461,6 +468,8 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
         seed: effectiveSeed,
       },
     })
+
+    console.log(`[generate-thumbnail-image] model=${modelId} mode=${reference_mode || 'none'} refs=${refs.length} pro=${use_pro_model === true}`)
 
     let geminiRes: Response | undefined
     for (let attempt = 0; attempt < 3; attempt++) {
