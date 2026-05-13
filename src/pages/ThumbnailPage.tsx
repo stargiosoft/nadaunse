@@ -310,11 +310,6 @@ export default function ThumbnailPage() {
   const [customCountActive, setCustomCountActive] = useState(false);
   const [customCountText, setCustomCountText] = useState('');
   const [fileFormat, setFileFormat] = useState<string>('png');
-  // 고품질 모드 — ON이면 Pro 모델(gemini-3-pro-image) 사용. 레퍼런스 화풍 추종이 훨씬 좋지만 단가 ~3-4배.
-  const [useProModel, setUseProModel] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('thumbnail-use-pro-model') === '1';
-  });
   // 변주 강도 슬라이더 (생성 개수 ≥ 2일 때만 의미 있음)
   const [angleVariation, setAngleVariation] = useState<number>(33);
   const [imageVariation, setImageVariation] = useState<number>(33);
@@ -428,7 +423,6 @@ export default function ThumbnailPage() {
       prompt: effectivePrompt,
       aspect_ratio: ratioId,
       image_variation: imageVariation,
-      use_pro_model: useProModel,
     };
     if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
       body.seed = seedOverride;
@@ -529,7 +523,7 @@ export default function ThumbnailPage() {
     }
 
     setGenerating(false);
-  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount, angleVariation, imageVariation, useProModel]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount, angleVariation, imageVariation]);
 
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
@@ -552,7 +546,7 @@ export default function ThumbnailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생성 실패');
     }
-  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images, angleVariation, imageVariation, useProModel]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images, angleVariation, imageVariation]);
 
   const handleEdit = useCallback(async () => {
     const target = (selectedImageId !== null ? images.find(img => img.id === selectedImageId) : undefined) || images[0];
@@ -576,7 +570,6 @@ export default function ThumbnailPage() {
           aspect_ratio: ratioId,
           reference_images: [base64],
           reference_mode: 'style_and_character',
-          use_pro_model: useProModel,
         }),
       });
       const data = await res.json();
@@ -594,7 +587,7 @@ export default function ThumbnailPage() {
     } finally {
       setEditing(false);
     }
-  }, [selectedImageId, images, editPrompt, editing, persistentPrompt, ratioId, useProModel]);
+  }, [selectedImageId, images, editPrompt, editing, persistentPrompt, ratioId]);
 
   const handleRegionEdit = useCallback(async () => {
     const target = (selectedImageId !== null ? images.find(img => img.id === selectedImageId) : undefined) || images[0];
@@ -626,7 +619,6 @@ export default function ThumbnailPage() {
           edit_region: true,
           edit_region_count: rects.length,
           image_variation: 5, // 영역 수정은 충실도가 우선 → 낮은 temperature
-          use_pro_model: useProModel,
         }),
       });
       const data = await res.json();
@@ -648,7 +640,7 @@ export default function ThumbnailPage() {
     } finally {
       setEditing(false);
     }
-  }, [selectedImageId, images, editPrompt, editing, selRects, persistentPrompt, ratioId, useProModel]);
+  }, [selectedImageId, images, editPrompt, editing, selRects, persistentPrompt, ratioId]);
 
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
@@ -743,12 +735,6 @@ export default function ThumbnailPage() {
     if (typeof window === 'undefined') return;
     localStorage.setItem('thumbnail-fixed-prompt', persistentPrompt);
   }, [persistentPrompt]);
-
-  // 고품질 모드 localStorage 동기화
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('thumbnail-use-pro-model', useProModel ? '1' : '0');
-  }, [useProModel]);
 
   // 새 이미지가 도착하면 첫 번째를 선택, 또는 선택 항목이 사라졌으면 첫 번째로 폴백
   useEffect(() => {
@@ -1108,54 +1094,6 @@ export default function ThumbnailPage() {
                 letterSpacing: '0.78px',
               }}>
                 {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
-              </p>
-            </div>
-
-            {/* ── 고품질 모드 (Pro 모델) ── */}
-            <div style={{
-              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
-              marginLeft: '-28px', marginRight: '-20px',
-            }}>
-              <label style={{
-                fontFamily: font, fontSize: '12px', fontWeight: 400,
-                lineHeight: '17px', letterSpacing: '-0.24px',
-                color: C.textPrimary, display: 'block', marginBottom: '8px',
-                paddingLeft: '2px',
-              }}>
-                고품질 모드
-              </label>
-              <div className="flex" style={{ gap: '4px' }}>
-                {[{ on: false, label: '일반' }, { on: true, label: '고품질 ✦' }].map(opt => {
-                  const selected = useProModel === opt.on;
-                  return (
-                    <button
-                      key={String(opt.on)}
-                      onClick={() => setUseProModel(opt.on)}
-                      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = '#ececec'; }}
-                      onMouseLeave={(e) => { if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
-                      style={{
-                        flex: 1, height: '26px', padding: '0', borderRadius: '8px',
-                        fontFamily: font, fontSize: '11px', fontWeight: 400,
-                        letterSpacing: '0.76px',
-                        color: selected ? C.textWhite : '#5a5a5a',
-                        backgroundColor: selected ? C.primary : '#f5f5f5',
-                        border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{
-                fontFamily: font, fontSize: '10px', fontWeight: 400,
-                color: useProModel ? '#c2691f' : '#9a9a9a', marginTop: '8px',
-                paddingLeft: '2px', letterSpacing: '0.78px',
-              }}>
-                {useProModel
-                  ? '고품질 모델(Pro) — 레퍼런스 화풍 추종 우수, 느림 + 단가 약 3~4배. 화풍 맞춰야 할 때만 사용 권장'
-                  : '기본 모델 — 빠르고 저렴. 평소 작업용'}
               </p>
             </div>
 
