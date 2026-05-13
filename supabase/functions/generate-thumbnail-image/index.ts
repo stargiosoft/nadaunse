@@ -67,29 +67,30 @@ function describeGeminiNoImage(data: unknown): string {
 }
 
 // "스타일만 참고" 모드용 1단계 호출.
-// 레퍼런스 이미지를 image-conditioning으로 그대로 넘기면 모델이 인물/복장/장면까지 복사하므로,
-// 시각 스타일만 텍스트로 추출한 뒤 2단계에서는 이미지 없이 텍스트만으로 생성한다.
+// 레퍼런스 이미지를 image-conditioning으로 그대로 넘기면 모델이 인물/복장/장면은 물론 색감·구도까지 복사하므로,
+// 여기서는 "예술적 기법"(매체·선묘·렌더링·질감·디테일·빛의 질)만 텍스트로 추출한다.
+// 색 팔레트와 구도는 의도적으로 추출하지 않는다 — 그 둘은 명령어/주제가 정해야 하기 때문.
 async function extractStyleDescription(refs: string[], apiKey: string): Promise<string> {
   const visionParts: Array<Record<string, unknown>> = []
   for (const data of refs) {
     visionParts.push({ inlineData: { mimeType: 'image/png', data } })
   }
   visionParts.push({
-    text: `Describe the VISUAL STYLE of the attached image${refs.length > 1 ? 's' : ''} in 150-200 words. Cover ONLY:
-- Medium (photograph / 2D illustration / anime/manga / webtoon / 3D render / watercolor / oil painting / pencil sketch / digital painting / etc.)
-- Line work (line weight, line color, presence/absence of outlines, sketchy vs clean)
-- Shading & rendering technique (flat colors / cel-shading / soft shading / painterly / photorealistic lighting)
-- Color palette, saturation, contrast, color grading, white balance
+    text: `Describe the ARTISTIC TECHNIQUE of the attached image${refs.length > 1 ? 's' : ''} in 150-200 words, so another artist could reproduce the same "hand" on a COMPLETELY DIFFERENT subject, in a DIFFERENT color scheme, and a DIFFERENT composition. Cover ONLY:
+- Medium (photograph / 2D illustration / anime/manga / webtoon / 3D render / watercolor / oil painting / pencil sketch / digital painting / gongbi / ink-wash / etc.)
+- Line work (line weight, line color, presence/absence of outlines, sketchy vs clean, gold/metallic linework, etc.)
+- Shading & rendering technique (flat colors / cel-shading / soft shading / painterly / photorealistic lighting / luminous bloom / glazed layers)
+- Color TREATMENT — describe HOW color is handled (e.g. desaturated washes / high-key luminosity / soft gradients / metallic accents on linework / muted with a few saturated pops), but DO NOT prescribe WHICH hues dominate or name a specific palette — the actual colors will be chosen to fit a different subject and mood.
 - Texture and grain (film grain, paper texture, brush texture, smooth digital, etc.)
 - Proportions and stylization level (realistic anatomy / stylized / anime / chibi / etc.)
-- Detail density (how detailed eyes, skin, hair, fabric are rendered)
-- Lighting mood and atmospheric quality (warm/cool, soft/harsh, dramatic/flat)
+- Detail density and level of finish (how detailed eyes, skin, hair, fabric are rendered; how polished/finished the work is)
+- Quality of light (soft vs harsh, diffuse vs directional, glow/bloom characteristics) — but NOT the specific light direction or color, which depend on the scene.
 
 IMPORTANT — if the medium is stylized rather than photographic (e.g. low-poly / flat-vector / geometric-faceted / cel-shaded / paper-cut / pixel-art / painterly / cartoon): explicitly state that EVERY form in this style — organic shapes, faces, skin, water, sky, clouds, foliage, fabric, AND celestial bodies like the sun/moon/stars — is constructed from the SAME stylized primitives (e.g. flat triangular polygonal facets with hard edges and no gradients on the subject itself), and is NEVER rendered with photographic detail, smooth photo-real textures, or a different medium. Spell out the exact geometric/illustrative construction so a replicator would draw a moon as faceted polygons, not as a photograph.
 
-DO NOT describe specific people, faces, identities, clothing, accessories, poses, scenes, environments, props, or any content. Style only — write as if explaining the artist's technique to someone trying to replicate it on a completely different subject they will invent themselves.
+DO NOT describe or prescribe: specific people, faces, identities, clothing, accessories, poses, scenes, environments, props, content, the specific color palette / dominant hues, OR the composition / framing / camera angle. Technique only — write as if explaining the artist's craft to someone who will invent their own subject, pick their own colors, and design their own composition.
 
-Output: a single descriptive paragraph. No bullet points, no headings, no preamble like "This image shows" — just the style description.`,
+Output: a single descriptive paragraph. No bullet points, no headings, no preamble like "This image shows" — just the technique description.`,
   })
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
@@ -158,9 +159,9 @@ serve(async (req) => {
     const styleTextOnly = reference_mode === 'style_text_only'
 
     if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character') {
-      // ── "스타일만 참고" 계열 — 레퍼런스에서 시각 스타일을 텍스트로 추출 ──
-      // style_only:      추출 텍스트 + 레퍼런스 이미지 inlineData 함께 전달 (강한 anti-copy). 화풍 정확하지만 소재가 새어들 수 있음.
-      // style_text_only: 추출 텍스트만 사용하고 생성 호출엔 레퍼런스 이미지를 첨부하지 않음 → 소재 누출 거의 0, 화풍 디테일은 약간 덜 정밀.
+      // ── "스타일만 참고" 계열 — 레퍼런스에서 "예술적 기법"만 텍스트로 추출하고, 색감·구도는 명령어/주제가 정한다 ──
+      // style_only:      추출 텍스트 + 레퍼런스 이미지 inlineData 함께 전달 (강한 anti-copy). 기법 정확하지만 소재가 새어들 수 있음.
+      // style_text_only: 추출 텍스트만 사용하고 생성 호출엔 레퍼런스 이미지를 첨부하지 않음 → 소재/색 누출 거의 0, 기법 디테일은 약간 덜 정밀.
       const styleDescription = await extractStyleDescription(refs, apiKey)
 
       // style_only일 때만 레퍼런스 이미지를 inline 첨부 (high-fidelity 앵커)
@@ -179,9 +180,9 @@ serve(async (req) => {
         ? `[VARIATION GUIDANCE — IMAGE ${(typeof variation_index === 'number' ? variation_index + 1 : 1)} OF ${typeof variation_total === 'number' ? variation_total : '?'}]
 CORE PRINCIPLE: All sibling images are "different shots OF THE SAME SCENE", not different scenes. Same setting, same situation, same characters, same narrative beat, same overall design concept across every sibling. Image #1 establishes the conceptual baseline; every later image must stay on that baseline.
 
-Locked across siblings (from the reference image): visual style, medium, line work, texture, color palette, lighting mood, overall design concept, scene interpretation, characters, situation. The reference is the absolute source of truth.
+Locked across siblings: medium, line work, texture, rendering technique, detail density, level of finish, quality of light (these come from the reference's artistic technique); AND color palette, lighting mood, overall design concept, scene interpretation, characters, situation, composition concept (these come from image #1 and the user instruction — NOT from the reference). Image #1 is the source of truth for color and layout; the reference is the source of truth only for technique.
 
-ABSOLUTELY FORBIDDEN past image #1: inventing a new scene, new situation, new design concept, new art direction. Image #N must read as "same concept as image #1, viewed from a slightly different angle/moment", not as a separate idea.
+ABSOLUTELY FORBIDDEN past image #1: inventing a new scene, new situation, new design concept, new art direction, or a new color scheme. Image #N must read as "same concept as image #1, viewed from a slightly different angle/moment", not as a separate idea.
 
 Apply ONLY the subtle differentiation specified below, strictly within the locked concept:
 
@@ -194,16 +195,24 @@ ${variation_directive.trim()}
         // 레퍼런스 이미지 없이, 추출된 화풍 텍스트 가이드만으로 생성 → 레퍼런스 소재가 출력에 새어들 일이 없음.
         parts.push({
           text: `[YOUR TASK]
-Generate ONE new image. NO reference image is attached. You are recreating ONLY the ARTISTIC STYLE described in [VISUAL STYLE GUIDE] below, applied to brand-new subject matter that is defined entirely by [USER INSTRUCTION]. The style guide describes TECHNIQUE ONLY — it contains no content for you to copy; the content of the image is 100% from the user instruction.
+Generate ONE new image. NO reference image is attached. You are recreating ONLY the ARTISTIC TECHNIQUE described in [TECHNIQUE GUIDE] below, applied to brand-new subject matter, a brand-new color scheme, and a brand-new composition that are ALL defined by [USER INSTRUCTION]. The technique guide describes the artist's "hand" ONLY — it contains no content, no color palette, and no composition for you to copy.
 
-[USER INSTRUCTION — DEFINES ALL CONTENT (WHAT, WHERE, COMPOSITION, MOOD)]
+[USER INSTRUCTION — DEFINES ALL CONTENT, COLOR/MOOD, AND COMPOSITION (WHO, WHAT, WHERE, COLORS, FRAMING, MOOD)]
 ${prompt}
 
-[VISUAL STYLE GUIDE — replicate this artistic style/technique exactly]
+[TECHNIQUE GUIDE — replicate this artist's craft/technique exactly]
 ${styleDescription}
 
-${variation2StepBlock}[STYLE FIDELITY REQUIREMENTS]
-Match the medium, line work, color palette, saturation/contrast, rendering/shading technique, texture and grain, proportions/stylization level, detail density, and lighting mood described above as faithfully as possible. Do not invent a different style; do not drift toward photorealism unless the guide explicitly says photographic. The ENTIRE image must be in this one consistent style/medium — every subject, object, background element, pattern, ornament, and any celestial body — never mix in a photo-real or differently-styled element. If the style is flat / low-poly / geometric-faceted / vector / illustrated, even normally-photographic subjects (a moon, a face, water, metal) must be built from that same technique's primitives.
+${variation2StepBlock}[TECHNIQUE FIDELITY — WHAT TO TAKE FROM THE GUIDE]
+Match the medium, line work, rendering/shading technique, the way color is HANDLED (washes/glazes/cel/bloom/metallic accents — the treatment, not the hues), texture and grain, proportions/stylization level, detail density, level of finish, and the quality of light (soft/diffuse/glowing vs harsh) as faithfully as possible. Do not invent a different medium; do not drift toward photorealism unless the guide explicitly says photographic.
+
+[WHAT MUST FOLLOW THE SUBJECT, NOT THE GUIDE]
+• Color palette / dominant hues / overall color mood — choose colors that fit THIS subject and the mood in [USER INSTRUCTION]. Do NOT default to the reference's colors. (e.g. a fiery dusk subject → warm reds/golds even if the reference was cool and pale.)
+• Composition, framing, camera angle, subject placement — design these to best serve THIS subject and what [USER INSTRUCTION] asks for. Do NOT copy a layout.
+• Light direction and light color — set by the scene you are drawing.
+
+[WHOLE-IMAGE MEDIUM CONSISTENCY]
+The ENTIRE image must be in this one consistent medium/technique — every subject, object, background element, pattern, ornament, and any celestial body — never mix in a photo-real or differently-styled element. If the technique is flat / low-poly / geometric-faceted / vector / illustrated, even normally-photographic subjects (a moon, a face, water, metal) must be built from that same technique's primitives.
 
 [OUTPUT FORMAT RULES]
 • Output exactly ONE single image — one continuous composition, not a collage, grid, multi-panel, split-screen, montage, or before/after layout.
@@ -213,36 +222,37 @@ Match the medium, line work, color palette, saturation/contrast, rendering/shadi
       } else {
       parts.push({
         text: `[YOUR TASK]
-Generate ONE new image. The attached reference image${refs.length > 1 ? 's are' : ' is'} provided ONLY as a visual style sample — to anchor your understanding of the artwork's medium, line work, texture, palette, shading, and rendering technique. The CONTENT of the output (who/what/where/scene/poses) is defined exclusively by the [USER INSTRUCTION] below.
+Generate ONE new image. The attached reference image${refs.length > 1 ? 's are' : ' is'} provided ONLY as an ARTISTIC TECHNIQUE sample — to anchor your understanding of the artwork's medium, line work, texture, shading, rendering technique, and the way color is handled. The CONTENT of the output (who/what/where/scene/poses), its COLOR PALETTE/MOOD, and its COMPOSITION are defined exclusively by the [USER INSTRUCTION] below.
 
 [CRITICAL — REFERENCE IMAGE USAGE]
-The reference is a STYLE SAMPLE, not a CONTENT TEMPLATE. From the reference, take ONLY:
-• Medium (photo / 2D illustration / anime/manga / webtoon / 3D / watercolor / painting / etc.)
-• Line work (line weight, line color, sketchy vs clean, presence/absence of outlines)
-• Shading & rendering (flat / cel / soft / painterly / photorealistic)
-• Color palette, saturation, contrast, color grading, white balance
+The reference is a TECHNIQUE SAMPLE, not a CONTENT, COLOR, or LAYOUT template. From the reference, take ONLY:
+• Medium (photo / 2D illustration / anime/manga / webtoon / 3D / watercolor / painting / gongbi / ink-wash / etc.)
+• Line work (line weight, line color, sketchy vs clean, presence/absence of outlines, gold/metallic linework)
+• Shading & rendering (flat / cel / soft / painterly / photorealistic / luminous bloom / glazed layers)
+• Color TREATMENT only — HOW color is applied (washes / glazes / high-key luminosity / desaturated with saturated pops / metallic accents on linework) — NOT which hues dominate.
 • Texture & grain (film grain, paper, brush strokes, smooth digital)
 • Proportions & stylization level (realistic / stylized / anime / chibi)
-• Detail density (how detailed eyes, skin, hair, fabric are rendered)
-• Lighting mood and atmospheric quality
+• Detail density and level of finish (how detailed eyes, skin, hair, fabric are; how polished the work is)
+• Quality of light (soft/diffuse/glowing vs harsh) — NOT its direction or color.
 
 ABSOLUTELY DO NOT take from the reference:
 • Any specific person, face, or identity — even if a recognizable face is visible in the reference, the output's people must be DIFFERENT, INVENTED people.
 • Any clothing, outfit, or accessory the reference person wears.
 • Any pose, body language, or facial expression from the reference person.
 • Any scene, environment, location, background, or props from the reference.
-• Any composition, framing, or camera angle from the reference.
+• Any composition, framing, camera angle, or subject placement from the reference.
+• The reference's color palette / dominant hues / color mood — the output's colors are chosen to fit the user's subject and mood, NOT to match the reference. If the reference is cool and pale but the user's subject is a fiery sunset, the output must be warm and fiery.
 
-The output must look as if a single artist used the reference's style/technique to create a brand new image of subject and scene that the artist invented themselves, never having seen the reference's content. A viewer comparing reference and output should recognize the same artistic hand and same visual style, but should NOT recognize any person/scene/item from the reference appearing in the output.
+The output must look as if a single artist used the reference's CRAFT to create a brand new image — new subject, new colors, new composition — that the artist invented themselves, never having seen the reference's content. A viewer comparing reference and output should recognize the same artistic hand and the same medium/technique, but should NOT recognize any person/scene/item from the reference, and the two images may look quite different in color and layout.
 
-[USER INSTRUCTION — DEFINES ALL CONTENT (WHO, WHAT, WHERE, MOOD)]
+[USER INSTRUCTION — DEFINES ALL CONTENT, COLOR/MOOD, AND COMPOSITION (WHO, WHAT, WHERE, COLORS, FRAMING, MOOD)]
 ${prompt}
 
-[VISUAL STYLE TEXT GUIDE — supplements the reference image, do not contradict it]
+[TECHNIQUE TEXT GUIDE — supplements the reference image, do not contradict it on matters of technique]
 ${styleDescription}
 
-${variation2StepBlock}[STYLE FIDELITY REQUIREMENTS]
-Apply the reference's visual style with high fidelity — same medium, same line work, same palette, same rendering technique, same texture, same lighting mood, same proportions/stylization, same detail density. If the text guide above conflicts with what is visible in the attached reference, the attached reference WINS — the text is only a supplement.
+${variation2StepBlock}[TECHNIQUE FIDELITY REQUIREMENTS]
+Apply the reference's artistic technique with high fidelity — same medium, same line work, same rendering technique, same way of handling color (treatment, not hues), same texture, same proportions/stylization, same detail density and finish, same quality of light. If the text guide above conflicts with what is visible in the attached reference on a matter of technique, the attached reference WINS — the text is only a supplement. But for the choice of which colors, which composition, and which light direction to use, the [USER INSTRUCTION] and subject win — never the reference.
 
 [WHOLE-IMAGE STYLE CONSISTENCY — CRITICAL]
 The ENTIRE output must be rendered in the reference's ONE medium and technique — every subject, object, background element, pattern, ornament, and any celestial body (sun, moon, stars, clouds). NEVER mix media: do not drop a photorealistic or differently-styled element into an otherwise stylized image. If the reference is flat / low-poly / geometric-faceted / vector / illustrated, then even subjects that are normally depicted photographically (a moon, a face, water, foliage, metal) MUST be redrawn in that same flat / low-poly / geometric-faceted / vector / illustrated technique — built from the same primitives (e.g. flat polygonal facets, hard edges, no photo-real gradients or textures on the subject). A common failure to avoid: rendering the background and decorations in the stylized look but inserting a photo-real moon/sun/face in the center — that is WRONG. One coherent medium across 100% of the image.

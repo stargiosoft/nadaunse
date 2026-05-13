@@ -47,8 +47,8 @@ const ASPECT_RATIOS = [
 ] as const;
 
 const REFERENCE_MODES = [
-  { id: 'style_only', label: '스타일만 참고', desc: '화풍 + 레퍼런스 이미지 첨부 — 화풍 정확하나 소재가 새어들 수 있음' },
-  { id: 'style_text_only', label: '스타일만 (텍스트)', desc: '레퍼런스 이미지를 모델에 안 보냄 — 소재 누출 거의 없이 화풍만' },
+  { id: 'style_only', label: '스타일만 참고', desc: '레퍼런스의 기법(붓·선·질감·마감)만 차용 — 색감·구도는 명령어/주제대로. 기법 정확하나 소재가 새어들 수 있음' },
+  { id: 'style_text_only', label: '스타일만 (텍스트)', desc: '레퍼런스 이미지를 모델에 안 보냄 — 소재·색 누출 거의 없이 기법만, 색감·구도는 명령어대로' },
   { id: 'style_and_character', label: '캐릭터+스타일', desc: '레퍼런스 인물·얼굴까지 유지' },
   { id: 'outpaint', label: '여백 채우기', desc: '레퍼런스 그대로, 빈 공간만 자동 확장' },
 ] as const;
