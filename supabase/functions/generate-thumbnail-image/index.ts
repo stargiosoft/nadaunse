@@ -133,7 +133,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -161,6 +161,51 @@ serve(async (req) => {
         : []
 
     const styleTextOnly = reference_mode === 'style_text_only'
+
+    // 구도 참고 이미지: 화풍/내용은 무시하고 오로지 프레이밍·앵글·배치만 차용.
+    // 영역 수정(edit_region)이나 여백 채우기(auto_fill_background) 모드에서는 의미 없으므로 무시.
+    const compRefs: string[] = Array.isArray(composition_reference_images)
+      ? composition_reference_images.filter((s: unknown) => typeof s === 'string' && s.length > 0)
+      : []
+    const compRefsActive = compRefs.length > 0 && !edit_region && !auto_fill_background
+
+    const appendCompositionParts = () => {
+      if (!compRefsActive) return
+      const n = compRefs.length
+      const plural = n > 1
+      parts.push({
+        text: `[COMPOSITION REFERENCE IMAGES — STRICT SCOPE, READ BEFORE LOOKING AT THE NEXT IMAGE${plural ? 'S' : ''}]
+The next ${n} attached image${plural ? 's are' : ' is a'} COMPOSITION REFERENCE${plural ? 'S' : ''}. ${plural ? 'They are' : 'It is'} NOT a style reference and NOT a content reference. Treat ${plural ? 'them' : 'it'} as a wireframe/blocking diagram that happens to be rendered as a finished image.
+
+From the composition reference${plural ? 's' : ''}, take ONLY:
+• Camera angle, viewpoint, perspective (eye level / low / high / Dutch / overhead / over-the-shoulder / worm's-eye / bird's-eye / etc.)
+• Framing and crop (extreme close-up / close-up / medium / wide / full / aerial)
+• Subject placement and spatial layout in the frame (centered, rule of thirds, left/right offset, foreground/background separation, where the focal point sits, distribution of negative space)
+• Pose silhouette as a spatial arrangement only (the geometric shape of how bodies occupy the frame) IF the user instruction does not specify a different pose. If the instruction names a pose, use the instruction.
+• Depth structure (foreground/midground/background layering, leading lines, vanishing points)
+• Aspect-internal proportions (how the focal element is sized relative to the frame, where headroom/footroom sits)
+
+ABSOLUTELY DO NOT take from the composition reference${plural ? 's' : ''}:
+• Style, medium, line work, rendering technique, shading, texture, brush feel, color treatment, lighting style, post-processing, the artist's "hand". The visual STYLE of the output is governed by the [USER INSTRUCTION] and (if present) the STYLE references above — NEVER by the composition reference${plural ? 's' : ''}. The composition reference may be a photograph, a manga panel, a rough sketch, a CG render, a screenshot, a film still, or any other medium — its visual style must have ZERO influence on the output's style.
+• Color palette, hues, dominant colors, color mood, white-balance — none of these are taken from the composition reference${plural ? 's' : ''}.
+• Identity, face, body type, ethnicity, age, hair, makeup, clothing, accessories, expression of any person visible in the composition reference. The output's people are determined by the [USER INSTRUCTION] and the STYLE/CHARACTER references, NEVER by the composition reference${plural ? 's' : ''}.
+• Specific objects, props, animals, vehicles, environment details, locations. Only the spatial arrangement is copied — WHAT actually fills those spatial slots comes from the [USER INSTRUCTION].
+• Any text, logos, watermarks, graphic overlays, or UI elements visible in the composition reference.
+
+Mental model: imagine you trace the composition reference into a stick-figure blocking diagram (where the camera is, where each subject's bounding box is, how big each element is in the frame), discard the original image entirely, then build the new image from the [USER INSTRUCTION] in the chosen style, fitting its content into that blocking diagram. The output should NOT visually resemble the composition reference in style, color, or content — only in framing and arrangement.${plural ? `
+
+When ${n} composition references are attached, blend their framing cues (e.g. use a viewpoint and layout that is consistent with all of them, or pick the closest match to the user's subject). Do NOT collage or stitch them.` : ''}`,
+      })
+      for (const data of compRefs) {
+        parts.push({
+          inlineData: { mimeType: 'image/png', data },
+        })
+      }
+      parts.push({
+        text: `[END OF COMPOSITION REFERENCE${plural ? 'S' : ''}]
+Re-confirming the strict scope of the image${plural ? 's' : ''} immediately above: COMPOSITION-ONLY. Copy ONLY framing, camera angle, subject placement, and spatial layout. DO NOT copy style, medium, rendering technique, color, lighting style, identities, faces, clothing, props, environment, objects, or any visible content. The style and content of the output come from the [USER INSTRUCTION] (and the STYLE/CHARACTER references above, if any), never from these composition reference${plural ? 's' : ''}.`,
+      })
+    }
 
     if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character') {
       // ── "스타일만 참고" 계열 — 레퍼런스에서 "예술적 기법"만 텍스트로 추출하고, 색감·구도는 명령어/주제가 정한다 ──
@@ -425,6 +470,9 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
         text: `USER INSTRUCTION: ${prompt}\n\nGenerate a professional thumbnail image that follows the user instruction above.${formatRules}`,
       })
     }
+
+    // 구도 참고 이미지는 모든 메인 지시문 뒤에 별도 블록으로 부착. 스타일 레퍼런스와 인덱스가 섞이지 않도록 끝에 배치.
+    appendCompositionParts()
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`
     const headers: Record<string, string> = {

@@ -315,6 +315,9 @@ export default function ThumbnailPage() {
   const [imageVariation, setImageVariation] = useState<number>(33);
   const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
   const [referenceBase64s, setReferenceBase64s] = useState<string[]>([]);
+  // 구도 참고: 화풍은 무시하고 오로지 구도/프레이밍/카메라 앵글/배치만 참고할 이미지
+  const [compositionPreviews, setCompositionPreviews] = useState<string[]>([]);
+  const [compositionBase64s, setCompositionBase64s] = useState<string[]>([]);
 
   // Result
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -339,6 +342,7 @@ export default function ThumbnailPage() {
   // ── Handlers ──
 
   const MAX_REFERENCES = 8;
+  const MAX_COMPOSITIONS = 4;
 
   const readFileAsDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -408,6 +412,67 @@ export default function ThumbnailPage() {
 
   const hasReferences = referencePreviews.length > 0;
 
+  // ── 구도 참고 핸들러 ──
+  const processCompositionFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    const remaining = MAX_COMPOSITIONS - compositionPreviews.length;
+    if (remaining <= 0) {
+      setError(`구도 참고 이미지는 최대 ${MAX_COMPOSITIONS}장까지 업로드 가능해요`);
+      return;
+    }
+    const valid: File[] = [];
+    for (const file of files.slice(0, remaining)) {
+      if (!file.type.startsWith('image/')) continue;
+      if (file.size > 10 * 1024 * 1024) {
+        setError('이미지는 10MB 이하만 업로드 가능해요');
+        continue;
+      }
+      valid.push(file);
+    }
+    if (valid.length === 0) return;
+    const dataUrls = await Promise.all(valid.map(readFileAsDataUrl));
+    setCompositionPreviews(prev => [...prev, ...dataUrls]);
+    setCompositionBase64s(prev => [...prev, ...dataUrls.map(u => u.split(',')[1])]);
+    if (files.length > remaining) {
+      setError(`구도 참고는 최대 ${MAX_COMPOSITIONS}장까지만 업로드돼요`);
+    }
+  };
+
+  const handleCompositionUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    processCompositionFiles(files);
+    e.target.value = '';
+  };
+
+  const [isCompDragging, setIsCompDragging] = useState(false);
+
+  const handleCompDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCompDragging(true);
+  };
+
+  const handleCompDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCompDragging(false);
+  };
+
+  const handleCompDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCompDragging(false);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    processCompositionFiles(files);
+  };
+
+  const removeCompositionAt = (index: number) => {
+    setCompositionPreviews(prev => prev.filter((_, i) => i !== index));
+    setCompositionBase64s(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const hasCompositions = compositionPreviews.length > 0;
+
   const callGenerateApi = async (
     promptOverride?: string,
     seedOverride?: number,
@@ -449,6 +514,9 @@ export default function ThumbnailPage() {
       body.reference_images = refsToSend;
       body.reference_mode = referenceMode;
       if (autoFillBackground) body.auto_fill_background = true;
+    }
+    if (compositionBase64s.length > 0) {
+      body.composition_reference_images = compositionBase64s;
     }
     const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
       method: 'POST',
@@ -523,7 +591,7 @@ export default function ThumbnailPage() {
     }
 
     setGenerating(false);
-  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount, angleVariation, imageVariation]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, imageCount, angleVariation, imageVariation, compositionBase64s]);
 
   const handleRegenerate = useCallback(async (targetId: number) => {
     setError(null);
@@ -546,7 +614,7 @@ export default function ThumbnailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생성 실패');
     }
-  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images, angleVariation, imageVariation]);
+  }, [prompt, ratioId, referenceBase64s, referenceMode, autoFillBackground, images, angleVariation, imageVariation, compositionBase64s]);
 
   const handleEdit = useCallback(async () => {
     const target = (selectedImageId !== null ? images.find(img => img.id === selectedImageId) : undefined) || images[0];
@@ -1354,6 +1422,155 @@ export default function ThumbnailPage() {
                 paddingRight: '2px',
               }}>
                 {referencePreviews.length}/{MAX_REFERENCES}
+              </div>
+            </div>
+
+            {/* ── 구도 참고 (오로지 구도만, 화풍은 무시) ── */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
+                color: C.textPrimary, display: 'block', marginBottom: '4px',
+                paddingLeft: '2px',
+              }}>
+                구도 참고
+              </label>
+              <div style={{
+                fontFamily: font, fontSize: '11px', fontWeight: 400,
+                lineHeight: '15px', letterSpacing: '-0.22px',
+                color: C.textCaption, marginBottom: '8px',
+                paddingLeft: '2px',
+              }}>
+                프레이밍·카메라 앵글·배치만 차용 — 화풍·색감·인물·소재는 영향 없음
+              </div>
+
+              {hasCompositions ? (
+                <div
+                  onDragOver={handleCompDragOver}
+                  onDragLeave={handleCompDragLeave}
+                  onDrop={handleCompDrop}
+                  style={{
+                    display: 'flex', flexWrap: 'wrap', gap: '10px',
+                    padding: '12px', borderRadius: '20px',
+                    border: `1.5px dashed ${isCompDragging ? C.primary : C.borderDefault}`,
+                    backgroundColor: isCompDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {compositionPreviews.map((src, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '80px', height: '80px' }}>
+                      <img
+                        src={src}
+                        alt={`구도 참고 ${idx + 1}`}
+                        style={{
+                          width: '80px', height: '80px', objectFit: 'cover',
+                          borderRadius: '16px', border: `1px solid ${C.borderDefault}`,
+                          display: 'block',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeCompositionAt(idx)}
+                        aria-label="이미지 삭제"
+                        style={{
+                          position: 'absolute', top: '-6px', right: '-6px',
+                          width: '22px', height: '22px', borderRadius: '50%',
+                          backgroundColor: '#1f1f1f', border: `2px solid ${C.surface}`,
+                          color: C.textWhite, fontSize: '13px', fontWeight: 700,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          lineHeight: 1, padding: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {compositionPreviews.length < MAX_COMPOSITIONS && (
+                    <label
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fafafa';
+                        e.currentTarget.style.borderColor = '#cfcfcf';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = C.surface;
+                        e.currentTarget.style.borderColor = C.borderDefault;
+                      }}
+                      style={{
+                      width: '80px', height: '80px', borderRadius: '16px',
+                      border: `1.5px dashed ${C.borderDefault}`,
+                      backgroundColor: C.surface,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                    }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.textCaption} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleCompositionUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                </div>
+              ) : (
+                <label
+                  onDragOver={handleCompDragOver}
+                  onDragLeave={handleCompDragLeave}
+                  onDrop={handleCompDrop}
+                  onMouseEnter={(e) => {
+                    if (!isCompDragging) {
+                      e.currentTarget.style.backgroundColor = '#fcfcfc';
+                      e.currentTarget.style.borderColor = '#dcdcdc';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isCompDragging) {
+                      e.currentTarget.style.backgroundColor = C.surface;
+                      e.currentTarget.style.borderColor = C.borderDefault;
+                    }
+                  }}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    width: '100%', height: '120px', borderRadius: '20px',
+                    border: `1.5px dashed ${isCompDragging ? C.primary : C.borderDefault}`,
+                    backgroundColor: isCompDragging ? 'rgba(72, 178, 175, 0.06)' : C.surface,
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                    gap: '12px',
+                  }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={isCompDragging ? C.primary : '#d5d5d5'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="9" y1="3" x2="9" y2="21" />
+                    <line x1="15" y1="3" x2="15" y2="21" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="3" y1="15" x2="21" y2="15" />
+                  </svg>
+                  <span style={{
+                    fontFamily: font, fontSize: '12px', fontWeight: 400,
+                    color: isCompDragging ? C.primary : '#c8c8c8',
+                    letterSpacing: '0.76px',
+                  }}>
+                    {isCompDragging ? '여기에 놓으세요' : `최대 ${MAX_COMPOSITIONS}장 · 장당 10MB 이하`}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleCompositionUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              )}
+              <div style={{
+                marginTop: '8px', textAlign: 'right',
+                fontFamily: font, fontSize: '12px', color: C.textCaption,
+                letterSpacing: '-0.24px',
+                paddingRight: '2px',
+              }}>
+                {compositionPreviews.length}/{MAX_COMPOSITIONS}
               </div>
             </div>
 
