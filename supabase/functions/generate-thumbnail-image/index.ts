@@ -125,6 +125,72 @@ Output: a single descriptive paragraph (technique + the "is NOT" negatives). No 
   return text
 }
 
+// "구도 참고" 모드용 1단계 호출.
+// 구도 이미지를 inlineData로 그대로 첨부하면 시각 신호가 텍스트 지시를 압도해 화풍·색감·인물까지 새어들어옴.
+// 따라서 구도 이미지를 한 번 텍스트(프레이밍·앵글·배치·깊이 구조)로 변환한 뒤, 생성 호출에는 이미지를 첨부하지 않고
+// 텍스트 가이드만 사용한다. 이렇게 하면 모델은 구도 레퍼런스의 스타일을 "볼 수 없음".
+async function extractCompositionDescription(refs: string[], apiKey: string): Promise<string> {
+  const visionParts: Array<Record<string, unknown>> = []
+  for (const data of refs) {
+    visionParts.push({ inlineData: { mimeType: 'image/png', data } })
+  }
+  visionParts.push({
+    text: `Describe ONLY the COMPOSITION / FRAMING / SPATIAL LAYOUT of the attached image${refs.length > 1 ? 's' : ''} in 120-180 words, so another artist could reconstruct the same FRAMING on a COMPLETELY DIFFERENT subject, in a COMPLETELY DIFFERENT style, with COMPLETELY DIFFERENT colors. Treat the image${refs.length > 1 ? 's' : ''} as a blocking/storyboard diagram — describe WHERE things sit in the frame, NOT what they are or how they are drawn.
+
+Cover ONLY:
+- Camera angle and viewpoint (eye-level / low angle looking up / high angle looking down / overhead / bird's-eye / worm's-eye / Dutch tilt / over-the-shoulder / profile / three-quarter / dead-on / etc.)
+- Lens / perspective feel (wide-angle distortion / normal / telephoto compression / fish-eye / orthographic flat).
+- Framing and crop (extreme close-up / close-up / medium close-up / medium / medium-wide / wide / full body / extreme wide / aerial). Where the subject is cut by the frame edges (e.g. "head to mid-chest", "full body with headroom", "cropped at waist").
+- Subject placement in the frame using rule-of-thirds / golden-ratio / center / left-third / right-third language. Where is the focal point? How is negative space distributed (large empty area on left? top? around the subject?)?
+- Number of subjects and their spatial relationship to each other (e.g. "single subject centered with empty surround", "two subjects facing each other in the center third", "main subject in the left third with secondary subject smaller in the right background").
+- Pose silhouette as a SHAPE, not a description of what the person is doing — the geometric outline of how bodies occupy the frame (e.g. "an S-curve from top-left to bottom-right", "a triangular composition with the head at the apex", "a horizontal silhouette across the lower third").
+- Depth structure: clear foreground / midground / background layers if present. Leading lines (diagonal? converging? horizontal?). Vanishing point location if perspective is dramatic.
+- Headroom / footroom / lead-room ratios.
+- Horizon line position if visible (high horizon / low horizon / centered).
+
+ABSOLUTELY DO NOT describe:
+- Style, medium, line work, rendering technique, shading, texture, brush feel — none of this.
+- Colors, color palette, hues, color mood, lighting style, white-balance — none of this.
+- The identity, face, body type, ethnicity, age, hair, makeup, clothing, accessories, or expression of any person.
+- The specific objects, props, animals, vehicles, environment elements, or location ("a kitchen with a stove" = NO; "a single horizontal surface in the lower third with the main subject sitting on it" = YES).
+- Mood, atmosphere, story, emotion, narrative.
+- Any text, logos, watermarks visible in the image.
+
+Use geometric / cinematographic vocabulary only. Pretend you are writing a shot-list entry for a storyboard artist who will draw the scene from scratch in any style, with any subject, in any colors — they only need to know WHERE things go and FROM WHAT ANGLE the camera looks.${refs.length > 1 ? `
+
+If the ${refs.length} attached images show different compositions, briefly describe each (1-2 sentences) and then state a unifying framing principle that someone could blend (e.g. "all three are low-angle full-body shots with the subject in the left third").` : ''}
+
+Output: a single descriptive paragraph using geometric/cinematographic vocabulary. No bullet points, no headings, no preamble like "This image shows" — just the composition description.`,
+  })
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+  let res: Response | undefined
+  for (let attempt = 0; attempt < 2; attempt++) {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ contents: [{ parts: visionParts }] }),
+    })
+    if (res.status !== 429 && res.status < 500) break
+    await new Promise(r => setTimeout(r, (attempt + 1) * 5000))
+  }
+
+  if (!res || !res.ok) {
+    const errText = res ? await res.text() : 'no response'
+    throw new Error(`구도 추출 실패 (HTTP ${res?.status ?? 'no-response'}): ${errText.slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+  const text: string = (data?.candidates?.[0]?.content?.parts || [])
+    .filter((p: any) => typeof p?.text === 'string')
+    .map((p: any) => p.text)
+    .join(' ')
+    .trim()
+
+  if (!text) throw new Error('구도 추출 결과가 비어 있습니다. 잠시 후 다시 시도해주세요.')
+  return text
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req)
@@ -169,45 +235,36 @@ serve(async (req) => {
       : []
     const compRefsActive = compRefs.length > 0 && !edit_region && !auto_fill_background
 
-    const appendCompositionParts = () => {
-      if (!compRefsActive) return
-      const n = compRefs.length
-      const plural = n > 1
-      parts.push({
-        text: `[COMPOSITION REFERENCE IMAGES — STRICT SCOPE, READ BEFORE LOOKING AT THE NEXT IMAGE${plural ? 'S' : ''}]
-The next ${n} attached image${plural ? 's are' : ' is a'} COMPOSITION REFERENCE${plural ? 'S' : ''}. ${plural ? 'They are' : 'It is'} NOT a style reference and NOT a content reference. Treat ${plural ? 'them' : 'it'} as a wireframe/blocking diagram that happens to be rendered as a finished image.
-
-From the composition reference${plural ? 's' : ''}, take ONLY:
-• Camera angle, viewpoint, perspective (eye level / low / high / Dutch / overhead / over-the-shoulder / worm's-eye / bird's-eye / etc.)
-• Framing and crop (extreme close-up / close-up / medium / wide / full / aerial)
-• Subject placement and spatial layout in the frame (centered, rule of thirds, left/right offset, foreground/background separation, where the focal point sits, distribution of negative space)
-• Pose silhouette as a spatial arrangement only (the geometric shape of how bodies occupy the frame) IF the user instruction does not specify a different pose. If the instruction names a pose, use the instruction.
-• Depth structure (foreground/midground/background layering, leading lines, vanishing points)
-• Aspect-internal proportions (how the focal element is sized relative to the frame, where headroom/footroom sits)
-
-ABSOLUTELY DO NOT take from the composition reference${plural ? 's' : ''}:
-• Style, medium, line work, rendering technique, shading, texture, brush feel, color treatment, lighting style, post-processing, the artist's "hand". The visual STYLE of the output is governed by the [USER INSTRUCTION] and (if present) the STYLE references above — NEVER by the composition reference${plural ? 's' : ''}. The composition reference may be a photograph, a manga panel, a rough sketch, a CG render, a screenshot, a film still, or any other medium — its visual style must have ZERO influence on the output's style.
-• Color palette, hues, dominant colors, color mood, white-balance — none of these are taken from the composition reference${plural ? 's' : ''}.
-• Identity, face, body type, ethnicity, age, hair, makeup, clothing, accessories, expression of any person visible in the composition reference. The output's people are determined by the [USER INSTRUCTION] and the STYLE/CHARACTER references, NEVER by the composition reference${plural ? 's' : ''}.
-• Specific objects, props, animals, vehicles, environment details, locations. Only the spatial arrangement is copied — WHAT actually fills those spatial slots comes from the [USER INSTRUCTION].
-• Any text, logos, watermarks, graphic overlays, or UI elements visible in the composition reference.
-
-Mental model: imagine you trace the composition reference into a stick-figure blocking diagram (where the camera is, where each subject's bounding box is, how big each element is in the frame), discard the original image entirely, then build the new image from the [USER INSTRUCTION] in the chosen style, fitting its content into that blocking diagram. The output should NOT visually resemble the composition reference in style, color, or content — only in framing and arrangement.${plural ? `
-
-When ${n} composition references are attached, blend their framing cues (e.g. use a viewpoint and layout that is consistent with all of them, or pick the closest match to the user's subject). Do NOT collage or stitch them.` : ''}`,
-      })
-      for (const data of compRefs) {
-        parts.push({
-          inlineData: { mimeType: 'image/png', data },
-        })
+    // 1단계에서 추출한 구도 텍스트 가이드. 생성 호출엔 이미지 첨부 없이 이 텍스트만 사용한다.
+    // (이미지 첨부 시 시각 신호가 텍스트 지시를 압도해 화풍·색감·인물까지 새어들기 때문.)
+    let compositionGuide = ''
+    if (compRefsActive) {
+      try {
+        compositionGuide = await extractCompositionDescription(compRefs, apiKey)
+      } catch (e) {
+        console.warn('[generate-thumbnail-image] composition extraction failed, skipping:', e)
+        compositionGuide = ''
       }
+    }
+
+    const appendCompositionParts = () => {
+      if (!compRefsActive || !compositionGuide) return
       parts.push({
-        text: `[END OF COMPOSITION REFERENCE${plural ? 'S' : ''}]
-Re-confirming the strict scope of the image${plural ? 's' : ''} immediately above: COMPOSITION-ONLY. Copy ONLY framing, camera angle, subject placement, and spatial layout. DO NOT copy style, medium, rendering technique, color, lighting style, identities, faces, clothing, props, environment, objects, or any visible content. The style and content of the output come from the [USER INSTRUCTION] (and the STYLE/CHARACTER references above, if any), never from these composition reference${plural ? 's' : ''}.`,
+        text: `[COMPOSITION GUIDE — text-only, derived from the user's reference image${compRefs.length > 1 ? 's' : ''}]
+NO composition reference image is attached to this generation call. The following is a TEXT-ONLY description of the framing/layout the user wants. Apply these spatial/cinematographic instructions to the [USER INSTRUCTION]'s subject and style, but do not infer style, color, identity, or content from the description — those come from the [USER INSTRUCTION] and (if present) the STYLE / CHARACTER references only.
+
+COMPOSITION DESCRIPTION:
+${compositionGuide}
+
+[HOW TO APPLY THE COMPOSITION GUIDE]
+• Match the camera angle, framing, crop, subject placement, depth structure, and negative space distribution described above.
+• When the [USER INSTRUCTION] and this composition guide both specify a pose/angle, the [USER INSTRUCTION] takes priority. The composition guide fills in framing details the instruction does not specify.
+• Do NOT introduce extra subjects, props, objects, environment details, or color choices that this guide mentions only as part of describing spatial layout — the only thing taken from this guide is WHERE things sit and FROM WHAT ANGLE the camera looks.
+• Render in the style and colors dictated by the [USER INSTRUCTION] and any STYLE references. The composition guide has ZERO influence on style or color.`,
       })
     }
 
-    if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character') {
+    if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character' && reference_mode !== 'faithful') {
       // ── "스타일만 참고" 계열 — 레퍼런스에서 "예술적 기법"만 텍스트로 추출하고, 색감·구도는 명령어/주제가 정한다 ──
       // style_only:      추출 텍스트 + 레퍼런스 이미지 inlineData 함께 전달 (강한 anti-copy). 기법 정확하지만 소재가 새어들 수 있음.
       // style_text_only: 추출 텍스트만 사용하고 생성 호출엔 레퍼런스 이미지를 첨부하지 않음 → 소재/색 누출 거의 0, 기법 디테일은 약간 덜 정밀.
@@ -433,6 +490,28 @@ REQUIREMENTS:
 [OUTPUT FORMAT]
 • ONE single ${targetAspect} image, fully filled, no text/typography/watermarks anywhere.`,
         })
+      } else if (reference_mode === 'faithful') {
+        // 충실(레퍼런스 그대로) 모드 — 제미나이 사이트처럼 이미지를 직접 첨부하고 명령어를 거의 그대로 적용한다.
+        // 화풍·색감을 모두 유지하는 것이 목표이므로 색 팔레트 제외/구도 무시 같은 anti-copy 장치를 쓰지 않는다.
+        // 사용자 명령어를 최상단에 두고, 보존/형식 규칙은 짧게만 부착해 명령 충실도를 살린다.
+        parts.push({
+          text: `${indexedRefGuidance}${variationBlock}[YOUR TASK]
+Recreate/edit based on the attached reference image${refs.length > 1 ? 's' : ''}, following the [USER INSTRUCTION] below. PRESERVE the reference's art style AND colors faithfully — only change what the instruction explicitly asks for.
+
+[USER INSTRUCTION — TOP PRIORITY, FOLLOW IT LITERALLY]
+${prompt}
+
+[WHAT TO KEEP FROM THE REFERENCE — KEEP IT EXACTLY]
+• Art style: same medium, line work, rendering/shading technique, texture, brush feel, proportions, stylization level, detail density, and level of finish.
+• Color: same color palette, dominant hues, tonal range, color mood, and lighting feel as the reference. Do NOT shift, resaturate, or recolor.
+• Do NOT "upgrade" or restyle: do not drift toward a glossier, more opaque, more photorealistic, or more saturated look than the reference. Whatever the reference's actual surface is (delicate / painterly / watercolor / gongbi / flat / anime / photo / etc.), keep that exact look.
+
+[WHAT TO CHANGE]
+Apply ONLY the changes the [USER INSTRUCTION] asks for (e.g. subject, pose, scene, added/removed elements, composition). Everything the instruction does NOT mention stays as in the reference, including style and color. Do not invent extra changes.
+
+[WHOLE-IMAGE CONSISTENCY]
+Render the entire image in the reference's single consistent medium — every subject, object, background, ornament, and any celestial body. Never mix in a differently-styled or photo-real element.${formatRules}`,
+        })
       } else {
         // style_and_character — 레퍼런스에서는 face/identity + 시각 스타일만 가져오고, 나머지는 모두 명령어를 따라 렌더한다.
         // (style_only는 위쪽 outer if에서 2-step 파이프라인으로 라우팅되므로 이 분기에는 도달하지 않음)
@@ -487,9 +566,13 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
 
     // 클라이언트의 "이미지 다양성" 슬라이더(0~100)를 Gemini temperature(0.5~1.2)로 비선형 매핑.
     // 슬라이더가 없으면 0.75(적당히 일관성)로 기본 설정.
-    const variationLevel = typeof image_variation === 'number' && Number.isFinite(image_variation)
+    const rawVariationLevel = typeof image_variation === 'number' && Number.isFinite(image_variation)
       ? Math.max(0, Math.min(100, image_variation))
       : 33
+    // 충실 모드는 화풍·색감 유지가 목표 → 다양성 슬라이더가 높아도 temperature를 낮게 묶어 결정론적 출력 유도.
+    const variationLevel = reference_mode === 'faithful'
+      ? Math.min(rawVariationLevel, 25)
+      : rawVariationLevel
     const effectiveTemperature = (() => {
       const v = variationLevel
       if (v <= 20) return 0.5 + (v / 20) * 0.15

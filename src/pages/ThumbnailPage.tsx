@@ -47,6 +47,7 @@ const ASPECT_RATIOS = [
 ] as const;
 
 const REFERENCE_MODES = [
+  { id: 'faithful', label: '레퍼런스 그대로', desc: '화풍·색감을 그대로 유지하고 명령어가 시킨 것만 변경 — 제미나이 사이트처럼 명령 충실. 색·스타일 유지가 목표일 때' },
   { id: 'style_only', label: '스타일만 참고', desc: '레퍼런스의 기법(붓·선·질감·마감)만 차용 — 색감·구도는 명령어/주제대로. 기법 정확하나 소재가 새어들 수 있음' },
   { id: 'style_text_only', label: '스타일만 (텍스트)', desc: '레퍼런스 이미지를 모델에 안 보냄 — 소재·색 누출 거의 없이 기법만, 색감·구도는 명령어대로' },
   { id: 'style_and_character', label: '캐릭터+스타일', desc: '레퍼런스 인물·얼굴까지 유지' },
@@ -303,7 +304,7 @@ export default function ThumbnailPage() {
     return localStorage.getItem('thumbnail-fixed-prompt') || '';
   });
   const [ratioId, setRatioId] = useState<string>('9:16');
-  const [referenceMode, setReferenceMode] = useState<string>('style_only');
+  const [referenceMode, setReferenceMode] = useState<string>('faithful');
   // 여백 채우기 모드는 referenceMode에서 파생 (별도 체크박스 제거)
   const autoFillBackground = referenceMode === 'outpaint';
   const [imageCount, setImageCount] = useState<number>(2);
