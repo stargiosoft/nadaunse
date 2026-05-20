@@ -199,7 +199,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -264,7 +264,7 @@ ${compositionGuide}
       })
     }
 
-    if (refs.length > 0 && !auto_fill_background && !edit_region && reference_mode !== 'style_and_character' && reference_mode !== 'faithful') {
+    if (refs.length > 0 && !auto_fill_background && !edit_region && !edit_full && reference_mode !== 'style_and_character' && reference_mode !== 'faithful') {
       // ── "스타일만 참고" 계열 — 레퍼런스에서 "예술적 기법"만 텍스트로 추출하고, 색감·구도는 명령어/주제가 정한다 ──
       // style_only:      추출 텍스트 + 레퍼런스 이미지 inlineData 함께 전달 (강한 anti-copy). 기법 정확하지만 소재가 새어들 수 있음.
       // style_text_only: 추출 텍스트만 사용하고 생성 호출엔 레퍼런스 이미지를 첨부하지 않음 → 소재/색 누출 거의 0, 기법 디테일은 약간 덜 정밀.
@@ -470,6 +470,24 @@ ${prompt}
 [OUTPUT FORMAT]
 • ONE single clean image, same dimensions/aspect as the input. No text, letters, numbers, watermarks, captions, or typography. Absolutely no red/pink/magenta markings or residue anywhere.`,
         })
+      } else if (edit_full) {
+        // 전체 이미지 인플레이스 편집 — 제미나이 채팅 수정처럼, 명령한 부분만 바꾸고 나머지는 입력과 동일하게 유지.
+        // 영역 박스 없이 이미지 전체를 다시 그리되, 변경 지시가 없는 모든 요소는 픽셀 충실하게 재현하도록 강제한다.
+        parts.push({
+          text: `EDIT the attached image, applying ONLY the change described in the instruction below. This is the EXACT image to modify — treat it like editing the existing artwork in place, NOT generating a new picture.
+
+[INSTRUCTION — the ONLY thing to change]
+${prompt}
+
+[KEEP EVERYTHING ELSE IDENTICAL — CRITICAL]
+• Reproduce every part of the image the instruction does NOT mention exactly as in the input: same composition, same framing, same subjects, same faces and identities, same poses, same background, same props, same colors, same art style, same medium, same line work, same lighting, same texture, same level of detail. Be pixel-faithful everywhere the instruction does not touch.
+• Do NOT regenerate, reinterpret, restyle, recolor, recompose, re-pose, or "improve" the image. Do NOT shift, resize, add, or remove any element the instruction did not ask about. Do NOT change the art style or color palette.
+• Apply the requested change so it blends seamlessly into the existing artwork — matching the surrounding style, line work, color palette, lighting direction, and texture — as if it had always been part of the original.
+• Do NOT change the image dimensions or aspect ratio.
+
+[OUTPUT FORMAT]
+• ONE single image, same dimensions/aspect as the input. No text, letters, numbers, watermarks, captions, or typography.`,
+        })
       } else if (auto_fill_background) {
         // 흰 여백 자동 채우기 (Outpaint) — 레퍼런스 이미지를 그대로 유지하고 흰 여백만 확장
         const targetAspect = aspect_ratio || '16:9'
@@ -569,8 +587,8 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
     const rawVariationLevel = typeof image_variation === 'number' && Number.isFinite(image_variation)
       ? Math.max(0, Math.min(100, image_variation))
       : 33
-    // 충실 모드는 화풍·색감 유지가 목표 → 다양성 슬라이더가 높아도 temperature를 낮게 묶어 결정론적 출력 유도.
-    const variationLevel = reference_mode === 'faithful'
+    // 충실 모드/전체 편집은 화풍·색감·미변경 영역 유지가 목표 → 슬라이더가 높아도 temperature를 낮게 묶어 결정론적 출력 유도.
+    const variationLevel = (reference_mode === 'faithful' || edit_full)
       ? Math.min(rawVariationLevel, 25)
       : rawVariationLevel
     const effectiveTemperature = (() => {

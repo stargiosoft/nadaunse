@@ -638,7 +638,9 @@ export default function ThumbnailPage() {
           prompt: combinedPrompt,
           aspect_ratio: ratioId,
           reference_images: [base64],
-          reference_mode: 'style_and_character',
+          reference_mode: 'faithful',
+          edit_full: true, // 명령한 부분만 수정, 나머지는 원본 그대로 (제미나이 채팅 수정 방식)
+          image_variation: 5, // 충실도 우선 → 낮은 temperature
         }),
       });
       const data = await res.json();
