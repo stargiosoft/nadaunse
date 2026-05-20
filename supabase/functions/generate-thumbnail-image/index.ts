@@ -482,6 +482,7 @@ ${prompt}
 [KEEP EVERYTHING ELSE IDENTICAL — CRITICAL]
 • Reproduce every part of the image the instruction does NOT mention exactly as in the input: same composition, same framing, same subjects, same faces and identities, same poses, same background, same props, same colors, same art style, same medium, same line work, same lighting, same texture, same level of detail. Be pixel-faithful everywhere the instruction does not touch.
 • Do NOT regenerate, reinterpret, restyle, recolor, recompose, re-pose, or "improve" the image. Do NOT shift, resize, add, or remove any element the instruction did not ask about. Do NOT change the art style or color palette.
+• PRESERVE the input's exact contrast, saturation, and clarity. Do NOT wash out, desaturate, mute, fade, lower contrast, or soften the image. Do NOT add any haze, fog, mist, soft blur, glow, bloom, or hazy film. Do NOT lift the blacks or blow out highlights. Colors stay as vivid, blacks as deep, and edges as crisp as in the input.
 • Apply the requested change so it blends seamlessly into the existing artwork — matching the surrounding style, line work, color palette, lighting direction, and texture — as if it had always been part of the original.
 • Do NOT change the image dimensions or aspect ratio.
 
@@ -522,6 +523,7 @@ ${prompt}
 [WHAT TO KEEP FROM THE REFERENCE — KEEP IT EXACTLY]
 • Art style: same medium, line work, rendering/shading technique, texture, brush feel, proportions, stylization level, detail density, and level of finish.
 • Color: same color palette, dominant hues, tonal range, color mood, and lighting feel as the reference. Do NOT shift, resaturate, or recolor.
+• MATCH THE REFERENCE'S CONTRAST, SATURATION, AND CLARITY EXACTLY. Do NOT wash out, desaturate, mute, fade, or lower the contrast of the image. Do NOT add any haze, fog, mist, soft blur, glow, bloom, or hazy atmospheric film over the image. Do NOT lift the blacks or blow out the highlights. Blacks stay as deep, colors stay as vivid, and edges stay as crisp and sharp as in the reference. The output's color vividness and contrast must look IDENTICAL to the reference, not softer or paler.
 • Do NOT "upgrade" or restyle: do not drift toward a glossier, more opaque, more photorealistic, or more saturated look than the reference. Whatever the reference's actual surface is (delicate / painterly / watercolor / gongbi / flat / anime / photo / etc.), keep that exact look.
 
 [WHAT TO CHANGE]
