@@ -1042,7 +1042,7 @@ export default function ThumbnailPage() {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {sajuRatio.label} 상담 ({sajuRatio.width}×{sajuRatio.height})
+                    {sajuRatio.label}
                   </button>
                 );
               })()}
@@ -1259,9 +1259,9 @@ export default function ThumbnailPage() {
                       }
                     }}
                     style={{
-                      width: '16px', height: '16px', borderRadius: '6px', flexShrink: 0,
+                      width: '18px', height: '18px', borderRadius: '6px', flexShrink: 0,
                       backgroundColor: allSame ? '#48b2af' : 'transparent',
-                      border: allSame ? 'none' : '1.5px solid #c8c8c8',
+                      border: allSame ? 'none' : '1px solid #dcdcdc',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', transition: 'background-color 0.15s ease, border 0.15s ease',
                     }}
