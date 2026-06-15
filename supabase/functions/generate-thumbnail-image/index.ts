@@ -247,7 +247,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -474,6 +474,11 @@ INCORRECT BEHAVIOR (do NOT do this): outputting the people from image 2, or blen
 `
         : ''
 
+      // 와이드 포맷 등 특수 구도 제약 — variation_directive보다 먼저, 모든 다른 지시보다 앞에 위치해 최우선 적용.
+      const framingBlock = (typeof framing_directive === 'string' && framing_directive.trim().length > 0)
+        ? `[FRAMING OVERRIDE — ABSOLUTE PRIORITY, OVERRIDES REFERENCE AND ALL OTHER INSTRUCTIONS]\n${framing_directive.trim()}\n\n`
+        : ''
+
       // 멀티 생성 시 호출별로 약한 변주만 부여. STYLE LOCK / CHARACTER LOCK이 우선이며,
       // 변주는 사용자 슬라이더(앵글 다양성·이미지 다양성)가 정한 강도 안에서만 적용된다.
       const hasVariation = typeof variation_directive === 'string' && variation_directive.trim().length > 0
@@ -562,7 +567,7 @@ REQUIREMENTS:
         // 화풍·색감을 모두 유지하는 것이 목표이므로 색 팔레트 제외/구도 무시 같은 anti-copy 장치를 쓰지 않는다.
         // 사용자 명령어를 최상단에 두고, 보존/형식 규칙은 짧게만 부착해 명령 충실도를 살린다.
         parts.push({
-          text: `${indexedRefGuidance}${variationBlock}[YOUR TASK]
+          text: `${framingBlock}${indexedRefGuidance}${variationBlock}[YOUR TASK]
 Recreate/edit based on the attached reference image${refs.length > 1 ? 's' : ''}, following the [USER INSTRUCTION] below. PRESERVE the reference's art style AND colors faithfully — only change what the instruction explicitly asks for.
 
 [USER INSTRUCTION — TOP PRIORITY, FOLLOW IT LITERALLY]
@@ -584,7 +589,7 @@ Render the entire image in the reference's single consistent medium — every su
         // style_and_character — 레퍼런스에서는 face/identity + 시각 스타일만 가져오고, 나머지는 모두 명령어를 따라 렌더한다.
         // (style_only는 위쪽 outer if에서 2-step 파이프라인으로 라우팅되므로 이 분기에는 도달하지 않음)
         parts.push({
-          text: `${indexedRefGuidance}${variationBlock}[YOUR TASK]
+          text: `${framingBlock}${indexedRefGuidance}${variationBlock}[YOUR TASK]
 Generate ONE new image showing the SAME PERSON whose face is in the reference, depicted in a NEW situation defined by the user instruction below.
 
 [FROM THE REFERENCE — TAKE ONLY: face/identity + visual style]

@@ -516,12 +516,7 @@ export default function ThumbnailPage() {
     const combinedPrompt = [userPrompt, fixedPrompt].filter(Boolean).join('\n\n');
     // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
     // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
-    // 사주GPT 비율: 16:9로 생성 후 2.5:1로 크롭하므로, 인물이 프레임 상하에서 잘리지 않도록
-    // 카메라를 충분히 줌아웃한 구도를 자동 주입. 레퍼런스가 있어도 이 지시를 우선시하도록 맨 끝에 붙임.
-    const sajuFramingHint = ratioId === 'saju-consult'
-      ? '\n\n[WIDE FORMAT FRAMING — HIGHEST PRIORITY]\nOutput will be cropped to 2.5:1 ultra-wide. MANDATORY framing rules to prevent clipping:\n• Camera zoomed OUT — subject occupies at most 55% of frame HEIGHT\n• Subject\'s head positioned at 25~35% from top of frame (never above 20%)\n• Minimum 22% empty background ABOVE subject\'s head\n• Minimum 18% empty background BELOW subject\'s feet or chair base\n• Pull camera further back than the reference shows if needed'
-      : '';
-    const effectivePrompt = combinedPrompt + sajuFramingHint;
+    const effectivePrompt = combinedPrompt;
     // saju-consult는 Gemini 미지원 → 16:9로 생성, 다운로드 시 크롭
     const geminiRatio = ratioId === 'saju-consult' ? '16:9' : ratioId;
     const body: Record<string, unknown> = {
@@ -529,6 +524,10 @@ export default function ThumbnailPage() {
       aspect_ratio: geminiRatio,
       image_variation: imageVariation,
     };
+    // 사주GPT 비율: 레퍼런스가 있어도 무시하고 반드시 줌아웃 구도를 만들도록 최우선 지시를 별도 필드로 전송
+    if (ratioId === 'saju-consult') {
+      body.framing_directive = 'Camera MUST be zoomed out further than the reference. Subject occupies ≤55% of frame height. Subject\'s head at 25-35% from top of frame. ≥22% empty background above head, ≥18% below feet/chair. Do NOT match the reference\'s zoom level — pull back more.';
+    }
     if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
       body.seed = seedOverride;
     }
