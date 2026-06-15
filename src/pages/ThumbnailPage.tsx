@@ -289,6 +289,42 @@ async function compositeRegionResult(originalSrc: string, resultSrc: string, rec
   return canvas.toDataURL('image/png');
 }
 
+// saju-consult + 여백 채우기 전용: 레퍼런스를 16:9 캔버스 중앙에 65% 크기로 배치.
+// 좌우·위아래 여백(연회색)을 Gemini가 seamless하게 채워 20:9 와이드 구도를 완성.
+async function padReferenceForSajuConsultOutpaint(rawBase64: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // 16:9 캔버스 (원본 너비 기준)
+      const canvasW = img.naturalWidth;
+      const canvasH = Math.round(img.naturalWidth * (9 / 16));
+
+      // 원본을 캔버스 높이의 65%로 축소
+      const scale = (canvasH * 0.65) / img.naturalHeight;
+      const scaledW = Math.round(img.naturalWidth * scale);
+      const scaledH = Math.round(img.naturalHeight * scale);
+
+      // 수평 중앙, 수직은 살짝 아래쪽(머리 위 여백 확보)
+      const x = Math.round((canvasW - scaledW) / 2);
+      const y = Math.round((canvasH - scaledH) * 0.40);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('canvas context unavailable')); return; }
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(0, 0, canvasW, canvasH);
+      ctx.drawImage(img, x, y, scaledW, scaledH);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      resolve(dataUrl.split(',')[1] || rawBase64);
+    };
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = `data:image/png;base64,${rawBase64}`;
+  });
+}
+
 // 다운로드 시 ASPECT_RATIOS에 정의된 타겟 해상도로 업스케일.
 // Gemini 출력은 비율은 맞지만 해상도가 낮으므로(예: 9:16 → ~832×1472) 캔버스에서 리사이즈해 저장.
 // saju-consult는 16:9로 생성 후 크롭도 병행.
@@ -529,8 +565,10 @@ export default function ThumbnailPage() {
       aspect_ratio: geminiRatio,
       image_variation: imageVariation,
     };
-    // 사주GPT 비율: 레퍼런스가 있어도 무시하고 반드시 줌아웃 구도를 만들도록 최우선 지시를 별도 필드로 전송
-    if (ratioId === 'saju-consult') {
+    // 사주GPT: 여백 채우기(outpaint) + 레퍼런스 있으면 → 원본 보존+배경 확장 모드 (framing_directive 불필요)
+    //          그 외엔 → 새 와이드 구도 생성 (framing_directive로 줌아웃 강제)
+    const sajuOutpaintMode = ratioId === 'saju-consult' && autoFillBackground && referenceBase64s.length > 0;
+    if (ratioId === 'saju-consult' && !sajuOutpaintMode) {
       body.framing_directive = 'ULTRA-WIDE CINEMATIC SHOT. Pull the camera far back — this is an establishing shot, not a portrait. The subject (person/character) must be fully visible head-to-toe with generous empty space above the head (at least 35% of frame height above head) and clear ground/floor visible below feet. Subject height should be ≤45% of the total frame height, positioned in the lower-center of the frame. Left and right sides are mostly background/environment. Do NOT crop the subject. Do NOT zoom in. Do NOT match the reference zoom level — always pull back significantly more.';
     }
     if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
@@ -545,14 +583,21 @@ export default function ThumbnailPage() {
     if (referenceBase64s.length > 0) {
       let refsToSend = referenceBase64s;
       if (autoFillBackground) {
-        // 선택된 비율에 맞게 레퍼런스를 흰 padding으로 감싸 outpaint 영역을 명시
-        const targetRatio = ASPECT_RATIOS.find(r => r.id === ratioId) || ASPECT_RATIOS[0];
         try {
-          refsToSend = await Promise.all(
-            referenceBase64s.map(b64 => padReferenceForOutpaint(b64, targetRatio.width, targetRatio.height))
-          );
+          if (sajuOutpaintMode) {
+            // 사주GPT 원본 보존 확장: 레퍼런스를 16:9 캔버스 65% 크기로 배치 → 좌우·상하 배경을 Gemini가 채움
+            refsToSend = await Promise.all(
+              referenceBase64s.map(b64 => padReferenceForSajuConsultOutpaint(b64))
+            );
+          } else {
+            // 일반 여백 채우기: 선택 비율에 맞게 흰 padding 추가
+            const targetRatio = ASPECT_RATIOS.find(r => r.id === ratioId) || ASPECT_RATIOS[0];
+            refsToSend = await Promise.all(
+              referenceBase64s.map(b64 => padReferenceForOutpaint(b64, targetRatio.width, targetRatio.height))
+            );
+          }
         } catch (e) {
-          console.warn('[ThumbnailPage] padReferenceForOutpaint failed, falling back to raw:', e);
+          console.warn('[ThumbnailPage] outpaint padding failed, falling back to raw:', e);
         }
       }
       body.reference_images = refsToSend;
