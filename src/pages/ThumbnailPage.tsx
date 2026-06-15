@@ -289,11 +289,16 @@ async function compositeRegionResult(originalSrc: string, resultSrc: string, rec
   return canvas.toDataURL('image/png');
 }
 
-// saju-consult는 Gemini가 지원하지 않아 16:9로 생성 후 다운로드 시 1700×678로 중앙 크롭.
+// 다운로드 시 ASPECT_RATIOS에 정의된 타겟 해상도로 업스케일.
+// Gemini 출력은 비율은 맞지만 해상도가 낮으므로(예: 9:16 → ~832×1472) 캔버스에서 리사이즈해 저장.
+// saju-consult는 16:9로 생성 후 크롭도 병행.
 function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, targetRatioId: string): void {
-  const SAJU_W = 1866, SAJU_H = 843;
+  const ratio = ASPECT_RATIOS.find(r => r.id === targetRatioId);
+  const targetW = ratio?.width ?? img.naturalWidth;
+  const targetH = ratio?.height ?? img.naturalHeight;
+
   if (targetRatioId === 'saju-consult') {
-    const targetAspect = SAJU_W / SAJU_H;
+    const targetAspect = targetW / targetH;
     const srcAspect = img.naturalWidth / img.naturalHeight;
     let cropW: number, cropH: number, offsetX: number, offsetY: number;
     if (srcAspect >= targetAspect) {
@@ -305,16 +310,15 @@ function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, tar
       cropW = img.naturalWidth;
       cropH = Math.round(img.naturalWidth / targetAspect);
       offsetX = 0;
-      // 얼굴/머리가 위쪽에 있는 경우가 많아 위를 덜 자르고 아래를 더 자름 (20/80 분할)
       offsetY = Math.round((img.naturalHeight - cropH) * 0.20);
     }
-    canvas.width = SAJU_W;
-    canvas.height = SAJU_H;
-    canvas.getContext('2d')!.drawImage(img, offsetX, offsetY, cropW, cropH, 0, 0, SAJU_W, SAJU_H);
+    canvas.width = targetW;
+    canvas.height = targetH;
+    canvas.getContext('2d')!.drawImage(img, offsetX, offsetY, cropW, cropH, 0, 0, targetW, targetH);
   } else {
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    canvas.getContext('2d')!.drawImage(img, 0, 0);
+    canvas.width = targetW;
+    canvas.height = targetH;
+    canvas.getContext('2d')!.drawImage(img, 0, 0, targetW, targetH);
   }
 }
 
