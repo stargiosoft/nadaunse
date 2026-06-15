@@ -310,7 +310,8 @@ function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, tar
       cropW = img.naturalWidth;
       cropH = Math.round(img.naturalWidth / targetAspect);
       offsetX = 0;
-      offsetY = Math.round((img.naturalHeight - cropH) * 0.20);
+      // 0.75: 위쪽(하늘/배경) 75%를 잘라내고 아래(발/지면)를 보존
+      offsetY = Math.round((img.naturalHeight - cropH) * 0.75);
     }
     canvas.width = targetW;
     canvas.height = targetH;
@@ -530,7 +531,7 @@ export default function ThumbnailPage() {
     };
     // 사주GPT 비율: 레퍼런스가 있어도 무시하고 반드시 줌아웃 구도를 만들도록 최우선 지시를 별도 필드로 전송
     if (ratioId === 'saju-consult') {
-      body.framing_directive = 'Camera MUST be zoomed out further than the reference. Subject occupies ≤55% of frame height. Subject\'s head at 25-35% from top of frame. ≥22% empty background above head, ≥18% below feet/chair. Do NOT match the reference\'s zoom level — pull back more.';
+      body.framing_directive = 'ULTRA-WIDE CINEMATIC SHOT. Pull the camera far back — this is an establishing shot, not a portrait. The subject (person/character) must be fully visible head-to-toe with generous empty space above the head (at least 35% of frame height above head) and clear ground/floor visible below feet. Subject height should be ≤45% of the total frame height, positioned in the lower-center of the frame. Left and right sides are mostly background/environment. Do NOT crop the subject. Do NOT zoom in. Do NOT match the reference zoom level — always pull back significantly more.';
     }
     if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
       body.seed = seedOverride;
