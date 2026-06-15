@@ -769,7 +769,7 @@ export default function ThumbnailPage() {
     a.download = `${filename}.${fileFormat}`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [fileFormat]);
+  }, [fileFormat, ratioId]);
 
   const toFileName = (img: GeneratedImage) =>
     img.label ? img.label.replace(/[\\?%*:|"<>]/g, '_') : `${img.id}`;
@@ -821,7 +821,7 @@ export default function ThumbnailPage() {
     } finally {
       setZipping(false);
     }
-  }, [images, fileFormat]);
+  }, [images, fileFormat, ratioId]);
 
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === ratioId)!;
   const headerTitle = step === 'input' ? 'AI 이미지 제작' : '생성 결과';
