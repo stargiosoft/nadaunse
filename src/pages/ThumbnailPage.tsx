@@ -2063,6 +2063,10 @@ export default function ThumbnailPage() {
                           {isSelected && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDownload(img); }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.11)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                              onMouseDown={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.16)'; e.currentTarget.style.transform = 'scale(0.97)'; }}
+                              onMouseUp={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.11)'; e.currentTarget.style.transform = 'scale(1)'; }}
                               style={{
                                 width: '100%',
                                 padding: '5px 4px',
@@ -2074,6 +2078,7 @@ export default function ThumbnailPage() {
                                 letterSpacing: '-0.2px',
                                 textAlign: 'center',
                                 cursor: 'pointer',
+                                transition: 'background-color 0.12s ease, transform 0.1s ease',
                               }}
                             >
                               다운로드
