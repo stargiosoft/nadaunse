@@ -191,6 +191,54 @@ Output: a single descriptive paragraph using geometric/cinematographic vocabular
   return text
 }
 
+// 사용자 명령에 들어있는 "N개/N명/N마리…" 같은 개수 지시를 찾아, 모델이 개수를 정확히 지키도록 강조 블록을 만든다.
+// 이미지 생성 모델은 본질적으로 개수를 "세지" 못하고 그럴듯한 분포로 그려서(특히 6~7개 이상), 명시적 카운팅 지시가 정확도를 크게 높인다.
+const COUNT_UNITS = '개|명|마리|송이|그루|장|병|잔|채|권|쌍|줄|컵|상자|켤레|판'
+const KO_NUMERALS: Record<string, number> = {
+  '하나': 1, '한': 1, '둘': 2, '두': 2, '셋': 3, '세': 3, '넷': 4, '네': 4,
+  '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10,
+}
+
+function buildCountEmphasis(prompt: string): string {
+  if (!prompt || !prompt.trim()) return ''
+  const found: Array<{ noun: string; count: number }> = []
+  const seen = new Set<string>()
+  const add = (noun: string, count: number) => {
+    if (!Number.isFinite(count) || count < 1 || count > 200) return
+    const n = (noun || '').trim()
+    const key = `${n}:${count}`
+    if (seen.has(key)) return
+    seen.add(key)
+    found.push({ noun: n, count })
+  }
+
+  // 1) "표주박 10개" / "10개의 표주박" / "10 개" — 아라비아 숫자 + 단위
+  const digitRe = new RegExp(`([가-힣A-Za-z]{1,12})?\\s*(\\d{1,4})\\s*(?:${COUNT_UNITS})(?:의\\s*([가-힣A-Za-z]{1,12}))?`, 'g')
+  let m: RegExpExecArray | null
+  while ((m = digitRe.exec(prompt)) !== null) {
+    add(m[3] || m[1] || '', parseInt(m[2], 10))
+  }
+
+  // 2) "표주박 다섯 개" — 한국어 수사 + 단위
+  const koRe = new RegExp(`([가-힣A-Za-z]{1,12})?\\s*(${Object.keys(KO_NUMERALS).join('|')})\\s*(?:${COUNT_UNITS})`, 'g')
+  while ((m = koRe.exec(prompt)) !== null) {
+    const count = KO_NUMERALS[m[2]]
+    if (count) add(m[1] || '', count)
+  }
+
+  if (found.length === 0) return ''
+
+  const lines = found.map(({ noun, count }) => {
+    const label = noun ? `"${noun}"` : 'the specified item'
+    return `• ${label} → EXACTLY ${count}. Draw ${count} separate, individually distinguishable instance${count > 1 ? 's' : ''}, each fully visible and not merged together. Count as you place them: 1, 2, … ${count}. Do NOT draw ${Math.max(0, count - 1)} or ${count + 1}.`
+  })
+
+  return `[OBJECT COUNT — MANDATORY, HIGHEST PRIORITY OVER STYLE/COMPOSITION/AESTHETICS]
+The user instruction specifies exact object counts. You MUST render these EXACT quantities — image generators routinely miscount, so deliberately count each object as you place it in the scene:
+${lines.join('\n')}
+If a count is large, still place exactly that many, clearly separated (render them smaller if needed) — never round to a "nicer looking" amount and never let objects overlap into an ambiguous blob. Getting the exact count right matters MORE than a balanced or pretty composition.`
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req)
@@ -572,6 +620,12 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
 
     // 구도 참고 이미지는 모든 메인 지시문 뒤에 별도 블록으로 부착. 스타일 레퍼런스와 인덱스가 섞이지 않도록 끝에 배치.
     appendCompositionParts()
+
+    // 개수 지시 강조 — 모든 지시문 맨 뒤(가장 높은 salience)에 부착해 모델이 정확한 개수를 그리도록 강제.
+    const countEmphasis = buildCountEmphasis(typeof prompt === 'string' ? prompt : '')
+    if (countEmphasis) {
+      parts.push({ text: countEmphasis })
+    }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent`
     const headers: Record<string, string> = {

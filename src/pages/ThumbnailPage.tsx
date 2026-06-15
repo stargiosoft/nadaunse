@@ -44,6 +44,7 @@ const ASPECT_RATIOS = [
   { id: '2:3', label: '2:3', desc: '로맨스 타로', width: 1000, height: 1500 },
   { id: '1:1', label: '1:1', desc: '인스타 정사각', width: 1080, height: 1080 },
   { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
+  { id: 'saju-consult', label: '사주GPT', desc: '사주GPT 캐릭터 상담', width: 1700, height: 678 },
 ] as const;
 
 const REFERENCE_MODES = [
@@ -288,6 +289,34 @@ async function compositeRegionResult(originalSrc: string, resultSrc: string, rec
   return canvas.toDataURL('image/png');
 }
 
+// saju-consult는 Gemini가 지원하지 않아 16:9로 생성 후 다운로드 시 1700×678로 중앙 크롭.
+function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, targetRatioId: string): void {
+  const SAJU_W = 1700, SAJU_H = 678;
+  if (targetRatioId === 'saju-consult') {
+    const targetAspect = SAJU_W / SAJU_H;
+    const srcAspect = img.naturalWidth / img.naturalHeight;
+    let cropW: number, cropH: number, offsetX: number, offsetY: number;
+    if (srcAspect >= targetAspect) {
+      cropH = img.naturalHeight;
+      cropW = Math.round(img.naturalHeight * targetAspect);
+      offsetX = Math.round((img.naturalWidth - cropW) / 2);
+      offsetY = 0;
+    } else {
+      cropW = img.naturalWidth;
+      cropH = Math.round(img.naturalWidth / targetAspect);
+      offsetX = 0;
+      offsetY = Math.round((img.naturalHeight - cropH) / 2);
+    }
+    canvas.width = SAJU_W;
+    canvas.height = SAJU_H;
+    canvas.getContext('2d')!.drawImage(img, offsetX, offsetY, cropW, cropH, 0, 0, SAJU_W, SAJU_H);
+  } else {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d')!.drawImage(img, 0, 0);
+  }
+}
+
 // ── Component ──
 
 export default function ThumbnailPage() {
@@ -485,9 +514,11 @@ export default function ThumbnailPage() {
     // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
     // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
     const effectivePrompt = combinedPrompt;
+    // saju-consult는 Gemini 미지원 → 16:9로 생성, 다운로드 시 크롭
+    const geminiRatio = ratioId === 'saju-consult' ? '16:9' : ratioId;
     const body: Record<string, unknown> = {
       prompt: effectivePrompt,
-      aspect_ratio: ratioId,
+      aspect_ratio: geminiRatio,
       image_variation: imageVariation,
     };
     if (typeof seedOverride === 'number' && Number.isFinite(seedOverride)) {
@@ -723,10 +754,7 @@ export default function ThumbnailPage() {
       img.src = src;
     });
     const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
+    drawImageToCanvas(img, canvas, ratioId);
 
     const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
     const mime = mimeMap[fileFormat] || 'image/png';
@@ -772,9 +800,7 @@ export default function ThumbnailPage() {
           image.src = img.src;
         });
         const canvas = document.createElement('canvas');
-        canvas.width = image.naturalWidth;
-        canvas.height = image.naturalHeight;
-        canvas.getContext('2d')!.drawImage(image, 0, 0);
+        drawImageToCanvas(image, canvas, ratioId);
 
         const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mime, quality));
         if (blob) {
@@ -957,7 +983,7 @@ export default function ThumbnailPage() {
                 이미지 비율
               </label>
               <div className="flex" style={{ gap: '4px' }}>
-                {ASPECT_RATIOS.map(ratio => {
+                {ASPECT_RATIOS.filter(r => r.id !== 'saju-consult').map(ratio => {
                   const selected = ratioId === ratio.id;
                   return (
                     <button
@@ -985,6 +1011,34 @@ export default function ThumbnailPage() {
                   );
                 })}
               </div>
+              {(() => {
+                const sajuRatio = ASPECT_RATIOS.find(r => r.id === 'saju-consult')!;
+                const selected = ratioId === 'saju-consult';
+                return (
+                  <button
+                    onClick={() => setRatioId('saju-consult')}
+                    onMouseEnter={(e) => {
+                      if (!selected) e.currentTarget.style.backgroundColor = '#ececec';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selected) e.currentTarget.style.backgroundColor = '#f5f5f5';
+                    }}
+                    style={{
+                      width: '100%', height: '26px', padding: '0 4px', borderRadius: '8px',
+                      marginTop: '4px',
+                      fontFamily: font, fontSize: '11px', fontWeight: 400,
+                      letterSpacing: '0.76px',
+                      color: selected ? C.textWhite : '#5a5a5a',
+                      backgroundColor: selected ? C.primary : '#f5f5f5',
+                      border: 'none',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {sajuRatio.label} 상담 ({sajuRatio.width}×{sajuRatio.height})
+                  </button>
+                );
+              })()}
               <p style={{
                 fontFamily: font, fontSize: '10px', fontWeight: 400,
                 color: '#9a9a9a', marginTop: '8px',
