@@ -44,7 +44,7 @@ const ASPECT_RATIOS = [
   { id: '2:3', label: '2:3', desc: '로맨스 타로', width: 1000, height: 1500 },
   { id: '1:1', label: '1:1', desc: '인스타 정사각', width: 1080, height: 1080 },
   { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
-  { id: 'saju-consult', label: '사주GPT', desc: '사주GPT 캐릭터 상담', width: 1700, height: 678 },
+  { id: 'saju-consult', label: '약 20:9', desc: '사주GPT 캐릭터 상담', width: 1866, height: 843 },
 ] as const;
 
 const REFERENCE_MODES = [
@@ -291,7 +291,7 @@ async function compositeRegionResult(originalSrc: string, resultSrc: string, rec
 
 // saju-consult는 Gemini가 지원하지 않아 16:9로 생성 후 다운로드 시 1700×678로 중앙 크롭.
 function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, targetRatioId: string): void {
-  const SAJU_W = 1700, SAJU_H = 678;
+  const SAJU_W = 1866, SAJU_H = 843;
   if (targetRatioId === 'saju-consult') {
     const targetAspect = SAJU_W / SAJU_H;
     const srcAspect = img.naturalWidth / img.naturalHeight;
@@ -1236,26 +1236,50 @@ export default function ThumbnailPage() {
                 marginLeft: '-28px', marginRight: '-20px',
                 display: 'flex', flexDirection: 'column', gap: '20px',
               }}>
+                {/* 값:0 체크박스 — 앵글·이미지 다양성 모두 0으로 고정 */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '5px' }}>
+                  <span style={{
+                    fontFamily: font, fontSize: '11px',
+                    color: allSame ? '#48b2af' : '#9a9a9a', letterSpacing: '-0.22px',
+                    transition: 'color 0.15s ease',
+                  }}>
+                    값:0
+                  </span>
+                  <div
+                    onClick={() => {
+                      if (!allSame) {
+                        setSavedVariation({ angle: angleVariation, image: imageVariation });
+                        setAngleVariation(0);
+                        setImageVariation(0);
+                        setAllSame(true);
+                      } else {
+                        setAngleVariation(savedVariation.angle || 25);
+                        setImageVariation(savedVariation.image || 25);
+                        setAllSame(false);
+                      }
+                    }}
+                    style={{
+                      width: '16px', height: '16px', borderRadius: '6px', flexShrink: 0,
+                      backgroundColor: allSame ? '#48b2af' : 'transparent',
+                      border: allSame ? 'none' : '1.5px solid #c8c8c8',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'background-color 0.15s ease, border 0.15s ease',
+                    }}
+                  >
+                    {allSame && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path d="M1 3.5L3.2 5.5L8 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
                 <VariationSlider
                   label="앵글 다양성"
                   value={angleVariation}
                   onChange={(v) => { setAngleVariation(v); setAllSame(false); }}
                   endLabels={['거의 동일', '매우 다양']}
                   getHelperText={angleHelperText}
-                  lockCheckbox={{
-                    checked: allSame,
-                    onChange: (checked) => {
-                      if (checked) {
-                        setSavedVariation({ angle: angleVariation, image: imageVariation });
-                        setAngleVariation(0);
-                        setImageVariation(0);
-                      } else {
-                        setAngleVariation(savedVariation.angle);
-                        setImageVariation(savedVariation.image);
-                      }
-                      setAllSame(checked);
-                    },
-                  }}
+                  disabled={allSame}
                 />
                 <VariationSlider
                   label="이미지 다양성"
@@ -1263,6 +1287,7 @@ export default function ThumbnailPage() {
                   onChange={(v) => { setImageVariation(v); setAllSame(false); }}
                   endLabels={['일관성', '자유 해석']}
                   getHelperText={imageHelperText}
+                  disabled={allSame}
                 />
               </div>
             )}
@@ -2001,63 +2026,60 @@ export default function ThumbnailPage() {
                       const isSelected = img.id === selectedImageId;
                       const isHovered = hoverThumbId === img.id;
                       return (
-                        <button
-                          key={img.id}
-                          onClick={() => setSelectedImageId(img.id)}
-                          onMouseEnter={() => setHoverThumbId(img.id)}
-                          onMouseLeave={() => setHoverThumbId(null)}
-                          className="transform-gpu"
-                          style={{
-                            position: 'relative',
-                            width: '100%',
-                            aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
-                            borderRadius: '12px',
-                            overflow: 'hidden',
-                            border: isSelected
-                              ? `2px solid ${C.primary}`
-                              : `1px solid ${C.borderDefault}`,
-                            padding: 0,
-                            cursor: 'pointer',
-                            backgroundColor: C.surfaceSecondary,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'border 0.15s ease',
-                          }}
-                        >
-                          {img.src && (
-                            <>
+                        <div key={img.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <button
+                            onClick={() => setSelectedImageId(img.id)}
+                            onMouseEnter={() => setHoverThumbId(img.id)}
+                            onMouseLeave={() => setHoverThumbId(null)}
+                            className="transform-gpu"
+                            style={{
+                              position: 'relative',
+                              width: '100%',
+                              minHeight: '52px',
+                              aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
+                              borderRadius: '10px',
+                              overflow: 'hidden',
+                              border: isSelected
+                                ? `2px solid ${C.primary}`
+                                : `1px solid ${C.borderDefault}`,
+                              padding: 0,
+                              cursor: 'pointer',
+                              backgroundColor: C.surfaceSecondary,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'border 0.15s ease',
+                            }}
+                          >
+                            {img.src && (
                               <img
                                 src={img.src}
                                 alt={`썸네일 ${img.id}`}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               />
-                              <span
-                                onClick={(e) => { e.stopPropagation(); handleDownload(img); }}
-                                style={{
-                                  position: 'absolute',
-                                  bottom: '6px', left: '6px', right: '6px',
-                                  display: 'block',
-                                  padding: '6px',
-                                  borderRadius: '6px',
-                                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                                  backdropFilter: 'blur(4px)',
-                                  WebkitBackdropFilter: 'blur(4px)',
-                                  color: C.textWhite,
-                                  fontFamily: font, fontSize: '10px', fontWeight: 400,
-                                  letterSpacing: '-0.2px',
-                                  textAlign: 'center',
-                                  cursor: 'pointer',
-                                  opacity: isHovered ? 1 : 0,
-                                  transition: 'opacity 0.15s ease',
-                                  pointerEvents: isHovered ? 'auto' : 'none',
-                                }}
-                              >
-                                다운로드
-                              </span>
-                            </>
+                            )}
+                          </button>
+                          {/* 다운로드 버튼 — 선택된 이미지에만 표시 (겹침 방지) */}
+                          {isSelected && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDownload(img); }}
+                              style={{
+                                width: '100%',
+                                padding: '5px 4px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(0,0,0,0.06)',
+                                border: 'none',
+                                color: C.textSecondary,
+                                fontFamily: font, fontSize: '10px', fontWeight: 400,
+                                letterSpacing: '-0.2px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              다운로드
+                            </button>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
