@@ -305,7 +305,8 @@ function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, tar
       cropW = img.naturalWidth;
       cropH = Math.round(img.naturalWidth / targetAspect);
       offsetX = 0;
-      offsetY = Math.round((img.naturalHeight - cropH) / 2);
+      // 얼굴/머리가 위쪽에 있는 경우가 많아 위를 덜 자르고 아래를 더 자름 (35/65 분할)
+      offsetY = Math.round((img.naturalHeight - cropH) * 0.35);
     }
     canvas.width = SAJU_W;
     canvas.height = SAJU_H;
