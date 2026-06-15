@@ -15,6 +15,10 @@ const SLIDER_CSS = `
   cursor: pointer;
   display: block;
 }
+.ndu-vslider:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
 .ndu-vslider:focus { outline: none; }
 
 /* WebKit / Blink */
@@ -72,12 +76,21 @@ const SLIDER_CSS = `
 
 const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 
+// 5단계 슬라이더용 스텝 값 (0, 25, 50, 75, 100)
+const STEPS = [0, 25, 50, 75, 100];
+
+interface LockCheckbox {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}
+
 interface VariationSliderProps {
   label: string;
   value: number;
   onChange: (v: number) => void;
   getHelperText: (v: number) => string;
   endLabels: [string, string];
+  lockCheckbox?: LockCheckbox;
 }
 
 export function VariationSlider({
@@ -86,6 +99,7 @@ export function VariationSlider({
   onChange,
   getHelperText,
   endLabels,
+  lockCheckbox,
 }: VariationSliderProps) {
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -96,100 +110,125 @@ export function VariationSlider({
     document.head.appendChild(style);
   }, []);
 
-  const fillGradient = `linear-gradient(to right, #48b2af 0%, #48b2af ${value}%, #e7e7e7 ${value}%, #e7e7e7 100%)`;
+  const locked = lockCheckbox?.checked ?? false;
+  const displayValue = locked ? 0 : value;
+  const fillGradient = `linear-gradient(to right, #48b2af 0%, #48b2af ${displayValue}%, #e7e7e7 ${displayValue}%, #e7e7e7 100%)`;
   const sliderStyle = { ['--ndu-vslider-fill' as any]: fillGradient } as CSSProperties;
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '10px',
-          paddingLeft: '2px',
-        }}
-      >
-        <label
-          style={{
-            fontFamily: font,
-            fontSize: '12px',
-            fontWeight: 400,
-            lineHeight: '17px',
-            letterSpacing: '-0.24px',
-            color: '#151515',
-          }}
-        >
+      {/* 헤더 라인 */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '10px',
+        paddingLeft: '2px',
+      }}>
+        <label style={{
+          fontFamily: font,
+          fontSize: '12px',
+          fontWeight: 400,
+          lineHeight: '17px',
+          letterSpacing: '-0.24px',
+          color: '#151515',
+        }}>
           {label}
         </label>
-        <span
-          style={{
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {lockCheckbox && (
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              cursor: 'pointer',
+              fontFamily: font, fontSize: '10px', fontWeight: 400,
+              color: locked ? '#48b2af' : '#9a9a9a',
+              letterSpacing: '-0.2px',
+              userSelect: 'none',
+            }}>
+              <input
+                type="checkbox"
+                checked={locked}
+                onChange={e => lockCheckbox.onChange(e.target.checked)}
+                style={{ cursor: 'pointer', accentColor: '#48b2af', width: '12px', height: '12px', margin: 0 }}
+              />
+              동일
+            </label>
+          )}
+          <span style={{
             fontFamily: font,
             fontSize: '11px',
             fontWeight: 500,
-            color: '#48b2af',
+            color: locked ? '#b0b0b0' : '#48b2af',
             letterSpacing: '-0.22px',
-          }}
-        >
-          {value}
-        </span>
+            minWidth: '20px',
+            textAlign: 'right',
+          }}>
+            {displayValue}
+          </span>
+        </div>
       </div>
 
+      {/* 슬라이더 */}
       <input
         type="range"
         min={0}
         max={100}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        step={25}
+        value={displayValue}
+        disabled={locked}
+        onChange={e => onChange(Number(e.target.value))}
         className="ndu-vslider"
         style={sliderStyle}
       />
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: '6px',
-          paddingLeft: '2px',
-          paddingRight: '2px',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: font,
-            fontSize: '10px',
-            fontWeight: 400,
-            color: '#9a9a9a',
-            letterSpacing: '0.78px',
-          }}
-        >
+      {/* 5단계 점 표시 */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        marginTop: '4px', paddingLeft: '1px', paddingRight: '1px',
+      }}>
+        {STEPS.map(step => (
+          <div
+            key={step}
+            style={{
+              width: '4px', height: '4px',
+              borderRadius: '50%',
+              backgroundColor: !locked && displayValue >= step ? '#48b2af' : '#e0e0e0',
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 끝 라벨 */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginTop: '6px',
+        paddingLeft: '2px',
+        paddingRight: '2px',
+      }}>
+        <span style={{
+          fontFamily: font, fontSize: '10px', fontWeight: 400,
+          color: '#9a9a9a', letterSpacing: '0.78px',
+        }}>
           {endLabels[0]}
         </span>
-        <span
-          style={{
-            fontFamily: font,
-            fontSize: '10px',
-            fontWeight: 400,
-            color: '#9a9a9a',
-            letterSpacing: '0.78px',
-          }}
-        >
+        <span style={{
+          fontFamily: font, fontSize: '10px', fontWeight: 400,
+          color: '#9a9a9a', letterSpacing: '0.78px',
+        }}>
           {endLabels[1]}
         </span>
       </div>
 
-      <p
-        style={{
-          fontFamily: font,
-          fontSize: '10px',
-          fontWeight: 400,
-          color: '#9a9a9a',
-          marginTop: '8px',
-          paddingLeft: '2px',
-          letterSpacing: '0.78px',
-        }}
-      >
-        {getHelperText(value)}
+      {/* 헬퍼 텍스트 */}
+      <p style={{
+        fontFamily: font, fontSize: '10px', fontWeight: 400,
+        color: '#9a9a9a', marginTop: '8px',
+        paddingLeft: '2px', letterSpacing: '0.78px',
+      }}>
+        {locked ? '앵글·이미지 변주 없음 — 모든 컷 동일하게 생성' : getHelperText(displayValue)}
       </p>
     </div>
   );

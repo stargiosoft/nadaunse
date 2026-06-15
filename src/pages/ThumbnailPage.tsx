@@ -344,6 +344,8 @@ export default function ThumbnailPage() {
   // 변주 강도 슬라이더 (생성 개수 ≥ 2일 때만 의미 있음)
   const [angleVariation, setAngleVariation] = useState<number>(33);
   const [imageVariation, setImageVariation] = useState<number>(33);
+  const [allSame, setAllSame] = useState(false);
+  const [savedVariation, setSavedVariation] = useState({ angle: 33, image: 33 });
   const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
   const [referenceBase64s, setReferenceBase64s] = useState<string[]>([]);
   // 구도 참고: 화풍은 무시하고 오로지 구도/프레이밍/카메라 앵글/배치만 참고할 이미지
@@ -1233,14 +1235,28 @@ export default function ThumbnailPage() {
                 <VariationSlider
                   label="앵글 다양성"
                   value={angleVariation}
-                  onChange={setAngleVariation}
+                  onChange={(v) => { setAngleVariation(v); setAllSame(false); }}
                   endLabels={['거의 동일', '매우 다양']}
                   getHelperText={angleHelperText}
+                  lockCheckbox={{
+                    checked: allSame,
+                    onChange: (checked) => {
+                      if (checked) {
+                        setSavedVariation({ angle: angleVariation, image: imageVariation });
+                        setAngleVariation(0);
+                        setImageVariation(0);
+                      } else {
+                        setAngleVariation(savedVariation.angle);
+                        setImageVariation(savedVariation.image);
+                      }
+                      setAllSame(checked);
+                    },
+                  }}
                 />
                 <VariationSlider
                   label="이미지 다양성"
                   value={imageVariation}
-                  onChange={setImageVariation}
+                  onChange={(v) => { setImageVariation(v); setAllSame(false); }}
                   endLabels={['일관성', '자유 해석']}
                   getHelperText={imageHelperText}
                 />
