@@ -305,8 +305,8 @@ function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, tar
       cropW = img.naturalWidth;
       cropH = Math.round(img.naturalWidth / targetAspect);
       offsetX = 0;
-      // 얼굴/머리가 위쪽에 있는 경우가 많아 위를 덜 자르고 아래를 더 자름 (35/65 분할)
-      offsetY = Math.round((img.naturalHeight - cropH) * 0.35);
+      // 얼굴/머리가 위쪽에 있는 경우가 많아 위를 덜 자르고 아래를 더 자름 (20/80 분할)
+      offsetY = Math.round((img.naturalHeight - cropH) * 0.20);
     }
     canvas.width = SAJU_W;
     canvas.height = SAJU_H;
@@ -516,7 +516,12 @@ export default function ThumbnailPage() {
     const combinedPrompt = [userPrompt, fixedPrompt].filter(Boolean).join('\n\n');
     // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
     // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
-    const effectivePrompt = combinedPrompt;
+    // 사주GPT 비율: 16:9로 생성 후 2.5:1로 크롭하므로, 인물이 프레임 상하에서 잘리지 않도록
+    // 카메라를 충분히 줌아웃한 구도를 자동 주입. 레퍼런스가 있어도 이 지시를 우선시하도록 맨 끝에 붙임.
+    const sajuFramingHint = ratioId === 'saju-consult'
+      ? '\n\n[WIDE FORMAT FRAMING — HIGHEST PRIORITY]\nOutput will be cropped to 2.5:1 ultra-wide. MANDATORY framing rules to prevent clipping:\n• Camera zoomed OUT — subject occupies at most 55% of frame HEIGHT\n• Subject\'s head positioned at 25~35% from top of frame (never above 20%)\n• Minimum 22% empty background ABOVE subject\'s head\n• Minimum 18% empty background BELOW subject\'s feet or chair base\n• Pull camera further back than the reference shows if needed'
+      : '';
+    const effectivePrompt = combinedPrompt + sajuFramingHint;
     // saju-consult는 Gemini 미지원 → 16:9로 생성, 다운로드 시 크롭
     const geminiRatio = ratioId === 'saju-consult' ? '16:9' : ratioId;
     const body: Record<string, unknown> = {
