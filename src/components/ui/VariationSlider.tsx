@@ -76,7 +76,6 @@ const SLIDER_CSS = `
 
 const font = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif";
 
-// 5단계 슬라이더용 스텝 값 (0, 25, 50, 75, 100)
 const STEPS = [0, 25, 50, 75, 100];
 
 interface LockCheckbox {
@@ -137,35 +136,60 @@ export function VariationSlider({
         </label>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* 커스텀 체크박스: [값:0 텍스트] [체크박스] */}
           {lockCheckbox && (
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              cursor: 'pointer',
-              fontFamily: font, fontSize: '10px', fontWeight: 400,
-              color: locked ? '#48b2af' : '#9a9a9a',
-              letterSpacing: '-0.2px',
-              userSelect: 'none',
-            }}>
-              <input
-                type="checkbox"
-                checked={locked}
-                onChange={e => lockCheckbox.onChange(e.target.checked)}
-                style={{ cursor: 'pointer', accentColor: '#48b2af', width: '12px', height: '12px', margin: 0 }}
-              />
-              동일
-            </label>
+            <div
+              onClick={() => lockCheckbox.onChange(!locked)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '5px',
+                cursor: 'pointer', userSelect: 'none',
+              }}
+            >
+              <span style={{
+                fontFamily: font,
+                fontSize: '10px',
+                fontWeight: 400,
+                color: locked ? '#48b2af' : '#b0b0b0',
+                letterSpacing: '-0.2px',
+              }}>
+                값:0
+              </span>
+              {/* 커스텀 체크박스 박스 */}
+              <div style={{
+                width: '16px',
+                height: '16px',
+                borderRadius: '10px',
+                backgroundColor: locked ? '#48b2af' : 'transparent',
+                border: locked ? 'none' : '1.5px solid #c8c8c8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}>
+                {locked && (
+                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 3.5L3.2 5.5L8 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+            </div>
           )}
-          <span style={{
-            fontFamily: font,
-            fontSize: '11px',
-            fontWeight: 500,
-            color: locked ? '#b0b0b0' : '#48b2af',
-            letterSpacing: '-0.22px',
-            minWidth: '20px',
-            textAlign: 'right',
-          }}>
-            {displayValue}
-          </span>
+
+          {/* 현재 값 (locked일 때 숨김) */}
+          {!locked && (
+            <span style={{
+              fontFamily: font,
+              fontSize: '11px',
+              fontWeight: 500,
+              color: '#48b2af',
+              letterSpacing: '-0.22px',
+              minWidth: '20px',
+              textAlign: 'right',
+            }}>
+              {displayValue}
+            </span>
+          )}
         </div>
       </div>
 
