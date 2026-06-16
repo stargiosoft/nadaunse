@@ -368,11 +368,17 @@ function drawImageToCanvas(img: HTMLImageElement, canvas: HTMLCanvasElement, tar
     }
     canvas.width = targetW;
     canvas.height = targetH;
-    canvas.getContext('2d')!.drawImage(img, offsetX, offsetY, cropW, cropH, 0, 0, targetW, targetH);
+    const ctxS = canvas.getContext('2d')!;
+    ctxS.imageSmoothingEnabled = true;
+    ctxS.imageSmoothingQuality = 'high';
+    ctxS.drawImage(img, offsetX, offsetY, cropW, cropH, 0, 0, targetW, targetH);
   } else {
     canvas.width = targetW;
     canvas.height = targetH;
-    canvas.getContext('2d')!.drawImage(img, 0, 0, targetW, targetH);
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetW, targetH);
   }
 }
 
