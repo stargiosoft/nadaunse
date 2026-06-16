@@ -289,31 +289,48 @@ async function compositeRegionResult(originalSrc: string, resultSrc: string, rec
   return canvas.toDataURL('image/png');
 }
 
-// saju-consult + 여백 채우기 전용: 레퍼런스를 16:9 캔버스 중앙에 65% 크기로 배치.
-// 좌우·위아래 여백(연회색)을 Gemini가 seamless하게 채워 20:9 와이드 구도를 완성.
+// saju-consult + 여백 채우기 전용: 레퍼런스를 16:9 캔버스에 최대한 크게(75%) 배치.
+// 다운로드 시 20:9 크롭(위 15%·아래 5% 제거)을 고려해 수직 위치를 계산하므로 머리·발이 잘리지 않음.
+// 좌우 소폭 여백(~12%)을 Gemini가 채워 자연스럽게 와이드 구도 완성.
 async function padReferenceForSajuConsultOutpaint(rawBase64: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      // 16:9 캔버스 (원본 너비 기준)
+      // 16:9 캔버스 기준
       const canvasW = img.naturalWidth;
       const canvasH = Math.round(img.naturalWidth * (9 / 16));
 
-      // 원본을 캔버스 높이의 65%로 축소
-      const scale = (canvasH * 0.65) / img.naturalHeight;
-      const scaledW = Math.round(img.naturalWidth * scale);
-      const scaledH = Math.round(img.naturalHeight * scale);
+      // 20:9 크롭 시 실제로 잘리는 영역 (drawImageToCanvas bias=0.75 기준):
+      // 총 제거 = canvasH × 0.20, topCrop = 0.75 × 그것 = 0.15×canvasH, bottomCrop = 0.05×canvasH
+      const topCrop = Math.round(canvasH * 0.15);
+      const bottomCrop = Math.round(canvasH * 0.05);
 
-      // 수평 중앙, 수직은 살짝 아래쪽(머리 위 여백 확보)
+      // 인물이 크롭 후에도 보이는 안전 영역 (topCrop ~ canvasH-bottomCrop)
+      // 인물을 안전 영역 내 상단 10% 안쪽(머리 위 여백)에서 시작
+      const safeTop = topCrop + Math.round(canvasH * 0.08);   // 크롭 경계 + 8% 여유
+      const safeBottom = canvasH - bottomCrop - Math.round(canvasH * 0.02); // 하단 경계 - 2% 여유
+      const maxH = safeBottom - safeTop; // 인물이 차지할 수 있는 최대 높이
+
+      const imgAspect = img.naturalWidth / img.naturalHeight;
+
+      // 최대 높이 기준으로 스케일 계산 (캔버스 너비를 넘지 않도록 클램프)
+      let scaledH = Math.min(maxH, Math.round(canvasH * 0.75));
+      let scaledW = Math.round(scaledH * imgAspect);
+      if (scaledW > canvasW) {
+        scaledW = canvasW;
+        scaledH = Math.round(scaledW / imgAspect);
+      }
+
+      // 수평 중앙, 수직은 safeTop 기준
       const x = Math.round((canvasW - scaledW) / 2);
-      const y = Math.round((canvasH - scaledH) * 0.40);
+      const y = safeTop;
 
       const canvas = document.createElement('canvas');
       canvas.width = canvasW;
       canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject(new Error('canvas context unavailable')); return; }
-      ctx.fillStyle = '#e8e8e8';
+      ctx.fillStyle = '#e0e0e0';
       ctx.fillRect(0, 0, canvasW, canvasH);
       ctx.drawImage(img, x, y, scaledW, scaledH);
 
