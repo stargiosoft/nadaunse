@@ -342,6 +342,57 @@ async function padReferenceForSajuConsultOutpaint(rawBase64: string): Promise<st
   });
 }
 
+// ── AI 업스케일러 (upscaler.js + Real-ESRGAN) ──
+// 다운로드 시 브라우저에서 4× AI 업스케일 후 타겟 해상도로 다운스케일 → 고화질 결과.
+// 모델은 첫 사용 시 CDN에서 로드(~4MB), 이후 재사용.
+
+interface UpscalerInstance {
+  upscale(input: HTMLImageElement | HTMLCanvasElement | string): Promise<string>;
+}
+
+let _upscalerInstance: UpscalerInstance | null = null;
+let _upscalerLoading: Promise<UpscalerInstance> | null = null;
+
+async function getUpscaler(): Promise<UpscalerInstance> {
+  if (_upscalerInstance) return _upscalerInstance;
+  if (_upscalerLoading) return _upscalerLoading;
+  _upscalerLoading = (async () => {
+    const [{ default: Upscaler }, { default: model }] = await Promise.all([
+      import('upscaler'),
+      import('@upscalerjs/esrgan-slim/4x'),
+    ]);
+    const instance = new (Upscaler as new (opts: unknown) => UpscalerInstance)({ model });
+    _upscalerInstance = instance;
+    return instance;
+  })();
+  return _upscalerLoading;
+}
+
+// 이미지를 AI 4× 업스케일 후 HTMLImageElement 반환. 실패 시 원본 반환.
+async function aiUpscaleToImage(src: string): Promise<HTMLImageElement> {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = src;
+  });
+  try {
+    const upscaler = await getUpscaler();
+    const upscaledUrl = await upscaler.upscale(img);
+    const upscaledImg = new Image();
+    await new Promise<void>((resolve, reject) => {
+      upscaledImg.onload = () => resolve();
+      upscaledImg.onerror = reject;
+      upscaledImg.src = upscaledUrl;
+    });
+    return upscaledImg;
+  } catch (e) {
+    console.warn('[upscaler] AI 업스케일 실패, 원본 사용:', e);
+    return img;
+  }
+}
+
 // 다운로드 시 ASPECT_RATIOS에 정의된 타겟 해상도로 업스케일.
 // Gemini 출력은 비율은 맞지만 해상도가 낮으므로(예: 9:16 → ~832×1472) 캔버스에서 리사이즈해 저장.
 // saju-consult는 16:9로 생성 후 크롭도 병행.
@@ -824,31 +875,32 @@ export default function ThumbnailPage() {
     }
   }, [selectedImageId, images, editPrompt, editing, selRects, persistentPrompt, ratioId]);
 
+  const [upscaling, setUpscaling] = useState(false);
+
   const convertAndDownload = useCallback(async (src: string, filename: string) => {
     if (!src) return;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = reject;
-      img.src = src;
-    });
-    const canvas = document.createElement('canvas');
-    drawImageToCanvas(img, canvas, ratioId);
+    setUpscaling(true);
+    try {
+      const img = await aiUpscaleToImage(src);
+      const canvas = document.createElement('canvas');
+      drawImageToCanvas(img, canvas, ratioId);
 
-    const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
-    const mime = mimeMap[fileFormat] || 'image/png';
-    const quality = fileFormat === 'png' ? undefined : 0.92;
+      const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+      const mime = mimeMap[fileFormat] || 'image/png';
+      const quality = fileFormat === 'png' ? undefined : 0.92;
 
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mime, quality));
-    if (!blob) return;
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mime, quality));
+      if (!blob) return;
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.${fileFormat}`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}.${fileFormat}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setUpscaling(false);
+    }
   }, [fileFormat, ratioId]);
 
   const toFileName = (img: GeneratedImage) =>
@@ -872,13 +924,7 @@ export default function ThumbnailPage() {
       const quality = fileFormat === 'png' ? undefined : 0.92;
 
       for (const img of validImages) {
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        await new Promise<void>((resolve, reject) => {
-          image.onload = () => resolve();
-          image.onerror = reject;
-          image.src = img.src;
-        });
+        const image = await aiUpscaleToImage(img.src);
         const canvas = document.createElement('canvas');
         drawImageToCanvas(image, canvas, ratioId);
 
@@ -1937,7 +1983,7 @@ export default function ThumbnailPage() {
                           pointerEvents: (isMainHover && !regionMode) ? 'auto' : 'none',
                         }}>
                           <button
-                            onClick={() => handleDownload(currentImage)}
+                            onClick={() => { if (!upscaling) handleDownload(currentImage); }}
                             style={{
                               width: '100%',
                               padding: '14px',
@@ -1946,12 +1992,12 @@ export default function ThumbnailPage() {
                               backgroundColor: 'rgba(0, 0, 0, 0.65)',
                               backdropFilter: 'blur(6px)',
                               WebkitBackdropFilter: 'blur(6px)',
-                              color: C.textWhite, cursor: 'pointer',
+                              color: C.textWhite, cursor: upscaling ? 'default' : 'pointer',
                               fontFamily: font, fontSize: '14px', fontWeight: 400,
                               letterSpacing: '-0.28px',
                             }}
                           >
-                            다운로드
+                            {upscaling ? 'AI 업스케일 중...' : '다운로드'}
                           </button>
                         </div>
                       </div>
@@ -2135,10 +2181,10 @@ export default function ThumbnailPage() {
                           {/* 다운로드 버튼 — 선택된 이미지에만 표시 (겹침 방지) */}
                           {isSelected && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleDownload(img); }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.11)'; }}
+                              onClick={(e) => { e.stopPropagation(); if (!upscaling) handleDownload(img); }}
+                              onMouseEnter={(e) => { if (!upscaling) e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.11)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                              onMouseDown={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.16)'; e.currentTarget.style.transform = 'scale(0.97)'; }}
+                              onMouseDown={(e) => { if (!upscaling) { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.16)'; e.currentTarget.style.transform = 'scale(0.97)'; } }}
                               onMouseUp={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.11)'; e.currentTarget.style.transform = 'scale(1)'; }}
                               style={{
                                 width: '100%',
@@ -2146,15 +2192,15 @@ export default function ThumbnailPage() {
                                 borderRadius: '6px',
                                 backgroundColor: 'rgba(0,0,0,0.06)',
                                 border: 'none',
-                                color: C.textSecondary,
+                                color: upscaling ? C.textDisabled : C.textSecondary,
                                 fontFamily: font, fontSize: '10px', fontWeight: 400,
                                 letterSpacing: '-0.2px',
                                 textAlign: 'center',
-                                cursor: 'pointer',
+                                cursor: upscaling ? 'default' : 'pointer',
                                 transition: 'background-color 0.12s ease, transform 0.1s ease',
                               }}
                             >
-                              다운로드
+                              {upscaling ? '업스케일 중...' : '다운로드'}
                             </button>
                           )}
                         </div>
