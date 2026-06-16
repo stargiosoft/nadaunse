@@ -330,7 +330,7 @@ async function padReferenceForSajuConsultOutpaint(rawBase64: string): Promise<st
       canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject(new Error('canvas context unavailable')); return; }
-      ctx.fillStyle = '#e0e0e0';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvasW, canvasH);
       ctx.drawImage(img, x, y, scaledW, scaledH);
 
