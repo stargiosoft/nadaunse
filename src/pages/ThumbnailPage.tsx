@@ -59,25 +59,29 @@ const REFERENCE_MODES = [
 const IMAGE_COUNTS = [1, 2, 3, 4] as const;
 
 const CUT_PRESETS = [
-  { id: 'full', label: '전체컷' },
-  { id: 'holder', label: '홀더컷' },
+  { id: 'product', label: '제품컷' },
   { id: 'wearing', label: '착용컷' },
   { id: 'detail', label: '디테일컷' },
   { id: 'white', label: '흰배경컷' },
 ] as const;
 
-const WEARING_POSES = [
-  { id: 'wrist', label: '손목 클로즈업' },
-  { id: 'adjust', label: '팔찌 고쳐끼기' },
-  { id: 'face_casual', label: '얼굴+손 (캐주얼)' },
-  { id: 'face_elegant', label: '얼굴+손 (우아)' },
+const PRODUCT_CUTS = [
+  { id: 'flatlay', label: '플랫레이' },
+  { id: 'holder', label: '홀더컷' },
+  { id: 'props', label: '소품컷' },
+  { id: 'slab', label: '슬랩컷' },
 ] as const;
 
-const FULL_ANGLES = [
-  { id: 'flatlay', label: '플랫레이' },
-  { id: 'diagonal', label: '45도' },
-  { id: 'props', label: '소품컷' },
-  { id: 'perspective', label: '입체컷' },
+const WHITE_TYPES = [
+  { id: 'circle', label: '정면 (원형)' },
+  { id: 'diagonal', label: '사선 앵글' },
+] as const;
+
+const WEARING_POSES = [
+  { id: 'wrist', label: '손목' },
+  { id: 'adjust', label: '고쳐끼기' },
+  { id: 'face_casual', label: '얼굴·캐주얼' },
+  { id: 'face_elegant', label: '얼굴·우아' },
 ] as const;
 
 function getOutfitForColor(color: string, gender: 'female' | 'male' = 'female'): string {
@@ -148,17 +152,17 @@ function hashString(s: string): number {
 }
 
 const FEMALE_LOOKS = [
-  '밝고 화사한 피부톤, 단발 스트레이트 헤어, 청순하고 자연스러운 이미지',
-  '따뜻한 자연 피부톤, 긴 웨이브 헤어, 세련되고 우아한 이미지',
-  '쿨톤 피부, 쇼트컷 헤어, 모던하고 도시적인 이미지',
-  '밝은 피부톤, 긴 스트레이트 포니테일, 발랄하고 생기 있는 이미지',
-  '골든 베이지 피부톤, 롱 스트레이트 헤어, 고혹적이고 우아한 이미지',
-  '아이보리 피부톤, 미디엄 레이어드 헤어, 로맨틱하고 부드러운 이미지',
+  '한국 20대 여성 전문 주얼리 모델. 밝고 균일한 아이보리 피부, 매끄러운 단발 흑발, 또렷한 이목구비, 냉기 있는 단정한 표정',
+  '한국 20대 여성 패션 모델. 웜톤 밝은 피부, 부드럽게 웨이브진 긴 갈색 헤어, 입술이 도드라지는 우아한 이목구비, 세련된 표정',
+  '한국 20대 여성 뷰티 모델. 크리미한 밝은 피부, 깔끔하게 묶은 하이 포니테일, 청순하고 선명한 이목구비, 자연스럽고 밝은 표정',
+  '한국 20대 여성 럭셔리 주얼리 모델. 골든 베이지 피부, 긴 스트레이트 흑발, 고혹적이고 성숙한 이목구비, 차분한 눈빛',
+  '한국 20대 여성 화보 모델. 쿨톤 밝은 피부, 귀 위로 올라오는 짧은 보브컷, 모던하고 강인한 이목구비, 도시적인 표정',
+  '한국 20대 여성 주얼리 화보 모델. 밝은 자연 피부, 어깨 길이의 레이어드 컷, 부드럽고 로맨틱한 이목구비, 따뜻한 미소',
 ];
 const MALE_LOOKS = [
-  '밝은 피부톤, 단정한 투블럭 헤어, 클린하고 신뢰감 있는 이미지',
-  '자연 피부톤, 슬릭백 헤어, 세련되고 지적인 이미지',
-  '따뜻한 피부톤, 자연스러운 미디엄 헤어, 친근하고 부드러운 이미지',
+  '한국 20대 남성 주얼리 모델. 밝은 피부, 깔끔한 투블럭 헤어, 선명한 이목구비, 신뢰감 있는 표정',
+  '한국 20대 남성 패션 모델. 자연 피부톤, 뒤로 넘긴 슬릭백, 날카롭고 지적인 이목구비',
+  '한국 20대 남성 화보 모델. 따뜻한 피부톤, 자연스러운 미디엄 헤어, 친근하고 부드러운 이목구비',
 ];
 
 function getModelAppearance(color: string, gender: 'female' | 'male'): string {
@@ -167,48 +171,48 @@ function getModelAppearance(color: string, gender: 'female' | 'male'): string {
   return pool[hashString(key) % pool.length];
 }
 
-function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, fullAngle?: string): string {
+function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, subType?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 전체적으로 밝고 크린한 톤. 저렴하거나 아마추어 느낌 절대 금지. ';
   const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
-  const scene = color.trim() ? getColorScene(color) : { surface: '크림/베이지 스톤 타일 바닥', props: '드라이플라워, 유칼립투스 잎', light: '부드러운 자연광' };
-  const bg = `${scene.surface}, ${scene.props}, ${scene.light}`;
+  const scene = color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' };
 
-  const genderLabel = gender === 'male' ? '남성' : '여성';
   switch (cutId) {
-    case 'full': {
-      if (fullAngle === 'diagonal')
-        return `${prefix}팔찌 전체 사선 앵글 제품 사진. ${scene.surface}에 팔찌를 원형으로 올려놓고, 슬랩의 모서리와 측면이 보이도록 30~40도 비스듬한 앵글로 촬영. 프레임 상단 구석에 코튼플라워가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
-      if (fullAngle === 'props')
-        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface}에 팔찌를 원형으로 올려놓고, 슬랩 모서리가 보이는 비스듬한 앵글. ${scene.props}가 배경 상단에 아웃포커스로 자연스럽게 보임. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
-      if (fullAngle === 'perspective')
-        return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 원근감 있는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
-      return `${prefix}팔찌 전체 제품 사진. ${scene.surface}에 팔찌를 원형으로 올려놓고 슬랩 모서리가 살짝 보이는 비스듬한 앵글로 촬영. 프레임 상단 구석에 코튼플라워가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
+    case 'product': {
+      if (subType === 'holder')
+        return `${prefix}팔찌 홀더 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌 한 개가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 위에서 살짝 내려다보는 앵글. 롤 옆에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
+      if (subType === 'props')
+        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 배경 상단에 코튼플라워(목화솜) 한두 송이가 아웃포커스로 흐릿하게 보이는 라이프스타일 구도. 살짝 위에서 내려다보는 앵글. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
+      if (subType === 'slab')
+        return `${prefix}팔찌 슬랩 앵글 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 슬랩의 모서리와 두께감이 전면에 보이도록 비스듬한 앵글로 촬영. 배경에 코튼플라워가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
+      // flatlay (default)
+      return `${prefix}팔찌 플랫레이 제품 사진. ${scene.surface} 위에 팔찌를 완전한 정원형으로 올려놓고 정수리 방향에서 수직으로 내려다보는 오버헤드 앵글. 소품 없이 팔찌만, 미니멀하고 깔끔한 구도. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
     }
-    case 'holder':
-      return `${prefix}팔찌 홀더 스튜디오 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 살짝 위에서 내려다보는 앵글. 한쪽 구석에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
     case 'wearing': {
+      const g = gender ?? 'female';
       const outfit = color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스');
       const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
-      const g = gender ?? 'female';
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
+      const genderLabel = g === 'male' ? '남성' : '여성';
       const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
-      if (pose === 'adjust') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손목을 앞으로 내밀고 반대 손 손가락으로 팔찌를 살며시 고쳐 끼는 구도. 양손이 프레임 중앙에 위치하고 상체·의상이 배경으로 보임. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
-      }
-      if (pose === 'face_casual') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손을 자연스럽게 들어 턱 아래 또는 볼 옆에 가져다 댄 포즈. 모델 얼굴(턱선~이마)·목선이 프레임 상단에 자연스럽게 보임. 편안하고 자연스러운 표정. 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
-      }
-      if (pose === 'face_elegant') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손목을 우아하게 들어 손가락 끝이 살며시 볼이나 턱을 터치하는 포즈. 모델 얼굴 클로즈업—목선·쇄골이 드러나고 시선은 살짝 아래. 우아하고 고급스러운 분위기. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
-      }
-      return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 소매를 살짝 걷어올린 자연스러운 포즈. 소매 끝과 팔찌가 함께 프레임. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      if (pose === 'adjust')
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. 팔찌를 착용한 손목을 앞으로 내밀고 반대 손 손가락으로 팔찌를 살며시 고쳐 끼는 구도. 양손이 프레임 중앙에 위치하고 상체·의상이 배경으로 보임. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
+      if (pose === 'face_casual')
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. 팔찌를 착용한 손을 자연스럽게 들어 턱 아래 또는 볼 옆에 가져다 댄 포즈. 모델 얼굴(턱선~이마)·목선이 프레임 상단에 자연스럽게 보임. 자연스럽고 밝은 표정. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      if (pose === 'face_elegant')
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. 팔찌를 착용한 손목을 우아하게 들어 손가락 끝이 살며시 볼이나 턱을 터치하는 포즈. 모델 얼굴 클로즈업—목선·쇄골이 드러나고 시선은 살짝 아래. 고급스럽고 절제된 분위기. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      // wrist (default)
+      return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 소매를 살짝 걷어올린 자연스러운 포즈. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
-    case 'white':
-      return `${prefix}팔찌 흰 배경 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 완전한 정원형(perfect circle)으로 펼쳐 이미지 정중앙에 배치, 찌그러지거나 타원형이 되지 않도록. 팔찌 바로 아래에 매우 옅고 부드러운 그림자(opacity 10~15% 수준, 번짐이 없는 은은한 그라데이션 섀도우)만 살짝 표현 — 실제 스튜디오 촬영 제품 사진 느낌. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
+    case 'white': {
+      if (subType === 'diagonal')
+        return `${prefix}팔찌 흰 배경 사선 앵글 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 원근감과 입체감이 느껴지는 구도. 팔찌 아래 매우 옅고 부드러운 그림자(opacity 10~15%). 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 상업 사진.`;
+      // circle (default)
+      return `${prefix}팔찌 흰 배경 정면 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 완전한 정원형(perfect circle)으로 펼쳐 이미지 정중앙에 배치, 찌그러지거나 타원형이 되지 않도록. 팔찌 바로 아래에 매우 옅고 부드러운 그림자(opacity 10~15% 수준)만 살짝 표현. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
+    }
     default:
       return '';
   }
@@ -608,7 +612,8 @@ export default function ThumbnailPage() {
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
   const [wearingPose, setWearingPose] = useState<string>('wrist');
-  const [fullAngle, setFullAngle] = useState<string>('flatlay');
+  const [productCut, setProductCut] = useState<string>('flatlay');
+  const [whiteType, setWhiteType] = useState<string>('circle');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['cut']));
   const toggleSection = (id: string) => setOpenSections(prev => {
     const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
@@ -1596,11 +1601,13 @@ export default function ThumbnailPage() {
               marginLeft: '-28px', marginRight: '-20px',
             }}>
               {(() => {
-                const cutLabel = activeCutPreset ? CUT_PRESETS.find(c => c.id === activeCutPreset)?.label ?? '흰배경컷' : '—';
+                const cutLabel = activeCutPreset ? CUT_PRESETS.find(c => c.id === activeCutPreset)?.label ?? '—' : '—';
                 const subLabel = activeCutPreset === 'wearing'
                   ? ` · ${wearingGender === 'female' ? '여성' : '남성'} · ${WEARING_POSES.find(p => p.id === wearingPose)?.label}`
-                  : activeCutPreset === 'full'
-                  ? ` · ${FULL_ANGLES.find(a => a.id === fullAngle)?.label}`
+                  : activeCutPreset === 'product'
+                  ? ` · ${PRODUCT_CUTS.find(a => a.id === productCut)?.label}`
+                  : activeCutPreset === 'white'
+                  ? ` · ${WHITE_TYPES.find(w => w.id === whiteType)?.label}`
                   : '';
                 return (
                   <button onClick={() => toggleSection('cut')} style={{
@@ -1646,26 +1653,26 @@ export default function ThumbnailPage() {
                   boxSizing: 'border-box',
                 }}
               />
-              {/* 메인 프리셋 버튼 행 1: 전체/홀더/착용/디테일 */}
-              <div className="flex" style={{ gap: '4px' }}>
-                {CUT_PRESETS.filter(c => c.id !== 'white').map(cut => {
+              {/* 메인 프리셋 버튼 (4개) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '4px' }}>
+                {CUT_PRESETS.map(cut => {
                   const active = activeCutPreset === cut.id;
                   return (
                     <button
                       key={cut.id}
                       onClick={() => {
-                        const gender = cut.id === 'wearing' ? wearingGender : undefined;
-                        const pose = cut.id === 'wearing' ? wearingPose : undefined;
-                        const angle = cut.id === 'full' ? fullAngle : undefined;
-                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, gender, pose, angle));
+                        const g = cut.id === 'wearing' ? wearingGender : undefined;
+                        const p = cut.id === 'wearing' ? wearingPose : undefined;
+                        const s = cut.id === 'product' ? productCut : cut.id === 'white' ? whiteType : undefined;
+                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, g, p, s));
                         setActiveCutPreset(cut.id);
                       }}
                       onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
                       onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
                       style={{
-                        flex: 1, height: '28px', borderRadius: '8px', border: 'none',
+                        height: '28px', borderRadius: '8px', border: 'none',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
-                        letterSpacing: '0.76px',
+                        letterSpacing: '0.5px',
                         color: active ? C.textWhite : '#5a5a5a',
                         backgroundColor: active ? C.primary : '#f5f5f5',
                         cursor: 'pointer', transition: 'all 0.15s ease',
@@ -1675,57 +1682,31 @@ export default function ThumbnailPage() {
                 })}
               </div>
 
-              {/* 행 2: 흰배경컷 */}
-              {(() => {
-                const active = activeCutPreset === 'white';
-                return (
-                  <button
-                    onClick={() => {
-                      setPrompt(buildCutPrompt('white', productColor, stoneName));
-                      setActiveCutPreset('white');
-                    }}
-                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
-                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
-                    style={{
-                      width: '100%', height: '28px', borderRadius: '8px', border: 'none',
-                      marginTop: '4px',
-                      fontFamily: font, fontSize: '11px', fontWeight: 400,
-                      letterSpacing: '0.76px',
-                      color: active ? C.textWhite : '#5a5a5a',
-                      backgroundColor: active ? C.primary : '#f5f5f5',
-                      cursor: 'pointer', transition: 'all 0.15s ease',
-                    }}
-                  >흰배경컷</button>
-                );
-              })()}
-
-              {/* 전체컷 서브 옵션 */}
-              {activeCutPreset === 'full' && (
-                <div style={{ marginTop: '6px' }}>
-                  <div className="flex" style={{ gap: '4px' }}>
-                    {FULL_ANGLES.map(a => {
-                      const aActive = fullAngle === a.id;
-                      return (
-                        <button
-                          key={a.id}
-                          onClick={() => {
-                            setFullAngle(a.id);
-                            setPrompt(buildCutPrompt('full', productColor, stoneName, undefined, undefined, a.id));
-                          }}
-                          onMouseEnter={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
-                          onMouseLeave={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                          style={{
-                            flex: 1, height: '26px', borderRadius: '8px',
-                            border: `1px solid ${aActive ? C.primary : C.borderDefault}`,
-                            fontFamily: font, fontSize: '11px', fontWeight: 400,
-                            color: aActive ? C.primary : C.textTertiary,
-                            backgroundColor: aActive ? '#f0fafa' : 'transparent',
-                            cursor: 'pointer', transition: 'all 0.15s ease',
-                          }}
-                        >{a.label}</button>
-                      );
-                    })}
-                  </div>
+              {/* 제품컷 서브 옵션 (2x2 그리드) */}
+              {activeCutPreset === 'product' && (
+                <div style={{ marginTop: '6px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                  {PRODUCT_CUTS.map(a => {
+                    const aActive = productCut === a.id;
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => {
+                          setProductCut(a.id);
+                          setPrompt(buildCutPrompt('product', productColor, stoneName, undefined, undefined, a.id));
+                        }}
+                        onMouseEnter={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
+                        onMouseLeave={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        style={{
+                          height: '26px', borderRadius: '8px',
+                          border: `1px solid ${aActive ? C.primary : C.borderDefault}`,
+                          fontFamily: font, fontSize: '11px', fontWeight: 400,
+                          color: aActive ? C.primary : C.textTertiary,
+                          backgroundColor: aActive ? '#f0fafa' : 'transparent',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}
+                      >{a.label}</button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1733,7 +1714,7 @@ export default function ThumbnailPage() {
               {activeCutPreset === 'wearing' && (
                 <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {/* 성별 */}
-                  <div className="flex" style={{ gap: '4px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                     {(['female', 'male'] as const).map(g => {
                       const gActive = wearingGender === g;
                       return (
@@ -1746,7 +1727,7 @@ export default function ThumbnailPage() {
                           onMouseEnter={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                           onMouseLeave={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
                           style={{
-                            flex: 1, height: '26px', borderRadius: '8px',
+                            height: '26px', borderRadius: '8px',
                             border: `1px solid ${gActive ? C.primary : C.borderDefault}`,
                             fontFamily: font, fontSize: '11px', fontWeight: 400,
                             color: gActive ? C.primary : C.textTertiary,
@@ -1757,8 +1738,8 @@ export default function ThumbnailPage() {
                       );
                     })}
                   </div>
-                  {/* 포즈 */}
-                  <div className="flex" style={{ gap: '4px' }}>
+                  {/* 포즈 (2x2 그리드) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                     {WEARING_POSES.map(p => {
                       const pActive = wearingPose === p.id;
                       return (
@@ -1771,7 +1752,7 @@ export default function ThumbnailPage() {
                           onMouseEnter={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                           onMouseLeave={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
                           style={{
-                            flex: 1, height: '26px', borderRadius: '8px',
+                            height: '26px', borderRadius: '8px',
                             border: `1px solid ${pActive ? C.primary : C.borderDefault}`,
                             fontFamily: font, fontSize: '11px', fontWeight: 400,
                             color: pActive ? C.primary : C.textTertiary,
@@ -1782,6 +1763,34 @@ export default function ThumbnailPage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* 흰배경컷 서브 옵션 */}
+              {activeCutPreset === 'white' && (
+                <div style={{ marginTop: '6px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                  {WHITE_TYPES.map(w => {
+                    const wActive = whiteType === w.id;
+                    return (
+                      <button
+                        key={w.id}
+                        onClick={() => {
+                          setWhiteType(w.id);
+                          setPrompt(buildCutPrompt('white', productColor, stoneName, undefined, undefined, w.id));
+                        }}
+                        onMouseEnter={(e) => { if (!wActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
+                        onMouseLeave={(e) => { if (!wActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        style={{
+                          height: '26px', borderRadius: '8px',
+                          border: `1px solid ${wActive ? C.primary : C.borderDefault}`,
+                          fontFamily: font, fontSize: '11px', fontWeight: 400,
+                          color: wActive ? C.primary : C.textTertiary,
+                          backgroundColor: wActive ? '#f0fafa' : 'transparent',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}
+                      >{w.label}</button>
+                    );
+                  })}
                 </div>
               )}
 
