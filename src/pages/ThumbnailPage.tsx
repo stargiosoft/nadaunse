@@ -72,6 +72,25 @@ const WEARING_POSES = [
   { id: 'chest', label: '가슴에 손' },
 ] as const;
 
+function getOutfitForColor(color: string): string {
+  const lc = color.toLowerCase();
+  if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
+    return '크림색 또는 화이트 니트, 아이보리 블라우스 등 따뜻하고 부드러운 톤의 의상';
+  if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
+    return '화이트 셔츠, 연한 그레이 니트, 아이보리 블라우스 등 쿨톤 클린 의상';
+  if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
+    return '베이지 린넨 셔츠, 크림 니트, 아이보리 블라우스 등 내추럴 어스톤 의상';
+  if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
+    return '크림색 니트, 아이보리 블라우스, 연한 카멜 톤 의상';
+  if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
+    return '블랙 또는 다크 네이비 미니멀 의상, 크롭 탑';
+  if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
+    return '화이트 또는 아이보리 블라우스, 연한 크림 니트';
+  if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
+    return '화이트 또는 연한 파스텔 톤의 클린한 의상';
+  return '크림색 또는 아이보리 니트, 화이트 블라우스 등 중성 톤 의상';
+}
+
 function getColorBackground(color: string): string {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
@@ -102,14 +121,15 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'holder':
       return `${prefix}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 상업 사진.`;
     case 'wearing': {
+      const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
-        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 귀 쪽에 올린 자연스러운 포즈. 옆 얼굴과 목선, 쇄골이 배경에 보임. 클린한 밝은 배경, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 귀 쪽에 올린 자연스러운 포즈. 옆 얼굴과 목선, 쇄골이 배경에 보임. 의상: ${outfit}. 클린한 밝은 배경, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
       }
       if (pose === 'chest') {
-        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 가슴 위에 자연스럽게 얹은 포즈. 의류와 목선이 배경에 보임. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 가슴 위에 자연스럽게 얹은 포즈. 의상: ${outfit}. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
       }
       const wristDesc = gender === 'male' ? '단단하고 자연스러운 남성 손목' : '가느다란 자연스러운 여성 손목';
-      return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
       return `${prefix}팔찌 ${stone || '원석'} 비즈 클로즈업 제품 사진. ${stone ? `${stone} 원석` : '원석'}의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 ${stone || '원석'} 광택 강조. 고급 주얼리 상업 사진.`;
