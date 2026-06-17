@@ -76,7 +76,7 @@ const FULL_ANGLES = [
   { id: 'flatlay', label: '플랫레이' },
   { id: 'diagonal', label: '45도' },
   { id: 'props', label: '소품컷' },
-  { id: 'stack', label: '겹침컷' },
+  { id: 'perspective', label: '입체컷' },
 ] as const;
 
 function getOutfitForColor(color: string): string {
@@ -129,8 +129,8 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
         return `${prefix}팔찌 전체 사선 앵글 제품 사진. 팔찌를 원형으로 펼쳐 놓고 45도 비스듬한 각도에서 촬영, 입체감 강조. ${bg}. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
       if (fullAngle === 'props')
         return `${prefix}팔찌 소품 연출 제품 사진. 팔찌를 중앙에 원형으로 놓고 주변에 드라이플라워, 작은 크리스털, 천 소품 자연스럽게 배치. ${bg}. 탑뷰 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 라이프스타일 사진.`;
-      if (fullAngle === 'stack')
-        return `${prefix}팔찌 레이어드 연출 제품 사진. 같은 팔찌를 두세 번 살짝 어긋나게 겹쳐 놓아 자연스러운 레이어드 느낌 연출. ${bg}. 탑뷰 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+      if (fullAngle === 'perspective')
+        return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 정원형이 타원형 원근감으로 보이는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
       return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 정면 탑뷰. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
     }
     case 'holder':
@@ -149,7 +149,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'detail':
       return `${prefix}팔찌 라이프스타일 제품 사진. 팔찌 전체가 보이도록 나무 또는 스톤 바닥 위에 자연스럽게 놓고, 주변에 유칼립투스 잎이나 드라이플라워 소품 배치. 살짝 위에서 내려다보는 앵글. ${stone ? `${stone} 원석의` : '원석의'} 색감과 질감이 선명하게 살아있도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
     case 'white':
-      return `${prefix}팔찌 흰 배경 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 완전한 정원형(perfect circle)으로 펼쳐 이미지 정중앙에 배치, 찌그러지거나 타원형이 되지 않도록. 팔찌 아래에 은은하고 부드러운 드롭 섀도우 살짝 표현. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
+      return `${prefix}팔찌 흰 배경 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 완전한 정원형(perfect circle)으로 펼쳐 이미지 정중앙에 배치, 찌그러지거나 타원형이 되지 않도록. 팔찌 바로 아래에 매우 옅고 부드러운 그림자(opacity 10~15% 수준, 번짐이 없는 은은한 그라데이션 섀도우)만 살짝 표현 — 실제 스튜디오 촬영 제품 사진 느낌. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
     default:
       return '';
   }
@@ -550,6 +550,10 @@ export default function ThumbnailPage() {
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
   const [wearingPose, setWearingPose] = useState<string>('wrist');
   const [fullAngle, setFullAngle] = useState<string>('flatlay');
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['cut']));
+  const toggleSection = (id: string) => setOpenSections(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+  });
 
   // Input
   const [prompt, setPrompt] = useState('');
@@ -1232,13 +1236,24 @@ export default function ThumbnailPage() {
 
             {/* ── 이미지 비율 ── */}
             <div style={{
-              padding: '0 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              borderBottom: '1px solid #f0f0f0',
               marginLeft: '-28px', marginRight: '-20px',
             }}>
+              <button onClick={() => toggleSection('ratio')} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+              }}>
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>이미지 비율</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: font, fontSize: '11px', color: C.primary }}>{selectedRatio.label}</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('ratio') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              </button>
+            {openSections.has('ratio') && <div style={{ padding: '0 20px 16px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
-                color: C.textPrimary, display: 'block', marginBottom: '8px',
+                color: C.textPrimary, display: 'none', marginBottom: '8px',
                 paddingLeft: '2px',
               }}>
                 이미지 비율
@@ -1308,17 +1323,29 @@ export default function ThumbnailPage() {
               }}>
                 {selectedRatio.desc} ({selectedRatio.width}×{selectedRatio.height}px)
               </p>
+            </div>}
             </div>
 
             {/* ── 생성 개수 ── */}
             <div style={{
-              padding: '20px 20px 18px 28px', borderBottom: '1px solid #f0f0f0',
+              borderBottom: '1px solid #f0f0f0',
               marginLeft: '-28px', marginRight: '-20px',
             }}>
+              <button onClick={() => toggleSection('count')} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+              }}>
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>생성 개수</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: font, fontSize: '11px', color: C.primary }}>{imageCount}장</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('count') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              </button>
+            {openSections.has('count') && <div style={{ padding: '0 20px 16px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
-                color: C.textPrimary, display: 'block', marginBottom: '8px',
+                color: C.textPrimary, display: 'none', marginBottom: '8px',
                 paddingLeft: '2px',
               }}>
                 생성 개수
@@ -1377,17 +1404,29 @@ export default function ThumbnailPage() {
                   transition: 'all 0.15s ease',
                 }}
               />
+            </div>}
             </div>
 
             {/* ── 파일 형식 ── */}
             <div style={{
-              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              borderBottom: '1px solid #f0f0f0',
               marginLeft: '-28px', marginRight: '-20px',
             }}>
+              <button onClick={() => toggleSection('format')} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+              }}>
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>파일 형식</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: font, fontSize: '11px', color: C.primary }}>{fileFormat.toUpperCase()}</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('format') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              </button>
+            {openSections.has('format') && <div style={{ padding: '0 20px 16px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
-                color: C.textPrimary, display: 'block', marginBottom: '8px',
+                color: C.textPrimary, display: 'none', marginBottom: '8px',
                 paddingLeft: '2px',
               }}>
                 파일 형식
@@ -1429,18 +1468,27 @@ export default function ThumbnailPage() {
               }}>
                 {FILE_FORMATS.find(f => f.id === fileFormat)?.desc}
               </p>
+            </div>}
             </div>
 
             {/* ── 참고 방식 ── */}
             <div style={{
-              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              borderBottom: '1px solid #f0f0f0',
               marginLeft: '-28px', marginRight: '-20px',
             }}>
+              <button onClick={() => toggleSection('refmode')} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+              }}>
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>참고 방식</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: font, fontSize: '11px', color: C.primary }}>{REFERENCE_MODES.find(m => m.id === referenceMode)?.label}</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('refmode') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              </button>
+            {openSections.has('refmode') && <div style={{ padding: '0 20px 16px 28px' }}>
                 <label style={{
-                  fontFamily: font, fontSize: '12px', fontWeight: 400,
-                  lineHeight: '17px', letterSpacing: '-0.24px',
-                  color: C.textPrimary, display: 'block', marginBottom: '8px',
-                  paddingLeft: '2px',
+                  display: 'none',
                 }}>
                   참고 방식
                 </label>
@@ -1481,13 +1529,35 @@ export default function ThumbnailPage() {
               }}>
                 {REFERENCE_MODES.find(m => m.id === referenceMode)?.desc}
               </p>
+            </div>}
             </div>
 
             {/* ── 컷 프리셋 ── */}
             <div style={{
-              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              borderBottom: '1px solid #f0f0f0',
               marginLeft: '-28px', marginRight: '-20px',
             }}>
+              {(() => {
+                const cutLabel = activeCutPreset ? CUT_PRESETS.find(c => c.id === activeCutPreset)?.label ?? '흰배경컷' : '—';
+                const subLabel = activeCutPreset === 'wearing'
+                  ? ` · ${wearingGender === 'female' ? '여성' : '남성'} · ${WEARING_POSES.find(p => p.id === wearingPose)?.label}`
+                  : activeCutPreset === 'full'
+                  ? ` · ${FULL_ANGLES.find(a => a.id === fullAngle)?.label}`
+                  : '';
+                return (
+                  <button onClick={() => toggleSection('cut')} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                  }}>
+                    <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>컷 프리셋</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontFamily: font, fontSize: '11px', color: C.primary }}>{cutLabel}{subLabel}</span>
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('cut') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  </button>
+                );
+              })()}
+            {openSections.has('cut') && <div style={{ padding: '0 20px 16px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
@@ -1672,13 +1742,27 @@ export default function ThumbnailPage() {
               }}>
                 클릭하면 명령어가 자동 입력됩니다
               </p>
+            </div>}
             </div>
 
             {/* ── 변주 강도 (생성 개수 ≥ 2일 때만 노출) ── */}
             {imageCount >= 2 && (
               <div style={{
-                padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+                borderBottom: '1px solid #f0f0f0',
                 marginLeft: '-28px', marginRight: '-20px',
+              }}>
+              <button onClick={() => toggleSection('variation')} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+              }}>
+                <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>변주 강도</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: font, fontSize: '11px', color: C.primary }}>{allSame ? '동일' : `앵글 ${angleVariation} · 이미지 ${imageVariation}`}</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('variation') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+              </button>
+              {openSections.has('variation') && <div style={{
+                padding: '0 20px 20px 28px',
                 display: 'flex', flexDirection: 'column', gap: '20px',
               }}>
                 {/* 값:0 체크박스 — 앵글·이미지 다양성 모두 0으로 고정 */}
@@ -1734,6 +1818,7 @@ export default function ThumbnailPage() {
                   getHelperText={imageHelperText}
                   disabled={allSame}
                 />
+              </div>}
               </div>
             )}
 
