@@ -442,6 +442,9 @@ export default function ThumbnailPage() {
   const [step, setStep] = useState<Step>('input');
   const [panelHidden, setPanelHidden] = useState(false);
 
+  // Provider
+  const [provider, setProvider] = useState<'gemini' | 'gpt'>('gemini');
+
   // Input
   const [prompt, setPrompt] = useState('');
   const [persistentPrompt, setPersistentPrompt] = useState<string>(() => {
@@ -632,12 +635,13 @@ export default function ThumbnailPage() {
     // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
     // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
     const effectivePrompt = combinedPrompt;
-    // saju-consult는 Gemini 미지원 → 16:9로 생성, 다운로드 시 크롭
+    // saju-consult는 Gemini 미지원 → 16:9로 생성, 다운로드 시 크롭 (GPT는 자체 매핑)
     const geminiRatio = ratioId === 'saju-consult' ? '16:9' : ratioId;
     const body: Record<string, unknown> = {
       prompt: effectivePrompt,
-      aspect_ratio: geminiRatio,
+      aspect_ratio: provider === 'gpt' ? ratioId : geminiRatio,
       image_variation: imageVariation,
+      provider,
     };
     // 사주GPT: 여백 채우기(outpaint) + 레퍼런스 있으면 → 원본 보존+배경 확장 모드 (framing_directive 불필요)
     //          그 외엔 → 새 와이드 구도 생성 (framing_directive로 줌아웃 강제)
@@ -1029,40 +1033,63 @@ export default function ThumbnailPage() {
               }}>
                 {headerTitle}
               </p>
-              {step === 'result' && images.length > 0 && !generating ? (
-                <div className="flex" style={{ gap: '8px' }}>
+              <div className="flex items-center" style={{ gap: '8px' }}>
+                {/* Gemini / GPT 토글 */}
+                <div style={{
+                  display: 'flex', border: `1px solid ${C.borderDefault}`,
+                  borderRadius: '10px', overflow: 'hidden', height: '30px',
+                }}>
                   <button
-                    onClick={() => setStep('input')}
+                    onClick={() => setProvider('gemini')}
                     style={{
-                      height: '32px', padding: '0 24px', borderRadius: '12px',
-                      backgroundColor: C.surface,
-                      border: `1px solid ${C.borderDefault}`,
-                      cursor: 'pointer',
-                      fontFamily: font, fontSize: '13px', fontWeight: 400,
-                      color: C.textSecondary, letterSpacing: '-0.26px',
+                      padding: '0 10px', border: 'none', cursor: 'pointer',
+                      backgroundColor: provider === 'gemini' ? '#f0fafa' : 'transparent',
+                      fontFamily: font, fontSize: '12px', fontWeight: 500,
+                      color: provider === 'gemini' ? C.primary : C.textTertiary,
                       transition: 'all 0.15s ease',
                     }}
-                  >
-                    처음으로
-                  </button>
+                  >Gemini</button>
+                  <div style={{ width: '1px', backgroundColor: C.borderDefault, flexShrink: 0 }} />
                   <button
-                    onClick={handleDownloadAll}
-                    disabled={zipping}
+                    onClick={() => setProvider('gpt')}
                     style={{
-                      height: '32px', padding: '0 24px', borderRadius: '12px',
-                      backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
-                      cursor: zipping ? 'default' : 'pointer',
-                      fontFamily: font, fontSize: '13px', fontWeight: 400,
-                      color: C.textWhite, letterSpacing: '-0.26px',
+                      padding: '0 10px', border: 'none', cursor: 'pointer',
+                      backgroundColor: provider === 'gpt' ? '#f0f7ff' : 'transparent',
+                      fontFamily: font, fontSize: '12px', fontWeight: 500,
+                      color: provider === 'gpt' ? '#0066cc' : C.textTertiary,
                       transition: 'all 0.15s ease',
                     }}
-                  >
-                    {zipping ? 'ZIP 생성 중...' : 'ZIP 다운로드'}
-                  </button>
+                  >GPT</button>
                 </div>
-              ) : (
-                <div className="w-[44px]" />
-              )}
+                {step === 'result' && images.length > 0 && !generating && (
+                  <>
+                    <button
+                      onClick={() => setStep('input')}
+                      style={{
+                        height: '32px', padding: '0 24px', borderRadius: '12px',
+                        backgroundColor: C.surface,
+                        border: `1px solid ${C.borderDefault}`,
+                        cursor: 'pointer',
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        color: C.textSecondary, letterSpacing: '-0.26px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >처음으로</button>
+                    <button
+                      onClick={handleDownloadAll}
+                      disabled={zipping}
+                      style={{
+                        height: '32px', padding: '0 24px', borderRadius: '12px',
+                        backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
+                        cursor: zipping ? 'default' : 'pointer',
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        color: C.textWhite, letterSpacing: '-0.26px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >{zipping ? 'ZIP 생성 중...' : 'ZIP 다운로드'}</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -6,6 +6,69 @@ import { getCorsHeaders, handleCorsPreflightRequest } from '../server/cors.ts'
 // 사용 모델 — preview는 다운/스펙 변동 잦아 stable 사용
 const MODEL_ID = 'gemini-2.5-flash-image'
 
+// ── Replicate Real-ESRGAN 2× AI 업스케일 ──
+// REPLICATE_API_TOKEN이 설정된 경우에만 동작. 없으면 원본 반환.
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  const chunk = 32768
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)))
+  }
+  return btoa(binary)
+}
+
+async function upscaleWithReplicate(base64: string, mimeType: string): Promise<string> {
+  const token = Deno.env.get('REPLICATE_API_TOKEN')
+  if (!token) return base64
+
+  const dataUri = `data:${mimeType};base64,${base64}`
+
+  // Replicate synchronous mode (Prefer: wait, up to 60s)
+  const res = await fetch('https://api.replicate.com/v1/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'wait',
+    },
+    body: JSON.stringify({
+      model: 'nightmareai/real-esrgan',
+      input: { image: dataUri, scale: 2, face_enhance: false },
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Replicate ${res.status}: ${err.slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+
+  // 60s 내 완료된 경우 output이 URL, 아직 처리 중이면 polling
+  let outputUrl: string | null = data?.output ?? null
+
+  if (!outputUrl && data?.id) {
+    // polling (최대 50s, 2s 간격)
+    const pollUrl = `https://api.replicate.com/v1/predictions/${data.id}`
+    for (let i = 0; i < 25; i++) {
+      await new Promise(r => setTimeout(r, 2000))
+      const poll = await fetch(pollUrl, { headers: { 'Authorization': `Bearer ${token}` } })
+      const pollData = await poll.json()
+      if (pollData.status === 'succeeded') { outputUrl = pollData.output; break }
+      if (pollData.status === 'failed' || pollData.status === 'canceled') {
+        throw new Error(`Replicate prediction ${pollData.status}: ${pollData.error || ''}`)
+      }
+    }
+  }
+
+  if (!outputUrl) throw new Error('Replicate: no output URL returned')
+
+  const imgRes = await fetch(outputUrl)
+  if (!imgRes.ok) throw new Error(`Replicate output download failed: ${imgRes.status}`)
+  const buffer = await imgRes.arrayBuffer()
+  return uint8ToBase64(new Uint8Array(buffer))
+}
+
 // Gemini HTTP 에러 → 한국어 사용자 메시지
 function describeGeminiHttpError(status: number, body: string): string {
   let detail = ''
@@ -247,7 +310,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive, provider } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -273,6 +336,80 @@ serve(async (req) => {
       : reference_image
         ? [reference_image]
         : []
+
+    // ── GPT 이미지 생성 경로 ──
+    if (provider === 'gpt') {
+      const openaiKey = Deno.env.get('OPENAI_API_KEY')
+      if (!openaiKey) {
+        return new Response(JSON.stringify({ error: 'OPENAI_API_KEY가 설정되지 않았습니다.' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const sizeMap: Record<string, string> = {
+        '9:16': '1024x1536', '3:4': '1024x1536', '2:3': '1024x1536',
+        '1:1': '1024x1024', '16:9': '1536x1024', 'saju-consult': '1536x1024',
+      }
+      const size = sizeMap[aspect_ratio || ''] || '1024x1024'
+
+      let gptBase64: string | null = null
+
+      if (refs.length > 0) {
+        // 레퍼런스 이미지가 있으면 edits endpoint 사용
+        const formData = new FormData()
+        for (const ref of refs) {
+          const bytes = Uint8Array.from(atob(ref), (c: string) => c.charCodeAt(0))
+          formData.append('image[]', new Blob([bytes], { type: 'image/png' }), 'reference.png')
+        }
+        formData.append('prompt', prompt || '')
+        formData.append('model', 'gpt-image-1')
+        formData.append('size', size)
+        formData.append('n', '1')
+
+        const editRes = await fetch('https://api.openai.com/v1/images/edits', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${openaiKey}` },
+          body: formData,
+        })
+        if (!editRes.ok) {
+          const errText = await editRes.text()
+          let msg = ''
+          try { msg = JSON.parse(errText)?.error?.message || '' } catch {}
+          return new Response(JSON.stringify({ error: msg || `GPT 이미지 생성 실패 (HTTP ${editRes.status})` }), {
+            status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const d = await editRes.json()
+        gptBase64 = d?.data?.[0]?.b64_json ?? null
+      } else {
+        // 레퍼런스 없으면 generations endpoint 사용
+        const genRes = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'gpt-image-1', prompt: prompt || '', n: 1, size }),
+        })
+        if (!genRes.ok) {
+          const errText = await genRes.text()
+          let msg = ''
+          try { msg = JSON.parse(errText)?.error?.message || '' } catch {}
+          return new Response(JSON.stringify({ error: msg || `GPT 이미지 생성 실패 (HTTP ${genRes.status})` }), {
+            status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        const d = await genRes.json()
+        gptBase64 = d?.data?.[0]?.b64_json ?? null
+      }
+
+      if (!gptBase64) {
+        return new Response(JSON.stringify({ error: 'GPT 이미지 생성 실패 (빈 응답)' }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ image: gptBase64, mimeType: 'image/png' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const styleTextOnly = reference_mode === 'style_text_only'
 
@@ -713,6 +850,18 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // AI 업스케일 (REPLICATE_API_TOKEN 설정 시 Real-ESRGAN 2×)
+    if (Deno.env.get('REPLICATE_API_TOKEN')) {
+      try {
+        console.log('[generate-thumbnail-image] upscaling with Replicate...')
+        imageBase64 = await upscaleWithReplicate(imageBase64, mimeType)
+        mimeType = 'image/png'
+        console.log('[generate-thumbnail-image] upscale complete')
+      } catch (e) {
+        console.warn('[generate-thumbnail-image] Replicate upscale failed, using original:', (e as Error).message)
+      }
     }
 
     return new Response(JSON.stringify({ image: imageBase64, mimeType }), {
