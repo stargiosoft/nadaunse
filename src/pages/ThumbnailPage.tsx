@@ -60,6 +60,7 @@ const IMAGE_COUNTS = [1, 2, 3, 4] as const;
 
 const CUT_PRESETS = [
   { id: 'full', label: '전체컷' },
+  { id: 'holder', label: '홀더컷' },
   { id: 'wearing', label: '착용컷' },
   { id: 'detail', label: '디테일컷' },
 ] as const;
@@ -81,14 +82,21 @@ function getColorBackground(color: string): string {
   return '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
 }
 
-function buildCutPrompt(cutId: string, color: string): string {
+function buildCutPrompt(cutId: string, color: string, gender?: 'female' | 'male'): string {
   const colorLabel = color.trim() ? `${color.trim()} ` : '';
   const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
   switch (cutId) {
     case 'full':
       return `${colorLabel}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
-    case 'wearing':
+    case 'holder':
       return `${colorLabel}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 따뜻한 자연광. 고급 주얼리 상업 사진.`;
+    case 'wearing': {
+      const genderLabel = gender === 'male' ? '남성' : '여성';
+      const wristDesc = gender === 'male'
+        ? '단단하고 자연스러운 남성 손목'
+        : '가느다란 자연스러운 여성 손목';
+      return `${colorLabel}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 따뜻한 자연광. 고급 주얼리 상업 사진.`;
+    }
     case 'detail':
       return `${colorLabel}팔찌 비즈와 골드 클래스프 극단 클로즈업. 소재의 질감과 광택 강조. 아웃포커싱 배경. 고급 주얼리 디테일 사진.`;
     default:
@@ -487,6 +495,7 @@ export default function ThumbnailPage() {
   // 컷 프리셋
   const [productColor, setProductColor] = useState('');
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
+  const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
 
   // Input
   const [prompt, setPrompt] = useState('');
@@ -1455,8 +1464,8 @@ export default function ThumbnailPage() {
                     <button
                       key={cut.id}
                       onClick={() => {
-                        const p = buildCutPrompt(cut.id, productColor);
-                        setPrompt(p);
+                        const gender = cut.id === 'wearing' ? wearingGender : undefined;
+                        setPrompt(buildCutPrompt(cut.id, productColor, gender));
                         setActiveCutPreset(cut.id);
                       }}
                       onMouseEnter={(e) => {
@@ -1479,6 +1488,42 @@ export default function ThumbnailPage() {
                   );
                 })}
               </div>
+
+              {/* 착용컷 선택 시 성별 서브 버튼 */}
+              {activeCutPreset === 'wearing' && (
+                <div className="flex" style={{ gap: '4px', marginTop: '6px' }}>
+                  {(['female', 'male'] as const).map(g => {
+                    const gLabel = g === 'female' ? '여성' : '남성';
+                    const gActive = wearingGender === g;
+                    return (
+                      <button
+                        key={g}
+                        onClick={() => {
+                          setWearingGender(g);
+                          setPrompt(buildCutPrompt('wearing', productColor, g));
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!gActive) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                        style={{
+                          flex: 1, height: '26px', borderRadius: '8px', border: `1px solid ${gActive ? C.primary : C.borderDefault}`,
+                          fontFamily: font, fontSize: '11px', fontWeight: 400,
+                          letterSpacing: '0.76px',
+                          color: gActive ? C.primary : C.textTertiary,
+                          backgroundColor: gActive ? '#f0fafa' : 'transparent',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {gLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <p style={{
                 fontFamily: font, fontSize: '10px', fontWeight: 400,
                 color: '#9a9a9a', marginTop: '8px', paddingLeft: '2px',
