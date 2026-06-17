@@ -72,6 +72,13 @@ const WEARING_POSES = [
   { id: 'chest', label: '테이블에 손' },
 ] as const;
 
+const FULL_ANGLES = [
+  { id: 'flatlay', label: '플랫레이' },
+  { id: 'diagonal', label: '45도' },
+  { id: 'props', label: '소품컷' },
+  { id: 'vertical', label: '세로배치' },
+] as const;
+
 function getOutfitForColor(color: string): string {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
@@ -108,7 +115,7 @@ function getColorBackground(color: string): string {
   return '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
 }
 
-function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string): string {
+function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, fullAngle?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. ';
@@ -117,8 +124,15 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
 
   const genderLabel = gender === 'male' ? '남성' : '여성';
   switch (cutId) {
-    case 'full':
-      return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
+    case 'full': {
+      if (fullAngle === 'diagonal')
+        return `${prefix}팔찌 전체 사선 앵글 제품 사진. 팔찌를 원형으로 펼쳐 놓고 45도 비스듬한 각도에서 촬영, 입체감 강조. ${bg}. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+      if (fullAngle === 'props')
+        return `${prefix}팔찌 소품 연출 제품 사진. 팔찌를 중앙에 원형으로 놓고 주변에 드라이플라워, 작은 크리스털, 천 소품 자연스럽게 배치. ${bg}. 탑뷰 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 라이프스타일 사진.`;
+      if (fullAngle === 'vertical')
+        return `${prefix}팔찌 세로 연출 제품 사진. 팔찌를 세로로 길게 늘어뜨리거나 S자형으로 자연스럽게 배치. ${bg}. 약간 위에서 내려다보는 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 정면 탑뷰. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+    }
     case 'holder':
       return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. 흰 새틴 천 배경, 롤 주변에 드라이 흰 꽃(안개꽃, 수국) 소품. 살짝 비스듬한 앵글. ${bg} 톤. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
     case 'wearing': {
@@ -135,7 +149,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'detail':
       return `${prefix}팔찌 ${stone || '원석'} 클로즈업 제품 사진. 팔찌를 평면에 자연스럽게 놓은 상태에서 원석 비즈 부분만 살짝 당겨찍은 구도 — 원석 2~3개가 화면에 가득 차도록. ${stone ? `${stone}` : '원석'}의 색감·질감·광택이 생생하게 살아있도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것, 원본 그대로 재현. ${bg} 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     case 'white':
-      return `${prefix}팔찌 흰 배경 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 원형으로 펼쳐 중앙 배치. 그림자 없이. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
+      return `${prefix}팔찌 흰 배경 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 완전한 정원형(perfect circle)으로 펼쳐 이미지 정중앙에 배치, 찌그러지거나 타원형이 되지 않도록. 그림자 없이. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
     default:
       return '';
   }
@@ -535,6 +549,7 @@ export default function ThumbnailPage() {
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
   const [wearingPose, setWearingPose] = useState<string>('wrist');
+  const [fullAngle, setFullAngle] = useState<string>('flatlay');
 
   // Input
   const [prompt, setPrompt] = useState('');
@@ -1521,7 +1536,8 @@ export default function ThumbnailPage() {
                       onClick={() => {
                         const gender = cut.id === 'wearing' ? wearingGender : undefined;
                         const pose = cut.id === 'wearing' ? wearingPose : undefined;
-                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, gender, pose));
+                        const angle = cut.id === 'full' ? fullAngle : undefined;
+                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, gender, pose, angle));
                         setActiveCutPreset(cut.id);
                       }}
                       onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
@@ -1562,6 +1578,36 @@ export default function ThumbnailPage() {
                   >흰배경컷</button>
                 );
               })()}
+
+              {/* 전체컷 서브 옵션 */}
+              {activeCutPreset === 'full' && (
+                <div style={{ marginTop: '6px' }}>
+                  <div className="flex" style={{ gap: '4px' }}>
+                    {FULL_ANGLES.map(a => {
+                      const aActive = fullAngle === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => {
+                            setFullAngle(a.id);
+                            setPrompt(buildCutPrompt('full', productColor, stoneName, undefined, undefined, a.id));
+                          }}
+                          onMouseEnter={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
+                          onMouseLeave={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          style={{
+                            flex: 1, height: '26px', borderRadius: '8px',
+                            border: `1px solid ${aActive ? C.primary : C.borderDefault}`,
+                            fontFamily: font, fontSize: '11px', fontWeight: 400,
+                            color: aActive ? C.primary : C.textTertiary,
+                            backgroundColor: aActive ? '#f0fafa' : 'transparent',
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                          }}
+                        >{a.label}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* 착용컷 서브 옵션 */}
               {activeCutPreset === 'wearing' && (
