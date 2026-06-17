@@ -267,7 +267,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'wearing': {
       const g = gender ?? 'female';
       const outfit = outfitOverride || (color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스'));
-      const wearingBg = '밝은 스튜디오 배경지(크림/베이지 사진 배경지) — 가구·창문·커튼·인테리어·벽지 절대 금지, 순수 스튜디오 촬영 배경만, 소프트박스 조명으로 균일하게 노출된 배경';
+      const wearingBg = '럭셔리 주얼리 화보 배경 — 크림·베이지·아이보리·소프트그레이 계열의 뉴트럴 톤. 완전 단색 플랫 배경 금지. 아래 중 하나로 깊이감 있게 표현: (1) 자연광이 한쪽에서 부드럽게 스며드는 그라데이션 빛 번짐, (2) 미세한 텍스처가 느껴지는 뉴트럴 벽면(회벽·시멘트·린넨 느낌)에 소프트 보케, (3) 아웃포커스 된 밝은 배경에 자연광 보케 원형 빛 산란. 차가운 청색·강한 원색·형광색 절대 금지. 보그·엘르 럭셔리 주얼리 화보 품격.';
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
       const genderLabel = g === 'male' ? '남성' : '여성';
       const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
