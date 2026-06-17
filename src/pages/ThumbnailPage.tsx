@@ -125,7 +125,7 @@ function getColorBackground(color: string): string {
 function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, fullAngle?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
-  const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. ';
+  const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】Tiffany·Cartier 수준의 럭셔리 하이엔드 주얼리 브랜드 화보. 전문 스튜디오 조명, 미디엄 포맷 카메라 느낌. 선명한 핀포커스, 완벽한 노출, 색수차 없음. 저렴하거나 아마추어 느낌 절대 금지. ';
   const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
   const scene = color.trim() ? getColorScene(color) : { surface: '크림/베이지 스톤 타일 바닥', props: '드라이플라워, 유칼립투스 잎', light: '부드러운 자연광' };
   const bg = `${scene.surface}, ${scene.props}, ${scene.light}`;
@@ -146,13 +146,13 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
-        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 귀 쪽에 올린 자연스러운 포즈. 옆 얼굴과 목선, 쇄골이 배경에 보임. 의상: ${outfit}. 클린한 밝은 배경, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+        return `${prefix}럭셔리 주얼리 화보. 팔찌 착용한 ${genderLabel} 손을 귀 옆에 살며시 올린 우아한 포즈. 측면 얼굴·목선·쇄골이 흐릿하게 배경에 보임, 피부결 매끄럽고 고급스러운 모델 룩. 의상: ${outfit}. 크린하고 밝은 배경, 소프트 디퓨즈드 자연광. 팔찌에 완벽한 핀포커스.`;
       }
       if (pose === 'chest') {
-        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 한쪽 손목에 팔찌를 착용하고 손목을 비스듬히 들어올린 포즈, 다른 손이 아래에서 팔찌를 살며시 만지거나 여미는 자연스러운 두 손 구도. 의상: ${outfit}. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+        return `${prefix}럭셔리 주얼리 화보. 팔찌 착용한 손목을 비스듬히 들고 다른 손이 아래서 팔찌를 살며시 여미는 자연스럽고 우아한 두 손 구도. 피부결 매끄러운 고급스러운 모델 손. 의상: ${outfit}. 소프트 디퓨즈드 자연광. 팔찌에 완벽한 핀포커스.`;
       }
-      const wristDesc = gender === 'male' ? '단단하고 자연스러운 남성 손목' : '가느다란 자연스러운 여성 손목';
-      return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      const wristDesc = gender === 'male' ? '깔끔하고 단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
+      return `${prefix}럭셔리 주얼리 화보. 팔찌를 ${genderLabel} 손목에 착용한 클로즈업. ${wristDesc}을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 크린 배경. 소프트 디퓨즈드 자연광. 팔찌에 완벽한 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고 팔찌가 프레임의 70~80%를 채울 만큼 가까이 당겨찍은 구도. 전체컷과 동일한 씬 — ${scene.props}이 팔찌 주변에 살짝 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 고급 주얼리 상업 사진.`;
