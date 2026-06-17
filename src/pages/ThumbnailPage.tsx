@@ -98,7 +98,7 @@ function buildCutPrompt(cutId: string, color: string, gender?: 'female' | 'male'
       return `${colorLabel}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 따뜻한 자연광. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
-      return `${colorLabel}팔찌 비즈와 골드 클래스프 극단 클로즈업. 소재의 질감과 광택 강조. 아웃포커싱 배경. 고급 주얼리 디테일 사진.`;
+      return `${colorLabel}팔찌 원석 비즈 클로즈업 제품 사진. 원석의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 원석 광택 강조. 고급 주얼리 상업 사진.`;
     default:
       return '';
   }
