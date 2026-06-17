@@ -220,6 +220,29 @@ function getColorBackground(color: string): string {
   return `${s.surface}, ${s.props}, ${s.light}`;
 }
 
+function getWearingBg(outfit: string): string {
+  const lc = outfit.toLowerCase();
+  const base = '전문 사진 스튜디오 배경지. 소프트박스 조명의 자연스러운 명암 그라데이션(중앙 밝고 가장자리 살짝 어두운)으로 깊이감 있게 표현. 하이엔드 주얼리 브랜드 스튜디오 촬영 느낌.';
+  if (['블랙', '버건디', '네이비'].some(w => lc.includes(w)))
+    return `밝은 크림 아이보리 배경지 — 의상과 밝기 대비로 선명하게. ${base}`;
+  if (['라벤더', '퍼플'].some(w => lc.includes(w)))
+    return `소프트 라벤더 화이트 배경지 (연한 라벤더 빛이 살짝 감도는 크림). ${base}`;
+  if (['피치', '핑크', '파우더', '더스티 로즈', '로즈 골드'].some(w => lc.includes(w)))
+    return `따뜻한 블러쉬 크림 배경지 (연한 핑크 빛이 감도는 아이보리). ${base}`;
+  if (['민트', '세이지', '올리브'].some(w => lc.includes(w)))
+    return `소프트 그린 크림 배경지 (연한 세이지 빛이 감도는 아이보리). ${base}`;
+  if (['하늘', '라이트 블루', '연한 하늘'].some(w => lc.includes(w)))
+    return `소프트 스카이 화이트 배경지 (연한 하늘빛이 감도는 크림). ${base}`;
+  if (['머스터드', '옐로우', '소프트 옐로우'].some(w => lc.includes(w)))
+    return `따뜻한 버터 크림 배경지 (연한 골든 빛이 감도는 아이보리). ${base}`;
+  if (['테라코타', '코랄'].some(w => lc.includes(w)))
+    return `따뜻한 샌드 베이지 배경지 (연한 오렌지 빛이 감도는 크림). ${base}`;
+  if (['카멜', '브라운'].some(w => lc.includes(w)))
+    return `따뜻한 카멜 크림 배경지 (연한 브라운 빛이 감도는 베이지). ${base}`;
+  // default: 화이트·크림·아이보리·실크·드레이프·오프숄더 등
+  return `소프트 크림 아이보리 배경지. ${base}`;
+}
+
 function hashString(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
@@ -267,7 +290,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'wearing': {
       const g = gender ?? 'female';
       const outfit = outfitOverride || (color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스'));
-      const wearingBg = '전문 사진 스튜디오 배경 — 크림·아이보리·소프트베이지 계열 배경지 또는 무광 스튜디오 벽. 단색이지만 소프트박스 조명의 자연스러운 명암 그라데이션(중앙 밝고 가장자리 살짝 어두운)으로 깊이감 있게 표현. 완전 플랫한 단색 절대 금지. 배경지 질감이 살짝 느껴지는 정도. 뉴트럴 화이트·크림·베이지 계열만. 하이엔드 주얼리 브랜드 스튜디오 촬영 느낌.';
+      const wearingBg = getWearingBg(outfit);
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
       const genderLabel = g === 'male' ? '남성' : '여성';
       const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
