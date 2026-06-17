@@ -125,7 +125,7 @@ function getColorBackground(color: string): string {
 function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, fullAngle?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
-  const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】Tiffany·Cartier 수준의 럭셔리 하이엔드 주얼리 브랜드 화보. 전문 스튜디오 조명, 미디엄 포맷 카메라 느낌. 선명한 핀포커스, 완벽한 노출, 색수차 없음. 저렴하거나 아마추어 느낌 절대 금지. ';
+  const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 전체적으로 밝고 크린한 톤. 저렴하거나 아마추어 느낌 절대 금지. ';
   const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
   const scene = color.trim() ? getColorScene(color) : { surface: '크림/베이지 스톤 타일 바닥', props: '드라이플라워, 유칼립투스 잎', light: '부드러운 자연광' };
   const bg = `${scene.surface}, ${scene.props}, ${scene.light}`;
@@ -142,17 +142,17 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       return `${prefix}팔찌 전체 스튜디오 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 원형으로 중앙에 놓고 정면 탑뷰 촬영. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
     }
     case 'holder':
-      return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. ${scene.surface} 위에 롤을 놓고, 주변에 ${scene.props} 소품. 살짝 비스듬한 앵글. ${scene.light}. 고급 주얼리 라이프스타일 상업 사진.`;
+      return `${prefix}팔찌 홀더 스튜디오 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 살짝 위에서 내려다보는 앵글. 한쪽 구석에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
     case 'wearing': {
-      const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
+      const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트';
       if (pose === 'ear') {
-        return `${prefix}럭셔리 주얼리 화보. 팔찌 착용한 ${genderLabel} 손을 귀 옆에 살며시 올린 우아한 포즈. 측면 얼굴·목선·쇄골이 흐릿하게 배경에 보임, 피부결 매끄럽고 고급스러운 모델 룩. 의상: ${outfit}. 크린하고 밝은 배경, 소프트 디퓨즈드 자연광. 팔찌에 완벽한 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 깔끔하고 아름다운 ${genderLabel} 모델이 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 피부결 매끄럽고 미니멀한 메이크업. 의상: ${outfit}. 밝고 크린한 중성 배경, 소프트박스 조명. 팔찌에 핀포커스.`;
       }
       if (pose === 'chest') {
-        return `${prefix}럭셔리 주얼리 화보. 팔찌 착용한 손목을 비스듬히 들고 다른 손이 아래서 팔찌를 살며시 여미는 자연스럽고 우아한 두 손 구도. 피부결 매끄러운 고급스러운 모델 손. 의상: ${outfit}. 소프트 디퓨즈드 자연광. 팔찌에 완벽한 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 팔찌를 착용한 손목을 자연스럽게 들고 다른 손으로 팔찌를 살며시 고쳐 끼는 두 손 구도. 손목·손이 프레임 중앙. 피부결 매끄러운 ${genderLabel} 모델. 의상: ${outfit}. 밝고 크린한 중성 배경. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
       }
-      const wristDesc = gender === 'male' ? '깔끔하고 단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
-      return `${prefix}럭셔리 주얼리 화보. 팔찌를 ${genderLabel} 손목에 착용한 클로즈업. ${wristDesc}을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 크린 배경. 소프트 디퓨즈드 자연광. 팔찌에 완벽한 핀포커스.`;
+      const wristDesc = gender === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
+      return `${prefix}한국 고급 주얼리 브랜드 화보. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 자연스럽게 든 포즈. 소매 끝이 살짝 보임, 의상: ${outfit}. 밝고 크린한 중성 배경. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
