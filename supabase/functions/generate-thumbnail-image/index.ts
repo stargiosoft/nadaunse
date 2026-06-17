@@ -310,7 +310,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive, provider } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, outfit_reference_image, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive, provider } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -758,6 +758,30 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
 • If the user instruction itself asks for multiple outfit/pose/scene variations in a single output (e.g. "show 3 different outfits"), pick ONE variation and render it as a single full image rather than a collage.`
       parts.push({
         text: `USER INSTRUCTION: ${prompt}\n\nGenerate a professional thumbnail image that follows the user instruction above.${formatRules}`,
+      })
+    }
+
+    // 의상 레퍼런스 이미지 — 커프스·넥라인·소매 형태만 복사, 인물·팔찌·배경은 무시
+    if (typeof outfit_reference_image === 'string' && outfit_reference_image.length > 0) {
+      parts.push({
+        text: `[OUTFIT / GARMENT REFERENCE IMAGE — ATTACHED BELOW]
+The next image is a GARMENT DESIGN REFERENCE only. Copy EXCLUSIVELY the following structural garment details into the outfit you render:
+• Neckline shape (V-neck / square / round / off-shoulder / etc.)
+• Cuff style: whether a cuff band is present, exact number of pleats/gathers at the cuff band, button placement and count
+• Sleeve silhouette (loose flow / slim tapered / flare, etc.)
+
+DO NOT copy from this reference:
+• The person's face, identity, skin tone, hair, or body proportions
+• The color or pattern of the fabric (color comes from [USER INSTRUCTION])
+• Any jewelry, bracelet, or accessories
+• Background, pose, or setting
+Treat this reference as a technical sewing pattern — structural shape only, nothing else.`,
+      })
+      parts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: outfit_reference_image,
+        },
       })
     }
 

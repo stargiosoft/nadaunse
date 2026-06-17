@@ -723,6 +723,9 @@ export default function ThumbnailPage() {
   // 구도 참고: 화풍은 무시하고 오로지 구도/프레이밍/카메라 앵글/배치만 참고할 이미지
   const [compositionPreviews, setCompositionPreviews] = useState<string[]>([]);
   const [compositionBase64s, setCompositionBase64s] = useState<string[]>([]);
+  // 의상 레퍼런스: 착용컷 전용 — 커프스·넥라인·소매 형태만 참고
+  const [outfitRefPreview, setOutfitRefPreview] = useState<string>('');
+  const [outfitRefBase64, setOutfitRefBase64] = useState<string>('');
 
   // Result
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -940,6 +943,9 @@ export default function ThumbnailPage() {
     }
     if (compositionBase64s.length > 0) {
       body.composition_reference_images = compositionBase64s;
+    }
+    if (outfitRefBase64) {
+      body.outfit_reference_image = outfitRefBase64;
     }
     const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
       method: 'POST',
@@ -1949,6 +1955,44 @@ export default function ThumbnailPage() {
                       </div>
                     );
                   })()}
+                </div>
+              )}
+
+              {/* 착용컷 의상 레퍼런스 */}
+              {activeCutPreset === 'wearing' && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontFamily: font, fontSize: '10px', color: C.textCaption }}>의상 참고 이미지 (커프스·넥라인 고정용)</span>
+                    {outfitRefPreview && (
+                      <button
+                        onClick={() => { setOutfitRefPreview(''); setOutfitRefBase64(''); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontFamily: font, fontSize: '10px', color: C.textCaption }}
+                      >✕ 제거</button>
+                    )}
+                  </div>
+                  {outfitRefPreview ? (
+                    <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                      <img src={outfitRefPreview} alt="의상 참고" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${C.primary}` }} />
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '36px', borderRadius: '10px', border: `1px dashed ${C.borderDefault}`, cursor: 'pointer', fontFamily: font, fontSize: '11px', color: C.textCaption }}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke={C.textCaption} strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      의상 이미지 업로드
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const dataUrl = await new Promise<string>((res, rej) => {
+                          const r = new FileReader();
+                          r.onload = ev => res(ev.target?.result as string);
+                          r.onerror = rej;
+                          r.readAsDataURL(file);
+                        });
+                        setOutfitRefPreview(dataUrl);
+                        setOutfitRefBase64(dataUrl.split(',')[1]);
+                        e.target.value = '';
+                      }} />
+                    </label>
+                  )}
                 </div>
               )}
 
