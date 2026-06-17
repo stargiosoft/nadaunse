@@ -76,7 +76,7 @@ const FULL_ANGLES = [
   { id: 'flatlay', label: '플랫레이' },
   { id: 'diagonal', label: '45도' },
   { id: 'props', label: '소품컷' },
-  { id: 'vertical', label: '세로배치' },
+  { id: 'stack', label: '겹침컷' },
 ] as const;
 
 function getOutfitForColor(color: string): string {
@@ -129,8 +129,8 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
         return `${prefix}팔찌 전체 사선 앵글 제품 사진. 팔찌를 원형으로 펼쳐 놓고 45도 비스듬한 각도에서 촬영, 입체감 강조. ${bg}. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
       if (fullAngle === 'props')
         return `${prefix}팔찌 소품 연출 제품 사진. 팔찌를 중앙에 원형으로 놓고 주변에 드라이플라워, 작은 크리스털, 천 소품 자연스럽게 배치. ${bg}. 탑뷰 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 라이프스타일 사진.`;
-      if (fullAngle === 'vertical')
-        return `${prefix}팔찌 세로 연출 제품 사진. 팔찌를 세로로 길게 늘어뜨리거나 S자형으로 자연스럽게 배치. ${bg}. 약간 위에서 내려다보는 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+      if (fullAngle === 'stack')
+        return `${prefix}팔찌 레이어드 연출 제품 사진. 같은 팔찌를 두세 번 살짝 어긋나게 겹쳐 놓아 자연스러운 레이어드 느낌 연출. ${bg}. 탑뷰 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
       return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 정면 탑뷰. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
     }
     case 'holder':
