@@ -67,9 +67,10 @@ const CUT_PRESETS = [
 ] as const;
 
 const WEARING_POSES = [
-  { id: 'wrist', label: '손목업' },
-  { id: 'ear', label: '귀에 손' },
-  { id: 'chest', label: '테이블에 손' },
+  { id: 'wrist', label: '손목 클로즈업' },
+  { id: 'adjust', label: '팔찌 고쳐끼기' },
+  { id: 'face_casual', label: '얼굴+손 (캐주얼)' },
+  { id: 'face_elegant', label: '얼굴+손 (우아)' },
 ] as const;
 
 const FULL_ANGLES = [
@@ -174,14 +175,17 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
       const g = gender ?? 'female';
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
-      if (pose === 'ear') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
-      }
-      if (pose === 'chest') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손목을 자연스럽게 들고 다른 손으로 팔찌를 살며시 고쳐 끼는 두 손 구도. 손목·손이 프레임 중앙. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
-      }
       const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
-      return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 자연스럽게 든 포즈. 소매 끝이 살짝 보임, 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      if (pose === 'adjust') {
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손목을 앞으로 내밀고 반대 손 손가락으로 팔찌를 살며시 고쳐 끼는 구도. 양손이 프레임 중앙에 위치하고 상체·의상이 배경으로 보임. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
+      }
+      if (pose === 'face_casual') {
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손을 자연스럽게 들어 턱 아래 또는 볼 옆에 가져다 댄 포즈. 모델 얼굴(턱선~이마)·목선이 프레임 상단에 자연스럽게 보임. 편안하고 자연스러운 표정. 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      }
+      if (pose === 'face_elegant') {
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손목을 우아하게 들어 손가락 끝이 살며시 볼이나 턱을 터치하는 포즈. 모델 얼굴 클로즈업—목선·쇄골이 드러나고 시선은 살짝 아래. 우아하고 고급스러운 분위기. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      }
+      return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 소매를 살짝 걷어올린 자연스러운 포즈. 소매 끝과 팔찌가 함께 프레임. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
