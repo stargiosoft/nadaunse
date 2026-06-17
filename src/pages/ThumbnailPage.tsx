@@ -80,23 +80,41 @@ const FULL_ANGLES = [
   { id: 'perspective', label: '입체컷' },
 ] as const;
 
-function getOutfitForColor(color: string): string {
+function getOutfitForColor(color: string, gender: 'female' | 'male' = 'female'): string {
   const lc = color.toLowerCase();
+  if (gender === 'male') {
+    if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
+      return '크림 아이보리 코튼 셔츠';
+    if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
+      return '화이트 코튼 셔츠';
+    if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
+      return '베이지 린넨 셔츠';
+    if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
+      return '아이보리 코튼 셔츠';
+    if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
+      return '크림 화이트 코튼 셔츠';
+    if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
+      return '아이보리 화이트 셔츠';
+    if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
+      return '연한 그레이 코튼 셔츠';
+    return '크림 아이보리 코튼 셔츠';
+  }
+  // 여성: 페미닌한 소재
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return '크림 아이보리 린넨 블라우스';
+    return '크림 아이보리 시폰 러플 블라우스';
   if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
-    return '화이트 코튼 셔츠';
+    return '화이트 실크 새틴 블라우스';
   if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
-    return '베이지 린넨 셔츠';
+    return '베이지 시폰 블라우스';
   if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-    return '아이보리 코튼 블라우스';
+    return '아이보리 실크 블라우스';
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-    return '크림 화이트 린넨 셔츠';
+    return '크림 화이트 시폰 블라우스';
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
-    return '아이보리 화이트 블라우스';
+    return '아이보리 레이스 트리밍 블라우스';
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-    return '연한 그레이 코튼 셔츠';
-  return '크림 아이보리 린넨 블라우스';
+    return '연한 그레이 실크 시폰 블라우스';
+  return '크림 아이보리 시폰 블라우스';
 }
 
 function getColorScene(color: string): { surface: string; props: string; light: string } {
@@ -171,7 +189,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'holder':
       return `${prefix}팔찌 홀더 스튜디오 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 살짝 위에서 내려다보는 앵글. 한쪽 구석에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
     case 'wearing': {
-      const outfit = color.trim() ? getOutfitForColor(color) : '크림 아이보리 린넨 블라우스';
+      const outfit = color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스');
       const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
       const g = gender ?? 'female';
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
