@@ -82,20 +82,20 @@ const FULL_ANGLES = [
 function getOutfitForColor(color: string): string {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return '크림색 또는 화이트 니트, 아이보리 블라우스 등 따뜻하고 부드러운 톤의 의상';
+    return '크림 아이보리 니트 스웨터';
   if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
-    return '화이트 셔츠, 연한 그레이 니트, 아이보리 블라우스 등 쿨톤 클린 의상';
+    return '화이트 컬러 셔츠';
   if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
-    return '베이지 린넨 셔츠, 크림 니트, 아이보리 블라우스 등 내추럴 어스톤 의상';
+    return '베이지 린넨 셔츠';
   if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-    return '크림색 니트, 아이보리 블라우스, 연한 카멜 톤 의상';
+    return '카멜 브라운 니트 스웨터';
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-    return '블랙 또는 다크 네이비 미니멀 의상, 크롭 탑';
+    return '크림 화이트 니트 스웨터';
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
-    return '화이트 또는 아이보리 블라우스, 연한 크림 니트';
+    return '아이보리 화이트 블라우스';
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-    return '화이트 또는 연한 파스텔 톤의 클린한 의상';
-  return '크림색 또는 아이보리 니트, 화이트 블라우스 등 중성 톤 의상';
+    return '연한 그레이 니트 스웨터';
+  return '크림 아이보리 니트 스웨터';
 }
 
 function getColorScene(color: string): { surface: string; props: string; light: string } {
@@ -145,14 +145,15 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       return `${prefix}팔찌 홀더 스튜디오 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 살짝 위에서 내려다보는 앵글. 한쪽 구석에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트';
+      const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
       if (pose === 'ear') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 깔끔하고 아름다운 ${genderLabel} 모델이 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 피부결 매끄럽고 미니멀한 메이크업. 의상: ${outfit}. 밝고 크린한 중성 배경, 소프트박스 조명. 팔찌에 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 깔끔하고 아름다운 ${genderLabel} 모델이 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 피부결 매끄럽고 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
       }
       if (pose === 'chest') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 팔찌를 착용한 손목을 자연스럽게 들고 다른 손으로 팔찌를 살며시 고쳐 끼는 두 손 구도. 손목·손이 프레임 중앙. 피부결 매끄러운 ${genderLabel} 모델. 의상: ${outfit}. 밝고 크린한 중성 배경. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 팔찌를 착용한 손목을 자연스럽게 들고 다른 손으로 팔찌를 살며시 고쳐 끼는 두 손 구도. 손목·손이 프레임 중앙. 피부결 매끄러운 ${genderLabel} 모델. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
       }
       const wristDesc = gender === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
-      return `${prefix}한국 고급 주얼리 브랜드 화보. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 자연스럽게 든 포즈. 소매 끝이 살짝 보임, 의상: ${outfit}. 밝고 크린한 중성 배경. 소프트박스 조명. 팔찌에 핀포커스.`;
+      return `${prefix}한국 고급 주얼리 브랜드 화보. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 자연스럽게 든 포즈. 소매 끝이 살짝 보임, 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
