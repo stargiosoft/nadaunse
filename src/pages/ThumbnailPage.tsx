@@ -120,7 +120,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'full':
       return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
     case 'holder':
-      return `${prefix}팔찌 한 개만 크림색 원통형 주얼리 디스플레이 롤 위에 가로로 걸쳐놓은 제품 사진. 팔찌는 반드시 한 개. 흰 새틴 천을 배경으로 깔고 롤 양쪽에 드라이 흰 꽃(안개꽃, 수국) 소품 배치. 살짝 위에서 내려다보는 앵글. ${bg} 톤. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
+      return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. 흰 새틴 천 배경, 롤 주변에 드라이 흰 꽃(안개꽃, 수국) 소품. 살짝 비스듬한 앵글. ${bg} 톤. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
