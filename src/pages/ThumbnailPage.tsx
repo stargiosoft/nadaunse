@@ -82,23 +82,26 @@ function getColorBackground(color: string): string {
   return '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
 }
 
-function buildCutPrompt(cutId: string, color: string, gender?: 'female' | 'male'): string {
-  const colorLabel = color.trim() ? `${color.trim()} ` : '';
+function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male'): string {
+  const stone = stoneName.trim();
+  const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
+  const prefix = productLabel ? `${productLabel} ` : '';
   const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
+  const s925Note = '골드 클래스프 옆 작은 펜던트에 S925 각인 표시.';
   switch (cutId) {
     case 'full':
-      return `${colorLabel}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. ${s925Note} 고급스러운 주얼리 상업 사진.`;
     case 'holder':
-      return `${colorLabel}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 상업 사진.`;
     case 'wearing': {
       const genderLabel = gender === 'male' ? '남성' : '여성';
       const wristDesc = gender === 'male'
         ? '단단하고 자연스러운 남성 손목'
         : '가느다란 자연스러운 여성 손목';
-      return `${colorLabel}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
-      return `${colorLabel}팔찌 원석 비즈 클로즈업 제품 사진. 원석의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 원석 광택 강조. 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌 ${stone || '원석'} 비즈 클로즈업 제품 사진. ${stone ? `${stone} 원석` : '원석'}의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 ${stone || '원석'} 광택 강조. 고급 주얼리 상업 사진.`;
     default:
       return '';
   }
@@ -494,6 +497,7 @@ export default function ThumbnailPage() {
 
   // 컷 프리셋
   const [productColor, setProductColor] = useState('');
+  const [stoneName, setStoneName] = useState('');
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
 
@@ -1451,6 +1455,21 @@ export default function ThumbnailPage() {
                 style={{
                   width: '100%', height: '30px', borderRadius: '10px',
                   border: `1px solid ${C.borderDefault}`,
+                  padding: '0 10px', marginBottom: '6px',
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  color: C.textPrimary, backgroundColor: C.surface,
+                  boxSizing: 'border-box',
+                }}
+              />
+              <input
+                type="text"
+                value={stoneName}
+                onChange={e => setStoneName(e.target.value)}
+                placeholder="원석 이름 (예: 산호, 터키석, 자수정)"
+                className="outline-none"
+                style={{
+                  width: '100%', height: '30px', borderRadius: '10px',
+                  border: `1px solid ${C.borderDefault}`,
                   padding: '0 10px', marginBottom: '8px',
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
                   color: C.textPrimary, backgroundColor: C.surface,
@@ -1465,7 +1484,7 @@ export default function ThumbnailPage() {
                       key={cut.id}
                       onClick={() => {
                         const gender = cut.id === 'wearing' ? wearingGender : undefined;
-                        setPrompt(buildCutPrompt(cut.id, productColor, gender));
+                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, gender));
                         setActiveCutPreset(cut.id);
                       }}
                       onMouseEnter={(e) => {
@@ -1500,7 +1519,7 @@ export default function ThumbnailPage() {
                         key={g}
                         onClick={() => {
                           setWearingGender(g);
-                          setPrompt(buildCutPrompt('wearing', productColor, g));
+                          setPrompt(buildCutPrompt('wearing', productColor, stoneName, g));
                         }}
                         onMouseEnter={(e) => {
                           if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5';
