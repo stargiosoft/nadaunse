@@ -119,14 +119,14 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'full':
       return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. ${s925Note} 고급스러운 주얼리 상업 사진.`;
     case 'holder':
-      return `${prefix}팔찌를 자연스럽게 손에 쥐고 들어올린 제품 사진. 손이 팔찌를 살며시 잡고 있는 자연스러운 포즈, 팔찌가 중심. ${bg} 배경. 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌를 크림색 원통형 패브릭 롤 위에 자연스럽게 걸쳐놓은 제품 사진. 흰 패브릭 배경에 작은 드라이플라워 소품. ${bg} 톤. 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 라이프스타일 상업 사진.`;
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
         return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 귀 쪽에 올린 자연스러운 포즈. 옆 얼굴과 목선, 쇄골이 배경에 보임. 의상: ${outfit}. 클린한 밝은 배경, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
       }
       if (pose === 'chest') {
-        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌를 착용한 손목을 테이블 위에 자연스럽게 내려놓은 포즈, 편안하고 우아한 자세. 의상: ${outfit}. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 한쪽 손목에 팔찌를 착용하고 손목을 비스듬히 들어올린 포즈, 다른 손이 아래에서 팔찌를 살며시 만지거나 여미는 자연스러운 두 손 구도. 의상: ${outfit}. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
       }
       const wristDesc = gender === 'male' ? '단단하고 자연스러운 남성 손목' : '가느다란 자연스러운 여성 손목';
       return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
