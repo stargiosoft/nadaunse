@@ -101,20 +101,20 @@ function getOutfitForColor(color: string): string {
 function getColorScene(color: string): { surface: string; props: string; light: string } {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩 표면', props: '아이보리 드라이 코튼플라워', light: '부드러운 사이드 자연광, 중성 색온도' };
+    return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩(모서리가 살짝 보이도록 비스듬히)', props: '프레임 한쪽 구석에 코튼플라워 한 송이만', light: '밝고 부드러운 자연광, 중성 색온도' };
   if (['파란', '파랑', '블루', '보라', '퍼플', '민트', '터코이즈', '청록', '네이비'].some(w => lc.includes(w)))
-    return { surface: '밝은 흰 대리석 슬랩 표면', props: '화이트 드라이플라워', light: '부드러운 사이드 자연광, 쿨톤' };
+    return { surface: '밝은 화이트/크림 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 화이트 드라이플라워 한 송이만', light: '밝고 부드러운 자연광, 쿨톤' };
   if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
-    return { surface: '밝은 원목 나무결 판 표면', props: '유칼립투스 잎 한두 개', light: '부드러운 사이드 자연광, 중성 색온도' };
+    return { surface: '밝은 크림 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 유칼립투스 잎 한두 개만', light: '밝고 부드러운 자연광, 중성 색온도' };
   if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-    return { surface: '크림 린넨 천 표면', props: '드라이 코튼플라워', light: '따뜻한 사이드 자연광' };
+    return { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이만', light: '따뜻하고 밝은 자연광' };
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-    return { surface: '다크 대리석 슬랩 표면', props: '화이트 드라이플라워', light: '모던 사이드 스튜디오 조명' };
+    return { surface: '라이트 그레이 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 화이트 드라이플라워 한 송이만', light: '밝은 사이드 스튜디오 조명' };
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
-    return { surface: '흰 린넨 천 표면', props: '아이보리 드라이플라워', light: '부드러운 사이드 자연광' };
+    return { surface: '크림/화이트 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 아이보리 드라이플라워 한 송이만', light: '밝고 부드러운 자연광' };
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-    return { surface: '크림 린넨 천 표면', props: '페일 드라이플라워', light: '소프트 사이드 자연광' };
-  return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩 표면', props: '드라이 코튼플라워', light: '부드러운 사이드 자연광' };
+    return { surface: '크림/화이트 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 페일 드라이플라워 한 송이만', light: '밝고 소프트한 자연광' };
+  return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩(모서리가 살짝 보이도록 비스듬히)', props: '프레임 한쪽 구석에 코튼플라워 한 송이만', light: '밝고 부드러운 자연광' };
 }
 
 function getColorBackground(color: string): string {
@@ -134,12 +134,12 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   switch (cutId) {
     case 'full': {
       if (fullAngle === 'diagonal')
-        return `${prefix}팔찌 전체 스튜디오 제품 사진. 깔끔한 ${scene.surface} 위에 팔찌를 원형으로 놓고 살짝 위에서 비스듬한 각도로 촬영, 입체감 강조. 소품 없이 표면과 팔찌만. ${scene.light}. 미니멀 럭셔리 주얼리 상업 사진.`;
+        return `${prefix}팔찌 전체 스튜디오 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 원형으로 중앙에 놓고 살짝 위에서 비스듬한 각도로 촬영. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
       if (fullAngle === 'props')
-        return `${prefix}팔찌 소품 연출 제품 사진. 깔끔한 ${scene.surface} 위에 팔찌를 중앙에 놓고 프레임 한쪽 끝에 ${scene.props}를 아웃포커스로 살짝만 배치. 소품은 배경 역할, 팔찌가 주인공. 살짝 위에서 내려다보는 앵글. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
+        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 중앙에 원형으로 놓고 살짝 위에서 내려다보는 앵글. 소품은 분위기 역할, 팔찌가 주인공. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
       if (fullAngle === 'perspective')
         return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 원근감 있는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
-      return `${prefix}팔찌 전체 스튜디오 제품 사진. 깔끔한 ${scene.surface} 위에 팔찌를 원형으로 놓고 정면 탑뷰 촬영. 소품 없이 표면과 팔찌만. ${scene.light}. 미니멀 럭셔리 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 스튜디오 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 원형으로 중앙에 놓고 정면 탑뷰 촬영. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
     }
     case 'holder':
       return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. ${scene.surface} 위에 롤을 놓고, 주변에 ${scene.props} 소품. 살짝 비스듬한 앵글. ${scene.light}. 고급 주얼리 라이프스타일 상업 사진.`;
