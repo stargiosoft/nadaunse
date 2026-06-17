@@ -44,7 +44,7 @@ const ASPECT_RATIOS = [
   { id: '2:3', label: '2:3', desc: '로맨스 타로', width: 1000, height: 1500 },
   { id: '1:1', label: '1:1', desc: '인스타·스마트스토어 대표', width: 1080, height: 1080 },
   { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
-  { id: 'smartstore-detail', label: '상세페이지', desc: '스마트스토어 상세 (860px)', width: 860, height: 1290 },
+  { id: 'smartstore-detail', label: '상페', desc: '스마트스토어 상세 (860px)', width: 860, height: 1290 },
   { id: 'saju-consult', label: '약 20:9', desc: '사주GPT 캐릭터 상담', width: 1866, height: 843 },
 ] as const;
 
