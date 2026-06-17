@@ -111,7 +111,8 @@ function getColorBackground(color: string): string {
 function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
-  const prefix = productLabel ? `${productLabel} ` : '';
+  const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. ';
+  const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
   const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
 
   const genderLabel = gender === 'male' ? '남성' : '여성';
