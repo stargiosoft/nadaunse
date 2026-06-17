@@ -122,6 +122,32 @@ function getColorBackground(color: string): string {
   return `${s.surface}, ${s.props}, ${s.light}`;
 }
 
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const FEMALE_LOOKS = [
+  '밝고 화사한 피부톤, 단발 스트레이트 헤어, 청순하고 자연스러운 이미지',
+  '따뜻한 자연 피부톤, 긴 웨이브 헤어, 세련되고 우아한 이미지',
+  '쿨톤 피부, 쇼트컷 헤어, 모던하고 도시적인 이미지',
+  '밝은 피부톤, 긴 스트레이트 포니테일, 발랄하고 생기 있는 이미지',
+  '골든 베이지 피부톤, 롱 스트레이트 헤어, 고혹적이고 우아한 이미지',
+  '아이보리 피부톤, 미디엄 레이어드 헤어, 로맨틱하고 부드러운 이미지',
+];
+const MALE_LOOKS = [
+  '밝은 피부톤, 단정한 투블럭 헤어, 클린하고 신뢰감 있는 이미지',
+  '자연 피부톤, 슬릭백 헤어, 세련되고 지적인 이미지',
+  '따뜻한 피부톤, 자연스러운 미디엄 헤어, 친근하고 부드러운 이미지',
+];
+
+function getModelAppearance(color: string, gender: 'female' | 'male'): string {
+  const key = color.trim().toLowerCase() || 'default';
+  const pool = gender === 'female' ? FEMALE_LOOKS : MALE_LOOKS;
+  return pool[hashString(key) % pool.length];
+}
+
 function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, fullAngle?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
@@ -146,14 +172,16 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 아이보리 린넨 블라우스';
       const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
+      const g = gender ?? 'female';
+      const modelLook = getModelAppearance(color + (stoneName || ''), g);
       if (pose === 'ear') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 깔끔하고 아름다운 ${genderLabel} 모델이 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 피부결 매끄럽고 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
       }
       if (pose === 'chest') {
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 팔찌를 착용한 손목을 자연스럽게 들고 다른 손으로 팔찌를 살며시 고쳐 끼는 두 손 구도. 손목·손이 프레임 중앙. 피부결 매끄러운 ${genderLabel} 모델. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. 팔찌를 착용한 손목을 자연스럽게 들고 다른 손으로 팔찌를 살며시 고쳐 끼는 두 손 구도. 손목·손이 프레임 중앙. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
       }
-      const wristDesc = gender === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
-      return `${prefix}한국 고급 주얼리 브랜드 화보. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 자연스럽게 든 포즈. 소매 끝이 살짝 보임, 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
+      return `${prefix}한국 고급 주얼리 브랜드 화보. 모델 외모: ${modelLook}. ${genderLabel} 모델 손목 클로즈업. ${wristDesc}에 팔찌를 착용하고 자연스럽게 든 포즈. 소매 끝이 살짝 보임, 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
