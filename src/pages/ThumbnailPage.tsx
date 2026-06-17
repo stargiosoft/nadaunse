@@ -58,6 +58,44 @@ const REFERENCE_MODES = [
 
 const IMAGE_COUNTS = [1, 2, 3, 4] as const;
 
+const CUT_PRESETS = [
+  { id: 'full', label: '전체컷' },
+  { id: 'wearing', label: '착용컷' },
+  { id: 'detail', label: '디테일컷' },
+] as const;
+
+function getColorBackground(color: string): string {
+  const lc = color.toLowerCase();
+  if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
+    return '크림/베이지 스톤 타일, 아이보리 드라이플라워, 따뜻한 자연광';
+  if (['파란', '파랑', '블루', '보라', '퍼플', '민트', '터코이즈', '청록', '네이비'].some(w => lc.includes(w)))
+    return '흰 대리석, 실버 소품, 화이트 드라이플라워, 부드러운 자연광';
+  if (['초록', '그린', '갈색', '브라운', '카키', '올리브', '베이지'].some(w => lc.includes(w)))
+    return '나무 판, 유칼립투스 드라이, 베이지 린넨, 따뜻한 자연광';
+  if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
+    return '짙은 대리석, 골드 소품, 흰 드라이플라워, 모던 스튜디오 조명';
+  if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
+    return '흰 린넨, 베이지 스톤, 아이보리 드라이플라워, 부드러운 자연광';
+  if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
+    return '크림 린넨, 실버 소품, 페일 드라이플라워, 소프트 자연광';
+  return '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
+}
+
+function buildCutPrompt(cutId: string, color: string): string {
+  const colorLabel = color.trim() ? `${color.trim()} ` : '';
+  const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
+  switch (cutId) {
+    case 'full':
+      return `${colorLabel}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
+    case 'wearing':
+      return `${colorLabel}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 따뜻한 자연광. 고급 주얼리 상업 사진.`;
+    case 'detail':
+      return `${colorLabel}팔찌 비즈와 골드 클래스프 극단 클로즈업. 소재의 질감과 광택 강조. 아웃포커싱 배경. 고급 주얼리 디테일 사진.`;
+    default:
+      return '';
+  }
+}
+
 const FILE_FORMATS = [
   { id: 'png', label: 'PNG', desc: '고화질·투명 배경' },
   { id: 'jpg', label: 'JPG', desc: '작은 용량' },
@@ -445,6 +483,10 @@ export default function ThumbnailPage() {
 
   // Provider
   const [provider, setProvider] = useState<'gemini' | 'gpt'>('gemini');
+
+  // 컷 프리셋
+  const [productColor, setProductColor] = useState('');
+  const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
 
   // Input
   const [prompt, setPrompt] = useState('');
@@ -1378,6 +1420,74 @@ export default function ThumbnailPage() {
               </p>
             </div>
 
+            {/* ── 컷 프리셋 ── */}
+            <div style={{
+              padding: '20px 20px 20px 28px', borderBottom: '1px solid #f0f0f0',
+              marginLeft: '-28px', marginRight: '-20px',
+            }}>
+              <label style={{
+                fontFamily: font, fontSize: '12px', fontWeight: 400,
+                lineHeight: '17px', letterSpacing: '-0.24px',
+                color: C.textPrimary, display: 'block', marginBottom: '8px',
+                paddingLeft: '2px',
+              }}>
+                컷 프리셋
+              </label>
+              <input
+                type="text"
+                value={productColor}
+                onChange={e => setProductColor(e.target.value)}
+                placeholder="제품 색상 (예: 빨간색, 파란색)"
+                className="outline-none"
+                style={{
+                  width: '100%', height: '30px', borderRadius: '10px',
+                  border: `1px solid ${C.borderDefault}`,
+                  padding: '0 10px', marginBottom: '8px',
+                  fontFamily: font, fontSize: '11px', fontWeight: 400,
+                  color: C.textPrimary, backgroundColor: C.surface,
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div className="flex" style={{ gap: '4px' }}>
+                {CUT_PRESETS.map(cut => {
+                  const active = activeCutPreset === cut.id;
+                  return (
+                    <button
+                      key={cut.id}
+                      onClick={() => {
+                        const p = buildCutPrompt(cut.id, productColor);
+                        setPrompt(p);
+                        setActiveCutPreset(cut.id);
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!active) e.currentTarget.style.backgroundColor = '#ececec';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5';
+                      }}
+                      style={{
+                        flex: 1, height: '28px', borderRadius: '8px', border: 'none',
+                        fontFamily: font, fontSize: '11px', fontWeight: 400,
+                        letterSpacing: '0.76px',
+                        color: active ? C.textWhite : '#5a5a5a',
+                        backgroundColor: active ? C.primary : '#f5f5f5',
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {cut.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{
+                fontFamily: font, fontSize: '10px', fontWeight: 400,
+                color: '#9a9a9a', marginTop: '8px', paddingLeft: '2px',
+                letterSpacing: '0.78px',
+              }}>
+                클릭하면 명령어가 자동 입력됩니다
+              </p>
+            </div>
+
             {/* ── 변주 강도 (생성 개수 ≥ 2일 때만 노출) ── */}
             {imageCount >= 2 && (
               <div style={{
@@ -1494,7 +1604,7 @@ export default function ThumbnailPage() {
               }}>
                 <textarea
                   value={prompt}
-                  onChange={e => setPrompt(e.target.value)}
+                  onChange={e => { setPrompt(e.target.value); setActiveCutPreset(null); }}
                   placeholder="예: 유튜브 먹방 썸네일, 맛있는 치킨 앞에서 놀란 표정의 남자, 큰 글씨로 '역대급 치킨 먹방' 텍스트"
                   rows={4}
                   className="w-full outline-none bg-transparent resize-y"
