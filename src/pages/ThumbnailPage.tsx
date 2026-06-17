@@ -84,6 +84,43 @@ const WEARING_POSES = [
   { id: 'face_elegant', label: '자유 포즈' },
 ] as const;
 
+const WEARING_OUTFITS_FEMALE = [
+  { id: 'cream_chiffon', label: '크림 시폰', outfit: '크림 아이보리색 시폰 V넥 블라우스, 부드럽게 흘러내리는 루즈 실루엣' },
+  { id: 'white_silk', label: '화이트 실크', outfit: '순백색 실크 새틴 블라우스, 광택 있는 매끄러운 소재, 클린한 넥라인' },
+  { id: 'ivory_lace', label: '아이보리 레이스', outfit: '아이보리색 레이스 디테일 블라우스, 반투명 레이스 소재' },
+  { id: 'beige_ruffle', label: '베이지 러플', outfit: '베이지색 러플 소매 시폰 블라우스, 로맨틱한 디테일' },
+  { id: 'cream_ribbed', label: '크림 리브드', outfit: '크림색 리브드 텍스처 세미핏 탑, 단순한 라운드넥' },
+  { id: 'white_drape', label: '화이트 드레이프', outfit: '흰색 부드럽게 드레이프되는 탑, 비대칭 넥라인' },
+  { id: 'off_shoulder', label: '오프숄더', outfit: '크림 아이보리 오프숄더 블라우스, 어깨와 쇄골 드러남' },
+  { id: 'light_gray', label: '라이트 그레이', outfit: '연한 그레이 시폰 블라우스, 부드럽고 흘러내리는 소재' },
+  { id: 'peach_pink', label: '피치 핑크', outfit: '피치 핑크색 실크 블라우스, 여성스럽고 부드러운 색감' },
+  { id: 'light_blue', label: '라이트 블루', outfit: '연한 하늘색 시폰 블라우스, 청순하고 가벼운 소재' },
+  { id: 'lavender', label: '라벤더', outfit: '라벤더 퍼플 실크 탑, 우아하고 로맨틱한 색감' },
+  { id: 'mint_green', label: '민트 그린', outfit: '민트 그린 시폰 블라우스, 상큼하고 가벼운 소재' },
+  { id: 'soft_yellow', label: '소프트 옐로우', outfit: '소프트 옐로우 린넨 블라우스, 따뜻하고 밝은 색감' },
+  { id: 'rose_gold', label: '로즈 골드', outfit: '로즈 골드 새틴 탑, 광택 있는 핑크빛 골드 소재' },
+  { id: 'powder_pink', label: '파우더 핑크', outfit: '파우더 핑크 시폰 탑, 연하고 부드러운 핑크 색상' },
+  { id: 'terracotta', label: '테라코타', outfit: '테라코타 브라운 린넨 블라우스, 따뜻한 흙빛 색감' },
+  { id: 'olive_green', label: '올리브 그린', outfit: '올리브 그린 실크 탑, 자연스럽고 세련된 색감' },
+  { id: 'camel_brown', label: '카멜 브라운', outfit: '카멜 브라운 새틴 블라우스, 고급스러운 브라운 색감' },
+  { id: 'burgundy', label: '버건디', outfit: '버건디 시폰 블라우스, 깊고 우아한 와인 레드 색감' },
+  { id: 'navy_silk', label: '네이비 실크', outfit: '네이비 블루 실크 블라우스, 고급스럽고 세련된 다크 블루' },
+  { id: 'mustard', label: '머스터드', outfit: '머스터드 옐로우 시폰 탑, 따뜻하고 개성 있는 색감' },
+  { id: 'coral', label: '코랄', outlet: '', outfit: '코랄 린넨 블라우스, 밝고 생동감 있는 오렌지핑크 색감' },
+  { id: 'sage', label: '세이지 그린', outfit: '세이지 그린 시폰 탑, 차분하고 자연스러운 초록빛' },
+  { id: 'dusty_rose', label: '더스티 로즈', outfit: '더스티 로즈 실크 블라우스, 빈티지한 핑크 색감' },
+  { id: 'black_chiffon', label: '블랙 시폰', outfit: '블랙 시폰 블라우스, 세련되고 모던한 검정 소재' },
+];
+
+const WEARING_OUTFITS_MALE = [
+  { id: 'white_cotton', label: '화이트 셔츠', outfit: '화이트 코튼 셔츠, 깔끔하고 단정한 스타일' },
+  { id: 'cream_linen', label: '크림 린넨', outfit: '크림 린넨 셔츠, 자연스럽고 캐주얼한 소재' },
+  { id: 'light_gray_m', label: '라이트 그레이', outfit: '연한 그레이 코튼 셔츠, 모던하고 미니멀한 스타일' },
+  { id: 'navy_m', label: '네이비 셔츠', outfit: '네이비 코튼 셔츠, 세련되고 클래식한 스타일' },
+  { id: 'beige_m', label: '베이지 셔츠', outfit: '베이지 린넨 셔츠, 따뜻하고 캐주얼한 스타일' },
+  { id: 'black_m', label: '블랙 셔츠', outfit: '블랙 코튼 셔츠, 모던하고 도시적인 스타일' },
+];
+
 function getOutfitForColor(color: string, gender: 'female' | 'male' = 'female'): string {
   const lc = color.toLowerCase();
   if (gender === 'male') {
@@ -171,7 +208,7 @@ function getModelAppearance(color: string, gender: 'female' | 'male'): string {
   return pool[hashString(key) % pool.length];
 }
 
-function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, subType?: string): string {
+function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, subType?: string, outfitOverride?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 전체적으로 밝고 크린한 톤. 저렴하거나 아마추어 느낌 절대 금지. ';
@@ -191,7 +228,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     }
     case 'wearing': {
       const g = gender ?? 'female';
-      const outfit = color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스');
+      const outfit = outfitOverride || (color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스'));
       const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
       const genderLabel = g === 'male' ? '남성' : '여성';
@@ -613,6 +650,7 @@ export default function ThumbnailPage() {
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
   const [wearingPose, setWearingPose] = useState<string>('wrist');
+  const [wearingOutfitId, setWearingOutfitId] = useState<string>('');
   const [productCut, setProductCut] = useState<string>('flatlay');
   const [whiteType, setWhiteType] = useState<string>('circle');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['cut']));
@@ -1665,7 +1703,9 @@ export default function ThumbnailPage() {
                         const g = cut.id === 'wearing' ? wearingGender : undefined;
                         const p = cut.id === 'wearing' ? wearingPose : undefined;
                         const s = cut.id === 'product' ? productCut : cut.id === 'white' ? whiteType : undefined;
-                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, g, p, s));
+                        const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                        const ov = cut.id === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
+                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, g, p, s, ov));
                         setActiveCutPreset(cut.id);
                       }}
                       onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
@@ -1723,7 +1763,9 @@ export default function ThumbnailPage() {
                           key={g}
                           onClick={() => {
                             setWearingGender(g);
-                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, g, wearingPose));
+                            const pool = g === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                            const ov = pool.find(o => o.id === wearingOutfitId)?.outfit ?? '';
+                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, g, wearingPose, undefined, ov));
                           }}
                           onMouseEnter={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                           onMouseLeave={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -1748,7 +1790,9 @@ export default function ThumbnailPage() {
                           key={p.id}
                           onClick={() => {
                             setWearingPose(p.id);
-                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, p.id));
+                            const pool2 = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                            const ov2 = pool2.find(o => o.id === wearingOutfitId)?.outfit ?? '';
+                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, p.id, undefined, ov2));
                           }}
                           onMouseEnter={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                           onMouseLeave={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -1764,6 +1808,59 @@ export default function ThumbnailPage() {
                       );
                     })}
                   </div>
+                  {/* 의상 선택 */}
+                  {(() => {
+                    const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                    return (
+                      <div>
+                        <p style={{ fontFamily: font, fontSize: '10px', color: C.textTertiary, margin: '4px 0 3px', letterSpacing: '0.5px' }}>
+                          의상 고정 {wearingOutfitId ? `· ${outfitPool.find(o => o.id === wearingOutfitId)?.label}` : '(자동)'}
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px', maxHeight: '120px', overflowY: 'auto' }}>
+                          {/* 자동 버튼 */}
+                          {(() => {
+                            const isAuto = wearingOutfitId === '';
+                            return (
+                              <button
+                                onClick={() => {
+                                  setWearingOutfitId('');
+                                  setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, ''));
+                                }}
+                                style={{
+                                  height: '24px', borderRadius: '6px',
+                                  border: `1px solid ${isAuto ? C.primary : C.borderDefault}`,
+                                  fontFamily: font, fontSize: '10px',
+                                  color: isAuto ? C.primary : C.textTertiary,
+                                  backgroundColor: isAuto ? '#f0fafa' : 'transparent',
+                                  cursor: 'pointer',
+                                }}
+                              >자동</button>
+                            );
+                          })()}
+                          {outfitPool.map(o => {
+                            const oActive = wearingOutfitId === o.id;
+                            return (
+                              <button
+                                key={o.id}
+                                onClick={() => {
+                                  setWearingOutfitId(o.id);
+                                  setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, o.outfit));
+                                }}
+                                style={{
+                                  height: '24px', borderRadius: '6px',
+                                  border: `1px solid ${oActive ? C.primary : C.borderDefault}`,
+                                  fontFamily: font, fontSize: '10px',
+                                  color: oActive ? C.primary : C.textTertiary,
+                                  backgroundColor: oActive ? '#f0fafa' : 'transparent',
+                                  cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                }}
+                              >{o.label}</button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
