@@ -220,27 +220,8 @@ function getColorBackground(color: string): string {
   return `${s.surface}, ${s.props}, ${s.light}`;
 }
 
-function getWearingBg(outfit: string): string {
-  const lc = outfit.toLowerCase();
-  const base = '전문 사진 스튜디오 배경지. 소프트박스 조명의 자연스러운 명암 그라데이션(중앙 밝고 가장자리 살짝 어두운)으로 깊이감 있게 표현. 하이엔드 주얼리 브랜드 스튜디오 촬영 느낌.';
-  if (['블랙', '버건디', '네이비'].some(w => lc.includes(w)))
-    return `밝은 크림 아이보리 배경지 — 의상과 밝기 대비로 선명하게. ${base}`;
-  if (['라벤더', '퍼플'].some(w => lc.includes(w)))
-    return `소프트 라벤더 화이트 배경지 (연한 라벤더 빛이 살짝 감도는 크림). ${base}`;
-  if (['피치', '핑크', '파우더', '더스티 로즈', '로즈 골드'].some(w => lc.includes(w)))
-    return `따뜻한 블러쉬 크림 배경지 (연한 핑크 빛이 감도는 아이보리). ${base}`;
-  if (['민트', '세이지', '올리브'].some(w => lc.includes(w)))
-    return `소프트 그린 크림 배경지 (연한 세이지 빛이 감도는 아이보리). ${base}`;
-  if (['하늘', '라이트 블루', '연한 하늘'].some(w => lc.includes(w)))
-    return `소프트 스카이 화이트 배경지 (연한 하늘빛이 감도는 크림). ${base}`;
-  if (['머스터드', '옐로우', '소프트 옐로우'].some(w => lc.includes(w)))
-    return `따뜻한 버터 크림 배경지 (연한 골든 빛이 감도는 아이보리). ${base}`;
-  if (['테라코타', '코랄'].some(w => lc.includes(w)))
-    return `따뜻한 샌드 베이지 배경지 (연한 오렌지 빛이 감도는 크림). ${base}`;
-  if (['카멜', '브라운'].some(w => lc.includes(w)))
-    return `따뜻한 카멜 크림 배경지 (연한 브라운 빛이 감도는 베이지). ${base}`;
-  // default: 화이트·크림·아이보리·실크·드레이프·오프숄더 등
-  return `소프트 크림 아이보리 배경지. ${base}`;
+function getWearingBg(_outfit: string): string {
+  return '따뜻한 크림/베이지 단색 스튜디오 배경지. 소프트박스 스튜디오 조명. 배경은 평탄한 단색 배경지 — 패턴·텍스처·인테리어 없음. 하이엔드 주얼리 브랜드 스튜디오 촬영.';
 }
 
 function hashString(s: string): number {
@@ -294,7 +275,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
       const genderLabel = g === 'male' ? '남성' : '여성';
       const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
-      const noFace = '【얼굴 금지】눈·이마는 절대 프레임에 등장하지 말 것. ';
+      const noFace = '【카메라 크롭 강제】프레임을 반드시 쇄골~어깨 높이로 자를 것. 턱·입술·코·눈·이마·두발 모두 프레임 밖. 인물의 목 위는 단 1픽셀도 프레임 안에 들어오지 않는다. ';
       const modelLock = `【모델 외형 고정 — 헤어 길이·색상·스타일·피부톤·이목구비·체형 변형 절대 금지】슬림한 전문 주얼리 화보 모델 체형(마른 체형, 가늘고 긴 팔·손목). ${modelLook}`;
       const outfitLock = `【의상 스펙 완전 고정 — 아래 항목 변형 절대 금지】①커프스 형태(밴드 유무·플리츠 개수 정확히 일치·버튼 위치) ②넥라인 형태 ③소재·소매 형태 ④핏. 하이엔드 럭셔리 주얼리 화보 스타일링, 스튜디오 전 완벽히 스팀·다림질된 상태, 럭셔리 패션지(보그·엘르) 화보 품격. 【의상 상세 스펙】${outfit}`;
       if (pose === 'adjust')
