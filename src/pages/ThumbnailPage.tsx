@@ -82,20 +82,20 @@ const FULL_ANGLES = [
 function getOutfitForColor(color: string): string {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return '크림 아이보리 니트 스웨터';
+    return '크림 아이보리 린넨 블라우스';
   if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
-    return '화이트 컬러 셔츠';
+    return '화이트 코튼 셔츠';
   if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
     return '베이지 린넨 셔츠';
   if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-    return '카멜 브라운 니트 스웨터';
+    return '아이보리 코튼 블라우스';
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-    return '크림 화이트 니트 스웨터';
+    return '크림 화이트 린넨 셔츠';
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
     return '아이보리 화이트 블라우스';
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-    return '연한 그레이 니트 스웨터';
-  return '크림 아이보리 니트 스웨터';
+    return '연한 그레이 코튼 셔츠';
+  return '크림 아이보리 린넨 블라우스';
 }
 
 function getColorScene(color: string): { surface: string; props: string; light: string } {
@@ -144,7 +144,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'holder':
       return `${prefix}팔찌 홀더 스튜디오 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 살짝 위에서 내려다보는 앵글. 한쪽 구석에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
     case 'wearing': {
-      const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트';
+      const outfit = color.trim() ? getOutfitForColor(color) : '크림 아이보리 린넨 블라우스';
       const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
       if (pose === 'ear') {
         return `${prefix}한국 고급 주얼리 브랜드 화보. 깔끔하고 아름다운 ${genderLabel} 모델이 팔찌를 착용한 손을 턱 또는 볼 옆에 살며시 가져다 댄 포즈. 모델 옆얼굴·목선·쇄골이 자연스럽게 보임. 피부결 매끄럽고 미니멀한 메이크업. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
