@@ -113,13 +113,13 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   const prefix = productLabel ? `${productLabel} ` : '';
   const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
-  const s925Note = '골드 클래스프 옆 작은 펜던트에 S925 각인 표시.';
+
   const genderLabel = gender === 'male' ? '남성' : '여성';
   switch (cutId) {
     case 'full':
-      return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. ${s925Note} 고급스러운 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
     case 'holder':
-      return `${prefix}팔찌 한 개만 크림색 원통형 주얼리 디스플레이 롤 위에 가로로 걸쳐놓은 제품 사진. 팔찌는 반드시 한 개. 흰 새틴 천을 배경으로 깔고 롤 양쪽에 드라이 흰 꽃(안개꽃, 수국) 소품 배치. 살짝 위에서 내려다보는 앵글. ${bg} 톤. 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 라이프스타일 상업 사진.`;
+      return `${prefix}팔찌 한 개만 크림색 원통형 주얼리 디스플레이 롤 위에 가로로 걸쳐놓은 제품 사진. 팔찌는 반드시 한 개. 흰 새틴 천을 배경으로 깔고 롤 양쪽에 드라이 흰 꽃(안개꽃, 수국) 소품 배치. 살짝 위에서 내려다보는 앵글. ${bg} 톤. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
@@ -134,7 +134,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'detail':
       return `${prefix}팔찌 ${stone || '원석'} 클로즈업 제품 사진. 팔찌를 평면에 자연스럽게 놓은 상태에서 원석 비즈 부분만 살짝 당겨찍은 구도 — 원석 2~3개가 화면에 가득 차도록. ${stone ? `${stone}` : '원석'}의 색감·질감·광택이 생생하게 살아있도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것, 원본 그대로 재현. ${bg} 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     case 'white':
-      return `${prefix}팔찌 순백 배경 제품 사진. 순수한 흰색(#FFFFFF) 배경에 팔찌를 원형으로 펼쳐 중앙 배치. 그림자 거의 없이. 스튜디오 소프트박스 조명, 중성 색온도. 어떤 소품도 없이 팔찌만. ${s925Note} 스마트스토어 대표 이미지용 상업 사진.`;
+      return `${prefix}팔찌 순백 배경 제품 사진. 순수한 흰색(#FFFFFF) 배경에 팔찌를 원형으로 펼쳐 중앙 배치. 그림자 거의 없이. 스튜디오 소프트박스 조명, 중성 색온도. 어떤 소품도 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
     default:
       return '';
   }
