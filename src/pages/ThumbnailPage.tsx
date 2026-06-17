@@ -69,7 +69,7 @@ const CUT_PRESETS = [
 const WEARING_POSES = [
   { id: 'wrist', label: '손목업' },
   { id: 'ear', label: '귀에 손' },
-  { id: 'chest', label: '가슴에 손' },
+  { id: 'chest', label: '테이블에 손' },
 ] as const;
 
 function getOutfitForColor(color: string): string {
@@ -119,20 +119,20 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'full':
       return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. ${s925Note} 고급스러운 주얼리 상업 사진.`;
     case 'holder':
-      return `${prefix}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌를 자연스럽게 손에 쥐고 들어올린 제품 사진. 손이 팔찌를 살며시 잡고 있는 자연스러운 포즈, 팔찌가 중심. ${bg} 배경. 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 상업 사진.`;
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
         return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 귀 쪽에 올린 자연스러운 포즈. 옆 얼굴과 목선, 쇄골이 배경에 보임. 의상: ${outfit}. 클린한 밝은 배경, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
       }
       if (pose === 'chest') {
-        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 가슴 위에 자연스럽게 얹은 포즈. 의상: ${outfit}. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌를 착용한 손목을 테이블 위에 자연스럽게 내려놓은 포즈, 편안하고 우아한 자세. 의상: ${outfit}. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
       }
       const wristDesc = gender === 'male' ? '단단하고 자연스러운 남성 손목' : '가느다란 자연스러운 여성 손목';
       return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
-      return `${prefix}팔찌 ${stone || '원석'} 비즈 클로즈업 제품 사진. ${stone ? `${stone} 원석` : '원석'}의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 ${stone || '원석'} 광택 강조. 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌 ${stone || '원석'} 클로즈업 제품 사진. 팔찌를 평면에 자연스럽게 놓은 상태에서 원석 비즈 부분만 살짝 당겨찍은 구도 — 원석 2~3개가 화면에 가득 차도록. ${stone ? `${stone}` : '원석'}의 색감·질감·광택이 생생하게 살아있도록. ${bg} 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     case 'white':
       return `${prefix}팔찌 순백 배경 제품 사진. 순수한 흰색(#FFFFFF) 배경에 팔찌를 원형으로 펼쳐 중앙 배치. 그림자 거의 없이. 스튜디오 소프트박스 조명, 중성 색온도. 어떤 소품도 없이 팔찌만. ${s925Note} 스마트스토어 대표 이미지용 상업 사진.`;
     default:
