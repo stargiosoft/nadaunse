@@ -1241,7 +1241,6 @@ export default function ThumbnailPage() {
             display: 'flex', flexDirection: 'column',
             paddingLeft: '28px',
           }}>
-
             {/* ── 이미지 비율 ── */}
             <div style={{
               borderBottom: '1px solid #f0f0f0',
@@ -1566,14 +1565,6 @@ export default function ThumbnailPage() {
                 );
               })()}
             {openSections.has('cut') && <div style={{ padding: '0 20px 16px 28px' }}>
-              <label style={{
-                fontFamily: font, fontSize: '12px', fontWeight: 400,
-                lineHeight: '17px', letterSpacing: '-0.24px',
-                color: C.textPrimary, display: 'block', marginBottom: '8px',
-                paddingLeft: '2px',
-              }}>
-                컷 프리셋
-              </label>
               <input
                 type="text"
                 value={productColor}
