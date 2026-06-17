@@ -134,12 +134,12 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   switch (cutId) {
     case 'full': {
       if (fullAngle === 'diagonal')
-        return `${prefix}팔찌 전체 스튜디오 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 원형으로 중앙에 놓고 살짝 위에서 비스듬한 각도로 촬영. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
+        return `${prefix}팔찌 전체 사선 앵글 제품 사진. ${scene.surface}에 팔찌를 원형으로 올려놓고, 슬랩의 모서리와 측면이 보이도록 30~40도 비스듬한 앵글로 촬영. 프레임 상단 구석에 코튼플라워가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
       if (fullAngle === 'props')
-        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 중앙에 원형으로 놓고 살짝 위에서 내려다보는 앵글. 소품은 분위기 역할, 팔찌가 주인공. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
+        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface}에 팔찌를 원형으로 올려놓고, 슬랩 모서리가 보이는 비스듬한 앵글. ${scene.props}가 배경 상단에 아웃포커스로 자연스럽게 보임. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
       if (fullAngle === 'perspective')
         return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 원근감 있는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
-      return `${prefix}팔찌 전체 스튜디오 제품 사진. ${scene.surface} 위에 ${scene.props}. 팔찌를 원형으로 중앙에 놓고 정면 탑뷰 촬영. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 제품 사진. ${scene.surface}에 팔찌를 원형으로 올려놓고 슬랩 모서리가 살짝 보이는 비스듬한 앵글로 촬영. 프레임 상단 구석에 코튼플라워가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
     }
     case 'holder':
       return `${prefix}팔찌 홀더 스튜디오 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 살짝 위에서 내려다보는 앵글. 한쪽 구석에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
