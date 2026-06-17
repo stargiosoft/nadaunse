@@ -98,21 +98,28 @@ function getOutfitForColor(color: string): string {
   return '크림색 또는 아이보리 니트, 화이트 블라우스 등 중성 톤 의상';
 }
 
-function getColorBackground(color: string): string {
+function getColorScene(color: string): { surface: string; props: string; light: string } {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return '크림/베이지 스톤 타일, 아이보리 드라이플라워, 부드러운 자연광, 중성 색온도';
+    return { surface: '크림/베이지 스톤 타일 바닥', props: '아이보리 드라이플라워, 유칼립투스 잎', light: '부드러운 자연광, 중성 색온도' };
   if (['파란', '파랑', '블루', '보라', '퍼플', '민트', '터코이즈', '청록', '네이비'].some(w => lc.includes(w)))
-    return '흰 대리석, 실버 소품, 화이트 드라이플라워, 부드러운 자연광';
-  if (['초록', '그린', '갈색', '브라운', '카키', '올리브', '베이지'].some(w => lc.includes(w)))
-    return '나무 판, 유칼립투스 드라이, 베이지 린넨, 부드러운 자연광, 중성 색온도';
+    return { surface: '흰 대리석 바닥', props: '화이트 드라이플라워, 실버 소품', light: '부드러운 자연광, 쿨톤 조명' };
+  if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
+    return { surface: '나무 원목 바닥', props: '유칼립투스 잎, 베이지 린넨 천 조각', light: '부드러운 자연광, 중성 색온도' };
+  if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
+    return { surface: '베이지 린넨 천 바닥', props: '드라이 코튼플라워, 나무 소품', light: '따뜻한 자연광' };
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-    return '짙은 대리석, 골드 소품, 흰 드라이플라워, 모던 스튜디오 조명';
+    return { surface: '짙은 대리석 바닥', props: '화이트 드라이플라워, 골드 소품', light: '모던 스튜디오 조명' };
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
-    return '흰 린넨, 베이지 스톤, 아이보리 드라이플라워, 부드러운 자연광';
+    return { surface: '흰 린넨 천 바닥', props: '아이보리 드라이플라워, 베이지 스톤', light: '부드러운 자연광' };
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-    return '크림 린넨, 실버 소품, 페일 드라이플라워, 소프트 자연광';
-  return '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
+    return { surface: '크림 린넨 천 바닥', props: '페일 드라이플라워, 실버 소품', light: '소프트 자연광' };
+  return { surface: '크림/베이지 스톤 타일 바닥', props: '드라이플라워, 유칼립투스 잎', light: '부드러운 자연광' };
+}
+
+function getColorBackground(color: string): string {
+  const s = getColorScene(color);
+  return `${s.surface}, ${s.props}, ${s.light}`;
 }
 
 function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, fullAngle?: string): string {
@@ -120,21 +127,22 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. ';
   const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
-  const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
+  const scene = color.trim() ? getColorScene(color) : { surface: '크림/베이지 스톤 타일 바닥', props: '드라이플라워, 유칼립투스 잎', light: '부드러운 자연광' };
+  const bg = `${scene.surface}, ${scene.props}, ${scene.light}`;
 
   const genderLabel = gender === 'male' ? '남성' : '여성';
   switch (cutId) {
     case 'full': {
       if (fullAngle === 'diagonal')
-        return `${prefix}팔찌 전체 사선 앵글 제품 사진. 팔찌를 원형으로 펼쳐 놓고 45도 비스듬한 각도에서 촬영, 입체감 강조. ${bg}. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+        return `${prefix}팔찌 전체 사선 앵글 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 펼쳐 놓고 45도 비스듬한 각도에서 촬영, 입체감 강조. 주변에 ${scene.props}. ${scene.light}. 고급스러운 주얼리 상업 사진.`;
       if (fullAngle === 'props')
-        return `${prefix}팔찌 소품 연출 제품 사진. 팔찌를 중앙에 원형으로 놓고 주변에 드라이플라워, 작은 크리스털, 천 소품 자연스럽게 배치. ${bg}. 탑뷰 앵글. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 라이프스타일 사진.`;
+        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 중앙에 원형으로 놓고 주변에 ${scene.props} 자연스럽게 배치. 탑뷰 앵글. ${scene.light}. 고급스러운 주얼리 라이프스타일 사진.`;
       if (fullAngle === 'perspective')
         return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 정원형이 타원형 원근감으로 보이는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
-      return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 정면 탑뷰. 부드러운 자연광, 중성 색온도. 고급스러운 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 플랫레이 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 펼쳐 정중앙 배치. 주변에 ${scene.props}. 정면 탑뷰. ${scene.light}. 고급스러운 주얼리 상업 사진.`;
     }
     case 'holder':
-      return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. 흰 새틴 천 배경, 롤 주변에 드라이 흰 꽃(안개꽃, 수국) 소품. 살짝 비스듬한 앵글. ${bg} 톤. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
+      return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. ${scene.surface} 위에 롤을 놓고, 주변에 ${scene.props} 소품. 살짝 비스듬한 앵글. ${scene.light}. 고급 주얼리 라이프스타일 상업 사진.`;
     case 'wearing': {
       const outfit = color.trim() ? getOutfitForColor(color) : '크림 또는 아이보리 니트, 화이트 블라우스';
       if (pose === 'ear') {
@@ -147,7 +155,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 소매가 살짝 보인다면 의상: ${outfit}. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
-      return `${prefix}팔찌 라이프스타일 제품 사진. 팔찌 전체가 보이도록 나무 또는 스톤 바닥 위에 자연스럽게 놓고, 주변에 유칼립투스 잎이나 드라이플라워 소품 배치. 살짝 위에서 내려다보는 앵글. ${stone ? `${stone} 원석의` : '원석의'} 색감과 질감이 선명하게 살아있도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. 부드러운 자연광, 중성 색온도. 고급 주얼리 라이프스타일 상업 사진.`;
+      return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고 팔찌가 프레임의 70~80%를 채울 만큼 가까이 당겨찍은 구도. 전체컷과 동일한 씬 — ${scene.props}이 팔찌 주변에 살짝 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 고급 주얼리 상업 사진.`;
     case 'white':
       return `${prefix}팔찌 흰 배경 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255)으로 회색·베이지·크림 절대 금지. 팔찌를 완전한 정원형(perfect circle)으로 펼쳐 이미지 정중앙에 배치, 찌그러지거나 타원형이 되지 않도록. 팔찌 바로 아래에 매우 옅고 부드러운 그림자(opacity 10~15% 수준, 번짐이 없는 은은한 그라데이션 섀도우)만 살짝 표현 — 실제 스튜디오 촬영 제품 사진 느낌. 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 대표 이미지용 상업 사진.`;
     default:
