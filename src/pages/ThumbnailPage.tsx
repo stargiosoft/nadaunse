@@ -85,31 +85,31 @@ const WEARING_POSES = [
 ] as const;
 
 const WEARING_OUTFITS_FEMALE = [
-  { id: 'cream_chiffon',  label: '크림 시폰',    outfit: '크림 아이보리색 시폰 블라우스 — 넥라인: 넓은 V넥, 소매: 긴소매, 커프스: 버튼 없는 플레인 헴, 핏: 루즈 플로우' },
-  { id: 'white_silk',     label: '화이트 실크',   outfit: '순백색 실크 새틴 블라우스 — 넥라인: 클린 라운드넥, 소매: 긴소매, 커프스: 버튼 한 개 있는 좁은 커프스, 핏: 세미핏' },
-  { id: 'ivory_lace',     label: '아이보리 레이스',outfit: '아이보리색 레이스 블라우스 — 넥라인: 하이넥 레이스 칼라, 소매: 긴소매, 커프스: 레이스 플레어 커프스, 핏: 루즈' },
-  { id: 'beige_ruffle',   label: '베이지 러플',   outfit: '베이지 시폰 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 소매 끝 러플 플레어, 핏: 루즈' },
-  { id: 'cream_ribbed',   label: '크림 리브드',   outfit: '크림색 리브드 코튼 탑 — 넥라인: 심플 라운드넥, 소매: 긴소매, 커프스: 리브드 밴드 플레인 헴, 핏: 세미핏' },
-  { id: 'white_drape',    label: '화이트 드레이프',outfit: '흰색 드레이프 시폰 탑 — 넥라인: 비대칭 원숄더, 소매: 한쪽 긴소매, 커프스: 플레인 헴, 핏: 루즈 드레이프' },
-  { id: 'off_shoulder',   label: '오프숄더',      outfit: '크림 아이보리 오프숄더 탑 — 넥라인: 오프숄더 스트레이트, 소매: 소매 없음, 어깨·쇄골 완전 노출, 핏: 세미핏' },
-  { id: 'light_gray',     label: '라이트 그레이', outfit: '연한 그레이 시폰 블라우스 — 넥라인: 와이드 V넥, 소매: 긴소매, 커프스: 버튼 없는 플레인 헴, 핏: 루즈' },
-  { id: 'peach_pink',     label: '피치 핑크',     outfit: '피치 핑크 실크 블라우스 — 넥라인: 스퀘어넥, 소매: 긴소매, 커프스: 좁은 플레인 커프스, 핏: 세미핏' },
-  { id: 'light_blue',     label: '라이트 블루',   outfit: '연한 하늘색 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 버튼 없는 플레인 헴, 핏: 루즈' },
-  { id: 'lavender',       label: '라벤더',        outfit: '라벤더 퍼플 실크 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스, 핏: 세미핏' },
-  { id: 'mint_green',     label: '민트 그린',     outfit: '민트 그린 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 플레인 헴, 핏: 루즈' },
-  { id: 'soft_yellow',    label: '소프트 옐로우', outfit: '소프트 옐로우 린넨 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 롤업 없는 플레인 헴, 핏: 루즈' },
-  { id: 'rose_gold',      label: '로즈 골드',     outfit: '로즈 골드 새틴 탑 — 넥라인: 카울넥, 소매: 긴소매, 커프스: 좁은 새틴 플레인 커프스, 핏: 세미핏' },
-  { id: 'powder_pink',    label: '파우더 핑크',   outfit: '파우더 핑크 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 플레인 헴, 핏: 루즈' },
-  { id: 'terracotta',     label: '테라코타',      outfit: '테라코타 린넨 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 버튼 한 개 있는 밴드 커프스, 핏: 루즈' },
-  { id: 'olive_green',    label: '올리브 그린',   outfit: '올리브 그린 실크 블라우스 — 넥라인: 칼라 없는 라운드넥, 소매: 긴소매, 커프스: 플레인 헴, 핏: 세미핏' },
-  { id: 'camel_brown',    label: '카멜 브라운',   outfit: '카멜 브라운 새틴 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스, 핏: 세미핏' },
-  { id: 'burgundy',       label: '버건디',        outfit: '버건디 시폰 블라우스 — 넥라인: 딥 V넥, 소매: 긴소매, 커프스: 플레인 헴, 핏: 루즈' },
-  { id: 'navy_silk',      label: '네이비 실크',   outfit: '네이비 블루 실크 블라우스 — 넥라인: 스퀘어넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스, 핏: 세미핏' },
-  { id: 'mustard',        label: '머스터드',      outfit: '머스터드 옐로우 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 플레인 헴, 핏: 루즈' },
-  { id: 'coral',          label: '코랄',          outfit: '코랄 린넨 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 버튼 한 개 있는 밴드 커프스, 핏: 루즈' },
-  { id: 'sage',           label: '세이지 그린',   outfit: '세이지 그린 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 플레인 헴, 핏: 루즈' },
-  { id: 'dusty_rose',     label: '더스티 로즈',   outfit: '더스티 로즈 실크 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스, 핏: 세미핏' },
-  { id: 'black_chiffon',  label: '블랙 시폰',     outfit: '블랙 시폰 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 버튼 없는 플레인 헴, 핏: 루즈' },
+  { id: 'cream_chiffon',  label: '크림 시폰',    outfit: '크림 아이보리색 시폰 블라우스 — 넥라인: 넓은 V넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈 플로우' },
+  { id: 'white_silk',     label: '화이트 실크',   outfit: '순백색 실크 새틴 블라우스 — 넥라인: 클린 라운드넥, 소매: 긴소매, 커프스: 좁은 커프스밴드에 플리츠 정확히 2개·버튼 1개, 핏: 세미핏' },
+  { id: 'ivory_lace',     label: '아이보리 레이스',outfit: '아이보리색 레이스 블라우스 — 넥라인: 하이넥 레이스 칼라, 소매: 긴소매, 커프스: 레이스 나팔형 플레어(개더링 있음·밴드 없음), 핏: 루즈' },
+  { id: 'beige_ruffle',   label: '베이지 러플',   outfit: '베이지 시폰 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 소매 끝 러플 플레어(개더링 풍성·밴드 없음), 핏: 루즈' },
+  { id: 'cream_ribbed',   label: '크림 리브드',   outfit: '크림색 리브드 코튼 탑 — 넥라인: 심플 라운드넥, 소매: 긴소매, 커프스: 리브드 밴드(개더링·플리츠 없이 밴드에 바로 봉제), 핏: 세미핏' },
+  { id: 'white_drape',    label: '화이트 드레이프',outfit: '흰색 드레이프 시폰 탑 — 넥라인: 비대칭 원숄더, 소매: 한쪽 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈 드레이프' },
+  { id: 'off_shoulder',   label: '오프숄더',      outfit: '크림 아이보리 오프숄더 탑 — 넥라인: 오프숄더 스트레이트, 소매: 소매 없음(어깨·쇄골 완전 노출), 핏: 세미핏' },
+  { id: 'light_gray',     label: '라이트 그레이', outfit: '연한 그레이 시폰 블라우스 — 넥라인: 와이드 V넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'peach_pink',     label: '피치 핑크',     outfit: '피치 핑크 실크 블라우스 — 넥라인: 스퀘어넥, 소매: 긴소매, 커프스: 좁은 커프스밴드(개더링·플리츠 없이 직봉제·버튼 없음), 핏: 세미핏' },
+  { id: 'light_blue',     label: '라이트 블루',   outfit: '연한 하늘색 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'lavender',       label: '라벤더',        outfit: '라벤더 퍼플 실크 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스밴드(개더링·플리츠 없이 직봉제·버튼 없음), 핏: 세미핏' },
+  { id: 'mint_green',     label: '민트 그린',     outfit: '민트 그린 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'soft_yellow',    label: '소프트 옐로우', outfit: '소프트 옐로우 린넨 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'rose_gold',      label: '로즈 골드',     outfit: '로즈 골드 새틴 탑 — 넥라인: 카울넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스밴드(개더링·플리츠 없이 직봉제·버튼 없음), 핏: 세미핏' },
+  { id: 'powder_pink',    label: '파우더 핑크',   outfit: '파우더 핑크 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'terracotta',     label: '테라코타',      outfit: '테라코타 린넨 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 커프스밴드에 플리츠 정확히 2개·버튼 1개, 핏: 루즈' },
+  { id: 'olive_green',    label: '올리브 그린',   outfit: '올리브 그린 실크 블라우스 — 넥라인: 칼라 없는 라운드넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 세미핏' },
+  { id: 'camel_brown',    label: '카멜 브라운',   outfit: '카멜 브라운 새틴 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스밴드(개더링·플리츠 없이 직봉제·버튼 없음), 핏: 세미핏' },
+  { id: 'burgundy',       label: '버건디',        outfit: '버건디 시폰 블라우스 — 넥라인: 딥 V넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'navy_silk',      label: '네이비 실크',   outfit: '네이비 블루 실크 블라우스 — 넥라인: 스퀘어넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스밴드(개더링·플리츠 없이 직봉제·버튼 없음), 핏: 세미핏' },
+  { id: 'mustard',        label: '머스터드',      outfit: '머스터드 옐로우 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'coral',          label: '코랄',          outfit: '코랄 린넨 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 커프스밴드에 플리츠 정확히 2개·버튼 1개, 핏: 루즈' },
+  { id: 'sage',           label: '세이지 그린',   outfit: '세이지 그린 시폰 블라우스 — 넥라인: 라운드넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
+  { id: 'dusty_rose',     label: '더스티 로즈',   outfit: '더스티 로즈 실크 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 좁은 새틴 커프스밴드(개더링·플리츠 없이 직봉제·버튼 없음), 핏: 세미핏' },
+  { id: 'black_chiffon',  label: '블랙 시폰',     outfit: '블랙 시폰 블라우스 — 넥라인: V넥, 소매: 긴소매, 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈' },
 ];
 
 const WEARING_OUTFITS_MALE = [
@@ -119,6 +119,44 @@ const WEARING_OUTFITS_MALE = [
   { id: 'navy_m',       label: '네이비 셔츠', outfit: '네이비 코튼 셔츠 — 넥라인: 레귤러 칼라, 소매: 긴소매, 커프스: 버튼 두 개 있는 배럴 커프스, 핏: 레귤러' },
   { id: 'beige_m',      label: '베이지 셔츠', outfit: '베이지 린넨 셔츠 — 넥라인: 밴드 칼라, 소매: 긴소매, 커프스: 플레인 밴드 커프스, 핏: 루즈' },
   { id: 'black_m',      label: '블랙 셔츠',   outfit: '블랙 코튼 셔츠 — 넥라인: 레귤러 칼라, 소매: 긴소매, 커프스: 버튼 한 개 있는 배럴 커프스, 핏: 슬림' },
+];
+
+const PRODUCTS = [
+  // 연애운
+  { id: 'rainbow_moonstone', category: 'love',    label: '레인보우 문스톤',         color: '화이트 크리스탈', stone: '레인보우 문스톤' },
+  { id: 'coral_gold',        category: 'love',    label: '산호+실버골드',           color: '레드 코랄',       stone: '산호' },
+  { id: 'emerald_rutile',    category: 'love',    label: '에메랄드+금침수정',       color: '초록 골드',       stone: '에메랄드, 금침수정' },
+  { id: 'coral_turquoise',   category: 'love',    label: '산호+터키석+파이라이트',  color: '레드 코랄',       stone: '산호, 터키석, 골드파이라이트' },
+  // 재물운
+  { id: 'green_onyx_a',      category: 'money',   label: '그린오닉스 A',            color: '초록',            stone: '그린 오닉스' },
+  { id: 'green_onyx_b',      category: 'money',   label: '그린오닉스 B',            color: '초록',            stone: '그린 오닉스' },
+  { id: 'carnelian',         category: 'money',   label: '카넬리언',                color: '주황 오렌지',     stone: '카넬리언' },
+  { id: 'black_tiger_eye',   category: 'money',   label: '블랙호안석',              color: '검정',            stone: '블랙 호안석' },
+  // 액막이
+  { id: 'onyx',              category: 'shield',  label: '오닉스',                  color: '검정',            stone: '오닉스' },
+  { id: 'hematite',          category: 'shield',  label: '헤마타이트',              color: '다크 그레이',     stone: '헤마타이트' },
+  { id: 'black_spinel',      category: 'shield',  label: '블랙스피넬+실버골드',    color: '검정',            stone: '블랙 스피넬' },
+  { id: 'goldstone',         category: 'shield',  label: '금요석+동',               color: '검정',            stone: '금요석' },
+  // 행운
+  { id: 'apatite_spinel',    category: 'luck',    label: '아파타이트+블랙스피넬',  color: '파란',            stone: '아파타이트, 블랙 스피넬' },
+  { id: 'turquoise',         category: 'luck',    label: '터키석',                  color: '터키석 청록',     stone: '터키석' },
+  { id: 'apatite',           category: 'luck',    label: '아파타이트',              color: '파란',            stone: '아파타이트' },
+  { id: 'apatite_red',       category: 'luck',    label: '아파타이트+레드비즈',     color: '파란',            stone: '아파타이트' },
+  // 학업
+  { id: 'lapis',             category: 'study',   label: '라피스라줄리',            color: '파란 네이비',     stone: '라피스라줄리' },
+  // 인간관계
+  { id: 'mother_pearl',      category: 'harmony', label: '자개석',                  color: '화이트 크리스탈', stone: '자개석' },
+  { id: 'sea_pearl',         category: 'harmony', label: '해수자개',                color: '화이트 크리스탈', stone: '해수자개' },
+  { id: 'labradorite',       category: 'harmony', label: '래브라도라이트',          color: '다크 그레이',     stone: '래브라도라이트' },
+];
+
+const PRODUCT_CATEGORIES = [
+  { id: 'love',    label: '💕 연애운' },
+  { id: 'money',   label: '💰 재물운' },
+  { id: 'shield',  label: '🧿 액막이' },
+  { id: 'luck',    label: '🍀 행운' },
+  { id: 'study',   label: '📚 학업운' },
+  { id: 'harmony', label: '🤝 인간관계' },
 ];
 
 function getOutfitForColor(color: string, gender: 'female' | 'male' = 'female'): string {
@@ -229,19 +267,21 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     case 'wearing': {
       const g = gender ?? 'female';
       const outfit = outfitOverride || (color.trim() ? getOutfitForColor(color, g) : (g === 'male' ? '크림 아이보리 코튼 셔츠' : '크림 아이보리 시폰 블라우스'));
-      const wearingBg = '부드럽게 블러된 크림/베이지 실내 배경(흰색 아님), 따뜻한 중성 톤';
+      const wearingBg = '밝은 스튜디오 배경지(크림/베이지 사진 배경지) — 가구·창문·커튼·인테리어·벽지 절대 금지, 순수 스튜디오 촬영 배경만, 소프트박스 조명으로 균일하게 노출된 배경';
       const modelLook = getModelAppearance(color + (stoneName || ''), g);
       const genderLabel = g === 'male' ? '남성' : '여성';
       const wristDesc = g === 'male' ? '단정한 남성 손목' : '가느다랗고 매끄러운 여성 손목';
       const noFace = '【얼굴 금지】눈·이마는 절대 프레임에 등장하지 말 것. ';
+      const modelLock = `【모델 외형 고정 — 헤어 길이·색상·스타일·피부톤·이목구비 변형 절대 금지】${modelLook}`;
+      const outfitLock = `【의상 스펙 고정 — 하이엔드 럭셔리 주얼리 화보 스타일링, 최고급 프리미엄 소재, 스튜디오 촬영 전 완벽히 스팀·다림질된 상태(의도하지 않은 구김·주름·잔주름 없이 매끄럽게), 전문 스타일리스트가 세팅한 완벽한 재단·세련된 마감, 럭셔리 패션지(보그·엘르) 화보 품격. 넥라인·소매·커프스 형태·핏 변형 절대 금지, 아래 스펙 그대로 재현】${outfit}`;
       if (pose === 'adjust')
-        return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. 양손 타이트 클로즈업 — 팔찌를 착용한 손목을 앞으로 내밀고 반대 손 손가락 두세 개로 팔찌를 살며시 건드리는 구도. 손목과 손가락이 프레임을 꽉 채우고 상체·의상이 아웃포커스 배경. 얼굴은 완전히 프레임 밖. 의상: ${outfit}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
+        return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 양손 타이트 클로즈업 — 팔찌를 착용한 손목을 앞으로 내밀고 반대 손 손가락 두세 개로 팔찌를 살며시 건드리는 구도. 손목과 손가락이 프레임을 꽉 채우고 상체·의상이 아웃포커스 배경. 얼굴은 완전히 프레임 밖. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트 디퓨즈드 조명. 팔찌에 핀포커스.`;
       if (pose === 'face_casual')
-        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. 팔찌를 착용한 손을 볼 옆에 자연스럽게 가져다 댄 포즈. 【하관 크롭】프레임 상단에 모델의 턱·입술·코까지만 보이고 눈·이마는 반드시 프레임 밖 위쪽으로 잘릴 것. 목선·쇄골이 아래에 보임. 부드럽고 자연스러운 분위기. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+        return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 팔찌를 착용한 손을 볼 옆에 자연스럽게 가져다 댄 포즈. 【하관 크롭】프레임 상단에 모델의 턱·입술·코까지만 보이고 눈·이마는 반드시 프레임 밖 위쪽으로 잘릴 것. 목선·쇄골이 아래에 보임. 부드럽고 자연스러운 분위기. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
       if (pose === 'face_elegant')
-        return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. 주얼리 화보 모델 자유 포즈 — 아래 중 하나: (1) 양 손목을 교차해 앞으로 내민 포즈, (2) 팔찌 착용 손을 반대 손이 살며시 받치며 손목을 위로 세운 포즈, (3) 손목을 어깨 높이로 들어 팔찌를 강조하는 사이드 포즈, (4) 손목을 쇄골 앞에 가볍게 올린 포즈. 얼굴은 완전히 프레임 밖. 손·손목·팔·쇄골·상체만. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+        return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 주얼리 화보 모델 자유 포즈 — 아래 중 하나: (1) 양 손목을 교차해 앞으로 내민 포즈, (2) 팔찌 착용 손을 반대 손이 살며시 받치며 손목을 위로 세운 포즈, (3) 손목을 어깨 높이로 들어 팔찌를 강조하는 사이드 포즈, (4) 손목을 쇄골 앞에 가볍게 올린 포즈. 얼굴은 완전히 프레임 밖. 손·손목·팔·쇄골·상체만. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
       // wrist (default)
-      return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLook}. ${genderLabel} 모델 손목 타이트 클로즈업. ${wristDesc}에 팔찌를 착용, 소매가 살짝 접혀 올라간 상태. 손목이 프레임 중앙을 꽉 채우고 살짝 비스듬한 앵글. 얼굴은 완전히 프레임 밖. 의상: ${outfit}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. ${genderLabel} 모델 손목 타이트 클로즈업. ${wristDesc}에 팔찌를 착용, 소매가 살짝 접혀 올라간 상태. 손목이 프레임 중앙을 꽉 채우고 살짝 비스듬한 앵글. 얼굴은 완전히 프레임 밖. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
@@ -645,6 +685,7 @@ export default function ThumbnailPage() {
   const [provider, setProvider] = useState<'gemini' | 'gpt'>('gemini');
 
   // 컷 프리셋
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [productColor, setProductColor] = useState('');
   const [stoneName, setStoneName] = useState('');
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
@@ -1662,6 +1703,53 @@ export default function ThumbnailPage() {
                 );
               })()}
             {openSections.has('cut') && <div style={{ padding: '0 20px 16px 28px' }}>
+              {/* 제품 선택 드롭다운 */}
+              <div style={{ position: 'relative', marginBottom: '6px' }}>
+                <select
+                  value={selectedProductId}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setSelectedProductId(id);
+                    if (!id) return;
+                    const prod = PRODUCTS.find(p => p.id === id);
+                    if (!prod) return;
+                    setProductColor(prod.color);
+                    setStoneName(prod.stone);
+                    if (activeCutPreset) {
+                      const g = activeCutPreset === 'wearing' ? wearingGender : undefined;
+                      const po = activeCutPreset === 'wearing' ? wearingPose : undefined;
+                      const sub = activeCutPreset === 'product' ? productCut : activeCutPreset === 'white' ? whiteType : undefined;
+                      const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                      const ov = activeCutPreset === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
+                      setPrompt(buildCutPrompt(activeCutPreset, prod.color, prod.stone, g, po, sub, ov));
+                    }
+                  }}
+                  className="outline-none"
+                  style={{
+                    width: '100%', height: '30px', borderRadius: '10px',
+                    border: `1px solid ${selectedProductId ? C.primary : C.borderDefault}`,
+                    padding: '0 28px 0 10px',
+                    fontFamily: font, fontSize: '11px', fontWeight: 400,
+                    color: selectedProductId ? C.textPrimary : C.textCaption,
+                    backgroundColor: selectedProductId ? '#f0fafa' : C.surface,
+                    boxSizing: 'border-box' as const,
+                    cursor: 'pointer',
+                    appearance: 'none' as const,
+                  }}
+                >
+                  <option value="">— 제품 선택 (자동 입력) —</option>
+                  {PRODUCT_CATEGORIES.map(cat => (
+                    <optgroup key={cat.id} label={cat.label}>
+                      {PRODUCTS.filter(p => p.category === cat.id).map(p => (
+                        <option key={p.id} value={p.id}>{p.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                  <path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
               <input
                 type="text"
                 value={productColor}
