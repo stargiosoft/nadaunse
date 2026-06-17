@@ -134,12 +134,12 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   switch (cutId) {
     case 'full': {
       if (fullAngle === 'diagonal')
-        return `${prefix}팔찌 전체 사선 앵글 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 펼쳐 놓고 45도 비스듬한 각도에서 촬영, 입체감 강조. 주변에 ${scene.props}. ${scene.light}. 고급스러운 주얼리 상업 사진.`;
+        return `${prefix}팔찌 전체 사선 앵글 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 펼쳐 45도 비스듬한 각도에서 촬영. 소품 없이 배경만. ${scene.light}. 미니멀 고급 주얼리 상업 사진.`;
       if (fullAngle === 'props')
-        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 중앙에 원형으로 놓고 주변에 ${scene.props} 자연스럽게 배치. 탑뷰 앵글. ${scene.light}. 고급스러운 주얼리 라이프스타일 사진.`;
+        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 중앙에 놓고 한쪽 구석에 ${scene.props} 한두 가지만 최소한으로 배치. 소품이 팔찌보다 절대 튀지 않도록. 탑뷰. ${scene.light}. 고급스러운 주얼리 라이프스타일 사진.`;
       if (fullAngle === 'perspective')
-        return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 정원형이 타원형 원근감으로 보이는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
-      return `${prefix}팔찌 전체 플랫레이 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 펼쳐 정중앙 배치. 주변에 ${scene.props}. 정면 탑뷰. ${scene.light}. 고급스러운 주얼리 상업 사진.`;
+        return `${prefix}팔찌 입체 흰 배경 제품 사진. 배경은 순수 흰색(RGB 255,255,255). 팔찌를 30~45도 비스듬한 앵글에서 촬영해 원근감 있는 입체 구도. 팔찌 아래 은은한 드롭 섀도우. 스튜디오 조명. 소품 없이 팔찌만. 고급 주얼리 상업 사진.`;
+      return `${prefix}팔찌 전체 플랫레이 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 펼쳐 정중앙 배치. 소품 없이 배경면만. 정면 탑뷰. ${scene.light}. 미니멀 고급 주얼리 상업 사진.`;
     }
     case 'holder':
       return `${prefix}팔찌 한 개가 크림색 원통형 주얼리 디스플레이 롤을 둘러싸며 껴있는 제품 사진. 팔찌가 롤 원통을 감싸듯 끼워진 상태, 롤 위에 올려놓은 것이 아님. ${scene.surface} 위에 롤을 놓고, 주변에 ${scene.props} 소품. 살짝 비스듬한 앵글. ${scene.light}. 고급 주얼리 라이프스타일 상업 사진.`;
