@@ -68,11 +68,11 @@ const CUT_PRESETS = [
 function getColorBackground(color: string): string {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return '크림/베이지 스톤 타일, 아이보리 드라이플라워, 따뜻한 자연광';
+    return '크림/베이지 스톤 타일, 아이보리 드라이플라워, 부드러운 자연광, 중성 색온도';
   if (['파란', '파랑', '블루', '보라', '퍼플', '민트', '터코이즈', '청록', '네이비'].some(w => lc.includes(w)))
     return '흰 대리석, 실버 소품, 화이트 드라이플라워, 부드러운 자연광';
   if (['초록', '그린', '갈색', '브라운', '카키', '올리브', '베이지'].some(w => lc.includes(w)))
-    return '나무 판, 유칼립투스 드라이, 베이지 린넨, 따뜻한 자연광';
+    return '나무 판, 유칼립투스 드라이, 베이지 린넨, 부드러운 자연광, 중성 색온도';
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
     return '짙은 대리석, 골드 소품, 흰 드라이플라워, 모던 스튜디오 조명';
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
@@ -89,13 +89,13 @@ function buildCutPrompt(cutId: string, color: string, gender?: 'female' | 'male'
     case 'full':
       return `${colorLabel}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. 고급스러운 주얼리 상업 사진.`;
     case 'holder':
-      return `${colorLabel}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 따뜻한 자연광. 고급 주얼리 상업 사진.`;
+      return `${colorLabel}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     case 'wearing': {
       const genderLabel = gender === 'male' ? '남성' : '여성';
       const wristDesc = gender === 'male'
         ? '단단하고 자연스러운 남성 손목'
         : '가느다란 자연스러운 여성 손목';
-      return `${colorLabel}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 따뜻한 자연광. 고급 주얼리 상업 사진.`;
+      return `${colorLabel}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
       return `${colorLabel}팔찌 원석 비즈 클로즈업 제품 사진. 원석의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 원석 광택 강조. 고급 주얼리 상업 사진.`;
