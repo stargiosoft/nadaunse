@@ -63,6 +63,13 @@ const CUT_PRESETS = [
   { id: 'holder', label: '홀더컷' },
   { id: 'wearing', label: '착용컷' },
   { id: 'detail', label: '디테일컷' },
+  { id: 'white', label: '흰배경컷' },
+] as const;
+
+const WEARING_POSES = [
+  { id: 'wrist', label: '손목업' },
+  { id: 'ear', label: '귀에 손' },
+  { id: 'chest', label: '가슴에 손' },
 ] as const;
 
 function getColorBackground(color: string): string {
@@ -82,26 +89,32 @@ function getColorBackground(color: string): string {
   return '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
 }
 
-function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male'): string {
+function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   const prefix = productLabel ? `${productLabel} ` : '';
   const bg = color.trim() ? getColorBackground(color) : '크림/베이지 스톤 타일, 드라이플라워, 부드러운 자연광';
   const s925Note = '골드 클래스프 옆 작은 펜던트에 S925 각인 표시.';
+  const genderLabel = gender === 'male' ? '남성' : '여성';
   switch (cutId) {
     case 'full':
       return `${prefix}팔찌 전체 플랫레이 제품 사진. 흰 실크 천 위에 팔찌를 원형으로 펼쳐 배치. 한쪽에 ${bg}. ${s925Note} 고급스러운 주얼리 상업 사진.`;
     case 'holder':
       return `${prefix}팔찌를 크림색 원통형 벨벳 홀더에 걸쳐 놓은 제품 사진. 흰 실크 천 배경, ${bg}. 45도 사선 앵글, 부드러운 자연광, 중성 색온도. ${s925Note} 고급 주얼리 상업 사진.`;
     case 'wearing': {
-      const genderLabel = gender === 'male' ? '남성' : '여성';
-      const wristDesc = gender === 'male'
-        ? '단단하고 자연스러운 남성 손목'
-        : '가느다란 자연스러운 여성 손목';
-      return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 편안한 포즈. ${bg}을 배경으로 아웃포커싱. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      if (pose === 'ear') {
+        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 귀 쪽에 올린 자연스러운 포즈. 옆 얼굴과 목선, 쇄골이 배경에 보임. 클린한 밝은 배경, 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      }
+      if (pose === 'chest') {
+        return `${prefix}팔찌를 착용한 ${genderLabel} 제품 사진. 팔찌 착용한 손을 가슴 위에 자연스럽게 얹은 포즈. 의류와 목선이 배경에 보임. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
+      }
+      const wristDesc = gender === 'male' ? '단단하고 자연스러운 남성 손목' : '가느다란 자연스러운 여성 손목';
+      return `${prefix}팔찌를 ${genderLabel} 손목에 착용한 클로즈업 제품 사진. ${wristDesc}, 손목을 위로 들어올린 포즈. 아웃포커싱 배경. 부드러운 자연광, 중성 색온도. 고급 주얼리 상업 사진.`;
     }
     case 'detail':
       return `${prefix}팔찌 ${stone || '원석'} 비즈 클로즈업 제품 사진. ${stone ? `${stone} 원석` : '원석'}의 색감과 질감이 선명하게 보이도록 적당한 거리에서 촬영. 팔찌 전체 중 원석 부분이 주인공. 흰 실크 천 위에 자연스럽게 배치, ${bg}. 부드러운 자연광으로 ${stone || '원석'} 광택 강조. 고급 주얼리 상업 사진.`;
+    case 'white':
+      return `${prefix}팔찌 순백 배경 제품 사진. 순수한 흰색(#FFFFFF) 배경에 팔찌를 원형으로 펼쳐 중앙 배치. 그림자 거의 없이. 스튜디오 소프트박스 조명, 중성 색온도. 어떤 소품도 없이 팔찌만. ${s925Note} 스마트스토어 대표 이미지용 상업 사진.`;
     default:
       return '';
   }
@@ -500,6 +513,7 @@ export default function ThumbnailPage() {
   const [stoneName, setStoneName] = useState('');
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
+  const [wearingPose, setWearingPose] = useState<string>('wrist');
 
   // Input
   const [prompt, setPrompt] = useState('');
@@ -1476,23 +1490,21 @@ export default function ThumbnailPage() {
                   boxSizing: 'border-box',
                 }}
               />
+              {/* 메인 프리셋 버튼 행 1: 전체/홀더/착용/디테일 */}
               <div className="flex" style={{ gap: '4px' }}>
-                {CUT_PRESETS.map(cut => {
+                {CUT_PRESETS.filter(c => c.id !== 'white').map(cut => {
                   const active = activeCutPreset === cut.id;
                   return (
                     <button
                       key={cut.id}
                       onClick={() => {
                         const gender = cut.id === 'wearing' ? wearingGender : undefined;
-                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, gender));
+                        const pose = cut.id === 'wearing' ? wearingPose : undefined;
+                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, gender, pose));
                         setActiveCutPreset(cut.id);
                       }}
-                      onMouseEnter={(e) => {
-                        if (!active) e.currentTarget.style.backgroundColor = '#ececec';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5';
-                      }}
+                      onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
+                      onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
                       style={{
                         flex: 1, height: '28px', borderRadius: '8px', border: 'none',
                         fontFamily: font, fontSize: '11px', fontWeight: 400,
@@ -1501,45 +1513,88 @@ export default function ThumbnailPage() {
                         backgroundColor: active ? C.primary : '#f5f5f5',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                       }}
-                    >
-                      {cut.label}
-                    </button>
+                    >{cut.label}</button>
                   );
                 })}
               </div>
 
-              {/* 착용컷 선택 시 성별 서브 버튼 */}
+              {/* 행 2: 흰배경컷 */}
+              {(() => {
+                const active = activeCutPreset === 'white';
+                return (
+                  <button
+                    onClick={() => {
+                      setPrompt(buildCutPrompt('white', productColor, stoneName));
+                      setActiveCutPreset('white');
+                    }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
+                    style={{
+                      width: '100%', height: '28px', borderRadius: '8px', border: 'none',
+                      marginTop: '4px',
+                      fontFamily: font, fontSize: '11px', fontWeight: 400,
+                      letterSpacing: '0.76px',
+                      color: active ? C.textWhite : '#5a5a5a',
+                      backgroundColor: active ? C.primary : '#f5f5f5',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                    }}
+                  >흰배경컷</button>
+                );
+              })()}
+
+              {/* 착용컷 서브 옵션 */}
               {activeCutPreset === 'wearing' && (
-                <div className="flex" style={{ gap: '4px', marginTop: '6px' }}>
-                  {(['female', 'male'] as const).map(g => {
-                    const gLabel = g === 'female' ? '여성' : '남성';
-                    const gActive = wearingGender === g;
-                    return (
-                      <button
-                        key={g}
-                        onClick={() => {
-                          setWearingGender(g);
-                          setPrompt(buildCutPrompt('wearing', productColor, stoneName, g));
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!gActive) e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                        style={{
-                          flex: 1, height: '26px', borderRadius: '8px', border: `1px solid ${gActive ? C.primary : C.borderDefault}`,
-                          fontFamily: font, fontSize: '11px', fontWeight: 400,
-                          letterSpacing: '0.76px',
-                          color: gActive ? C.primary : C.textTertiary,
-                          backgroundColor: gActive ? '#f0fafa' : 'transparent',
-                          cursor: 'pointer', transition: 'all 0.15s ease',
-                        }}
-                      >
-                        {gLabel}
-                      </button>
-                    );
-                  })}
+                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* 성별 */}
+                  <div className="flex" style={{ gap: '4px' }}>
+                    {(['female', 'male'] as const).map(g => {
+                      const gActive = wearingGender === g;
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => {
+                            setWearingGender(g);
+                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, g, wearingPose));
+                          }}
+                          onMouseEnter={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
+                          onMouseLeave={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          style={{
+                            flex: 1, height: '26px', borderRadius: '8px',
+                            border: `1px solid ${gActive ? C.primary : C.borderDefault}`,
+                            fontFamily: font, fontSize: '11px', fontWeight: 400,
+                            color: gActive ? C.primary : C.textTertiary,
+                            backgroundColor: gActive ? '#f0fafa' : 'transparent',
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                          }}
+                        >{g === 'female' ? '여성' : '남성'}</button>
+                      );
+                    })}
+                  </div>
+                  {/* 포즈 */}
+                  <div className="flex" style={{ gap: '4px' }}>
+                    {WEARING_POSES.map(p => {
+                      const pActive = wearingPose === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            setWearingPose(p.id);
+                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, p.id));
+                          }}
+                          onMouseEnter={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
+                          onMouseLeave={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          style={{
+                            flex: 1, height: '26px', borderRadius: '8px',
+                            border: `1px solid ${pActive ? C.primary : C.borderDefault}`,
+                            fontFamily: font, fontSize: '11px', fontWeight: 400,
+                            color: pActive ? C.primary : C.textTertiary,
+                            backgroundColor: pActive ? '#f0fafa' : 'transparent',
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                          }}
+                        >{p.label}</button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
