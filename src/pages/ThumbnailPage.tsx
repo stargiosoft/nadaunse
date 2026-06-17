@@ -42,8 +42,9 @@ const ASPECT_RATIOS = [
   { id: '9:16', label: '9:16', desc: '릴스·쇼츠·틱톡', width: 1080, height: 1920 },
   { id: '3:4', label: '3:4', desc: '네이버 블로그', width: 900, height: 1200 },
   { id: '2:3', label: '2:3', desc: '로맨스 타로', width: 1000, height: 1500 },
-  { id: '1:1', label: '1:1', desc: '인스타 정사각', width: 1080, height: 1080 },
+  { id: '1:1', label: '1:1', desc: '인스타·스마트스토어 대표', width: 1080, height: 1080 },
   { id: '16:9', label: '16:9', desc: '유튜브 썸네일', width: 1280, height: 720 },
+  { id: 'smartstore-detail', label: '상세페이지', desc: '스마트스토어 상세 (860px)', width: 860, height: 1290 },
   { id: 'saju-consult', label: '약 20:9', desc: '사주GPT 캐릭터 상담', width: 1866, height: 843 },
 ] as const;
 
@@ -635,8 +636,10 @@ export default function ThumbnailPage() {
     // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
     // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
     const effectivePrompt = combinedPrompt;
-    // saju-consult는 Gemini 미지원 → 16:9로 생성, 다운로드 시 크롭 (GPT는 자체 매핑)
-    const geminiRatio = ratioId === 'saju-consult' ? '16:9' : ratioId;
+    // 미지원 비율은 가장 가까운 Gemini 지원 비율로 매핑, 다운로드 시 크롭 (GPT는 자체 매핑)
+    const geminiRatio = ratioId === 'saju-consult' ? '16:9'
+      : ratioId === 'smartstore-detail' ? '2:3'
+      : ratioId;
     const body: Record<string, unknown> = {
       prompt: effectivePrompt,
       aspect_ratio: provider === 'gpt' ? ratioId : geminiRatio,

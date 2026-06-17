@@ -349,6 +349,7 @@ serve(async (req) => {
       const sizeMap: Record<string, string> = {
         '9:16': '1024x1536', '3:4': '1024x1536', '2:3': '1024x1536',
         '1:1': '1024x1024', '16:9': '1536x1024', 'saju-consult': '1536x1024',
+        'smartstore-detail': '1024x1536',
       }
       const size = sizeMap[aspect_ratio || ''] || '1024x1024'
 
