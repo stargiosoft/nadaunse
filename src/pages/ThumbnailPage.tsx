@@ -770,6 +770,9 @@ export default function ThumbnailPage() {
   // 의상 레퍼런스: 착용컷 전용 — 커프스·넥라인·소매 형태만 참고
   const [outfitRefPreview, setOutfitRefPreview] = useState<string>('');
   const [outfitRefBase64, setOutfitRefBase64] = useState<string>('');
+  // 원석 상세 레퍼런스: 원석 색상·컷·형태·마감을 이 이미지 기준으로 생성
+  const [stoneRefPreview, setStoneRefPreview] = useState<string>('');
+  const [stoneRefBase64, setStoneRefBase64] = useState<string>('');
 
   // Result
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -991,6 +994,9 @@ export default function ThumbnailPage() {
     }
     if (outfitRefBase64) {
       body.outfit_reference_image = outfitRefBase64;
+    }
+    if (stoneRefBase64) {
+      body.stone_reference_image = stoneRefBase64;
     }
     const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
       method: 'POST',
@@ -1435,7 +1441,7 @@ export default function ThumbnailPage() {
             position: 'sticky', top: '68px',
             display: 'flex', flexDirection: 'column',
             paddingLeft: '28px',
-            marginTop: '-20px',
+            marginTop: '-32px',
           }}>
             {/* ── 이미지 비율 ── */}
             <div style={{
@@ -2399,6 +2405,62 @@ export default function ThumbnailPage() {
               }}>
                 {referencePreviews.length}/{MAX_REFERENCES}
               </div>
+            </div>
+
+            {/* ── 원석 상세 레퍼런스 ── */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label style={{
+                  fontFamily: font, fontSize: '12px', fontWeight: 400,
+                  color: C.textPrimary, paddingLeft: '2px',
+                }}>
+                  원석 상세
+                </label>
+                {stoneRefPreview && (
+                  <button
+                    onClick={() => { setStoneRefPreview(''); setStoneRefBase64(''); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: font, fontSize: '11px', color: C.textCaption, padding: '0 2px' }}
+                  >✕ 제거</button>
+                )}
+              </div>
+              <p style={{ fontFamily: font, fontSize: '11px', color: C.textCaption, marginBottom: '8px', paddingLeft: '2px', letterSpacing: '-0.22px', lineHeight: '15px' }}>
+                원석 클로즈업 — 색상·컷·형태·마감을 이 이미지 기준으로 생성
+              </p>
+              {stoneRefPreview ? (
+                <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+                  <img
+                    src={stoneRefPreview}
+                    alt="원석 상세"
+                    style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '16px', border: `1px solid ${C.primary}` }}
+                  />
+                </div>
+              ) : (
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  height: '44px', borderRadius: '14px', border: `1px dashed ${C.borderDefault}`,
+                  cursor: 'pointer', fontFamily: font, fontSize: '11px', color: C.textCaption,
+                  backgroundColor: C.surface, transition: 'all 0.15s ease',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#cfcfcf'; e.currentTarget.style.backgroundColor = '#fafafa'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderDefault; e.currentTarget.style.backgroundColor = C.surface; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke={C.textCaption} strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  원석 이미지 업로드
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const dataUrl = await new Promise<string>((res, rej) => {
+                      const r = new FileReader();
+                      r.onload = ev => res(ev.target?.result as string);
+                      r.onerror = rej;
+                      r.readAsDataURL(file);
+                    });
+                    setStoneRefPreview(dataUrl);
+                    setStoneRefBase64(dataUrl.split(',')[1]);
+                    e.target.value = '';
+                  }} />
+                </label>
+              )}
             </div>
 
             {/* ── 구도 참고 (오로지 구도만, 화풍은 무시) ── */}
