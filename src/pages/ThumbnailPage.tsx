@@ -8,7 +8,7 @@ import { VariationSlider } from '../components/ui/VariationSlider';
 // ── Types ──
 
 type Step = 'input' | 'result';
-type BackgroundConcept = 'pure' | 'heavy' | 'natural';
+type BackgroundConcept = 'pure' | 'heavy' | 'natural' | 'dark';
 
 type GeneratedImage = {
   id: number;
@@ -77,6 +77,7 @@ const BG_CONCEPTS: { id: BackgroundConcept; label: string }[] = [
   { id: 'pure', label: '퓨어' },
   { id: 'heavy', label: '무드' },
   { id: 'natural', label: '자연' },
+  { id: 'dark', label: '다크' },
 ];
 
 const WHITE_TYPES = [
@@ -244,6 +245,14 @@ function getNaturalScene(): { surface: string; props: string; light: string } {
   };
 }
 
+function getDarkScene(): { surface: string; props: string; light: string } {
+  return {
+    surface: '다크 차콜/슬레이트 스톤 타일 — 거칠고 납작한 블랙 슬레이트 석판 위에 팔찌 배치. 슬레이트 표면의 층리(layering) 결과 불규칙한 질감이 실제처럼 리얼하게 보임. 타일 주변 바닥에 크림/아이보리 린넨 패브릭이 자연스럽게 드레이프됨. 배경은 다크 차콜 그레이 플랫 서피스. 광택 없이 완전 매트',
+    props: '매끄럽게 다듬어진 블랙 리버 스톤(강돌) 2–3개를 슬레이트 주변에 자연스럽게 배치. 목화솜·꽃 소품 절대 금지',
+    light: '드라마틱한 사이드 자연광. 팔찌와 돌에 부드러운 하이라이트, 슬레이트 위에 얕은 그림자. 전체적으로 어둡고 무게감 있는 톤 — 차콜·블랙·딥그레이 팔레트. 고급 주얼리 무드 화보',
+  };
+}
+
 function getWearingBg(outfit: string): string {
   const lc = outfit.toLowerCase();
   const base = '전문 사진 스튜디오 배경지. 소프트박스 조명의 자연스러운 명암 그라데이션(중앙 밝고 가장자리 살짝 어두운)으로 깊이감 있게 표현. 하이엔드 주얼리 브랜드 스튜디오 촬영 느낌.';
@@ -304,7 +313,9 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
     ? getHeavyScene()
     : bgConcept === 'natural'
       ? getNaturalScene()
-      : (color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' });
+      : bgConcept === 'dark'
+        ? getDarkScene()
+        : (color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' });
 
   switch (cutId) {
     case 'product': {
