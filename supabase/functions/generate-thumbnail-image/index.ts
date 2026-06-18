@@ -254,6 +254,52 @@ Output: a single descriptive paragraph using geometric/cinematographic vocabular
   return text
 }
 
+async function extractStoneDescription(stoneImageBase64: string, apiKey: string): Promise<string> {
+  const visionParts: Array<Record<string, unknown>> = [
+    { inlineData: { mimeType: 'image/jpeg', data: stoneImageBase64 } },
+    {
+      text: `You are inspecting a close-up photo of a gemstone, pendant, or decorative charm on a bracelet.
+Describe ONLY the pendant/stone/charm appearance in 80-120 words with extreme precision, so a digital artist can reproduce it exactly without seeing this photo.
+
+Cover EVERY point below — do not skip any:
+1. SHAPE: exact silhouette (teardrop / oval / round / marquise / briolette / etc.) and orientation (narrow end up, wide base down, etc.)
+2. SURFACE FINISH: Is the surface smooth matte/frosted (NO sparkle, NO facets)? Or is it faceted/cut (has flat geometric faces that reflect light)? Or glossy smooth (high-shine cabochon)? Be very explicit.
+3. COLOR: precise hue (jade green / emerald / coral red / deep burgundy / etc.), saturation level (vivid, muted, pale), and translucency (opaque / semi-translucent / transparent).
+4. TEXTURE: smooth / grainy / rough / crystalline / etc.
+5. SIZE relative to beads: e.g. "roughly 3× the diameter of surrounding beads"
+
+Do NOT describe: background, bracelet beads, metal findings, setting, or composition.
+Output a single dense descriptive paragraph in English. No preamble.`,
+    },
+  ]
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+  let res: Response | undefined
+  for (let attempt = 0; attempt < 2; attempt++) {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ contents: [{ parts: visionParts }] }),
+    })
+    if (res.status !== 429 && res.status < 500) break
+    await new Promise(r => setTimeout(r, (attempt + 1) * 5000))
+  }
+
+  if (!res || !res.ok) {
+    const errText = res ? await res.text() : 'no response'
+    console.warn('[stone-extract] 원석 추출 실패:', errText.slice(0, 200))
+    return ''
+  }
+
+  const data = await res.json()
+  const text: string = (data?.candidates?.[0]?.content?.parts || [])
+    .filter((p: any) => typeof p?.text === 'string')
+    .map((p: any) => p.text)
+    .join(' ')
+    .trim()
+  return text
+}
+
 // 사용자 명령에 들어있는 "N개/N명/N마리…" 같은 개수 지시를 찾아, 모델이 개수를 정확히 지키도록 강조 블록을 만든다.
 // 이미지 생성 모델은 본질적으로 개수를 "세지" 못하고 그럴듯한 분포로 그려서(특히 6~7개 이상), 명시적 카운팅 지시가 정확도를 크게 높인다.
 const COUNT_UNITS = '개|명|마리|송이|그루|장|병|잔|채|권|쌍|줄|컵|상자|켤레|판'
@@ -414,6 +460,17 @@ serve(async (req) => {
 
     const styleTextOnly = reference_mode === 'style_text_only'
 
+    // 원석 상세 레퍼런스: 이미지만 첨부하면 모델이 무시하므로, 구도 추출과 동일하게 먼저 텍스트로 추출해 프롬프트에 주입한다.
+    const stoneRefActive = typeof stone_reference_image === 'string' && stone_reference_image.length > 0 && !edit_region && !auto_fill_background
+    let stoneGuide = ''
+    if (stoneRefActive) {
+      stoneGuide = await extractStoneDescription(stone_reference_image as string, apiKey)
+    }
+    // 추출된 원석 설명을 USER INSTRUCTION 최상단에 삽입할 프리앰블. 모든 generation 경로에서 공통 사용.
+    const stoneGuidePreamble = stoneGuide
+      ? `[PENDANT / STONE — ★MANDATORY SPEC, ZERO CREATIVE DEVIATION ALLOWED★]\nThe stone/pendant/charm in the output MUST match this exact specification derived from the stone reference image:\n${stoneGuide}\nThis spec overrides the main reference image's stone appearance. Do NOT apply a different cut (e.g. do NOT add faceting if the spec says smooth/matte). Do NOT change the color, finish, or shape. Copy it literally.\n\n`
+      : ''
+
     // 구도 참고 이미지: 화풍/내용은 무시하고 오로지 프레이밍·앵글·배치만 차용.
     // 영역 수정(edit_region)이나 여백 채우기(auto_fill_background) 모드에서는 의미 없으므로 무시.
     const compRefs: string[] = Array.isArray(composition_reference_images)
@@ -490,7 +547,7 @@ ${variation_directive.trim()}
 Generate ONE new image. NO reference image is attached. You are recreating ONLY the ARTISTIC TECHNIQUE described in [TECHNIQUE GUIDE] below, applied to brand-new subject matter, a brand-new color scheme, and a brand-new composition that are ALL defined by [USER INSTRUCTION]. The technique guide describes the artist's "hand" ONLY — it contains no content, no color palette, and no composition for you to copy.
 
 [USER INSTRUCTION — DEFINES ALL CONTENT, COLOR/MOOD, AND COMPOSITION (WHO, WHAT, WHERE, COLORS, FRAMING, MOOD)]
-${prompt}
+${stoneGuidePreamble}${prompt}
 
 [TECHNIQUE GUIDE — replicate this artist's craft/technique exactly]
 ${styleDescription}
@@ -541,7 +598,7 @@ ABSOLUTELY DO NOT take from the reference:
 The output must look as if a single artist used the reference's CRAFT to create a brand new image — new subject, new colors, new composition — that the artist invented themselves, never having seen the reference's content. A viewer comparing reference and output should recognize the same artistic hand and the same medium/technique, but should NOT recognize any person/scene/item from the reference, and the two images may look quite different in color and layout.
 
 [USER INSTRUCTION — DEFINES ALL CONTENT, COLOR/MOOD, AND COMPOSITION (WHO, WHAT, WHERE, COLORS, FRAMING, MOOD)]
-${prompt}
+${stoneGuidePreamble}${prompt}
 
 [TECHNIQUE TEXT GUIDE — supplements the reference image, do not contradict it on matters of technique]
 ${styleDescription}
@@ -709,7 +766,7 @@ REQUIREMENTS:
 Recreate/edit based on the attached reference image${refs.length > 1 ? 's' : ''}, following the [USER INSTRUCTION] below. PRESERVE the reference's art style AND colors faithfully — only change what the instruction explicitly asks for.
 
 [USER INSTRUCTION — TOP PRIORITY, FOLLOW IT LITERALLY]
-${prompt}
+${stoneGuidePreamble}${prompt}
 
 [WHAT TO KEEP FROM THE REFERENCE — KEEP IT EXACTLY]
 • Art style: same medium, line work, rendering/shading technique, texture, brush feel, proportions, stylization level, detail density, and level of finish.
@@ -742,7 +799,7 @@ Generate ONE new image showing the SAME PERSON whose face is in the reference, d
 - Number of subjects, supporting characters: per instruction.
 
 [USER INSTRUCTION — DEFINES OUTFIT, SCENE, POSE, EVERYTHING EXCEPT FACE/STYLE]
-${prompt}
+${stoneGuidePreamble}${prompt}
 
 [CRITICAL]
 The reference's outfit, scene, pose, and setting are NOT in the output. Even though the reference shows the person wearing X at location A, the output must show the SAME PERSON wearing Y at location B per the instruction. Reference contributes face + visual style only — NOTHING ELSE.
@@ -757,7 +814,7 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
 • When multiple reference images are attached, blend cues across ALL of them into one cohesive output — do not pick just one reference and ignore the rest.
 • If the user instruction itself asks for multiple outfit/pose/scene variations in a single output (e.g. "show 3 different outfits"), pick ONE variation and render it as a single full image rather than a collage.`
       parts.push({
-        text: `USER INSTRUCTION: ${prompt}\n\nGenerate a professional thumbnail image that follows the user instruction above.${formatRules}`,
+        text: `USER INSTRUCTION: ${stoneGuidePreamble}${prompt}\n\nGenerate a professional thumbnail image that follows the user instruction above.${formatRules}`,
       })
     }
 
