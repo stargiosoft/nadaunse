@@ -75,7 +75,7 @@ const PRODUCT_CUTS = [
 
 const BG_CONCEPTS: { id: BackgroundConcept; label: string }[] = [
   { id: 'pure', label: '퓨어' },
-  { id: 'heavy', label: '묵직' },
+  { id: 'heavy', label: '모던' },
   { id: 'natural', label: '자연' },
 ];
 
@@ -230,9 +230,9 @@ function getColorBackground(color: string): string {
 
 function getHeavyScene(): { surface: string; props: string; light: string } {
   return {
-    surface: '매트한 웜 그레이 콘크리트 정사각형 블록 오브제 위에 팔찌 배치. 배경은 밝고 클린한 웜 그레이/오프화이트 플랫 서피스. 소품 없이 블록과 팔찌만',
-    props: '소품 없음. 그림자 최소화',
-    light: '부드럽게 확산된 자연광 — 방향감 없이 고르게 퍼진 소프트 라이팅. 팔찌 아래 아주 옅은 그림자만, 식물 보케 그림자 없음. 전체적으로 밝고 플랫한 미니멀 스튜디오 무드. 현대적이고 세련된 에디토리얼 주얼리 화보 스타일',
+    surface: '매트한 웜 그레이 콘크리트 정사각형 블록 오브제 위에 팔찌 배치. 배경은 밝고 클린한 웜 그레이/오프화이트 플랫 서피스',
+    props: '소품 없음. 목화솜·드라이플라워·꽃·식물 소품 절대 금지. 팔찌와 콘크리트 블록만으로 구성. 그림자 최소화',
+    light: '부드럽게 확산된 자연광 — 방향감 없이 고르게 퍼진 소프트 라이팅. 팔찌 아래 아주 옅은 그림자만. 전체적으로 밝고 플랫한 미니멀 스튜디오 무드. 현대적이고 세련된 에디토리얼 주얼리 화보 스타일',
   };
 }
 
