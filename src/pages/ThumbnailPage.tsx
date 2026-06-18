@@ -1126,7 +1126,11 @@ export default function ThumbnailPage() {
     setError(null);
 
     const fixedPrompt = persistentPrompt.trim();
-    const combinedPrompt = [editText, fixedPrompt].filter(Boolean).join('\n\n');
+    // 원석 교체 모드: 비즈·골드 스페이서 등 팔찌 구조를 완전히 잠그는 프리픽스 주입
+    const stoneLockPrefix = stoneChangeMode
+      ? `【원석/장식 교체 전용 — 절대 규칙】붉은 테두리 박스 안의 원석·펜던트 형태·색상·마감만 아래 지시대로 변경할 것. ①팔찌 비즈의 색상·형태·크기·배열 변형 절대 금지 ②골드 스페이서 비즈 개수·위치·색상 변형 절대 금지 ③박스 밖 영역은 원본 픽셀 100% 그대로 ④원석 교체 외 어떤 창의적 해석도 금지. 교체 지시: `
+      : '';
+    const combinedPrompt = [stoneLockPrefix + editText, fixedPrompt].filter(Boolean).join('\n\n');
     const newId = images.reduce((max, img) => Math.max(max, img.id), 0) + 1;
 
     try {
@@ -1138,10 +1142,10 @@ export default function ThumbnailPage() {
           prompt: combinedPrompt,
           aspect_ratio: ratioId,
           reference_images: [markedBase64],
-          reference_mode: 'style_and_character',
+          reference_mode: stoneChangeMode ? 'faithful' : 'style_and_character',
           edit_region: true,
           edit_region_count: rects.length,
-          image_variation: 5, // 영역 수정은 충실도가 우선 → 낮은 temperature
+          image_variation: 5,
         }),
       });
       const data = await res.json();
@@ -1163,7 +1167,7 @@ export default function ThumbnailPage() {
     } finally {
       setEditing(false);
     }
-  }, [selectedImageId, images, editPrompt, editing, selRects, persistentPrompt, ratioId]);
+  }, [selectedImageId, images, editPrompt, editing, selRects, persistentPrompt, ratioId, stoneChangeMode]);
 
   const [upscaling, setUpscaling] = useState(false);
 
