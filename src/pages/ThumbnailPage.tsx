@@ -230,9 +230,9 @@ function getColorBackground(color: string): string {
 
 function getHeavyScene(): { surface: string; props: string; light: string } {
   return {
-    surface: '따뜻한 베이지/크림 플랫 서피스 위에 흰색 원형 세라믹 접시·트레이를 놓고 그 위에 팔찌를 원형으로 배치',
-    props: '배경 왼쪽에 안개꽃(gypsophila) 드라이플라워 다발이 아웃포커스로 흐릿하게 보임. 배경 오른쪽에 소형 블랙 불상 미니어처 오브제가 아웃포커스로 흐릿하게 보임. 목화솜(cotton flower)·코튼플라워·목화·풍성한 흰 솜털 꽃 절대 금지 — 안개꽃의 작고 섬세한 흰 꽃 다발만 허용',
-    light: '강한 단방향 자연광 — 팔찌와 트레이 위에 선명하고 또렷한 드롭 섀도우를 만드는 햇빛. 전체적으로 따뜻하고 밝은 베이지 톤. 젠·스피리추얼 에너지 주얼리 화보 무드',
+    surface: '화이트 또는 쿨 라이트 그레이 트래버틴 스톤 슬랩 — 퓨어와 동일한 슬랩 구도, 색상 팔레트만 그레이·화이트·블랙 모노크롬으로 통일',
+    props: '프레임 한쪽 구석에 화이트 안개꽃(gypsophila) 또는 실버 팜파스 그라스 드라이플라워 한 줄기만. 목화솜(cotton flower)·코튼플라워·풍성한 흰 솜털 꽃봉오리 절대 금지 — 반드시 가느다란 줄기에 작고 섬세한 꽃이 달린 종류만',
+    light: '밝고 부드러운 자연광, 중성~쿨 색온도. 전체 이미지 톤이 그레이·화이트·블랙의 모노크롬 팔레트로 유지될 것',
   };
 }
 
@@ -311,9 +311,9 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       if (subType === 'holder')
         return `${prefix}팔찌 홀더 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌 한 개가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 위에서 살짝 내려다보는 앵글. 롤 옆에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
       if (subType === 'props')
-        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 배경 상단에 코튼플라워(목화솜) 한두 송이가 아웃포커스로 흐릿하게 보이는 라이프스타일 구도. 살짝 위에서 내려다보는 앵글. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
+        return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보이는 라이프스타일 구도. 살짝 위에서 내려다보는 앵글. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
       if (subType === 'slab')
-        return `${prefix}팔찌 슬랩 앵글 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 슬랩의 모서리와 두께감이 전면에 보이도록 비스듬한 앵글로 촬영. 배경에 코튼플라워가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
+        return `${prefix}팔찌 슬랩 앵글 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 슬랩의 모서리와 두께감이 전면에 보이도록 비스듬한 앵글로 촬영. 배경에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
       // flatlay (default)
       return `${prefix}팔찌 플랫레이 제품 사진. ${scene.surface} 위에 팔찌를 완전한 정원형으로 올려놓고 정수리 방향에서 수직으로 내려다보는 오버헤드 앵글. 소품 없이 팔찌만, 미니멀하고 깔끔한 구도. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
     }
