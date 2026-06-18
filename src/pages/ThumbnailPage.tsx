@@ -1414,7 +1414,7 @@ export default function ThumbnailPage() {
             }}>
               <button onClick={() => toggleSection('ratio')} style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '12px 20px 12px 28px', background: 'none', border: 'none', cursor: 'pointer',
               }}>
                 <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>이미지 비율</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1422,7 +1422,7 @@ export default function ThumbnailPage() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('ratio') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </button>
-            {openSections.has('ratio') && <div style={{ padding: '0 20px 16px 28px' }}>
+            {openSections.has('ratio') && <div style={{ padding: '0 20px 12px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
@@ -1506,7 +1506,7 @@ export default function ThumbnailPage() {
             }}>
               <button onClick={() => toggleSection('count')} style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '12px 20px 12px 28px', background: 'none', border: 'none', cursor: 'pointer',
               }}>
                 <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>생성 개수</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1514,7 +1514,7 @@ export default function ThumbnailPage() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('count') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </button>
-            {openSections.has('count') && <div style={{ padding: '0 20px 16px 28px' }}>
+            {openSections.has('count') && <div style={{ padding: '0 20px 12px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
@@ -1587,7 +1587,7 @@ export default function ThumbnailPage() {
             }}>
               <button onClick={() => toggleSection('format')} style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '12px 20px 12px 28px', background: 'none', border: 'none', cursor: 'pointer',
               }}>
                 <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>파일 형식</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1595,7 +1595,7 @@ export default function ThumbnailPage() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('format') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </button>
-            {openSections.has('format') && <div style={{ padding: '0 20px 16px 28px' }}>
+            {openSections.has('format') && <div style={{ padding: '0 20px 12px 28px' }}>
               <label style={{
                 fontFamily: font, fontSize: '12px', fontWeight: 400,
                 lineHeight: '17px', letterSpacing: '-0.24px',
@@ -1651,7 +1651,7 @@ export default function ThumbnailPage() {
             }}>
               <button onClick={() => toggleSection('refmode')} style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '12px 20px 12px 28px', background: 'none', border: 'none', cursor: 'pointer',
               }}>
                 <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>참고 방식</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1659,7 +1659,7 @@ export default function ThumbnailPage() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: openSections.has('refmode') ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </button>
-            {openSections.has('refmode') && <div style={{ padding: '0 20px 16px 28px' }}>
+            {openSections.has('refmode') && <div style={{ padding: '0 20px 12px 28px' }}>
                 <label style={{
                   display: 'none',
                 }}>
@@ -1722,7 +1722,7 @@ export default function ThumbnailPage() {
                 return (
                   <button onClick={() => toggleSection('cut')} style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '12px 20px 12px 28px', background: 'none', border: 'none', cursor: 'pointer',
                   }}>
                     <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>컷 프리셋</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1732,7 +1732,7 @@ export default function ThumbnailPage() {
                   </button>
                 );
               })()}
-            {openSections.has('cut') && <div style={{ padding: '0 20px 16px 28px' }}>
+            {openSections.has('cut') && <div style={{ padding: '0 20px 12px 28px' }}>
               {/* 제품 선택 드롭다운 */}
               <div style={{ position: 'relative', marginBottom: '6px' }}>
                 <select
@@ -2066,7 +2066,7 @@ export default function ThumbnailPage() {
               }}>
               <button onClick={() => toggleSection('variation')} style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px 14px 28px', background: 'none', border: 'none', cursor: 'pointer',
+                padding: '12px 20px 12px 28px', background: 'none', border: 'none', cursor: 'pointer',
               }}>
                 <span style={{ fontFamily: font, fontSize: '12px', fontWeight: 400, color: C.textPrimary, letterSpacing: '-0.24px' }}>변주 강도</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
