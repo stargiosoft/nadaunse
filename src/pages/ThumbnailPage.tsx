@@ -75,7 +75,7 @@ const PRODUCT_CUTS = [
 
 const BG_CONCEPTS: { id: BackgroundConcept; label: string }[] = [
   { id: 'pure', label: '퓨어' },
-  { id: 'heavy', label: '모던' },
+  { id: 'heavy', label: '무드' },
   { id: 'natural', label: '자연' },
 ];
 
@@ -230,9 +230,9 @@ function getColorBackground(color: string): string {
 
 function getHeavyScene(): { surface: string; props: string; light: string } {
   return {
-    surface: '매트한 웜 그레이 콘크리트 정사각형 블록 오브제 위에 팔찌 배치. 배경은 밝고 클린한 웜 그레이/오프화이트 플랫 서피스',
-    props: '소품 없음. 목화솜·드라이플라워·꽃·식물 소품 절대 금지. 팔찌와 콘크리트 블록만으로 구성. 그림자 최소화',
-    light: '부드럽게 확산된 자연광 — 방향감 없이 고르게 퍼진 소프트 라이팅. 팔찌 아래 아주 옅은 그림자만. 전체적으로 밝고 플랫한 미니멀 스튜디오 무드. 현대적이고 세련된 에디토리얼 주얼리 화보 스타일',
+    surface: '짙은 딥 네이비/블루블랙 매트 서피스 위에 날카롭게 갈라진 다크 차콜 슬레이트 자연석 한 조각을 배치하고 그 위에 팔찌를 걸쳐 올린 구도. 배경 전체가 깊고 어두운 네이비 블루 톤',
+    props: '거칠고 날카로운 단면의 다크 차콜 슬레이트 스톤 한 조각만. 목화솜·꽃·식물 소품 절대 금지',
+    light: '강한 단방향 스포트라이트 — 한 줄기 날카로운 빛이 어두운 배경을 가로질러 팔찌와 스톤에 집중됨. 팔찌 표면에 스타버스트 스펙큘러 하이라이트, 배경에 선명하고 드라마틱한 캐스트 섀도우. 카르티에·불가리 스타일의 시네마틱 럭셔리 다크 스튜디오 조명',
   };
 }
 
