@@ -127,6 +127,8 @@ const PRODUCTS = [
   { id: 'coral_gold',        category: 'love',    label: '산호+실버골드',           color: '레드 코랄',       stone: '산호' },
   { id: 'emerald_rutile',    category: 'love',    label: '에메랄드+금침수정',       color: '초록 골드',       stone: '에메랄드, 금침수정' },
   { id: 'coral_turquoise',   category: 'love',    label: '산호+터키석+파이라이트',  color: '레드 코랄',       stone: '산호, 터키석, 골드파이라이트' },
+  { id: 'red_zircon',        category: 'love',    label: '레드 지르콘',             color: '레드',            stone: '레드 지르콘' },
+  { id: 'green_onyx_love',   category: 'love',    label: '그린 오닉스',             color: '초록',            stone: '그린 오닉스' },
   // 재물운
   { id: 'green_onyx_a',      category: 'money',   label: '그린오닉스 A',            color: '초록',            stone: '그린 오닉스' },
   { id: 'green_onyx_b',      category: 'money',   label: '그린오닉스 B',            color: '초록',            stone: '그린 오닉스' },
