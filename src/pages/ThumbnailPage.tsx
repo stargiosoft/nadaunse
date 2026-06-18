@@ -1435,6 +1435,7 @@ export default function ThumbnailPage() {
             position: 'sticky', top: '68px',
             display: 'flex', flexDirection: 'column',
             paddingLeft: '28px',
+            marginTop: '-20px',
           }}>
             {/* ── 이미지 비율 ── */}
             <div style={{
