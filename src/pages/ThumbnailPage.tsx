@@ -309,7 +309,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   switch (cutId) {
     case 'product': {
       if (subType === 'holder')
-        return `${prefix}팔찌 홀더 제품 사진. 크림색 원통형 주얼리 디스플레이 롤에 팔찌 한 개가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 위에서 살짝 내려다보는 앵글. 롤 옆에 유칼립투스 잎 한두 개. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
+        return `${prefix}팔찌 홀더 제품 사진. 화이트 또는 크림 원통형 주얼리 디스플레이 롤에 팔찌 한 개가 끼워진 상태. ${scene.surface} 위에 롤을 비스듬히 놓고 위에서 살짝 내려다보는 앵글. 롤 옆에 ${scene.props}. 탁하거나 흐릿한 느낌 없이 선명하고 밝게. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
       if (subType === 'props')
         return `${prefix}팔찌 소품 연출 제품 사진. ${scene.surface} 위에 팔찌를 원형으로 놓고, 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보이는 라이프스타일 구도. 살짝 위에서 내려다보는 앵글. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
       if (subType === 'slab')
