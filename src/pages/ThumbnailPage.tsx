@@ -780,7 +780,7 @@ export default function ThumbnailPage() {
     if (typeof window === 'undefined') return '';
     return localStorage.getItem('thumbnail-fixed-prompt') || '';
   });
-  const [ratioId, setRatioId] = useState<string>('9:16');
+  const [ratioId, setRatioId] = useState<string>('1:1');
   const [referenceMode, setReferenceMode] = useState<string>('faithful');
   // 여백 채우기 모드는 referenceMode에서 파생 (별도 체크박스 제거)
   const autoFillBackground = referenceMode === 'outpaint';
