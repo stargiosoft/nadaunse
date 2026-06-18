@@ -269,10 +269,13 @@ function getModelAppearance(color: string, gender: 'female' | 'male'): string {
   return pool[hashString(key) % pool.length];
 }
 
-function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, subType?: string, outfitOverride?: string): string {
+function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?: 'female' | 'male', pose?: string, subType?: string, outfitOverride?: string, hasStoneRef?: boolean): string {
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
-  const fidelityNote = '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 전체적으로 밝고 크린한 톤. 저렴하거나 아마추어 느낌 절대 금지. ';
+  // 원석 레퍼런스가 있을 때는 "원본 100% 재현" 대신 비즈·스페이서만 잠금 → stoneGuidePreamble이 원석을 따로 지시
+  const fidelityNote = hasStoneRef
+    ? '【중요】레퍼런스 이미지의 팔찌 비즈(색상·배열·크기·형태·소재)와 골드 스페이서를 절대 변형하지 말 것. 구도와 배경만 변경할 것. 팔찌의 원석/펜던트 디자인은 별도 원석 상세 레퍼런스 기준으로 교체. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 전체적으로 밝고 크린한 톤. 저렴하거나 아마추어 느낌 절대 금지. '
+    : '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 전체적으로 밝고 크린한 톤. 저렴하거나 아마추어 느낌 절대 금지. ';
   const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
   const scene = color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' };
 
@@ -1815,7 +1818,7 @@ export default function ThumbnailPage() {
                       const sub = activeCutPreset === 'product' ? productCut : activeCutPreset === 'white' ? whiteType : undefined;
                       const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
                       const ov = activeCutPreset === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
-                      setPrompt(buildCutPrompt(activeCutPreset, prod.color, prod.stone, g, po, sub, ov));
+                      setPrompt(buildCutPrompt(activeCutPreset, prod.color, prod.stone, g, po, sub, ov, !!stoneRefBase64));
                     }
                   }}
                   className="outline-none"
@@ -1887,7 +1890,7 @@ export default function ThumbnailPage() {
                         const s = cut.id === 'product' ? productCut : cut.id === 'white' ? whiteType : undefined;
                         const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
                         const ov = cut.id === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
-                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, g, p, s, ov));
+                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, g, p, s, ov, !!stoneRefBase64));
                         setActiveCutPreset(cut.id);
                       }}
                       onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
@@ -1915,7 +1918,7 @@ export default function ThumbnailPage() {
                         key={a.id}
                         onClick={() => {
                           setProductCut(a.id);
-                          setPrompt(buildCutPrompt('product', productColor, stoneName, undefined, undefined, a.id));
+                          setPrompt(buildCutPrompt('product', productColor, stoneName, undefined, undefined, a.id, undefined, !!stoneRefBase64));
                         }}
                         onMouseEnter={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                         onMouseLeave={(e) => { if (!aActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -1947,7 +1950,7 @@ export default function ThumbnailPage() {
                             setWearingGender(g);
                             const pool = g === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
                             const ov = pool.find(o => o.id === wearingOutfitId)?.outfit ?? '';
-                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, g, wearingPose, undefined, ov));
+                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, g, wearingPose, undefined, ov, !!stoneRefBase64));
                           }}
                           onMouseEnter={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                           onMouseLeave={(e) => { if (!gActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -1974,7 +1977,7 @@ export default function ThumbnailPage() {
                             setWearingPose(p.id);
                             const pool2 = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
                             const ov2 = pool2.find(o => o.id === wearingOutfitId)?.outfit ?? '';
-                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, p.id, undefined, ov2));
+                            setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, p.id, undefined, ov2, !!stoneRefBase64));
                           }}
                           onMouseEnter={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                           onMouseLeave={(e) => { if (!pActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -2006,7 +2009,7 @@ export default function ThumbnailPage() {
                               <button
                                 onClick={() => {
                                   setWearingOutfitId('');
-                                  setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, ''));
+                                  setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, '', !!stoneRefBase64));
                                 }}
                                 style={{
                                   height: '24px', borderRadius: '6px',
@@ -2026,7 +2029,7 @@ export default function ThumbnailPage() {
                                 key={o.id}
                                 onClick={() => {
                                   setWearingOutfitId(o.id);
-                                  setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, o.outfit));
+                                  setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, o.outfit, !!stoneRefBase64));
                                 }}
                                 style={{
                                   height: '24px', borderRadius: '6px',
@@ -2094,7 +2097,7 @@ export default function ThumbnailPage() {
                         key={w.id}
                         onClick={() => {
                           setWhiteType(w.id);
-                          setPrompt(buildCutPrompt('white', productColor, stoneName, undefined, undefined, w.id));
+                          setPrompt(buildCutPrompt('white', productColor, stoneName, undefined, undefined, w.id, undefined, !!stoneRefBase64));
                         }}
                         onMouseEnter={(e) => { if (!wActive) e.currentTarget.style.backgroundColor = '#e8f5f5'; }}
                         onMouseLeave={(e) => { if (!wActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
