@@ -2219,7 +2219,7 @@ export default function ThumbnailPage() {
                 <textarea
                   value={persistentPrompt}
                   onChange={e => setPersistentPrompt(e.target.value)}
-                  placeholder="예: 항상 한국어 텍스트는 또렷하게, 인물은 가운데 정렬, 톤은 따뜻하게"
+                  placeholder="예: 전체적으로 밝고 크린한 톤 유지 / 과포화 금지 / 불필요한 소품 추가 금지 / 팔찌 비즈 색상·배열 절대 변형 금지"
                   rows={3}
                   className="w-full outline-none bg-transparent resize-y"
                   style={{
