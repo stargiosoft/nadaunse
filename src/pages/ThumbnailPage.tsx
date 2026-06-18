@@ -127,8 +127,7 @@ const PRODUCTS = [
   { id: 'coral_gold',        category: 'love',    label: '산호+실버골드',           color: '레드 코랄',       stone: '산호' },
   { id: 'emerald_rutile',    category: 'love',    label: '에메랄드+금침수정',       color: '초록 골드',       stone: '에메랄드, 금침수정' },
   { id: 'coral_turquoise',   category: 'love',    label: '산호+터키석+파이라이트',  color: '레드 코랄',       stone: '산호, 터키석, 골드파이라이트' },
-  { id: 'red_zircon',        category: 'love',    label: '레드 지르콘',             color: '레드',            stone: '레드 지르콘' },
-  { id: 'green_onyx_love',   category: 'love',    label: '그린 오닉스',             color: '초록',            stone: '그린 오닉스' },
+  { id: 'red_zircon_green_onyx', category: 'love', label: '레드 지르콘+그린 오닉스', color: '레드',            stone: '레드 지르콘, 그린 오닉스' },
   // 재물운
   { id: 'green_onyx_a',      category: 'money',   label: '그린오닉스 A',            color: '초록',            stone: '그린 오닉스' },
   { id: 'green_onyx_b',      category: 'money',   label: '그린오닉스 B',            color: '초록',            stone: '그린 오닉스' },
@@ -305,7 +304,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       if (pose === 'face_elegant')
         return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 주얼리 화보 모델 자유 포즈 — 아래 중 하나: (1) 양 손목을 교차해 앞으로 내민 포즈, (2) 팔찌 착용 손을 반대 손이 살며시 받치며 손목을 위로 세운 포즈, (3) 손목을 어깨 높이로 들어 팔찌를 강조하는 사이드 포즈, (4) 손목을 쇄골 앞에 가볍게 올린 포즈. 얼굴은 완전히 프레임 밖. 손·손목·팔·쇄골·상체만. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
       // wrist (default)
-      return `${prefix}${noFace}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 【구도】손목 세로 클로즈업 — ${wristDesc}을 카메라 정면으로 수직에 가깝게 세워 뻗은 상태, 손가락은 자연스럽게 아래로 살짝 꺾여 이완. 팔찌가 손목 중앙에 수평으로 위치. 소매 끝이 손목 아래 프레임 하단에 살짝 보임. 손목이 프레임 세로 길이의 약 2/3를 차지하는 타이트 클로즈업. 아이레벨 또는 살짝 로우 앵글. 얼굴은 완전히 프레임 밖. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
+      return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 【크롭 강제 — 손목 타이트 클로즈업】프레임에 손·손목·손목 위 팔뚝 아래 1/3만 담을 것. 어깨·쇄골·상체·얼굴은 프레임에 단 1픽셀도 들어오지 않음. 이것은 전신샷이나 상반신샷이 절대 아님. 【구도】${wristDesc}을 카메라 정면으로 수직에 가깝게 세워 뻗은 상태, 손가락은 자연스럽게 아래로 살짝 꺾여 이완. 팔찌가 손목 중앙에 수평으로 위치. 소매 끝이 프레임 하단 가장자리에 살짝 걸쳐 보임. 손목이 프레임 세로 길이의 70% 이상을 차지하는 익스트림 클로즈업. 아이레벨 또는 살짝 로우 앵글. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
       return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
@@ -766,6 +765,7 @@ export default function ThumbnailPage() {
 
   // 영역 지정 수정 (인페인팅) — 결과 이미지 위에서 사각형 드래그 → 그 영역만 수정. 여러 개 선택 가능.
   const [regionMode, setRegionMode] = useState(false);
+  const [stoneChangeMode, setStoneChangeMode] = useState(false); // 원석/장식 교체 전용 모드
   const [selRects, setSelRects] = useState<NormRect[]>([]);
   const [draftRect, setDraftRect] = useState<NormRect | null>(null); // 드래그 중인 임시 박스
   const draftRectRef = useRef<NormRect | null>(null); // pointerup 시 최신 draft를 안전하게 읽기 위함
@@ -1264,7 +1264,7 @@ export default function ThumbnailPage() {
   // 선택 이미지가 바뀌면 영역 선택 초기화 (좌표가 다른 이미지에 맞지 않으므로)
   useEffect(() => { setSelRects([]); setDraftRect(null); }, [selectedImageId]);
   // 결과 화면을 벗어나면 영역 지정 모드 해제
-  useEffect(() => { if (step !== 'result') { setRegionMode(false); setSelRects([]); setDraftRect(null); setDragStart(null); } }, [step]);
+  useEffect(() => { if (step !== 'result') { setRegionMode(false); setStoneChangeMode(false); setSelRects([]); setDraftRect(null); setDragStart(null); } }, [step]);
 
   // Shift+1 단축키 → 썸네일 생성하기
   useEffect(() => {
@@ -2732,12 +2732,17 @@ export default function ThumbnailPage() {
                         display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
                       }}>
                         <button
-                          onClick={() => { setRegionMode(m => !m); setSelRects([]); setDraftRect(null); setDragStart(null); }}
+                          onClick={() => {
+                            const next = !regionMode;
+                            setRegionMode(next);
+                            if (!next) setStoneChangeMode(false);
+                            setSelRects([]); setDraftRect(null); setDragStart(null);
+                          }}
                           style={{
                             height: '32px', padding: '0 14px', borderRadius: '10px',
-                            border: `1px solid ${regionMode ? C.primary : C.borderDefault}`,
-                            backgroundColor: regionMode ? C.primaryLight : C.surface,
-                            color: regionMode ? C.primaryDark : C.textSecondary,
+                            border: `1px solid ${regionMode && !stoneChangeMode ? C.primary : C.borderDefault}`,
+                            backgroundColor: regionMode && !stoneChangeMode ? C.primaryLight : C.surface,
+                            color: regionMode && !stoneChangeMode ? C.primaryDark : C.textSecondary,
                             cursor: 'pointer',
                             fontFamily: font, fontSize: '12px', fontWeight: 400,
                             letterSpacing: '-0.24px', transition: 'all 0.15s ease',
@@ -2747,7 +2752,27 @@ export default function ThumbnailPage() {
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="3" strokeDasharray="4 3" />
                           </svg>
-                          {regionMode ? '영역 지정 중' : '영역 지정해서 수정'}
+                          {regionMode && !stoneChangeMode ? '영역 지정 중' : '영역 지정해서 수정'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setStoneChangeMode(true);
+                            setRegionMode(true);
+                            setSelRects([]); setDraftRect(null); setDragStart(null);
+                            setEditPrompt('');
+                          }}
+                          style={{
+                            height: '32px', padding: '0 14px', borderRadius: '10px',
+                            border: `1px solid ${stoneChangeMode ? '#e8a020' : C.borderDefault}`,
+                            backgroundColor: stoneChangeMode ? '#fff8ee' : C.surface,
+                            color: stoneChangeMode ? '#c47a10' : C.textSecondary,
+                            cursor: 'pointer',
+                            fontFamily: font, fontSize: '12px', fontWeight: 400,
+                            letterSpacing: '-0.24px', transition: 'all 0.15s ease',
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          }}
+                        >
+                          💎 원석/장식 교체
                         </button>
                         {regionMode && (
                           <span style={{
@@ -2787,9 +2812,11 @@ export default function ThumbnailPage() {
                             }
                           }}
                           placeholder={
-                            regionMode
-                              ? (selRects.length > 0 ? '선택한 부분(들)을 어떻게 바꿀까요? (예: 이 별을 더 크게)' : '먼저 이미지에서 수정할 영역을 드래그하세요')
-                              : '어떻게 수정할까요? (예: 여자 드레스를 흰색으로)'
+                            stoneChangeMode
+                              ? (selRects.length > 0 ? '어떤 원석/장식으로 교체할까요? (예: 레드 코랄을 터키석으로)' : '팔찌에서 원석/장식 부분을 드래그해 선택하세요')
+                              : regionMode
+                                ? (selRects.length > 0 ? '선택한 부분(들)을 어떻게 바꿀까요? (예: 이 별을 더 크게)' : '이미지에서 수정할 영역을 드래그하세요')
+                                : '어떻게 수정할까요? (예: 여자 드레스를 흰색으로)'
                           }
                           disabled={editing || (regionMode && selRects.length === 0)}
                           className="outline-none"
