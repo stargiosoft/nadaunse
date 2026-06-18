@@ -901,6 +901,7 @@ export default function ThumbnailPage() {
   };
 
   const [isCompDragging, setIsCompDragging] = useState(false);
+  const [isStoneDragging, setIsStoneDragging] = useState(false);
 
   const handleCompDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -920,6 +921,29 @@ export default function ThumbnailPage() {
     setIsCompDragging(false);
     const files = Array.from(e.dataTransfer.files ?? []);
     processCompositionFiles(files);
+  };
+
+  const handleStoneDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsStoneDragging(true);
+  };
+
+  const handleStoneDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsStoneDragging(false);
+  };
+
+  const handleStoneDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsStoneDragging(false);
+    const file = Array.from(e.dataTransfer.files ?? []).find(f => f.type.startsWith('image/'));
+    if (!file) return;
+    const dataUrl = await readFileAsDataUrl(file);
+    setStoneRefPreview(dataUrl);
+    setStoneRefBase64(dataUrl.split(',')[1]);
   };
 
   const removeCompositionAt = (index: number) => {
@@ -2427,7 +2451,17 @@ export default function ThumbnailPage() {
                 원석 클로즈업 — 색상·컷·형태·마감을 이 이미지 기준으로 생성
               </p>
               {stoneRefPreview ? (
-                <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+                <div
+                  style={{
+                    position: 'relative', width: '80px', height: '80px',
+                    borderRadius: '16px',
+                    outline: isStoneDragging ? `2px solid ${C.primary}` : 'none',
+                    transition: 'outline 0.15s ease',
+                  }}
+                  onDragOver={handleStoneDragOver}
+                  onDragLeave={handleStoneDragLeave}
+                  onDrop={handleStoneDrop}
+                >
                   <img
                     src={stoneRefPreview}
                     alt="원석 상세"
@@ -2437,24 +2471,23 @@ export default function ThumbnailPage() {
               ) : (
                 <label style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  height: '44px', borderRadius: '14px', border: `1px dashed ${C.borderDefault}`,
+                  height: '44px', borderRadius: '14px',
+                  border: isStoneDragging ? `1px dashed ${C.primary}` : `1px dashed ${C.borderDefault}`,
                   cursor: 'pointer', fontFamily: font, fontSize: '11px', color: C.textCaption,
-                  backgroundColor: C.surface, transition: 'all 0.15s ease',
+                  backgroundColor: isStoneDragging ? '#f0f4ff' : C.surface, transition: 'all 0.15s ease',
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#cfcfcf'; e.currentTarget.style.backgroundColor = '#fafafa'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderDefault; e.currentTarget.style.backgroundColor = C.surface; }}
+                  onDragOver={handleStoneDragOver}
+                  onDragLeave={handleStoneDragLeave}
+                  onDrop={handleStoneDrop}
+                  onMouseEnter={e => { if (!isStoneDragging) { e.currentTarget.style.borderColor = '#cfcfcf'; e.currentTarget.style.backgroundColor = '#fafafa'; } }}
+                  onMouseLeave={e => { if (!isStoneDragging) { e.currentTarget.style.borderColor = C.borderDefault; e.currentTarget.style.backgroundColor = C.surface; } }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke={C.textCaption} strokeWidth="1.4" strokeLinecap="round"/></svg>
                   원석 이미지 업로드
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const dataUrl = await new Promise<string>((res, rej) => {
-                      const r = new FileReader();
-                      r.onload = ev => res(ev.target?.result as string);
-                      r.onerror = rej;
-                      r.readAsDataURL(file);
-                    });
+                    const dataUrl = await readFileAsDataUrl(file);
                     setStoneRefPreview(dataUrl);
                     setStoneRefBase64(dataUrl.split(',')[1]);
                     e.target.value = '';
