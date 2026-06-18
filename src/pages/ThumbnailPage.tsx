@@ -493,11 +493,32 @@ async function buildRegionMarkedImage(src: string, rects: NormRect[]): Promise<s
   ctx.drawImage(img, 0, 0, W, H);
   ctx.strokeStyle = 'rgba(255, 0, 80, 0.95)';
   ctx.lineWidth = Math.max(3, Math.round(Math.min(W, H) * 0.006));
-  const inset = ctx.lineWidth; // 선을 사각형 안쪽으로 살짝 들여, 합성 영역 경계 바로 안에 위치하게
+  const inset = ctx.lineWidth;
   for (const rect of rects) {
     const rx = Math.round(rect.x * W), ry = Math.round(rect.y * H);
     const rw = Math.round(rect.w * W), rh = Math.round(rect.h * H);
     ctx.strokeRect(rx + inset, ry + inset, Math.max(1, rw - inset * 2), Math.max(1, rh - inset * 2));
+  }
+  return canvas.toDataURL('image/png').split(',')[1] || '';
+}
+
+// 원석 교체 전용: 선택 영역을 중성 회색으로 완전히 지워서 AI가 "빈칸 채우기"(진짜 인페인팅)로 처리하게 함.
+// "바꿔줘"가 아닌 "여기 빈 공간에 이 원석을 그려줘" 방식 → AI가 주변 맥락(비즈·배경)을 보고
+// 기존 원석 이미지의 영향 없이 지정한 원석만 생성.
+async function buildRegionMaskedImage(src: string, rects: NormRect[]): Promise<string> {
+  const img = await loadImageEl(src);
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas context unavailable');
+  ctx.drawImage(img, 0, 0, W, H);
+  for (const rect of rects) {
+    const rx = Math.round(rect.x * W), ry = Math.round(rect.y * H);
+    const rw = Math.round(rect.w * W), rh = Math.round(rect.h * H);
+    // 선택 영역을 중성 회색(#c8c8c8)으로 채워 원본 원석 픽셀을 완전히 제거
+    ctx.fillStyle = '#c8c8c8';
+    ctx.fillRect(rx, ry, rw, rh);
   }
   return canvas.toDataURL('image/png').split(',')[1] || '';
 }
@@ -1134,14 +1155,18 @@ export default function ThumbnailPage() {
     const newId = images.reduce((max, img) => Math.max(max, img.id), 0) + 1;
 
     try {
-      const markedBase64 = await buildRegionMarkedImage(target.src, rects);
+      // 원석 교체: 영역을 회색으로 지워 진짜 인페인팅(빈칸 채우기)으로 처리
+      // 일반 수정: 빨간 테두리만 표시해 AI가 "이 영역을 바꿔라"로 인식
+      const inputBase64 = stoneChangeMode
+        ? await buildRegionMaskedImage(target.src, rects)
+        : await buildRegionMarkedImage(target.src, rects);
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-thumbnail-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: combinedPrompt,
           aspect_ratio: ratioId,
-          reference_images: [markedBase64],
+          reference_images: [inputBase64],
           reference_mode: stoneChangeMode ? 'faithful' : 'style_and_character',
           edit_region: true,
           edit_region_count: rects.length,
