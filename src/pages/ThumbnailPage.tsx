@@ -961,9 +961,13 @@ export default function ThumbnailPage() {
     const userPrompt = (promptOverride || prompt).trim();
     const fixedPrompt = persistentPrompt.trim();
     const combinedPrompt = [userPrompt, fixedPrompt].filter(Boolean).join('\n\n');
-    // auto_fill 모드에서는 user prompt가 비어 있으면 백엔드의 outpaint 프롬프트가 전부 처리하므로 fallback 불필요.
-    // 이전 fallback은 "Keep ... do not alter"라고 보내서 모델이 입력(흰 영역 포함)을 그대로 출력하는 부작용이 있었음.
-    const effectivePrompt = combinedPrompt;
+    // 원석 상세 레퍼런스가 있으면 프롬프트 최상단에 원석 잠금 지시문 주입.
+    // 백엔드의 "레퍼런스 전체 보존" 규칙보다 명시적 USER INSTRUCTION이 우선되므로
+    // 별첨 원석 이미지 기준으로 원석만 교체하도록 모델에 직접 지시한다.
+    const stoneLockPrefix = stoneRefBase64
+      ? `【PENDANT / STONE LOCK — 최우선 규칙】\n이 요청에는 원석 상세 레퍼런스 이미지가 별첨되어 있음. 팔찌의 펜던트·원석·챰(pendant/stone/charm)은 반드시 별첨 원석 이미지의 색상·컷·형태·마감을 100% 그대로 재현할 것. 팔찌 비즈·배열·골드 스페이서·배경 등 나머지 모든 요소는 메인 레퍼런스 이미지를 따름. 원석 디자인 자의적 해석·변형·창작 절대 금지.\n\n`
+      : '';
+    const effectivePrompt = stoneLockPrefix + combinedPrompt;
     // 미지원 비율은 가장 가까운 Gemini 지원 비율로 매핑, 다운로드 시 크롭 (GPT는 자체 매핑)
     const geminiRatio = ratioId === 'saju-consult' ? '16:9'
       : ratioId === 'smartstore-detail' ? '2:3'

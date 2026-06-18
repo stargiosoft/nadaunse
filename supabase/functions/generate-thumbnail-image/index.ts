@@ -762,24 +762,25 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
     }
 
     // 원석 상세 레퍼런스 — 원석의 색상·컷·형태·마감만 복사, 팔찌 구조·비즈·배경은 무시
+    // 맨 마지막(recency bias)에 배치해 모델이 마지막으로 읽고 우선 적용하도록 한다.
     if (typeof stone_reference_image === 'string' && stone_reference_image.length > 0) {
       parts.push({
-        text: `[STONE / GEM DETAIL REFERENCE — ATTACHED BELOW]
-The next image is a STONE/GEM DESIGN REFERENCE only. Use it to determine exactly what the pendant/stone/charm in the final image should look like.
+        text: `[STONE / GEM DETAIL REFERENCE — ★HARD RULE★ ATTACHED BELOW]
+The USER INSTRUCTION already contains a [PENDANT / STONE LOCK] directive that overrides all other rules. The following image is the VISUAL ANCHOR for that directive.
 
-Copy EXCLUSIVELY from this stone reference:
-• Stone color (hue, saturation, transparency vs opacity)
-• Cut type: faceted/brilliant vs smooth cabochon vs matte/frosted — exactly as shown
-• Stone shape (teardrop / oval / round / drop) and its proportions
-• Surface finish: shiny/glossy vs matte/frosted vs translucent vs opaque
-• Approximate stone size relative to the surrounding beads
+WHAT TO COPY from this stone reference (MANDATORY — zero deviation allowed):
+• Cut type: faceted/brilliant vs smooth CABOCHON vs MATTE/FROSTED — reproduce EXACTLY as shown. If the stone in this image is smooth and matte, render it smooth and matte. If it is faceted and sparkly, render it faceted and sparkly. Do NOT default to your own preference.
+• Surface finish: shiny/glossy vs matte/frosted vs translucent vs opaque — IDENTICAL to this image.
+• Stone color: exact hue, saturation, and transparency level — not a creative reinterpretation.
+• Stone shape (teardrop / oval / round / drop) and its proportions — match exactly.
+• Stone size relative to surrounding beads — match approximately.
 
-DO NOT copy from this reference:
-• Any bracelet bead arrangement, bead type, bead color, or bead size
-• Any metal findings, clasps, or wire
-• Any background, surface, or setting
-• Any composition, framing, or camera angle
-This image defines ONLY how the stone/pendant should look — everything else (bracelet structure, composition, background) comes from the main reference image and the user instruction.`,
+WHAT NOT TO COPY from this reference:
+• Bracelet bead arrangement, bead type, bead color, or bead size
+• Metal findings, clasps, or wire
+• Background, surface, or setting
+• Composition, framing, or camera angle
+This image defines ONLY the pendant/stone appearance. Everything else (bracelet structure, composition, background) comes from the main reference image and the user instruction.`,
       })
       parts.push({
         inlineData: {
