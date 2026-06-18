@@ -310,7 +310,7 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req)
 
   try {
-    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, outfit_reference_image, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive, provider } = await req.json()
+    const { prompt, reference_image, reference_images, reference_mode, composition_reference_images, outfit_reference_image, stone_reference_image, aspect_ratio, auto_fill_background, seed, variation_directive, variation_index, variation_total, image_variation, edit_region, edit_region_count, edit_full, framing_directive, provider } = await req.json()
 
     // auto_fill_background 모드는 user prompt 없이도 동작 (backend prompt가 task를 완전히 정의)
     if (!prompt?.trim() && !auto_fill_background) {
@@ -758,6 +758,34 @@ If the instruction's STYLE hint conflicts with the reference's medium (e.g. asks
 • If the user instruction itself asks for multiple outfit/pose/scene variations in a single output (e.g. "show 3 different outfits"), pick ONE variation and render it as a single full image rather than a collage.`
       parts.push({
         text: `USER INSTRUCTION: ${prompt}\n\nGenerate a professional thumbnail image that follows the user instruction above.${formatRules}`,
+      })
+    }
+
+    // 원석 상세 레퍼런스 — 원석의 색상·컷·형태·마감만 복사, 팔찌 구조·비즈·배경은 무시
+    if (typeof stone_reference_image === 'string' && stone_reference_image.length > 0) {
+      parts.push({
+        text: `[STONE / GEM DETAIL REFERENCE — ATTACHED BELOW]
+The next image is a STONE/GEM DESIGN REFERENCE only. Use it to determine exactly what the pendant/stone/charm in the final image should look like.
+
+Copy EXCLUSIVELY from this stone reference:
+• Stone color (hue, saturation, transparency vs opacity)
+• Cut type: faceted/brilliant vs smooth cabochon vs matte/frosted — exactly as shown
+• Stone shape (teardrop / oval / round / drop) and its proportions
+• Surface finish: shiny/glossy vs matte/frosted vs translucent vs opaque
+• Approximate stone size relative to the surrounding beads
+
+DO NOT copy from this reference:
+• Any bracelet bead arrangement, bead type, bead color, or bead size
+• Any metal findings, clasps, or wire
+• Any background, surface, or setting
+• Any composition, framing, or camera angle
+This image defines ONLY how the stone/pendant should look — everything else (bracelet structure, composition, background) comes from the main reference image and the user instruction.`,
+      })
+      parts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: stone_reference_image,
+        },
       })
     }
 
