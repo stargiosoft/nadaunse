@@ -230,7 +230,7 @@ function getColorBackground(color: string): string {
 
 function getHeavyScene(): { surface: string; props: string; light: string } {
   return {
-    surface: '라이트 그레이 매트 스톤 슬랩 — 광택·반짝임 없이 매트한 표면, 밝고 깨끗한 라이트 그레이 색조, 은은한 스펙클 텍스처. 퓨어와 동일한 슬랩 구도',
+    surface: '화이트 그라나이트(granite) 스톤 슬랩 — 흰 베이스에 미세한 블랙·다크그레이 스펙클 입자가 표면 전체에 촘촘하고 균일하게 박혀 있으며, 돌의 결·입자·미세 균열이 실제 화강암처럼 눈에 보이도록 리얼하게 표현. 광택·반짝임 없이 완전 매트. 퓨어와 동일한 슬랩 구도',
     props: '프레임 한쪽 구석에 화이트 안개꽃(gypsophila) 또는 실버 팜파스 그라스 드라이플라워 한 줄기만. 목화솜(cotton flower)·코튼플라워·풍성한 흰 솜털 꽃봉오리 절대 금지',
     light: '밝고 선명한 자연광, 쿨 화이트 색온도. 표면에 광택·반사 없이 매트하게. 탁하거나 노르스름한 색조 없이 화이트·쿨그레이·블랙의 선명한 모노크롬 톤',
   };
