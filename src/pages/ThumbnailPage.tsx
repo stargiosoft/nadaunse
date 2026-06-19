@@ -837,8 +837,8 @@ export default function ThumbnailPage() {
   const [customCountText, setCustomCountText] = useState('');
   const [fileFormat, setFileFormat] = useState<string>('png');
   // 변주 강도 슬라이더 (생성 개수 ≥ 2일 때만 의미 있음)
-  const [angleVariation, setAngleVariation] = useState<number>(33);
-  const [imageVariation, setImageVariation] = useState<number>(33);
+  const [angleVariation, setAngleVariation] = useState<number>(0);
+  const [imageVariation, setImageVariation] = useState<number>(0);
   const [allSame, setAllSame] = useState(false);
   const [savedVariation, setSavedVariation] = useState({ angle: 33, image: 33 });
   const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
