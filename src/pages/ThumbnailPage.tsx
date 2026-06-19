@@ -149,6 +149,7 @@ const PRODUCTS = [
   { id: 'green_onyx_b',      category: 'money',   label: '그린오닉스 B',            color: '초록',            stone: '그린 오닉스' },
   { id: 'carnelian',         category: 'money',   label: '카넬리언',                color: '주황 오렌지',     stone: '카넬리언' },
   { id: 'black_tiger_eye',   category: 'money',   label: '블랙호안석',              color: '검정',            stone: '블랙 호안석' },
+  { id: 'malachite_ruby',    category: 'money',   label: '말라카이트+루비+담수진주+실버골드', color: '초록',       stone: '말라카이트, 루비, 담수진주' },
   // 액막이
   { id: 'onyx',              category: 'shield',  label: '오닉스',                  color: '검정',            stone: '오닉스' },
   { id: 'hematite',          category: 'shield',  label: '헤마타이트',              color: '다크 그레이',     stone: '헤마타이트' },
