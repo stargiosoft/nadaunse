@@ -313,9 +313,10 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   const stone = stoneName.trim();
   const productLabel = [color.trim(), stone ? `${stone} 원석` : ''].filter(Boolean).join(' ');
   // 원석 레퍼런스가 있을 때는 "원본 100% 재현" 대신 비즈·스페이서만 잠금 → stoneGuidePreamble이 원석을 따로 지시
+  const hardwareLock = '클라스프(잠금장치·연결고리) 형태·크기·색상·소재 변형 절대 금지. 클라스프 양쪽 연결 장식 비즈(실버/골드 스페이서·꽃잎형·원형 등 금속 부속) 개수·위치·형태·색상 변형 절대 금지. 이 부속들은 팔찌 제품의 일부이며 임의로 생략·교체·디자인 변경 금지. ';
   const fidelityNote = hasStoneRef
-    ? '【중요】레퍼런스 이미지의 팔찌 비즈(색상·배열·크기·형태·소재)와 골드 스페이서를 절대 변형하지 말 것. 구도와 배경만 변경할 것. 팔찌의 원석/펜던트 디자인은 별도 원석 상세 레퍼런스 기준으로 교체. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 저렴하거나 아마추어 느낌 절대 금지. '
-    : '【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. 팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 저렴하거나 아마추어 느낌 절대 금지. ';
+    ? `【중요】레퍼런스 이미지의 팔찌 비즈(색상·배열·크기·형태·소재)와 골드 스페이서를 절대 변형하지 말 것. ${hardwareLock}구도와 배경만 변경할 것. 팔찌의 원석/펜던트 디자인은 별도 원석 상세 레퍼런스 기준으로 교체. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 저렴하거나 아마추어 느낌 절대 금지. `
+    : `【중요】레퍼런스 이미지의 팔찌 디자인(비즈 색상·배열·크기·형태·소재)을 절대 변형하지 말 것. ${hardwareLock}팔찌 원본을 100% 그대로 재현하고 구도와 배경만 변경할 것. 【촬영 기준】한국 고급 주얼리 브랜드 스튜디오 화보. 소프트박스 스튜디오 조명, 미디엄 포맷 카메라. 선명한 핀포커스, 완벽한 노출. 저렴하거나 아마추어 느낌 절대 금지. `;
   const prefix = fidelityNote + (productLabel ? `${productLabel} ` : '');
   const scene = bgConcept === 'heavy'
     ? getHeavyScene()
@@ -356,7 +357,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       return `${prefix}한국 고급 주얼리 브랜드 화보. 모델: ${modelLock}. 【크롭 강제 — 손목 타이트 클로즈업】프레임에 손·손목·손목 위 팔뚝 아래 1/3만 담을 것. 어깨·쇄골·상체·얼굴은 프레임에 단 1픽셀도 들어오지 않음. 이것은 전신샷이나 상반신샷이 절대 아님. 【구도】${wristDesc}을 카메라 정면으로 수직에 가깝게 세워 뻗은 상태, 손가락은 자연스럽게 아래로 살짝 꺾여 이완. 팔찌가 손목 중앙에 수평으로 위치. 소매 끝이 프레임 하단 가장자리에 살짝 걸쳐 보임. 손목이 프레임 세로 길이의 70% 이상을 차지하는 익스트림 클로즈업. 아이레벨 또는 살짝 로우 앵글. 의상: ${outfitLock}. 배경: ${wearingBg}. 소프트박스 조명. 팔찌에 핀포커스.`;
     }
     case 'detail':
-      return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
+      return `${prefix}팔찌 클로즈업 디테일 사진. ${scene.surface} 위에 팔찌를 일직선으로 뻗게 놓고 카메라를 낮춰 수평에 가까운 낮은 앵글(eye-level)로 촬영. 팔찌가 프레임을 가득 채우도록 가까이. 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보임. ${stone ? `${stone} 원석의` : '비즈의'} 색감·질감이 선명하게 보이도록. 팔찌의 비즈 배열·색상·형태를 절대 변형하지 말 것. 클라스프·연결 장식 비즈 등 금속 부속 형태·색상·개수 변형 절대 금지. ${scene.light}. 럭셔리 주얼리 상업 사진.`;
     case 'white': {
       if (subType === 'diagonal')
         return `${prefix}팔찌 흰 배경 사선 앵글 제품 사진. 배경은 완전한 순수 흰색(RGB 255,255,255). 【앵글 강제】카메라를 팔찌 측면 30~40도 높이에 위치 — 팔찌가 타원형(ellipse)으로 보이며 앞쪽 비즈가 크고 뒤쪽 비즈가 작아지는 뚜렷한 원근감. 위에서 바라보는 오버헤드(flat-lay, 정원형) 절대 금지. 팔찌의 두께와 비즈의 3D 형태가 측면에서 보일 것. 팔찌 아래 자연스럽고 부드러운 그림자(opacity 15~25%). 스튜디오 소프트박스 조명, 중성 색온도. 소품 없이 팔찌만. 스마트스토어 상업 사진.`;
@@ -1136,7 +1137,7 @@ export default function ThumbnailPage() {
 
     if (results.length === 0) setError(firstFailureMessage || '이미지 생성에 실패했어요');
     setGenerating(false);
-  }, [productColor, stoneName, stoneRefBase64, bgConcept]);
+  }, [productColor, stoneName, stoneRefBase64, bgConcept, referenceBase64s, referenceMode]);
 
   const handleGenerate = useCallback(async () => {
     setBatchProductMode(false);
