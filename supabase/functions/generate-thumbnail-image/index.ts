@@ -762,21 +762,29 @@ REQUIREMENTS:
         // 화풍·색감을 모두 유지하는 것이 목표이므로 색 팔레트 제외/구도 무시 같은 anti-copy 장치를 쓰지 않는다.
         // 사용자 명령어를 최상단에 두고, 보존/형식 규칙은 짧게만 부착해 명령 충실도를 살린다.
         parts.push({
-          text: `${framingBlock}${indexedRefGuidance}${variationBlock}[YOUR TASK]
-Recreate/edit based on the attached reference image${refs.length > 1 ? 's' : ''}, following the [USER INSTRUCTION] below. PRESERVE the reference's art style AND colors faithfully — only change what the instruction explicitly asks for.
+          text: `${framingBlock}${indexedRefGuidance}${variationBlock}[YOUR TASK — RE-STAGE, DO NOT REDESIGN]
+You are a product photographer re-staging the EXACT item shown in the attached reference image in a new setting. You are NOT designing, creating, or interpreting a new product. The reference image is the PRODUCT SOURCE — treat it like a physical object placed in front of your camera that you are repositioning, not a sketch to redraw.
 
-[USER INSTRUCTION — TOP PRIORITY, FOLLOW IT LITERALLY]
+[★ PRODUCT / SUBJECT LOCK — READ THIS BEFORE ANYTHING ELSE ★]
+The attached reference image contains the EXACT product to reproduce. Copy every element of the product IDENTICALLY:
+• Each bead: same color, size, shape, material, surface finish (matte/glossy/translucent), and arrangement order.
+• Stone/pendant/charm: same cut (faceted vs cabochon vs matte), same color, same transparency, same shape and proportions.
+• Clasp: same type (lobster claw / toggle / magnetic / spring ring / etc.), same size, same finish, same orientation.
+• Metal findings: same spacers, connector beads, wire, and hardware — same count, same positions, same design.
+• Overall structure: same total bead count, same repeating pattern, same bracelet silhouette.
+If ANY element above differs between your output and the reference, the output is WRONG. The product in the output must be IMMEDIATELY RECOGNIZABLE as the exact same piece as in the reference photo.
+
+[WHAT CHANGES — BACKGROUND AND COMPOSITION ONLY]
+The [USER INSTRUCTION] below describes ONLY the new background surface, props, lighting, and camera angle. Apply those changes. The product itself never changes.
+
+[USER INSTRUCTION — BACKGROUND / COMPOSITION / ANGLE ONLY]
 ${stoneGuidePreamble}${prompt}
 
-[WHAT TO KEEP FROM THE REFERENCE — KEEP IT EXACTLY]
+[KEEP FROM THE REFERENCE — IN ADDITION TO PRODUCT LOCK ABOVE]
 • Art style: same medium, line work, rendering/shading technique, texture, brush feel, proportions, stylization level, detail density, and level of finish.
 • Color: same color palette, dominant hues, tonal range, color mood, and lighting feel as the reference. Do NOT shift, resaturate, or recolor.
-• MATCH THE REFERENCE'S CONTRAST, SATURATION, AND CLARITY EXACTLY. Do NOT wash out, desaturate, mute, fade, or lower the contrast of the image. Do NOT add any haze, fog, mist, soft blur, glow, bloom, or hazy atmospheric film over the image. Do NOT lift the blacks or blow out the highlights. Blacks stay as deep, colors stay as vivid, and edges stay as crisp and sharp as in the reference. The output's color vividness and contrast must look IDENTICAL to the reference, not softer or paler.
-• Do NOT "upgrade" or restyle: do not drift toward a glossier, more opaque, more photorealistic, or more saturated look than the reference. Whatever the reference's actual surface is (delicate / painterly / watercolor / gongbi / flat / anime / photo / etc.), keep that exact look.
-• JEWELRY/PRODUCT DESIGN — ABSOLUTE LOCK: If the reference contains a bracelet, necklace, ring, or other jewelry/product, every structural and decorative element must be reproduced IDENTICALLY — same clasp type/shape/size/color (lobster clasp, toggle, magnetic, spring ring, etc.), same connector beads/spacers (silver, gold, flower-shaped, round metal, etc.) with the SAME count and positions, same bead arrangement, same stone shapes and cuts, same overall construction. Do NOT redesign, substitute, simplify, add, or remove ANY hardware or decorative component. Do NOT invent a new clasp or different connector beads. The product in the output must be IMMEDIATELY RECOGNIZABLE as the exact same piece as in the reference.
-
-[WHAT TO CHANGE]
-Apply ONLY the changes the [USER INSTRUCTION] asks for (e.g. subject, pose, scene, added/removed elements, composition). Everything the instruction does NOT mention stays as in the reference, including style and color. Do not invent extra changes.
+• MATCH THE REFERENCE'S CONTRAST, SATURATION, AND CLARITY EXACTLY. Do NOT wash out, desaturate, mute, fade, or lower the contrast of the image. Do NOT add any haze, fog, mist, soft blur, glow, bloom, or hazy atmospheric film over the image. Do NOT lift the blacks or blow out the highlights. Blacks stay as deep, colors stay as vivid, and edges stay as crisp and sharp as in the reference.
+• Do NOT "upgrade" or restyle: do not drift toward a glossier, more opaque, more photorealistic, or more saturated look than the reference.
 
 [WHOLE-IMAGE CONSISTENCY]
 Render the entire image in the reference's single consistent medium — every subject, object, background, ornament, and any celestial body. Never mix in a differently-styled or photo-real element.${formatRules}`,
