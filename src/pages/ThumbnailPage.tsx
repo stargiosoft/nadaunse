@@ -8,7 +8,7 @@ import { VariationSlider } from '../components/ui/VariationSlider';
 // ── Types ──
 
 type Step = 'input' | 'result';
-type BackgroundConcept = 'pure' | 'heavy' | 'natural' | 'dark';
+type BackgroundConcept = 'pure' | 'heavy' | 'natural' | 'dark' | 'sand';
 
 type GeneratedImage = {
   id: number;
@@ -78,6 +78,7 @@ const BG_CONCEPTS: { id: BackgroundConcept; label: string }[] = [
   { id: 'heavy', label: '무드' },
   { id: 'natural', label: '자연' },
   { id: 'dark', label: '다크' },
+  { id: 'sand', label: '자연테마' },
 ];
 
 const WHITE_TYPES = [
@@ -262,6 +263,14 @@ function getDarkScene(): { surface: string; props: string; light: string } {
   };
 }
 
+function getSandScene(): { surface: string; props: string; light: string } {
+  return {
+    surface: '고운 천연 모래 표면 — 밝은 크림/샌드 베이지 색조의 세밀한 모래 입자가 자연스럽게 깔린 플랫레이 베이스. 모래 특유의 미세한 결과 표면 질감이 실제처럼 사실적으로 표현. 모래 위에 팔찌를 살짝 올려놓아 아주 얕고 자연스러운 압흔(indentation)이 생김. 배경은 밝은 샌드 베이지/워밍 크림 플랫 서피스',
+    props: '프레임 한쪽 구석에 작은 조개껍데기(shell) 1~2개 또는 소품 없이 모래만. 꽃·식물·원목 소품 없음',
+    light: '따뜻하고 부드럽게 확산된 자연광 — 직사광 없이 균일하게 퍼진 소프트 라이팅. 모래 표면의 질감이 살아나는 낮은 각도의 스킴 라이트. 전체적으로 따뜻하고 밝은 웜 베이지 톤. 팔찌 아래 아주 옅고 자연스러운 그림자만. 하이엔드 주얼리 라이프스타일 에디토리얼 무드',
+  };
+}
+
 function getWearingBg(outfit: string): string {
   const lc = outfit.toLowerCase();
   const base = '전문 사진 스튜디오 배경지. 소프트박스 조명의 자연스러운 명암 그라데이션(중앙 밝고 가장자리 살짝 어두운)으로 깊이감 있게 표현. 하이엔드 주얼리 브랜드 스튜디오 촬영 느낌.';
@@ -325,7 +334,9 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
       ? getNaturalScene()
       : bgConcept === 'dark'
         ? getDarkScene()
-        : (color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' });
+        : bgConcept === 'sand'
+          ? getSandScene()
+          : (color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' });
 
   switch (cutId) {
     case 'product': {
