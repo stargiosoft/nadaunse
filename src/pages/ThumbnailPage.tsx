@@ -794,6 +794,7 @@ export default function ThumbnailPage() {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [productColor, setProductColor] = useState('');
   const [stoneName, setStoneName] = useState('');
+  const [productInputMode, setProductInputMode] = useState<'preset' | 'manual'>('preset');
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
   const [wearingPose, setWearingPose] = useState<string>('wrist');
@@ -1911,58 +1912,92 @@ export default function ThumbnailPage() {
                 );
               })()}
             {openSections.has('cut') && <div style={{ padding: '0 20px 12px 28px' }}>
-              {/* 제품 선택 드롭다운 */}
-              <div style={{ position: 'relative', marginBottom: '6px' }}>
-                <select
-                  value={selectedProductId}
-                  onChange={e => {
-                    const id = e.target.value;
-                    setSelectedProductId(id);
-                    if (!id) return;
-                    const prod = PRODUCTS.find(p => p.id === id);
-                    if (!prod) return;
-                    setProductColor(prod.color);
-                    setStoneName(prod.stone);
-                    if (activeCutPreset) {
-                      const g = activeCutPreset === 'wearing' ? wearingGender : undefined;
-                      const po = activeCutPreset === 'wearing' ? wearingPose : undefined;
-                      const sub = activeCutPreset === 'product' ? productCut : activeCutPreset === 'white' ? whiteType : undefined;
-                      const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
-                      const ov = activeCutPreset === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
-                      setPrompt(buildCutPrompt(activeCutPreset, prod.color, prod.stone, g, po, sub, ov, !!stoneRefBase64, bgConcept));
-                    }
-                  }}
-                  className="outline-none"
-                  style={{
-                    width: '100%', height: '30px', borderRadius: '10px',
-                    border: `1px solid ${selectedProductId ? C.primary : C.borderDefault}`,
-                    padding: '0 28px 0 10px',
-                    fontFamily: font, fontSize: '11px', fontWeight: 400,
-                    color: selectedProductId ? C.textPrimary : C.textCaption,
-                    backgroundColor: selectedProductId ? '#f0fafa' : C.surface,
-                    boxSizing: 'border-box' as const,
-                    cursor: 'pointer',
-                    appearance: 'none' as const,
-                  }}
-                >
-                  <option value="">— 제품 선택 (자동 입력) —</option>
-                  {PRODUCT_CATEGORIES.map(cat => (
-                    <optgroup key={cat.id} label={cat.label}>
-                      {PRODUCTS.filter(p => p.category === cat.id).map(p => (
-                        <option key={p.id} value={p.id}>{p.label}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                  <path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+              {/* 제품 입력 모드 토글 */}
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
+                {(['preset', 'manual'] as const).map(mode => {
+                  const active = productInputMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      onClick={() => {
+                        setProductInputMode(mode);
+                        if (mode === 'manual') {
+                          setSelectedProductId('');
+                        }
+                      }}
+                      style={{
+                        flex: 1, height: '26px', borderRadius: '8px', border: 'none',
+                        fontFamily: font, fontSize: '11px', fontWeight: active ? 600 : 400,
+                        cursor: 'pointer',
+                        backgroundColor: active ? C.primary : C.borderDefault,
+                        color: active ? '#fff' : C.textCaption,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {mode === 'preset' ? '프리셋' : '직접입력'}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* 제품 선택 드롭다운 (프리셋 모드) */}
+              {productInputMode === 'preset' && (
+                <div style={{ position: 'relative', marginBottom: '6px' }}>
+                  <select
+                    value={selectedProductId}
+                    onChange={e => {
+                      const id = e.target.value;
+                      setSelectedProductId(id);
+                      if (!id) return;
+                      const prod = PRODUCTS.find(p => p.id === id);
+                      if (!prod) return;
+                      setProductColor(prod.color);
+                      setStoneName(prod.stone);
+                      if (activeCutPreset) {
+                        const g = activeCutPreset === 'wearing' ? wearingGender : undefined;
+                        const po = activeCutPreset === 'wearing' ? wearingPose : undefined;
+                        const sub = activeCutPreset === 'product' ? productCut : activeCutPreset === 'white' ? whiteType : undefined;
+                        const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                        const ov = activeCutPreset === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
+                        setPrompt(buildCutPrompt(activeCutPreset, prod.color, prod.stone, g, po, sub, ov, !!stoneRefBase64, bgConcept));
+                      }
+                    }}
+                    className="outline-none"
+                    style={{
+                      width: '100%', height: '30px', borderRadius: '10px',
+                      border: `1px solid ${selectedProductId ? C.primary : C.borderDefault}`,
+                      padding: '0 28px 0 10px',
+                      fontFamily: font, fontSize: '11px', fontWeight: 400,
+                      color: selectedProductId ? C.textPrimary : C.textCaption,
+                      backgroundColor: selectedProductId ? '#f0fafa' : C.surface,
+                      boxSizing: 'border-box' as const,
+                      cursor: 'pointer',
+                      appearance: 'none' as const,
+                    }}
+                  >
+                    <option value="">— 제품 선택 (자동 입력) —</option>
+                    {PRODUCT_CATEGORIES.map(cat => (
+                      <optgroup key={cat.id} label={cat.label}>
+                        {PRODUCTS.filter(p => p.category === cat.id).map(p => (
+                          <option key={p.id} value={p.id}>{p.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                    <path d="M1 1L5 5L9 1" stroke="#9a9a9a" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              )}
+
               <input
                 type="text"
                 value={productColor}
-                onChange={e => setProductColor(e.target.value)}
-                placeholder="제품 색상 (예: 빨간색, 파란색)"
+                onChange={e => {
+                  setProductColor(e.target.value);
+                  if (productInputMode === 'manual') setSelectedProductId('');
+                }}
+                placeholder={productInputMode === 'manual' ? '색상 직접 입력 (예: 딥 레드, 골드)' : '제품 색상 (예: 빨간색, 파란색)'}
                 className="outline-none"
                 style={{
                   width: '100%', height: '30px', borderRadius: '10px',
@@ -1976,15 +2011,18 @@ export default function ThumbnailPage() {
               <input
                 type="text"
                 value={stoneName}
-                onChange={e => setStoneName(e.target.value)}
-                placeholder="원석 이름 (예: 산호, 터키석, 자수정)"
+                onChange={e => {
+                  setStoneName(e.target.value);
+                  if (productInputMode === 'manual') setSelectedProductId('');
+                }}
+                placeholder={productInputMode === 'manual' ? '원석·소재 직접 입력 (예: 말라카이트, 루비, 담수진주, 925실버)' : '원석 이름 (예: 산호, 터키석, 자수정)'}
                 className="outline-none"
                 style={{
                   width: '100%', height: '30px', borderRadius: '10px',
-                  border: `1px solid ${C.borderDefault}`,
+                  border: `1px solid ${productInputMode === 'manual' ? C.primary : C.borderDefault}`,
                   padding: '0 10px', marginBottom: '8px',
                   fontFamily: font, fontSize: '11px', fontWeight: 400,
-                  color: C.textPrimary, backgroundColor: C.surface,
+                  color: C.textPrimary, backgroundColor: productInputMode === 'manual' ? '#f0fafa' : C.surface,
                   boxSizing: 'border-box',
                 }}
               />
