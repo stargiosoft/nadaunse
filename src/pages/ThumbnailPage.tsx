@@ -93,6 +93,10 @@ const WEARING_POSES = [
 ] as const;
 
 const WEARING_OUTFITS_FEMALE = [
+  { id: 'cream_oversized_wide',    label: '크림 오버핏+차콜 와이드',      outfit: '크림 아이보리 오버사이즈 코튼 버튼업 셔츠 — 넥라인: 레귤러 칼라(단추 1개 자연스럽게 풀린 상태), 소매: 긴소매·소매 끝 자연스럽게 드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈(어깨선 넓고 박시한 실루엣), 하의: 다크 차콜 울 와이드 레그 트라우저(미드라이즈·발끝까지 자연스럽게 드레이프). 럭셔리 런웨이 에디토리얼·미니멀리스트 스타일링' },
+  { id: 'white_linen_open_wide',   label: '화이트 린넨+크림 와이드',      outfit: '흰색 린넨 오픈칼라 셔츠 — 넥라인: 칼라(단추 2~3개 자연스럽게 풀려 쇄골 라인 노출·V형 오프닝), 소매: 긴소매·자연스럽게 드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 세미핏~루즈, 하의: 크림 아이보리 와이드 레그 팬츠(부드러운 폴드·발목 길이). 미니멀 컨템포러리 에디토리얼 스타일링' },
+  { id: 'white_stripe_editorial',  label: '화이트 셔츠+스트라이프 와이드', outfit: '흰색 코튼 오버사이즈 셔츠 — 넥라인: 포인티드 칼라(단추 2~3개 풀린 딥 오픈·칼라 세운 상태), 소매: 긴소매를 팔꿈치 위까지 단단히 롤업, 커프스: 롤업(밴드 없음), 핏: 오버사이즈·허리 쪽 살짝 인, 하의: 오프화이트 버티컬 핀스트라이프 와이드 레그 트라우저(미드라이즈) + 브라운 레더 슬림 벨트. 에디토리얼 컨템포러리 스타일링' },
+  { id: 'black_collarless_blazer', label: '블랙 노칼라 블레이저',         outfit: '블랙 노칼라 오버사이즈 블레이저(라펠 없는 깔끔한 V형 앞트임) — 안에: 화이트 크루넥 기본 티셔츠(슬림핏), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 오버사이즈·어깨선 넓고 박시한 실루엣, 하의: 크림 아이보리 와이드 레그 트라우저(발목 길이·자연스러운 드레이프). 모던 미니멀리스트·럭셔리 에디토리얼 스타일링' },
   { id: 'cream_chiffon',  label: '크림 시폰',    outfit: '크림 아이보리색 시폰 블라우스 — 넥라인: 넓은 V넥, 소매: 긴소매·소매통 어깨~손목 전체 루즈하게 드리워지는 플로우형(풍성하게 떨어짐), 커프스: 개더링·플리츠 없이 직선 컷 플레인 헴(밴드 없음), 핏: 루즈 플로우' },
   { id: 'white_silk',     label: '화이트 실크',   outfit: '순백색 실크 새틴 블라우스 — 넥라인: 클린 라운드넥, 소매: 긴소매·소매통 어깨에서 손목으로 균일하게 슬림한 직선형, 커프스: 좁은 커프스밴드에 플리츠 정확히 2개·버튼 1개, 핏: 세미핏' },
   { id: 'ivory_lace',     label: '아이보리 레이스',outfit: '아이보리색 레이스 블라우스 — 넥라인: 하이넥 레이스 칼라, 소매: 긴소매·소매통 어깨~손목 전체 루즈하게 드리워지는 플로우형, 커프스: 레이스 나팔형 플레어(개더링 있음·밴드 없음), 핏: 루즈' },
@@ -121,6 +125,10 @@ const WEARING_OUTFITS_FEMALE = [
 ];
 
 const WEARING_OUTFITS_MALE = [
+  { id: 'cream_oversized_wide_m',  label: '크림 오버핏+차콜 와이드',  outfit: '크림 아이보리 오버사이즈 코튼 버튼업 셔츠 — 넥라인: 레귤러 칼라(단추 1~2개 자연스럽게 풀린 상태), 소매: 긴소매·소매 끝 자연스럽게 드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈(어깨선 넓고 박시한 실루엣), 하의: 다크 차콜 와이드 레그 울 트라우저(미드라이즈·발끝까지 드레이프). 럭셔리 런웨이 에디토리얼·미니멀리스트 스타일링' },
+  { id: 'white_linen_open_m2',     label: '화이트 린넨+크림 와이드', outfit: '흰색 린넨 오픈칼라 셔츠 — 넥라인: 칼라(단추 2~3개 자연스럽게 풀려 쇄골·가슴 상부 노출), 소매: 긴소매·자연스럽게 드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 세미핏~루즈, 하의: 크림 아이보리 와이드 레그 팬츠(부드러운 드레이프·발목 길이). 미니멀 컨템포러리 에디토리얼 스타일링' },
+  { id: 'white_rollup_stripe_m',   label: '화이트 롤업+스트라이프',   outfit: '흰색 코튼 오버사이즈 셔츠 — 넥라인: 포인티드 칼라(단추 2~3개 풀린 딥 오픈), 소매: 긴소매를 팔꿈치 위까지 롤업, 커프스: 롤업(밴드 없음), 핏: 오버사이즈, 하의: 오프화이트 버티컬 핀스트라이프 와이드 레그 트라우저 + 브라운 레더 슬림 벨트. 에디토리얼 컨템포러리 스타일링' },
+  { id: 'black_collarless_m2',     label: '블랙 노칼라 블레이저',    outfit: '블랙 노칼라 오버사이즈 블레이저(라펠 없는 V형 앞트임) — 안에: 화이트 크루넥 기본 티셔츠, 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 오버사이즈·어깨선 넓고 박시한 실루엣, 하의: 크림 아이보리 와이드 레그 트라우저(발목 길이). 모던 미니멀리스트 에디토리얼 스타일링' },
   { id: 'white_cotton', label: '화이트 셔츠', outfit: '화이트 코튼 셔츠 — 넥라인: 레귤러 칼라, 소매: 긴소매, 커프스: 버튼 두 개 있는 배럴 커프스, 핏: 레귤러' },
   { id: 'cream_linen',  label: '크림 린넨',   outfit: '크림 린넨 셔츠 — 넥라인: 밴드 칼라(스탠드업), 소매: 긴소매, 커프스: 플레인 밴드 커프스, 핏: 루즈' },
   { id: 'light_gray_m', label: '라이트 그레이',outfit: '연한 그레이 코튼 셔츠 — 넥라인: 레귤러 칼라, 소매: 긴소매, 커프스: 버튼 한 개 있는 배럴 커프스, 핏: 슬림' },
@@ -172,37 +180,37 @@ function getOutfitForColor(color: string, gender: 'female' | 'male' = 'female'):
   const lc = color.toLowerCase();
   if (gender === 'male') {
     if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-      return '크림 아이보리 코튼 셔츠';
+      return '크림 아이보리 오버사이즈 코튼 버튼업 셔츠 — 넥라인: 레귤러 칼라(단추 1~2개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 다크 차콜 와이드 레그 트라우저. 에디토리얼 미니멀리스트 스타일링';
     if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
-      return '화이트 코튼 셔츠';
+      return '흰색 린넨 오픈칼라 셔츠 — 넥라인: 칼라(단추 2~3개 풀려 쇄골 노출), 소매: 긴소매·드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 루즈, 하의: 크림 아이보리 와이드 레그 팬츠. 컨템포러리 에디토리얼 스타일링';
     if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
-      return '베이지 린넨 셔츠';
+      return '크림 베이지 오버사이즈 코튼 셔츠 — 넥라인: 레귤러 칼라(단추 1개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 오프화이트 와이드 레그 팬츠. 에디토리얼 미니멀 스타일링';
     if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-      return '아이보리 코튼 셔츠';
+      return '아이보리 린넨 오버사이즈 셔츠 — 넥라인: 레귤러 칼라(단추 1개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 카멜 베이지 와이드 레그 팬츠. 미니멀 에디토리얼 스타일링';
     if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-      return '크림 화이트 코튼 셔츠';
+      return '블랙 노칼라 오버사이즈 블레이저(라펠 없는 V형 앞트임) — 안에: 화이트 크루넥 기본 티셔츠, 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 오버사이즈, 하의: 크림 와이드 레그 트라우저. 모던 미니멀리스트 에디토리얼 스타일링';
     if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
-      return '아이보리 화이트 셔츠';
+      return '아이보리 화이트 오버사이즈 코튼 셔츠 — 넥라인: 레귤러 칼라(단추 1개 풀린 상태), 소매: 긴소매 롤업, 커프스: 롤업(밴드 없음), 핏: 오버사이즈, 하의: 오프화이트 스트라이프 와이드 레그 팬츠 + 브라운 벨트. 에디토리얼 스타일링';
     if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-      return '연한 그레이 코튼 셔츠';
-    return '크림 아이보리 코튼 셔츠';
+      return '연한 그레이 린넨 오버사이즈 셔츠 — 넥라인: 칼라(단추 1개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 크림 화이트 와이드 레그 팬츠. 미니멀 에디토리얼 스타일링';
+    return '크림 아이보리 오버사이즈 코튼 버튼업 셔츠 — 넥라인: 레귤러 칼라(단추 1~2개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 다크 차콜 와이드 레그 트라우저. 에디토리얼 미니멀리스트 스타일링';
   }
-  // 여성: 페미닌한 소재
+  // 여성: 에디토리얼 미니멀 스타일
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return '크림 아이보리 시폰 러플 블라우스';
+    return '크림 아이보리 오버사이즈 코튼 버튼업 셔츠 — 넥라인: 레귤러 칼라(단추 1개 자연스럽게 풀린 상태), 소매: 긴소매·소매 끝 드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 다크 차콜 와이드 레그 트라우저. 럭셔리 에디토리얼·미니멀리스트 스타일링';
   if (['파란', '파랑', '블루', '보라', '퍼플', '네이비', '청록', '터코이즈', '민트'].some(w => lc.includes(w)))
-    return '화이트 실크 새틴 블라우스';
+    return '흰색 린넨 오픈칼라 셔츠 — 넥라인: 칼라(단추 2~3개 풀려 쇄골 라인 노출·V형 오프닝), 소매: 긴소매·드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 세미핏~루즈, 하의: 크림 아이보리 와이드 레그 팬츠(발목 길이). 미니멀 컨템포러리 에디토리얼 스타일링';
   if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
-    return '베이지 시폰 블라우스';
+    return '크림 베이지 오버사이즈 코튼 셔츠 — 넥라인: 레귤러 칼라(단추 1개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 오프화이트 와이드 레그 팬츠. 에디토리얼 미니멀 스타일링';
   if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-    return '아이보리 실크 블라우스';
+    return '아이보리 린넨 오버사이즈 셔츠 — 넥라인: 레귤러 칼라(단추 1개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 카멜 베이지 와이드 레그 팬츠. 미니멀 에디토리얼 스타일링';
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
-    return '크림 화이트 시폰 블라우스';
+    return '블랙 노칼라 오버사이즈 블레이저(라펠 없는 V형 앞트임) — 안에: 화이트 크루넥 기본 티셔츠(슬림핏), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 오버사이즈·어깨선 넓음, 하의: 크림 아이보리 와이드 레그 트라우저(발목 길이). 모던 미니멀리스트·럭셔리 에디토리얼 스타일링';
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
-    return '아이보리 레이스 트리밍 블라우스';
+    return '흰색 코튼 오버사이즈 셔츠 — 넥라인: 포인티드 칼라(단추 2개 풀린 오픈), 소매: 긴소매 롤업(팔꿈치 위), 커프스: 롤업(밴드 없음), 핏: 오버사이즈, 하의: 오프화이트 핀스트라이프 와이드 레그 팬츠 + 브라운 레더 벨트. 에디토리얼 컨템포러리 스타일링';
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
-    return '연한 그레이 실크 시폰 블라우스';
-  return '크림 아이보리 시폰 블라우스';
+    return '연한 그레이 오버사이즈 코튼 셔츠 — 넥라인: 레귤러 칼라(단추 1개 풀린 상태), 소매: 긴소매, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈, 하의: 크림 화이트 와이드 레그 팬츠. 미니멀 에디토리얼 스타일링';
+  return '크림 아이보리 오버사이즈 코튼 버튼업 셔츠 — 넥라인: 레귤러 칼라(단추 1개 자연스럽게 풀린 상태), 소매: 긴소매·소매 끝 드리워짐, 커프스: 직선 컷(밴드 없음), 핏: 루즈 오버사이즈(어깨선 넓고 박시한 실루엣), 하의: 다크 차콜 와이드 레그 트라우저. 럭셔리 에디토리얼·미니멀리스트 스타일링';
 }
 
 function getColorScene(color: string): { surface: string; props: string; light: string } {
@@ -825,6 +833,9 @@ export default function ThumbnailPage() {
   const [isMainHover, setIsMainHover] = useState(false);
   const [hoverThumbId, setHoverThumbId] = useState<number | null>(null);
 
+  // 4종 일괄 생성 모드
+  const [batchProductMode, setBatchProductMode] = useState(false);
+
   // Edit (이미지 디벨롭)
   const [editPrompt, setEditPrompt] = useState('');
   const [editing, setEditing] = useState(false);
@@ -1080,7 +1091,55 @@ export default function ThumbnailPage() {
 
   const effectiveCount = imageCount;
 
+  const handleBatchProductGenerate = useCallback(async () => {
+    setBatchProductMode(true);
+    setGenerating(true);
+    setError(null);
+    setImages([]);
+    setGeneratedCount(0);
+    setSelectedImageId(null);
+    setStep('result');
+
+    const PER_CUT = 2;
+    const results: GeneratedImage[] = [];
+
+    const tasks = PRODUCT_CUTS.flatMap((cut, ci) =>
+      Array.from({ length: PER_CUT }, (_, si) => ({
+        id: ci * PER_CUT + si + 1,
+        label: `${cut.label} ${si + 1}`,
+        itemPrompt: buildCutPrompt('product', productColor, stoneName, undefined, undefined, cut.id, undefined, !!stoneRefBase64, bgConcept),
+        seed: Math.floor(Math.random() * 2_147_483_647),
+      }))
+    );
+
+    let firstFailureMessage: string | null = null;
+    const BATCH_SIZE = 4;
+    for (let batchStart = 0; batchStart < tasks.length; batchStart += BATCH_SIZE) {
+      const batch = tasks.slice(batchStart, batchStart + BATCH_SIZE);
+      const settled = await Promise.allSettled(
+        batch.map(async (task) => {
+          const data = await callGenerateApi(task.itemPrompt, task.seed, null);
+          return { id: task.id, src: `data:${data.mimeType};base64,${data.image}`, label: task.label, itemPrompt: task.itemPrompt } as GeneratedImage;
+        })
+      );
+      for (const result of settled) {
+        if (result.status === 'fulfilled') results.push(result.value);
+        else {
+          console.error('Batch generation failed:', result.reason);
+          if (!firstFailureMessage) firstFailureMessage = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        }
+      }
+      results.sort((a, b) => a.id - b.id);
+      setImages([...results]);
+      setGeneratedCount(results.length);
+    }
+
+    if (results.length === 0) setError(firstFailureMessage || '이미지 생성에 실패했어요');
+    setGenerating(false);
+  }, [productColor, stoneName, stoneRefBase64, bgConcept]);
+
   const handleGenerate = useCallback(async () => {
+    setBatchProductMode(false);
     setGenerating(true);
     setError(null);
     setImages([]);
@@ -1949,6 +2008,21 @@ export default function ThumbnailPage() {
 
               {/* 제품컷 서브 옵션 (2x2 그리드) */}
               {activeCutPreset === 'product' && (
+                <>
+                <button
+                  onClick={handleBatchProductGenerate}
+                  disabled={generating}
+                  style={{
+                    width: '100%', height: '30px', marginTop: '6px', borderRadius: '8px',
+                    border: 'none', cursor: generating ? 'default' : 'pointer',
+                    fontFamily: font, fontSize: '11px', fontWeight: 500,
+                    color: generating ? C.textDisabled : C.textWhite,
+                    backgroundColor: generating ? C.surfaceDisabled : '#2a9d8f',
+                    letterSpacing: '0.3px', transition: 'all 0.15s ease',
+                  }}
+                >
+                  {generating ? '생성 중...' : '4종 한번에 생성 (2장씩)'}
+                </button>
                 <div style={{ marginTop: '6px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                   {PRODUCT_CUTS.map(a => {
                     const aActive = productCut === a.id;
@@ -1973,6 +2047,7 @@ export default function ThumbnailPage() {
                     );
                   })}
                 </div>
+                </>
               )}
 
               {/* 배경 컨셉 — 제품컷·디테일컷에서 표시 */}
@@ -2786,8 +2861,109 @@ export default function ThumbnailPage() {
               </div>
             )}
 
+            {/* ── 4종 배치 그리드 뷰 ── */}
+            {batchProductMode && (
+              <div style={{ marginTop: '24px' }}>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr',
+                  gap: '24px',
+                }}>
+                  {PRODUCT_CUTS.map((cut, ci) => {
+                    const PER_CUT = 2;
+                    const slotIds = [ci * PER_CUT + 1, ci * PER_CUT + 2];
+                    return (
+                      <div key={cut.id}>
+                        <p style={{
+                          fontFamily: font, fontSize: '12px', fontWeight: 500,
+                          color: C.textSecondary, marginBottom: '8px', letterSpacing: '-0.24px',
+                        }}>{cut.label}</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          {slotIds.map((imgId) => {
+                            const img = images.find(i => i.id === imgId);
+                            const isLoading = !img?.src;
+                            return (
+                              <div key={imgId} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div
+                                  className="transform-gpu"
+                                  style={{
+                                    width: '100%', aspectRatio: `${selectedRatio.width}/${selectedRatio.height}`,
+                                    borderRadius: '12px', border: `1px solid ${C.borderDefault}`,
+                                    overflow: 'hidden', backgroundColor: C.surfaceSecondary,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  }}
+                                >
+                                  {isLoading ? (
+                                    <div style={{
+                                      width: '24px', height: '24px', borderRadius: '50%',
+                                      border: `2.5px solid ${C.borderDefault}`, borderTopColor: C.primary,
+                                      animation: 'spin 1s linear infinite',
+                                    }} />
+                                  ) : (
+                                    <img
+                                      src={img!.src}
+                                      alt={img!.label}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                    />
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <button
+                                    onClick={() => { if (img?.src && !upscaling) handleDownload(img); }}
+                                    disabled={isLoading || upscaling}
+                                    style={{
+                                      flex: 1, height: '26px', borderRadius: '6px',
+                                      border: `1px solid ${C.borderDefault}`,
+                                      backgroundColor: C.surface,
+                                      fontFamily: font, fontSize: '10px', fontWeight: 400,
+                                      color: isLoading ? C.textDisabled : C.textSecondary,
+                                      cursor: isLoading ? 'default' : 'pointer',
+                                      letterSpacing: '-0.2px', transition: 'all 0.12s ease',
+                                    }}
+                                  >{upscaling ? '...' : '다운로드'}</button>
+                                  <button
+                                    onClick={() => handleRegenerate(imgId)}
+                                    disabled={generating || editing}
+                                    style={{
+                                      flex: 1, height: '26px', borderRadius: '6px',
+                                      border: 'none',
+                                      backgroundColor: isLoading ? C.surfaceDisabled : '#f0fafa',
+                                      fontFamily: font, fontSize: '10px', fontWeight: 400,
+                                      color: isLoading ? C.textDisabled : C.primary,
+                                      cursor: (generating || editing) ? 'default' : 'pointer',
+                                      letterSpacing: '-0.2px', transition: 'all 0.12s ease',
+                                    }}
+                                  >{isLoading ? '생성 중...' : '재생성'}</button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ZIP 다운로드 */}
+                {images.filter(i => i.src).length > 0 && !generating && (
+                  <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={handleDownloadAll}
+                      disabled={zipping}
+                      style={{
+                        height: '36px', padding: '0 20px', borderRadius: '10px',
+                        backgroundColor: zipping ? C.primaryDark : C.primary, border: 'none',
+                        cursor: zipping ? 'default' : 'pointer',
+                        fontFamily: font, fontSize: '13px', fontWeight: 400,
+                        color: C.textWhite, letterSpacing: '-0.26px',
+                      }}
+                    >{zipping ? 'ZIP 생성 중...' : `전체 ZIP 다운로드 (${images.filter(i => i.src).length}장)`}</button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Main viewer + thumbnail rail */}
-            <div style={{
+            {!batchProductMode && <div style={{
               display: 'flex', gap: '24px', alignItems: 'flex-start',
               marginTop: '24px',
             }}>
@@ -3165,7 +3341,7 @@ export default function ThumbnailPage() {
                   </div>
                 </aside>
               )}
-            </div>
+            </div>}
 
           </div>
         )}
