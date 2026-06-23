@@ -809,6 +809,7 @@ export default function ThumbnailPage() {
   const [productColor, setProductColor] = useState('');
   const [stoneName, setStoneName] = useState('');
   const [productInputMode, setProductInputMode] = useState<'preset' | 'manual'>('preset');
+  const [shootMode, setShootMode] = useState<'product' | 'person'>('product');
   const [activeCutPreset, setActiveCutPreset] = useState<string | null>(null);
   const [wearingGender, setWearingGender] = useState<'female' | 'male'>('female');
   const [wearingPose, setWearingPose] = useState<string>('wrist');
@@ -1905,8 +1906,10 @@ export default function ThumbnailPage() {
               marginLeft: '-28px', marginRight: '-20px',
             }}>
               {(() => {
-                const cutLabel = activeCutPreset ? CUT_PRESETS.find(c => c.id === activeCutPreset)?.label ?? '—' : '—';
-                const subLabel = activeCutPreset === 'wearing'
+                const cutLabel = shootMode === 'person'
+                  ? '착용컷'
+                  : activeCutPreset ? CUT_PRESETS.find(c => c.id === activeCutPreset)?.label ?? '—' : '—';
+                const subLabel = shootMode === 'person'
                   ? ` · ${wearingGender === 'female' ? '여성' : '남성'} · ${WEARING_POSES.find(p => p.id === wearingPose)?.label}`
                   : activeCutPreset === 'product'
                   ? ` · ${PRODUCT_CUTS.find(a => a.id === productCut)?.label}`
@@ -2041,39 +2044,73 @@ export default function ThumbnailPage() {
                   boxSizing: 'border-box',
                 }}
               />
-              {/* 메인 프리셋 버튼 (4개) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '4px' }}>
-                {CUT_PRESETS.map(cut => {
-                  const active = activeCutPreset === cut.id;
+              {/* 제품 / 인물 상위 토글 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                {(['product', 'person'] as const).map(mode => {
+                  const active = shootMode === mode;
                   return (
                     <button
-                      key={cut.id}
+                      key={mode}
                       onClick={() => {
-                        const g = cut.id === 'wearing' ? wearingGender : undefined;
-                        const p = cut.id === 'wearing' ? wearingPose : undefined;
-                        const s = cut.id === 'product' ? productCut : cut.id === 'white' ? whiteType : undefined;
-                        const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
-                        const ov = cut.id === 'wearing' ? (outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '') : '';
-                        setPrompt(buildCutPrompt(cut.id, productColor, stoneName, g, p, s, ov, !!stoneRefBase64, bgConcept, bgItems));
-                        setActiveCutPreset(cut.id);
+                        setShootMode(mode);
+                        if (mode === 'person') {
+                          const outfitPool = wearingGender === 'female' ? WEARING_OUTFITS_FEMALE : WEARING_OUTFITS_MALE;
+                          const ov = outfitPool.find(o => o.id === wearingOutfitId)?.outfit ?? '';
+                          setActiveCutPreset('wearing');
+                          setPrompt(buildCutPrompt('wearing', productColor, stoneName, wearingGender, wearingPose, undefined, ov, !!stoneRefBase64, bgConcept, bgItems));
+                        } else {
+                          const lastCut = activeCutPreset === 'wearing' ? 'product' : (activeCutPreset ?? 'product');
+                          setActiveCutPreset(lastCut);
+                          const s = lastCut === 'product' ? productCut : lastCut === 'white' ? whiteType : undefined;
+                          setPrompt(buildCutPrompt(lastCut, productColor, stoneName, undefined, undefined, s, undefined, !!stoneRefBase64, bgConcept, bgItems));
+                        }
                       }}
                       onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
                       onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
                       style={{
                         height: '28px', borderRadius: '8px', border: 'none',
-                        fontFamily: font, fontSize: '11px', fontWeight: 400,
+                        fontFamily: font, fontSize: '11px', fontWeight: 500,
                         letterSpacing: '0.5px',
                         color: active ? C.textWhite : '#5a5a5a',
                         backgroundColor: active ? C.primary : '#f5f5f5',
                         cursor: 'pointer', transition: 'all 0.15s ease',
                       }}
-                    >{cut.label}</button>
+                    >{mode === 'product' ? '제품' : '인물'}</button>
                   );
                 })}
               </div>
 
+              {/* 제품 모드 — 컷 선택 (3종) */}
+              {shootMode === 'product' && (
+                <div style={{ marginTop: '6px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
+                  {CUT_PRESETS.filter(c => c.id !== 'wearing').map(cut => {
+                    const active = activeCutPreset === cut.id;
+                    return (
+                      <button
+                        key={cut.id}
+                        onClick={() => {
+                          const s = cut.id === 'product' ? productCut : cut.id === 'white' ? whiteType : undefined;
+                          setPrompt(buildCutPrompt(cut.id, productColor, stoneName, undefined, undefined, s, undefined, !!stoneRefBase64, bgConcept, bgItems));
+                          setActiveCutPreset(cut.id);
+                        }}
+                        onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#ececec'; }}
+                        onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
+                        style={{
+                          height: '28px', borderRadius: '8px', border: 'none',
+                          fontFamily: font, fontSize: '11px', fontWeight: 400,
+                          letterSpacing: '0.5px',
+                          color: active ? C.textWhite : '#5a5a5a',
+                          backgroundColor: active ? C.primary : '#f5f5f5',
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                        }}
+                      >{cut.label}</button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* 제품컷 서브 옵션 (2x2 그리드) */}
-              {activeCutPreset === 'product' && (
+              {shootMode === 'product' && activeCutPreset === 'product' && (
                 <>
                 <button
                   onClick={handleBatchProductGenerate}
@@ -2116,8 +2153,8 @@ export default function ThumbnailPage() {
                 </>
               )}
 
-              {/* 배경 컨셉 — 제품컷·디테일컷에서 표시 */}
-              {(activeCutPreset === 'product' || activeCutPreset === 'detail') && (
+              {/* 배경 컨셉 — 제품 모드의 제품컷·디테일컷에서 표시 */}
+              {shootMode === 'product' && (activeCutPreset === 'product' || activeCutPreset === 'detail') && (
                 <div style={{ marginTop: '8px' }}>
                   <p style={{ fontFamily: font, fontSize: '10px', color: C.textTertiary, margin: '0 0 3px', letterSpacing: '0.5px' }}>
                     배경 컨셉
@@ -2171,8 +2208,8 @@ export default function ThumbnailPage() {
                 </div>
               )}
 
-              {/* 착용컷 서브 옵션 */}
-              {activeCutPreset === 'wearing' && (
+              {/* 인물 모드 — 착용컷 서브 옵션 */}
+              {shootMode === 'person' && (
                 <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {/* 성별 */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
@@ -2284,8 +2321,8 @@ export default function ThumbnailPage() {
                 </div>
               )}
 
-              {/* 착용컷 의상 레퍼런스 */}
-              {activeCutPreset === 'wearing' && (
+              {/* 인물 모드 — 착용컷 의상 레퍼런스 */}
+              {shootMode === 'person' && (
                 <div style={{ marginTop: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{ fontFamily: font, fontSize: '10px', color: C.textCaption }}>의상 참고 이미지 (커프스·넥라인 고정용)</span>
