@@ -219,20 +219,20 @@ function getOutfitForColor(color: string, gender: 'female' | 'male' = 'female'):
 function getColorScene(color: string): { surface: string; props: string; light: string } {
   const lc = color.toLowerCase();
   if (['빨간', '빨강', '레드', '코랄', '산호', '핑크', '분홍', '주황', '오렌지'].some(w => lc.includes(w)))
-    return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩(모서리가 살짝 보이도록 비스듬히)', props: '프레임 한쪽 구석에 코튼플라워 한 송이만', light: '밝고 부드러운 자연광, 중성 색온도' };
+    return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩(모서리가 살짝 보이도록 비스듬히)', props: '프레임 한쪽 구석에 화이트 드라이플라워 한 송이만', light: '밝고 부드러운 자연광, 중성 색온도' };
   if (['파란', '파랑', '블루', '보라', '퍼플', '민트', '터코이즈', '청록', '네이비'].some(w => lc.includes(w)))
     return { surface: '밝은 화이트/크림 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 화이트 드라이플라워 한 송이만', light: '밝고 부드러운 자연광, 쿨톤' };
   if (['초록', '그린', '카키', '올리브'].some(w => lc.includes(w)))
     return { surface: '밝은 크림 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 유칼립투스 잎 한두 개만', light: '밝고 부드러운 자연광, 중성 색온도' };
   if (['갈색', '브라운', '베이지'].some(w => lc.includes(w)))
-    return { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이만', light: '따뜻하고 밝은 자연광' };
+    return { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 아이보리 드라이플라워 한 송이만', light: '따뜻하고 밝은 자연광' };
   if (['검정', '블랙', '차콜', '그레이', '회색', '다크'].some(w => lc.includes(w)))
     return { surface: '라이트 그레이 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 화이트 드라이플라워 한 송이만', light: '밝은 사이드 스튜디오 조명' };
   if (['노란', '노랑', '옐로우', '골드', '금색'].some(w => lc.includes(w)))
     return { surface: '크림/화이트 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 아이보리 드라이플라워 한 송이만', light: '밝고 부드러운 자연광' };
   if (['흰', '화이트', '투명', '크리스탈'].some(w => lc.includes(w)))
     return { surface: '크림/화이트 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 페일 드라이플라워 한 송이만', light: '밝고 소프트한 자연광' };
-  return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩(모서리가 살짝 보이도록 비스듬히)', props: '프레임 한쪽 구석에 코튼플라워 한 송이만', light: '밝고 부드러운 자연광' };
+  return { surface: '밝은 크림/베이지 트래버틴 스톤 슬랩(모서리가 살짝 보이도록 비스듬히)', props: '프레임 한쪽 구석에 아이보리 드라이플라워 한 송이만', light: '밝고 부드러운 자연광' };
 }
 
 function getColorBackground(color: string): string {
@@ -258,9 +258,9 @@ function getNaturalScene(): { surface: string; props: string; light: string } {
 
 function getDarkScene(): { surface: string; props: string; light: string } {
   return {
-    surface: '다크 차콜/슬레이트 스톤 타일 — 거칠고 납작한 블랙 슬레이트 석판 위에 팔찌 배치. 슬레이트 표면의 층리(layering) 결과 불규칙한 질감이 실제처럼 리얼하게 보임. 타일 주변 바닥에 크림/아이보리 린넨 패브릭이 자연스럽게 드레이프됨. 배경은 다크 차콜 그레이 플랫 서피스. 광택 없이 완전 매트',
+    surface: '다크 차콜/슬레이트 스톤 타일 — 거칠고 납작한 블랙 슬레이트 석판 위에 팔찌 배치. 슬레이트 표면의 층리(layering) 결과 불규칙한 질감이 실제처럼 리얼하게 보임. 타일 주변 바닥에 크림/아이보리 린넨 패브릭이 자연스럽게 드레이프됨. 배경은 미디엄 다크 그레이(블랙·칠흑 금지) 플랫 서피스. 광택 없이 완전 매트',
     props: '매끄럽게 다듬어진 블랙 리버 스톤(강돌) 2–3개를 슬레이트 주변에 자연스럽게 배치. 목화솜(cotton flower)·코튼플라워·안개꽃·팜파스·드라이플라워·꽃 종류 일체 절대 금지',
-    light: '스튜디오 스트로브 사이드 조명 — 창문광·자연광 없이 스트로브 단독. 팔찌와 돌에 드라마틱한 하이라이트와 딥 섀도우. 전체적으로 어둡고 무게감 있는 톤 — 차콜·블랙·딥그레이 팔레트. 완벽한 화이트 밸런스, 탁함·뿌연 느낌 없이 크리스프. 하이엔드 주얼리 스튜디오 화보',
+    light: '스튜디오 스트로브 사이드 조명 — 창문광·자연광 없이 스트로브 단독. 【제품 노출 최우선】팔찌에는 밝고 집중된 스폿 하이라이트를 충분히 줘 원석 색상·비즈 디테일이 선명하게 보일 것 — 팔찌 자체가 어둡게 묻히는 것 절대 금지. 배경과 슬레이트는 미디엄 다크로 유지해 팔찌와 대비를 만들 것. 배경이 칠흑(pure black)이 되지 않도록. 완벽한 화이트 밸런스, 탁함·뿌연 느낌 없이 크리스프. 하이엔드 주얼리 스튜디오 화보',
   };
 }
 
@@ -347,7 +347,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
           ? getSandScene()
           : bgConcept === 'ocean'
             ? getOceanScene()
-            : (color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 코튼플라워 한 송이', light: '밝고 부드러운 자연광' });
+            : (color.trim() ? getColorScene(color) : { surface: '크림/베이지 트래버틴 스톤 슬랩', props: '프레임 한쪽 구석에 아이보리 드라이플라워 한 송이', light: '밝고 부드러운 자연광' });
   const scene = bgItems?.trim()
     ? { ...rawScene, props: bgItems.trim() }
     : rawScene;
