@@ -68,7 +68,7 @@ const CUT_PRESETS = [
 
 const PRODUCT_CUTS = [
   { id: 'flatlay', label: '플랫레이' },
-  { id: 'holder', label: '홀더컷' },
+  { id: 'holder', label: '트레이컷' },
   { id: 'props', label: '소품컷' },
   { id: 'slab', label: '슬랩컷' },
 ] as const;
@@ -355,7 +355,7 @@ function buildCutPrompt(cutId: string, color: string, stoneName: string, gender?
   switch (cutId) {
     case 'product': {
       if (subType === 'holder')
-        return `${prefix}팔찌 홀더 제품 사진. 화이트 원통형 주얼리 디스플레이 롤이 ${scene.surface} 위에 세워져 있음. 팔찌는 원통 위에 완전한 정원형으로 올려놓은 상태 — 원통이 팔찌 안에 끼워진 받침대 역할. 카메라는 살짝 위에서 내려다보는 앵글(high-angle)로 팔찌 전체 비즈 면이 정면으로 보임. 팔찌를 원통 측면에 감거나 띠처럼 두르는 구도 절대 금지 — 팔찌는 항상 수평으로 놓인 원형. 롤 옆에 ${scene.props}. ${scene.light}. 한국 고급 주얼리 브랜드 상업 사진.`;
+        return `${prefix}팔찌 주얼리 트레이 제품 사진. 아이보리 또는 화이트 벨벳 원형 주얼리 트레이(jewelry display tray) 위에 팔찌를 완전한 정원형으로 올려놓음. 트레이는 ${scene.surface} 위에 놓여 있음. 카메라는 살짝 위에서 내려다보는 앵글 — 팔찌 비즈 전체 면이 선명하게 보임. 트레이 옆에 ${scene.props}. ${scene.light}. 럭셔리 주얼리 브랜드 상업 사진.`;
       if (subType === 'props')
         return `${prefix}팔찌 소품 연출 제품 사진. 【팔찌 개수 강제】화면 안 팔찌는 레퍼런스 팔찌 단 1개만. 팔찌를 추가하거나 다른 디자인의 팔찌를 넣는 것 절대 금지. ${scene.surface} 위에 팔찌를 원형으로 놓고, 배경 상단에 ${scene.props}가 아웃포커스로 흐릿하게 보이는 라이프스타일 구도. 살짝 위에서 내려다보는 앵글. ${scene.light}. 럭셔리 주얼리 라이프스타일 사진.`;
       if (subType === 'slab')
